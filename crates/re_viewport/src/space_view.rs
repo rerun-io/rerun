@@ -8,7 +8,7 @@ use re_space_view::{
     DataQueryBlueprint, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
 };
 use re_space_view_time_series::TimeSeriesSpaceView;
-use re_types::blueprint::SpaceViewComponent;
+use re_types::blueprint::datatypes::SpaceViewComponent;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState,
@@ -106,8 +106,9 @@ impl SpaceViewBlueprint {
             contents,
         } = blueprint_db
             .store()
-            .query_timeless_component::<SpaceViewComponent>(path)
-            .map(|c| c.value)?;
+            .query_timeless_component::<re_types::blueprint::components::SpaceViewComponent>(path)
+            .map(|c| c.value)?
+            .0;
 
         let id = SpaceViewId::from_entity_path(path);
 
@@ -318,7 +319,7 @@ impl SpaceViewBlueprint {
             .blueprint
             .store()
             .query_timeless_component_quiet::<EntityPropertiesComponent>(&self.entity_path())
-            .map(|result| result.value.props);
+            .map(|result| result.value.0);
 
         let resolved_properties = individual_properties.clone().unwrap_or_else(|| {
             let mut props = EntityProperties::default();
@@ -394,7 +395,7 @@ impl SpaceViewBlueprint {
                 {
                     let overridden_path =
                         EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
-                    prop_map.update(overridden_path, props.value.props);
+                    prop_map.update(overridden_path, props.value.0);
                 }
             });
         }
@@ -433,7 +434,7 @@ mod tests {
     use super::*;
 
     fn save_override(props: EntityProperties, path: &EntityPath, store: &mut StoreDb) {
-        let component = EntityPropertiesComponent { props };
+        let component = EntityPropertiesComponent(props);
         let row = DataRow::from_cells1_sized(
             RowId::new(),
             path.clone(),
@@ -470,9 +471,9 @@ mod tests {
             DataQueryBlueprint::new(
                 "3D".into(),
                 [
-                    &"parent".into(),
-                    &"parent/skip/child1".into(),
-                    &"parent/skip/child2".into(),
+                    "parent".into(),
+                    "parent/skip/child1".into(),
+                    "parent/skip/child2".into(),
                 ]
                 .into_iter(),
             ),

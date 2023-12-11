@@ -76,7 +76,7 @@ impl DataResult {
                 ) {
                     re_log::debug!("Overriding {:?} with {:?}", self.override_path, props);
 
-                    let component = EntityPropertiesComponent { props };
+                    let component = EntityPropertiesComponent(props);
 
                     Some(DataCell::from([component]))
                 } else {

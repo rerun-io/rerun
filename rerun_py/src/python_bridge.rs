@@ -721,7 +721,7 @@ fn set_panels(
     blueprint: Option<&PyRecordingStream>,
 ) {
     // TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
-    use re_viewer::blueprint::PanelView;
+    use re_viewer::blueprint::components::PanelView;
 
     if let Some(expanded) = blueprint_view_expanded {
         set_panel(PanelView::BLUEPRINT_VIEW_PATH, expanded, blueprint);
@@ -740,12 +740,12 @@ fn set_panel(entity_path: &str, is_expanded: bool, blueprint: Option<&PyRecordin
     };
 
     // TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
-    use re_viewer::blueprint::PanelView;
+    use re_viewer::blueprint::components::PanelView;
 
     // TODO(jleibs): Validation this is a valid blueprint path?
     let entity_path = parse_entity_path(entity_path);
 
-    let panel_state = PanelView { is_expanded };
+    let panel_state = PanelView(is_expanded);
 
     let row = DataRow::from_cells1(
         RowId::new(),
@@ -815,7 +815,7 @@ fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
     };
 
     // TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
-    use re_viewport::blueprint::AutoSpaceViews;
+    use re_viewport::blueprint::components::AutoSpaceViews;
 
     let enable_auto_space = AutoSpaceViews(enabled);
 

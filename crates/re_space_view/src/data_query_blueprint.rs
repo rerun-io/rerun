@@ -12,7 +12,9 @@ use re_viewer_context::{
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
-use crate::{blueprint::QueryExpressions, DataQuery, EntityOverrides, PropertyResolver};
+use crate::{
+    blueprint::components::QueryExpressions, DataQuery, EntityOverrides, PropertyResolver,
+};
 
 /// An implementation of [`DataQuery`] that is built from a collection of [`QueryExpressions`]
 ///
@@ -45,19 +47,14 @@ impl DataQueryBlueprint {
     pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
     pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
-    pub fn new<'a>(
+    pub fn new(
         space_view_class_identifier: SpaceViewClassIdentifier,
-        queries_entities: impl Iterator<Item = &'a EntityPathExpr>,
+        queries_entities: impl Iterator<Item = EntityPathExpr>,
     ) -> Self {
         Self {
             id: DataQueryId::random(),
             space_view_class_identifier,
-            expressions: QueryExpressions {
-                inclusions: queries_entities
-                    .map(|exp| exp.to_string().into())
-                    .collect::<Vec<_>>(),
-                exclusions: vec![],
-            },
+            expressions: QueryExpressions::new(queries_entities, std::iter::empty()),
         }
     }
 
@@ -102,15 +99,12 @@ impl DataQueryBlueprint {
     fn save_expressions(
         &self,
         ctx: &ViewerContext<'_>,
-        inclusions: &[EntityPathExpr],
-        exclusions: &[EntityPathExpr],
+        inclusions: impl Iterator<Item = EntityPathExpr>,
+        exclusions: impl Iterator<Item = EntityPathExpr>,
     ) {
         let timepoint = TimePoint::timeless();
 
-        let expressions_component = QueryExpressions {
-            inclusions: inclusions.iter().map(|s| s.to_string().into()).collect(),
-            exclusions: exclusions.iter().map(|s| s.to_string().into()).collect(),
-        };
+        let expressions_component = QueryExpressions::new(inclusions, exclusions);
 
         let row = DataRow::from_cells1_sized(
             RowId::new(),
@@ -171,7 +165,7 @@ impl DataQueryBlueprint {
         }
 
         if edited {
-            self.save_expressions(ctx, &inclusions, &exclusions);
+            self.save_expressions(ctx, inclusions.into_iter(), exclusions.into_iter());
         }
     }
 
@@ -196,7 +190,7 @@ impl DataQueryBlueprint {
         }
 
         if edited {
-            self.save_expressions(ctx, &inclusions, &exclusions);
+            self.save_expressions(ctx, inclusions.into_iter(), exclusions.into_iter());
         }
     }
 
@@ -225,7 +219,7 @@ impl DataQueryBlueprint {
         });
 
         if edited {
-            self.save_expressions(ctx, &inclusions, &exclusions);
+            self.save_expressions(ctx, inclusions.into_iter(), exclusions.into_iter());
         }
     }
 
@@ -503,7 +497,7 @@ impl DataQueryPropertyResolver<'_> {
                 {
                     let overridden_path =
                         EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
-                    prop_map.update(overridden_path, props.value.props);
+                    prop_map.update(overridden_path, props.value.0);
                 }
             });
         }
@@ -527,7 +521,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
                 .store()
                 .query_timeless_component::<EntityPropertiesComponent>(prefix)
             {
-                root = root.with_child(&overrides.value.props);
+                root = root.with_child(&overrides.value.0);
             }
         }
 
@@ -542,7 +536,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
                     let overridden_path = EntityPath::from(
                         &path.as_slice()[self.individual_override_root.len()..path.len()],
                     );
-                    individual.update(overridden_path, props.value.props);
+                    individual.update(overridden_path, props.value.0);
                 }
             });
         }
@@ -723,10 +717,10 @@ mod tests {
             let query = DataQueryBlueprint {
                 id: DataQueryId::random(),
                 space_view_class_identifier: "3D".into(),
-                expressions: QueryExpressions {
-                    inclusions: inclusions.into_iter().map(|s| s.into()).collect::<Vec<_>>(),
-                    exclusions: exclusions.into_iter().map(|s| s.into()).collect::<Vec<_>>(),
-                },
+                expressions: QueryExpressions::new(
+                    inclusions.into_iter().map(EntityPathExpr::from),
+                    exclusions.into_iter().map(EntityPathExpr::from),
+                ),
             };
 
             let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);

@@ -4,7 +4,7 @@ use ahash::HashMap;
 
 use re_data_store::{EntityPath, StoreDb};
 use re_log_types::{DataRow, RowId, TimePoint};
-use re_types::blueprint::SpaceViewComponent;
+use re_types::blueprint::datatypes::SpaceViewComponent;
 use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender,
@@ -12,7 +12,8 @@ use re_viewer_context::{
 };
 
 use crate::{
-    blueprint::{AutoSpaceViews, SpaceViewMaximized, ViewportLayout},
+    blueprint::components::{AutoSpaceViews, SpaceViewMaximized},
+    blueprint::datatypes::ViewportLayout,
     space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
     space_view_heuristics::default_created_space_views,
@@ -290,11 +291,12 @@ impl<'a> ViewportBlueprint<'a> {
         if after.tree != before.tree || after.auto_layout != before.auto_layout {
             re_log::trace!("Syncing tree");
 
-            let component = ViewportLayout {
+            let component: crate::blueprint::components::ViewportLayout = ViewportLayout {
                 space_view_keys: after.space_views.keys().cloned().collect(),
                 tree: after.tree.clone(),
                 auto_layout: after.auto_layout,
-            };
+            }
+            .into();
 
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
@@ -385,9 +387,12 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
 
     let viewport_layout: ViewportLayout = blueprint_db
         .store()
-        .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
+        .query_timeless_component_quiet::<crate::blueprint::components::ViewportLayout>(
+            &VIEWPORT_PATH.into(),
+        )
         .map(|space_view| space_view.value)
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .0;
 
     let unknown_space_views: HashMap<_, _> = space_views
         .iter()
@@ -431,13 +436,14 @@ pub fn sync_space_view(
         // TODO(jleibs): Seq instead of timeless?
         let timepoint = TimePoint::timeless();
 
-        let component = SpaceViewComponent {
+        let component: re_types::blueprint::components::SpaceViewComponent = SpaceViewComponent {
             display_name: space_view.display_name.clone().into(),
             class_identifier: space_view.class_identifier().as_str().into(),
             space_origin: (&space_view.space_origin).into(),
             entities_determined_by_user: space_view.entities_determined_by_user,
             contents: space_view.queries.iter().map(|q| q.id.into()).collect(),
-        };
+        }
+        .into();
 
         add_delta_from_single_component(deltas, &space_view.entity_path(), &timepoint, component);
 

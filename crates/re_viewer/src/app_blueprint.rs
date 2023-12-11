@@ -1,4 +1,4 @@
-use crate::blueprint::PanelView;
+use crate::blueprint::components::PanelView;
 use re_data_store::StoreDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
@@ -88,7 +88,7 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut StoreDb) {
         // TODO(jleibs): Seq instead of timeless?
         let timepoint = TimePoint::timeless();
 
-        let component = PanelView { is_expanded };
+        let component = PanelView(is_expanded);
 
         let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 1, [component])
             .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
@@ -111,7 +111,7 @@ impl<'a> AppBlueprint<'a> {
             // TODO(jleibs): Seq instead of timeless?
             let timepoint = TimePoint::timeless();
 
-            let component = PanelView { is_expanded };
+            let component = PanelView(is_expanded);
 
             let row =
                 DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 1, [component])
@@ -130,5 +130,5 @@ fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::StoreDb) ->
     blueprint_db
         .store()
         .query_timeless_component_quiet::<PanelView>(path)
-        .map(|p| p.is_expanded)
+        .map(|p| p.0)
 }

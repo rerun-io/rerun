@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A view of a space.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ViewportLayout(pub crate::blueprint::datatypes::ViewportLayout);
 
 impl<T: Into<crate::blueprint::datatypes::ViewportLayout>> From<T> for ViewportLayout {

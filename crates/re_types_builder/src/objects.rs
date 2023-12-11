@@ -201,7 +201,7 @@ impl ObjectKind {
     pub fn from_pkg_name(pkg_name: impl AsRef<str>, attrs: &Attributes) -> Self {
         let scope = match attrs.try_get::<String>(pkg_name.as_ref(), crate::ATTR_RERUN_SCOPE) {
             Some(scope) => format!(".{scope}"),
-            None => "".to_owned(),
+            None => String::new(),
         };
 
         let pkg_name = pkg_name.as_ref().replace(".testing", "");
