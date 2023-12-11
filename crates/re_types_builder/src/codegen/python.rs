@@ -269,6 +269,8 @@ impl PythonCodeGenerator {
         object_kind: ObjectKind,
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
     ) {
+        let mut known_scopes = HashSet::<_>::default();
+
         let kind_path = self.pkg_path.join(object_kind.plural_snake_case());
         let test_kind_path = self.testing_pkg_path.join(object_kind.plural_snake_case());
 
@@ -279,6 +281,17 @@ impl PythonCodeGenerator {
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
+            let scope = obj.scope();
+
+            let kind_path = if let Some(scope) = scope {
+                known_scopes.insert(scope.clone());
+                self.pkg_path
+                    .join(scope)
+                    .join(object_kind.plural_snake_case())
+            } else {
+                kind_path.clone()
+            };
+
             let filepath = if obj.is_testing() {
                 test_kind_path.join(format!("{}.py", obj.snake_case_name()))
             } else {
@@ -288,7 +301,7 @@ impl PythonCodeGenerator {
             let ext_class = ExtensionClass::new(reporter, &kind_path, obj);
 
             let names = match obj.kind {
-                ObjectKind::Datatype | ObjectKind::Component | ObjectKind::Blueprint => {
+                ObjectKind::Datatype | ObjectKind::Component => {
                     let name = &obj.name;
 
                     if obj.is_delegating_component() {
@@ -389,12 +402,12 @@ impl PythonCodeGenerator {
             let import_clauses: HashSet<_> = obj
                 .fields
                 .iter()
-                .filter_map(quote_import_clauses_from_field)
+                .filter_map(|field| quote_import_clauses_from_field(&obj.scope(), field))
                 .chain(obj.fields.iter().filter_map(|field| {
                     field.typ.fqname().and_then(|fqname| {
-                        objects[fqname]
-                            .delegate_datatype(objects)
-                            .map(|delegate| quote_import_clauses_from_fqname(&delegate.fqname))
+                        objects[fqname].delegate_datatype(objects).map(|delegate| {
+                            quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
+                        })
                     })
                 }))
                 .collect();
@@ -426,6 +439,13 @@ impl PythonCodeGenerator {
         // rerun/{datatypes|components|archetypes}/__init__.py
         write_init_file(&kind_path, &mods, files_to_write);
         write_init_file(&test_kind_path, &test_mods, files_to_write);
+        for scope in known_scopes {
+            let scoped_kind_path = self
+                .pkg_path
+                .join(scope)
+                .join(object_kind.plural_snake_case());
+            write_init_file(&scoped_kind_path, &BTreeMap::new(), files_to_write);
+        }
     }
 }
 
@@ -694,7 +714,7 @@ fn code_for_struct(
 
     match kind {
         ObjectKind::Archetype => (),
-        ObjectKind::Datatype | ObjectKind::Blueprint | ObjectKind::Component => {
+        ObjectKind::Datatype | ObjectKind::Component => {
             code.push_text(
                 quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
@@ -844,7 +864,7 @@ fn code_for_union(
         ObjectKind::Component => {
             unreachable!("component may not be a union")
         }
-        ObjectKind::Datatype | ObjectKind::Blueprint => {
+        ObjectKind::Datatype => {
             code.push_text(
                 quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
@@ -1178,7 +1198,10 @@ fn quote_union_aliases_from_object<'a>(
     ))
 }
 
-fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
+fn quote_import_clauses_from_field(
+    obj_scope: &Option<String>,
+    field: &ObjectField,
+) -> Option<String> {
     let fqname = match &field.typ {
         Type::Array {
             elem_type,
@@ -1195,22 +1218,41 @@ fn quote_import_clauses_from_field(field: &ObjectField) -> Option<String> {
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
     // nasty lazy circular dependencies in weird edge cases…
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
-    fqname.map(|fqname| quote_import_clauses_from_fqname(fqname))
+    fqname.map(|fqname| quote_import_clauses_from_fqname(obj_scope, fqname))
 }
 
-fn quote_import_clauses_from_fqname(fqname: &str) -> String {
+fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) -> String {
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
     // nasty lazy circular dependencies in weird edge cases…
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
 
     let fqname = fqname.replace(".testing", "");
     let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
-    if from.starts_with("rerun.datatypes") {
+
+    if let Some(scope) = obj_scope {
+        if from.starts_with("rerun.datatypes") {
+            "from ... import datatypes".to_owned()
+        } else if from.starts_with(format!("rerun.{scope}.datatypes").as_str()) {
+            "from .. import datatypes".to_owned()
+        } else if from.starts_with("rerun.components") {
+            "from ... import components".to_owned()
+        } else if from.starts_with(format!("rerun.{scope}.components").as_str()) {
+            "from .. import components".to_owned()
+        } else if from.starts_with("rerun.archetypes") {
+            // NOTE: This is assuming importing other archetypes is legal… which whether it is or
+            // isn't for this code generator to say.
+            "from ... import archetypes".to_owned()
+        } else if from.starts_with(format!("rerun.{scope}.archetytpes").as_str()) {
+            "from .. import archetypes".to_owned()
+        } else if from.is_empty() {
+            format!("from . import {class}")
+        } else {
+            format!("from {from} import {class}")
+        }
+    } else if from.starts_with("rerun.datatypes") {
         "from .. import datatypes".to_owned()
     } else if from.starts_with("rerun.components") {
         "from .. import components".to_owned()
-    } else if from.starts_with("rerun.blueprint") {
-        "from .. import blueprint".to_owned()
     } else if from.starts_with("rerun.archetypes") {
         // NOTE: This is assuming importing other archetypes is legal… which whether it is or
         // isn't for this code generator to say.
@@ -1466,7 +1508,7 @@ fn quote_arrow_support_from_obj(
         format!("{name}ArrayLike")
     };
 
-    if obj.kind == ObjectKind::Datatype || obj.kind == ObjectKind::Blueprint {
+    if obj.kind == ObjectKind::Datatype {
         type_superclasses.push("BaseExtensionType".to_owned());
         batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
     } else if obj.kind == ObjectKind::Component {
@@ -1675,7 +1717,6 @@ fn quote_init_method(
     };
     let doc_typedesc = match obj.kind {
         ObjectKind::Datatype => "datatype",
-        ObjectKind::Blueprint => "blueprint",
         ObjectKind::Component => "component",
         ObjectKind::Archetype => "archetype",
     };

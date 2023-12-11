@@ -49,11 +49,15 @@ impl CodeGenerator for DocsCodeGenerator {
                 continue;
             }
 
+            // Skip blueprint stuff, too early
+            if object.scope() == Some("blueprint".to_owned()) {
+                continue;
+            }
+
             match object.kind {
                 ObjectKind::Datatype => datatypes.push(object),
                 ObjectKind::Component => components.push(object),
                 ObjectKind::Archetype => archetypes.push(object),
-                ObjectKind::Blueprint => continue, // skip blueprint stuff, too early
             }
 
             let page = object_page(reporter, object, object_map);
@@ -152,7 +156,6 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             write_fields(&mut page, object, object_map);
         }
         ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
-        ObjectKind::Blueprint => {}
     }
 
     {
@@ -202,7 +205,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             putln!(page);
             write_used_by(&mut page, reporter, object, object_map);
         }
-        ObjectKind::Blueprint | ObjectKind::Archetype => {
+        ObjectKind::Archetype => {
             if examples.is_empty() {
                 reporter.warn(&object.virtpath, &object.fqname, "No examples");
             }

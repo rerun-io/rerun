@@ -336,7 +336,7 @@ impl QuotedObject {
     ) -> Self {
         match obj.specifics {
             crate::ObjectSpecifics::Struct => match obj.kind {
-                ObjectKind::Datatype | ObjectKind::Component | ObjectKind::Blueprint => {
+                ObjectKind::Datatype | ObjectKind::Component => {
                     Self::from_struct(objects, obj, hpp_includes, hpp_type_extensions)
                 }
                 ObjectKind::Archetype => {
