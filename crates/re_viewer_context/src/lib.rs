@@ -46,8 +46,8 @@ pub use space_view::{
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
     SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
-    ViewContextCollection, ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
-    ViewSystemIdentifier,
+    SystemExecutionOutput, ViewContextCollection, ViewContextSystem, ViewPartCollection,
+    ViewPartSystem, ViewQuery, ViewSystemIdentifier,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

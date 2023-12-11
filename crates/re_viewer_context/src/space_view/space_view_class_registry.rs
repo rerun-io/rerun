@@ -26,8 +26,9 @@ pub enum SpaceViewClassRegistryError {
 /// for every instance of the space view class this belongs to.
 #[derive(Default)]
 pub struct SpaceViewSystemRegistry {
-    contexts: HashMap<ViewSystemIdentifier, Box<dyn Fn() -> Box<dyn ViewContextSystem>>>,
-    parts: HashMap<ViewSystemIdentifier, Box<dyn Fn() -> Box<dyn ViewPartSystem>>>,
+    contexts:
+        HashMap<ViewSystemIdentifier, Box<dyn Fn() -> Box<dyn ViewContextSystem> + Send + Sync>>,
+    parts: HashMap<ViewSystemIdentifier, Box<dyn Fn() -> Box<dyn ViewPartSystem> + Send + Sync>>,
 }
 
 impl SpaceViewSystemRegistry {
@@ -87,6 +88,8 @@ impl SpaceViewSystemRegistry {
         &self,
         space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> ViewContextCollection {
+        re_tracing::profile_function!();
+
         ViewContextCollection {
             systems: self
                 .contexts
@@ -101,6 +104,8 @@ impl SpaceViewSystemRegistry {
     }
 
     pub fn new_part_collection(&self) -> ViewPartCollection {
+        re_tracing::profile_function!();
+
         ViewPartCollection {
             systems: self
                 .parts

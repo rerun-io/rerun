@@ -409,7 +409,7 @@ fn generate_code(
 
     // 4. Write all files to filesystem.
     {
-        re_tracing::profile_scope!("write_files");
+        re_tracing::profile_wait!("write_files");
 
         files.par_iter().for_each(|(filepath, contents)| {
             crate::codegen::common::write_file(filepath, contents);

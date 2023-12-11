@@ -12,8 +12,10 @@ use re_types::blueprint::SpaceViewComponent;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState,
-    SpaceViewSystemRegistry, StoreContext, ViewerContext,
+    SpaceViewSystemRegistry, StoreContext, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
+
+use crate::system_execution::create_and_run_space_view_systems;
 
 // ----------------------------------------------------------------------------
 
@@ -229,26 +231,17 @@ impl SpaceViewBlueprint {
         }
     }
 
-    pub(crate) fn scene_ui(
-        &mut self,
-        view_state: &mut dyn SpaceViewState,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
+    pub(crate) fn execute_systems<'a>(
+        &'a self,
+        ctx: &'a ViewerContext<'_>,
         latest_at: TimeInt,
-        highlights: &SpaceViewHighlights,
-    ) {
-        re_tracing::profile_function!();
-
-        let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
-        if is_zero_sized_viewport {
-            return;
-        }
+        highlights: SpaceViewHighlights,
+    ) -> (ViewQuery<'a>, SystemExecutionOutput) {
+        re_tracing::profile_function!(self.class_identifier.as_str());
 
         let class = self.class(ctx.space_view_class_registry);
 
-        // TODO(jleibs): Sort out borrow-checker to avoid the need to clone here
-        // while still being able to pass &ViewerContext down the chain.
-        let query_result = ctx.lookup_query_result(self.query_id()).clone();
+        let query_result = ctx.lookup_query_result(self.query_id());
 
         let mut per_system_data_results = PerSystemDataResults::default();
         {
@@ -270,11 +263,29 @@ impl SpaceViewBlueprint {
         let query = re_viewer_context::ViewQuery {
             space_view_id: self.id,
             space_origin: &self.space_origin,
-            per_system_data_results: &per_system_data_results,
+            per_system_data_results,
             timeline: *ctx.rec_cfg.time_ctrl.read().timeline(),
             latest_at,
             highlights,
         };
+
+        let system_output =
+            create_and_run_space_view_systems(ctx, class.identifier(), system_registry, &query);
+
+        (query, system_output)
+    }
+
+    pub(crate) fn scene_ui(
+        &self,
+        view_state: &mut dyn SpaceViewState,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        query: &ViewQuery<'_>,
+        system_output: SystemExecutionOutput,
+    ) {
+        re_tracing::profile_function!();
+
+        let class = self.class(ctx.space_view_class_registry);
 
         let root_data_result = self.root_data_result(ctx.store_context);
         let props = root_data_result
@@ -283,7 +294,7 @@ impl SpaceViewBlueprint {
             .unwrap_or_default();
 
         ui.scope(|ui| {
-            class.ui(ctx, ui, view_state, &props, system_registry, &query);
+            class.ui(ctx, ui, view_state, &props, query, system_output);
         });
     }
 
