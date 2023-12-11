@@ -1,4 +1,5 @@
 use egui::{Response, Ui};
+use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
@@ -440,14 +441,19 @@ impl ViewportBlueprint<'_> {
                 }
 
                 // Empty space views of every available types
-                for space_view in ctx.space_view_class_registry.iter_classes().map(|class| {
-                    SpaceViewBlueprint::new(
-                        class.identifier(),
-                        &format!("empty {}", class.display_name()),
-                        &EntityPath::root(),
-                        DataQueryBlueprint::new(class.identifier(), std::iter::empty()),
-                    )
-                }) {
+                for space_view in ctx
+                    .space_view_class_registry
+                    .iter_classes()
+                    .sorted_by_key(|space_view_class| space_view_class.display_name())
+                    .map(|class| {
+                        SpaceViewBlueprint::new(
+                            class.identifier(),
+                            &format!("empty {}", class.display_name()),
+                            &EntityPath::root(),
+                            DataQueryBlueprint::new(class.identifier(), std::iter::empty()),
+                        )
+                    })
+                {
                     add_space_view_item(ui, space_view);
                 }
             },
