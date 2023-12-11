@@ -26,19 +26,27 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Unstable. Used for the ongoing blueprint experimentations.
 #[derive(Clone, Debug, Copy, Default, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct SpaceViewMaximized(pub Option<re_viewer_context::SpaceViewId>);
+pub struct SpaceViewMaximized(pub Option<crate::datatypes::Uuid>);
 
-impl From<Option<re_viewer_context::SpaceViewId>> for SpaceViewMaximized {
-    #[inline]
-    fn from(id: Option<re_viewer_context::SpaceViewId>) -> Self {
-        Self(id)
+impl<T: Into<Option<crate::datatypes::Uuid>>> From<T> for SpaceViewMaximized {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
-impl From<SpaceViewMaximized> for Option<re_viewer_context::SpaceViewId> {
+impl std::borrow::Borrow<Option<crate::datatypes::Uuid>> for SpaceViewMaximized {
     #[inline]
-    fn from(value: SpaceViewMaximized) -> Self {
-        value.0
+    fn borrow(&self) -> &Option<crate::datatypes::Uuid> {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for SpaceViewMaximized {
+    type Target = Option<crate::datatypes::Uuid>;
+
+    #[inline]
+    fn deref(&self) -> &Option<crate::datatypes::Uuid> {
+        &self.0
     }
 }
 
@@ -56,12 +64,20 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::List(Box::new(Field {
-            name: "item".to_owned(),
-            data_type: DataType::UInt8,
+        DataType::Struct(vec![Field {
+            name: "bytes".to_owned(),
+            data_type: DataType::FixedSizeList(
+                Box::new(Field {
+                    name: "item".to_owned(),
+                    data_type: DataType::UInt8,
+                    is_nullable: false,
+                    metadata: [].into(),
+                }),
+                16usize,
+            ),
             is_nullable: false,
             metadata: [].into(),
-        }))
+        }])
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -93,44 +109,8 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
                 any_nones.then(|| somes.into())
             };
             {
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let buffers: Vec<Option<Vec<u8>>> = data0
-                    .iter()
-                    .map(|opt| {
-                        use ::re_types_core::SerializationError;
-                        opt.as_ref()
-                            .map(|b| {
-                                let mut buf = Vec::new();
-                                rmp_serde::encode::write_named(&mut buf, b).map_err(|err| {
-                                    SerializationError::serde_failure(err.to_string())
-                                })?;
-                                Ok(buf)
-                            })
-                            .transpose()
-                    })
-                    .collect::<SerializationResult<Vec<_>>>()?;
-                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    buffers
-                        .iter()
-                        .map(|opt| opt.as_ref().map(|buf| buf.len()).unwrap_or_default()),
-                )
-                .unwrap()
-                .into();
-                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                let data0_inner_data: Buffer<u8> = buffers
-                    .into_iter()
-                    .flatten()
-                    .collect::<Vec<_>>()
-                    .concat()
-                    .into();
-                ListArray::new(
-                    Self::arrow_datatype(),
-                    offsets,
-                    PrimitiveArray::new(DataType::UInt8, data0_inner_data, data0_inner_bitmap)
-                        .boxed(),
-                    data0_bitmap,
-                )
-                .boxed()
+                _ = data0_bitmap;
+                crate::datatypes::Uuid::to_arrow_opt(data0)?
             }
         })
     }
@@ -145,77 +125,13 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::List(Box::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::UInt8,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        })),
-                        arrow_data.data_type().clone(),
-                    )
-                })
-                .with_context("rerun.blueprint.components.SpaceViewMaximized#id")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let arrow_data_inner = {
-                    let arrow_data_inner = &**arrow_data.values();
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<UInt8Array>()
-                        .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt8,
-                                arrow_data_inner.data_type().clone(),
-                            )
-                        })
-                        .with_context("rerun.blueprint.components.SpaceViewMaximized#id")?
-                        .values()
-                };
-                let offsets = arrow_data.offsets();
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets.iter().zip(offsets.lengths()),
-                    arrow_data.validity(),
-                )
-                .map(|elem| {
-                    elem.map(|(start, len)| {
-                        let start = *start as usize;
-                        let end = start + len;
-                        if end as usize > arrow_data_inner.len() {
-                            return Err(DeserializationError::offset_slice_oob(
-                                (start, end),
-                                arrow_data_inner.len(),
-                            ));
-                        }
-
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data = unsafe {
-                            arrow_data_inner
-                                .clone()
-                                .sliced_unchecked(start as usize, end - start as usize)
-                        };
-                        let data = rmp_serde::from_slice::<re_viewer_context::SpaceViewId>(
-                            data.as_slice(),
-                        )
-                        .map_err(|err| DeserializationError::serde_failure(err.to_string()))?;
-                        Ok(data)
-                    })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<Option<_>>>>()?
-            }
+        Ok(crate::datatypes::Uuid::from_arrow_opt(arrow_data)
+            .with_context("rerun.blueprint.components.SpaceViewMaximized#id")?
             .into_iter()
-        }
-        .map(Ok)
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.blueprint.components.SpaceViewMaximized#id")
-        .with_context("rerun.blueprint.components.SpaceViewMaximized")?)
+            .map(Ok)
+            .map(|res| res.map(|v| Some(Self(v))))
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.blueprint.components.SpaceViewMaximized#id")
+            .with_context("rerun.blueprint.components.SpaceViewMaximized")?)
     }
 }

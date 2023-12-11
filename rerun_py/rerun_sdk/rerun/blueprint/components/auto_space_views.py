@@ -24,18 +24,18 @@ __all__ = [
 @define(init=False)
 class AutoSpaceViews:
     """
-    **Component**: A flag indicating space views should be automatically populated.
+    **Component**: Whether or not space views should be created automatically.
 
     Unstable. Used for the ongoing blueprint experimentations.
     """
 
-    def __init__(self: Any, enabled: AutoSpaceViewsLike):
+    def __init__(self: Any, auto_space_views: AutoSpaceViewsLike):
         """Create a new instance of the AutoSpaceViews component."""
 
         # You can define your own __init__ function as a member of AutoSpaceViewsExt in auto_space_views_ext.py
-        self.__attrs_init__(enabled=enabled)
+        self.__attrs_init__(auto_space_views=auto_space_views)
 
-    enabled: bool = field(converter=bool)
+    auto_space_views: bool = field(converter=bool)
 
 
 AutoSpaceViewsLike = AutoSpaceViews

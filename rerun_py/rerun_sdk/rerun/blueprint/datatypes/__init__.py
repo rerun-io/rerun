@@ -16,13 +16,6 @@ from .space_view_component import (
     SpaceViewComponentLike,
     SpaceViewComponentType,
 )
-from .viewport_layout import (
-    ViewportLayout,
-    ViewportLayoutArrayLike,
-    ViewportLayoutBatch,
-    ViewportLayoutLike,
-    ViewportLayoutType,
-)
 
 __all__ = [
     "QueryExpressions",
@@ -35,9 +28,4 @@ __all__ = [
     "SpaceViewComponentBatch",
     "SpaceViewComponentLike",
     "SpaceViewComponentType",
-    "ViewportLayout",
-    "ViewportLayoutArrayLike",
-    "ViewportLayoutBatch",
-    "ViewportLayoutLike",
-    "ViewportLayoutType",
 ]

@@ -2,8 +2,10 @@
 
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
+auto_layout.py linguist-generated=true
 auto_space_views.py linguist-generated=true
 entity_properties_component.py linguist-generated=true
+included_space_views.py linguist-generated=true
 panel_view.py linguist-generated=true
 query_expressions.py linguist-generated=true
 space_view_component.py linguist-generated=true
