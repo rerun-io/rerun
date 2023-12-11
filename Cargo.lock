@@ -4131,9 +4131,9 @@ dependencies = [
 
 [[package]]
 name = "puffin"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e0b84517b2fb755da3a634bc030fcbc7b6337a786aa25a7fb350cdd51ab5e15"
+checksum = "02330f795caafc2007510f742624c10aa813b8c3097c77ff344b1b86eb6be846"
 dependencies = [
  "anyhow",
  "bincode",
