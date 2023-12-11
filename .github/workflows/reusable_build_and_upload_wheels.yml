@@ -145,7 +145,8 @@ jobs:
           python3 scripts/ci/build_and_upload_wheels.py \
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
-            --dir commit/${{ steps.get-sha.outputs.sha }}/wheels
+            --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
+            --compat manylinux_2_31
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}

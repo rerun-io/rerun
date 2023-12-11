@@ -68,12 +68,7 @@ class BuildMode(Enum):
         return self.value
 
 
-def build_and_upload(
-    bucket: Bucket,
-    mode: BuildMode,
-    gcs_dir: str,
-    target: str,
-) -> None:
+def build_and_upload(bucket: Bucket, mode: BuildMode, gcs_dir: str, target: str, compatibility: str) -> None:
     if detect_pixi():
         raise Exception("the build script cannot be started in the pixi environment")
 
@@ -86,10 +81,12 @@ def build_and_upload(
 
     dist = f"dist/{target}"
 
+    compatibility = f"--compatibility {compatibility}" if compatibility is not None else ""
+
     # Build into `dist`
     run(
         "maturin build "
-        # "--compatibility manylinux_2_31 "
+        f"{compatibility} "
         "--manifest-path rerun_py/Cargo.toml "
         "--release "
         f"--target {target} "
@@ -97,16 +94,7 @@ def build_and_upload(
         f"--out {dist}"
     )
 
-    # Repack wheel
-    with tempfile.TemporaryDirectory() as tmpdir:
-        print("Repacking wheel…")
-        pkg = os.listdir(dist)[0]
-        run(f"wheel unpack {dist}/{pkg} --dest {tmpdir}")
-        pkg_folder = os.listdir(tmpdir)[0]
-        shutil.rmtree(dist, ignore_errors=True)
-        os.makedirs(dist, exist_ok=True)
-        run(f"wheel pack {tmpdir}/{pkg_folder} --dest {dist}")
-        pkg = os.listdir(dist)[0]
+    pkg = os.listdir(dist)[0]
 
     # Upload to GCS
     print("Uploading to GCS…")
@@ -120,6 +108,11 @@ def main() -> None:
     )
     parser.add_argument("--dir", required=True, help="Upload the wheel to the given directory in GCS")
     parser.add_argument("--target", help="Target to build for")
+    parser.add_argument(
+        "--compat",
+        type=str,
+        help='The platform tag for linux, e.g. "manylinux_2_31"',
+    )
     args = parser.parse_args()
 
     build_and_upload(
@@ -127,6 +120,7 @@ def main() -> None:
         args.mode,
         args.dir,
         args.target or detect_target(),
+        args.compat,
     )
 
 
