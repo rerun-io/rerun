@@ -13,4 +13,4 @@ A 16-byte uuid.
 
 ## Used by
 
-* [`SpaceViewComponent`](../blueprint/space_view_component.md?speculative-link)
+* [`SpaceViewComponent`](../datatypes/space_view_component.md?speculative-link)

@@ -13,4 +13,4 @@ A path to an entity in the `DataStore`.
 
 ## Used by
 
-* [`SpaceViewComponent`](../blueprint/space_view_component.md?speculative-link)
+* [`SpaceViewComponent`](../datatypes/space_view_component.md?speculative-link)
