@@ -10,14 +10,17 @@ use super::space_view_class_placeholder::SpaceViewClassPlaceholder;
 #[derive(Debug, thiserror::Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum SpaceViewClassRegistryError {
-    #[error("Space View with class name {0:?} was already registered.")]
-    DuplicateClassName(SpaceViewClassIdentifier),
+    #[error("Space View with class identifier {0:?} was already registered.")]
+    DuplicateClassIdentifier(SpaceViewClassIdentifier),
 
-    #[error("A Context System with name {0:?} was already registered.")]
-    NameAlreadyInUseForContextSystem(&'static str),
+    #[error("A Context System with identifier {0:?} was already registered.")]
+    IdentifierAlreadyInUseForContextSystem(&'static str),
 
-    #[error("A View Part System with name {0:?} was already registered.")]
-    NameAlreadyInUseForViewSystem(&'static str),
+    #[error("A View Part System with identifier {0:?} was already registered.")]
+    IdentifierAlreadyInUseForViewSystem(&'static str),
+
+    #[error("Space View with class identifier {0:?} was not registered.")]
+    UnknownClassIdentifier(SpaceViewClassIdentifier),
 }
 
 /// System registry for a space view class.
@@ -42,9 +45,11 @@ impl SpaceViewSystemRegistry {
     ) -> Result<(), SpaceViewClassRegistryError> {
         // Name should also not overlap with part systems.
         if self.parts.contains_key(&T::identifier()) {
-            return Err(SpaceViewClassRegistryError::NameAlreadyInUseForViewSystem(
-                T::identifier().as_str(),
-            ));
+            return Err(
+                SpaceViewClassRegistryError::IdentifierAlreadyInUseForViewSystem(
+                    T::identifier().as_str(),
+                ),
+            );
         }
 
         if let std::collections::hash_map::Entry::Vacant(e) = self.contexts.entry(T::identifier()) {
@@ -52,7 +57,7 @@ impl SpaceViewSystemRegistry {
             Ok(())
         } else {
             Err(
-                SpaceViewClassRegistryError::NameAlreadyInUseForContextSystem(
+                SpaceViewClassRegistryError::IdentifierAlreadyInUseForContextSystem(
                     T::identifier().as_str(),
                 ),
             )
@@ -68,7 +73,7 @@ impl SpaceViewSystemRegistry {
         // Name should also not overlap with context systems.
         if self.parts.contains_key(&T::identifier()) {
             return Err(
-                SpaceViewClassRegistryError::NameAlreadyInUseForContextSystem(
+                SpaceViewClassRegistryError::IdentifierAlreadyInUseForContextSystem(
                     T::identifier().as_str(),
                 ),
             );
@@ -78,9 +83,11 @@ impl SpaceViewSystemRegistry {
             e.insert(Box::new(|| Box::<T>::default()));
             Ok(())
         } else {
-            Err(SpaceViewClassRegistryError::NameAlreadyInUseForViewSystem(
-                T::identifier().as_str(),
-            ))
+            Err(
+                SpaceViewClassRegistryError::IdentifierAlreadyInUseForViewSystem(
+                    T::identifier().as_str(),
+                ),
+            )
         }
     }
 
@@ -160,7 +167,23 @@ impl SpaceViewClassRegistry {
 
         let type_name = entry.class.identifier();
         if self.registry.insert(type_name, entry).is_some() {
-            return Err(SpaceViewClassRegistryError::DuplicateClassName(type_name));
+            return Err(SpaceViewClassRegistryError::DuplicateClassIdentifier(
+                type_name,
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Removes a space view class from the registry.
+    pub fn remove_class(
+        &mut self,
+        type_name: &SpaceViewClassIdentifier,
+    ) -> Result<(), SpaceViewClassRegistryError> {
+        if self.registry.remove(type_name).is_none() {
+            return Err(SpaceViewClassRegistryError::UnknownClassIdentifier(
+                *type_name,
+            ));
         }
 
         Ok(())
