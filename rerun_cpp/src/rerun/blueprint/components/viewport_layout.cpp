@@ -3,8 +3,6 @@
 
 #include "viewport_layout.hpp"
 
-#include "../../blueprint/datatypes/viewport_layout.hpp"
-
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
@@ -13,26 +11,37 @@ namespace rerun::blueprint::components {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>&
         Loggable<blueprint::components::ViewportLayout>::arrow_datatype() {
-        static const auto datatype =
-            Loggable<rerun::blueprint::datatypes::ViewportLayout>::arrow_datatype();
+        static const auto datatype = arrow::list(arrow::field("item", arrow::uint8(), false));
         return datatype;
     }
 
     rerun::Error Loggable<blueprint::components::ViewportLayout>::fill_arrow_array_builder(
-        arrow::StructBuilder* builder, const blueprint::components::ViewportLayout* elements,
+        arrow::ListBuilder* builder, const blueprint::components::ViewportLayout* elements,
         size_t num_elements
     ) {
-        static_assert(
-            sizeof(rerun::blueprint::datatypes::ViewportLayout) ==
-            sizeof(blueprint::components::ViewportLayout)
-        );
-        RR_RETURN_NOT_OK(
-            Loggable<rerun::blueprint::datatypes::ViewportLayout>::fill_arrow_array_builder(
-                builder,
-                reinterpret_cast<const rerun::blueprint::datatypes::ViewportLayout*>(elements),
-                num_elements
-            )
-        );
+        if (builder == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+        }
+        if (elements == nullptr) {
+            return rerun::Error(
+                ErrorCode::UnexpectedNullArgument,
+                "Cannot serialize null pointer to arrow array."
+            );
+        }
+
+        auto value_builder = static_cast<arrow::UInt8Builder*>(builder->value_builder());
+        ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
+        ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
+
+        for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            const auto& element = elements[elem_idx];
+            ARROW_RETURN_NOT_OK(builder->Append());
+            ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                element.tree.data(),
+                static_cast<int64_t>(element.tree.size()),
+                nullptr
+            ));
+        }
 
         return Error::ok();
     }
@@ -48,7 +57,7 @@ namespace rerun {
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(
                 Loggable<blueprint::components::ViewportLayout>::fill_arrow_array_builder(
-                    static_cast<arrow::StructBuilder*>(builder.get()),
+                    static_cast<arrow::ListBuilder*>(builder.get()),
                     instances,
                     num_instances
                 )

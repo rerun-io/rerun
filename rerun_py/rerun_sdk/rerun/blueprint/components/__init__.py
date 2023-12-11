@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .auto_layout import AutoLayout, AutoLayoutArrayLike, AutoLayoutBatch, AutoLayoutLike, AutoLayoutType
 from .auto_space_views import (
     AutoSpaceViews,
     AutoSpaceViewsArrayLike,
@@ -19,16 +20,22 @@ from .entity_properties_component import (
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
 from .query_expressions import QueryExpressions, QueryExpressionsBatch, QueryExpressionsType
 from .space_view_component import SpaceViewComponent, SpaceViewComponentBatch, SpaceViewComponentType
-from .space_view_maximized import (
-    SpaceViewMaximized,
-    SpaceViewMaximizedArrayLike,
-    SpaceViewMaximizedBatch,
-    SpaceViewMaximizedLike,
-    SpaceViewMaximizedType,
+from .space_view_id import SpaceViewId, SpaceViewIdBatch, SpaceViewIdType
+from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
+from .viewport_layout import (
+    ViewportLayout,
+    ViewportLayoutArrayLike,
+    ViewportLayoutBatch,
+    ViewportLayoutLike,
+    ViewportLayoutType,
 )
-from .viewport_layout import ViewportLayout, ViewportLayoutBatch, ViewportLayoutType
 
 __all__ = [
+    "AutoLayout",
+    "AutoLayoutArrayLike",
+    "AutoLayoutBatch",
+    "AutoLayoutLike",
+    "AutoLayoutType",
     "AutoSpaceViews",
     "AutoSpaceViewsArrayLike",
     "AutoSpaceViewsBatch",
@@ -50,12 +57,15 @@ __all__ = [
     "SpaceViewComponent",
     "SpaceViewComponentBatch",
     "SpaceViewComponentType",
+    "SpaceViewId",
+    "SpaceViewIdBatch",
+    "SpaceViewIdType",
     "SpaceViewMaximized",
-    "SpaceViewMaximizedArrayLike",
     "SpaceViewMaximizedBatch",
-    "SpaceViewMaximizedLike",
     "SpaceViewMaximizedType",
     "ViewportLayout",
+    "ViewportLayoutArrayLike",
     "ViewportLayoutBatch",
+    "ViewportLayoutLike",
     "ViewportLayoutType",
 ]

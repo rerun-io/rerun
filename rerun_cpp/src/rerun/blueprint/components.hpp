@@ -2,10 +2,12 @@
 
 #pragma once
 
+#include "blueprint/components/auto_layout.hpp"
 #include "blueprint/components/auto_space_views.hpp"
 #include "blueprint/components/entity_properties_component.hpp"
 #include "blueprint/components/panel_view.hpp"
 #include "blueprint/components/query_expressions.hpp"
 #include "blueprint/components/space_view_component.hpp"
+#include "blueprint/components/space_view_id.hpp"
 #include "blueprint/components/space_view_maximized.hpp"
 #include "blueprint/components/viewport_layout.hpp"
