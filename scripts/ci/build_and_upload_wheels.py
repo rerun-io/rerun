@@ -14,9 +14,7 @@ from __future__ import annotations
 import argparse
 import os
 import platform
-import shutil
 import subprocess
-import tempfile
 from enum import Enum
 
 from google.cloud.storage import Bucket
