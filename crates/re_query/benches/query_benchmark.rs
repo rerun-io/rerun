@@ -5,7 +5,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{entity_path, DataRow, EntityPath, Index, RowId, TimeInt, TimeType, Timeline};
+use re_log_types::{entity_path, DataRow, EntityPath, RowId, TimeInt, TimeType, Timeline};
 use re_query::query_archetype;
 use re_types::{
     archetypes::Points2D,
@@ -84,7 +84,7 @@ pub fn build_some_strings(len: usize) -> Vec<Text> {
 fn mono_points(c: &mut Criterion) {
     // Each mono point gets logged at a different path
     let paths = (0..NUM_POINTS)
-        .map(move |point_idx| entity_path!("points", Index::Sequence(point_idx as _)))
+        .map(move |point_idx| entity_path!("points", point_idx.to_string()))
         .collect_vec();
     let msgs = build_points_rows(&paths, 1);
 
@@ -113,7 +113,7 @@ fn mono_points(c: &mut Criterion) {
 fn mono_strings(c: &mut Criterion) {
     // Each mono string gets logged at a different path
     let paths = (0..NUM_STRINGS)
-        .map(move |string_idx| entity_path!("strings", Index::Sequence(string_idx as _)))
+        .map(move |string_idx| entity_path!("strings", string_idx.to_string()))
         .collect_vec();
     let msgs = build_strings_rows(&paths, 1);
 

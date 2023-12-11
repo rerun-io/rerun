@@ -5,8 +5,8 @@ compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features."
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_log_types::{
-    entity_path, DataRow, DataTable, Index, LogMsg, RowId, StoreId, StoreKind, TableId, TimeInt,
-    TimeType, Timeline,
+    entity_path, DataRow, DataTable, LogMsg, RowId, StoreId, StoreKind, TableId, TimeInt, TimeType,
+    Timeline,
 };
 use re_types::datagen::{build_some_colors, build_some_positions2d};
 
@@ -73,7 +73,7 @@ fn mono_points_arrow(c: &mut Criterion) {
                     TableId::ZERO,
                     [DataRow::from_cells2(
                         RowId::ZERO,
-                        entity_path!("points", Index::Sequence(i as _)),
+                        entity_path!("points", i.to_string()),
                         [build_frame_nr(0.into())],
                         1,
                         (build_some_positions2d(1), build_some_colors(1)),
@@ -131,7 +131,7 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
             (0..NUM_POINTS).map(|i| {
                 DataRow::from_cells2(
                     RowId::ZERO,
-                    entity_path!("points", Index::Sequence(i as _)),
+                    entity_path!("points", i.to_string()),
                     [build_frame_nr(0.into())],
                     1,
                     (build_some_positions2d(1), build_some_colors(1)),

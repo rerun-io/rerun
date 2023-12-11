@@ -82,14 +82,14 @@ impl std::fmt::Debug for EntityPathHash {
 /// Implements [`nohash_hasher::IsEnabled`].
 ///
 /// ```
-/// # use re_log_types::{EntityPath, EntityPathPart, Index};
+/// # use re_log_types::{EntityPath, EntityPathPart};
 /// assert_eq!(
-///     EntityPath::parse_strict(r#"camera/"ACME Örnöga"/points/#42"#).unwrap(),
+///     EntityPath::parse_strict(r#"camera/ACME\ Örnöga/points/42"#).unwrap(),
 ///     EntityPath::new(vec![
-///         EntityPathPart::Name("camera".into()),
-///         EntityPathPart::Index(Index::String("ACME Örnöga".into())),
-///         EntityPathPart::Name("points".into()),
-///         EntityPathPart::Index(Index::Sequence(42))
+///         "camera".into(),
+///         "ACME Örnöga".into(),
+///         "points".into(),
+///         "42".into(),
 ///     ])
 /// );
 /// ```
@@ -124,8 +124,8 @@ impl EntityPath {
     }
 
     /// Treat the string as one opaque string, NOT splitting on any slashes.
-    pub fn from_single_string(string: String) -> Self {
-        Self::new(vec![EntityPathPart::Index(crate::Index::String(string))])
+    pub fn from_single_string(string: impl Into<String>) -> Self {
+        Self::new(vec![EntityPathPart::new(string)])
     }
 
     #[inline]
@@ -133,6 +133,7 @@ impl EntityPath {
         self.path.iter()
     }
 
+    #[inline]
     pub fn last(&self) -> Option<&EntityPathPart> {
         self.path.last()
     }

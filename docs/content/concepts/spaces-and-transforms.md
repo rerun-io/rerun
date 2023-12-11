@@ -90,19 +90,19 @@ Say you have a 3D world with two cameras with known extrinsics (pose) and intrin
 rr.log("world/points", rr.Points3D(…))
 
 # Log first camera:
-rr.log("world/camera/#0", rr.TranslationAndMat3(translation=cam0_pose.pos, matrix=cam0_pose.rot))
-rr.log("world/camera/#0/image", rr.Pinhole(…))
+rr.log("world/camera/0", rr.TranslationAndMat3(translation=cam0_pose.pos, matrix=cam0_pose.rot))
+rr.log("world/camera/0/image", rr.Pinhole(…))
 
 # Log second camera:
-rr.log("world/camera/#1", rr.TranslationAndMat3(translation=cam1_pose.pos, matrix=cam1_pose.rot))
-rr.log("world/camera/#1/image", rr.Pinhole(…))
+rr.log("world/camera/1", rr.TranslationAndMat3(translation=cam1_pose.pos, matrix=cam1_pose.rot))
+rr.log("world/camera/1/image", rr.Pinhole(…))
 
 # Log some data to the image spaces of the first camera:
-rr.log("world/camera/#0/image", rr.Image(…))
-rr.log("world/camera/#0/image/detection", rr.Boxes2D(…))
+rr.log("world/camera/0/image", rr.Image(…))
+rr.log("world/camera/0/image/detection", rr.Boxes2D(…))
 ```
 
-Rerun will from this understand how the `world` space and the two image spaces (`world/camera/#0/image` and `world/camera/#1/image`) relate to each other, which allows you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space.
+Rerun will from this understand how the `world` space and the two image spaces (`world/camera/0/image` and `world/camera/1/image`) relate to each other, which allows you to explore their relationship in the Rerun Viewer. In the 3D view you will see the two cameras show up with their respective camera frustums (based on the intrinsics). If you hover your mouse in one of the image spaces, a corresponding ray will be shot through the 3D space.
 
 Note that none of the names in the paths are special.
 

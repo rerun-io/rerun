@@ -1,7 +1,8 @@
 use std::hash::BuildHasher;
 
 use once_cell::sync::Lazy;
-use re_log_types::{EntityPath, EntityPathPart, Index};
+
+use re_log_types::{EntityPath, EntityPathPart};
 
 pub trait BlueprintIdRegistry {
     fn registry() -> &'static EntityPath;
@@ -79,7 +80,7 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
         T::registry()
             .iter()
             .cloned()
-            .chain(std::iter::once(EntityPathPart::Index(Index::Uuid(self.id))))
+            .chain(std::iter::once(EntityPathPart::new(self.id.to_string())))
             .collect()
     }
 

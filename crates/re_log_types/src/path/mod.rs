@@ -20,52 +20,96 @@ pub use entity_path_expr::EntityPathExpr;
 pub use entity_path_impl::EntityPathImpl;
 pub use parse_path::PathParseError;
 
-use re_string_interner::InternedString;
-
-use crate::Index;
-
 // ----------------------------------------------------------------------------
 
 /// The different parts that make up an [`EntityPath`].
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+///
+/// In the file system analogy, this is the name of a folder.
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)] // TODO(#4464): ordering
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum EntityPathPart {
-    /// Corresponds to the name of a struct field.
-    ///
-    /// Names must match the regex: `[a-zA-z0-9_-]+`
-    Name(InternedString),
+pub struct EntityPathPart(
+    // TODO(emilk): consider other string types; e.g. interned strings, `Arc<str>`, …
+    String,
+);
 
-    /// Array/table/map member.
-    Index(Index),
+impl EntityPathPart {
+    #[inline]
+    pub fn new(string: impl Into<String>) -> Self {
+        Self(string.into())
+    }
+
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 impl std::fmt::Display for EntityPathPart {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Name(name) => f.write_str(name),
-            Self::Index(index) => index.fmt(f),
+        let mut is_first_character = true;
+
+        for c in self.0.chars() {
+            let print_as_is = if is_first_character {
+                // Escape punctutation if it is the first character,
+                // so that we can use `-` for negation, and `.` to mean the current entity.
+                c.is_alphanumeric()
+            } else {
+                c.is_alphanumeric() || matches!(c, '_' | '-' | '.')
+            };
+
+            if print_as_is {
+                c.fmt(f)?;
+            } else {
+                match c {
+                    '\n' => "\\n".fmt(f),
+                    '\r' => "\\r".fmt(f),
+                    '\t' => "\\t".fmt(f),
+                    c if c.is_ascii_punctuation() || c == ' ' || c.is_alphanumeric() => {
+                        write!(f, "\\{c}")
+                    }
+                    c => write!(f, "\\u{{{:x}}}", c as u32),
+                }?;
+            }
+
+            is_first_character = false;
         }
+        Ok(())
     }
 }
 
 impl From<&str> for EntityPathPart {
     #[inline]
     fn from(part: &str) -> Self {
-        Self::Name(part.into())
+        Self(part.into())
     }
 }
 
 impl From<String> for EntityPathPart {
     #[inline]
     fn from(part: String) -> Self {
-        Self::Name(part.into())
+        Self(part)
     }
 }
 
-impl From<Index> for EntityPathPart {
+impl AsRef<str> for EntityPathPart {
     #[inline]
-    fn from(part: Index) -> Self {
-        Self::Index(part)
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::borrow::Borrow<str> for EntityPathPart {
+    #[inline]
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl std::ops::Deref for EntityPathPart {
+    type Target = str;
+    #[inline]
+    fn deref(&self) -> &str {
+        self.as_str()
     }
 }
 
@@ -74,7 +118,7 @@ impl From<Index> for EntityPathPart {
 /// Build a `Vec<EntityPathPart>`:
 /// ```
 /// # use re_log_types::*;
-/// let parts: Vec<EntityPathPart> = entity_path_vec!("foo", Index::Sequence(123));
+/// let parts: Vec<EntityPathPart> = entity_path_vec!("foo", "bar");
 /// ```
 #[macro_export]
 macro_rules! entity_path_vec {
@@ -90,7 +134,7 @@ macro_rules! entity_path_vec {
 /// Build a `EntityPath`:
 /// ```
 /// # use re_log_types::*;
-/// let path: EntityPath = entity_path!("foo", Index::Sequence(123));
+/// let path: EntityPath = entity_path!("foo", "bar");
 /// ```
 #[macro_export]
 macro_rules! entity_path {

@@ -28,7 +28,7 @@ pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstance
 pub(crate) use self::entity_tree::{ClearCascade, CompactedStoreEvents};
 
 use re_log_types::DataTableError;
-pub use re_log_types::{EntityPath, EntityPathPart, Index, TimeInt, Timeline};
+pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
 #[cfg(feature = "serde")]
 pub use blueprint::EntityPropertiesComponent;
