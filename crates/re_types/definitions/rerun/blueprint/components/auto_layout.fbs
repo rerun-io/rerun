@@ -9,10 +9,10 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Whether or not space views should be created automatically.
+/// Whether the viewport layout is determined automatically.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-struct AutoSpaceViews (
+struct AutoLayout (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy, Default",
@@ -20,5 +20,5 @@ struct AutoSpaceViews (
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  auto_space_views: bool (order: 100);
+  auto_layout: bool (order: 100);
 }

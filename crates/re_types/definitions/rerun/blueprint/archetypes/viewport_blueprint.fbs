@@ -1,0 +1,35 @@
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+// ---
+
+/// The top-level description of the Viewport.
+table ViewportBlueprint (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "PartialEq"
+) {
+    // --- Required ---
+
+    /// All of the space-views that belong to the viewport.
+    space_views: [rerun.blueprint.components.SpaceViewId] ("attr.rerun.component_required", order: 1000);
+
+    /// The layout of the space-views
+    layout: rerun.blueprint.components.ViewportLayout ("attr.rerun.component_required", order: 2000);
+
+    // --- Optional ---
+
+    /// Show one tab as maximized?
+    maximized: rerun.blueprint.components.SpaceViewMaximized ("attr.rerun.component_optional", nullable, order: 3000);
+
+    /// Whether the viewport layout is determined automatically.
+    ///
+    /// Set to `false` the first time the user messes around with the viewport blueprint.
+    auto_layout: rerun.blueprint.components.AutoLayout ("attr.rerun.component_optional", nullable, order: 4000);
+
+    /// Whether or not space views should be created automatically.
+    auto_space_views: rerun.blueprint.components.AutoSpaceViews ("attr.rerun.component_optional", nullable, order: 5000);
+}
