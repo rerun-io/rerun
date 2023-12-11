@@ -6,8 +6,8 @@ use re_log_types::EntityPath;
 use re_query::get_component_with_instances;
 use re_viewer_context::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSystemExecutionError, UiVerbosity, ViewContextCollection,
-    ViewPartCollection, ViewQuery, ViewerContext,
+    SpaceViewId, SpaceViewSystemExecutionError, SystemExecutionOutput, UiVerbosity, ViewQuery,
+    ViewerContext,
 };
 
 #[derive(Default)]
@@ -69,10 +69,8 @@ impl SpaceViewClass for DataframeSpaceView {
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
-        _view_ctx: &ViewContextCollection,
-        _parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        _draw_data: Vec<re_renderer::QueueableDrawData>,
+        _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
