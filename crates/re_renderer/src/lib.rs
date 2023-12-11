@@ -22,6 +22,7 @@ mod context;
 mod debug_label;
 mod depth_offset;
 mod draw_phases;
+mod error_tracker;
 mod file_resolver;
 mod file_server;
 mod file_system;
@@ -39,8 +40,8 @@ mod wgpu_resources;
 #[rustfmt::skip] // it's auto-generated
 mod workspace_shaders;
 
-#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-mod error_tracker;
+#[cfg(any(not(target_arch = "wasm32"), feature = "webgl"))]
+mod wgpu_core_error;
 
 // ---------------------------------------------------------------------------
 // Exports

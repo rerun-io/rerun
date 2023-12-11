@@ -39,7 +39,7 @@ import-gltf = ["dep:gltf"]
 serde = ["dep:serde"]
 
 ## Render using webgl instead of webgpu on wasm builds.
-webgl = ["wgpu/webgl"]
+webgl = ["wgpu/webgl", "dep:wgpu-core"]
 
 [dependencies]
 re_error.workspace = true
@@ -67,21 +67,21 @@ static_assertions.workspace = true
 thiserror.workspace = true
 type-map.workspace = true
 wgpu.workspace = true
-wgpu-core.workspace = true
 
 # optional
 arrow2 = { workspace = true, optional = true }
 gltf = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 tobj = { version = "4.0", optional = true }
+wgpu-core = { workspace = true, optional = true }                 # Needed for error handling when wgpu-core implemented backend is used.
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+async-executor.workspace = true
 crossbeam.workspace = true
 notify.workspace = true
 wgpu-core.workspace = true
 
-# For examples:
 [dev-dependencies]
 unindent.workspace = true
 

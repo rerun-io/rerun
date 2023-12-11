@@ -6,6 +6,7 @@ use type_map::concurrent::{self, TypeMap};
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
     config::{DeviceTier, RenderContextConfig},
+    error_tracker::ErrorTracker,
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
@@ -27,8 +28,7 @@ pub struct RenderContext {
 
     renderers: RwLock<Renderers>,
     pub(crate) resolver: RecommendedFileResolver,
-    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-    pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
+    err_tracker: std::sync::Arc<ErrorTracker>,
 
     pub mesh_manager: RwLock<MeshManager>,
     pub texture_manager_2d: TextureManager2D,
@@ -106,6 +106,16 @@ impl RenderContext {
     ) -> Self {
         re_tracing::profile_function!();
 
+        // Make sure to catch all errors, never crash and deduplicate errors.
+        let err_tracker = {
+            let err_tracker = std::sync::Arc::new(ErrorTracker::default());
+            device.on_uncaptured_error({
+                let err_tracker = std::sync::Arc::clone(&err_tracker);
+                Box::new(move |err| err_tracker.handle_error(err))
+            });
+            err_tracker
+        };
+
         log_adapter_info(&adapter.get_info());
 
         let mut gpu_resources = WgpuResourcePools::default();
@@ -144,19 +154,6 @@ impl RenderContext {
             config.device_caps.required_downlevel_capabilities(),
             adapter.get_downlevel_capabilities(),
         );
-
-        // In debug builds, make sure to catch all errors, never crash, and try to
-        // always let the user find a way to return a poisoned pipeline back into a
-        // sane state.
-        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-        let err_tracker = {
-            let err_tracker = std::sync::Arc::new(crate::error_tracker::ErrorTracker::default());
-            device.on_uncaptured_error({
-                let err_tracker = std::sync::Arc::clone(&err_tracker);
-                Box::new(move |err| err_tracker.handle_error(err))
-            });
-            err_tracker
-        };
 
         let resolver = crate::new_recommended_file_resolver();
         let mesh_manager = RwLock::new(MeshManager::new());
@@ -199,12 +196,14 @@ impl RenderContext {
 
             mesh_manager,
             texture_manager_2d,
-            cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
-            gpu_readback_belt: Mutex::new(GpuReadbackBelt::new(Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
+            cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(
+                Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
+            )),
+            gpu_readback_belt: Mutex::new(GpuReadbackBelt::new(
+                Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
+            )),
 
             resolver,
-
-            #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
             err_tracker,
 
             inflight_queue_submissions: Vec::new(),
@@ -297,7 +296,6 @@ impl RenderContext {
         // Tick the error tracker so that it knows when to reset!
         // Note that we're ticking on begin_frame rather than raw frames, which
         // makes a world of difference when we're in a poisoned state.
-        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
         self.err_tracker.tick();
 
         // The set of files on disk that were modified in any way since last frame,
