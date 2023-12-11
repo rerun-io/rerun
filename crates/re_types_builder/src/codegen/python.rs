@@ -1231,17 +1231,17 @@ fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) ->
 
     if let Some(scope) = obj_scope {
         if from.starts_with("rerun.datatypes") {
-            "from ... import datatypes".to_owned()
+            "from ... import datatypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.datatypes").as_str()) {
             "from .. import datatypes".to_owned()
         } else if from.starts_with("rerun.components") {
-            "from ... import components".to_owned()
+            "from ... import components".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.components").as_str()) {
             "from .. import components".to_owned()
         } else if from.starts_with("rerun.archetypes") {
             // NOTE: This is assuming importing other archetypes is legal… which whether it is or
             // isn't for this code generator to say.
-            "from ... import archetypes".to_owned()
+            "from ... import archetypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.archetytpes").as_str()) {
             "from .. import archetypes".to_owned()
         } else if from.is_empty() {
