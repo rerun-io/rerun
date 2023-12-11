@@ -5,19 +5,21 @@ include "rust/attributes.fbs";
 include "rerun/datatypes.fbs";
 include "rerun/attributes.fbs";
 
-namespace rerun.blueprint;
+namespace rerun.blueprint.components;
 
 // ---
 
-/// A flag indicating space views should be automatically populated.
+/// Whether a space view is maximized.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-struct AutoSpaceViews (
+table SpaceViewMaximized (
   "attr.arrow.transparent",
-  "attr.rust.derive": "Copy, Default",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq",
   "attr.rust.override_crate": "re_viewport",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  enabled: bool (order: 100);
+  id: [ubyte] (order: 100, nullable, "attr.rust.serde_type": "re_viewer_context::SpaceViewId");
 }
+

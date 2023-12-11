@@ -5,7 +5,7 @@ include "rust/attributes.fbs";
 include "rerun/datatypes.fbs";
 include "rerun/attributes.fbs";
 
-namespace rerun.blueprint;
+namespace rerun.blueprint.components;
 
 // ---
 
@@ -13,12 +13,9 @@ namespace rerun.blueprint;
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 table QueryExpressions (
+  "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "PartialEq, Eq",
   "attr.rust.override_crate": "re_space_view"
 ) {
-  /// A set of strings representing `EntityPathExpression`s to be included.
-  inclusions: [string] (order: 100);
-
-  /// A set of strings representing `EntityPathExpression`s to be excluded.
-  exclusions: [string] (order: 200);
+  expressions: rerun.blueprint.datatypes.QueryExpressions (order: 100);
 }

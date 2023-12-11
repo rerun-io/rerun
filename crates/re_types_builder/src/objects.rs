@@ -204,15 +204,18 @@ impl ObjectKind {
     ];
 
     // TODO(#2364): use an attr instead of the path
-    pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
+    pub fn from_pkg_name(pkg_name: impl AsRef<str>, attrs: &Attributes) -> Self {
+        let scope = match attrs.try_get::<String>(pkg_name.as_ref(), crate::ATTR_RERUN_SCOPE) {
+            Some(scope) => format!(".{scope}"),
+            None => "".to_owned(),
+        };
+
         let pkg_name = pkg_name.as_ref().replace(".testing", "");
-        if pkg_name.starts_with("rerun.datatypes") {
+        if pkg_name.starts_with(format!("rerun{scope}.datatypes").as_str()) {
             ObjectKind::Datatype
-        } else if pkg_name.starts_with("rerun.blueprint") {
-            ObjectKind::Blueprint
-        } else if pkg_name.starts_with("rerun.components") {
+        } else if pkg_name.starts_with(format!("rerun{scope}.components").as_str()) {
             ObjectKind::Component
-        } else if pkg_name.starts_with("rerun.archetypes") {
+        } else if pkg_name.starts_with(format!("rerun{scope}.archetypes").as_str()) {
             ObjectKind::Archetype
         } else {
             panic!("unknown package {pkg_name:?}");
@@ -466,8 +469,8 @@ impl Object {
         );
 
         let docs = Docs::from_raw_docs(&filepath, obj.documentation());
-        let kind = ObjectKind::from_pkg_name(&pkg_name);
         let attrs = Attributes::from_raw_attrs(obj.attributes());
+        let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
         let fields: Vec<_> = {
             let mut fields: Vec<_> = obj
@@ -543,9 +546,9 @@ impl Object {
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
         let docs = Docs::from_raw_docs(&filepath, enm.documentation());
-        let kind = ObjectKind::from_pkg_name(&pkg_name);
-
         let attrs = Attributes::from_raw_attrs(enm.attributes());
+        let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
+
         let utype = {
             if enm.underlying_type().base_type() == FbsBaseType::UType {
                 // This is a union.

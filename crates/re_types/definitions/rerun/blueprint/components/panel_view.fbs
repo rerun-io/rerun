@@ -5,7 +5,7 @@ include "rust/attributes.fbs";
 include "rerun/datatypes.fbs";
 include "rerun/attributes.fbs";
 
-namespace rerun.blueprint;
+namespace rerun.blueprint.components;
 
 // ---
 
@@ -13,6 +13,7 @@ namespace rerun.blueprint;
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 struct PanelView (
+  "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy",
   "attr.rust.override_crate": "re_viewer"
 ) {
