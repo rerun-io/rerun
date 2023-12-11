@@ -10,7 +10,7 @@ use crate::{
 /// View context that can be used by view parts and ui methods to retrieve information about the scene as a whole.
 ///
 /// Is always populated before view part systems.
-pub trait ViewContextSystem {
+pub trait ViewContextSystem: Send + Sync {
     /// Returns all the component sets that the system is compatible with.
     ///
     /// If an entity path satisfies any of these sets, then the system will automatically run for
@@ -31,8 +31,8 @@ pub trait ViewContextSystem {
 
 // TODO(jleibs): This probably needs a better name now that it includes class name
 pub struct ViewContextCollection {
-    pub(crate) systems: HashMap<ViewSystemIdentifier, Box<dyn ViewContextSystem>>,
-    pub(crate) space_view_class_identifier: SpaceViewClassIdentifier,
+    pub systems: HashMap<ViewSystemIdentifier, Box<dyn ViewContextSystem>>,
+    pub space_view_class_identifier: SpaceViewClassIdentifier,
 }
 
 impl ViewContextCollection {

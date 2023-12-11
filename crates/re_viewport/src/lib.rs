@@ -10,6 +10,7 @@ mod space_view;
 mod space_view_entity_picker;
 mod space_view_heuristics;
 mod space_view_highlights;
+mod system_execution;
 mod viewport;
 mod viewport_blueprint;
 mod viewport_blueprint_ui;

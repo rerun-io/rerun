@@ -13,8 +13,8 @@ use re_space_view::controls::{
 };
 use re_types::components::ViewCoordinates;
 use re_viewer_context::{
-    gpu_bridge, HoveredSpace, Item, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartCollection, ViewQuery, ViewerContext,
+    gpu_bridge, HoveredSpace, Item, SpaceViewSystemExecutionError, SystemExecutionOutput,
+    ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -307,19 +307,22 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.layout_job.into()
 }
 
-/// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
 pub fn view_3d(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
-    view_ctx: &ViewContextCollection,
-    parts: &ViewPartCollection,
     query: &ViewQuery<'_>,
-    mut draw_data: Vec<re_renderer::QueueableDrawData>,
+    system_output: re_viewer_context::SystemExecutionOutput,
 ) -> Result<(), SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
-    let highlights = query.highlights;
+    let SystemExecutionOutput {
+        view_systems: parts,
+        context_systems: view_ctx,
+        draw_data,
+    } = system_output;
+
+    let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasPart>()?.space_cameras;
     let view_coordinates = ctx
         .store_db
@@ -412,7 +415,7 @@ pub fn view_3d(
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let (label_shapes, ui_rects) = create_labels(
-        &collect_ui_labels(parts),
+        &collect_ui_labels(&parts),
         RectTransform::from_to(rect, rect),
         &eye,
         ui,
@@ -430,8 +433,8 @@ pub fn view_3d(
             eye,
             &mut view_builder,
             state,
-            view_ctx,
-            parts,
+            &view_ctx,
+            &parts,
             &ui_rects,
             query,
             SpatialSpaceViewKind::ThreeD,
@@ -586,7 +589,7 @@ pub fn view_3d(
         }
     }
 
-    for draw_data in draw_data.drain(..) {
+    for draw_data in draw_data {
         view_builder.queue_draw(draw_data);
     }
     if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {

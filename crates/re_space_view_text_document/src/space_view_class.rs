@@ -3,8 +3,7 @@ use egui::Label;
 use re_viewer_context::external::re_data_store::EntityProperties;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewState, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection,
-    ViewQuery, ViewerContext,
+    SpaceViewState, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
 use crate::view_part_system::TextDocumentEntry;
@@ -99,12 +98,10 @@ impl SpaceViewClass for TextDocumentSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
-        _view_ctx: &ViewContextCollection,
-        parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
-        _draw_data: Vec<re_renderer::QueueableDrawData>,
+        system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        let text_document = parts.get::<TextDocumentSystem>()?;
+        let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
 
         egui::Frame {
             inner_margin: re_ui::ReUi::view_padding().into(),

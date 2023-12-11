@@ -5,7 +5,7 @@ use re_types::ComponentName;
 use crate::{
     AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    SpaceViewSystemRegistry, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 /// Defines a class of space view.
@@ -13,7 +13,7 @@ use crate::{
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
-pub trait SpaceViewClass: std::marker::Sized {
+pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     /// State of a space view.
     type State: SpaceViewState + Default + 'static;
 
@@ -112,24 +112,17 @@ pub trait SpaceViewClass: std::marker::Sized {
     ///
     /// The passed state is kept frame-to-frame.
     ///
-    /// The passed systems (`view_ctx` and `parts`) are only valid for the duration of this frame and
-    /// were already executed upon entering this method.
-    ///
-    /// `draw_data` is all draw data gathered by executing the view part systems.
     /// TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
     ///              In the future, we likely want to move view builder handling to `re_viewport` with
     ///              minimal configuration options exposed via [`crate::SpaceViewClass`].
-    #[allow(clippy::too_many_arguments)]
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         root_entity_properties: &EntityProperties,
-        view_ctx: &ViewContextCollection,
-        parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        draw_data: Vec<re_renderer::QueueableDrawData>,
+        system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError>;
 }
 
@@ -231,48 +224,14 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         root_entity_properties: &EntityProperties,
-        systems: &SpaceViewSystemRegistry,
         query: &ViewQuery<'_>,
+        system_output: SystemExecutionOutput,
     ) {
         re_tracing::profile_function!();
 
-        // TODO(andreas): We should be able to parallelize both of these loops
-        let view_ctx = {
-            re_tracing::profile_scope!("ViewContextSystem::execute");
-            let mut view_ctx = systems.new_context_collection(self.identifier());
-            for (_name, system) in &mut view_ctx.systems {
-                re_tracing::profile_scope!(_name.as_str());
-                system.execute(ctx, query);
-            }
-            view_ctx
-        };
-        let (parts, draw_data) = {
-            re_tracing::profile_scope!("ViewPartSystem::execute");
-            let mut parts = systems.new_part_collection();
-            let mut draw_data = Vec::new();
-            for (name, part) in &mut parts.systems {
-                re_tracing::profile_scope!(name.as_str());
-                match part.execute(ctx, query, &view_ctx) {
-                    Ok(part_draw_data) => draw_data.extend(part_draw_data),
-                    Err(err) => {
-                        re_log::error_once!("Error executing view part system {name:?}: {err}");
-                    }
-                }
-            }
-            (parts, draw_data)
-        };
-
         typed_state_wrapper_mut(state, |state| {
-            if let Err(err) = self.ui(
-                ctx,
-                ui,
-                state,
-                root_entity_properties,
-                &view_ctx,
-                &parts,
-                query,
-                draw_data,
-            ) {
+            if let Err(err) = self.ui(ctx, ui, state, root_entity_properties, query, system_output)
+            {
                 // TODO(andreas): Draw an error message on top of the space view ui instead of logging.
                 re_log::error_once!("Error drawing ui for space view: {err}");
             }

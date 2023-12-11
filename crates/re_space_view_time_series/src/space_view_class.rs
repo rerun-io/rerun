@@ -9,8 +9,7 @@ use re_viewer_context::external::re_data_store::{
 };
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
-    ViewerContext,
+    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
@@ -159,10 +158,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         root_entity_properties: &EntityProperties,
-        _view_ctx: &ViewContextCollection,
-        parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
-        _draw_data: Vec<re_renderer::QueueableDrawData>,
+        system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
@@ -177,7 +174,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let timeline_name = timeline.name().to_string();
 
-        let time_series = parts.get::<TimeSeriesSystem>()?;
+        let time_series = system_output.view_systems.get::<TimeSeriesSystem>()?;
 
         // Get the minimum time/X value for the entire plot…
         let min_time = time_series.min_time.unwrap_or(0);

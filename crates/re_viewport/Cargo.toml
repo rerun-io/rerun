@@ -43,5 +43,6 @@ glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 nohash-hasher.workspace = true
+rayon.workspace = true
 rmp-serde.workspace = true
 tinyvec.workspace = true

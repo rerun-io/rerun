@@ -5,19 +5,21 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+
 use egui_tiles::Behavior as _;
 use re_data_ui::item_ui;
 
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    CommandSender, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewHighlights,
-    SpaceViewId, SpaceViewState, ViewerContext,
+    CommandSender, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
+    SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
-    space_view_highlights::highlights_for_space_view, viewport_blueprint::load_viewport_blueprint,
+    space_view_highlights::highlights_for_space_view,
+    system_execution::execute_systems_for_space_views, viewport_blueprint::load_viewport_blueprint,
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
@@ -28,6 +30,11 @@ use crate::{
 pub struct ViewportState {
     pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
     space_view_states: HashMap<SpaceViewId, Box<dyn SpaceViewState>>,
+
+    /// List of all space views that were visible *on screen* (excluding e.g. unselected tabs) the last frame.
+    ///
+    /// TODO(rerun-io/egui_tiles#34): This is needed because we don't know which space views will be visible until we have drawn them.
+    space_views_displayed_last_frame: Vec<SpaceViewId>,
 }
 
 impl ViewportState {
@@ -92,7 +99,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         self.state.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
     }
 
-    pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a mut ViewerContext<'_>) {
+    pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a ViewerContext<'_>) {
         let Viewport {
             blueprint, state, ..
         } = self;
@@ -140,6 +147,12 @@ impl<'a, 'b> Viewport<'a, 'b> {
             &mut blueprint.tree
         };
 
+        let executed_systems_per_space_view = execute_systems_for_space_views(
+            ctx,
+            std::mem::take(&mut state.space_views_displayed_last_frame),
+            &blueprint.space_views,
+        );
+
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
 
@@ -148,9 +161,11 @@ impl<'a, 'b> Viewport<'a, 'b> {
             let mut tab_viewer = TabViewer {
                 viewport_state: state,
                 ctx,
-                space_views: &mut blueprint.space_views,
+                space_views: &blueprint.space_views,
                 maximized: &mut blueprint.maximized,
                 edited: false,
+                space_views_displayed_current_frame: Vec::new(),
+                executed_systems_per_space_view,
             };
 
             tree.ui(&mut tab_viewer, ui);
@@ -167,6 +182,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
                 blueprint.auto_layout = false;
             }
+
+            state.space_views_displayed_last_frame = tab_viewer.space_views_displayed_current_frame;
         });
     }
 
@@ -234,9 +251,17 @@ impl<'a, 'b> Viewport<'a, 'b> {
 /// while containers are just groups of things.
 struct TabViewer<'a, 'b> {
     viewport_state: &'a mut ViewportState,
-    ctx: &'a mut ViewerContext<'b>,
-    space_views: &'a mut BTreeMap<SpaceViewId, SpaceViewBlueprint>,
+    ctx: &'a ViewerContext<'b>,
+    space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
+
+    /// List of query & system execution results for each space view.
+    executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
+
+    /// List of all space views drawn this frame.
+    ///
+    /// TODO(rerun-io/egui_tiles#34): It should be possible to predict which space views will be drawn.
+    space_views_displayed_current_frame: Vec<SpaceViewId>,
 
     /// The user edited the tree.
     edited: bool,
@@ -251,11 +276,35 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     ) -> egui_tiles::UiResponse {
         re_tracing::profile_function!();
 
-        let highlights =
-            highlights_for_space_view(self.ctx.selection_state(), *space_view_id, self.space_views);
-        let Some(space_view_blueprint) = self.space_views.get_mut(space_view_id) else {
+        let Some(space_view_blueprint) = self.space_views.get(space_view_id) else {
             return Default::default();
         };
+
+        let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
+        if is_zero_sized_viewport {
+            return Default::default();
+        }
+
+        let Some(latest_at) = self.ctx.rec_cfg.time_ctrl.read().time_int() else {
+            ui.centered_and_justified(|ui| {
+                ui.weak("No time selected");
+            });
+            return Default::default();
+        };
+
+        // TODO(rerun-io/egui_tiles#34): If we haven't executed the system yet ahead of time, we should do so now.
+        // This is needed because we merely "guess" which systems we are going to need.
+        let (query, system_output) =
+            if let Some(result) = self.executed_systems_per_space_view.remove(space_view_id) {
+                result
+            } else {
+                let highlights = highlights_for_space_view(
+                    self.ctx.selection_state(),
+                    *space_view_id,
+                    self.space_views,
+                );
+                space_view_blueprint.execute_systems(self.ctx, latest_at, highlights)
+            };
 
         let space_view_state = self.viewport_state.space_view_state_mut(
             self.ctx.space_view_class_registry,
@@ -263,19 +312,16 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             space_view_blueprint.class_identifier(),
         );
 
-        space_view_ui(
-            self.ctx,
-            ui,
-            space_view_blueprint,
-            space_view_state,
-            &highlights,
-        );
+        self.space_views_displayed_current_frame
+            .push(space_view_blueprint.id);
+
+        space_view_blueprint.scene_ui(space_view_state, self.ctx, ui, &query, system_output);
 
         Default::default()
     }
 
     fn tab_title_for_pane(&mut self, space_view_id: &SpaceViewId) -> egui::WidgetText {
-        if let Some(space_view) = self.space_views.get_mut(space_view_id) {
+        if let Some(space_view) = self.space_views.get(space_view_id) {
             space_view.display_name.clone().into()
         } else {
             // All panes are space views, so this shouldn't happen unless we have a bug
@@ -452,23 +498,6 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     fn on_edit(&mut self) {
         self.edited = true;
     }
-}
-
-fn space_view_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    space_view_blueprint: &mut SpaceViewBlueprint,
-    space_view_state: &mut dyn SpaceViewState,
-    space_view_highlights: &SpaceViewHighlights,
-) {
-    let Some(latest_at) = ctx.rec_cfg.time_ctrl.read().time_int() else {
-        ui.centered_and_justified(|ui| {
-            ui.weak("No time selected");
-        });
-        return;
-    };
-
-    space_view_blueprint.scene_ui(space_view_state, ctx, ui, latest_at, space_view_highlights);
 }
 
 /// A tab button for a tab in the viewport.

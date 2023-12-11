@@ -40,7 +40,7 @@ impl HeuristicFilterContext {
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
-pub trait ViewPartSystem {
+pub trait ViewPartSystem: Send + Sync + 'static {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
@@ -127,7 +127,7 @@ pub fn default_heuristic_filter(
 }
 
 pub struct ViewPartCollection {
-    pub(crate) systems: HashMap<ViewSystemIdentifier, Box<dyn ViewPartSystem>>,
+    pub systems: HashMap<ViewSystemIdentifier, Box<dyn ViewPartSystem>>,
 }
 
 impl ViewPartCollection {

@@ -15,7 +15,7 @@ use re_types::{
 use re_viewer_context::{
     gpu_bridge, gpu_bridge::colormap_dropdown_button_ui, SpaceViewClass,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    TensorStatsCache, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    TensorStatsCache, ViewQuery, ViewerContext,
 };
 
 use crate::{tensor_dimension_mapper::dimension_mapping_ui, view_part_system::TensorSystem};
@@ -184,14 +184,12 @@ impl SpaceViewClass for TensorSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
-        _view_ctx: &ViewContextCollection,
-        parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
-        _draw_data: Vec<re_renderer::QueueableDrawData>,
+        system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let tensors = &parts.get::<TensorSystem>()?.tensors;
+        let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 
         if tensors.is_empty() {
             ui.centered_and_justified(|ui| ui.label("(empty)"));

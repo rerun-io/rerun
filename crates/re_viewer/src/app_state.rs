@@ -261,7 +261,7 @@ impl AppState {
                         if show_welcome {
                             welcome_screen.ui(ui, re_ui, rx, command_sender);
                         } else {
-                            viewport.viewport_ui(ui, &mut ctx);
+                            viewport.viewport_ui(ui, &ctx);
                         }
                     });
             });
