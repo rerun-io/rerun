@@ -9,16 +9,15 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Whether or not space views should be created automatically.
+
+/// The id of a `SpaceView`.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-struct AutoSpaceViews (
-  "attr.arrow.transparent",
+table IncludedSpaceViews (
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "Copy, Default",
+  "attr.rust.derive": "Default",
   "attr.rust.override_crate": "re_viewport",
-  "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct"
+  "attr.rust.repr": "transparent"
 ) {
-  auto_space_views: bool (order: 100);
+  space_view: [rerun.datatypes.Uuid] (order: 100);
 }
