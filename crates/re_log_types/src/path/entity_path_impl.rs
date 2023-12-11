@@ -83,9 +83,8 @@ where
 
 impl std::fmt::Debug for EntityPathImpl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Show the nicely formatted entity path, but surround with quotes and escape
-        // troublesome characters such as back-slashes and newlines.
-        write!(f, "{:?}", self.to_string())
+        // Like `Display`, but with quotes
+        write!(f, "'{self}'")
     }
 }
 
