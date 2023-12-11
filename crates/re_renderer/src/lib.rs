@@ -22,7 +22,7 @@ mod context;
 mod debug_label;
 mod depth_offset;
 mod draw_phases;
-mod error_tracker;
+mod error_handling;
 mod file_resolver;
 mod file_server;
 mod file_system;
@@ -40,15 +40,12 @@ mod wgpu_resources;
 #[rustfmt::skip] // it's auto-generated
 mod workspace_shaders;
 
-#[cfg(any(not(target_arch = "wasm32"), feature = "webgl"))]
-mod wgpu_core_error;
-
 // ---------------------------------------------------------------------------
 // Exports
 
 use allocator::GpuReadbackBuffer;
-pub use allocator::GpuReadbackIdentifier;
 
+pub use allocator::GpuReadbackIdentifier;
 pub use color::Rgba32Unmul;
 pub use colormap::{
     colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb, colormap_srgb,

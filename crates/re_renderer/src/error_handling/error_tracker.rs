@@ -5,8 +5,10 @@ use std::sync::{
     atomic::{AtomicI64, AtomicUsize},
 };
 
+use super::handle_async_error;
+
 #[cfg(any(not(target_arch = "wasm32"), feature = "webgl"))]
-use crate::wgpu_core_error::WrappedContextError;
+use super::wgpu_core_error::WrappedContextError;
 
 #[cfg(not(any(not(target_arch = "wasm32"), feature = "webgl")))]
 #[derive(Hash, PartialEq, Eq, Debug)]
@@ -59,6 +61,20 @@ impl ErrorTracker {
     pub fn clear(&self) {
         self.errors.lock().clear();
         re_log::debug!("cleared WGPU error tracker");
+    }
+
+    /// Handles an async error, logging it if needed.
+    pub fn handle_error_future(
+        self: &std::sync::Arc<Self>,
+        error_scope_result: impl std::future::Future<Output = Option<wgpu::Error>> + Send + 'static,
+    ) {
+        handle_async_error(
+            {
+                let err_tracker = self.clone();
+                move |error| err_tracker.handle_error(error)
+            },
+            error_scope_result,
+        );
     }
 
     /// Logs a wgpu error, making sure to deduplicate them as needed.

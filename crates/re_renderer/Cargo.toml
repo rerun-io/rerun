@@ -77,22 +77,25 @@ wgpu-core = { workspace = true, optional = true }                 # Needed for e
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-async-executor.workspace = true
 crossbeam.workspace = true
 notify.workspace = true
 wgpu-core.workspace = true
+
+# webgpu
+[target.'cfg(all(target_arch = "wasm32", not(features = "webgl")))'.dependencies]
+wasm-bindgen-futures.workspace = true
 
 [dev-dependencies]
 unindent.workspace = true
 
 # For build.rs:
 [build-dependencies]
-
 # Rerun
 re_build_tools.workspace = true
 
 # External
 anyhow.workspace = true
+cfg_aliases.workspace = true
 clean-path.workspace = true
 pathdiff.workspace = true
 walkdir.workspace = true

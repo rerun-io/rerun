@@ -119,6 +119,15 @@ fn should_run() -> bool {
 }
 
 fn main() {
+    #[allow(clippy::str_to_string)]
+    {
+        cfg_aliases::cfg_aliases! {
+            webgpu: { all(target_arch = "wasm32", not(feature = "webgl")) },
+            native: { not(target_arch = "wasm32") },
+            webgl_or_native: { any(not(target_arch = "wasm32"), feature = "webgl") },
+        }
+    }
+
     if !should_run() {
         return;
     }

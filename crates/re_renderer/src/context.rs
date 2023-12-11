@@ -6,7 +6,7 @@ use type_map::concurrent::{self, TypeMap};
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
     config::{DeviceTier, RenderContextConfig},
-    error_tracker::ErrorTracker,
+    error_handling::{ErrorTracker, SafeWgpuValidationScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
@@ -116,6 +116,11 @@ impl RenderContext {
             err_tracker
         };
 
+        // According to documentation, not all errors may be caught by `on_uncaptured_error`.
+        // https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
+        // So add a global error scope to the init code as well.
+        let startup_error_scope = SafeWgpuValidationScope::start(&device);
+
         log_adapter_info(&adapter.get_info());
 
         let mut gpu_resources = WgpuResourcePools::default();
@@ -181,34 +186,32 @@ impl RenderContext {
                 ));
         }
 
+        let cpu_write_gpu_read_belt = Mutex::new(CpuWriteGpuReadBelt::new(
+            Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
+        ));
+        let gpu_readback_belt = Mutex::new(GpuReadbackBelt::new(
+            Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
+        ));
+
+        err_tracker.handle_error_future(startup_error_scope.end());
+
         RenderContext {
             device,
             queue,
-
             config,
             global_bindings,
-
             renderers: RwLock::new(Renderers {
                 renderers: TypeMap::new(),
             }),
-
-            gpu_resources,
-
-            mesh_manager,
-            texture_manager_2d,
-            cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(
-                Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
-            )),
-            gpu_readback_belt: Mutex::new(GpuReadbackBelt::new(
-                Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
-            )),
-
             resolver,
             err_tracker,
-
+            mesh_manager,
+            texture_manager_2d,
+            cpu_write_gpu_read_belt,
+            gpu_readback_belt,
             inflight_queue_submissions: Vec::new(),
-
             active_frame,
+            gpu_resources,
         }
     }
 
@@ -233,24 +236,39 @@ impl RenderContext {
         //          For more details check https://github.com/gfx-rs/wgpu/issues/3601
         if cfg!(target_arch = "wasm32") && self.config.device_caps.tier == DeviceTier::Gles {
             self.device.poll(wgpu::Maintain::Wait);
-            return;
+        } else {
+            // Ensure not too many queue submissions are in flight.
+            let num_submissions_to_wait_for = self
+                .inflight_queue_submissions
+                .len()
+                .saturating_sub(Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS);
+
+            if let Some(newest_submission_to_wait_for) = self
+                .inflight_queue_submissions
+                .drain(0..num_submissions_to_wait_for)
+                .last()
+            {
+                self.device.poll(wgpu::Maintain::WaitForSubmissionIndex(
+                    newest_submission_to_wait_for,
+                ));
+            }
         }
 
-        // Ensure not too many queue submissions are in flight.
-        let num_submissions_to_wait_for = self
-            .inflight_queue_submissions
-            .len()
-            .saturating_sub(Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS);
+        // Poll all pending error scopes.
+        // self.pending_error_scope_futures.retain_mut(|pending_error_scope_future| {
+        //     let pending_error_scope_future = pending_error_scope_future.get_mut();
 
-        if let Some(newest_submission_to_wait_for) = self
-            .inflight_queue_submissions
-            .drain(0..num_submissions_to_wait_for)
-            .last()
-        {
-            self.device.poll(wgpu::Maintain::WaitForSubmissionIndex(
-                newest_submission_to_wait_for,
-            ));
-        }
+        //     Pin::new(pending_error_scope_future).poll())
+
+        //     match pending_error_scope_future.poll_unpin(&mut futures::task::noop_context()) {
+        //         std::task::Poll::Ready(None) => false,
+        //         std::task::Poll::Ready(Some(error)) => {
+        //             self.err_tracker.handle_error(error);
+        //             false
+        //         }
+        //         std::task::Poll::Pending => true,
+        //     })
+        // }
     }
 
     /// Call this at the beginning of a new frame.

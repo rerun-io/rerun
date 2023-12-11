@@ -137,6 +137,10 @@ impl DeviceCaps {
     }
 }
 
+/// Method type for handling error handling futures.
+// pub type AsyncErrorHandlerExecutor =
+//     dyn Fn(dyn std::future::Future<Output = ()> + Send) + Send + Sync + 'static;
+
 /// Startup configuration for a [`crate::RenderContext`]
 ///
 /// Contains any kind of configuration that doesn't change for the entire lifetime of a [`crate::RenderContext`].
@@ -147,6 +151,10 @@ pub struct RenderContextConfig {
 
     /// Hardware capabilities of the device.
     pub device_caps: DeviceCaps,
+    // Method that is called every time, re_renderer wants to enqueue handling of an async wgpu error.
+    //
+    // The method is expected to enqueue the future on the executor of the user's choice.
+    //pub async_error_handler_executor: Box<AsyncErrorHandlerExecutor>,
 }
 
 /// Backends that are officially supported by `re_renderer`.
