@@ -10,7 +10,7 @@ from typing import Any, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 
 __all__ = [
     "AutoSpaceViews",

@@ -346,7 +346,13 @@ impl PythonCodeGenerator {
 
             let manifest = quote_manifest(names);
 
-            let rerun_path = if obj.is_testing() { "rerun." } else { ".." };
+            let rerun_path = if obj.is_testing() {
+                "rerun."
+            } else if obj.scope().is_some() {
+                "..." // NOLINT
+            } else {
+                ".."
+            };
 
             code.push_unindented_text(
                 format!(

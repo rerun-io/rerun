@@ -10,7 +10,7 @@ from typing import Any, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType
+from ..._baseclasses import BaseBatch, BaseExtensionType
 
 __all__ = [
     "QueryExpressions",

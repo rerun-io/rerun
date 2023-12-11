@@ -12,8 +12,8 @@ import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .._converters import (
+from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._converters import (
     to_np_uint8,
 )
 

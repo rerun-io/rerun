@@ -5,8 +5,8 @@
 
 from __future__ import annotations
 
+from ..._baseclasses import ComponentBatchMixin
 from .. import datatypes
-from .._baseclasses import ComponentBatchMixin
 
 __all__ = ["ViewportLayout", "ViewportLayoutBatch", "ViewportLayoutType"]
 
