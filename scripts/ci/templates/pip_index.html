@@ -22,7 +22,7 @@
 
     {% for build in found_builds %}
     <div class="commit-section">
-      <h2>Commit: {{ build.commit }}</h2>
+      <h2>{{ build.title }}</h2>
       {% if build.wheels %}
       <div class="wheel-list">
         <h3>Wheels:</h3>

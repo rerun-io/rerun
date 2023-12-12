@@ -47,6 +47,10 @@ screenshot*.png
 # Saved example `.rrd` files
 example_data
 
+# Various builds
+dist
+wheels
+
 # Screenshot comparison build
 /compare_screenshot
 
