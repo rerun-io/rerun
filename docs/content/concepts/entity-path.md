@@ -39,11 +39,11 @@ Existing components of the same name will be overwritten.
 
 ### Path parts
 
-Each "part" of a path must be a non-empty string. Any character is allower, but special characters need to be escaped using `\`.
+Each "part" of a path must be a non-empty string. Any character is allowed, but special characters need to be escaped using `\`.
 Characters that need NOT be escaped are letters, numbers, and underscore, dash, and dot (`_`, `-`, `.`).
 Any other character should be escaped, including symbols (`\:`, `\$`, …) and whitespace (`\ `, `\n`, `\t`, …).
 
-You can an arbitrary unicode codepoint into an entity path using `\u{262E}`.
+You can an arbitrary unicode code point into an entity path using `\u{262E}`.
 
 So for instance, `world/3d/My\ Image.jpg/detection` is a valid path (note the escaped space!).
 
