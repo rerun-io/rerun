@@ -1,10 +1,10 @@
 mod error_tracker;
 mod safe_wgpu_validation_scope;
 
-#[cfg(any(not(target_arch = "wasm32"), feature = "webgl"))]
+#[cfg(not(webgpu))]
 mod wgpu_core_error;
 
-#[cfg(any(not(target_arch = "wasm32"), feature = "webgl"))]
+#[cfg(not(webgpu))]
 mod now_or_never;
 
 pub use error_tracker::ErrorTracker;

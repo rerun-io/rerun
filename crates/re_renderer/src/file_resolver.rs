@@ -458,11 +458,11 @@ mod tests_import_clause {
 // ---
 
 /// The recommended `FileResolver` type for the current platform/target.
-#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
+#[cfg(load_shaders_from_disk)]
 pub type RecommendedFileResolver = FileResolver<crate::OsFileSystem>;
 
 /// The recommended `FileResolver` type for the current platform/target.
-#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
+#[cfg(not(load_shaders_from_disk))]
 pub type RecommendedFileResolver = FileResolver<&'static crate::MemFileSystem>;
 
 /// Returns the recommended `FileResolver` for the current platform/target.

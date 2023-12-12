@@ -7,10 +7,10 @@ use std::sync::{
 
 use super::handle_async_error;
 
-#[cfg(any(not(target_arch = "wasm32"), feature = "webgl"))]
+#[cfg(not(webgpu))]
 use super::wgpu_core_error::WrappedContextError;
 
-#[cfg(not(any(not(target_arch = "wasm32"), feature = "webgl")))]
+#[cfg(webgpu)]
 #[derive(Hash, PartialEq, Eq, Debug)]
 struct WrappedContextError(pub String);
 
@@ -89,53 +89,54 @@ impl ErrorTracker {
                 re_log::error!("A wgpu operation caused out-of-memory: {error}");
             }
             wgpu::Error::Validation {
-                source,
+                source: _source,
                 description,
             } => {
-                #[cfg(any(not(target_arch = "wasm32"), feature = "webgl"))]
-                match source.downcast::<wgpu_core::error::ContextError>() {
-                    Ok(ctx_err) => {
-                        if ctx_err
-                            .cause
-                            .downcast_ref::<wgpu_core::command::CommandEncoderError>()
-                            .is_some()
+                cfg_if::cfg_if! {
+                    if #[cfg(webgpu)] {
+                        if !self
+                            .errors
+                            .lock()
+                            .insert(WrappedContextError(description.clone()))
                         {
-                            // Actual command encoder errors never carry any meaningful
-                            // information: ignore them.
-                            return;
-                        }
-
-                        let ctx_err = WrappedContextError(ctx_err);
-                        if !self.errors.lock().insert(ctx_err) {
                             // We've already logged this error since we've entered the
                             // current poisoned state. Don't log it again.
                             return;
                         }
-
                         re_log::error!(
                             tick_nr = self.tick_nr.load(Ordering::Relaxed),
                             %description,
                             "WGPU error",
                         );
+                    } else {
+                        match _source.downcast::<wgpu_core::error::ContextError>() {
+                            Ok(ctx_err) => {
+                                if ctx_err
+                                    .cause
+                                    .downcast_ref::<wgpu_core::command::CommandEncoderError>()
+                                    .is_some()
+                                {
+                                    // Actual command encoder errors never carry any meaningful
+                                    // information: ignore them.
+                                    return;
+                                }
+
+                                let ctx_err = WrappedContextError(ctx_err);
+                                if !self.errors.lock().insert(ctx_err) {
+                                    // We've already logged this error since we've entered the
+                                    // current poisoned state. Don't log it again.
+                                    return;
+                                }
+
+                                re_log::error!(
+                                    tick_nr = self.tick_nr.load(Ordering::Relaxed),
+                                    %description,
+                                    "WGPU error",
+                                );
+                            }
+                            Err(err) => re_log::error!("Wgpu operation failed: {err}"),
+                        }
                     }
-                    Err(err) => re_log::error!("Wgpu operation failed: {err}"),
-                };
-                #[cfg(not(any(not(target_arch = "wasm32"), feature = "webgl")))]
-                {
-                    if !self
-                        .errors
-                        .lock()
-                        .insert(WrappedContextError(description.clone()))
-                    {
-                        // We've already logged this error since we've entered the
-                        // current poisoned state. Don't log it again.
-                        return;
-                    }
-                    re_log::error!(
-                        tick_nr = self.tick_nr.load(Ordering::Relaxed),
-                        %description,
-                        "WGPU error",
-                    );
                 }
             }
         }

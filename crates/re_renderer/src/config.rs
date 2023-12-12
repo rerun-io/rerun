@@ -161,10 +161,7 @@ pub struct RenderContextConfig {
 ///
 /// Other backend might work as well, but lack of support isn't regarded as a bug.
 pub fn supported_backends() -> wgpu::Backends {
-    if cfg!(target_arch = "wasm32") {
-        // Web - WebGL is used automatically when wgpu is compiled with `webgl` feature.
-        wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
-    } else {
+    if cfg!(native) {
         // Native.
         // Only use Vulkan & Metal unless explicitly told so since this reduces surfaces and thus surprises.
         //
@@ -175,5 +172,8 @@ pub fn supported_backends() -> wgpu::Backends {
         // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::util::backend_bits_from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL)
+    } else {
+        // Web - WebGL is used automatically when wgpu is compiled with `webgl` feature.
+        wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
     }
 }

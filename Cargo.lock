@@ -4674,6 +4674,7 @@ dependencies = [
  "arrow2",
  "bitflags 2.4.1",
  "bytemuck",
+ "cfg-if",
  "cfg_aliases",
  "clean-path",
  "crossbeam",

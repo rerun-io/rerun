@@ -36,7 +36,7 @@ mod transform;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 
-#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // wasm or release builds
+#[cfg(not(load_shaders_from_disk))]
 #[rustfmt::skip] // it's auto-generated
 mod workspace_shaders;
 
