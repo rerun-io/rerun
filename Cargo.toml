@@ -119,7 +119,7 @@ directories-next = "2"
 document-features = "0.2"
 ehttp = "0.3.1"
 enumset = "1.0.12"
-env_logger = "0.10"
+env_logger = { version = "0.10", default-features = false }
 epaint = "0.23.0"
 ewebsock = "0.4.0"
 futures-channel = "0.3"
@@ -189,7 +189,7 @@ time = { version = "0.3", default-features = false, features = [
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = { version = "1.24", default-features = false }
 tokio-tungstenite = { version = "0.17.1", default-features = false }
-tracing = "0.1"
+tracing = { version = "0.1", default-features = false }
 tungstenite = { version = "0.17", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
