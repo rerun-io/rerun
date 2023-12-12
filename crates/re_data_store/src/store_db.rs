@@ -48,11 +48,23 @@ fn insert_row_with_retries(
         getrandom::getrandom(&mut bytes).map_or(0, |_| u64::from_le_bytes(bytes))
     }
 
-    for _ in 0..num_attempts {
+    for i in 0..num_attempts {
         match store.insert_row(&row) {
             Ok(event) => return Ok(event),
             Err(re_arrow_store::WriteError::ReusedRowId(_)) => {
-                re_log::debug!(row_id = %row.row_id(), "Found duplicated RowId, retrying…");
+                // TODO(#1894): currently we produce duplicate row-ids when hitting the "save" button.
+                // This means we hit this code path when loading an .rrd file that was saved from the viewer.
+                // In the future a row-id clash should probably either be considered an error (with a loud warning)
+                // or an ignored idempotent operation (with the assumption that if the RowId is the same, so is the data).
+                // In any case, we cannot log loudly here.
+                // We also get here because of `ClearCascade`, but that could be solved by adding a random increment
+                // in `on_clear_cascade` (see https://github.com/rerun-io/rerun/issues/4469).
+                re_log::trace!(
+                    "Found duplicated RowId ({}) during insert. Incrementing it by random offset (retry {}/{})…",
+                    row.row_id,
+                    i + 1,
+                    num_attempts
+                );
                 row.row_id = row.row_id.incremented_by(random_u64() % step_size + 1);
             }
             Err(err) => return Err(err),
