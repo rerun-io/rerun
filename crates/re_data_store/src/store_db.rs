@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+use parking_lot::Mutex;
 
 use re_arrow_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
@@ -493,9 +494,8 @@ impl StoreDb {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone)]
 pub struct IngestionStatistics {
-    e2e_latency_sec_history: emath::History<f32>,
+    e2e_latency_sec_history: Mutex<emath::History<f32>>,
 }
 
 impl Default for IngestionStatistics {
@@ -504,7 +504,10 @@ impl Default for IngestionStatistics {
         let max_samples = 1024; // don't waste too much memory on this - we just need enough to get a good average
         let max_age = 1.0; // don't keep too long of a rolling average, or the stats get outdated.
         Self {
-            e2e_latency_sec_history: emath::History::new(min_samples..max_samples, max_age),
+            e2e_latency_sec_history: Mutex::new(emath::History::new(
+                min_samples..max_samples,
+                max_age,
+            )),
         }
     }
 }
@@ -521,7 +524,7 @@ impl IngestionStatistics {
                 let now = nanos_since_epoch as f64 / 1e9;
                 let sec_since_log = nanos_since_log as f32 / 1e9;
 
-                self.e2e_latency_sec_history.add(now, sec_since_log);
+                self.e2e_latency_sec_history.lock().add(now, sec_since_log);
             }
         }
     }
@@ -531,6 +534,14 @@ impl IngestionStatistics {
     /// This is based on the clocks of the viewer and the SDK being in sync,
     /// so if the recording was done on another machine, this is likely very inaccurate.
     pub fn current_e2e_latency_sec(&self) -> Option<f32> {
-        self.e2e_latency_sec_history.average()
+        let mut e2e_latency_sec_history = self.e2e_latency_sec_history.lock();
+
+        if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
+            let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
+            let now = nanos_since_epoch as f64 / 1e9;
+            e2e_latency_sec_history.flush(now); // make sure the average is up-to-date.
+        }
+
+        e2e_latency_sec_history.average()
     }
 }

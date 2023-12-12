@@ -41,6 +41,7 @@ emath.workspace = true
 getrandom.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+parking_lot.workspace = true
 rmp-serde = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
 thiserror.workspace = true
