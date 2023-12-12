@@ -1,6 +1,6 @@
 use crate::path::EntityPathPart;
 
-/// `camera / "left" / points / #42`
+/// `camera/left/points/42`
 ///
 /// Wrapped by [`crate::EntityPath`] together with a hash.
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]

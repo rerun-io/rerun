@@ -67,22 +67,21 @@ impl std::fmt::Debug for EntityPathHash {
 
 // ----------------------------------------------------------------------------
 
-/// The unique identifier of an entity, e.g. `camera/"ACME Örnöga"/points`
+/// The unique identifier of an entity, e.g. `camera/3/points`
 ///
 /// The entity path is a list of [parts][EntityPathPart] separated by slashes.
+/// Each part is a non-empty string, that can contain any character.
+/// When written as a string, some characters in the parts need to be escaped with a `\`
+/// (only character, numbers, `.`, `-`, `_` does not need escaping).
 ///
-/// Each part is either a [_name_][EntityPathPart::Name] of a limited set of characters,
-/// or an [`Index`][crate::Index].
-/// Names are like idenitifers in code, and must match the regex: `[a-zA-z0-9_-]+`
-/// Indices are like array indices or keys in a map or table, and can be any string,
-/// uuid, or number.
+/// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
 ///
-/// Reference-counted internally, so this is cheap to clone.
-///
-/// Implements [`nohash_hasher::IsEnabled`].
+/// `EntityPath` is reference-counted internally, so it is cheap to clone.
+/// It also has a precomputed hash and implemented [`nohash_hasher::IsEnabled`],
+/// so it is very cheap to use in a [`nohash_hasher::IntMap`] and [`nohash_hasher::IntSet`].
 ///
 /// ```
-/// # use re_log_types::{EntityPath, EntityPathPart};
+/// # use re_log_types::EntityPath;
 /// assert_eq!(
 ///     EntityPath::parse_strict(r#"camera/ACME\ Örnöga/points/42"#).unwrap(),
 ///     EntityPath::new(vec![

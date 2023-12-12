@@ -25,6 +25,8 @@ pub use parse_path::PathParseError;
 
 /// The different parts that make up an [`EntityPath`].
 ///
+/// A non-empty string.
+///
 /// In the file system analogy, this is the name of a folder.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
