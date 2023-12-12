@@ -117,6 +117,7 @@ Update instructions:
 | rerun_c   | Rerun C SDK                          |
 | rerun_py  | Rerun Python SDK                     |
 | re_sdk    | Rerun logging SDK                    |
+<!-- | re_renderer_examples    | Examples for re_renderer | -->
 
 
 ### Viewer crates

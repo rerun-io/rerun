@@ -1,6 +1,7 @@
+//! Example with several independent views, using various primitives.
+
 use std::f32::consts::TAU;
 
-use ecolor::Hsva;
 use framework::Example;
 use glam::Vec3;
 use itertools::Itertools;
@@ -13,8 +14,8 @@ use re_renderer::{
         TestTriangleDrawData,
     },
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    Color32, GpuReadbackIdentifier, LineStripSeriesBuilder, PointCloudBuilder, RenderContext, Rgba,
-    ScreenshotProcessor, Size,
+    Color32, GpuReadbackIdentifier, Hsva, LineStripSeriesBuilder, PointCloudBuilder, RenderContext,
+    Rgba, ScreenshotProcessor, Size,
 };
 use winit::event::{ElementState, VirtualKeyCode};
 

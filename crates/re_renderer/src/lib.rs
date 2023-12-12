@@ -21,14 +21,29 @@ mod colormap;
 mod context;
 mod debug_label;
 mod depth_offset;
+mod draw_phases;
+mod file_resolver;
+mod file_server;
+mod file_system;
 mod global_bindings;
 mod line_strip_builder;
 mod point_cloud_builder;
 mod queuable_draw_data;
+mod rect;
 mod size;
 mod transform;
 mod wgpu_buffer_types;
 mod wgpu_resources;
+
+#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // wasm or release builds
+#[rustfmt::skip] // it's auto-generated
+mod workspace_shaders;
+
+#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
+mod error_tracker;
+
+// ---------------------------------------------------------------------------
+// Exports
 
 use allocator::GpuReadbackBuffer;
 pub use allocator::GpuReadbackIdentifier;
@@ -50,38 +65,24 @@ pub use transform::RectTransform;
 pub use view_builder::{AutoSizeConfig, ViewBuilder};
 pub use wgpu_resources::WgpuResourcePoolStatistics;
 
-mod draw_phases;
-pub(crate) use draw_phases::DrawPhase;
+use draw_phases::DrawPhase;
 pub use draw_phases::{
     OutlineConfig, OutlineMaskPreference, PickingLayerId, PickingLayerInstanceId,
     PickingLayerObjectId, PickingLayerProcessor, ScreenshotProcessor,
 };
 
-mod file_system;
 pub use self::file_system::{get_filesystem, FileSystem};
 #[allow(unused_imports)] // they can be handy from time to time
-pub(crate) use self::file_system::{MemFileSystem, OsFileSystem};
+use self::file_system::{MemFileSystem, OsFileSystem};
 
-mod file_resolver;
 pub use self::file_resolver::{
     new_recommended as new_recommended_file_resolver, FileResolver, ImportClause,
     RecommendedFileResolver, SearchPath,
 };
-
-mod file_server;
 pub use self::file_server::FileServer;
 
-mod rect;
-
-#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // wasm or release builds
-#[rustfmt::skip] // it's auto-generated
-mod workspace_shaders;
-
-#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-mod error_tracker;
-
 // Re-export used color types.
-pub use ecolor::{Color32, Rgba};
+pub use ecolor::{Color32, Hsva, Rgba};
 
 // ---------------------------------------------------------------------------
 

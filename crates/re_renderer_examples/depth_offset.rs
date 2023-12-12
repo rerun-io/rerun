@@ -7,7 +7,7 @@
 //! Press arrow up/down to increase/decrease the distance of the camera to the z==0 plane in tandem with the scale of the rectangles.
 //! Press arrow left/right to increase/decrease the near plane distance.
 
-use ecolor::Hsva;
+use re_renderer::Hsva;
 use re_renderer::{
     renderer::{ColormappedTexture, RectangleDrawData, RectangleOptions, TexturedRect},
     view_builder::{self, Projection, ViewBuilder},
@@ -115,7 +115,7 @@ impl framework::Example for Render2D {
         );
         let command_buffer = view_builder
             .queue_draw(RectangleDrawData::new(re_ctx, &rectangles).unwrap())
-            .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
             .unwrap();
 
         vec![{

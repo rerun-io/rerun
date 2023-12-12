@@ -1,5 +1,9 @@
-use ecolor::Hsva;
+//! Examples for using 2D rendering.
+//!
+//! On the left is a 2D view, on the right a 3D view of the same scene.
+
 use itertools::Itertools as _;
+use re_renderer::Hsva;
 
 use re_renderer::{
     renderer::{
@@ -26,7 +30,7 @@ impl framework::Example for Render2D {
 
     fn new(re_ctx: &re_renderer::RenderContext) -> Self {
         let rerun_logo =
-            image::load_from_memory(include_bytes!("../../re_ui/data/logo_dark_mode.png")).unwrap();
+            image::load_from_memory(include_bytes!("../re_ui/data/logo_dark_mode.png")).unwrap();
 
         let image_data = rerun_logo.as_rgba8().unwrap().to_vec();
 
@@ -303,7 +307,7 @@ impl framework::Example for Render2D {
                 view_builder.queue_draw(point_draw_data.clone());
                 view_builder.queue_draw(rectangle_draw_data.clone());
                 let command_buffer = view_builder
-                    .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+                    .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
                     .unwrap();
                 framework::ViewDrawResult {
                     view_builder,
@@ -345,7 +349,7 @@ impl framework::Example for Render2D {
                     .queue_draw(line_strip_draw_data)
                     .queue_draw(point_draw_data)
                     .queue_draw(rectangle_draw_data)
-                    .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+                    .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
                     .unwrap();
                 framework::ViewDrawResult {
                     view_builder,

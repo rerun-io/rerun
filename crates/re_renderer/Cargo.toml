@@ -83,35 +83,7 @@ wgpu-core.workspace = true
 
 # For examples:
 [dev-dependencies]
-image = { workspace = true, default-features = false, features = ["png"] }
-log.workspace = true
-pollster.workspace = true
-rand = { workspace = true, features = ["std", "std_rng"] }
-web-time.workspace = true
-winit.workspace = true
-zip = { workspace = true, default-features = false, features = ["deflate"] }
-
-# For tests:
 unindent.workspace = true
-
-
-[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies] # native
-async-executor.workspace = true
-
-[target.'cfg(target_arch = "wasm32")'.dev-dependencies] # wasm
-console_error_panic_hook.workspace = true
-# required to make rand work on wasm, see https://github.com/rust-random/rand#wasm-support
-getrandom = { workspace = true, features = ["js"] }
-wasm-bindgen-futures.workspace = true
-web-sys = { workspace = true, features = [
-  "Location",
-  "Blob",
-  "RequestInit",
-  "RequestMode",
-  "Request",
-  "Response",
-] }
-
 
 # For build.rs:
 [build-dependencies]

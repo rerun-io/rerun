@@ -130,7 +130,7 @@ impl RenderDepthClouds {
             .queue_draw(point_cloud_draw_data)
             .queue_draw(frame_draw_data)
             .queue_draw(image_draw_data)
-            .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
             .unwrap();
 
         framework::ViewDrawResult {
@@ -210,7 +210,7 @@ impl RenderDepthClouds {
             .queue_draw(depth_cloud_draw_data)
             .queue_draw(frame_draw_data)
             .queue_draw(image_draw_data)
-            .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
             .unwrap();
 
         framework::ViewDrawResult {

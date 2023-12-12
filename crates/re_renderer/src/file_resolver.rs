@@ -636,7 +636,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 // TODO(cmc): might want an actual test using `RERUN_SHADER_PATH`
 #[cfg(test)]
 mod tests_file_resolver {
-    use crate::{FileSystem as _, MemFileSystem};
+    use crate::MemFileSystem;
     use unindent::unindent;
 
     use super::*;
