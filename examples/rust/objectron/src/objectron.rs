@@ -20,10 +20,10 @@ pub struct AvCameraCalibrationData {
     /// translation vector's units are millimeters. For example:
     ///
     ///             |r1,1  r2,1  r3,1 | t1|
-    ///   [R | t] = |r1,2  r2,2  r3,2 | t2|
+    ///   \[R | t\] = |r1,2  r2,2  r3,2 | t2|
     ///             |r1,3  r2,3  r3,3 | t3|
     ///
-    ///   is stored as [r11, r21, r31, t1, r12, r22, r32, t2, ...]
+    ///   is stored as \[r11, r21, r31, t1, r12, r22, r32, t2, ...\]
     #[prost(float, repeated, tag = "4")]
     pub extrinsic_matrix: ::prost::alloc::vec::Vec<f32>,
     /// The size, in millimeters, of one image pixel.
@@ -73,7 +73,7 @@ pub struct AvDepthData {
     pub camera_calibration_data: ::core::option::Option<AvCameraCalibrationData>,
     /// The original range of values expressed by the depth_data_map, before
     /// grayscale normalization. For example, if the minimum and maximum values
-    /// indicate a range of [0.5, 2.2], and the depth_data_type value indicates
+    /// indicate a range of \[0.5, 2.2\], and the depth_data_type value indicates
     /// it was a depth map, then white pixels (255, 255, 255) will map to 0.5 and
     /// black pixels (0, 0, 0) will map to 2.2 with the grayscale range linearly
     /// interpolated inbetween. Conversely, if the depth_data_type value indicates
@@ -1312,7 +1312,7 @@ pub struct Skeletons {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct NormalizedPoint2D {
     /// x-y position of the 2d keypoint in the image coordinate system.
-    /// u,v \in [0, 1], where top left corner is (0, 0) and the bottom-right corner
+    /// u,v \in \[0, 1\], where top left corner is (0, 0) and the bottom-right corner
     /// is (1, 1).
     #[prost(float, tag = "1")]
     pub x: f32,

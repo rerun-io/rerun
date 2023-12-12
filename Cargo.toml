@@ -103,7 +103,7 @@ arrow2_convert = "0.5.0"
 async-executor = "1.0"
 backtrace = "0.3"
 bincode = "1.3"
-bitflags = "1.3"
+bitflags = { version = "2.4", features = ["bytemuck"] }
 blackbox = "0.2.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 camino = "1.1"
@@ -111,7 +111,7 @@ cargo-run-wasm = "0.3.2"
 cfg-if = "1.0"
 clap = "4.0"
 clean-path = "0.2"
-comfy-table = { version = "6.1", default-features = false }
+comfy-table = { version = "6.1", default-features = false }        # update of comfy-table blocked on old version used by arrow2
 console_error_panic_hook = "0.1.6"
 criterion = "0.5"
 crossbeam = "0.8"
@@ -120,12 +120,11 @@ document-features = "0.2"
 ehttp = "0.3.1"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
-epaint = "0.23.0"
 ewebsock = "0.4.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
 getrandom = "0.2"
-glam = "0.22"
+glam = "0.22"                                                      # glam update blocked by macaw
 gltf = "1.1"
 half = "2.3.1"
 hyper = "0.14"
@@ -133,7 +132,7 @@ image = { version = "0.24", default-features = false }
 indent = "0.1"
 indicatif = "0.17.7"                                               # Progress bar
 infer = "0.15"                                                     # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
-itertools = "0.11"
+itertools = "0.11"                                                 # updating itertools is blocked on the next egui_tiles update
 js-sys = "0.3"
 # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 lz4_flex = "0.11"
@@ -149,10 +148,10 @@ ndarray-rand = "0.14"
 never = "0.1"
 nohash-hasher = "0.2"
 notify = "6.0"
-num-derive = "0.3"
+num-derive = "0.4"
 num-traits = "0.2"
 once_cell = "1.17"
-ordered-float = "3.2"
+ordered-float = "4.2"
 parking_lot = "0.12"
 pathdiff = "0.2"
 pico-args = "0.5"
@@ -178,6 +177,7 @@ similar-asserts = "1.4.2"
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.0", features = ["const_generics", "union"] }
 static_assertions = "1.1"
+# update of strum blocked by arrow2/comfytable
 strum = { version = "0.24", features = ["derive"] }
 strum_macros = "0.24"
 sublime_fuzzy = "0.7"
@@ -209,8 +209,8 @@ wgpu = { version = "0.18.0", features = ["fragile-send-sync-non-atomic-wasm"] }
 wgpu-core = "0.18.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false }
-zune-core = "0.2"
-zune-jpeg = "0.3"
+zune-core = "0.4"
+zune-jpeg = "0.4"
 
 
 [profile.dev]
@@ -244,7 +244,6 @@ debug = true
 # egui_extras = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" } # egui master 2023-11-23
 # egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }   # egui master 2023-11-23
 # emath = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }       # egui master 2023-11-23
-# epaint = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -253,4 +252,3 @@ debug = true
 # egui_extras = { path = "../../egui/crates/egui_extras" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
-# epaint = { path = "../../egui/crates/epaint" }

@@ -208,7 +208,7 @@ bitflags! {
     ///
     /// Needs to be kept in sync with `lines.wgsl`
     #[repr(C)]
-    #[derive(Default, bytemuck::Pod, bytemuck::Zeroable)]
+    #[derive(Copy, Clone, Default, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripFlags : u8 {
         /// Puts a equilateral triangle at the end of the line strip (excludes other end caps).
         const FLAG_CAP_END_TRIANGLE = 0b0000_0001;

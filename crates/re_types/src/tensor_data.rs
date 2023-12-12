@@ -570,7 +570,7 @@ impl DecodedTensor {
             4
         };
 
-        let mut decoder = JpegDecoder::new_with_options(options, jpeg_bytes.as_slice());
+        let mut decoder = JpegDecoder::new_with_options(jpeg_bytes.as_slice(), options);
         let pixels = decoder.decode()?;
         let (w, h) = decoder.dimensions().unwrap(); // Can't fail after a successful decode
 
