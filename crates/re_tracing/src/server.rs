@@ -26,7 +26,7 @@ impl Profiler {
 
     fn start_server(&mut self) {
         crate::profile_function!();
-        let bind_addr = format!("0.0.0.0:{PORT}");
+        let bind_addr = format!("0.0.0.0:{PORT}"); // Serve on all addresses.
         self.server = match puffin_http::Server::new(&bind_addr) {
             Ok(puffin_server) => {
                 re_log::info!(
@@ -44,7 +44,7 @@ impl Profiler {
 
 fn start_puffin_viewer() {
     crate::profile_function!();
-    let url = format!("0.0.0.0:{PORT}");
+    let url = format!("127.0.0.1:{PORT}"); // Connect to localhost.
     let child = std::process::Command::new("puffin_viewer")
         .arg("--url")
         .arg(&url)
