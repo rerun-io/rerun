@@ -420,20 +420,6 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         .unwrap_or_default()
         .0;
 
-    // TODO(jleibs): what to do about auto-discovery?
-    /*
-    let unknown_space_views: HashMap<_, _> = space_views
-        .iter()
-        .filter(|(k, _)| !viewport_layout.space_view_keys.contains(k))
-        .map(|(k, v)| (*k, v.clone()))
-        .collect();
-
-    let known_space_views: BTreeMap<_, _> = space_views
-        .into_iter()
-        .filter(|(k, _)| viewport_layout.space_view_keys.contains(k))
-        .collect();
-    */
-
     ViewportBlueprint {
         blueprint_db,
         space_views,
@@ -443,6 +429,16 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         auto_space_views,
         deferred_tree_actions: Default::default(),
     }
+
+    // TODO(jleibs): Need to figure out if we have to re-enable support for
+    // auto-discovery of SpaceViews logged via the experimental blueprint APIs.
+    /*
+    let unknown_space_views: HashMap<_, _> = space_views
+        .iter()
+        .filter(|(k, _)| !viewport_layout.space_view_keys.contains(k))
+        .map(|(k, v)| (*k, v.clone()))
+        .collect();
+    */
 
     // TODO(jleibs): It seems we shouldn't call this until later, after we've created
     // the snapshot. Doing this here means we are mutating the state before it goes
