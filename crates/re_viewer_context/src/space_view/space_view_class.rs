@@ -133,6 +133,11 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     }
 
     #[inline]
+    fn identifier_str() -> &'static str {
+        Self::IDENTIFIER
+    }
+
+    #[inline]
     fn display_name(&self) -> &'static str {
         self.display_name()
     }

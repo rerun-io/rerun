@@ -165,10 +165,10 @@ impl SpaceViewClassRegistry {
 
         entry.class.on_register(&mut entry.systems)?;
 
-        let type_name = entry.class.identifier();
-        if self.registry.insert(type_name, entry).is_some() {
+        let identifier = entry.class.identifier();
+        if self.registry.insert(identifier, entry).is_some() {
             return Err(SpaceViewClassRegistryError::DuplicateClassIdentifier(
-                type_name,
+                identifier,
             ));
         }
 
@@ -176,13 +176,13 @@ impl SpaceViewClassRegistry {
     }
 
     /// Removes a space view class from the registry.
-    pub fn remove_class(
+    pub fn remove_class<T: DynSpaceViewClass + Sized>(
         &mut self,
-        type_name: &SpaceViewClassIdentifier,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        if self.registry.remove(type_name).is_none() {
+        let identifier: SpaceViewClassIdentifier = T::identifier_str().into();
+        if self.registry.remove(&identifier).is_none() {
             return Err(SpaceViewClassRegistryError::UnknownClassIdentifier(
-                *type_name,
+                identifier,
             ));
         }
 

@@ -8,8 +8,8 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
-    DynSpaceViewClass, PlayState, SpaceViewClass, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError, StoreContext, SystemCommand, SystemCommandSender,
+    DynSpaceViewClass, PlayState, SpaceViewClassRegistry, SpaceViewClassRegistryError,
+    StoreContext, SystemCommand, SystemCommandSender,
 };
 
 use crate::{
@@ -381,9 +381,8 @@ impl App {
                     self.space_view_class_registry
                         .add_class::<re_space_view_dataframe::DataframeSpaceView>()
                 } else {
-                    self.space_view_class_registry.remove_class(
-                        &re_space_view_dataframe::DataframeSpaceView::IDENTIFIER.into(),
-                    )
+                    self.space_view_class_registry
+                        .remove_class::<re_space_view_dataframe::DataframeSpaceView>()
                 };
 
                 if let Err(err) = result {
