@@ -123,6 +123,8 @@ impl EntityPath {
     }
 
     /// Treat the string as one opaque string, NOT splitting on any slashes.
+    ///
+    /// The given string is expected to be unescaped, i.e. any `\` is treated as a normal character.
     pub fn from_single_string(string: impl Into<String>) -> Self {
         Self::new(vec![EntityPathPart::new(string)])
     }

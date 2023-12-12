@@ -174,7 +174,7 @@ fn add_entities_tree_ui(
                 add_entities_tree_ui(
                     ctx,
                     ui,
-                    path_comp,
+                    &path_comp.to_string(),
                     child_tree,
                     space_view,
                     query_result,

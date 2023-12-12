@@ -214,7 +214,7 @@ fn parse_entity_path_forgiving(path: &str) -> Vec<EntityPathPart> {
     tokenize_entity_path(path)
         .into_iter()
         .filter(|&part| part != "/") // ignore duplicate slashes
-        .map(parse_part_forgiving)
+        .map(EntityPathPart::parse_forgiving)
         .collect()
 }
 
@@ -313,30 +313,6 @@ fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {
 }
 
 /// Unescape the string
-fn parse_part_forgiving(input: &str) -> EntityPathPart {
-    let mut output = String::with_capacity(input.len());
-    let mut chars = input.chars();
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            if let Some(c) = chars.next() {
-                output.push(match c {
-                    'n' => '\n',
-                    'r' => '\r',
-                    't' => '\t',
-                    _ => c,
-                });
-            } else {
-                // Trailing escape: treat it as a (escaped) backslash
-                output.push('\\');
-            }
-        } else {
-            output.push(c);
-        }
-    }
-    EntityPathPart::from(output)
-}
-
-/// Unescape the string
 fn parse_part_strict(input: &str) -> Result<EntityPathPart> {
     let mut output = String::with_capacity(input.len());
     let mut chars = input.chars();
@@ -362,21 +338,6 @@ fn parse_part_strict(input: &str) -> Result<EntityPathPart> {
         }
     }
     Ok(EntityPathPart::from(output))
-}
-
-#[test]
-fn test_unescape_string() {
-    for (input, expected) in [
-        (r"Hello\ world!", "Hello world!"),
-        (r"Hello\", "Hello\\"),
-        (
-            r#"Hello \"World\" /  \\ \n\r\t"#,
-            "Hello \"World\" /  \\ \n\r\t",
-        ),
-    ] {
-        let unescaped = parse_part_forgiving(input);
-        assert_eq!(unescaped.as_str(), expected);
-    }
 }
 
 #[test]

@@ -27,6 +27,12 @@ pub use parse_path::PathParseError;
 ///
 /// A non-empty string.
 ///
+/// Note that the contents of the string is NOT escaped,
+/// so escaping needs to be done when printing this
+/// (done by the `Display` impl).
+///
+/// Because of this, `EntityPathPart` does NOT implement `AsRef<str>` etc.
+///
 /// In the file system analogy, this is the name of a folder.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -36,47 +42,83 @@ pub struct EntityPathPart(
 );
 
 impl EntityPathPart {
+    /// The given string is expected to be unescaped, i.e. any `\` is treated as a normal character.
     #[inline]
-    pub fn new(string: impl Into<String>) -> Self {
-        Self(string.into())
+    pub fn new(unescaped_string: impl Into<String>) -> Self {
+        Self(unescaped_string.into())
+    }
+
+    /// The unescaped string.
+    ///
+    /// Use [`Self::escaped_string`] or `to_string` to escape it.
+    #[inline]
+    pub fn unescaped_str(&self) -> &str {
+        &self.0
     }
 
     #[inline]
-    pub fn as_str(&self) -> &str {
-        &self.0
+    pub fn escaped_string(&self) -> String {
+        let mut s = String::with_capacity(self.0.len());
+        for c in self.0.chars() {
+            // Note: we print all unicode character (e.g. `åäö`) as is.
+            let print_as_is = c.is_alphanumeric() || matches!(c, '_' | '-' | '.');
+
+            if print_as_is {
+                s.push(c);
+            } else {
+                match c {
+                    '\n' => {
+                        s.push_str("\\n");
+                    }
+                    '\r' => {
+                        s.push_str("\\r");
+                    }
+                    '\t' => {
+                        s.push_str("\\t");
+                    }
+                    c if c.is_ascii_punctuation() || c == ' ' => {
+                        s.push('\\');
+                        s.push(c);
+                    }
+                    c => {
+                        // Rust-style unicode escape, e.g. `\u{2009}`.
+                        s.push_str(&format!("\\u{{{:x}}}", c as u32));
+                    }
+                };
+            }
+        }
+        s
+    }
+
+    /// Unescape the string, forgiving any syntax error with a best-effort approach.
+    pub fn parse_forgiving(input: &str) -> Self {
+        let mut output = String::with_capacity(input.len());
+        let mut chars = input.chars();
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                if let Some(c) = chars.next() {
+                    output.push(match c {
+                        'n' => '\n',
+                        'r' => '\r',
+                        't' => '\t',
+                        _ => c,
+                    });
+                } else {
+                    // Trailing escape: treat it as a (escaped) backslash
+                    output.push('\\');
+                }
+            } else {
+                output.push(c);
+            }
+        }
+
+        Self::new(output)
     }
 }
 
 impl std::fmt::Display for EntityPathPart {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut is_first_character = true;
-
-        for c in self.0.chars() {
-            let print_as_is = if is_first_character {
-                // Escape punctutation if it is the first character,
-                // so that we can use `-` for negation, and `.` to mean the current entity.
-                c.is_alphanumeric()
-            } else {
-                c.is_alphanumeric() || matches!(c, '_' | '-' | '.')
-            };
-
-            if print_as_is {
-                c.fmt(f)?;
-            } else {
-                match c {
-                    '\n' => "\\n".fmt(f),
-                    '\r' => "\\r".fmt(f),
-                    '\t' => "\\t".fmt(f),
-                    c if c.is_ascii_punctuation() || c == ' ' || c.is_alphanumeric() => {
-                        write!(f, "\\{c}")
-                    }
-                    c => write!(f, "\\u{{{:x}}}", c as u32),
-                }?;
-            }
-
-            is_first_character = false;
-        }
-        Ok(())
+        self.escaped_string().fmt(f)
     }
 }
 
@@ -94,34 +136,11 @@ impl From<String> for EntityPathPart {
     }
 }
 
-impl AsRef<str> for EntityPathPart {
-    #[inline]
-    fn as_ref(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl std::borrow::Borrow<str> for EntityPathPart {
-    #[inline]
-    fn borrow(&self) -> &str {
-        self.as_str()
-    }
-}
-
-impl std::ops::Deref for EntityPathPart {
-    type Target = str;
-
-    #[inline]
-    fn deref(&self) -> &str {
-        self.as_str()
-    }
-}
-
 impl std::cmp::Ord for EntityPathPart {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         // Use natural ordering of strings, so that "image2" comes before "image10".
-        natural_ordering::compare(self.as_str(), other.as_str())
+        natural_ordering::compare(self.unescaped_str(), other.unescaped_str())
     }
 }
 
@@ -171,5 +190,20 @@ mod tests {
         // If the type weren't constrained, this would be an ambiguous type error.
         assert_eq!(entity_path_vec!(), vec![]);
         assert_eq!(entity_path!(), EntityPath::from(vec![]));
+    }
+
+    #[test]
+    fn test_unescape_string() {
+        for (input, expected) in [
+            (r"Hello\ world!", "Hello world!"),
+            (r"Hello\", "Hello\\"),
+            (
+                r#"Hello \"World\" /  \\ \n\r\t"#,
+                "Hello \"World\" /  \\ \n\r\t",
+            ),
+        ] {
+            let part = EntityPathPart::parse_forgiving(input);
+            assert_eq!(part.unescaped_str(), expected);
+        }
     }
 }
