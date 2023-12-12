@@ -162,13 +162,13 @@ impl EntityPath {
 
         let normalized = entity_path.to_string();
         if normalized != input {
-            re_log::warn_once!("Found an entity path '{input}' that was not in the normalized form. Please write it as '{normalized}' instead. See https://www.rerun.io/docs/concepts/entity-path for more");
+            re_log::warn_once!("The entity path '{input}' that was not in the normalized form. It will be interpreted as '{normalized}'. See https://www.rerun.io/docs/concepts/entity-path for more");
         }
 
         Ok(entity_path)
     }
 
-    /// Parses an entity path, ha   ndling any malformed input with a logged warning.
+    /// Parses an entity path, handling any malformed input with a logged warning.
     ///
     /// For a strict parses, use [`Self::parse_strict`] instead.
     pub fn parse_forgiving(input: &str) -> Self {
@@ -177,7 +177,7 @@ impl EntityPath {
 
         let normalized = entity_path.to_string();
         if normalized != input {
-            re_log::warn_once!("Found an entity path '{input}' that was not in the normalized form. Please write it as '{normalized}' instead. See https://www.rerun.io/docs/concepts/entity-path for more");
+            re_log::warn_once!("The entity path '{input}' that was not in the normalized form. It will be interpreted as '{normalized}'. See https://www.rerun.io/docs/concepts/entity-path for more");
         }
 
         entity_path

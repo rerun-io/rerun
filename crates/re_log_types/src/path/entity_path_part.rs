@@ -143,7 +143,7 @@ impl EntityPathPart {
                     }
                     c => {
                         // Rust-style unicode escape, e.g. `\u{262E}`.
-                        s.push_str(&format!("\\u{{{:x}}}", c as u32));
+                        s.push_str(&format!("\\u{{{:04X}}}", c as u32));
                     }
                 };
             }
@@ -220,7 +220,7 @@ impl std::cmp::PartialOrd for EntityPathPart {
 }
 
 #[test]
-fn test_unescape_string() {
+fn test_parse_entity_path_part() {
     // strict:
     for (input, expected) in [
         (r"Hallå", "Hallå"),
@@ -242,6 +242,17 @@ fn test_unescape_string() {
         r"Expected e.g. '\u{262E}', found: '\u{apa}'"
     );
 
+    assert_eq!(
+        EntityPathPart::parse_strict(r"\u{0001}")
+            .unwrap()
+            .unescaped_str(),
+        "\u{0001}"
+    );
+    assert_eq!(
+        EntityPathPart::parse_forgiving("☮").escaped_string(),
+        r"\u{262E}"
+    );
+
     // forgiving:
     for (input, expected) in [
         (r"Hello\", "Hello\\"),
@@ -253,5 +264,13 @@ fn test_unescape_string() {
     ] {
         let part = EntityPathPart::parse_forgiving(input);
         assert_eq!(part.unescaped_str(), expected);
+    }
+
+    // roundtripping:
+    for str in [r"\u{0001}", r"Hello\ world\!\ \u{262E}"] {
+        assert_eq!(
+            EntityPathPart::parse_strict(str).unwrap().escaped_string(),
+            str
+        );
     }
 }
