@@ -1,5 +1,6 @@
 [package]
 name = "re_renderer_examples"
+description = "Examples for the re_renderer crate."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
