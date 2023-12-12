@@ -1,0 +1,25 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+/// Whether a space view is maximized.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+table SpaceViewMaximized (
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq",
+  "attr.rust.override_crate": "re_viewport",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  id: [ubyte] (order: 100, nullable, "attr.rust.serde_type": "re_viewer_context::SpaceViewId");
+}
+

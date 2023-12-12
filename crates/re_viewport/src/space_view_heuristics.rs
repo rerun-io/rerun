@@ -112,7 +112,7 @@ pub fn all_possible_space_views(
                     // is way too expensive. This needs to be optimized significantly.
                     let candidate_query = DataQueryBlueprint::new(
                         *class_identifier,
-                        std::iter::once(&EntityPathExpr::Recursive(candidate_space_path.clone())),
+                        std::iter::once(EntityPathExpr::Recursive(candidate_space_path.clone())),
                     );
 
                     let results = candidate_query.execute_query(
@@ -290,7 +290,7 @@ pub fn default_created_space_views(
                     if !result.view_parts.is_empty() {
                         let query = DataQueryBlueprint::new(
                             *candidate.class_identifier(),
-                            std::iter::once(&EntityPathExpr::Exact(result.entity_path.clone())),
+                            std::iter::once(EntityPathExpr::Exact(result.entity_path.clone())),
                         );
                         let mut space_view = SpaceViewBlueprint::new(
                             *candidate.class_identifier(),
@@ -399,7 +399,7 @@ pub fn default_created_space_views(
 
                             let query = DataQueryBlueprint::new(
                                 *candidate.class_identifier(),
-                                expressions.iter(),
+                                expressions.into_iter(),
                             );
 
                             let mut space_view = SpaceViewBlueprint::new(

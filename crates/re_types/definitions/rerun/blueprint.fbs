@@ -1,7 +1,12 @@
-include "./blueprint/auto_space_views.fbs";
-include "./blueprint/entity_properties_component.fbs";
-include "./blueprint/panel_view.fbs";
-include "./blueprint/space_view_component.fbs";
-include "./blueprint/space_view_maximized.fbs";
-include "./blueprint/viewport_layout.fbs";
-include "./blueprint/query_expressions.fbs";
+include "./blueprint/datatypes/query_expressions.fbs";
+include "./blueprint/datatypes/space_view_component.fbs";
+include "./blueprint/datatypes/viewport_layout.fbs";
+
+include "./blueprint/components/auto_space_views.fbs";
+include "./blueprint/components/entity_properties_component.fbs";
+include "./blueprint/components/panel_view.fbs";
+include "./blueprint/components/query_expressions.fbs";
+include "./blueprint/components/space_view_component.fbs";
+include "./blueprint/components/space_view_maximized.fbs";
+include "./blueprint/components/viewport_layout.fbs";
+

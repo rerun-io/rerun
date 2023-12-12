@@ -28,6 +28,7 @@ else_return = re.compile(r"else\s*{\s*return;?\s*};")
 explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
 ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
 ellipsis_expression = re.compile(r"[\[(<].*\.\.\..*[\])>]")
+ellipsis_import = re.compile(r"from \.\.\.")
 ellipsis_reference = re.compile(r"&\.\.\.")
 ellipsis_bare = re.compile(r"^\s*\.\.\.\s*$")
 
@@ -83,6 +84,7 @@ def lint_line(
         if (
             ellipsis.search(line)
             and not ellipsis_expression.search(line)
+            and not ellipsis_import.search(line)
             and not ellipsis_bare.search(line)
             and not ellipsis_reference.search(line)
         ):

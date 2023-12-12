@@ -1,0 +1,41 @@
+include "arrow/attributes.fbs";
+include "docs/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+include "rerun/datatypes.fbs";
+
+namespace rerun.blueprint.datatypes;
+
+// ---
+
+/// A view of a space.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+table SpaceViewComponent (
+  "attr.rerun.scope": "blueprint",
+  "attr.docs.unreleased",
+  "attr.rust.derive_only": "Clone"
+) {
+    /// The name of the view.
+    display_name: string (order: 100);
+
+    /// The class of the view.
+    class_identifier: string (order: 200);
+
+    /// The "anchor point" of this space view.
+    ///
+    /// The transform at this path forms the reference point for all scene->world transforms in this space view.
+    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
+    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+    space_origin: rerun.datatypes.EntityPath (order: 300);
+
+    /// True if the user is expected to add entities themselves. False otherwise.
+    entities_determined_by_user: bool (order: 400);
+
+    /// `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
+    ///
+    /// It determines which entities are part of the spaceview.
+    contents: [rerun.datatypes.Uuid] (order: 500);
+}

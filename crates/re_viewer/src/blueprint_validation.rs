@@ -1,14 +1,14 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPropertiesComponent, StoreDb};
 use re_log_types::Timeline;
-use re_types::blueprint::SpaceViewComponent;
+use re_types::blueprint::components::SpaceViewComponent;
 use re_types_core::Component;
 use re_viewport::{
-    blueprint::{AutoSpaceViews, SpaceViewMaximized, ViewportLayout},
-    external::re_space_view::QueryExpressions,
+    blueprint::components::{AutoSpaceViews, SpaceViewMaximized, ViewportLayout},
+    external::re_space_view::blueprint::components::QueryExpressions,
 };
 
-use crate::blueprint::PanelView;
+use crate::blueprint::components::PanelView;
 
 fn validate_component<C: Component>(blueprint: &StoreDb) -> bool {
     let query = LatestAtQuery::latest(Timeline::default());

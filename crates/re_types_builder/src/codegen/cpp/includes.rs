@@ -12,12 +12,14 @@ pub struct Includes {
     system: BTreeSet<String>,
     local: BTreeSet<String>,
     fqname: String,
+    scope: Option<String>,
 }
 
 impl Includes {
-    pub fn new(fqname: String) -> Self {
+    pub fn new(fqname: String, scope: Option<String>) -> Self {
         Self {
             fqname,
+            scope,
             system: BTreeSet::new(),
             local: BTreeSet::new(),
         }
@@ -37,6 +39,8 @@ impl Includes {
     pub fn insert_rerun(&mut self, name: &str) {
         if is_testing_fqname(&self.fqname) {
             self.insert_system(&format!("rerun/{name}"));
+        } else if self.scope.is_some() {
+            self.local.insert(format!("../../{name}"));
         } else {
             self.local.insert(format!("../{name}"));
         }
@@ -50,33 +54,39 @@ impl Includes {
             .split('.')
             .collect::<Vec<_>>();
 
-        if let ["rerun", obj_kind, typname] = components[..] {
-            let typname = crate::to_snake_case(typname);
-
-            if is_testing_fqname(&self.fqname) == is_testing_fqname(included_fqname) {
-                // If the type is in the same library, we use a relative path.
-                if self
-                    .fqname
-                    .starts_with(&included_fqname[..included_fqname.len() - typname.len()])
-                {
-                    // Types are next to each other, can skip going into the obj_kind folder.
-                    self.local.insert(format!("{typname}.hpp"));
-                } else {
-                    self.local.insert(format!("../{obj_kind}/{typname}.hpp"));
-                }
-            } else {
-                // Types are not in the same library, need to treat this like a rerun sdk header.
-                assert!(
-                    is_testing_fqname(&self.fqname) || !is_testing_fqname(included_fqname),
-                    "A non-testing type can't include a testing type."
-                );
-                self.insert_rerun(&format!("{obj_kind}/{typname}.hpp"));
-            }
-        } else {
-            panic!(
+        let (path, typname) = match components[..] {
+            ["rerun", obj_kind, typname] => (obj_kind.to_owned(), typname),
+            ["rerun", scope, obj_kind, typname] => (format!("{scope}/{obj_kind}"), typname),
+            _ => {
+                panic!(
                 "Can't figure out include for {included_fqname:?} when adding includes for {:?}",
                 self.fqname
             );
+            }
+        };
+
+        let typname = crate::to_snake_case(typname);
+
+        if is_testing_fqname(&self.fqname) == is_testing_fqname(included_fqname) {
+            // If the type is in the same library, we use a relative path.
+            if self
+                .fqname
+                .starts_with(&included_fqname[..included_fqname.len() - typname.len()])
+            {
+                // Types are next to each other, can skip going into the obj_kind folder.
+                self.local.insert(format!("{typname}.hpp"));
+            } else if self.scope.is_some() {
+                self.local.insert(format!("../../{path}/{typname}.hpp"));
+            } else {
+                self.local.insert(format!("../{path}/{typname}.hpp"));
+            }
+        } else {
+            // Types are not in the same library, need to treat this like a rerun sdk header.
+            assert!(
+                is_testing_fqname(&self.fqname) || !is_testing_fqname(included_fqname),
+                "A non-testing type can't include a testing type."
+            );
+            self.insert_rerun(&format!("{path}/{typname}.hpp"));
         }
     }
 }
@@ -87,6 +97,7 @@ impl quote::ToTokens for Includes {
             system,
             local,
             fqname: _,
+            scope: _,
         } = self;
 
         let hash = quote! { # };

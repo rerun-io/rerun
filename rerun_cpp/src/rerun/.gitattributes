@@ -2,6 +2,5 @@
 
 .gitattributes linguist-generated=true
 archetypes.hpp linguist-generated=true
-blueprint.hpp linguist-generated=true
 components.hpp linguist-generated=true
 datatypes.hpp linguist-generated=true

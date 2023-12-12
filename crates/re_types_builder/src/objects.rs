@@ -191,28 +191,25 @@ impl std::ops::Index<&str> for Objects {
 pub enum ObjectKind {
     Datatype,
     Component,
-    Blueprint,
     Archetype,
 }
 
 impl ObjectKind {
-    pub const ALL: [Self; 4] = [
-        Self::Datatype,
-        Self::Component,
-        Self::Blueprint,
-        Self::Archetype,
-    ];
+    pub const ALL: [Self; 3] = [Self::Datatype, Self::Component, Self::Archetype];
 
     // TODO(#2364): use an attr instead of the path
-    pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
+    pub fn from_pkg_name(pkg_name: impl AsRef<str>, attrs: &Attributes) -> Self {
+        let scope = match attrs.try_get::<String>(pkg_name.as_ref(), crate::ATTR_RERUN_SCOPE) {
+            Some(scope) => format!(".{scope}"),
+            None => String::new(),
+        };
+
         let pkg_name = pkg_name.as_ref().replace(".testing", "");
-        if pkg_name.starts_with("rerun.datatypes") {
+        if pkg_name.starts_with(format!("rerun{scope}.datatypes").as_str()) {
             ObjectKind::Datatype
-        } else if pkg_name.starts_with("rerun.blueprint") {
-            ObjectKind::Blueprint
-        } else if pkg_name.starts_with("rerun.components") {
+        } else if pkg_name.starts_with(format!("rerun{scope}.components").as_str()) {
             ObjectKind::Component
-        } else if pkg_name.starts_with("rerun.archetypes") {
+        } else if pkg_name.starts_with(format!("rerun{scope}.archetypes").as_str()) {
             ObjectKind::Archetype
         } else {
             panic!("unknown package {pkg_name:?}");
@@ -222,7 +219,6 @@ impl ObjectKind {
     pub fn plural_snake_case(&self) -> &'static str {
         match self {
             ObjectKind::Datatype => "datatypes",
-            ObjectKind::Blueprint => "blueprint",
             ObjectKind::Component => "components",
             ObjectKind::Archetype => "archetypes",
         }
@@ -231,7 +227,6 @@ impl ObjectKind {
     pub fn singular_name(&self) -> &'static str {
         match self {
             ObjectKind::Datatype => "Datatype",
-            ObjectKind::Blueprint => "Blueprint",
             ObjectKind::Component => "Component",
             ObjectKind::Archetype => "Archetype",
         }
@@ -240,7 +235,6 @@ impl ObjectKind {
     pub fn plural_name(&self) -> &'static str {
         match self {
             ObjectKind::Datatype => "Datatypes",
-            ObjectKind::Blueprint => "Blueprint",
             ObjectKind::Component => "Components",
             ObjectKind::Archetype => "Archetypes",
         }
@@ -466,8 +460,8 @@ impl Object {
         );
 
         let docs = Docs::from_raw_docs(&filepath, obj.documentation());
-        let kind = ObjectKind::from_pkg_name(&pkg_name);
         let attrs = Attributes::from_raw_attrs(obj.attributes());
+        let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
         let fields: Vec<_> = {
             let mut fields: Vec<_> = obj
@@ -543,9 +537,9 @@ impl Object {
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
         let docs = Docs::from_raw_docs(&filepath, enm.documentation());
-        let kind = ObjectKind::from_pkg_name(&pkg_name);
-
         let attrs = Attributes::from_raw_attrs(enm.attributes());
+        let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
+
         let utype = {
             if enm.underlying_type().base_type() == FbsBaseType::UType {
                 // This is a union.
@@ -669,6 +663,10 @@ impl Object {
         is_testing_fqname(&self.fqname)
     }
 
+    pub fn scope(&self) -> Option<String> {
+        self.try_get_attr::<String>(crate::ATTR_RERUN_SCOPE)
+    }
+
     /// Returns the crate name of an object, accounting for overrides.
     pub fn crate_name(&self) -> String {
         self.try_get_attr::<String>(crate::ATTR_RUST_OVERRIDE_CRATE)
@@ -679,7 +677,11 @@ impl Object {
     //
     // NOTE: Might want a module override at some point.
     pub fn module_name(&self) -> String {
-        self.kind.plural_snake_case().to_owned()
+        if let Some(scope) = self.scope() {
+            format!("{}/{}", scope, self.kind.plural_snake_case())
+        } else {
+            self.kind.plural_snake_case().to_owned()
+        }
     }
 }
 

@@ -24,3 +24,8 @@ attribute "attr.rerun.component_optional";
 ///
 /// For lists this will apply to the inner element.
 attribute "attr.rerun.override_type";
+
+/// Set the scope of the type
+///
+/// This is used for example to scope blueprint types.
+attribute "attr.rerun.scope";

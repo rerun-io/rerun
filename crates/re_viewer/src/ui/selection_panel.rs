@@ -5,7 +5,7 @@ use re_data_store::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
-use re_log_types::{DataRow, RowId, TimePoint};
+use re_log_types::{DataRow, EntityPathExpr, RowId, TimePoint};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
@@ -17,7 +17,9 @@ use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClass, SpaceViewClassIdentifier,
     SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
-use re_viewport::{external::re_space_view::QueryExpressions, Viewport, ViewportBlueprint};
+use re_viewport::{
+    external::re_space_view::blueprint::components::QueryExpressions, Viewport, ViewportBlueprint,
+};
 
 use crate::ui::visible_history::visible_history_ui;
 
@@ -543,10 +545,10 @@ fn blueprint_ui(
                     if edited_inclusions != inclusions || edited_exclusions != exclusions {
                         let timepoint = TimePoint::timeless();
 
-                        let expressions_component = QueryExpressions {
-                            inclusions: edited_inclusions.split('\n').map(|s| s.into()).collect(),
-                            exclusions: edited_exclusions.split('\n').map(|s| s.into()).collect(),
-                        };
+                        let expressions_component = QueryExpressions::new(
+                            edited_inclusions.split('\n').map(EntityPathExpr::from),
+                            edited_exclusions.split('\n').map(EntityPathExpr::from),
+                        );
 
                         let row = DataRow::from_cells1_sized(
                             RowId::new(),

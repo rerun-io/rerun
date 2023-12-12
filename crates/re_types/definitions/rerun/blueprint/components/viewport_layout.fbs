@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+/// A view of a space.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+table ViewportLayout (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default, PartialEq",
+  "attr.rust.override_crate": "re_viewport"
+) {
+    viewport_layout: rerun.blueprint.datatypes.ViewportLayout (order: 100);
+}
