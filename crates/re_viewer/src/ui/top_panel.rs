@@ -354,7 +354,7 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
 }
 
 fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreContext<'_>>) {
-    if let Some(response) = e2e_latency_ui(ui, app, store_context) {
+    if let Some(response) = e2e_latency_ui(ui, store_context) {
         // Show queue latency on hover, as that is part of this.
         // For instance, if the framerate is really bad we have less time to ingest incoming data,
         // leading to an ever-increasing input queue.
@@ -384,7 +384,6 @@ fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreCont
 /// Shows the e2e latency.
 fn e2e_latency_ui(
     ui: &mut egui::Ui,
-    app: &App,
     store_context: Option<&StoreContext<'_>>,
 ) -> Option<egui::Response> {
     let Some(store_context) = store_context else {
@@ -410,14 +409,7 @@ fn e2e_latency_ui(
                       It is also affected by the framerate of the viewer.\n\
                       This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
 
-    let response = if e2e_latency_sec < app.app_options().warn_latency {
-        ui.weak(text).on_hover_text(hover_text)
-    } else {
-        ui.label(app.re_ui().warning_text(text))
-            .on_hover_text(hover_text)
-    };
-
-    Some(response)
+    Some(ui.weak(text).on_hover_text(hover_text))
 }
 
 /// Shows the latency in the input queue.
