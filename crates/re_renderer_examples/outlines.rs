@@ -1,3 +1,5 @@
+//! Demonstrates outline rendering.
+
 use itertools::Itertools;
 use re_renderer::{
     renderer::MeshInstance,

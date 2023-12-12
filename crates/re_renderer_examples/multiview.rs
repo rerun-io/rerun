@@ -1,3 +1,5 @@
+//! Example with several independent views, using various primitives.
+
 use std::f32::consts::TAU;
 
 use framework::Example;

@@ -1,3 +1,5 @@
+//! Demonstrates the dedicated picking layer support.
+
 use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{

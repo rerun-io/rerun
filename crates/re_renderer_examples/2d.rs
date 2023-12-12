@@ -1,3 +1,7 @@
+//! Examples for using 2D rendering.
+//!
+//! On the left is a 2D view, on the right a 3D view of the same scene.
+
 use itertools::Itertools as _;
 use re_renderer::Hsva;
 
