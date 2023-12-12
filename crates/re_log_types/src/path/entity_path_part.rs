@@ -1,3 +1,5 @@
+use crate::PathParseError;
+
 /// The different parts that make up an [`EntityPath`].
 ///
 /// A non-empty string.
@@ -21,6 +23,90 @@ impl EntityPathPart {
     #[inline]
     pub fn new(unescaped_string: impl Into<String>) -> Self {
         Self(unescaped_string.into())
+    }
+
+    /// Unescape the string, forgiving any syntax error with a best-effort approach.
+    pub fn parse_forgiving(input: &str) -> Self {
+        let mut output = String::with_capacity(input.len());
+        let mut chars = input.chars();
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                if let Some(c) = chars.next() {
+                    match c {
+                        'n' => {
+                            output.push('\n');
+                        }
+                        'r' => {
+                            output.push('\r');
+                        }
+                        't' => {
+                            output.push('\t');
+                        }
+                        'u' => {
+                            match parse_unicode_escape(&mut chars) {
+                                Ok(c) => {
+                                    output.push(c);
+                                }
+                                Err(s) => {
+                                    // Invalid unicode escape: treat it as a (escaped) backslash
+                                    output.push('\\');
+                                    output.push('u');
+                                    output.push_str(&s);
+                                }
+                            };
+                        }
+                        _ => output.push(c),
+                    }
+                } else {
+                    // Trailing escape: treat it as a (escaped) backslash
+                    output.push('\\');
+                }
+            } else {
+                output.push(c);
+            }
+        }
+
+        Self::new(output)
+    }
+
+    /// Unescape the string, returning errors on wrongly escaped input.
+    pub fn parse_strict(input: &str) -> Result<Self, PathParseError> {
+        let mut output = String::with_capacity(input.len());
+        let mut chars = input.chars();
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                if let Some(c) = chars.next() {
+                    match c {
+                        'n' => {
+                            output.push('\n');
+                        }
+                        'r' => {
+                            output.push('\r');
+                        }
+                        't' => {
+                            output.push('\t');
+                        }
+                        'u' => match parse_unicode_escape(&mut chars) {
+                            Ok(c) => {
+                                output.push(c);
+                            }
+                            Err(s) => return Err(PathParseError::InvalidUnicodeEscape(s)),
+                        },
+                        c if c.is_ascii_punctuation() || c == ' ' => {
+                            output.push(c);
+                        }
+                        c => return Err(PathParseError::UnknownEscapeSequence(c)),
+                    };
+                } else {
+                    return Err(PathParseError::TrailingBackslash);
+                }
+            } else if c.is_alphanumeric() || matches!(c, '_' | '-' | '.') {
+                output.push(c);
+            } else {
+                return Err(PathParseError::MissingEscape(c));
+            }
+        }
+        Ok(Self::from(output))
     }
 
     /// The unescaped string.
@@ -56,7 +142,7 @@ impl EntityPathPart {
                         s.push(c);
                     }
                     c => {
-                        // Rust-style unicode escape, e.g. `\u{2009}`.
+                        // Rust-style unicode escape, e.g. `\u{262E}`.
                         s.push_str(&format!("\\u{{{:x}}}", c as u32));
                     }
                 };
@@ -64,31 +150,38 @@ impl EntityPathPart {
         }
         s
     }
+}
 
-    /// Unescape the string, forgiving any syntax error with a best-effort approach.
-    pub fn parse_forgiving(input: &str) -> Self {
-        let mut output = String::with_capacity(input.len());
-        let mut chars = input.chars();
-        while let Some(c) = chars.next() {
-            if c == '\\' {
-                if let Some(c) = chars.next() {
-                    output.push(match c {
-                        'n' => '\n',
-                        'r' => '\r',
-                        't' => '\t',
-                        _ => c,
-                    });
-                } else {
-                    // Trailing escape: treat it as a (escaped) backslash
-                    output.push('\\');
-                }
-            } else {
-                output.push(c);
-            }
+/// Parses e.g. `{262E}`.
+///
+/// Returns the consumed input characters on fail.
+fn parse_unicode_escape(input: &mut impl Iterator<Item = char>) -> Result<char, String> {
+    let mut all_chars = String::new();
+    for c in input {
+        all_chars.push(c);
+        if c == '}' || all_chars.len() == 6 {
+            break;
         }
-
-        Self::new(output)
     }
+
+    let chars = all_chars.as_str();
+
+    let Some(chars) = chars.strip_prefix('{') else {
+        return Err(all_chars);
+    };
+    let Some(chars) = chars.strip_suffix('}') else {
+        return Err(all_chars);
+    };
+
+    if chars.len() != 4 {
+        return Err(all_chars);
+    }
+
+    let Ok(num) = u32::from_str_radix(chars, 16) else {
+        return Err(all_chars);
+    };
+
+    char::from_u32(num).ok_or(all_chars)
 }
 
 impl std::fmt::Display for EntityPathPart {
@@ -128,12 +221,34 @@ impl std::cmp::PartialOrd for EntityPathPart {
 
 #[test]
 fn test_unescape_string() {
+    // strict:
     for (input, expected) in [
-        (r"Hello\ world!", "Hello world!"),
+        (r"Hallå", "Hallå"),
+        (r"Hall\u{00E5}\n\r\t", "Hallå\n\r\t"),
+        (r"Hello\ world\!", "Hello world!"),
+    ] {
+        let part = EntityPathPart::parse_strict(input).unwrap();
+        assert_eq!(part.unescaped_str(), expected);
+    }
+
+    assert_eq!(
+        EntityPathPart::parse_strict(r"\u{262E}"),
+        Ok(EntityPathPart::from("☮"))
+    );
+    assert_eq!(
+        EntityPathPart::parse_strict(r"\u{apa}! :D")
+            .unwrap_err()
+            .to_string(),
+        r"Expected e.g. '\u{262E}', found: '\u{apa}'"
+    );
+
+    // forgiving:
+    for (input, expected) in [
         (r"Hello\", "Hello\\"),
+        (r"\u{apa}\u{262E}", r"\u{apa}☮"),
         (
-            r#"Hello \"World\" /  \\ \n\r\t"#,
-            "Hello \"World\" /  \\ \n\r\t",
+            r#"Hello \"World\" /  \\ \n\r\t \u{00E5}"#,
+            "Hello \"World\" /  \\ \n\r\t å",
         ),
     ] {
         let part = EntityPathPart::parse_forgiving(input);

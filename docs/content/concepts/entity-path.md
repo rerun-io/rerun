@@ -43,6 +43,8 @@ Each "part" of a path must be a non-empty string. Any character is allower, but 
 Characters that need NOT be escaped are letters, numbers, and underscore, dash, and dot (`_`, `-`, `.`).
 Any other character should be escaped, including symbols (`\:`, `\$`, …) and whitespace (`\ `, `\n`, `\t`, …).
 
+You can an arbitrary unicode codepoint into an entity path using `\u{262E}`.
+
 So for instance, `world/3d/My\ Image.jpg/detection` is a valid path (note the escaped space!).
 
 ⚠️ NOTE: even though entity paths are somewhat analogous to file paths, they are NOT the same. `..` does not mean "parent folder", and you are NOT intended to pass a file path as an entity path (especially not on Windows, which use `\` as a path separator).

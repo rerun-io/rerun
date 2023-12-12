@@ -51,6 +51,9 @@ pub enum PathParseError {
 
     #[error("{0:?} needs to be escaped as `\\{0}`")]
     MissingEscape(char),
+
+    #[error("Expected e.g. '\\u{{262E}}', found: '\\u{0}'")]
+    InvalidUnicodeEscape(String),
 }
 
 type Result<T, E = PathParseError> = std::result::Result<T, E>;
@@ -240,7 +243,7 @@ fn entity_path_parts_from_tokens_strict(mut tokens: &[&str]) -> Result<Vec<Entit
         if token == "/" {
             return Err(PathParseError::DoubleSlash);
         } else {
-            parts.push(parse_part_strict(token)?);
+            parts.push(EntityPathPart::parse_strict(token)?);
         }
 
         if let Some(next_token) = tokens.first() {
@@ -310,34 +313,6 @@ fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {
         .iter()
         .map(|token| std::str::from_utf8(token).unwrap())
         .collect()
-}
-
-/// Unescape the string
-fn parse_part_strict(input: &str) -> Result<EntityPathPart> {
-    let mut output = String::with_capacity(input.len());
-    let mut chars = input.chars();
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            if let Some(c) = chars.next() {
-                output.push(match c {
-                    'n' => '\n',
-                    'r' => '\r',
-                    't' => '\t',
-                    c if c.is_ascii_alphanumeric() => {
-                        return Err(PathParseError::UnknownEscapeSequence(c))
-                    }
-                    c => c,
-                });
-            } else {
-                return Err(PathParseError::TrailingBackslash);
-            }
-        } else if c.is_alphanumeric() || matches!(c, '_' | '-' | '.') {
-            output.push(c);
-        } else {
-            return Err(PathParseError::MissingEscape(c));
-        }
-    }
-    Ok(EntityPathPart::from(output))
 }
 
 #[test]
