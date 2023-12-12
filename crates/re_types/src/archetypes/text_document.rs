@@ -42,7 +42,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &rerun::TextDocument::new(
 ///             r#"
 /// # Hello Markdown!
-/// [Click here to see the raw text](recording://markdown.Text).
+/// [Click here to see the raw text](recording://markdown:Text).
 ///
 /// Basic formatting:
 ///
@@ -68,7 +68,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ## Links
 /// You can link to [an entity](recording://markdown),
 /// a [specific instance of an entity](recording://markdown[#0]),
-/// or a [specific component](recording://markdown.Text).
+/// or a [specific component](recording://markdown:Text).
 ///
 /// Of course you can also have [normal https links](https://github.com/rerun-io/rerun), e.g. <https://rerun.io>.
 ///

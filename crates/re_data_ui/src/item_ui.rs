@@ -178,6 +178,7 @@ pub fn component_path_button(
         component_path.component_name.short_name(),
         component_path,
     )
+    .on_hover_text(component_path.component_name.full_name()) // we should show the full name somewhere
 }
 
 /// Show a component path and make it selectable.

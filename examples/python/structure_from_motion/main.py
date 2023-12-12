@@ -70,7 +70,7 @@ to the [points entity](recording://points):
 ```python
 rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=point_errors))
 ```
-**Note:** we added some [custom per-point errors](recording://points.error) that you can see when you
+**Note:** we added some [custom per-point errors](recording://points) that you can see when you
 hover over the points in the 3D view.
 """.strip()
 
