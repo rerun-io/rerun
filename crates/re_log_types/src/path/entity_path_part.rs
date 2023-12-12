@@ -1,6 +1,6 @@
 use crate::PathParseError;
 
-/// The different parts that make up an [`EntityPath`].
+/// The different parts that make up an [`EntityPath`][crate::EntityPath].
 ///
 /// A non-empty string.
 ///
