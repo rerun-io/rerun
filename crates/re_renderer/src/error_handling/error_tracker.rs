@@ -66,15 +66,19 @@ impl ErrorTracker {
     /// Handles an async error, logging it if needed.
     pub fn handle_error_future(
         self: &std::sync::Arc<Self>,
-        error_scope_result: impl std::future::Future<Output = Option<wgpu::Error>> + Send + 'static,
+        error_scope_result: impl IntoIterator<
+            Item = impl std::future::Future<Output = Option<wgpu::Error>> + Send + 'static,
+        >,
     ) {
-        handle_async_error(
-            {
-                let err_tracker = self.clone();
-                move |error| err_tracker.handle_error(error)
-            },
-            error_scope_result,
-        );
+        for error_future in error_scope_result {
+            handle_async_error(
+                {
+                    let err_tracker = self.clone();
+                    move |error| err_tracker.handle_error(error)
+                },
+                error_future,
+            );
+        }
     }
 
     /// Logs a wgpu error, making sure to deduplicate them as needed.

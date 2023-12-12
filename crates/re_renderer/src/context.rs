@@ -6,7 +6,7 @@ use type_map::concurrent::{self, TypeMap};
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
     config::{DeviceTier, RenderContextConfig},
-    error_handling::{ErrorTracker, SafeWgpuValidationScope},
+    error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
@@ -119,7 +119,7 @@ impl RenderContext {
         // According to documentation, not all errors may be caught by `on_uncaptured_error`.
         // https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
         // So add a global error scope to the init code as well.
-        let startup_error_scope = SafeWgpuValidationScope::start(&device);
+        let startup_error_scope = WgpuErrorScope::start(&device);
 
         log_adapter_info(&adapter.get_info());
 

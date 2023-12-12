@@ -1,5 +1,5 @@
 mod error_tracker;
-mod safe_wgpu_validation_scope;
+mod wgpu_error_scope;
 
 #[cfg(not(webgpu))]
 mod wgpu_core_error;
@@ -8,7 +8,7 @@ mod wgpu_core_error;
 mod now_or_never;
 
 pub use error_tracker::ErrorTracker;
-pub use safe_wgpu_validation_scope::SafeWgpuValidationScope;
+pub use wgpu_error_scope::WgpuErrorScope;
 
 // -------
 
