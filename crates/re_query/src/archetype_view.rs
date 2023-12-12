@@ -486,6 +486,15 @@ impl<A: Archetype> ArchetypeView<A> {
             phantom: PhantomData,
         }
     }
+
+    /// Convert an `ArchetypeView` back into a native Archetype instance
+    pub fn as_native(&self) -> crate::Result<A> {
+        Ok(A::from_arrow_components(
+            self.components
+                .values()
+                .map(|comp| (comp.name(), comp.values.to_arrow())),
+        )?)
+    }
 }
 
 #[test]
