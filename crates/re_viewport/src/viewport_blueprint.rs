@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
+use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, StoreDb};
-use re_log_types::{DataRow, RowId, TimePoint};
+use re_log_types::{DataRow, RowId, TimePoint, Timeline};
+use re_query::query_archetype;
 use re_types::blueprint::datatypes::SpaceViewComponent;
 use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
@@ -362,11 +364,32 @@ fn add_delta_from_single_component<'a, C>(
 pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint<'_> {
     re_tracing::profile_function!();
 
-    let space_view_ids: Vec<SpaceViewId> = blueprint_db
-        .store()
-        .query_timeless_component_quiet::<IncludedSpaceViews>(&VIEWPORT_PATH.into())
-        .map(|v| v.0.iter().map(|id| (*id).into()).collect())
-        .unwrap_or_default();
+    let query = LatestAtQuery::latest(Timeline::default());
+
+    let arch = match query_archetype::<crate::blueprint::archetypes::ViewportBlueprint>(
+        blueprint_db.store(),
+        &query,
+        &VIEWPORT_PATH.into(),
+    )
+    .and_then(|arch| arch.as_native())
+    {
+        Ok(arch) => arch,
+        Err(re_query::QueryError::PrimaryNotFound(_)) => {
+            // Empty Store
+            Default::default()
+        }
+        Err(err) => {
+            if cfg!(debug_assertions) {
+                re_log::error!("Failed to load viewport blueprint: {err}.");
+            } else {
+                re_log::debug!("Failed to load viewport blueprint: {err}.");
+            }
+            Default::default()
+        }
+    };
+
+    let space_view_ids: Vec<SpaceViewId> =
+        arch.space_views.0.iter().map(|id| (*id).into()).collect();
 
     let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
         .into_iter()
@@ -376,34 +399,19 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         .map(|sv| (sv.id, sv))
         .collect();
 
-    let auto_layout = blueprint_db
-        .store()
-        .query_timeless_component_quiet::<AutoLayout>(&VIEWPORT_PATH.into())
-        .map(|v| v.0)
-        .unwrap_or_default();
+    let auto_layout = arch.auto_layout.unwrap_or_default().0;
 
-    let auto_space_views = blueprint_db
-        .store()
-        .query_timeless_component_quiet::<AutoSpaceViews>(&VIEWPORT_PATH.into())
-        .map_or_else(
-            || {
-                // Only enable auto-space-views if this is the app-default blueprint
-                AutoSpaceViews(
-                    blueprint_db
-                        .store_info()
-                        .map_or(false, |ri| ri.is_app_default_blueprint()),
-                )
-            },
-            |auto| auto.value,
-        );
+    let auto_space_views = arch.auto_space_views.map_or_else(
+        || {
+            // Only enable auto-space-views if this is the app-default blueprint
+            blueprint_db
+                .store_info()
+                .map_or(false, |ri| ri.is_app_default_blueprint())
+        },
+        |auto| auto.0,
+    );
 
-    let maximized = blueprint_db
-        .store()
-        .query_timeless_component_quiet::<SpaceViewMaximized>(&VIEWPORT_PATH.into())
-        .map(|space_view| space_view.value)
-        .map(|v| v.0)
-        .unwrap_or_default()
-        .map(|v| v.into());
+    let maximized = arch.maximized.and_then(|id| id.0.map(|id| id.into()));
 
     let tree = blueprint_db
         .store()
@@ -432,9 +440,10 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         tree,
         maximized,
         auto_layout,
-        auto_space_views: auto_space_views.0,
+        auto_space_views,
         deferred_tree_actions: Default::default(),
     }
+
     // TODO(jleibs): It seems we shouldn't call this until later, after we've created
     // the snapshot. Doing this here means we are mutating the state before it goes
     // into the snapshot. For example, even if there's no visibility in the

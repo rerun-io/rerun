@@ -21,19 +21,20 @@ re_data_store = { workspace = true, features = ["serde"] }
 re_data_ui.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
+re_query.workspace = true
 re_renderer = { workspace = true, default-features = false, features = [
   "arrow",
   "import-gltf",
   "import-obj",
   "serde",
 ] }
+re_space_view.workspace = true
+re_space_view_time_series.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
 re_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
-re_space_view.workspace = true
-re_space_view_time_series.workspace = true
 
 ahash.workspace = true
 arrow2.workspace = true
