@@ -768,7 +768,9 @@ impl RecordingStream {
         timeless: bool,
         arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
-        self.log_component_batches(
+        let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+        self.log_component_batches_impl(
+            row_id,
             ent_path,
             timeless,
             arch.as_component_batches()
@@ -799,6 +801,17 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     pub fn log_component_batches<'a>(
         &self,
+        ent_path: impl Into<EntityPath>,
+        timeless: bool,
+        comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+    ) -> RecordingStreamResult<()> {
+        let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+        self.log_component_batches_impl(row_id, ent_path, timeless, comp_batches)
+    }
+
+    fn log_component_batches_impl<'a>(
+        &self,
+        row_id: RowId,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
@@ -854,7 +867,7 @@ impl RecordingStream {
             None
         } else {
             Some(DataRow::from_cells(
-                RowId::new(),
+                row_id,
                 timepoint.clone(),
                 ent_path.clone(),
                 num_instances as _,
@@ -868,11 +881,7 @@ impl RecordingStream {
         } else {
             splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
             Some(DataRow::from_cells(
-                RowId::new(),
-                timepoint,
-                ent_path,
-                1,
-                splatted,
+                row_id, timepoint, ent_path, 1, splatted,
             )?)
         };
 
