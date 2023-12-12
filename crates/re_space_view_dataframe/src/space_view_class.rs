@@ -2,6 +2,7 @@ use crate::view_part_system::EmptySystem;
 use egui_extras::Column;
 use itertools::Itertools;
 use re_data_store::{EntityProperties, InstancePath};
+use re_data_ui::item_ui::instance_path_button;
 use re_log_types::EntityPath;
 use re_query::get_component_with_instances;
 use re_viewer_context::{
@@ -74,7 +75,7 @@ impl SpaceViewClass for DataframeSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let entities: Vec<_> = query
+        let entity_paths: Vec<_> = query
             .iter_all_data_results()
             .filter(|data_result| data_result.resolved_properties.visible)
             .map(|data_result| &data_result.entity_path)
@@ -86,7 +87,7 @@ impl SpaceViewClass for DataframeSpaceView {
         let latest_at_query = query.latest_at_query();
 
         // for each entity, this does the union of all instance keys of all components
-        let all_instances: Vec<_> = entities
+        let all_instances: Vec<_> = entity_paths
             .iter()
             .flat_map(|entity| {
                 store
@@ -105,7 +106,7 @@ impl SpaceViewClass for DataframeSpaceView {
             .unique()
             .collect();
 
-        let all_components: Vec<_> = entities
+        let all_components: Vec<_> = entity_paths
             .iter()
             .flat_map(|entity| {
                 store
@@ -152,7 +153,7 @@ impl SpaceViewClass for DataframeSpaceView {
                                     let instance = &all_instances[idx];
 
                                     row.col(|ui| {
-                                        ui.label(format!("{instance}"));
+                                        instance_path_button(ctx, ui, None, instance);
                                     });
 
                                     for comp in &all_components {
