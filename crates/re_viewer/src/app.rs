@@ -796,7 +796,7 @@ impl App {
             }
 
             if let Err(err) = store_db.add(&msg) {
-                re_log::error!("Failed to add incoming msg: {err}");
+                re_log::error_once!("Failed to add incoming msg: {err}");
             };
 
             if is_new_store && store_db.store_kind() == StoreKind::Recording {
