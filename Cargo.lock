@@ -4462,6 +4462,7 @@ dependencies = [
  "criterion",
  "document-features",
  "egui_plot",
+ "emath",
  "getrandom",
  "itertools 0.11.0",
  "mimalloc",
