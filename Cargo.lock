@@ -5185,6 +5185,7 @@ dependencies = [
  "image",
  "itertools 0.11.0",
  "nohash-hasher",
+ "once_cell",
  "rayon",
  "re_arrow_store",
  "re_data_store",

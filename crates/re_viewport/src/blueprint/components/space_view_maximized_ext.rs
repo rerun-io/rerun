@@ -7,7 +7,7 @@ fn test_space_view_maximized() {
 
     for data in [
         [SpaceViewMaximized(None)],
-        [SpaceViewMaximized(Some(SpaceViewId::random()))],
+        [SpaceViewMaximized(Some(SpaceViewId::random().into()))],
     ] {
         let array: Box<dyn arrow2::array::Array> =
             SpaceViewMaximized::to_arrow(data.as_slice()).unwrap();

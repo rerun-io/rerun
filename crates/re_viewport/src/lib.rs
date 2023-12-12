@@ -22,6 +22,9 @@ mod viewport_blueprint_ui;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
+// Transitive re-imports of blueprint dependencies.
+use re_types::datatypes;
+
 pub use space_info::SpaceInfoCollection;
 pub use space_view::SpaceViewBlueprint;
 pub use space_view_heuristics::identify_entities_per_system_per_class;

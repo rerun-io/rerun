@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
-
 use re_data_store::{EntityPath, StoreDb};
 use re_log_types::{DataRow, RowId, TimePoint};
 use re_types::blueprint::datatypes::SpaceViewComponent;
@@ -12,8 +10,9 @@ use re_viewer_context::{
 };
 
 use crate::{
-    blueprint::components::{AutoSpaceViews, SpaceViewMaximized},
-    blueprint::datatypes::ViewportLayout,
+    blueprint::components::{
+        AutoLayout, AutoSpaceViews, IncludedSpaceViews, SpaceViewMaximized, ViewportLayout,
+    },
     space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
     space_view_heuristics::default_created_space_views,
@@ -278,25 +277,37 @@ impl<'a> ViewportBlueprint<'a> {
         // TODO(jleibs): Seq instead of timeless?
         let timepoint = TimePoint::timeless();
 
+        if after.space_views.len() != before.space_views.len()
+            || after
+                .space_views
+                .keys()
+                .zip(before.space_views.keys())
+                .any(|(a, b)| a != b)
+        {
+            let component =
+                IncludedSpaceViews(after.space_views.keys().map(|id| (*id).into()).collect());
+            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
+        }
+
+        if after.auto_layout != before.auto_layout {
+            let component = AutoLayout(after.auto_layout);
+            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
+        }
+
         if after.auto_space_views != before.auto_space_views {
             let component = AutoSpaceViews(after.auto_space_views);
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
 
         if after.maximized != before.maximized {
-            let component = SpaceViewMaximized(after.maximized);
+            let component = SpaceViewMaximized(after.maximized.map(|id| id.into()));
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
 
-        if after.tree != before.tree || after.auto_layout != before.auto_layout {
+        if after.tree != before.tree {
             re_log::trace!("Syncing tree");
 
-            let component: crate::blueprint::components::ViewportLayout = ViewportLayout {
-                space_view_keys: after.space_views.keys().cloned().collect(),
-                tree: after.tree.clone(),
-                auto_layout: after.auto_layout,
-            }
-            .into();
+            let component = ViewportLayout(after.tree.clone());
 
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
@@ -351,18 +362,25 @@ fn add_delta_from_single_component<'a, C>(
 pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint<'_> {
     re_tracing::profile_function!();
 
-    let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =
-        blueprint_db.tree().subtree(SpaceViewId::registry())
-    {
-        space_views
-            .children
-            .values()
-            .filter_map(|view_tree| SpaceViewBlueprint::try_from_db(&view_tree.path, blueprint_db))
-            .map(|sv| (sv.id, sv))
-            .collect()
-    } else {
-        Default::default()
-    };
+    let space_view_ids: Vec<SpaceViewId> = blueprint_db
+        .store()
+        .query_timeless_component_quiet::<IncludedSpaceViews>(&VIEWPORT_PATH.into())
+        .map(|v| v.0.iter().map(|id| (*id).into()).collect())
+        .unwrap_or_default();
+
+    let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
+        .into_iter()
+        .filter_map(|space_view: SpaceViewId| {
+            SpaceViewBlueprint::try_from_db(&space_view.as_entity_path(), blueprint_db)
+        })
+        .map(|sv| (sv.id, sv))
+        .collect();
+
+    let auto_layout = blueprint_db
+        .store()
+        .query_timeless_component_quiet::<AutoLayout>(&VIEWPORT_PATH.into())
+        .map(|v| v.0)
+        .unwrap_or_default();
 
     let auto_space_views = blueprint_db
         .store()
@@ -379,21 +397,23 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
             |auto| auto.value,
         );
 
-    let space_view_maximized = blueprint_db
+    let maximized = blueprint_db
         .store()
         .query_timeless_component_quiet::<SpaceViewMaximized>(&VIEWPORT_PATH.into())
         .map(|space_view| space_view.value)
-        .unwrap_or_default();
+        .map(|v| v.0)
+        .unwrap_or_default()
+        .map(|v| v.into());
 
-    let viewport_layout: ViewportLayout = blueprint_db
+    let tree = blueprint_db
         .store()
-        .query_timeless_component_quiet::<crate::blueprint::components::ViewportLayout>(
-            &VIEWPORT_PATH.into(),
-        )
+        .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
         .map(|space_view| space_view.value)
         .unwrap_or_default()
         .0;
 
+    // TODO(jleibs): what to do about auto-discovery?
+    /*
     let unknown_space_views: HashMap<_, _> = space_views
         .iter()
         .filter(|(k, _)| !viewport_layout.space_view_keys.contains(k))
@@ -404,25 +424,27 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         .into_iter()
         .filter(|(k, _)| viewport_layout.space_view_keys.contains(k))
         .collect();
+    */
 
-    let mut viewport = ViewportBlueprint {
+    ViewportBlueprint {
         blueprint_db,
-        space_views: known_space_views,
-        tree: viewport_layout.tree,
-        maximized: space_view_maximized.0,
-        auto_layout: viewport_layout.auto_layout,
+        space_views,
+        tree,
+        maximized,
+        auto_layout,
         auto_space_views: auto_space_views.0,
         deferred_tree_actions: Default::default(),
-    };
+    }
     // TODO(jleibs): It seems we shouldn't call this until later, after we've created
     // the snapshot. Doing this here means we are mutating the state before it goes
     // into the snapshot. For example, even if there's no visibility in the
     // store, this will end up with default-visibility, which then *won't* be saved back.
+    // TODO(jleibs): what to do about auto-discovery?
+    /*
     for (_, view) in unknown_space_views {
         viewport.add_space_view(view);
     }
-
-    viewport
+    */
 }
 
 // ----------------------------------------------------------------------------
