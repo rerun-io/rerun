@@ -25,7 +25,7 @@ pub struct ErrorEntry {
 /// On native & webgl, what accounts for as an error duplicate is a heuristic based on wgpu-core error type.
 ///
 /// Used to avoid spamming the user with repeating errors.
-/// [`RendererContext`] maintains a "top level" error tracker for all otherwise unhandled errors.
+/// [`crate::RenderContext`] maintains a "top level" error tracker for all otherwise unhandled errors.
 ///
 /// TODO(#4507): Users should be able to create their own scopes feeding into separate trackers.
 #[derive(Default)]

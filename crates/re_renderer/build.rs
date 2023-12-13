@@ -119,14 +119,15 @@ fn should_run() -> bool {
 }
 
 fn main() {
-    // TODO(andreas): Create an upstream PR to fix this.
+    // TODO(andreas): Create an upstream PR `cfg_aliases` to fix this.
     // Workaround for CARGO_CFG_DEBUG_ASSERTIONS not being set as expected.
     // `cfg_aliases` relies on this.
     if std::env::var("PROFILE") == Ok("debug".to_owned()) {
         std::env::set_var("CARGO_CFG_DEBUG_ASSERTIONS", "1");
     }
 
-    #[allow(clippy::str_to_string)] // TODO(andreas): Create an upstream PR to fix this.
+    #[allow(clippy::str_to_string)]
+    // TODO(andreas): Create an upstream PR to `cfg_aliases` fix this.
     {
         cfg_aliases::cfg_aliases! {
             native: { not(target_arch = "wasm32") },

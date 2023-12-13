@@ -58,7 +58,7 @@ pub struct RenderContext {
     frame_index_for_uncaptured_errors: Arc<AtomicU64>,
 
     /// Error tracker used for `top_level_error_scope` and [`wgpu::Device::on_uncaptured_error`].
-    top_level_error_tracker: std::sync::Arc<ErrorTracker>,
+    top_level_error_tracker: Arc<ErrorTracker>,
 
     pub gpu_resources: WgpuResourcePools, // Last due to drop order.
 }
@@ -125,18 +125,18 @@ impl RenderContext {
 
         let frame_index_for_uncaptured_errors = Arc::new(AtomicU64::new(STARTUP_FRAME_IDX));
 
-        // Make sure to catch all errors, never crash and deduplicate reported errors.
+        // Make sure to catch all errors, never crash, and deduplicate reported errors.
         // `on_uncaptured_error` is a last-resort handler which we should never hit,
         // since there should always be an open error scope.
         //
-        // Note that this handler may not be called for all errors if no scope is present.
-        // (as of writing, wgpu-core will always call it when there's no scope, but Dawn doesn't!)
-        // Therefore, it is important to always have a scope open!
+        // Note that this handler may not be called for all errors!
+        // (as of writing, wgpu-core will always call it when there's no open error scope, but Dawn doesn't!)
+        // Therefore, it is important to always have a `WgpuErrorScope` open!
         // See https://www.w3.org/TR/webgpu/#telemetry
         let top_level_error_tracker = {
-            let err_tracker = std::sync::Arc::new(ErrorTracker::default());
+            let err_tracker = Arc::new(ErrorTracker::default());
             device.on_uncaptured_error({
-                let err_tracker = std::sync::Arc::clone(&err_tracker);
+                let err_tracker = Arc::clone(&err_tracker);
                 let frame_index_for_uncaptured_errors = frame_index_for_uncaptured_errors.clone();
                 Box::new(move |err| {
                     err_tracker.handle_error(
@@ -502,9 +502,9 @@ pub struct ActiveFrameContext {
     /// Top level device error scope, created at startup and closed & reopened on every frame.
     ///
     /// According to documentation, not all errors may be caught by [`wgpu::Device::on_uncaptured_error`].
-    /// https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror
+    /// <https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror>
     /// Therefore, we should make sure that we _always_ have an error scope open!
-    /// Additionally, we use this to update [`RendererContext::frame_index_for_uncaptured_errors`].
+    /// Additionally, we use this to update [`RenderContext::frame_index_for_uncaptured_errors`].
     ///
     /// The only time this is allowed to be `None` is during shutdown and when closing an old and opening a new scope.
     top_level_error_scope: Option<WgpuErrorScope>,
