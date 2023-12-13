@@ -1,6 +1,7 @@
 name: Nightly
 
 on:
+  workflow_dispatch:
   pull_request:
     types:
       - opened
@@ -36,7 +37,7 @@ jobs:
     secrets: inherit
 
   build-wheel-linux:
-    name: "Linux: Build & Upload Wheels"
+    name: "Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
       CONCURRENCY: nightly-linux
