@@ -1,6 +1,6 @@
 use crate::path::EntityPathPart;
 
-/// `camera / "left" / points / #42`
+/// `camera/left/points/42`
 ///
 /// Wrapped by [`crate::EntityPath`] together with a hash.
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -83,9 +83,8 @@ where
 
 impl std::fmt::Debug for EntityPathImpl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Show the nicely formatted entity path, but surround with quotes and escape
-        // troublesome characters such as back-slashes and newlines.
-        write!(f, "{:?}", self.to_string())
+        // Like `Display`, but with quotes
+        write!(f, "'{self}'")
     }
 }
 

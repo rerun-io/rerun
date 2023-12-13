@@ -18,12 +18,12 @@ all-features = true
 
 [dependencies]
 smallvec.workspace = true
-static_assertions = "1.1"
+static_assertions.workspace = true
 
 
 [dev-dependencies]
-criterion = "0.5"
-insta = "1.23"
+criterion.workspace = true
+insta.workspace = true
 mimalloc.workspace = true
 
 

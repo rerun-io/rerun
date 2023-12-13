@@ -30,10 +30,10 @@ once_cell.workspace = true
 web-time.workspace = true
 
 # Optional dependencies
-serde = { version = "1", features = ["derive"], optional = true }
+serde = { workspace = true, features = ["derive"], optional = true }
 
 [dev-dependencies]
-criterion = "0.5"
+criterion.workspace = true
 
 [lib]
 bench = false
