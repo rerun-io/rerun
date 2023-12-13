@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+/// Whether the space view entities were manually edited.
+table EntitiesDeterminedByUser (
+    "attr.rerun.scope": "blueprint",
+    "attr.docs.unreleased",
+    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.repr": "transparent"
+) {
+    value: bool (order: 100);
+}

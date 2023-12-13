@@ -1,0 +1,23 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+
+/// All the queries belonging to a given `SpaceView`.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+table IncludedQueries (
+  "attr.docs.unreleased",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default",
+  "attr.rust.repr": "transparent"
+) {
+  query_ids: [rerun.datatypes.Uuid] (order: 100);
+}
