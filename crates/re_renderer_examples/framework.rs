@@ -238,7 +238,7 @@ impl<E: Example + 'static> Application<E> {
                     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
                     let frame = match self.surface.get_current_texture() {
                         Ok(frame) => frame,
-                        Err(wgpu::SurfaceError::Outdated) => {
+                        Err(wgpu::SurfaceError::Timeout | wgpu::SurfaceError::Outdated) => {
                             // We haven't been able to present anything to the swapchain for
                             // a while, because the pipeline is poisoned.
                             // Recreate a sane surface to restart the cycle and see if the
