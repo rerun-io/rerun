@@ -145,10 +145,17 @@ pub(crate) fn load(
     is_dir: bool,
     contents: Option<std::borrow::Cow<'_, [u8]>>,
 ) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
+    #[cfg(target_arch = "wasm32")]
+    let no_external_loaders = true;
+    #[cfg(not(target_arch = "wasm32"))]
+    let no_external_loaders = crate::data_loader::EXTERNAL_LOADER_PATHS.is_empty();
+
     let extension = extension(path);
     let is_builtin = is_associated_with_builtin_loader(path, is_dir);
 
-    if !is_builtin {
+    // If there are no external loaders registered (which is always the case on wasm) and we don't
+    // have a builtin loader for it, then we know for a fact that we won't be able to load it.
+    if !is_builtin && no_external_loaders {
         return if extension.is_empty() {
             Err(anyhow::anyhow!("files without extensions (file.XXX) are not supported").into())
         } else {

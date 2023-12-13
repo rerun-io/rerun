@@ -206,6 +206,8 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
+        #[cfg(not(target_arch = "wasm32"))]
+        Arc::new(ExternalDataLoader),
     ]
 });
 
@@ -221,6 +223,14 @@ mod loader_archetype;
 mod loader_directory;
 mod loader_rrd;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod loader_external;
+
 pub use self::loader_archetype::ArchetypeLoader;
 pub use self::loader_directory::DirectoryLoader;
 pub use self::loader_rrd::RrdLoader;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use self::loader_external::EXTERNAL_LOADER_PATHS;
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::loader_external::{ExternalDataLoader, EXTERNAL_DATA_LOADER_PREFIX};
