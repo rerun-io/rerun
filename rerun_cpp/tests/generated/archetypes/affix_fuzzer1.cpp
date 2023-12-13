@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(22);
+        cells.reserve(23);
 
         {
             auto result = DataCell::from_loggable(archetype.fuzz1001);
@@ -118,6 +118,11 @@ namespace rerun {
         }
         {
             auto result = DataCell::from_loggable(archetype.fuzz1021);
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        {
+            auto result = DataCell::from_loggable(archetype.fuzz1022);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

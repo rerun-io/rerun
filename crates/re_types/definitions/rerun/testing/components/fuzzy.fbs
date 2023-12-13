@@ -136,6 +136,13 @@ table AffixFuzzer21 (
   nested_halves: rerun.testing.datatypes.AffixFuzzer21 (order: 120);
 }
 
+table AffixFuzzer22 (
+  "attr.rust.derive": "Default, PartialEq, Eq"
+) {
+  nullable_nested_array: rerun.testing.datatypes.AffixFuzzer22 (order: 120, nullable);
+}
+
+
 // TODO(cmc): the ugly bug we need to take care of at some point
 // table AffixFuzzer14 (
 //   "attr.rust.derive": "Default, PartialEq"

@@ -65,6 +65,7 @@ from .affix_fuzzer18 import (
 from .affix_fuzzer19 import AffixFuzzer19, AffixFuzzer19Batch, AffixFuzzer19Type
 from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20Batch, AffixFuzzer20Type
 from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21Batch, AffixFuzzer21Type
+from .affix_fuzzer22 import AffixFuzzer22, AffixFuzzer22Batch, AffixFuzzer22Type
 
 __all__ = [
     "AffixFuzzer1",
@@ -121,6 +122,9 @@ __all__ = [
     "AffixFuzzer21",
     "AffixFuzzer21Batch",
     "AffixFuzzer21Type",
+    "AffixFuzzer22",
+    "AffixFuzzer22Batch",
+    "AffixFuzzer22Type",
     "AffixFuzzer2Batch",
     "AffixFuzzer2Type",
     "AffixFuzzer3",

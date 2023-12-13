@@ -38,6 +38,7 @@ class AffixFuzzer2(Archetype):
         fuzz1116: components.AffixFuzzer16ArrayLike,
         fuzz1117: components.AffixFuzzer17ArrayLike,
         fuzz1118: components.AffixFuzzer18ArrayLike,
+        fuzz1122: datatypes.AffixFuzzer22ArrayLike,
     ):
         """Create a new instance of the AffixFuzzer2 archetype."""
 
@@ -62,6 +63,7 @@ class AffixFuzzer2(Archetype):
                 fuzz1116=fuzz1116,
                 fuzz1117=fuzz1117,
                 fuzz1118=fuzz1118,
+                fuzz1122=fuzz1122,
             )
             return
         self.__attrs_clear__()
@@ -87,6 +89,7 @@ class AffixFuzzer2(Archetype):
             fuzz1116=None,  # type: ignore[arg-type]
             fuzz1117=None,  # type: ignore[arg-type]
             fuzz1118=None,  # type: ignore[arg-type]
+            fuzz1122=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -167,6 +170,10 @@ class AffixFuzzer2(Archetype):
     fuzz1118: components.AffixFuzzer18Batch = field(
         metadata={"component": "required"},
         converter=components.AffixFuzzer18Batch._required,  # type: ignore[misc]
+    )
+    fuzz1122: components.AffixFuzzer22Batch = field(
+        metadata={"component": "required"},
+        converter=components.AffixFuzzer22Batch._required,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
