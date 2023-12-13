@@ -6,7 +6,7 @@ use re_smart_channel::ReceiveSet;
 use re_space_view::DataQuery as _;
 use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
-    SelectionState, SpaceViewClassRegistry, StoreContext, ViewerContext,
+    SelectionState, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{
     identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportState,
@@ -104,7 +104,20 @@ impl AppState {
             viewport_state,
         } = self;
 
-        let mut viewport = Viewport::from_db(store_context.blueprint, viewport_state);
+        let viewport = Viewport::from_db(store_context.blueprint, viewport_state);
+
+        // If the blueprint is invalid, reset it.
+        if viewport.blueprint.is_invalid() {
+            re_log::warn!("Incompatible blueprint detected. Resetting to default.");
+            command_sender.send_system(re_viewer_context::SystemCommand::ResetBlueprint);
+
+            // The blueprint isn't valid so nothing past this is going to work properly.
+            // we might as well return and it will get fixed on the next frame.
+
+            // TODO(jleibs): If we move viewport loading up to a context where the StoreDb is mutable
+            // we can run the clear and re-load.
+            return;
+        }
 
         recording_config_entry(recording_configs, store_db.store_id().clone(), store_db)
             .selection_state
@@ -125,7 +138,7 @@ impl AppState {
             viewport
                 .blueprint
                 .space_views
-                .values_mut()
+                .values()
                 .flat_map(|space_view| {
                     space_view.queries.iter().map(|query| {
                         let resolver =
@@ -162,12 +175,6 @@ impl AppState {
         // This may update their heuristics, so that all panels that are shown in this frame,
         // have the latest information.
         let spaces_info = SpaceInfoCollection::new(ctx.store_db);
-
-        // If the blueprint is invalid, reset it.
-        if viewport.blueprint.is_invalid() {
-            re_log::warn!("Incompatible blueprint detected. Resetting to default.");
-            viewport.blueprint.reset(&ctx, &spaces_info);
-        }
 
         viewport.on_frame_start(&ctx, &spaces_info);
 
