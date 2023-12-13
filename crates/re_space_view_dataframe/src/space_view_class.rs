@@ -95,36 +95,42 @@ impl SpaceViewClass for DataframeSpaceView {
         let store = ctx.store_db.store();
         let latest_at_query = query.latest_at_query();
 
-        // Produce a sorted list of each entity with all their instance keys. This will be the rows
-        // of the table.
-        //
-        // Important: our semantics here differs from other built-in space views. "Out-of-bound"
-        // instance keys (aka instance keys from a secondary component that cannot be joined with a
-        // primary component) are not filtered out. Reasons:
-        // - Primary/secondary component distinction only makes sense with archetypes, which we
-        //   ignore. TODO(#4466): make archetypes more explicit?
-        // - This space view is about showing all user data anyways.
-        //
-        // Note: this must be a `Vec<_>` because we need random access for `body.rows()`.
-        let sorted_instance_paths: Vec<_> = sorted_entity_paths
-            .iter()
-            .flat_map(|entity_path| {
-                sorted_instance_paths_for(entity_path, store, &query.timeline, &latest_at_query)
-            })
-            .collect();
+        let sorted_instance_paths: Vec<_>;
+        let sorted_components: BTreeSet<_>;
+        {
+            re_tracing::profile_scope!("query");
 
-        // Produce a sorted list of all components that are present in one or more entities. This
-        // will be the columns of the table.
-        let sorted_components: BTreeSet<_> = sorted_entity_paths
-            .iter()
-            .flat_map(|entity_path| {
-                store
-                    .all_components(&query.timeline, entity_path)
-                    .unwrap_or_default()
-            })
-            // TODO(#4466): make showing/hiding indicators components an explicit optional
-            .filter(|comp| !comp.is_indicator_component())
-            .collect();
+            // Produce a sorted list of each entity with all their instance keys. This will be the rows
+            // of the table.
+            //
+            // Important: our semantics here differs from other built-in space views. "Out-of-bound"
+            // instance keys (aka instance keys from a secondary component that cannot be joined with a
+            // primary component) are not filtered out. Reasons:
+            // - Primary/secondary component distinction only makes sense with archetypes, which we
+            //   ignore. TODO(#4466): make archetypes more explicit?
+            // - This space view is about showing all user data anyways.
+            //
+            // Note: this must be a `Vec<_>` because we need random access for `body.rows()`.
+            sorted_instance_paths = sorted_entity_paths
+                .iter()
+                .flat_map(|entity_path| {
+                    sorted_instance_paths_for(entity_path, store, &query.timeline, &latest_at_query)
+                })
+                .collect();
+
+            // Produce a sorted list of all components that are present in one or more entities. This
+            // will be the columns of the table.
+            sorted_components = sorted_entity_paths
+                .iter()
+                .flat_map(|entity_path| {
+                    store
+                        .all_components(&query.timeline, entity_path)
+                        .unwrap_or_default()
+                })
+                // TODO(#4466): make showing/hiding indicators components an explicit optional
+                .filter(|comp| !comp.is_indicator_component())
+                .collect();
+        }
 
         // Draw the header row.
         let header_ui = |mut row: egui_extras::TableRow<'_, '_>| {
@@ -182,35 +188,39 @@ impl SpaceViewClass for DataframeSpaceView {
             }
         };
 
-        egui::ScrollArea::both()
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                ui.style_mut().wrap = Some(false);
+        {
+            re_tracing::profile_scope!("table UI");
 
-                egui::Frame {
-                    inner_margin: egui::Margin::same(5.0),
-                    ..Default::default()
-                }
+            egui::ScrollArea::both()
+                .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    egui_extras::TableBuilder::new(ui)
-                        .columns(
-                            Column::auto_with_initial_suggestion(200.0).clip(true),
-                            1 + sorted_components.len(),
-                        )
-                        .resizable(true)
-                        .vscroll(false)
-                        .auto_shrink([false, true])
-                        .striped(true)
-                        .header(re_ui::ReUi::table_line_height(), header_ui)
-                        .body(|body| {
-                            body.rows(
-                                re_ui::ReUi::table_line_height(),
-                                sorted_instance_paths.len(),
-                                row_ui,
-                            );
-                        });
+                    ui.style_mut().wrap = Some(false);
+
+                    egui::Frame {
+                        inner_margin: egui::Margin::same(5.0),
+                        ..Default::default()
+                    }
+                    .show(ui, |ui| {
+                        egui_extras::TableBuilder::new(ui)
+                            .columns(
+                                Column::auto_with_initial_suggestion(200.0).clip(true),
+                                1 + sorted_components.len(),
+                            )
+                            .resizable(true)
+                            .vscroll(false)
+                            .auto_shrink([false, true])
+                            .striped(true)
+                            .header(re_ui::ReUi::table_line_height(), header_ui)
+                            .body(|body| {
+                                body.rows(
+                                    re_ui::ReUi::table_line_height(),
+                                    sorted_instance_paths.len(),
+                                    row_ui,
+                                );
+                            });
+                    });
                 });
-            });
+        }
 
         Ok(())
     }
