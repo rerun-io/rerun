@@ -107,7 +107,7 @@ bitflags = { version = "2.4", features = ["bytemuck"] }
 blackbox = "0.2.0"
 bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 camino = "1.1"
-cargo_metadata = "0.15"
+cargo_metadata = "0.18"
 cargo-run-wasm = "0.3.2"
 cfg-if = "1.0"
 clang-format = "0.2"
