@@ -137,8 +137,8 @@ hyper = "0.14"
 image = { version = "0.24", default-features = false }
 indent = "0.1"
 indicatif = "0.17.7"                                               # Progress bar
-infer = "0.15"
-insta = "1.23"                                                     # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
+infer = "0.15"                                                     # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
+insta = "1.23"
 itertools = "0.11"                                                 # updating itertools is blocked on the next egui_tiles update
 js-sys = "0.3"
 # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
@@ -210,7 +210,7 @@ tracing = { version = "0.1", default-features = false }
 tungstenite = { version = "0.17", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
-unindent = "0.1" # pyo3 0.19 uses 0.1, so update this whenm we update pyo3
+unindent = "0.1" # pyo3 0.19 uses unindent 0.1, so update unindent when we update pyo3
 uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
