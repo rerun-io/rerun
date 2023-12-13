@@ -2,4 +2,5 @@
 
 #pragma once
 
+#include "blueprint/archetypes/space_view_blueprint.hpp"
 #include "blueprint/archetypes/viewport_blueprint.hpp"
