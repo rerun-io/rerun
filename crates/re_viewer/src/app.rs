@@ -974,7 +974,9 @@ impl App {
         for source in sources {
             match &*source {
                 // No need for a welcome screen - data is coming soon!
-                SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
+                SmartChannelSource::File(_)
+                | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::Stdin => {
                     return false;
                 }
 

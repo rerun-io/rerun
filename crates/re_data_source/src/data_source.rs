@@ -22,6 +22,10 @@ pub enum DataSource {
 
     /// A remote Rerun server.
     WebSocketAddr(String),
+
+    // RRD data streaming in from standard input.
+    #[cfg(not(target_arch = "wasm32"))]
+    Stdin,
 }
 
 impl DataSource {
@@ -146,6 +150,22 @@ impl DataSource {
 
             DataSource::WebSocketAddr(rerun_server_ws_url) => {
                 crate::web_sockets::connect_to_ws_url(&rerun_server_ws_url, on_msg)
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::Stdin => {
+                let (tx, rx) = re_smart_channel::smart_channel(
+                    SmartMessageSource::Stdin,
+                    SmartChannelSource::Stdin,
+                );
+
+                crate::load_stdin::load_stdin(tx).with_context(|| "stdin".to_owned())?;
+
+                if let Some(on_msg) = on_msg {
+                    on_msg();
+                }
+
+                Ok(rx)
             }
         }
     }

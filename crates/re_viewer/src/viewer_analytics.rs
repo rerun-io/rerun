@@ -233,6 +233,7 @@ impl ViewerAnalytics {
                 re_smart_channel::SmartChannelSource::Sdk => "sdk", // show()
                 re_smart_channel::SmartChannelSource::WsClient { .. } => "ws_client", // spawn()
                 re_smart_channel::SmartChannelSource::TcpServer { .. } => "tcp_server", // connect()
+                re_smart_channel::SmartChannelSource::Stdin => "stdin",
             };
             self.register("data_source", data_source);
         }
