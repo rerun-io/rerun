@@ -164,7 +164,16 @@ pub struct WrappedContextError(pub Box<wgpu_core::error::ContextError>);
 
 impl std::hash::Hash for WrappedContextError {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.label.hash(state); // e.g. "composite_encoder"
+        // If we haven't set a debug label ourselves, the label is typically not stable across frames,
+        // Since wgc fills in the generation counter.
+        // Snip that part, starting with the last occurence of -(.
+        let label = if let Some(index) = self.0.label.find("-(") {
+            &self.0.label[..index]
+        } else {
+            &self.0.label
+        };
+
+        label.hash(state); // e.g. "composite_encoder"
         self.0.label_key.hash(state); // e.g. "encoder"
         self.0.string.hash(state); // e.g. "a RenderPass"
 

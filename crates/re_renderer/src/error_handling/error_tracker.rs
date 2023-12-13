@@ -10,10 +10,14 @@ use super::wgpu_core_error::WrappedContextError;
 #[derive(Hash, PartialEq, Eq, Debug)]
 struct WrappedContextError(pub String);
 
-struct ErrorEntry {
+pub struct ErrorEntry {
     /// Frame index for frame on which this error was last logged.
     last_occurred_frame_index: u64,
-    // TODO(andreas): Should we also track when this frame was *first* logged?
+
+    /// Description of the error.
+    // TODO(#4507): Expecting to need this once we use this in space views. Also very useful for debugging.
+    #[allow(dead_code)]
+    description: String,
 }
 
 /// Keeps track of wgpu errors and de-duplicates messages across frames.
@@ -26,7 +30,7 @@ struct ErrorEntry {
 /// TODO(#4507): Users should be able to create their own scopes feeding into separate trackers.
 #[derive(Default)]
 pub struct ErrorTracker {
-    errors: Mutex<HashMap<WrappedContextError, ErrorEntry>>,
+    pub errors: Mutex<HashMap<WrappedContextError, ErrorEntry>>,
 }
 
 impl ErrorTracker {
@@ -101,11 +105,16 @@ impl ErrorTracker {
                 source: _source,
                 description,
             } => {
+                let entry = ErrorEntry {
+                    last_occurred_frame_index: frame_index,
+                    description: description.clone(),
+                };
+
                 cfg_if::cfg_if! {
                     if #[cfg(webgpu)] {
                         if self.errors.lock().insert(
                             WrappedContextError(description.clone()),
-                            ErrorEntry { last_occurred_frame_index: frame_index }
+                            entry
                         ).is_none() {
                             re_log::error!(
                                 "WGPU error in frame {}: {}", frame_index, description
@@ -125,7 +134,7 @@ impl ErrorTracker {
                                 }
 
                                 let ctx_err = WrappedContextError(ctx_err);
-                                if self.errors.lock().insert(ctx_err, ErrorEntry { last_occurred_frame_index: frame_index }).is_none() {
+                                if self.errors.lock().insert(ctx_err, entry).is_none() {
                                     re_log::error!(
                                         "WGPU error in frame {}: {}", frame_index, description
                                     );
