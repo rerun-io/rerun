@@ -177,6 +177,7 @@ Update instructions:
 |----------------------------|---------------------------------------------------------------|
 | re_build_info              | Information about the build. Use together with re_build_tools |
 | re_build_tools             | build.rs helpers for generating build info                    |
+| re_examples                | Utils for rerun example builds                                |
 | re_types_builder           | Generates code for Rerun's SDKs from flatbuffers definitions. |
 | re_build_examples          | Build rerun example RRD files                                 |
 | re_build_examples_manifest | Build the rerun examples manifest JSON file                   |
