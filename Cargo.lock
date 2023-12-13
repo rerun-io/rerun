@@ -942,9 +942,12 @@ dependencies = [
 
 [[package]]
 name = "clang-format"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88dfe5eb75e066e696abfca68fb70db71236441b7335975ecf79caf0875e3175"
+checksum = "696283b40e1a39d208ee614b92e5f6521d16962edeb47c48372585ec92419943"
+dependencies = [
+ "thiserror",
+]
 
 [[package]]
 name = "clap"
