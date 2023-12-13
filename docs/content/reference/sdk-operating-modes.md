@@ -80,6 +80,12 @@ Use [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.Recordin
 
 Streams all logging data to standard output, which can then be loaded by the Rerun Viewer by streaming it from standard input.
 
+#### Python
+
+Use [`rr.stdout`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.stdout?speculative-link).
+
+Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/python/stdio/main.py?speculative-link).
+
 #### Rust
 
 Use [`RecordingStream::stdout`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.stdout?speculative-link).
