@@ -122,7 +122,7 @@ def print_section(title: str, items: list[str]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a changelog.")
-    parser.add_argument("--commit-range", default="latest..HEAD", help="e.g. 0.8.0..HEAD")
+    parser.add_argument("--commit-range", help="e.g. 0.11.0..HEAD")
     args = parser.parse_args()
 
     # Because how we branch, we sometimes get duplicate commits in the changelog unless we check for it
@@ -153,6 +153,7 @@ def main() -> None:
     docs = []
     enhancement = []
     examples = []
+    log_api = []
     misc = []
     performance = []
     python = []
@@ -208,16 +209,21 @@ def main() -> None:
 
             added = False
 
-            # Some PRs can show up underm multiple sections:
-            if "C/C++ SDK" in labels:
-                cpp.append(summary)
+            # Some PRs can show up under multiple sections:
+            if "🪵 Log-API" in labels:
+                log_api.append(summary)
                 added = True
-            if "🐍 python API" in labels:
-                python.append(summary)
-                added = True
-            if "🦀 rust SDK" in labels:
-                rust.append(summary)
-                added = True
+            else:
+                if "🌊 C++ API" in labels:
+                    cpp.append(summary)
+                    added = True
+                if "🐍 Python API" in labels:
+                    python.append(summary)
+                    added = True
+                if "🦀 Rust API" in labels:
+                    rust.append(summary)
+                    added = True
+
             if "📊 analytics" in labels:
                 analytics.append(summary)
                 added = True
@@ -255,9 +261,10 @@ def main() -> None:
     print()
 
     # Most interesting first:
-    print_section("🌊 C++ SDK", cpp)
-    print_section("🐍 Python SDK", python)
-    print_section("🦀 Rust SDK", rust)
+    print_section("🪵 Log API", log_api)
+    print_section("🌊 C++ API", cpp)
+    print_section("🐍 Python API", python)
+    print_section("🦀 Rust API", rust)
     print_section("🪳 Bug Fixes", bugs)
     print_section("🌁 Viewer Improvements", viewer)
     print_section("🚀 Performance Improvements", performance)
