@@ -93,13 +93,12 @@ jobs:
           headers: |-
             cache-control: no-cache, max-age=0
 
-      - name: "Upload examples (nightly)"
-        # TEMP: Tracking `main` until we can do actual nightly builds.
+      - name: "Upload examples (main)"
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "example_data"
-          destination: "rerun-web-viewer/version/nightly/examples"
+          destination: "rerun-web-viewer/version/main/examples"
           parent: false
           headers: |-
             cache-control: no-cache, max-age=0

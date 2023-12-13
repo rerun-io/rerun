@@ -60,7 +60,7 @@ jobs:
           cargo run --locked -p re_build_web_viewer -- --release ${{ inputs.EXTRA_FLAGS }}
 
       # We build a single manifest pointing to the `commit`
-      # All the `pr`, `nightly`, release tag, etc. variants will always just point to the resolved commit
+      # All the `pr`, `main`, release tag, etc. variants will always just point to the resolved commit
       - name: Build examples manifest
         shell: bash
         run: |

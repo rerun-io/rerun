@@ -10,8 +10,8 @@
 //! - On any `release-x.y.z` branch, the version is `version/x.y.z`
 //! - On any other branch, the version is `commit/$COMMIT_SHORT_HASH`
 //!
-//! Otherwise, the version is `version/nightly`. This means local builds,
-//! and builds on `main` point to `version/nightly`.
+//! Otherwise, the version is `version/main`. This means local builds,
+//! and builds on `main` point to `version/main`.
 
 use std::path::Path;
 use std::path::PathBuf;
@@ -23,7 +23,7 @@ Usage: [options] [output_path]
 
 Options:
     -h, --help       Print help
-        --base-url   Where all examples are uploaded, e.g. `https://demo.rerun.io/version/nightly`.
+        --base-url   Where all examples are uploaded, e.g. `https://app.rerun.io/version/main`.
 ";
 
 fn main() -> anyhow::Result<()> {
@@ -228,10 +228,10 @@ fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
     let versioned_manifest = matches!(build_env, Environment::CondaBuild) || {
         let branch = re_build_tools::git_branch()?;
         if branch == "main" || !re_build_tools::is_on_ci() {
-            // on `main` and local builds, use `version/nightly`
+            // on `main` and local builds, use `version/main`
             // this will point to data uploaded by `.github/workflows/reusable_upload_examples.yml`
             // on every commit to the `main` branch
-            return Ok("https://app.rerun.io/version/nightly".into());
+            return Ok("https://app.rerun.io/version/main".into());
         }
         parse_release_version(&branch).is_some()
     };

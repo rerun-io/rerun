@@ -94,13 +94,12 @@ jobs:
           headers: |-
             cache-control: no-cache, max-age=0
 
-      - name: "Upload web-viewer (nightly)"
-        # TEMP: Tracking `main` until we can do actual nightly builds.
+      - name: "Upload web-viewer (main)"
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_viewer"
-          destination: "rerun-web-viewer/version/nightly"
+          destination: "rerun-web-viewer/version/main"
           parent: false
           headers: |-
             cache-control: no-cache, max-age=0

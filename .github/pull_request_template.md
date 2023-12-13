@@ -17,7 +17,7 @@ To get an auto-generated PR description you can put "copilot:summary" or "copilo
 * [ ] I've included a screenshot or gif (if applicable)
 * [ ] I have tested the web demo (if applicable):
   * Full build: [app.rerun.io](https://app.rerun.io/pr/{{ pr.number }}/index.html)
-  * Partial build: [app.rerun.io](https://app.rerun.io/pr/{{ pr.number }}/index.html?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json) - Useful for quick testing when changes do not affect examples in any way
+  * Partial build: [app.rerun.io](https://app.rerun.io/pr/{{ pr.number }}/index.html?manifest_url=https://app.rerun.io/version/main/examples_manifest.json) - Useful for quick testing when changes do not affect examples in any way
 * [ ] The PR title and labels are set such as to maximize their usefulness for the next release's CHANGELOG
 
 - [PR Build Summary](https://build.rerun.io/pr/{{ pr.number }})
