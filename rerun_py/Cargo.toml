@@ -57,13 +57,13 @@ document-features.workspace = true
 itertools = { workspace = true }
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 once_cell.workspace = true
-parking_lot = "0.12"
-pyo3 = { version = "0.19.0", features = ["abi3-py38"] }
+parking_lot.workspace = true
+pyo3 = { workspace = true, features = ["abi3-py38"] }
 rand = { workspace = true, features = ["std_rng"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "signal"] }
-uuid = "1.1"
+uuid.workspace = true
 
 
 [build-dependencies]
 re_build_tools.workspace = true
-pyo3-build-config = "0.19.0"
+pyo3-build-config.workspace = true

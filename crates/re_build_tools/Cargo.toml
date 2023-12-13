@@ -18,9 +18,9 @@ all-features = true
 
 [dependencies]
 anyhow.workspace = true
-cargo_metadata = "0.15"
-glob = "0.3"
-sha2 = "0.10"
+cargo_metadata.workspace = true
+glob.workspace = true
+sha2.workspace = true
 time = { workspace = true, features = ["formatting"] }
-unindent = "0.1"
-walkdir = "2.0"
+unindent.workspace = true
+walkdir.workspace = true

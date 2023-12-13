@@ -36,7 +36,7 @@ re_tracing.workspace = true
 
 # External dependencies:
 arrow2.workspace = true
-backtrace = "0.3"
+backtrace.workspace = true
 document-features.workspace = true
 itertools = { workspace = true }
 thiserror.workspace = true
@@ -52,7 +52,7 @@ polars-core = { workspace = true, optional = true, features = [
 [dev-dependencies]
 re_types = { workspace = true, features = ["datagen"] }
 
-criterion = "0.5"
+criterion.workspace = true
 itertools = { workspace = true }
 mimalloc.workspace = true
 polars-core = { workspace = true, features = [
