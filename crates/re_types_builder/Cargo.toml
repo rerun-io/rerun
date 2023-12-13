@@ -26,20 +26,20 @@ re_tracing = { workspace = true, features = ["server"] }
 anyhow.workspace = true
 arrow2.workspace = true
 camino.workspace = true
-clang-format = "0.2"
-convert_case = "0.6"
-flatbuffers = "23.0"
-indent = "0.1"
+clang-format.workspace = true
+convert_case.workspace = true
+flatbuffers.workspace = true
+indent.workspace = true
 itertools.workspace = true
-prettyplease = "0.2"
-proc-macro2 = { version = "1.0", default-features = false }
-quote = "1.0"
+prettyplease.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
 rayon.workspace = true
-rust-format = "0.3"
-syn = "2.0"
-tempfile = "3.0"
+rust-format.workspace = true
+syn.workspace = true
+tempfile.workspace = true
 unindent.workspace = true
-xshell = "0.2"
+xshell.workspace = true
 
 
 [build-dependencies]
@@ -48,4 +48,4 @@ xshell = "0.2"
 re_build_tools.workspace = true
 
 # External
-xshell = "0.2"
+xshell.workspace = true

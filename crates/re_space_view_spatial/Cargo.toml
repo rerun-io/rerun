@@ -41,7 +41,7 @@ macaw = { workspace = true, features = ["with_serde"] }
 nohash-hasher.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
-serde = "1"
+serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
 
 

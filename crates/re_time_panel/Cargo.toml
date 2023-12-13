@@ -27,5 +27,5 @@ re_viewer_context.workspace = true
 
 egui.workspace = true
 itertools.workspace = true
-serde = "1.0"
+serde.workspace = true
 vec1.workspace = true

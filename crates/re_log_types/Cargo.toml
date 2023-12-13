@@ -51,9 +51,9 @@ arrow2 = { workspace = true, features = [
 backtrace.workspace = true
 bytemuck.workspace = true
 document-features.workspace = true
-fixed = { version = "1.17", default-features = false, features = ["serde"] }
+fixed = { workspace = true, default-features = false, features = ["serde"] }
 # `fixed` depends on `half`, so even though `half` is not directly used in this crate,
-# we keep it as a direct dependency to ensure it stays pinned on `2.2.1`
+# we keep it as a direct dependency to ensure it stays pinned to the right version
 half.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
