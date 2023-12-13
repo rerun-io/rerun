@@ -108,7 +108,7 @@ jobs:
         shell: bash
         run: |
           pixi run build-examples \
-            --channel "nightly" \
+            --channel "main" \
             web_viewer/examples
 
       - name: Build examples manifest
@@ -119,7 +119,7 @@ jobs:
 
           pixi run build-examples-manifest \
             --base-url "https://app.rerun.io/commit/$sha" \
-            --channel "nightly" \
+            --channel "main" \
             web_viewer/examples_manifest.json
 
       - name: Upload app.rerun.io (versioned)
