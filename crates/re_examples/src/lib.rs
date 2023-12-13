@@ -1,5 +1,7 @@
+use std::fmt::Display;
 use std::path::Path;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 pub struct Example {
     pub name: String,
@@ -13,6 +15,100 @@ pub struct Example {
     pub kind: ExampleKind,
 }
 
+impl ExampleKind {
+    #[allow(clippy::match_like_matches_macro)] // harder to read
+    pub fn included_in(&self, channel: Channel) -> bool {
+        match (channel, self) {
+            (Channel::Nightly, ExampleKind::Nightly | ExampleKind::Demo) => true,
+            (Channel::Main, ExampleKind::Demo) => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Default, Clone, Copy)]
+pub enum Channel {
+    #[default]
+    Main,
+    Nightly,
+}
+
+impl Channel {
+    pub fn examples(self) -> anyhow::Result<Vec<Example>> {
+        let mut examples = vec![];
+        let dir = Path::new("examples/python");
+        if !dir.exists() {
+            anyhow::bail!("Failed to find {}", dir.display())
+        }
+        if !dir.is_dir() {
+            anyhow::bail!("{} is not a directory", dir.display())
+        }
+
+        for folder in std::fs::read_dir(dir)? {
+            let folder = folder?;
+            let metadata = folder.metadata()?;
+            let name = folder.file_name().to_string_lossy().to_string();
+            let readme = folder.path().join("README.md");
+            if metadata.is_dir() && readme.exists() {
+                let readme = parse_frontmatter(readme)?;
+                let Some(readme) = readme else {
+                    eprintln!("Skipping example {name:?} because it has no frontmatter");
+                    continue;
+                };
+
+                let kind = ExampleKind::infer(readme.demo, readme.nightly);
+                if !kind.included_in(self) {
+                    eprintln!("Skipping example {name:?} because it is not included in the {self} channel");
+                    continue;
+                }
+
+                eprintln!("Adding example {name:?}");
+                examples.push(Example {
+                    name,
+                    title: readme.title,
+                    description: readme.description,
+                    tags: readme.tags,
+                    thumbnail_url: readme.thumbnail,
+                    thumbnail_dimensions: readme.thumbnail_dimensions,
+                    script_path: folder.path().join("main.py"),
+                    script_args: readme.build_args,
+                    kind,
+                });
+            }
+        }
+
+        if examples.is_empty() {
+            anyhow::bail!("No examples found in {}", dir.display())
+        }
+
+        examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+        Ok(examples)
+    }
+}
+
+impl Display for Channel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Channel::Main => "main",
+            Channel::Nightly => "nightly",
+        };
+        f.write_str(s)
+    }
+}
+
+impl FromStr for Channel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "main" => Ok(Self::Main),
+            "nightly" => Ok(Self::Nightly),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 pub enum ExampleKind {
     Ignore,
     Demo,
@@ -49,50 +145,6 @@ struct Frontmatter {
     nightly: bool,
     #[serde(default)]
     build_args: Vec<String>,
-}
-
-pub fn examples() -> anyhow::Result<Vec<Example>> {
-    let mut examples = vec![];
-    let dir = Path::new("examples/python");
-    if !dir.exists() {
-        anyhow::bail!("Failed to find {}", dir.display())
-    }
-    if !dir.is_dir() {
-        anyhow::bail!("{} is not a directory", dir.display())
-    }
-
-    for folder in std::fs::read_dir(dir)? {
-        let folder = folder?;
-        let metadata = folder.metadata()?;
-        let name = folder.file_name().to_string_lossy().to_string();
-        let readme = folder.path().join("README.md");
-        if metadata.is_dir() && readme.exists() {
-            let readme = parse_frontmatter(readme)?;
-            if let Some(readme) = readme {
-                eprintln!("Adding example {name:?}");
-                examples.push(Example {
-                    name,
-                    title: readme.title,
-                    description: readme.description,
-                    tags: readme.tags,
-                    thumbnail_url: readme.thumbnail,
-                    thumbnail_dimensions: readme.thumbnail_dimensions,
-                    script_path: folder.path().join("main.py"),
-                    script_args: readme.build_args,
-                    kind: ExampleKind::infer(readme.demo, readme.nightly),
-                });
-            } else {
-                eprintln!("Skipping example {name:?} because it has no frontmatter");
-            }
-        }
-    }
-
-    if examples.is_empty() {
-        anyhow::bail!("No examples found in {}", dir.display())
-    }
-
-    examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
-    Ok(examples)
 }
 
 fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatter>> {

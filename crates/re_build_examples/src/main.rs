@@ -20,13 +20,14 @@ use indicatif::MultiProgress;
 use indicatif::ProgressBar;
 use rayon::prelude::IntoParallelIterator;
 use rayon::prelude::ParallelIterator;
-use re_examples::{examples, Example};
+use re_examples::{Channel, Example};
 
 const USAGE: &str = "\
 Usage: [options] [output_dir]
 
 Options:
-    -h, --help   Print help
+    -h, --help      Print help
+        --channel   Determines which examples to build: `nightly`, `main`
 ";
 
 fn main() -> anyhow::Result<()> {
@@ -36,7 +37,7 @@ fn main() -> anyhow::Result<()> {
 
     create_dir_all(&args.output_dir)?;
 
-    let examples = examples()?;
+    let examples = args.channel.examples()?;
     let progress = MultiProgress::new();
     let results: Vec<anyhow::Result<()>> = examples
         .into_par_iter()
@@ -59,17 +60,33 @@ fn main() -> anyhow::Result<()> {
 
 struct Args {
     output_dir: PathBuf,
+    channel: Channel,
 }
 
 impl Args {
     fn from_env() -> Self {
-        let mut output_dir = None;
+        let mut output_dir: Option<PathBuf> = None;
+        let mut channel: Option<Channel> = None;
 
-        for arg in std::env::args().skip(1) {
+        let mut args = std::env::args().skip(1);
+        while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--help" | "-h" => {
                     println!("{USAGE}");
                     exit(1);
+                }
+                "--channel" => {
+                    let Some(value) = args.next() else {
+                        eprintln!("Expected value after \"--channel\"");
+                        println!("\n{USAGE}");
+                        std::process::exit(1);
+                    };
+                    let Ok(value) = value.parse::<Channel>() else {
+                        eprintln!("Invalid \"--channel\", expected `nightly` or `main`");
+                        println!("\n{USAGE}");
+                        std::process::exit(1);
+                    };
+                    channel = Some(value);
                 }
                 _ if arg.starts_with('-') => {
                     eprintln!("Unknown argument: {arg:?}");
@@ -90,7 +107,12 @@ impl Args {
             exit(1);
         };
 
-        Args { output_dir }
+        let channel = channel.unwrap_or_default();
+
+        Args {
+            output_dir,
+            channel,
+        }
     }
 }
 

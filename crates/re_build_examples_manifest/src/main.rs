@@ -16,14 +16,15 @@
 use std::path::PathBuf;
 
 use re_build_tools::Environment;
-use re_examples::{examples, Example};
+use re_examples::{Channel, Example};
 
 const USAGE: &str = "\
 Usage: [options] [output_path]
 
 Options:
     -h, --help       Print help
-        --base-url   Where all examples are uploaded, e.g. `https://app.rerun.io/version/main`.
+        --base-url   Where all examples are uploaded, e.g. `https://app.rerun.io/version/main`
+        --channel    Determines which examples to build: `nightly`, `main`
 ";
 
 fn main() -> anyhow::Result<()> {
@@ -40,12 +41,14 @@ fn main() -> anyhow::Result<()> {
 struct Args {
     output_path: PathBuf,
     base_url: Option<String>,
+    channel: Channel,
 }
 
 impl Args {
     fn from_env() -> Self {
-        let mut output_path = None;
-        let mut base_url = None;
+        let mut output_path: Option<PathBuf> = None;
+        let mut base_url: Option<String> = None;
+        let mut channel: Option<Channel> = None;
 
         let mut args = std::env::args().skip(1);
         while let Some(arg) = args.next() {
@@ -55,12 +58,25 @@ impl Args {
                     std::process::exit(1);
                 }
                 "--base-url" => {
-                    let Some(url) = args.next() else {
+                    let Some(value) = args.next() else {
                         eprintln!("Expected value after \"--base-url\"");
                         println!("\n{USAGE}");
                         std::process::exit(1);
                     };
-                    base_url = Some(url);
+                    base_url = Some(value);
+                }
+                "--channel" => {
+                    let Some(value) = args.next() else {
+                        eprintln!("Expected value after \"--channel\"");
+                        println!("\n{USAGE}");
+                        std::process::exit(1);
+                    };
+                    let Ok(value) = value.parse::<Channel>() else {
+                        eprintln!("Invalid \"--channel\", expected `nightly` or `main`");
+                        println!("\n{USAGE}");
+                        std::process::exit(1);
+                    };
+                    channel = Some(value);
                 }
                 _ if arg.starts_with('-') => {
                     eprintln!("Unknown argument: {arg:?}");
@@ -81,9 +97,12 @@ impl Args {
             std::process::exit(1);
         };
 
+        let channel = channel.unwrap_or_default();
+
         Args {
             output_path,
             base_url,
+            channel,
         }
     }
 }
@@ -95,7 +114,7 @@ fn build_examples_manifest(build_env: Environment, args: &Args) -> anyhow::Resul
     };
 
     let mut manifest = vec![];
-    for example in examples()? {
+    for example in args.channel.examples()? {
         manifest.push(ManifestEntry::new(example, &base_url));
     }
 
