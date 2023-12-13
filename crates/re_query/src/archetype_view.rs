@@ -488,7 +488,7 @@ impl<A: Archetype> ArchetypeView<A> {
     }
 
     /// Convert an `ArchetypeView` back into a native Archetype instance
-    pub fn as_native(&self) -> crate::Result<A> {
+    pub fn to_archetype(&self) -> crate::Result<A> {
         Ok(A::from_arrow_components(
             self.components
                 .values()

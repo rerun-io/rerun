@@ -371,7 +371,7 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         &query,
         &VIEWPORT_PATH.into(),
     )
-    .and_then(|arch| arch.as_native())
+    .and_then(|arch| arch.to_archetype())
     {
         Ok(arch) => arch,
         Err(re_query::QueryError::PrimaryNotFound(_)) => {
