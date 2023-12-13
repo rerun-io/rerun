@@ -43,11 +43,13 @@ fn test_natural_ordering() {
 
         for (i, &x) in strs.iter().enumerate() {
             for (j, &y) in strs.iter().enumerate() {
+                let actual_ordering = compare(x, y);
+                let expected_ordering = i.cmp(&j);
                 assert!(
-                    compare(x, y) == i.cmp(&j),
+                    actual_ordering == expected_ordering,
                     "Got {x:?} {} {y:?}; expected {x:?} {} {y:?}",
-                    ordering_str(i.cmp(&j)),
-                    ordering_str(compare(x, y))
+                    ordering_str(actual_ordering),
+                    ordering_str(expected_ordering),
                 );
             }
         }
