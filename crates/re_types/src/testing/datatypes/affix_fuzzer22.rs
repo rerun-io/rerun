@@ -115,9 +115,12 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let fixed_sized_native_inner_data: Vec<_> = fixed_sized_native
                             .iter()
-                            .flatten()
-                            .flatten()
-                            .cloned()
+                            .flat_map(|v| match v {
+                                Some(v) => itertools::Either::Left(v.iter().cloned()),
+                                None => itertools::Either::Right(
+                                    std::iter::repeat(Default::default()).take(4usize),
+                                ),
+                            })
                             .map(Some)
                             .collect();
                         let fixed_sized_native_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
