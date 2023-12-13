@@ -10,9 +10,9 @@ namespace rerun::blueprint::archetypes {}
 namespace rerun {
 
     Result<std::vector<DataCell>> AsComponents<blueprint::archetypes::ViewportBlueprint>::serialize(
-        const archetypes::ViewportBlueprint& archetype
+        const blueprint::archetypes::ViewportBlueprint& archetype
     ) {
-        using namespace archetypes;
+        using namespace blueprint::archetypes;
         std::vector<DataCell> cells;
         cells.reserve(6);
 

@@ -44,7 +44,7 @@ namespace rerun::blueprint::archetypes {
             "rerun.blueprint.components.ViewportBlueprintIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         ViewportBlueprint() = default;
@@ -101,7 +101,7 @@ namespace rerun {
     struct AsComponents<blueprint::archetypes::ViewportBlueprint> {
         /// Serialize all set component batches.
         static Result<std::vector<DataCell>> serialize(
-            const archetypes::ViewportBlueprint& archetype
+            const blueprint::archetypes::ViewportBlueprint& archetype
         );
     };
 } // namespace rerun

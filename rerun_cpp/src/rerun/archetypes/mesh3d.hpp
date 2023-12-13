@@ -92,7 +92,7 @@ namespace rerun::archetypes {
         static constexpr const char IndicatorComponentName[] = "rerun.components.Mesh3DIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         Mesh3D() = default;

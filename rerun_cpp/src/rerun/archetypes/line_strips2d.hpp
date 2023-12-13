@@ -84,7 +84,7 @@ namespace rerun::archetypes {
             "rerun.components.LineStrips2DIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         LineStrips2D() = default;
