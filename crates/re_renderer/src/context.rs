@@ -50,10 +50,10 @@ pub struct RenderContext {
 
     /// Frame index used for [`wgpu::Device::on_uncaptured_error`] callbacks.
     ///
-    /// Today, when using wgpu-core (-> native & webgl) this is always equal to the current [`ActiveFrameContext::frame_index`]
-    /// since the content timeline is in sync with the device timeline
-    /// (meaning everything done on [`wgpu::Device`] happens right away).
-    /// On WebGPU however, the content timeline may be arbitrarily behind the content timeline!
+    /// Today, when using wgpu-core (== native & webgl) this is equal to the current [`ActiveFrameContext::frame_index`]
+    /// since the content timeline is in sync with the device timeline,
+    /// meaning everything done on [`wgpu::Device`] happens right away.
+    /// On WebGPU however, the `content timeline`` may be arbitrarily behind the `device timeline`!
     /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
     frame_index_for_uncaptured_errors: Arc<AtomicU64>,
 
@@ -128,6 +128,11 @@ impl RenderContext {
         // Make sure to catch all errors, never crash and deduplicate reported errors.
         // `on_uncaptured_error` is a last-resort handler which we should never hit,
         // since there should always be an open error scope.
+        //
+        // Note that this handler may not be called for all errors if no scope is present.
+        // (as of writing, wgpu-core will always call it when there's no scope, but Dawn doesn't!)
+        // Therefore, it is important to always have a scope open!
+        // See https://www.w3.org/TR/webgpu/#telemetry
         let top_level_error_tracker = {
             let err_tracker = std::sync::Arc::new(ErrorTracker::default());
             device.on_uncaptured_error({
@@ -234,7 +239,7 @@ impl RenderContext {
             inflight_queue_submissions: Vec::new(),
             active_frame,
             frame_index_for_uncaptured_errors,
-            gpu_resources, // Didn't complete any yet.
+            gpu_resources,
         }
     }
 
@@ -259,22 +264,23 @@ impl RenderContext {
         //          For more details check https://github.com/gfx-rs/wgpu/issues/3601
         if cfg!(target_arch = "wasm32") && self.config.device_caps.tier == DeviceTier::Gles {
             self.device.poll(wgpu::Maintain::Wait);
-        } else {
-            // Ensure not too many queue submissions are in flight.
-            let num_submissions_to_wait_for = self
-                .inflight_queue_submissions
-                .len()
-                .saturating_sub(Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS);
+            return;
+        }
 
-            if let Some(newest_submission_to_wait_for) = self
-                .inflight_queue_submissions
-                .drain(0..num_submissions_to_wait_for)
-                .last()
-            {
-                self.device.poll(wgpu::Maintain::WaitForSubmissionIndex(
-                    newest_submission_to_wait_for,
-                ));
-            }
+        // Ensure not too many queue submissions are in flight.
+        let num_submissions_to_wait_for = self
+            .inflight_queue_submissions
+            .len()
+            .saturating_sub(Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS);
+
+        if let Some(newest_submission_to_wait_for) = self
+            .inflight_queue_submissions
+            .drain(0..num_submissions_to_wait_for)
+            .last()
+        {
+            self.device.poll(wgpu::Maintain::WaitForSubmissionIndex(
+                newest_submission_to_wait_for,
+            ));
         }
     }
 
@@ -303,7 +309,7 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         // Request write used staging buffer back.
         // TODO(andreas): If we'd control all submissions, we could move this directly after the submission which would be a bit better.
         self.cpu_write_gpu_read_belt.get_mut().after_queue_submit();
-        // Map all read staging buffers
+        // Map all read staging buffers.
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
         // Give back moved render pipelines to the pool if any were moved out.
@@ -316,23 +322,22 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         // Close previous' frame error scope.
         if let Some(top_level_error_scope) = self.active_frame.top_level_error_scope.take() {
             let frame_index_for_uncaptured_errors = self.frame_index_for_uncaptured_errors.clone();
-            self.top_level_error_tracker
-                .handle_error_future_with_callback(
-                    top_level_error_scope.end(),
-                    self.active_frame.frame_index,
-                    move |err_tracker, frame_index| {
-                        // Update last completed frame index.
-                        //
-                        // Note that this means that the device timeline has now finished this frame as well!
-                        // Reminder: On WebGPU the device timeline may be arbitrarily behind the content timeline!
-                        // See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
-                        frame_index_for_uncaptured_errors.store(frame_index, Ordering::Release);
-                        err_tracker.on_device_timeline_frame_finished(frame_index);
+            self.top_level_error_tracker.handle_error_future(
+                top_level_error_scope.end(),
+                self.active_frame.frame_index,
+                move |err_tracker, frame_index| {
+                    // Update last completed frame index.
+                    //
+                    // Note that this means that the device timeline has now finished this frame as well!
+                    // Reminder: On WebGPU the device timeline may be arbitrarily behind the content timeline!
+                    // See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
+                    frame_index_for_uncaptured_errors.store(frame_index, Ordering::Release);
+                    err_tracker.on_device_timeline_frame_finished(frame_index);
 
-                        // TODO(andreas): Once we support creating more error handlers,
-                        // we need to tell all of them here that the frame has finished.
-                    },
-                );
+                    // TODO(#4507): Once we support creating more error handlers,
+                    // we need to tell all of them here that the frame has finished.
+                },
+            );
         }
 
         // New active frame!
@@ -488,7 +493,9 @@ pub struct ActiveFrameContext {
 
     /// Index of this frame. Is incremented for every render frame.
     ///
-    /// This is essentially the frame counter of the *Content* timeline.
+    /// Keep in mind that all operations on WebGPU are asynchronous:
+    /// This counter is part of the `content timeline` and may be arbitrarily
+    /// behind both of the `device timeline` and `queue timeline`.
     /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>
     frame_index: u64,
 
@@ -499,7 +506,7 @@ pub struct ActiveFrameContext {
     /// Therefore, we should make sure that we _always_ have an error scope open!
     /// Additionally, we use this to update [`RendererContext::frame_index_for_uncaptured_errors`].
     ///
-    /// The only time this is supposed to be `None` is during shutdown and when closing an old and opening a new scope.
+    /// The only time this is allowed to be `None` is during shutdown and when closing an old and opening a new scope.
     top_level_error_scope: Option<WgpuErrorScope>,
 }
 

@@ -11,25 +11,19 @@ use super::wgpu_core_error::WrappedContextError;
 struct WrappedContextError(pub String);
 
 struct ErrorEntry {
-    /// Frame index for frame on which this error was first logged.
-    ///
-    /// Since errors are received on the device timeline, not the content timeline
-    /// this may be arbitrarily in the past!
-    frame_index: u64,
+    /// Frame index for frame on which this error was last logged.
+    last_occurred_frame_index: u64,
+    // TODO(andreas): Should we also track when this frame was *first* logged?
 }
 
 /// Keeps track of wgpu errors and de-duplicates messages across frames.
 ///
-/// Unless we're running without wgpu-core (i.e. using `WebGPU`), what accounts for as an error duplicate is
-/// a heuristic based on wgpu-core error type.
-///
-/// Tracker can be manually cleared, otherwise it will clear errors individually if they don't show up for a frame.
-/// Note that since errors resolve in the device timeline (see <https://www.w3.org/TR/webgpu/#programming-model-timelines>)
-/// error receiving and error clearing may be arbitrarily delayed!
+/// On native & webgl, what accounts for as an error duplicate is a heuristic based on wgpu-core error type.
 ///
 /// Used to avoid spamming the user with repeating errors.
-/// [`RendererContext`] maintains a "top level" error tracker for all otherwise unhandled errors,
-/// but error scopes can use their own error trackers.
+/// [`RendererContext`] maintains a "top level" error tracker for all otherwise unhandled errors.
+///
+/// TODO(#4507): Users should be able to create their own scopes feeding into separate trackers.
 #[derive(Default)]
 pub struct ErrorTracker {
     errors: Mutex<HashMap<WrappedContextError, ErrorEntry>>,
@@ -40,34 +34,22 @@ impl ErrorTracker {
     ///
     /// Error scopes live on the device timeline, which may be arbitrarily delayed compared to the content timeline.
     /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
-    pub(crate) fn on_device_timeline_frame_finished(&self, device_timeline_frame_index: u64) {
+    /// Do *not* call this with the content pipeline's frame index!
+    pub fn on_device_timeline_frame_finished(&self, device_timeline_frame_index: u64) {
         let mut errors = self.errors.lock();
         errors.retain(|_error, entry| {
             // If the error was not logged on the just concluded frame, remove it.
-            device_timeline_frame_index == entry.frame_index
+            device_timeline_frame_index == entry.last_occurred_frame_index
         });
     }
 
     /// Handles an async error, calling [`ErrorTracker::handle_error`] as needed.
     ///
+    /// `on_last_scope_resolved` is called when the last scope has resolved.
+    ///
     /// `frame_index` should be the currently active frame index which is associated with the scope.
     /// (by the time the scope finishes, the active frame index may have changed)
-    #[allow(unused)] // TODO(andreas): Currently unused, but this should be exposed to re_renderer users to handle smaller scopes.
     pub fn handle_error_future(
-        self: &std::sync::Arc<Self>,
-        error_scope_result: impl IntoIterator<
-            Item = impl std::future::Future<Output = Option<wgpu::Error>> + Send + 'static,
-        >,
-        frame_index: u64,
-    ) {
-        self.handle_error_future_with_callback(error_scope_result, frame_index, |_, _| {});
-    }
-
-    /// Like [`Self::handle_error_future`], but additionally end calls the passed callback when
-    /// the last passed future has resolved.
-    ///
-    /// The callback gets passed the error tracker and the frame index.
-    pub(crate) fn handle_error_future_with_callback(
         self: &std::sync::Arc<Self>,
         error_scope_result: impl IntoIterator<
             Item = impl std::future::Future<Output = Option<wgpu::Error>> + Send + 'static,
@@ -105,10 +87,10 @@ impl ErrorTracker {
 
     /// Logs a wgpu error to the tracker.
     ///
-    /// If the error happened in the previous (device timeline) frame already, it will be deduplicated.
+    /// If the error happened already already, it will be deduplicated.
     ///
     /// `frame_index` should be the frame index associated with the error scope.
-    /// Since errors are reported on the device timeline, not the content timeline,
+    /// Since errors are reported on the `device timeline`, not the `content timeline`,
     /// this may not be the currently active frame index!
     pub fn handle_error(&self, error: wgpu::Error, frame_index: u64) {
         match error {
@@ -123,7 +105,7 @@ impl ErrorTracker {
                     if #[cfg(webgpu)] {
                         if self.errors.lock().insert(
                             WrappedContextError(description.clone()),
-                            ErrorEntry { frame_index }
+                            ErrorEntry { last_occurred_frame_index: frame_index }
                         ).is_none() {
                             re_log::error!(
                                 "WGPU error in frame {}: {}", frame_index, description
@@ -143,7 +125,7 @@ impl ErrorTracker {
                                 }
 
                                 let ctx_err = WrappedContextError(ctx_err);
-                                if self.errors.lock().insert(ctx_err, ErrorEntry { frame_index }).is_none() {
+                                if self.errors.lock().insert(ctx_err, ErrorEntry { last_occurred_frame_index: frame_index }).is_none() {
                                     re_log::error!(
                                         "WGPU error in frame {}: {}", frame_index, description
                                     );
