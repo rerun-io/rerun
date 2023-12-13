@@ -28,6 +28,7 @@ mod segmentation_image_ext;
 mod tensor;
 mod tensor_ext;
 mod text_document;
+mod text_document_ext;
 mod text_log;
 mod time_series_scalar;
 mod transform3d;
