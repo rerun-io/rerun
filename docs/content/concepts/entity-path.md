@@ -17,32 +17,37 @@ elements. The conventional path semantics including concepts of *root* and *pare
 
 When writing paths in logging APIs the leading `/` is omitted.
 
-Note that there is no path-level distinction between "file-like" and "directory-like" concepts. Any path may be an
-entity, and entities may be direct children of other entities. For example (this uses the Python SDK but the same applies for all supported languages):
+In the file path analogy, each entity is a folder, and a component is a file.
+This implies that any entity in a hierarchy can contain components.
+
+For example (this uses the Python SDK but the same applies for all supported languages):
+
 ```python
 rr.log("image", rr.Image(img))
 rr.log("image/points", rr.Points2D(points))
 ```
 
-However, it is also acceptable to leave implicitly "empty" elements in your paths as well.
+It is also acceptable to leave implicitly "empty" entities in your paths as well.
 ```python
 rr.log("camera/image", rr.Image(img))
 rr.log("camera/image/detections/points", rr.Points2D(points))
 ```
+
 Nothing needs to be explicitly logged to `"camera"` or `"camera/image/detection"` to make the above valid.
+In other words, the `log` call is akin to creating a folder with `mkdir -p` and then writing files (components) to it.
+Existing components of the same name will be overwritten.
 
 ### Path parts
 
-A path can look like this: `camera/"Left"/detection/#42/bbox`. Each part (between the slashes) can either be:
+Each "part" of a path must be a non-empty string. Any character is allowed, but special characters need to be escaped using `\`.
+Characters that need NOT be escaped are letters, numbers, and underscore, dash, and dot (`_`, `-`, `.`).
+Any other character should be escaped, including symbols (`\:`, `\$`, …) and whitespace (`\ `, `\n`, `\t`, …).
 
-* An identifier (e.g. `camera`), intended for hard-coded names. Only ASCII characters, numbers, underscore, and dash are allowed in identifiers (`[a-zA-Z0-9_-]+`).
-* A `"quoted string"`, intended for arbitrary strings, like file names and serials numbers.
-* An integer, intended for hashes or similar.
-* A number sequence, prefixed by `#`, intended for indices.
-* A UUID.
+You can an arbitrary unicode code point into an entity path using `\u{262E}`.
 
-So for instance, `foo/bar/#42/5678/"CA426571"/a6a5e96c-fd52-4d21-a394-ffbb6e5def1d` is a valid path.
+So for instance, `world/3d/My\ Image.jpg/detection` is a valid path (note the escaped space!).
 
+⚠️ NOTE: even though entity paths are somewhat analogous to file paths, they are NOT the same. `..` does not mean "parent folder", and you are NOT intended to pass a file path as an entity path (especially not on Windows, which use `\` as a path separator).
 
 ### Path Hierarchy Functions
 Path hierarchy plays an important role in a number of different functions within Rerun:
@@ -57,5 +62,5 @@ the relationship between that entity and its direct parent.
 
 ### Reserved Paths
 
-The path prefix "rerun/" is considered reserved for use by the Rerun SDK itself and should not be used for logging
+The path prefix `rerun/` is considered reserved for use by the Rerun SDK itself and should not be used for logging
 user data. This is where Rerun will log additional information such as warnings.

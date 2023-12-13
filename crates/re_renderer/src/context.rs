@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
 use parking_lot::{MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard};
 use type_map::concurrent::{self, TypeMap};
@@ -6,12 +9,16 @@ use type_map::concurrent::{self, TypeMap};
 use crate::{
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
     config::{DeviceTier, RenderContextConfig},
+    error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
     wgpu_resources::{GpuRenderPipelinePoolMoveAccessor, WgpuResourcePools},
     FileServer, RecommendedFileResolver,
 };
+
+/// Frame idx used before starting the first frame.
+const STARTUP_FRAME_IDX: u64 = u64::MAX;
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
 /// I.e. render pipelines, resource pools, etc.
@@ -27,8 +34,6 @@ pub struct RenderContext {
 
     renderers: RwLock<Renderers>,
     pub(crate) resolver: RecommendedFileResolver,
-    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-    pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
 
     pub mesh_manager: RwLock<MeshManager>,
     pub texture_manager_2d: TextureManager2D,
@@ -42,6 +47,18 @@ pub struct RenderContext {
     inflight_queue_submissions: Vec<wgpu::SubmissionIndex>,
 
     pub active_frame: ActiveFrameContext,
+
+    /// Frame index used for [`wgpu::Device::on_uncaptured_error`] callbacks.
+    ///
+    /// Today, when using wgpu-core (== native & webgl) this is equal to the current [`ActiveFrameContext::frame_index`]
+    /// since the content timeline is in sync with the device timeline,
+    /// meaning everything done on [`wgpu::Device`] happens right away.
+    /// On WebGPU however, the `content timeline`` may be arbitrarily behind the `device timeline`!
+    /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
+    frame_index_for_uncaptured_errors: Arc<AtomicU64>,
+
+    /// Error tracker used for `top_level_error_scope` and [`wgpu::Device::on_uncaptured_error`].
+    top_level_error_tracker: Arc<ErrorTracker>,
 
     pub gpu_resources: WgpuResourcePools, // Last due to drop order.
 }
@@ -106,6 +123,32 @@ impl RenderContext {
     ) -> Self {
         re_tracing::profile_function!();
 
+        let frame_index_for_uncaptured_errors = Arc::new(AtomicU64::new(STARTUP_FRAME_IDX));
+
+        // Make sure to catch all errors, never crash, and deduplicate reported errors.
+        // `on_uncaptured_error` is a last-resort handler which we should never hit,
+        // since there should always be an open error scope.
+        //
+        // Note that this handler may not be called for all errors!
+        // (as of writing, wgpu-core will always call it when there's no open error scope, but Dawn doesn't!)
+        // Therefore, it is important to always have a `WgpuErrorScope` open!
+        // See https://www.w3.org/TR/webgpu/#telemetry
+        let top_level_error_tracker = {
+            let err_tracker = Arc::new(ErrorTracker::default());
+            device.on_uncaptured_error({
+                let err_tracker = Arc::clone(&err_tracker);
+                let frame_index_for_uncaptured_errors = frame_index_for_uncaptured_errors.clone();
+                Box::new(move |err| {
+                    err_tracker.handle_error(
+                        err,
+                        frame_index_for_uncaptured_errors.load(Ordering::Acquire),
+                    );
+                })
+            });
+            err_tracker
+        };
+        let top_level_error_scope = Some(WgpuErrorScope::start(&device));
+
         log_adapter_info(&adapter.get_info());
 
         let mut gpu_resources = WgpuResourcePools::default();
@@ -145,19 +188,6 @@ impl RenderContext {
             adapter.get_downlevel_capabilities(),
         );
 
-        // In debug builds, make sure to catch all errors, never crash, and try to
-        // always let the user find a way to return a poisoned pipeline back into a
-        // sane state.
-        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-        let err_tracker = {
-            let err_tracker = std::sync::Arc::new(crate::error_tracker::ErrorTracker::default());
-            device.on_uncaptured_error({
-                let err_tracker = std::sync::Arc::clone(&err_tracker);
-                Box::new(move |err| err_tracker.handle_error(err))
-            });
-            err_tracker
-        };
-
         let resolver = crate::new_recommended_file_resolver();
         let mesh_manager = RwLock::new(MeshManager::new());
         let texture_manager_2d =
@@ -166,7 +196,8 @@ impl RenderContext {
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
             pinned_render_pipelines: None,
-            frame_index: 0,
+            frame_index: STARTUP_FRAME_IDX,
+            top_level_error_scope,
         };
 
         // Register shader workarounds for the current device.
@@ -184,32 +215,31 @@ impl RenderContext {
                 ));
         }
 
+        let cpu_write_gpu_read_belt = Mutex::new(CpuWriteGpuReadBelt::new(
+            Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
+        ));
+        let gpu_readback_belt = Mutex::new(GpuReadbackBelt::new(
+            Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
+        ));
+
         RenderContext {
             device,
             queue,
-
             config,
             global_bindings,
-
             renderers: RwLock::new(Renderers {
                 renderers: TypeMap::new(),
             }),
-
-            gpu_resources,
-
+            resolver,
+            top_level_error_tracker,
             mesh_manager,
             texture_manager_2d,
-            cpu_write_gpu_read_belt: Mutex::new(CpuWriteGpuReadBelt::new(Self::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
-            gpu_readback_belt: Mutex::new(GpuReadbackBelt::new(Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap())),
-
-            resolver,
-
-            #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-            err_tracker,
-
+            cpu_write_gpu_read_belt,
+            gpu_readback_belt,
             inflight_queue_submissions: Vec::new(),
-
             active_frame,
+            frame_index_for_uncaptured_errors,
+            gpu_resources,
         }
     }
 
@@ -269,7 +299,10 @@ impl RenderContext {
             .0
             .is_some()
         {
-            assert!(self.active_frame.frame_index == 0, "There was still a command encoder from the previous frame at the beginning of the current. Did you forget to call RenderContext::before_submit?");
+            if self.active_frame.frame_index != STARTUP_FRAME_IDX {
+                re_log::error!("There was still a command encoder from the previous frame at the beginning of the current.
+This means, either a call to RenderContext::before_submit was omitted, or the previous frame was unexpectedly cancelled.");
+            }
             self.before_submit();
         }
 
@@ -286,19 +319,35 @@ impl RenderContext {
                 .return_resources(moved_render_pipelines);
         }
 
+        // Close previous' frame error scope.
+        if let Some(top_level_error_scope) = self.active_frame.top_level_error_scope.take() {
+            let frame_index_for_uncaptured_errors = self.frame_index_for_uncaptured_errors.clone();
+            self.top_level_error_tracker.handle_error_future(
+                top_level_error_scope.end(),
+                self.active_frame.frame_index,
+                move |err_tracker, frame_index| {
+                    // Update last completed frame index.
+                    //
+                    // Note that this means that the device timeline has now finished this frame as well!
+                    // Reminder: On WebGPU the device timeline may be arbitrarily behind the content timeline!
+                    // See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
+                    frame_index_for_uncaptured_errors.store(frame_index, Ordering::Release);
+                    err_tracker.on_device_timeline_frame_finished(frame_index);
+
+                    // TODO(#4507): Once we support creating more error handlers,
+                    // we need to tell all of them here that the frame has finished.
+                },
+            );
+        }
+
         // New active frame!
         self.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
-            frame_index: self.active_frame.frame_index + 1,
             pinned_render_pipelines: None,
+            frame_index: self.active_frame.frame_index.wrapping_add(1),
+            top_level_error_scope: Some(WgpuErrorScope::start(&self.device)),
         };
         let frame_index = self.active_frame.frame_index;
-
-        // Tick the error tracker so that it knows when to reset!
-        // Note that we're ticking on begin_frame rather than raw frames, which
-        // makes a world of difference when we're in a poisoned state.
-        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-        self.err_tracker.tick();
 
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
@@ -443,7 +492,22 @@ pub struct ActiveFrameContext {
     pub pinned_render_pipelines: Option<GpuRenderPipelinePoolMoveAccessor>,
 
     /// Index of this frame. Is incremented for every render frame.
+    ///
+    /// Keep in mind that all operations on WebGPU are asynchronous:
+    /// This counter is part of the `content timeline` and may be arbitrarily
+    /// behind both of the `device timeline` and `queue timeline`.
+    /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>
     frame_index: u64,
+
+    /// Top level device error scope, created at startup and closed & reopened on every frame.
+    ///
+    /// According to documentation, not all errors may be caught by [`wgpu::Device::on_uncaptured_error`].
+    /// <https://www.w3.org/TR/webgpu/#eventdef-gpudevice-uncapturederror>
+    /// Therefore, we should make sure that we _always_ have an error scope open!
+    /// Additionally, we use this to update [`RenderContext::frame_index_for_uncaptured_errors`].
+    ///
+    /// The only time this is allowed to be `None` is during shutdown and when closing an old and opening a new scope.
+    top_level_error_scope: Option<WgpuErrorScope>,
 }
 
 fn log_adapter_info(info: &wgpu::AdapterInfo) {

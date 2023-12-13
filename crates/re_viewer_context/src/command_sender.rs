@@ -32,6 +32,9 @@ pub enum SystemCommand {
     /// but is tracked manually to ensure self-consistency if the blueprint
     /// is both modified and changed in the same frame.
     UpdateBlueprint(StoreId, Vec<DataRow>),
+
+    /// Enable or disable the experimental dataframe space views.
+    EnableExperimentalDataframeSpaceView(bool),
 }
 
 /// Interface for sending [`SystemCommand`] messages.

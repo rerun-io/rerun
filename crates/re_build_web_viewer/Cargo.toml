@@ -20,5 +20,5 @@ all-features = true
 re_error.workspace = true
 
 anyhow.workspace = true
-cargo_metadata = "0.15"
-wasm-bindgen-cli-support = "0.2.89"
+cargo_metadata.workspace = true
+wasm-bindgen-cli-support.workspace = true

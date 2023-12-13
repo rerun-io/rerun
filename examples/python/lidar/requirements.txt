@@ -1,4 +1,5 @@
 matplotlib
 numpy
 nuscenes-devkit
+requests
 rerun-sdk

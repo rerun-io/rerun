@@ -98,3 +98,9 @@ table AffixFuzzer21 (
   single_half: ushort (order: 100, "attr.rerun.override_type": "float16");
   many_halves: [ushort] (order: 200, "attr.rerun.override_type": "float16");
 }
+
+struct AffixFuzzer22 (
+  "attr.rust.derive": "Default, PartialEq, Eq"
+) {
+  fixed_sized_native: [ubyte: 4] (order: 100);
+}

@@ -24,7 +24,6 @@ mod data_table;
 #[cfg(feature = "testing")]
 pub mod example_components;
 pub mod hash;
-mod index;
 mod num_instances;
 pub mod path;
 mod time;
@@ -49,7 +48,6 @@ pub use self::data_table::{
     ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, METADATA_KIND,
     METADATA_KIND_CONTROL, METADATA_KIND_DATA,
 };
-pub use self::index::*;
 pub use self::num_instances::NumInstances;
 pub use self::path::*;
 pub use self::time::{Duration, Time, TimeZone};

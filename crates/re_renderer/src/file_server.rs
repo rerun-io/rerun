@@ -1,91 +1,89 @@
 /// A macro to read the contents of a file on disk, and resolve #import clauses as required.
 ///
-/// - On Wasm and/or release builds, this will behave like the standard [`include_str`]
+/// - If `load_shaders_from_disk` is disabled, this will behave like the standard [`include_str`]
 ///   macro.
-/// - On native debug builds, this will actually load the specified path through
+/// - If `load_shaders_from_disk` is enabled, this will actually load the specified path through
 ///   our [`FileServer`], and keep watching for changes in the background (both the root file
 ///   and whatever direct and indirect dependencies it may have through #import clauses).
 #[macro_export]
 macro_rules! include_file {
     ($path:expr $(,)?) => {{
-        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
-        {
-            // Native debug build, we have access to the disk both while building and while
-            // running, we just need to interpolated the relative paths passed into the macro.
+        cfg_if::cfg_if! {
+            if #[cfg(load_shaders_from_disk)] {
+                // Native debug build, we have access to the disk both while building and while
+                // running, we just need to interpolated the relative paths passed into the macro.
 
-            let mut resolver = $crate::new_recommended_file_resolver();
+                let mut resolver = $crate::new_recommended_file_resolver();
 
-            let root_path = ::std::path::PathBuf::from(file!());
+                let root_path = ::std::path::PathBuf::from(file!());
 
-            // If we're building from within the workspace, `file!()` will return a relative path
-            // starting at the workspace root.
-            // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
-            // problems when publishing: as we lose workspace information when publishing!), so we
-            // need to make sure to strip the path down.
-            let root_path = root_path
-                .strip_prefix("crates/re_renderer")
-                .map_or_else(|_| root_path.clone(), ToOwned::to_owned);
+                // If we're building from within the workspace, `file!()` will return a relative path
+                // starting at the workspace root.
+                // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
+                // problems when publishing: as we lose workspace information when publishing!), so we
+                // need to make sure to strip the path down.
+                let root_path = root_path
+                    .strip_prefix("crates/re_renderer")
+                    .map_or_else(|_| root_path.clone(), ToOwned::to_owned);
 
-            let path = root_path
-                .parent()
-                .unwrap()
-                .join($path);
+                let path = root_path
+                    .parent()
+                    .unwrap()
+                    .join($path);
 
-            // If we're building from outside the workspace, `path` is an absolute path already and
-            // we're good to go; but if we're building from within, `path` is currently a relative
-            // path that assumes the CWD is the root of re_renderer, we need to make it absolute as
-            // there is no guarantee that this is where `cargo run` is being run from.
-            let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-            let path = manifest_path.join(path);
+                // If we're building from outside the workspace, `path` is an absolute path already and
+                // we're good to go; but if we're building from within, `path` is currently a relative
+                // path that assumes the CWD is the root of re_renderer, we need to make it absolute as
+                // there is no guarantee that this is where `cargo run` is being run from.
+                let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                let path = manifest_path.join(path);
 
-            use anyhow::Context as _;
-            $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &path, false))
-                .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import physical path {path:?}", $path, root_path))
-                .unwrap()
-        }
+                use anyhow::Context as _;
+                $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &path, false))
+                    .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import physical path {path:?}", $path, root_path))
+                    .unwrap()
+            } else {
+                // Make sure `workspace_shaders::init()` is called at least once, which will
+                // register all shaders defined in the workspace into the run-time in-memory
+                // filesystem.
+                $crate::workspace_shaders::init();
 
-        #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
-        {
-            // Make sure `workspace_shaders::init()` is called at least once, which will
-            // register all shaders defined in the workspace into the run-time in-memory
-            // filesystem.
-            $crate::workspace_shaders::init();
+                // On windows file!() will return '\'-style paths, but this code may end up
+                // running in wasm where '\\' will cause issues. If we're actually running on
+                // windows, `Path` will do the right thing for us.
+                let path = ::std::path::Path::new(&file!().replace('\\', "/"))
+                    .parent()
+                    .unwrap()
+                    .join($path);
 
-            // On windows file!() will return '\'-style paths, but this code may end up
-            // running in wasm where '\\' will cause issues. If we're actually running on
-            // windows, `Path` will do the right thing for us.
-            let path = ::std::path::Path::new(&file!().replace('\\', "/"))
-                .parent()
-                .unwrap()
-                .join($path);
+                // If we're building from within the workspace, `file!()` will return a relative path
+                // starting at the workspace root.
+                // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
+                // problems when publishing: as we lose workspace information when publishing!), so we
+                // need to make sure to strip the path down.
+                let path = path
+                    .strip_prefix("crates/re_renderer")
+                    .map_or_else(|_| path.clone(), ToOwned::to_owned);
 
-            // If we're building from within the workspace, `file!()` will return a relative path
-            // starting at the workspace root.
-            // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
-            // problems when publishing: as we lose workspace information when publishing!), so we
-            // need to make sure to strip the path down.
-            let path = path
-                .strip_prefix("crates/re_renderer")
-                .map_or_else(|_| path.clone(), ToOwned::to_owned);
+                // If we're building from outside the workspace, `file!()` will return an absolute path
+                // that might point to anywhere: it doesn't matter, just strip it down to a relative
+                // re_renderer path no matter what.
+                let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                let path = path
+                    .strip_prefix(&manifest_path)
+                    .map_or_else(|_| path.clone(), ToOwned::to_owned);
 
-            // If we're building from outside the workspace, `file!()` will return an absolute path
-            // that might point to anywhere: it doesn't matter, just strip it down to a relative
-            // re_renderer path no matter what.
-            let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-            let path = path
-                .strip_prefix(&manifest_path)
-                .map_or_else(|_| path.clone(), ToOwned::to_owned);
-
-            // At this point our path is guaranteed to be hermetic, and we pre-load
-            // our run-time virtual filesystem using the exact same hermetic prefix.
-            //
-            // Therefore, the in-memory filesystem will actually be able to find this path,
-            // and canonicalize it.
-            use anyhow::Context as _;
-            use $crate::file_system::FileSystem;
-            $crate::get_filesystem().canonicalize(&path)
-                .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import virtual path {path:?}", $path, file!()))
-                .unwrap()
+                // At this point our path is guaranteed to be hermetic, and we pre-load
+                // our run-time virtual filesystem using the exact same hermetic prefix.
+                //
+                // Therefore, the in-memory filesystem will actually be able to find this path,
+                // and canonicalize it.
+                use anyhow::Context as _;
+                use $crate::file_system::FileSystem;
+                $crate::get_filesystem().canonicalize(&path)
+                    .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import virtual path {path:?}", $path, file!()))
+                    .unwrap()
+            }
         }
     }};
 }
@@ -94,7 +92,7 @@ macro_rules! include_file {
 
 pub use self::file_server_impl::FileServer;
 
-#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
+#[cfg(load_shaders_from_disk)]
 mod file_server_impl {
     use ahash::{HashMap, HashSet};
     use anyhow::Context as _;
@@ -289,7 +287,7 @@ mod file_server_impl {
     }
 }
 
-#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
+#[cfg(not(load_shaders_from_disk))]
 mod file_server_impl {
     use ahash::HashSet;
     use std::path::PathBuf;
