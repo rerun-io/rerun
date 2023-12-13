@@ -65,6 +65,7 @@ jobs:
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Upload examples (commit)"
+        if: ${{ !inputs.NIGHTLY }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "example_data"
