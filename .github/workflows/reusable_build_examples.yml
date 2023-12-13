@@ -9,6 +9,9 @@ on:
       WHEEL_ARTIFACT_NAME:
         required: true
         type: string
+      CHANNEL: # `nightly` or `main`
+        required: true
+        type: string
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-examples
@@ -84,7 +87,9 @@ jobs:
       - name: Build examples
         shell: bash
         run: |
-          pixi run build-examples example_data
+          pixi run build-examples \
+            --channel ${{ inputs.CHANNEL }} \
+            example_data
 
       - name: Upload assets
         uses: actions/upload-artifact@v3

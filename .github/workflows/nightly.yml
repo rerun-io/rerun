@@ -23,6 +23,7 @@ jobs:
     uses: ./.github/workflows/reusable_build_web.yml
     with:
       CONCURRENCY: nightly
+      CHANNEL: nightly
     secrets: inherit
 
   upload-web:
@@ -50,6 +51,7 @@ jobs:
     uses: ./.github/workflows/reusable_build_examples.yml
     with:
       CONCURRENCY: nightly
+      CHANNEL: nightly
       WHEEL_ARTIFACT_NAME: linux-wheel
     secrets: inherit
 
