@@ -109,7 +109,7 @@ impl SpaceViewClass for DataframeSpaceView {
         let sorted_instance_paths: Vec<_> = sorted_entity_paths
             .iter()
             .flat_map(|entity_path| {
-                sorted_instance_keys_for(entity_path, store, &query.timeline, &latest_at_query)
+                sorted_instance_paths_for(entity_path, store, &query.timeline, &latest_at_query)
             })
             .collect();
 
@@ -122,7 +122,7 @@ impl SpaceViewClass for DataframeSpaceView {
                     .all_components(&query.timeline, entity_path)
                     .unwrap_or_default()
             })
-            // TODO(#4466): make that optional
+            // TODO(#4466): make showing/hiding indicators components an explicit optional
             .filter(|comp| !comp.is_indicator_component())
             .collect();
 
@@ -195,7 +195,7 @@ impl SpaceViewClass for DataframeSpaceView {
                     egui_extras::TableBuilder::new(ui)
                         .columns(
                             Column::auto_with_initial_suggestion(200.0).clip(true),
-                            sorted_components.len() + 1,
+                            1 + sorted_components.len(),
                         )
                         .resizable(true)
                         .vscroll(false)
@@ -220,7 +220,7 @@ impl SpaceViewClass for DataframeSpaceView {
 ///
 /// This includes _any_ instance key in all components logged under this entity path, excluding
 /// splats.
-fn sorted_instance_keys_for<'a>(
+fn sorted_instance_paths_for<'a>(
     entity_path: &'a EntityPath,
     store: &'a DataStore,
     timeline: &'a Timeline,
