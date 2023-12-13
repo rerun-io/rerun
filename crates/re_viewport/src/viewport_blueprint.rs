@@ -4,7 +4,6 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, StoreDb};
 use re_log_types::{DataRow, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
-use re_types::blueprint::datatypes::SpaceViewComponent;
 use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender,
@@ -463,16 +462,22 @@ pub fn sync_space_view(
         // TODO(jleibs): Seq instead of timeless?
         let timepoint = TimePoint::timeless();
 
-        let component: re_types::blueprint::components::SpaceViewComponent = SpaceViewComponent {
-            display_name: space_view.display_name.clone().into(),
-            class_identifier: space_view.class_identifier().as_str().into(),
-            space_origin: (&space_view.space_origin).into(),
-            entities_determined_by_user: space_view.entities_determined_by_user,
-            contents: space_view.queries.iter().map(|q| q.id.into()).collect(),
-        }
-        .into();
+        let arch = re_types::blueprint::archetypes::SpaceViewBlueprint::new(
+            space_view.class_identifier().as_str(),
+        )
+        .with_display_name(space_view.display_name.clone())
+        .with_space_origin(&space_view.space_origin)
+        .with_entities_determined_by_user(space_view.entities_determined_by_user)
+        .with_contents(space_view.queries.iter().map(|q| q.id));
 
-        add_delta_from_single_component(deltas, &space_view.entity_path(), &timepoint, component);
+        if let Ok(row) = DataRow::from_archetype(
+            RowId::new(),
+            timepoint.clone(),
+            space_view.entity_path(),
+            &arch,
+        ) {
+            deltas.push(row);
+        }
 
         // The only time we need to create a query is if this is a new space-view. All other edits
         // happen directly via `UpdateBlueprint` commands.

@@ -3,7 +3,9 @@
 mod entities_determined_by_user;
 mod included_queries;
 mod name;
+mod name_ext;
 mod space_view_class;
+mod space_view_class_ext;
 mod space_view_component;
 mod space_view_component_ext;
 mod space_view_origin;
