@@ -356,6 +356,9 @@ impl RecordingStreamBuilder {
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to stdout.
     ///
+    /// If there isn't any listener at the other end of the pipe, the [`RecordingStream`] will
+    /// default back to `buffered` mode, in order not to break the user's terminal.
+    ///
     /// ## Example
     ///
     /// ```no_run
@@ -1354,6 +1357,9 @@ impl RecordingStream {
 
     /// Swaps the underlying sink for a [`crate::sink::FileSink`] pointed at stdout.
     ///
+    /// If there isn't any listener at the other end of the pipe, the [`RecordingStream`] will
+    /// default back to `buffered` mode, in order not to break the user's terminal.
+    ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
@@ -1365,6 +1371,7 @@ impl RecordingStream {
 
         let is_stdout_listening = !atty::is(atty::Stream::Stdout);
         if !is_stdout_listening {
+            self.set_sink(Box::new(crate::log_sink::BufferedSink::new()));
             return Ok(());
         }
 
