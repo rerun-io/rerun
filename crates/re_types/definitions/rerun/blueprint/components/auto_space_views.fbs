@@ -14,6 +14,7 @@ namespace rerun.blueprint.components;
 /// Unstable. Used for the ongoing blueprint experimentations.
 struct AutoSpaceViews (
   "attr.arrow.transparent",
+  "attr.docs.unreleased",
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy, Default",
   "attr.rust.override_crate": "re_viewport",
