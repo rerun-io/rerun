@@ -32,13 +32,13 @@ pub trait FileSystem {
 }
 
 /// Returns the recommended filesystem handle for the current platform.
-#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // non-wasm + debug build
+#[cfg(load_shaders_from_disk)]
 pub fn get_filesystem() -> OsFileSystem {
     OsFileSystem
 }
 
 /// Returns the recommended filesystem handle for the current platform.
-#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
+#[cfg(not(load_shaders_from_disk))]
 pub fn get_filesystem() -> &'static MemFileSystem {
     MemFileSystem::get()
 }

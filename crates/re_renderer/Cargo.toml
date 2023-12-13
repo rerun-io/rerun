@@ -39,7 +39,7 @@ import-gltf = ["dep:gltf"]
 serde = ["dep:serde"]
 
 ## Render using webgl instead of webgpu on wasm builds.
-webgl = ["wgpu/webgl"]
+webgl = ["wgpu/webgl", "dep:wgpu-core"]
 
 [dependencies]
 re_error.workspace = true
@@ -50,6 +50,7 @@ ahash.workspace = true
 anyhow.workspace = true
 bitflags.workspace = true
 bytemuck.workspace = true
+cfg-if.workspace = true
 clean-path.workspace = true
 document-features.workspace = true
 ecolor = { workspace = true, features = ["bytemuck"] }
@@ -67,13 +68,13 @@ static_assertions.workspace = true
 thiserror.workspace = true
 type-map.workspace = true
 wgpu.workspace = true
-wgpu-core.workspace = true
 
 # optional
 arrow2 = { workspace = true, optional = true }
 gltf = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 tobj = { workspace = true, optional = true }
+wgpu-core = { workspace = true, optional = true }                    # Needed for error handling when wgpu-core implemented backend is used.
 
 # native
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -81,18 +82,21 @@ crossbeam.workspace = true
 notify.workspace = true
 wgpu-core.workspace = true
 
-# For examples:
+# webgpu
+[target.'cfg(all(target_arch = "wasm32", not(features = "webgl")))'.dependencies]
+wasm-bindgen-futures.workspace = true
+
 [dev-dependencies]
 unindent.workspace = true
 
 # For build.rs:
 [build-dependencies]
-
 # Rerun
 re_build_tools.workspace = true
 
 # External
 anyhow.workspace = true
+cfg_aliases.workspace = true
 clean-path.workspace = true
 pathdiff.workspace = true
 walkdir.workspace = true

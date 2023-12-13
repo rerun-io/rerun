@@ -22,6 +22,7 @@ mod context;
 mod debug_label;
 mod depth_offset;
 mod draw_phases;
+mod error_handling;
 mod file_resolver;
 mod file_server;
 mod file_system;
@@ -35,19 +36,16 @@ mod transform;
 mod wgpu_buffer_types;
 mod wgpu_resources;
 
-#[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // wasm or release builds
+#[cfg(not(load_shaders_from_disk))]
 #[rustfmt::skip] // it's auto-generated
 mod workspace_shaders;
-
-#[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
-mod error_tracker;
 
 // ---------------------------------------------------------------------------
 // Exports
 
 use allocator::GpuReadbackBuffer;
-pub use allocator::GpuReadbackIdentifier;
 
+pub use allocator::GpuReadbackIdentifier;
 pub use color::Rgba32Unmul;
 pub use colormap::{
     colormap_inferno_srgb, colormap_magma_srgb, colormap_plasma_srgb, colormap_srgb,
