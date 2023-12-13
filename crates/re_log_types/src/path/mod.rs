@@ -1,10 +1,7 @@
 //! Every logged entity in Rerun is logged to an [`EntityPath`].
 //!
 //! The path is made up out of several [`EntityPathPart`]s,
-//! each of which is either a name ([`EntityPathPart::Name`])
-//! or an [`Index`].
-//!
-//! The [`Index`]es are for tables, arrays etc.
+//! which are just non-empty strings.
 
 mod component_path;
 mod data_path;
