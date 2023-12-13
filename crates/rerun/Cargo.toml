@@ -81,6 +81,7 @@ re_tracing.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
+atty.workspace = true
 document-features.workspace = true
 itertools.workspace = true
 

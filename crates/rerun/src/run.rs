@@ -452,8 +452,10 @@ async fn run_impl(
         }
     };
 
+    let is_stdin_empty = atty::is(atty::Stream::Stdin);
+
     // Where do we get the data from?
-    let rx: Vec<Receiver<LogMsg>> = if args.url_or_paths.is_empty() {
+    let rx: Vec<Receiver<LogMsg>> = if is_stdin_empty && args.url_or_paths.is_empty() {
         #[cfg(feature = "server")]
         {
             let server_options = re_sdk_comms::ServerOptions {
@@ -493,6 +495,7 @@ async fn run_impl(
 
         data_sources
             .into_iter()
+            .chain((!is_stdin_empty).then_some(DataSource::Stdin))
             .map(|data_source| data_source.stream(None))
             .collect::<Result<Vec<_>, _>>()?
     };

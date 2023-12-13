@@ -10,6 +10,7 @@
 //! - [High-level docs](http://rerun.io/docs)
 //! - [Rust API docs](https://docs.rs/rerun/)
 //! - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+
 use re_memory::AccountingAllocator;
 
 #[global_allocator]

@@ -35,6 +35,9 @@ ecolor = ["dep:ecolor"]
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["dep:glam"]
 
+# ## Add support for `.ply` point clouds using [`ply-rs`](https://crates.io/crates/ply-rs/).
+# ply = ["dep:ply-rs", "dep:linked-hash-map"]
+
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["dep:ecolor", "dep:image", "dep:zune-core", "dep:zune-jpeg"]
 
@@ -80,6 +83,13 @@ rand = { workspace = true, optional = true, features = ["std", "std_rng"] }
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
 zune-core = { workspace = true, optional = true }
 zune-jpeg = { workspace = true, optional = true }
+
+# Optional .ply support
+# ply-rs = { version = "0.1", optional = true }
+# linked-hash-map = { version = "0.5", optional = true }
+# TODO
+ply-rs = "0.1"
+linked-hash-map = "0.5"
 
 
 [dev-dependencies]

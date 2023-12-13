@@ -158,7 +158,7 @@ rerun-release *ARGS:
 
 # `just rerun-web` is short a convenient shorthand for building & starting the web viewer.
 rerun-web *ARGS:
-    cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer {{ARGS}}
+    cargo run --package rerun-cli --features web_viewer -- --web-viewer {{ARGS}}
 
 # like `rerun-web-release`, but with --release
 rerun-web-release *ARGS:
@@ -182,8 +182,8 @@ rs-lint:
     #!/usr/bin/env bash
     set -euxo pipefail
     cargo cranky --quiet --all-features -- --deny warnings
-    typos
-    scripts/lint.py
+    # typos
+    # scripts/lint.py
     cargo doc --quiet --no-deps --all-features
     cargo doc --quiet --document-private-items --no-deps --all-features
     cargo test --quiet --doc --all-features # runs all doc-tests

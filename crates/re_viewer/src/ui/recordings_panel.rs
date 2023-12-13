@@ -68,8 +68,9 @@ fn loading_receivers_ui(
             SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::Sdk
             | SmartChannelSource::WsClient { .. }
-            | SmartChannelSource::TcpServer { .. } => {
-                // These show up in the top panel - see `top_panel.rs`.
+            | SmartChannelSource::TcpServer { .. }
+            | SmartChannelSource::Stdin => {
+                // TODO(#3046): show these in status bar
                 continue;
             }
         };
@@ -294,6 +295,7 @@ fn data_source_string(data_source: &re_smart_channel::SmartChannelSource) -> Str
         SmartChannelSource::Sdk => "SDK".to_owned(),
         SmartChannelSource::WsClient { ws_server_url } => ws_server_url.clone(),
         SmartChannelSource::TcpServer { port } => format!("TCP Server, port {port}"),
+        SmartChannelSource::Stdin => "Standard Input".to_owned(),
     }
 }
 

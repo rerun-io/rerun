@@ -1,27 +1,34 @@
-use anyhow::Context as _;
-
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 use crate::FileContents;
 
+#[cfg(not(target_arch = "wasm32"))]
+use anyhow::Context as _;
+
 /// Somewhere we can get Rerun data from.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum DataSource {
     /// A remote RRD file, served over http.
+    // TODO: issue -> this shouldn't be special cased / dataloaders for URI / etc
     RrdHttpUrl(String),
 
+    // TODO: issue -> we should work with URIs everywhere, not filepaths
     /// A path to a local file.
     #[cfg(not(target_arch = "wasm32"))]
     FilePath(re_log_types::FileSource, std::path::PathBuf),
 
     /// The contents of a file.
     ///
-    /// This is what you get when loading a file on Web.
+    /// This is what you get when loading a file on Web, or when using drag-n-drop.
     FileContents(re_log_types::FileSource, FileContents),
 
     /// A remote Rerun server.
     WebSocketAddr(String),
+
+    // RRD data streaming in from standard input.
+    #[cfg(not(target_arch = "wasm32"))]
+    Stdin,
 }
 
 impl DataSource {
@@ -59,7 +66,7 @@ impl DataSource {
                 true // No dots. Weird. Let's assume it is a file path.
             } else if parts.len() == 2 {
                 // Extension or `.com` etc?
-                is_known_file_extension(parts[1])
+                crate::is_known_file_extension(parts[1])
             } else {
                 false // Too many dots; assume an url
             }
@@ -115,47 +122,69 @@ impl DataSource {
                     SmartMessageSource::File(path.clone()),
                     SmartChannelSource::File(path.clone()),
                 );
+
+                // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
+                // decide to use it depending on whether they want to share a common recording
+                // or not.
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                crate::load_file_path::load_file_path(store_id, file_source, path.clone(), tx)
+                crate::load_from_file(&store_id, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
+
                 if let Some(on_msg) = on_msg {
                     on_msg();
                 }
+
                 Ok(rx)
             }
 
+            // When loading a file on Web, or when using drag-n-drop.
             DataSource::FileContents(file_source, file_contents) => {
                 let name = file_contents.name.clone();
                 let (tx, rx) = re_smart_channel::smart_channel(
                     SmartMessageSource::File(name.clone().into()),
                     SmartChannelSource::File(name.clone().into()),
                 );
+
+                // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
+                // decide to use it depending on whether they want to share a common recording
+                // or not.
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                crate::load_file_contents::load_file_contents(
-                    store_id,
+                crate::load_from_file_contents(
+                    &store_id,
                     file_source,
-                    file_contents,
-                    tx,
-                )
-                .with_context(|| format!("{name:?}"))?;
+                    &std::path::PathBuf::from(file_contents.name),
+                    std::borrow::Cow::Borrowed(&file_contents.bytes), // TODO
+                    &tx,
+                )?;
+
                 if let Some(on_msg) = on_msg {
                     on_msg();
                 }
+
                 Ok(rx)
             }
 
             DataSource::WebSocketAddr(rerun_server_ws_url) => {
                 crate::web_sockets::connect_to_ws_url(&rerun_server_ws_url, on_msg)
             }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::Stdin => {
+                let (tx, rx) = re_smart_channel::smart_channel(
+                    SmartMessageSource::Stdin,
+                    SmartChannelSource::Stdin,
+                );
+
+                crate::load_stdin::load_stdin(tx).with_context(|| "stdin".to_owned())?;
+
+                if let Some(on_msg) = on_msg {
+                    on_msg();
+                }
+
+                Ok(rx)
+            }
         }
     }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn is_known_file_extension(extension: &str) -> bool {
-    extension == "rrd"
-        || crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension)
-        || crate::SUPPORTED_IMAGE_EXTENSIONS.contains(&extension)
 }
 
 #[cfg(not(target_arch = "wasm32"))]

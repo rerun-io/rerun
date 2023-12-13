@@ -94,6 +94,8 @@ pub mod external {
     pub use re_log::external::*;
     pub use re_log_types::external::*;
 
+    pub use atty;
+
     #[cfg(feature = "log")]
     pub use log;
 }

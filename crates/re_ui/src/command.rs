@@ -86,7 +86,7 @@ impl UICommand {
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
 
-            UICommand::Open => ("Open…", "Open a Rerun Data File (.rrd)"),
+            UICommand::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …)"),
 
             UICommand::CloseCurrentRecording => (
                 "Close current Recording",

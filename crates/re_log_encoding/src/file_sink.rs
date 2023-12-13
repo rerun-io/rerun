@@ -43,7 +43,9 @@ pub struct FileSink {
     join_handle: Option<std::thread::JoinHandle<()>>,
 
     /// Only used for diagnostics, not for access after `new()`.
-    path: PathBuf,
+    ///
+    /// `None` indicates stdout.
+    path: Option<PathBuf>,
 }
 
 impl Drop for FileSink {
@@ -106,7 +108,51 @@ impl FileSink {
         Ok(Self {
             tx: tx.into(),
             join_handle: Some(join_handle),
-            path,
+            path: Some(path),
+        })
+    }
+
+    pub fn stdout() -> Result<Self, FileSinkError> {
+        let encoding_options = crate::EncodingOptions::COMPRESSED;
+
+        let (tx, rx) = std::sync::mpsc::channel();
+
+        re_log::debug!("Writing to stdout…");
+
+        // TODO: do we want a locked handle kinda thing?
+        let mut encoder = crate::encoder::Encoder::new(encoding_options, std::io::stdout())?;
+
+        let join_handle = std::thread::Builder::new()
+            .name("stdout_writer".into())
+            .spawn({
+                move || {
+                    while let Ok(Some(cmd)) = rx.recv() {
+                        match cmd {
+                            Command::Send(log_msg) => {
+                                if let Err(err) = encoder.append(&log_msg) {
+                                    re_log::error!("Failed to write log stream to stdout: {err}");
+                                    return;
+                                }
+                            }
+                            Command::Flush(oneshot) => {
+                                re_log::trace!("Flushing…");
+                                if let Err(err) = encoder.flush_blocking() {
+                                    re_log::error!("Failed to flush log stream to stdout: {err}");
+                                    return;
+                                }
+                                drop(oneshot); // signals the oneshot
+                            }
+                        }
+                    }
+                    re_log::debug!("Log stream written to stdout");
+                }
+            })
+            .map_err(FileSinkError::SpawnThread)?;
+
+        Ok(Self {
+            tx: tx.into(),
+            join_handle: Some(join_handle),
+            path: None,
         })
     }
 
@@ -126,7 +172,10 @@ impl FileSink {
 impl fmt::Debug for FileSink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileSink")
-            .field("path", &self.path)
+            .field(
+                "path",
+                &self.path.as_ref().cloned().unwrap_or("stdin".into()),
+            )
             .finish_non_exhaustive()
     }
 }

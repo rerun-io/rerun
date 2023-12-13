@@ -974,7 +974,9 @@ impl App {
         for source in sources {
             match &*source {
                 // No need for a welcome screen - data is coming soon!
-                SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
+                SmartChannelSource::File(_)
+                | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::Stdin => {
                     return false;
                 }
 
@@ -1267,20 +1269,12 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 #[cfg(not(target_arch = "wasm32"))]
 fn open_file_dialog_native() -> Vec<std::path::PathBuf> {
     re_tracing::profile_function!();
-    rfd::FileDialog::new()
-        .add_filter("Rerun data file", &["rrd"])
-        .add_filter("Meshes", re_data_source::SUPPORTED_MESH_EXTENSIONS)
-        .add_filter("Images", re_data_source::SUPPORTED_IMAGE_EXTENSIONS)
-        .pick_files()
-        .unwrap_or_default()
+    rfd::FileDialog::new().pick_files().unwrap_or_default()
 }
 
 #[cfg(target_arch = "wasm32")]
 async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
     let files = rfd::AsyncFileDialog::new()
-        .add_filter("Rerun data file", &["rrd"])
-        .add_filter("Meshes", re_data_source::SUPPORTED_MESH_EXTENSIONS)
-        .add_filter("Images", re_data_source::SUPPORTED_IMAGE_EXTENSIONS)
         .pick_files()
         .await
         .unwrap_or_default();

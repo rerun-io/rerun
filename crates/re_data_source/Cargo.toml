@@ -29,12 +29,15 @@ re_tracing.workspace = true
 re_types = { workspace = true, features = ["image"] }
 re_ws_comms = { workspace = true, features = ["client"] }
 
+ahash.workspace = true
 anyhow.workspace = true
 image.workspace = true
 itertools.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
 rayon.workspace = true
 thiserror.workspace = true
-
+walkdir.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true

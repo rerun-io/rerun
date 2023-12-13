@@ -4,6 +4,7 @@ add_subdirectory(dna)
 add_subdirectory(shared_recording)
 add_subdirectory(minimal)
 add_subdirectory(spawn_viewer)
+add_subdirectory(stdio)
 
 add_custom_target(examples)
 
@@ -13,3 +14,4 @@ add_dependencies(examples example_dna)
 add_dependencies(examples example_shared_recording)
 add_dependencies(examples example_minimal)
 add_dependencies(examples example_spawn_viewer)
+add_dependencies(examples example_stdio)

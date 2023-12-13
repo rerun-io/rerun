@@ -12,7 +12,4 @@ Handles different ways of loading Rerun data, e.g.:
 * Over WebSocket
 * From disk
 
-Also handles different file types:
-* .rrd
-* images
-* meshes
+Also handles different file types: rrd, images, text files, 3D models, point clouds…

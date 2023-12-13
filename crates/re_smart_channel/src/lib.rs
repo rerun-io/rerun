@@ -50,12 +50,15 @@ pub enum SmartChannelSource {
     ///
     /// We are a TCP server listening on this port.
     TcpServer { port: u16 },
+
+    /// The channel was created in the context of streaming in RRD data from standard input.
+    Stdin,
 }
 
 impl SmartChannelSource {
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File(_) | Self::Sdk | Self::RrdWebEventListener => false,
+            Self::File(_) | Self::Sdk | Self::RrdWebEventListener | Self::Stdin => false,
             Self::RrdHttpStream { .. } | Self::WsClient { .. } | Self::TcpServer { .. } => true,
         }
     }
@@ -103,6 +106,9 @@ pub enum SmartMessageSource {
         // reason.
         addr: Option<std::net::SocketAddr>,
     },
+
+    /// The data is streaming in from standard input.
+    Stdin,
 }
 
 impl std::fmt::Display for SmartMessageSource {
@@ -118,6 +124,7 @@ impl std::fmt::Display for SmartMessageSource {
                 "tcp://{}",
                 addr.map_or_else(|| "(unknown ip)".to_owned(), |addr| addr.to_string())
             ),
+            SmartMessageSource::Stdin => "stdin".into(),
         })
     }
 }
