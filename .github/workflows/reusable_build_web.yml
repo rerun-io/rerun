@@ -63,6 +63,8 @@ jobs:
 
       - name: Build web-viewer (release)
         shell: bash
+        env:
+          DEFAULT_EXAMPLES_MANIFEST_URL: "https://app.rerun.io/version/nightly/examples_manifest.json"
         run: |
           cargo run --locked -p re_build_web_viewer -- --release ${{ inputs.EXTRA_FLAGS }}
 
