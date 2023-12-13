@@ -22,28 +22,29 @@ namespace rerun::blueprint::components {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct SpaceViewMaximized {
-        std::optional<rerun::datatypes::Uuid> id;
+        std::optional<rerun::datatypes::Uuid> space_view_id;
 
       public:
         SpaceViewMaximized() = default;
 
-        SpaceViewMaximized(std::optional<rerun::datatypes::Uuid> id_) : id(id_) {}
+        SpaceViewMaximized(std::optional<rerun::datatypes::Uuid> space_view_id_)
+            : space_view_id(space_view_id_) {}
 
-        SpaceViewMaximized& operator=(std::optional<rerun::datatypes::Uuid> id_) {
-            id = id_;
+        SpaceViewMaximized& operator=(std::optional<rerun::datatypes::Uuid> space_view_id_) {
+            space_view_id = space_view_id_;
             return *this;
         }
 
-        SpaceViewMaximized(std::array<uint8_t, 16> bytes_) : id(bytes_) {}
+        SpaceViewMaximized(std::array<uint8_t, 16> bytes_) : space_view_id(bytes_) {}
 
         SpaceViewMaximized& operator=(std::array<uint8_t, 16> bytes_) {
-            id = bytes_;
+            space_view_id = bytes_;
             return *this;
         }
 
         /// Cast to the underlying Uuid datatype
         operator std::optional<rerun::datatypes::Uuid>() const {
-            return id;
+            return space_view_id;
         }
     };
 } // namespace rerun::blueprint::components

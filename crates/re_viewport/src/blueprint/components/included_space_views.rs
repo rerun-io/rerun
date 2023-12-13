@@ -138,14 +138,16 @@ impl ::re_types_core::Loggable for IncludedSpaceViews {
                         arrow_data.data_type().clone(),
                     )
                 })
-                .with_context("rerun.blueprint.components.IncludedSpaceViews#space_view")?;
+                .with_context("rerun.blueprint.components.IncludedSpaceViews#space_view_ids")?;
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     crate::datatypes::Uuid::from_arrow_opt(arrow_data_inner)
-                        .with_context("rerun.blueprint.components.IncludedSpaceViews#space_view")?
+                        .with_context(
+                            "rerun.blueprint.components.IncludedSpaceViews#space_view_ids",
+                        )?
                         .into_iter()
                         .collect::<Vec<_>>()
                 };
@@ -184,7 +186,7 @@ impl ::re_types_core::Loggable for IncludedSpaceViews {
         .map(|v| v.ok_or_else(DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.blueprint.components.IncludedSpaceViews#space_view")
+        .with_context("rerun.blueprint.components.IncludedSpaceViews#space_view_ids")
         .with_context("rerun.blueprint.components.IncludedSpaceViews")?)
     }
 }

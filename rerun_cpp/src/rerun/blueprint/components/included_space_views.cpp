@@ -40,11 +40,11 @@ namespace rerun {
         for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
             const auto& element = elements[elem_idx];
             ARROW_RETURN_NOT_OK(builder->Append());
-            if (element.space_view.data()) {
+            if (element.space_view_ids.data()) {
                 RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Uuid>::fill_arrow_array_builder(
                     value_builder,
-                    element.space_view.data(),
-                    element.space_view.size()
+                    element.space_view_ids.data(),
+                    element.space_view_ids.size()
                 ));
             }
         }

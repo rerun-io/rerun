@@ -22,16 +22,16 @@ namespace rerun::blueprint::components {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct IncludedSpaceViews {
-        rerun::Collection<rerun::datatypes::Uuid> space_view;
+        rerun::Collection<rerun::datatypes::Uuid> space_view_ids;
 
       public:
         IncludedSpaceViews() = default;
 
-        IncludedSpaceViews(rerun::Collection<rerun::datatypes::Uuid> space_view_)
-            : space_view(std::move(space_view_)) {}
+        IncludedSpaceViews(rerun::Collection<rerun::datatypes::Uuid> space_view_ids_)
+            : space_view_ids(std::move(space_view_ids_)) {}
 
-        IncludedSpaceViews& operator=(rerun::Collection<rerun::datatypes::Uuid> space_view_) {
-            space_view = std::move(space_view_);
+        IncludedSpaceViews& operator=(rerun::Collection<rerun::datatypes::Uuid> space_view_ids_) {
+            space_view_ids = std::move(space_view_ids_);
             return *this;
         }
     };

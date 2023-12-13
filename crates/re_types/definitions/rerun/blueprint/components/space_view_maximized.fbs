@@ -20,6 +20,6 @@ table SpaceViewMaximized (
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  id: rerun.datatypes.Uuid (order: 100, nullable);
+  space_view_id: rerun.datatypes.Uuid (order: 100, nullable);
 }
 

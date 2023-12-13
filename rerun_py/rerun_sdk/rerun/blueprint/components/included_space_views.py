@@ -30,13 +30,13 @@ class IncludedSpaceViews:
     Unstable. Used for the ongoing blueprint experimentations.
     """
 
-    def __init__(self: Any, space_view: IncludedSpaceViewsLike):
+    def __init__(self: Any, space_view_ids: IncludedSpaceViewsLike):
         """Create a new instance of the IncludedSpaceViews component."""
 
         # You can define your own __init__ function as a member of IncludedSpaceViewsExt in included_space_views_ext.py
-        self.__attrs_init__(space_view=space_view)
+        self.__attrs_init__(space_view_ids=space_view_ids)
 
-    space_view: list[datatypes.Uuid] = field()
+    space_view_ids: list[datatypes.Uuid] = field()
 
 
 IncludedSpaceViewsLike = IncludedSpaceViews

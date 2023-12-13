@@ -126,12 +126,12 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok(crate::datatypes::Uuid::from_arrow_opt(arrow_data)
-            .with_context("rerun.blueprint.components.SpaceViewMaximized#id")?
+            .with_context("rerun.blueprint.components.SpaceViewMaximized#space_view_id")?
             .into_iter()
             .map(Ok)
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.blueprint.components.SpaceViewMaximized#id")
+            .with_context("rerun.blueprint.components.SpaceViewMaximized#space_view_id")
             .with_context("rerun.blueprint.components.SpaceViewMaximized")?)
     }
 }
