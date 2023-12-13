@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
-
+use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, StoreDb};
-use re_log_types::{DataRow, RowId, TimePoint};
+use re_log_types::{DataRow, RowId, TimePoint, Timeline};
+use re_query::query_archetype;
 use re_types::blueprint::datatypes::SpaceViewComponent;
 use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
@@ -12,8 +12,9 @@ use re_viewer_context::{
 };
 
 use crate::{
-    blueprint::components::{AutoSpaceViews, SpaceViewMaximized},
-    blueprint::datatypes::ViewportLayout,
+    blueprint::components::{
+        AutoLayout, AutoSpaceViews, IncludedSpaceViews, SpaceViewMaximized, ViewportLayout,
+    },
     space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
     space_view_heuristics::default_created_space_views,
@@ -278,25 +279,37 @@ impl<'a> ViewportBlueprint<'a> {
         // TODO(jleibs): Seq instead of timeless?
         let timepoint = TimePoint::timeless();
 
+        if after.space_views.len() != before.space_views.len()
+            || after
+                .space_views
+                .keys()
+                .zip(before.space_views.keys())
+                .any(|(a, b)| a != b)
+        {
+            let component =
+                IncludedSpaceViews(after.space_views.keys().map(|id| (*id).into()).collect());
+            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
+        }
+
+        if after.auto_layout != before.auto_layout {
+            let component = AutoLayout(after.auto_layout);
+            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
+        }
+
         if after.auto_space_views != before.auto_space_views {
             let component = AutoSpaceViews(after.auto_space_views);
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
 
         if after.maximized != before.maximized {
-            let component = SpaceViewMaximized(after.maximized);
+            let component = SpaceViewMaximized(after.maximized.map(|id| id.into()));
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
 
-        if after.tree != before.tree || after.auto_layout != before.auto_layout {
+        if after.tree != before.tree {
             re_log::trace!("Syncing tree");
 
-            let component: crate::blueprint::components::ViewportLayout = ViewportLayout {
-                space_view_keys: after.space_views.keys().cloned().collect(),
-                tree: after.tree.clone(),
-                auto_layout: after.auto_layout,
-            }
-            .into();
+            let component = ViewportLayout(after.tree.clone());
 
             add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
         }
@@ -351,78 +364,92 @@ fn add_delta_from_single_component<'a, C>(
 pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint<'_> {
     re_tracing::profile_function!();
 
-    let space_views: HashMap<SpaceViewId, SpaceViewBlueprint> = if let Some(space_views) =
-        blueprint_db.tree().subtree(SpaceViewId::registry())
+    let query = LatestAtQuery::latest(Timeline::default());
+
+    let arch = match query_archetype::<crate::blueprint::archetypes::ViewportBlueprint>(
+        blueprint_db.store(),
+        &query,
+        &VIEWPORT_PATH.into(),
+    )
+    .and_then(|arch| arch.to_archetype())
     {
-        space_views
-            .children
-            .values()
-            .filter_map(|view_tree| SpaceViewBlueprint::try_from_db(&view_tree.path, blueprint_db))
-            .map(|sv| (sv.id, sv))
-            .collect()
-    } else {
-        Default::default()
+        Ok(arch) => arch,
+        Err(re_query::QueryError::PrimaryNotFound(_)) => {
+            // Empty Store
+            Default::default()
+        }
+        Err(err) => {
+            if cfg!(debug_assertions) {
+                re_log::error!("Failed to load viewport blueprint: {err}.");
+            } else {
+                re_log::debug!("Failed to load viewport blueprint: {err}.");
+            }
+            Default::default()
+        }
     };
 
-    let auto_space_views = blueprint_db
-        .store()
-        .query_timeless_component_quiet::<AutoSpaceViews>(&VIEWPORT_PATH.into())
-        .map_or_else(
-            || {
-                // Only enable auto-space-views if this is the app-default blueprint
-                AutoSpaceViews(
-                    blueprint_db
-                        .store_info()
-                        .map_or(false, |ri| ri.is_app_default_blueprint()),
-                )
-            },
-            |auto| auto.value,
-        );
+    let space_view_ids: Vec<SpaceViewId> =
+        arch.space_views.0.iter().map(|id| (*id).into()).collect();
 
-    let space_view_maximized = blueprint_db
-        .store()
-        .query_timeless_component_quiet::<SpaceViewMaximized>(&VIEWPORT_PATH.into())
-        .map(|space_view| space_view.value)
-        .unwrap_or_default();
+    let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
+        .into_iter()
+        .filter_map(|space_view: SpaceViewId| {
+            SpaceViewBlueprint::try_from_db(&space_view.as_entity_path(), blueprint_db)
+        })
+        .map(|sv| (sv.id, sv))
+        .collect();
 
-    let viewport_layout: ViewportLayout = blueprint_db
+    let auto_layout = arch.auto_layout.unwrap_or_default().0;
+
+    let auto_space_views = arch.auto_space_views.map_or_else(
+        || {
+            // Only enable auto-space-views if this is the app-default blueprint
+            blueprint_db
+                .store_info()
+                .map_or(false, |ri| ri.is_app_default_blueprint())
+        },
+        |auto| auto.0,
+    );
+
+    let maximized = arch.maximized.and_then(|id| id.0.map(|id| id.into()));
+
+    let tree = blueprint_db
         .store()
-        .query_timeless_component_quiet::<crate::blueprint::components::ViewportLayout>(
-            &VIEWPORT_PATH.into(),
-        )
+        .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
         .map(|space_view| space_view.value)
         .unwrap_or_default()
         .0;
 
+    ViewportBlueprint {
+        blueprint_db,
+        space_views,
+        tree,
+        maximized,
+        auto_layout,
+        auto_space_views,
+        deferred_tree_actions: Default::default(),
+    }
+
+    // TODO(jleibs): Need to figure out if we have to re-enable support for
+    // auto-discovery of SpaceViews logged via the experimental blueprint APIs.
+    /*
     let unknown_space_views: HashMap<_, _> = space_views
         .iter()
         .filter(|(k, _)| !viewport_layout.space_view_keys.contains(k))
         .map(|(k, v)| (*k, v.clone()))
         .collect();
+    */
 
-    let known_space_views: BTreeMap<_, _> = space_views
-        .into_iter()
-        .filter(|(k, _)| viewport_layout.space_view_keys.contains(k))
-        .collect();
-
-    let mut viewport = ViewportBlueprint {
-        blueprint_db,
-        space_views: known_space_views,
-        tree: viewport_layout.tree,
-        maximized: space_view_maximized.0,
-        auto_layout: viewport_layout.auto_layout,
-        auto_space_views: auto_space_views.0,
-        deferred_tree_actions: Default::default(),
-    };
     // TODO(jleibs): It seems we shouldn't call this until later, after we've created
     // the snapshot. Doing this here means we are mutating the state before it goes
     // into the snapshot. For example, even if there's no visibility in the
     // store, this will end up with default-visibility, which then *won't* be saved back.
+    // TODO(jleibs): what to do about auto-discovery?
+    /*
     for (_, view) in unknown_space_views {
         viewport.add_space_view(view);
     }
-
-    viewport
+    */
 }
 
 // ----------------------------------------------------------------------------

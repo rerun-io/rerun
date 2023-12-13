@@ -1024,9 +1024,9 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
-                    fn from_arrow(
+                    fn from_arrow_components(
                         arrow_data: impl IntoIterator<Item = (
-                            arrow2::datatypes::Field,
+                            ComponentName,
                             Box<dyn arrow2::array::Array>,
                         )>,
                     ) -> DeserializationResult<Self> {
@@ -1034,9 +1034,12 @@ fn quote_trait_impls_from_obj(
 
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
+                        // NOTE: Even though ComponentName is an InternedString, we must
+                        // convert to &str here because the .get("component.name") accessors
+                        // will fail otherwise.
                         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
                             .into_iter()
-                            .map(|(field, array)| (field.name, array)).collect();
+                            .map(|(name, array)| (name.full_name(), array)).collect();
 
                         #(#all_deserializers;)*
 

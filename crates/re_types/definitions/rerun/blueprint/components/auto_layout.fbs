@@ -1,0 +1,25 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+/// Whether the viewport layout is determined automatically.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+struct AutoLayout (
+  "attr.arrow.transparent",
+  "attr.docs.unreleased",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy",
+  "attr.rust.override_crate": "re_viewport",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  auto_layout: bool (order: 100);
+}

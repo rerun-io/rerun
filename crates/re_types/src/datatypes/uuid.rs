@@ -22,7 +22,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 16-byte uuid.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Uuid {
     pub bytes: [u8; 16usize],

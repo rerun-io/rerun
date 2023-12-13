@@ -9,13 +9,14 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// A view of a space.
+/// The layouts of all the space views.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 table ViewportLayout (
+  "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "Default, PartialEq",
+  "attr.rust.derive": "PartialEq",
   "attr.rust.override_crate": "re_viewport"
 ) {
-    viewport_layout: rerun.blueprint.datatypes.ViewportLayout (order: 100);
+  tree: [ubyte] (order: 101, "attr.rust.serde_type": "egui_tiles::Tree<re_viewer_context::SpaceViewId>");
 }

@@ -5,5 +5,3 @@ query_expressions.cpp linguist-generated=true
 query_expressions.hpp linguist-generated=true
 space_view_component.cpp linguist-generated=true
 space_view_component.hpp linguist-generated=true
-viewport_layout.cpp linguist-generated=true
-viewport_layout.hpp linguist-generated=true

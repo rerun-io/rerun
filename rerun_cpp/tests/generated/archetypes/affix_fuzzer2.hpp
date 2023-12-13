@@ -76,7 +76,7 @@ namespace rerun::archetypes {
             "rerun.testing.components.AffixFuzzer2Indicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         AffixFuzzer2() = default;

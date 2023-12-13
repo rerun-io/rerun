@@ -537,7 +537,7 @@ impl QuotedObject {
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
                     #indicator_comment
-                    using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
+                    using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
                     #hpp_type_extensions
 
@@ -1333,6 +1333,13 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
+    let quoted_scoped_archetypes = if let Some(scope) = obj.scope() {
+        let scope = format_ident!("{scope}");
+        quote!(#scope::archetypes)
+    } else {
+        quote!(archetypes)
+    };
+
     let num_fields = quote_integer(obj.fields.len() + 1); // Plus one for the indicator.
     let push_batches = obj.fields.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
@@ -1367,10 +1374,10 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             is_static: true,
             // TODO(andreas): Use a rerun::Collection here as well.
             return_type: quote!(Result<std::vector<DataCell>>),
-            name_and_parameters: quote!(serialize(const archetypes::#type_ident& archetype)),
+            name_and_parameters: quote!(serialize(const #quoted_scoped_archetypes::#type_ident& archetype)),
         },
         definition_body: quote! {
-            using namespace archetypes;
+            using namespace #quoted_scoped_archetypes;
             #NEWLINE_TOKEN
             std::vector<DataCell> cells;
             cells.reserve(#num_fields);

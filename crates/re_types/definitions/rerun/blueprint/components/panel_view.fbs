@@ -13,6 +13,7 @@ namespace rerun.blueprint.components;
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 struct PanelView (
+  "attr.docs.unreleased",
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy",
   "attr.rust.override_crate": "re_viewer"

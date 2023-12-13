@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .auto_layout import AutoLayout, AutoLayoutArrayLike, AutoLayoutBatch, AutoLayoutLike, AutoLayoutType
 from .auto_space_views import (
     AutoSpaceViews,
     AutoSpaceViewsArrayLike,
@@ -16,19 +17,31 @@ from .entity_properties_component import (
     EntityPropertiesComponentLike,
     EntityPropertiesComponentType,
 )
+from .included_space_views import (
+    IncludedSpaceViews,
+    IncludedSpaceViewsArrayLike,
+    IncludedSpaceViewsBatch,
+    IncludedSpaceViewsLike,
+    IncludedSpaceViewsType,
+)
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
 from .query_expressions import QueryExpressions, QueryExpressionsBatch, QueryExpressionsType
 from .space_view_component import SpaceViewComponent, SpaceViewComponentBatch, SpaceViewComponentType
-from .space_view_maximized import (
-    SpaceViewMaximized,
-    SpaceViewMaximizedArrayLike,
-    SpaceViewMaximizedBatch,
-    SpaceViewMaximizedLike,
-    SpaceViewMaximizedType,
+from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
+from .viewport_layout import (
+    ViewportLayout,
+    ViewportLayoutArrayLike,
+    ViewportLayoutBatch,
+    ViewportLayoutLike,
+    ViewportLayoutType,
 )
-from .viewport_layout import ViewportLayout, ViewportLayoutBatch, ViewportLayoutType
 
 __all__ = [
+    "AutoLayout",
+    "AutoLayoutArrayLike",
+    "AutoLayoutBatch",
+    "AutoLayoutLike",
+    "AutoLayoutType",
     "AutoSpaceViews",
     "AutoSpaceViewsArrayLike",
     "AutoSpaceViewsBatch",
@@ -39,6 +52,11 @@ __all__ = [
     "EntityPropertiesComponentBatch",
     "EntityPropertiesComponentLike",
     "EntityPropertiesComponentType",
+    "IncludedSpaceViews",
+    "IncludedSpaceViewsArrayLike",
+    "IncludedSpaceViewsBatch",
+    "IncludedSpaceViewsLike",
+    "IncludedSpaceViewsType",
     "PanelView",
     "PanelViewArrayLike",
     "PanelViewBatch",
@@ -51,11 +69,11 @@ __all__ = [
     "SpaceViewComponentBatch",
     "SpaceViewComponentType",
     "SpaceViewMaximized",
-    "SpaceViewMaximizedArrayLike",
     "SpaceViewMaximizedBatch",
-    "SpaceViewMaximizedLike",
     "SpaceViewMaximizedType",
     "ViewportLayout",
+    "ViewportLayoutArrayLike",
     "ViewportLayoutBatch",
+    "ViewportLayoutLike",
     "ViewportLayoutType",
 ]

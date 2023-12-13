@@ -2,11 +2,7 @@ use super::ViewportLayout;
 
 impl Default for ViewportLayout {
     fn default() -> Self {
-        Self {
-            space_view_keys: Default::default(),
-            tree: egui_tiles::Tree::empty("viewport_tree"),
-            auto_layout: true,
-        }
+        Self(egui_tiles::Tree::empty("viewport_tree"))
     }
 }
 

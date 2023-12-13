@@ -89,7 +89,7 @@ namespace rerun::archetypes {
         static constexpr const char IndicatorComponentName[] = "rerun.components.Boxes3DIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         // Extensions to generated type defined in 'boxes3d_ext.cpp'
