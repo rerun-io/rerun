@@ -166,7 +166,7 @@ impl std::hash::Hash for WrappedContextError {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // If we haven't set a debug label ourselves, the label is typically not stable across frames,
         // Since wgc fills in the generation counter.
-        // Snip that part, starting with the last occurence of -(.
+        // Snip that part, starting with the last occurrence of -(.
         let label = if let Some(index) = self.0.label.find("-(") {
             &self.0.label[..index]
         } else {
