@@ -61,7 +61,9 @@ jobs:
       - name: Install example dependencies
         shell: bash
         run: |
-          pip install -r scripts/ci/requirements-examples-${{ inputs.CHANNEL }}.txt
+          pip install \
+            -r scripts/ci/requirements-examples-${{ inputs.CHANNEL }}.txt \
+            --no-input
 
       - name: Install Python dependencies and wheel
         shell: bash
