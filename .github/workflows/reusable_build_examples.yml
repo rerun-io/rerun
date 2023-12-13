@@ -62,10 +62,14 @@ jobs:
         with:
           pixi-version: v0.6.0
 
+      - name: Install example dependencies
+        shell: bash
+        run: |
+          pixi run pip install -r scripts/ci/requirements-examples-${{ inputs.CHANNEL }}.txt
+
       - name: Install Python dependencies and wheel
         shell: bash
         run: |
-          pixi run pip install -r scripts/ci/requirements-web-demo.txt
           pixi run pip uninstall rerun-sdk -y
           pixi run pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
           pixi run pip install rerun-sdk --no-index --find-links wheel

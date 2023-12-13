@@ -1,0 +1,11 @@
+-r ./requirements-examples-main.txt
+
+-r ../../examples/python/depth_guided_stable_diffusion/requirements.txt
+-r ../../examples/python/detect_and_track_objects/requirements.txt
+-r ../../examples/python/nuscenes/requirements.txt
+-r ../../examples/python/objectron/requirements.txt
+-r ../../examples/python/open_photogrammetry_format/requirements.txt
+-r ../../examples/python/raw_mesh/requirements.txt
+-r ../../examples/python/rgbd/requirements.txt
+-r ../../examples/python/segment_anything_model/requirements.txt
+-r ../../examples/python/signed_distance_fields/requirements.txt
