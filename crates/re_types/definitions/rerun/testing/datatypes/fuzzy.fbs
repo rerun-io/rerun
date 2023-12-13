@@ -100,7 +100,7 @@ table AffixFuzzer21 (
 }
 
 struct AffixFuzzer22 (
-  "attr.rust.derive": "Default, PartialEq"
+  "attr.rust.derive": "Default, PartialEq, Eq"
 ) {
   fixed_sized_native: [ubyte: 4] (order: 100);
 }

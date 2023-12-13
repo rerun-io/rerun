@@ -137,7 +137,7 @@ table AffixFuzzer21 (
 }
 
 table AffixFuzzer22 (
-  "attr.rust.derive": "Default, PartialEq"
+  "attr.rust.derive": "Default, PartialEq, Eq"
 ) {
   nullable_nested_array: rerun.testing.datatypes.AffixFuzzer22 (order: 120, nullable);
 }
