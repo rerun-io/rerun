@@ -13,10 +13,10 @@
 //! Otherwise, the version is `version/main`. This means local builds,
 //! and builds on `main` point to `version/main`.
 
-use std::path::Path;
 use std::path::PathBuf;
 
 use re_build_tools::Environment;
+use re_examples::{examples, Example};
 
 const USAGE: &str = "\
 Usage: [options] [output_path]
@@ -106,22 +106,6 @@ fn build_examples_manifest(build_env: Environment, args: &Args) -> anyhow::Resul
     Ok(serde_json::to_string_pretty(&manifest)?)
 }
 
-#[derive(serde::Deserialize)]
-struct Frontmatter {
-    #[serde(default)]
-    title: String,
-    #[serde(default)]
-    tags: Vec<String>,
-    #[serde(default)]
-    description: String,
-    #[serde(default)]
-    thumbnail: String,
-    #[serde(default)]
-    thumbnail_dimensions: [u64; 2],
-    #[serde(default)]
-    demo: bool,
-}
-
 #[derive(serde::Serialize)]
 struct ManifestEntry {
     name: String,
@@ -134,16 +118,16 @@ struct ManifestEntry {
 
 impl ManifestEntry {
     fn new(example: Example, base_url: &str) -> Self {
-        let Example { name, readme } = example;
+        let name = example.name;
         Self {
-            title: readme.title,
-            description: readme.description,
-            tags: readme.tags,
+            title: example.title,
+            description: example.description,
+            tags: example.tags,
             rrd_url: format!("{base_url}/examples/{name}.rrd"),
             thumbnail: Thumbnail {
-                url: readme.thumbnail,
-                width: readme.thumbnail_dimensions[0],
-                height: readme.thumbnail_dimensions[1],
+                url: example.thumbnail_url,
+                width: example.thumbnail_dimensions[0],
+                height: example.thumbnail_dimensions[1],
             },
             name,
         }
@@ -155,70 +139,6 @@ struct Thumbnail {
     url: String,
     width: u64,
     height: u64,
-}
-
-struct Example {
-    name: String,
-    readme: Frontmatter,
-}
-
-fn examples() -> anyhow::Result<Vec<Example>> {
-    let mut examples = vec![];
-    let dir = Path::new("examples/python");
-    if !dir.exists() {
-        anyhow::bail!("Failed to find {}", dir.display())
-    }
-    if !dir.is_dir() {
-        anyhow::bail!("{} is not a directory", dir.display())
-    }
-
-    for folder in std::fs::read_dir(dir)? {
-        let folder = folder?;
-        let metadata = folder.metadata()?;
-        let name = folder.file_name().to_string_lossy().to_string();
-        let readme = folder.path().join("README.md");
-        if metadata.is_dir() && readme.exists() {
-            let readme = parse_frontmatter(readme)?;
-            if let Some(readme) = readme {
-                if readme.demo {
-                    eprintln!("Adding example {name:?}");
-                    examples.push(Example { name, readme });
-                } else {
-                    eprintln!("Skipping example {name:?} because 'demo' is set to 'false'");
-                }
-            } else {
-                eprintln!("Skipping example {name:?} because it has no frontmatter");
-            }
-        }
-    }
-
-    if examples.is_empty() {
-        anyhow::bail!("No examples found in {}", dir.display())
-    }
-
-    examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
-    Ok(examples)
-}
-
-fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatter>> {
-    let path = path.as_ref();
-    let content = std::fs::read_to_string(path)?;
-    let content = content.replace('\r', ""); // Windows, god damn you
-    re_build_tools::rerun_if_changed(path);
-    let Some(content) = content.strip_prefix("---\n") else {
-        return Ok(None);
-    };
-    let Some(end) = content.find("---") else {
-        anyhow::bail!("{:?} has invalid frontmatter", path);
-    };
-    Ok(Some(serde_yaml::from_str(&content[..end]).map_err(
-        |e| {
-            anyhow::anyhow!(
-                "failed to read {:?}: {e}",
-                path.parent().unwrap().file_name().unwrap()
-            )
-        },
-    )?))
 }
 
 fn get_base_url(build_env: Environment) -> anyhow::Result<String> {

@@ -38,6 +38,7 @@ re_data_source = { path = "crates/re_data_source", version = "=0.12.0-alpha.1", 
 re_data_store = { path = "crates/re_data_store", version = "=0.12.0-alpha.1", default-features = false }
 re_data_ui = { path = "crates/re_data_ui", version = "=0.12.0-alpha.1", default-features = false }
 re_error = { path = "crates/re_error", version = "=0.12.0-alpha.1", default-features = false }
+re_examples = { path = "crates/re_examples", version = "=0.12.0-alpha.1", default-features = false }
 re_format = { path = "crates/re_format", version = "=0.12.0-alpha.1", default-features = false }
 re_int_histogram = { path = "crates/re_int_histogram", version = "=0.12.0-alpha.1", default-features = false }
 re_log = { path = "crates/re_log", version = "=0.12.0-alpha.1", default-features = false }

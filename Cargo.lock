@@ -4380,6 +4380,7 @@ dependencies = [
  "indicatif",
  "rayon",
  "re_build_tools",
+ "re_examples",
  "serde",
  "serde_yaml",
 ]
@@ -4390,6 +4391,7 @@ version = "0.12.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "re_build_tools",
+ "re_examples",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -4516,6 +4518,16 @@ name = "re_error"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+]
+
+[[package]]
+name = "re_examples"
+version = "0.12.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "re_build_tools",
+ "serde",
+ "serde_yaml",
 ]
 
 [[package]]

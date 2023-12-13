@@ -7,8 +7,6 @@
 //! `build_args` string array.
 
 use std::fs::create_dir_all;
-use std::fs::read_dir;
-use std::fs::read_to_string;
 use std::io::stdout;
 use std::io::IsTerminal;
 use std::path::Path;
@@ -22,6 +20,7 @@ use indicatif::MultiProgress;
 use indicatif::ProgressBar;
 use rayon::prelude::IntoParallelIterator;
 use rayon::prelude::ParallelIterator;
+use re_examples::{examples, Example};
 
 const USAGE: &str = "\
 Usage: [options] [output_dir]
@@ -41,7 +40,7 @@ fn main() -> anyhow::Result<()> {
     let progress = MultiProgress::new();
     let results: Vec<anyhow::Result<()>> = examples
         .into_par_iter()
-        .map(|example| example.run(&progress, &args.output_dir))
+        .map(|example| example.build(&progress, &args.output_dir))
         .collect();
 
     let mut failed = false;
@@ -95,22 +94,12 @@ impl Args {
     }
 }
 
-#[derive(serde::Deserialize)]
-struct Frontmatter {
-    #[serde(default)]
-    demo: bool,
-    #[serde(default)]
-    build_args: Vec<String>,
+trait Build {
+    fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<()>;
 }
 
-struct Example {
-    name: String,
-    script_path: PathBuf,
-    script_args: Vec<String>,
-}
-
-impl Example {
-    fn run(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<()> {
+impl Build for Example {
+    fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<()> {
         let mut cmd = Command::new("python3");
         cmd.arg(self.script_path);
         cmd.arg("--save")
@@ -173,67 +162,4 @@ fn wait_for_output(
     }
 
     Ok(output)
-}
-
-fn examples() -> anyhow::Result<Vec<Example>> {
-    let mut examples = vec![];
-    let dir = Path::new("examples/python");
-    if !dir.exists() {
-        anyhow::bail!("Failed to find {}", dir.display())
-    }
-    if !dir.is_dir() {
-        anyhow::bail!("{} is not a directory", dir.display())
-    }
-
-    for folder in read_dir(dir)? {
-        let folder = folder?;
-        let metadata = folder.metadata()?;
-        let name = folder.file_name().to_string_lossy().to_string();
-        let readme = folder.path().join("README.md");
-        if metadata.is_dir() && readme.exists() {
-            let readme = parse_frontmatter(readme)?;
-            if let Some(readme) = readme {
-                if readme.demo {
-                    eprintln!("Adding example {name:?}");
-                    examples.push(Example {
-                        name,
-                        script_path: folder.path().join("main.py"),
-                        script_args: readme.build_args,
-                    });
-                } else {
-                    eprintln!("Skipping example {name:?} because 'demo' is set to 'false'");
-                }
-            } else {
-                eprintln!("Skipping example {name:?} because it has no frontmatter");
-            }
-        }
-    }
-
-    if examples.is_empty() {
-        anyhow::bail!("No examples found in {}", dir.display())
-    }
-
-    examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
-    Ok(examples)
-}
-
-fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatter>> {
-    let path = path.as_ref();
-    let content = read_to_string(path)?;
-    let content = content.replace('\r', ""); // Windows, god damn you
-    re_build_tools::rerun_if_changed(path);
-    let Some(content) = content.strip_prefix("---\n") else {
-        return Ok(None);
-    };
-    let Some(end) = content.find("---") else {
-        anyhow::bail!("{:?} has invalid frontmatter", path);
-    };
-    Ok(Some(serde_yaml::from_str(&content[..end]).map_err(
-        |e| {
-            anyhow::anyhow!(
-                "failed to read {:?}: {e}",
-                path.parent().unwrap().file_name().unwrap()
-            )
-        },
-    )?))
 }
