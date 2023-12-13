@@ -1,0 +1,62 @@
+name: Nightly
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+  # schedule:
+  #   - cron: "0 12 * * *"
+
+jobs:
+  deploy-docs:
+    name: Deploy Docs
+    uses: ./.github/workflows/reusable_deploy_docs.yml
+    with:
+      CONCURRENCY: nightly
+      PY_AND_CPP_DOCS_VERSION_NAME: "nightly"
+      UPDATE_LATEST: false
+    secrets: inherit
+
+  build-web:
+    name: "Build Web"
+    uses: ./.github/workflows/reusable_build_web.yml
+    with:
+      CONCURRENCY: nightly
+    secrets: inherit
+
+  upload-web:
+    name: "Upload Web"
+    needs: [build-web]
+    uses: ./.github/workflows/reusable_upload_web.yml
+    with:
+      CONCURRENCY: nightly
+      NIGHTLY: true
+    secrets: inherit
+
+  build-wheel-linux:
+    name: "Linux: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: nightly-linux
+      PLATFORM: linux
+      WHEEL_ARTIFACT_NAME: linux-wheel
+      MODE: "pr"
+    secrets: inherit
+
+  build-examples:
+    name: "Build Examples"
+    needs: [build-wheel-linux]
+    uses: ./.github/workflows/reusable_build_examples.yml
+    with:
+      CONCURRENCY: nightly
+      WHEEL_ARTIFACT_NAME: linux-wheel
+    secrets: inherit
+
+  upload-examples:
+    name: "Upload Examples"
+    needs: [build-examples]
+    uses: ./.github/workflows/reusable_upload_examples.yml
+    with:
+      CONCURRENCY: nightly
+    secrets: inherit
