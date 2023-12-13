@@ -210,7 +210,7 @@ tracing = { version = "0.1", default-features = false }
 tungstenite = { version = "0.17", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
-unindent = "0.1"
+unindent = "0.1" # pyo3 0.19 uses 0.1, so update this whenm we update pyo3
 uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
