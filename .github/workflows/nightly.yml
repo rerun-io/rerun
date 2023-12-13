@@ -54,4 +54,5 @@ jobs:
     uses: ./.github/workflows/reusable_upload_examples.yml
     with:
       CONCURRENCY: nightly
+      NIGHTLY: true
     secrets: inherit
