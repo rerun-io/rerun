@@ -6,8 +6,9 @@ on:
     types:
       - opened
       - synchronize
-  # schedule:
-  #   - cron: "0 12 * * *"
+  #schedule:
+  #  # 12:15 every day
+  #  - cron: "15 12 * * *"
 
 jobs:
   build-web:
