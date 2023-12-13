@@ -1,6 +1,5 @@
 -r ./requirements-examples-main.txt
 
--r ../../examples/python/depth_guided_stable_diffusion/requirements.txt
 -r ../../examples/python/detect_and_track_objects/requirements.txt
 -r ../../examples/python/nuscenes/requirements.txt
 -r ../../examples/python/objectron/requirements.txt
