@@ -43,7 +43,9 @@ pub struct FileSink {
     join_handle: Option<std::thread::JoinHandle<()>>,
 
     /// Only used for diagnostics, not for access after `new()`.
-    path: PathBuf,
+    ///
+    /// `None` indicates stdout.
+    path: Option<PathBuf>,
 }
 
 impl Drop for FileSink {
@@ -73,40 +75,31 @@ impl FileSink {
 
         let file = std::fs::File::create(&path)
             .map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-        let mut encoder = crate::encoder::Encoder::new(encoding_options, file)?;
-
-        let join_handle = std::thread::Builder::new()
-            .name("file_writer".into())
-            .spawn({
-                let path = path.clone();
-                move || {
-                    while let Ok(Some(cmd)) = rx.recv() {
-                        match cmd {
-                            Command::Send(log_msg) => {
-                                if let Err(err) = encoder.append(&log_msg) {
-                                    re_log::error!("Failed to save log stream to {path:?}: {err}");
-                                    return;
-                                }
-                            }
-                            Command::Flush(oneshot) => {
-                                re_log::trace!("Flushing…");
-                                if let Err(err) = encoder.flush_blocking() {
-                                    re_log::error!("Failed to flush log stream to {path:?}: {err}");
-                                    return;
-                                }
-                                drop(oneshot); // signals the oneshot
-                            }
-                        }
-                    }
-                    re_log::debug!("Log stream saved to {path:?}");
-                }
-            })
-            .map_err(FileSinkError::SpawnThread)?;
+        let encoder = crate::encoder::Encoder::new(encoding_options, file)?;
+        let join_handle = spawn_and_stream(Some(&path), encoder, rx)?;
 
         Ok(Self {
             tx: tx.into(),
             join_handle: Some(join_handle),
-            path,
+            path: Some(path),
+        })
+    }
+
+    /// Start writing log messages to standard output.
+    pub fn stdout() -> Result<Self, FileSinkError> {
+        let encoding_options = crate::EncodingOptions::COMPRESSED;
+
+        let (tx, rx) = std::sync::mpsc::channel();
+
+        re_log::debug!("Writing to stdout…");
+
+        let encoder = crate::encoder::Encoder::new(encoding_options, std::io::stdout())?;
+        let join_handle = spawn_and_stream(None, encoder, rx)?;
+
+        Ok(Self {
+            tx: tx.into(),
+            join_handle: Some(join_handle),
+            path: None,
         })
     }
 
@@ -123,10 +116,51 @@ impl FileSink {
     }
 }
 
+fn spawn_and_stream<W: std::io::Write + Send + 'static>(
+    filepath: Option<&std::path::Path>,
+    mut encoder: crate::encoder::Encoder<W>,
+    rx: Receiver<Option<Command>>,
+) -> Result<std::thread::JoinHandle<()>, FileSinkError> {
+    let (name, target) = if let Some(filepath) = filepath {
+        ("file_writer", filepath.display().to_string())
+    } else {
+        ("stdout_writer", "stdout".to_owned())
+    };
+    std::thread::Builder::new()
+        .name(name.into())
+        .spawn({
+            move || {
+                while let Ok(Some(cmd)) = rx.recv() {
+                    match cmd {
+                        Command::Send(log_msg) => {
+                            if let Err(err) = encoder.append(&log_msg) {
+                                re_log::error!("Failed to write log stream to {target}: {err}");
+                                return;
+                            }
+                        }
+                        Command::Flush(oneshot) => {
+                            re_log::trace!("Flushing…");
+                            if let Err(err) = encoder.flush_blocking() {
+                                re_log::error!("Failed to flush log stream to {target}: {err}");
+                                return;
+                            }
+                            drop(oneshot); // signals the oneshot
+                        }
+                    }
+                }
+                re_log::debug!("Log stream written to {target}");
+            }
+        })
+        .map_err(FileSinkError::SpawnThread)
+}
+
 impl fmt::Debug for FileSink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileSink")
-            .field("path", &self.path)
+            .field(
+                "path",
+                &self.path.as_ref().cloned().unwrap_or("stdin".into()),
+            )
             .finish_non_exhaustive()
     }
 }
