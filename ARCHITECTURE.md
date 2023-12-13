@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/eaea8b78fd7efbefd76c0d6a09086ef9cd742c8b/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/eaea8b78fd7efbefd76c0d6a09086ef9cd742c8b/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/eaea8b78fd7efbefd76c0d6a09086ef9cd742c8b/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/eaea8b78fd7efbefd76c0d6a09086ef9cd742c8b/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/eaea8b78fd7efbefd76c0d6a09086ef9cd742c8b/1200w.png">
+  <img src="https://static.rerun.io/crates/21c577a05570720e96b850e8da21b5aa1fcd6c93/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/21c577a05570720e96b850e8da21b5aa1fcd6c93/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/21c577a05570720e96b850e8da21b5aa1fcd6c93/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/21c577a05570720e96b850e8da21b5aa1fcd6c93/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/21c577a05570720e96b850e8da21b5aa1fcd6c93/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -135,6 +135,7 @@ Update instructions:
 | re_renderer                 | A wgpu-based renderer for all your visualization needs.                                |
 | re_space_view               | Types & utilities for defining Space View classes and communicating with the Viewport. |
 | re_space_view_bar_chart     | A Space View that shows a single bar chart.                                            |
+| re_space_view_dataframe     | A Space View that shows the data contained in entities in a table.                     |
 | re_space_view_spatial       | Space Views that show entities in a 2D or 3D spatial relationship.                     |
 | re_space_view_tensor        | A Space View dedicated to visualizing tensors with arbitrary dimensionality.           |
 | re_space_view_text_document | A simple Space View that shows a single text box.                                      |
