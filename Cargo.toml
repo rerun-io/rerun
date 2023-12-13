@@ -111,7 +111,7 @@ cargo_metadata = "0.18"
 cargo-run-wasm = "0.3.2"
 cfg-if = "1.0"
 clang-format = "0.3"
-clap = { version = "4.0", default-features = false }               # update of comfy-table blocked on old version used by arrow2
+clap = "4.0"
 clean-path = "0.2"
 comfy-table = { version = "6.1", default-features = false }        # update of comfy-table blocked on old version used by arrow2
 console_error_panic_hook = "0.1.6"
