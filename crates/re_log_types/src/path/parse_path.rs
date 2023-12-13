@@ -177,7 +177,7 @@ impl EntityPath {
 
         let normalized = entity_path.to_string();
         if normalized != input {
-            re_log::warn_once!("The entity path '{input}' that was not in the normalized form. It will be interpreted as '{normalized}'. See https://www.rerun.io/docs/concepts/entity-path for more");
+            re_log::warn_once!("The entity path '{input}' was not in the normalized form. It will be interpreted as '{normalized}'. See https://www.rerun.io/docs/concepts/entity-path for more");
         }
 
         entity_path
