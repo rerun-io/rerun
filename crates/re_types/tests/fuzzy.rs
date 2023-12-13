@@ -213,6 +213,12 @@ fn roundtrip() {
         many_halves: vec![f16::from_f32(123.4), f16::from_f32(567.8)].into(),
     });
 
+    let fuzzy22_1 = components::AffixFuzzer22(Some(datatypes::AffixFuzzer22 {
+        fixed_sized_native: [1, 2, 3, 4],
+    }));
+
+    let fuzzy22_2 = components::AffixFuzzer22(None);
+
     {
         let arch = AffixFuzzer1::new(
             fuzzy1.clone(), //
@@ -236,6 +242,7 @@ fn roundtrip() {
             fuzzy19_1.clone(),
             fuzzy20.clone(),
             fuzzy21.clone(),
+            fuzzy22_1.clone(),
         );
 
         #[rustfmt::skip]
@@ -297,6 +304,7 @@ fn roundtrip() {
             [fuzzy16_1.clone(), fuzzy16_2.clone(), fuzzy16_1.clone()],
             [fuzzy17_1.clone(), fuzzy17_2.clone(), fuzzy17_1.clone()],
             [fuzzy18_1.clone(), fuzzy18_2.clone(), fuzzy18_3.clone()],
+            [fuzzy22_1.clone(), fuzzy22_2.clone(), fuzzy22_1.clone()],
         );
 
         #[rustfmt::skip]
