@@ -174,6 +174,16 @@ namespace rerun {
         /// This function returns immediately.
         Error save(std::string_view path) const;
 
+        /// Stream all log-data to stdout.
+        ///
+        /// Pipe the result into the Rerun Viewer to visualize it.
+        ///
+        /// If there isn't any listener at the other end of the pipe, the `RecordingStream` will
+        /// default back to `buffered` mode, in order not to break the user's terminal.
+        ///
+        /// This function returns immediately.
+        Error stdout() const;
+
         /// Initiates a flush the batching pipeline and waits for it to propagate.
         ///
         /// See `RecordingStream` docs for ordering semantics and multithreading guarantees.

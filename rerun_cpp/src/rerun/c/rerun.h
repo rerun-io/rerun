@@ -198,6 +198,7 @@ enum {
     _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
     RR_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
+    RR_ERROR_CODE_RECORDING_STREAM_STDOUT_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_SPAWN_FAILURE,
 
     // Arrow data processing errors.
@@ -332,6 +333,16 @@ extern void rr_recording_stream_spawn(
 ///
 /// This function returns immediately.
 extern void rr_recording_stream_save(rr_recording_stream stream, rr_string path, rr_error* error);
+
+/// Stream all log-data to stdout.
+///
+/// Pipe the result into the Rerun Viewer to visualize it.
+///
+/// If there isn't any listener at the other end of the pipe, the `RecordingStream` will
+/// default back to `buffered` mode, in order not to break the user's terminal.
+///
+/// This function returns immediately.
+extern void rr_recording_stream_stdout(rr_recording_stream stream, rr_error* error);
 
 /// Initiates a flush the batching pipeline and waits for it to propagate.
 ///
