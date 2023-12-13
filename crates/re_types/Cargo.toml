@@ -71,6 +71,9 @@ once_cell.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
+# TODO
+linked-hash-map = "0.5"
+ply-rs = "0.1"
 
 # External (optional)
 ecolor = { workspace = true, optional = true }

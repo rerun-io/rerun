@@ -23,6 +23,7 @@ mod pinhole;
 mod pinhole_ext;
 mod points2d;
 mod points3d;
+mod points3d_ext;
 mod segmentation_image;
 mod segmentation_image_ext;
 mod tensor;

@@ -45,6 +45,8 @@ pub const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &[
 
 pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj"];
 
+pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
+
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rrd"];
 
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
@@ -64,6 +66,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
 pub fn is_supported_file_extension(extension: &str) -> bool {
     SUPPORTED_IMAGE_EXTENSIONS.contains(&extension)
         || SUPPORTED_MESH_EXTENSIONS.contains(&extension)
+        || SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension)
         || SUPPORTED_RERUN_EXTENSIONS.contains(&extension)
         || SUPPORTED_TEXT_EXTENSIONS.contains(&extension)
 }

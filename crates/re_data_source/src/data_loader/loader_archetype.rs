@@ -80,15 +80,7 @@ impl DataLoader for ArchetypeLoader {
 
         let mut rows = Vec::new();
 
-        if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
-            re_log::debug!(?filepath, loader = self.name(), "Loading 3D model…",);
-            rows.extend(load_mesh(
-                filepath,
-                timepoint,
-                entity_path,
-                contents.into_owned(),
-            )?);
-        } else if crate::SUPPORTED_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
+        if crate::SUPPORTED_IMAGE_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, loader = self.name(), "Loading image…",);
             rows.extend(load_image(
                 &filepath,
@@ -96,6 +88,17 @@ impl DataLoader for ArchetypeLoader {
                 entity_path,
                 contents.into_owned(),
             )?);
+        } else if crate::SUPPORTED_MESH_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, loader = self.name(), "Loading 3D model…",);
+            rows.extend(load_mesh(
+                filepath,
+                timepoint,
+                entity_path,
+                contents.into_owned(),
+            )?);
+        } else if crate::SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, loader = self.name(), "Loading 3D point cloud…",);
+            rows.extend(load_point_cloud(timepoint, entity_path, &contents)?);
         } else if crate::SUPPORTED_TEXT_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, loader = self.name(), "Loading text document…",);
             rows.extend(load_text_document(
@@ -117,6 +120,28 @@ impl DataLoader for ArchetypeLoader {
 }
 
 // ---
+
+fn load_image(
+    filepath: &std::path::Path,
+    timepoint: TimePoint,
+    entity_path: EntityPath,
+    contents: Vec<u8>,
+) -> Result<impl ExactSizeIterator<Item = DataRow>, DataLoaderError> {
+    re_tracing::profile_function!();
+
+    let rows = [
+        {
+            let arch = re_types::archetypes::Image::from_file_contents(
+                contents,
+                image::ImageFormat::from_path(filepath).ok(),
+            )?;
+            DataRow::from_archetype(RowId::new(), timepoint, entity_path, &arch)?
+        },
+        //
+    ];
+
+    Ok(rows.into_iter())
+}
 
 fn load_mesh(
     filepath: std::path::PathBuf,
@@ -140,23 +165,26 @@ fn load_mesh(
     Ok(rows.into_iter())
 }
 
-fn load_image(
-    filepath: &std::path::Path,
+fn load_point_cloud(
     timepoint: TimePoint,
     entity_path: EntityPath,
-    contents: Vec<u8>,
+    contents: &[u8],
 ) -> Result<impl ExactSizeIterator<Item = DataRow>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let rows = [
         {
-            let arch = re_types::archetypes::Image::from_file_contents(
-                contents,
-                image::ImageFormat::from_path(filepath).ok(),
-            )?;
-            DataRow::from_archetype(RowId::new(), timepoint, entity_path, &arch)?
+            // TODO: see #1571 -> "log_mesh_file does not support PLY files"
+            // TODO: can a ply be 2D??! cant see why not, uh...
+            let points3d = re_types::archetypes::Points3D::from_file_contents(contents)?;
+            DataRow::from_archetype(RowId::new(), timepoint, entity_path.clone(), &points3d)?
         },
-        //
+        {
+            // TODO: literally anything is better than none.
+            // TODO: this seems to... not work?!
+            let arch = re_types::archetypes::ViewCoordinates::RIGHT_HAND_Z_UP;
+            DataRow::from_archetype(RowId::new(), TimePoint::timeless(), entity_path, &arch)?
+        },
     ];
 
     Ok(rows.into_iter())
