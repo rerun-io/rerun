@@ -12,7 +12,6 @@
 #include "blueprint/components/panel_view.hpp"
 #include "blueprint/components/query_expressions.hpp"
 #include "blueprint/components/space_view_class.hpp"
-#include "blueprint/components/space_view_component.hpp"
 #include "blueprint/components/space_view_maximized.hpp"
 #include "blueprint/components/space_view_origin.hpp"
 #include "blueprint/components/viewport_layout.hpp"

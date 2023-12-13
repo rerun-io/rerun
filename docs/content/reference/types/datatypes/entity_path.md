@@ -14,4 +14,3 @@ A path to an entity in the `DataStore`.
 ## Used by
 
 * [`SpaceViewOrigin`](../components/space_view_origin.md?speculative-link)
-* [`SpaceViewComponent`](../datatypes/space_view_component.md?speculative-link)

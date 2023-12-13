@@ -48,7 +48,6 @@ from .space_view_class import (
     SpaceViewClassLike,
     SpaceViewClassType,
 )
-from .space_view_component import SpaceViewComponent, SpaceViewComponentBatch, SpaceViewComponentType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
 from .viewport_layout import (
@@ -108,9 +107,6 @@ __all__ = [
     "SpaceViewClassBatch",
     "SpaceViewClassLike",
     "SpaceViewClassType",
-    "SpaceViewComponent",
-    "SpaceViewComponentBatch",
-    "SpaceViewComponentType",
     "SpaceViewMaximized",
     "SpaceViewMaximizedBatch",
     "SpaceViewMaximizedType",

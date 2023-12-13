@@ -6,13 +6,10 @@ mod name;
 mod name_ext;
 mod space_view_class;
 mod space_view_class_ext;
-mod space_view_component;
-mod space_view_component_ext;
 mod space_view_origin;
 
 pub use self::entities_determined_by_user::EntitiesDeterminedByUser;
 pub use self::included_queries::IncludedQueries;
 pub use self::name::Name;
 pub use self::space_view_class::SpaceViewClass;
-pub use self::space_view_component::SpaceViewComponent;
 pub use self::space_view_origin::SpaceViewOrigin;
