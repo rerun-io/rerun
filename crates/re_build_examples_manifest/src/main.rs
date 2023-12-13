@@ -110,7 +110,7 @@ impl Args {
 fn build_examples_manifest(build_env: Environment, args: &Args) -> anyhow::Result<String> {
     let base_url = match &args.base_url {
         Some(base_url) => base_url.clone(),
-        None => get_base_url(build_env)?,
+        None => get_base_url(build_env, args.channel)?,
     };
 
     let mut manifest = vec![];
@@ -160,7 +160,11 @@ struct Thumbnail {
     height: u64,
 }
 
-fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
+fn get_base_url(build_env: Environment, channel: Channel) -> anyhow::Result<String> {
+    if matches!(channel, Channel::Nightly) {
+        return Ok("https://app.rerun.io/version/nightly".into());
+    }
+
     // In the CondaBuild environment we can't trust the git_branch name -- if it exists
     // at all it's going to be the feedstock branch-name, not our Rerun branch. However
     // conda should ONLY be building released versions, so we want to version the manifest.

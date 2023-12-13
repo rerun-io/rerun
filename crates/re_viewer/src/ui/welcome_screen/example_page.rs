@@ -125,6 +125,11 @@ pub(super) struct ExamplePage {
 }
 
 fn default_manifest_url() -> String {
+    // Sometimes we want the default to point somewhere else, such as when doing nightly builds.
+    if let Some(url) = option_env!("DEFAULT_EXAMPLES_MANIFEST_URL") {
+        return url.into();
+    }
+
     let build_info = re_build_info::build_info!();
 
     // Always point to `version/main` for rerun devs,
