@@ -1,3 +1,5 @@
+//! Example collection and parsing.
+
 use std::fmt::Display;
 use std::path::Path;
 use std::path::PathBuf;
