@@ -6,6 +6,7 @@ description: "Visualize object detection and segmentation using the Huggingface 
 thumbnail: https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/480w.png
 thumbnail_dimensions: [480, 279]
 demo: true
+nightly: true
 ---
 
 <picture>
