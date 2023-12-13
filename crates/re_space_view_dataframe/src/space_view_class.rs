@@ -1,15 +1,19 @@
-use crate::view_part_system::EmptySystem;
+use std::collections::BTreeSet;
+
 use egui_extras::Column;
-use itertools::Itertools;
+
+use re_arrow_store::{DataStore, LatestAtQuery};
 use re_data_store::{EntityProperties, InstancePath};
 use re_data_ui::item_ui::instance_path_button;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, Timeline};
 use re_query::get_component_with_instances;
 use re_viewer_context::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSystemExecutionError, SystemExecutionOutput, UiVerbosity, ViewQuery,
     ViewerContext,
 };
+
+use crate::view_part_system::EmptySystem;
 
 #[derive(Default)]
 pub struct DataframeSpaceView;
@@ -26,7 +30,12 @@ impl SpaceViewClass for DataframeSpaceView {
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        "Show the data contained in entities in a table.".into()
+        "Show the data contained in entities in a table.\n\n\
+        Each entity is represented by as many rows as it has instances. This includes out-of-bound \
+        instances—instances from secondary components that cannot be joined to the primary \
+        component—that are typically not represented in other space views. Also, splats are merged \
+        into the entity's instance."
+            .into()
     }
 
     fn on_register(
@@ -75,51 +84,109 @@ impl SpaceViewClass for DataframeSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let entity_paths: Vec<_> = query
+        // These are the entity paths whose content we must display.
+        let sorted_entity_paths: BTreeSet<_> = query
             .iter_all_data_results()
             .filter(|data_result| data_result.resolved_properties.visible)
             .map(|data_result| &data_result.entity_path)
-            .unique()
             .cloned()
             .collect();
 
         let store = ctx.store_db.store();
         let latest_at_query = query.latest_at_query();
 
-        // for each entity, this does the union of all instance keys of all components
-        let all_instances: Vec<_> = entity_paths
+        // Produce a sorted list of each entity with all their instance keys. This will be the rows
+        // of the table.
+        //
+        // Important: our semantics here differs from other built-in space views. "Out-of-bound"
+        // instance keys (aka instance keys from a secondary component that cannot be joined with a
+        // primary component) are not filtered out. Reasons:
+        // - Primary/secondary component distinction only makes sense with archetypes, which we
+        //   ignore. TODO(#4466): make archetypes more explicit?
+        // - This space view is about showing all user data anyways.
+        //
+        // Note: this must be a `Vec<_>` because we need random access for `body.rows()`.
+        let sorted_instance_paths: Vec<_> = sorted_entity_paths
             .iter()
-            .flat_map(|entity| {
-                store
-                    .all_components(&query.timeline, entity)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter(|comp| !comp.is_indicator_component())
-                    .flat_map(|comp| {
-                        get_component_with_instances(store, &latest_at_query, entity, comp)
-                            .map(|(_, comp_inst)| comp_inst.instance_keys())
-                            .unwrap_or_default()
-                    })
-                    .filter(|instance_key| !instance_key.is_splat())
-                    .map(|instance_key| InstancePath::instance(entity.clone(), instance_key))
+            .flat_map(|entity_path| {
+                sorted_instance_keys_for(entity_path, store, &query.timeline, &latest_at_query)
             })
-            .unique()
             .collect();
 
-        let all_components: Vec<_> = entity_paths
+        // Produce a sorted list of all components that are present in one or more entities. This
+        // will be the columns of the table.
+        let sorted_components: BTreeSet<_> = sorted_entity_paths
             .iter()
-            .flat_map(|entity| {
+            .flat_map(|entity_path| {
                 store
-                    .all_components(&query.timeline, entity)
+                    .all_components(&query.timeline, entity_path)
                     .unwrap_or_default()
             })
-            .unique()
+            // TODO(#4466): make that optional
             .filter(|comp| !comp.is_indicator_component())
             .collect();
+
+        // Draw the header row.
+        let header_ui = |mut row: egui_extras::TableRow<'_, '_>| {
+            row.col(|ui| {
+                ui.strong("Entity");
+            });
+
+            for comp in &sorted_components {
+                row.col(|ui| {
+                    ui.strong(comp.short_name());
+                });
+            }
+        };
+
+        // Draw a single line of the table. This is called for each _visible_ row, so it's ok to
+        // duplicate some of the querying.
+        let row_ui = |idx: usize, mut row: egui_extras::TableRow<'_, '_>| {
+            let instance = &sorted_instance_paths[idx];
+
+            // TODO(#4466): make it explicit if that instance key is "out
+            // of bounds" (aka cannot be joined to a primary component).
+
+            row.col(|ui| {
+                instance_path_button(ctx, ui, None, instance);
+            });
+
+            for comp in &sorted_components {
+                row.col(|ui| {
+                    // TODO(#4466): make it explicit if that value results
+                    // from a splat joint.
+
+                    if let Some((_, comp_inst)) =
+                        // This is a duplicate of the one above, but this ok since this codes runs
+                        // *only* for visible rows.
+                        get_component_with_instances(
+                            store,
+                            &latest_at_query,
+                            &instance.entity_path,
+                            *comp,
+                        )
+                    {
+                        ctx.component_ui_registry.ui(
+                            ctx,
+                            ui,
+                            UiVerbosity::Small,
+                            &latest_at_query,
+                            &instance.entity_path,
+                            &comp_inst,
+                            &instance.instance_key,
+                        );
+                    } else {
+                        ui.weak("-");
+                    }
+                });
+            }
+        };
 
         egui::ScrollArea::both()
             .auto_shrink([false, false])
             .show(ui, |ui| {
+                ui.style_mut().wrap = Some(false);
+
                 egui::Frame {
                     inner_margin: egui::Margin::same(5.0),
                     ..Default::default()
@@ -127,60 +194,19 @@ impl SpaceViewClass for DataframeSpaceView {
                 .show(ui, |ui| {
                     egui_extras::TableBuilder::new(ui)
                         .columns(
-                            Column::auto_with_initial_suggestion(200.0),
-                            all_components.len() + 1,
+                            Column::auto_with_initial_suggestion(200.0).clip(true),
+                            sorted_components.len() + 1,
                         )
                         .resizable(true)
                         .vscroll(false)
                         .auto_shrink([false, true])
                         .striped(true)
-                        .header(re_ui::ReUi::table_line_height(), |mut row| {
-                            row.col(|ui| {
-                                ui.strong("Entity");
-                            });
-
-                            for comp in &all_components {
-                                row.col(|ui| {
-                                    ui.strong(comp.short_name());
-                                });
-                            }
-                        })
+                        .header(re_ui::ReUi::table_line_height(), header_ui)
                         .body(|body| {
                             body.rows(
                                 re_ui::ReUi::table_line_height(),
-                                all_instances.len(),
-                                |idx, mut row| {
-                                    let instance = &all_instances[idx];
-
-                                    row.col(|ui| {
-                                        instance_path_button(ctx, ui, None, instance);
-                                    });
-
-                                    for comp in &all_components {
-                                        row.col(|ui| {
-                                            if let Some((_, comp_inst)) =
-                                                get_component_with_instances(
-                                                    store,
-                                                    &latest_at_query,
-                                                    &instance.entity_path,
-                                                    *comp,
-                                                )
-                                            {
-                                                ctx.component_ui_registry.ui(
-                                                    ctx,
-                                                    ui,
-                                                    UiVerbosity::Small,
-                                                    &latest_at_query,
-                                                    &instance.entity_path,
-                                                    &comp_inst,
-                                                    &instance.instance_key,
-                                                );
-                                            } else {
-                                                ui.weak("-");
-                                            }
-                                        });
-                                    }
-                                },
+                                sorted_instance_paths.len(),
+                                row_ui,
                             );
                         });
                 });
@@ -188,4 +214,30 @@ impl SpaceViewClass for DataframeSpaceView {
 
         Ok(())
     }
+}
+
+/// Returns a sorted, deduplicated iterator of all instance paths for a given entity.
+///
+/// This includes _any_ instance key in all components logged under this entity path, excluding
+/// splats.
+fn sorted_instance_keys_for<'a>(
+    entity_path: &'a EntityPath,
+    store: &'a DataStore,
+    timeline: &'a Timeline,
+    latest_at_query: &'a LatestAtQuery,
+) -> impl Iterator<Item = InstancePath> + 'a {
+    store
+        .all_components(timeline, entity_path)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|comp| !comp.is_indicator_component())
+        .flat_map(|comp| {
+            get_component_with_instances(store, latest_at_query, entity_path, comp)
+                .map(|(_, comp_inst)| comp_inst.instance_keys())
+                .unwrap_or_default()
+        })
+        .filter(|instance_key| !instance_key.is_splat())
+        .collect::<BTreeSet<_>>() // dedup and sort
+        .into_iter()
+        .map(|instance_key| InstancePath::instance(entity_path.clone(), instance_key))
 }
