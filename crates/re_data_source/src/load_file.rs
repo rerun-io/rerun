@@ -98,11 +98,11 @@ pub fn extension(path: &std::path::Path) -> String {
 /// This does _not_ access the filesystem.
 #[inline]
 pub fn is_associated_with_builtin_loader(path: &std::path::Path, is_dir: bool) -> bool {
-    !is_dir && crate::is_supported_file_extension(&extension(path))
+    is_dir || crate::is_supported_file_extension(&extension(path))
 }
 
 /// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
-fn prepare_store_info(
+pub(crate) fn prepare_store_info(
     store_id: &re_log_types::StoreId,
     file_source: FileSource,
     path: &std::path::Path,
@@ -139,7 +139,7 @@ fn prepare_store_info(
 /// - On native, this is filled asynchronously from other threads.
 /// - On wasm, this is pre-filled synchronously.
 #[cfg_attr(target_arch = "wasm32", allow(clippy::needless_pass_by_value))]
-fn load(
+pub(crate) fn load(
     store_id: &re_log_types::StoreId,
     path: &std::path::Path,
     is_dir: bool,
@@ -218,7 +218,7 @@ fn load(
 /// Forwards the data in `rx_loader` to `tx`, taking care of necessary conversions, if any.
 ///
 /// Runs asynchronously from another thread on native, synchronously on wasm.
-fn send(
+pub(crate) fn send(
     store_id: &re_log_types::StoreId,
     rx_loader: std::sync::mpsc::Receiver<LoadedData>,
     tx: &Sender<LogMsg>,
