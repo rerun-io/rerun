@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Demonstrates how to log data to standard output with the Rerun SDK, and then visualize it
-from standard input with the Rerun Viewer.
-"""
+"""Demonstrates how to use standard input/output with the Rerun SDK/Viewer."""
 from __future__ import annotations
 
 import sys
@@ -17,4 +14,4 @@ rr.stdout()
 
 input = sys.stdin.buffer.read()
 
-rr.log("stdin", rr.TextDocument(input.decode('utf-8')))
+rr.log("stdin", rr.TextDocument(input.decode("utf-8")))

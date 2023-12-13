@@ -76,6 +76,9 @@ def stdout(recording: RecordingStream | None = None) -> None:
 
     Call this _before_ you log any data!
 
+    If there isn't any listener at the other end of the pipe, the `RecordingStream` will
+    default back to `buffered` mode, in order not to break the user's terminal.
+
     Parameters
     ----------
     recording:
