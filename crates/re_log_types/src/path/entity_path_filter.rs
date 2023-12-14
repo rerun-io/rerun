@@ -16,8 +16,9 @@ use crate::EntityPath;
 /// If there are multiple rules of the same specificity, the last one wins.
 /// If no rules match, the path is excluded.
 ///
-/// The `/**` suffix matches self and any child, recursively (`/world/**` matches `/world`).
-/// Other uses of `*` are not supported.
+/// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
+/// (`/world/**` matches both `/world` and `/world/car/driver`).
+/// Other uses of `*` are not (yet) supported.
 ///
 /// `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
 /// This means the last matching rule is also the most specific one.
@@ -43,8 +44,8 @@ pub struct EntityPathFilter {
 pub struct EntityPathRule {
     pub path: EntityPath,
 
-    /// If true, ALSO include children and grandchildren of this path.
-    pub recursive: bool,
+    /// If true, ALSO include children and grandchildren of this path (recursive rule).
+    pub include_subtree: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -102,7 +103,7 @@ impl EntityPathFilter {
                 RuleEffect::Exclude => "- ",
             });
             s.push_str(&rule.path.to_string());
-            if rule.recursive {
+            if rule.include_subtree {
                 s.push_str("/**");
             }
             s.push('\n');
@@ -145,18 +146,18 @@ impl EntityPathRule {
         if let Some(path) = expression.strip_suffix("/**") {
             Self {
                 path: EntityPath::parse_forgiving(path),
-                recursive: true,
+                include_subtree: true,
             }
         } else {
             Self {
                 path: EntityPath::parse_forgiving(expression),
-                recursive: false,
+                include_subtree: false,
             }
         }
     }
 
     pub fn matches(&self, path: &EntityPath) -> bool {
-        if self.recursive {
+        if self.include_subtree {
             path.starts_with(&self.path)
         } else {
             path == &self.path
@@ -167,7 +168,7 @@ impl EntityPathRule {
 impl std::cmp::Ord for EntityPathRule {
     /// Most specific last, which means recursive first.
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (&self.path, !self.recursive).cmp(&(&other.path, !other.recursive))
+        (&self.path, !self.include_subtree).cmp(&(&other.path, !other.include_subtree))
     }
 }
 
