@@ -53,66 +53,48 @@ root:
         check out [Types](/docs/reference/types).
       children:
         # Keep this list lexicographically sorted:
-
         - name: arkit_scenes
           python: python/arkit_scenes
-
         - name: controlnet
           python: python/controlnet
-
         - name: depth-guided-stable-diffusion
           python: python/depth_guided_stable_diffusion
-
         - name: detect-and-track-objects
           python: python/detect_and_track_objects
-
         - name: dicom-mri
           python: python/dicom_mri
-
         - name: face-tracking
           python: python/face_tracking
-
         - name: human-pose-tracking
           python: python/human_pose_tracking
-
         - name: lidar
           python: python/lidar
-
         - name: live-camera-edge-detection
           python: python/live_camera_edge_detection
-
         - name: live-depth-sensor
           python: python/live_depth_sensor
-
+        - name: llm_embedding_ner
+          python: python/llm_embedding_ner
         - name: nuscenes
           python: python/nuscenes
-
         - name: objectron
           python: python/objectron
           rust: rust/objectron
-
         - name: open-photogrammetry-format
           python: python/open_photogrammetry_format
-
         - name: raw-mesh
           python: python/raw_mesh
           rust: rust/raw_mesh
-
         - name: rgbd
           python: python/rgbd
-
         - name: ros-node
           python: python/ros_node
-
         - name: segment-anything-model
           python: python/segment_anything_model
-
         - name: signed-distance-fields
           python: python/signed_distance_fields
-
         - name: structure-from-motion
           python: python/structure_from_motion
-
         - name: vrs
           cpp: cpp/vrs
 
@@ -130,23 +112,17 @@ root:
           rust: rust/minimal
 
         # Keep the following examples lexicographically sorted:
-
         - name: car
           python: python/car
-
         - name: clock
           python: python/clock
           rust: rust/clock
-
         - name: eigen-opencv
           cpp: cpp/eigen_opencv
-
         - name: multithreading
           python: python/multithreading
-
         - name: multiprocessing
           python: python/multiprocessing
-
         - name: plots
           python: python/plots
 

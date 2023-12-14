@@ -12,6 +12,7 @@
 -r lidar/requirements.txt
 -r live_camera_edge_detection/requirements.txt
 -r live_depth_sensor/requirements.txt
+-r llm_embedding_ner/requirements.txt
 -r minimal/requirements.txt
 -r minimal_options/requirements.txt
 -r multiprocessing/requirements.txt
