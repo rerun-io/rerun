@@ -128,7 +128,7 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::stdout() const {
+    Error RecordingStream::to_stdout() const {
         rr_error status = {};
         rr_recording_stream_stdout(_id, &status);
         return status;

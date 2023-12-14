@@ -174,7 +174,7 @@ namespace rerun {
         /// This function returns immediately.
         Error save(std::string_view path) const;
 
-        /// Stream all log-data to stdout.
+        /// Stream all log-data to standard output.
         ///
         /// Pipe the result into the Rerun Viewer to visualize it.
         ///
@@ -182,7 +182,7 @@ namespace rerun {
         /// default back to `buffered` mode, in order not to break the user's terminal.
         ///
         /// This function returns immediately.
-        Error stdout() const;
+        Error to_stdout() const;
 
         /// Initiates a flush the batching pipeline and waits for it to propagate.
         ///

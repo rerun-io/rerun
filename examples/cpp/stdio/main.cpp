@@ -5,7 +5,7 @@
 
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_stdio");
-    rec.stdout().exit_on_failure();
+    rec.to_stdout().exit_on_failure();
 
     std::string input;
     std::string line;
