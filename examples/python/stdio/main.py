@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Demonstrates how to use standard input/output with the Rerun SDK/Viewer."""
+"""
+Demonstrates how to use standard input/output with the Rerun SDK/Viewer.
+
+Usage: `echo 'hello from stdin!' | python main.py | rerun -`
+"""
 from __future__ import annotations
 
 import sys
