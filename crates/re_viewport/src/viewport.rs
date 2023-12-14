@@ -221,9 +221,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             state.space_views_displayed_last_frame = tab_viewer.space_views_displayed_current_frame;
         });
 
-        if maximized != blueprint.maximized {
-            self.blueprint.set_maximized(maximized, ctx);
-        }
+        self.blueprint.set_maximized(maximized, ctx);
     }
 
     pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
