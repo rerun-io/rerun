@@ -198,7 +198,7 @@ impl StoreDb {
 
     /// Historgram of all events on the timeeline, of all entities.
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
-        self.tree().recursive_info.time_histogram.get(timeline)
+        self.tree().subtree.time_histogram.get(timeline)
     }
 
     /// Total number of timeless messages for any entity.

@@ -98,7 +98,7 @@ impl<'a> ViewerContext<'a> {
     /// Returns whether the given tree has any data logged in the current timeline,
     /// or has any timeless messages.
     pub fn tree_has_data_in_current_timeline(&self, tree: &EntityTree) -> bool {
-        let top_time_histogram = &tree.recursive_info.time_histogram;
+        let top_time_histogram = &tree.subtree.time_histogram;
         top_time_histogram.has_timeline(self.rec_cfg.time_ctrl.read().timeline())
             || top_time_histogram.num_timeless_messages() > 0
     }

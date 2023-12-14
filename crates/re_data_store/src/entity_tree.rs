@@ -28,23 +28,11 @@ pub struct EntityTree {
     /// Direct decendants of this (sub)tree.
     pub children: BTreeMap<EntityPathPart, EntityTree>,
 
-    /// Book-keeping around whether we should clear fields when data is added.
-    flat_clears: BTreeMap<RowId, TimePoint>,
-
-    /// Book-keeping around whether we should clear recursively when data is added.
-    recursive_clears: BTreeMap<RowId, TimePoint>,
-
-    /// Flat time histograms for each component of this [`EntityTree`].
-    ///
-    /// Keeps track of the _number of times a component is logged_ per time per timeline, only for
-    /// this specific [`EntityTree`].
-    /// A component logged twice at the same timestamp is counted twice.
-    ///
-    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
-    pub time_histograms_per_component: BTreeMap<ComponentName, TimeHistogramPerTimeline>,
+    /// Information about this specific entity (excluding children).
+    pub entity: EntityInfo,
 
     /// Info about this subtree, including all children, recursively.
-    pub recursive_info: RecursiveTreeInfo,
+    pub subtree: RecursiveTreeInfo,
 }
 
 // NOTE: This is only to let people know that this is in fact a [`StoreSubscriber`], so they A) don't try
@@ -70,9 +58,28 @@ impl StoreSubscriber for EntityTree {
     }
 }
 
+/// Information about this specific entity (excluding children).
+#[derive(Default)]
+pub struct EntityInfo {
+    /// Book-keeping around whether we should clear fields when data is added.
+    clears: BTreeMap<RowId, TimePoint>,
+
+    /// Flat time histograms for each component of this [`EntityTree`].
+    ///
+    /// Keeps track of the _number of times a component is logged_ per time per timeline, only for
+    /// this specific [`EntityTree`].
+    /// A component logged twice at the same timestamp is counted twice.
+    ///
+    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
+    pub components: BTreeMap<ComponentName, TimeHistogramPerTimeline>,
+}
+
 /// Info about stuff at a given [`EntityPath`], including all of its children, recursively.
 #[derive(Default)]
 pub struct RecursiveTreeInfo {
+    /// Book-keeping around whether we should clear recursively when data is added.
+    clears: BTreeMap<RowId, TimePoint>,
+
     /// Recursive time histogram for this [`EntityTree`].
     ///
     /// Keeps track of the _number of components logged_ per time per timeline, recursively across
@@ -185,10 +192,14 @@ impl EntityTree {
         Self {
             path,
             children: Default::default(),
-            flat_clears: recursive_clears.clone(),
-            recursive_clears,
-            time_histograms_per_component: Default::default(),
-            recursive_info: Default::default(),
+            entity: EntityInfo {
+                clears: recursive_clears.clone(),
+                ..Default::default()
+            },
+            subtree: RecursiveTreeInfo {
+                clears: recursive_clears,
+                ..Default::default()
+            },
         }
     }
 
@@ -198,12 +209,12 @@ impl EntityTree {
     }
 
     pub fn num_children_and_fields(&self) -> usize {
-        self.children.len() + self.time_histograms_per_component.len()
+        self.children.len() + self.entity.components.len()
     }
 
     /// Number of timeless messages in this tree, or any child, recursively.
     pub fn num_timeless_messages_recursive(&self) -> u64 {
-        self.recursive_info.time_histogram.num_timeless_messages()
+        self.subtree.time_histogram.num_timeless_messages()
     }
 
     pub fn time_histogram_for_component(
@@ -211,7 +222,8 @@ impl EntityTree {
         timeline: &Timeline,
         component_name: impl Into<ComponentName>,
     ) -> Option<&crate::TimeHistogram> {
-        self.time_histograms_per_component
+        self.entity
+            .components
             .get(&component_name.into())
             .and_then(|per_timeline| per_timeline.get(timeline))
     }
@@ -240,16 +252,16 @@ impl EntityTree {
 
         // Book-keeping for each level in the hierarchy:
         let mut tree = self;
-        tree.recursive_info.on_event(event);
+        tree.subtree.on_event(event);
 
         for (i, part) in entity_path.iter().enumerate() {
             tree = tree.children.entry(part.clone()).or_insert_with(|| {
                 EntityTree::new(
                     entity_path.as_slice()[..i + 1].into(),
-                    tree.recursive_clears.clone(),
+                    tree.subtree.clears.clone(),
                 )
             });
-            tree.recursive_info.on_event(event);
+            tree.subtree.on_event(event);
         }
 
         // Finally book-keeping for the entity where data was actually added:
@@ -268,12 +280,13 @@ impl EntityTree {
             let mut pending_clears = vec![];
 
             let per_component = self
-                .time_histograms_per_component
+                .entity
+                .components
                 .entry(component_path.component_name)
                 .or_insert_with(|| {
                     // If we needed to create a new leaf to hold this data, we also want to
                     // insert all of the historical pending clear operations.
-                    pending_clears = self.flat_clears.clone().into_iter().collect_vec();
+                    pending_clears = self.entity.clears.clone().into_iter().collect_vec();
                     Default::default()
                 });
             per_component.add(&store_diff.times, 1);
@@ -358,16 +371,17 @@ impl EntityTree {
         ) -> impl IntoIterator<Item = ComponentPath> + '_ {
             if is_recursive {
                 // Track that any future children need a Null at the right timepoint when added.
-                let cur_timepoint = tree.recursive_clears.entry(row_id).or_default();
+                let cur_timepoint = tree.subtree.clears.entry(row_id).or_default();
                 *cur_timepoint = timepoint.clone().union_max(cur_timepoint);
             }
 
             // Track that any future fields need a Null at the right timepoint when added.
-            let cur_timepoint = tree.flat_clears.entry(row_id).or_default();
+            let cur_timepoint = tree.entity.clears.entry(row_id).or_default();
             *cur_timepoint = timepoint.union_max(cur_timepoint);
 
             // For every existing field return a clear event.
-            tree.time_histograms_per_component
+            tree.entity
+                .components
                 .keys()
                 // Don't clear `Clear` components, or we'd end up with recursive cascades!
                 .filter(|comp_name| filter_out_clear_components(comp_name))
@@ -449,45 +463,56 @@ impl EntityTree {
         let Self {
             path,
             children,
-            flat_clears,
-            recursive_clears,
-            time_histograms_per_component: _,
-            recursive_info,
+            entity,
+            subtree,
         } = self;
 
-        {
-            re_tracing::profile_scope!("flat_clears");
-            flat_clears.retain(|row_id, _| !compacted.row_ids.contains(row_id));
-        }
-        {
-            re_tracing::profile_scope!("recursive_clears");
-            recursive_clears.retain(|row_id, _| !compacted.row_ids.contains(row_id));
-        }
-
         // Only keep events relevant to this branch of the tree.
-        let filtered_events = store_events
+        let subtree_events = store_events
             .iter()
             .filter(|e| e.entity_path.starts_with(path))
             .copied() // NOTE: not actually copying, just removing the superfluous ref layer
             .collect_vec();
 
-        for event in filtered_events.iter().filter(|e| &e.entity_path == path) {
-            for component_name in event.cells.keys() {
-                if let Some(histo) = self.time_histograms_per_component.get_mut(component_name) {
-                    histo.remove(&event.timepoint(), 1);
-                    if histo.is_empty() {
-                        self.time_histograms_per_component.remove(component_name);
+        {
+            re_tracing::profile_scope!("entity");
+
+            {
+                re_tracing::profile_scope!("clears");
+                entity
+                    .clears
+                    .retain(|row_id, _| !compacted.row_ids.contains(row_id));
+            }
+
+            re_tracing::profile_scope!("components");
+            for event in subtree_events.iter().filter(|e| &e.entity_path == path) {
+                for component_name in event.cells.keys() {
+                    if let Some(histo) = entity.components.get_mut(component_name) {
+                        histo.remove(&event.timepoint(), 1);
+                        if histo.is_empty() {
+                            entity.components.remove(component_name);
+                        }
                     }
                 }
             }
         }
 
-        for &event in &filtered_events {
-            recursive_info.on_event(event);
+        {
+            re_tracing::profile_scope!("subtree");
+            {
+                re_tracing::profile_scope!("clears");
+                subtree
+                    .clears
+                    .retain(|row_id, _| !compacted.row_ids.contains(row_id));
+            }
+            re_tracing::profile_scope!("on_event");
+            for &event in &subtree_events {
+                subtree.on_event(event);
+            }
         }
 
         children.retain(|_, child| {
-            child.on_store_deletions(&filtered_events, compacted);
+            child.on_store_deletions(&subtree_events, compacted);
             child.num_children_and_fields() > 0
         });
     }
