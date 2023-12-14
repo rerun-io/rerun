@@ -17,5 +17,5 @@ thumbnail: https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca11
 Demonstrates how to log data to standard output with the Rerun SDK, and then visualize it from standard input with the Rerun Viewer.
 
 ```bash
-echo 'hello from stdin!' | cargo run | rerun
+echo 'hello from stdin!' | cargo run | rerun -
 ```
