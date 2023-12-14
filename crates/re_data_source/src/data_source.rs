@@ -69,6 +69,16 @@ impl DataSource {
             }
         }
 
+        // Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
+        // come up with more convoluted than that…) can lead to many unexpected,
+        // platform-specific problems that aren't even necessarily consistent across runs.
+        //
+        // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
+        // throwing errors when we shouldn't), we just make reading from standard input explicit.
+        if uri == "-" {
+            return DataSource::Stdin;
+        }
+
         let path = std::path::Path::new(&uri).to_path_buf();
 
         if uri.starts_with("file://") || path.exists() {

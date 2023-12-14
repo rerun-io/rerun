@@ -142,6 +142,7 @@ pub mod external {
     pub use anyhow;
 
     pub use re_build_info;
+    pub use re_data_source;
     pub use re_data_store;
     pub use re_data_store::external::*;
     pub use re_format;
