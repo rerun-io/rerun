@@ -45,6 +45,7 @@ namespace rerun {
         _CategoryRecordingStream = 0x0000'0100,
         RecordingStreamCreationFailure,
         RecordingStreamSaveFailure,
+        RecordingStreamStdoutFailure,
         RecordingStreamSpawnFailure,
 
         // Arrow data processing errors.

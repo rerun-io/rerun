@@ -161,6 +161,7 @@ pub enum CErrorCode {
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamCreationFailure,
     RecordingStreamSaveFailure,
+    RecordingStreamStdoutFailure,
     // TODO(cmc): Really this should be its own category…
     RecordingStreamSpawnFailure,
 
@@ -464,6 +465,24 @@ pub extern "C" fn rr_recording_stream_save(
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_save_impl(id, path) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_stdout_impl(stream: CRecordingStream) -> Result<(), CError> {
+    recording_stream(stream)?.stdout().map_err(|err| {
+        CError::new(
+            CErrorCode::RecordingStreamStdoutFailure,
+            &format!("Failed to forward recording stream to stdout: {err}"),
+        )
+    })
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_stdout(id: CRecordingStream, error: *mut CError) {
+    if let Err(err) = rr_recording_stream_stdout_impl(id) {
         err.write_error(error);
     }
 }
