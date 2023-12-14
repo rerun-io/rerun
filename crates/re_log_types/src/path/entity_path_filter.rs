@@ -67,7 +67,7 @@ impl EntityPathFilter {
     /// The first character should be `+` or `-`. If missing, `+` is assumed.
     /// The rest of the line is trimmed and treated as an entity path.
     ///
-    /// Conflicing rules are resolved by the last rule.
+    /// Conflicting rules are resolved by the last rule.
     pub fn parse_forgiving(rules: &str) -> Self {
         let mut filter = Self::default();
 
