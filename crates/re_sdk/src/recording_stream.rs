@@ -354,6 +354,38 @@ impl RecordingStreamBuilder {
         }
     }
 
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to stdout.
+    ///
+    /// If there isn't any listener at the other end of the pipe, the [`RecordingStream`] will
+    /// default back to `buffered` mode, in order not to break the user's terminal.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").stdout()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn stdout(self) -> RecordingStreamResult<RecordingStream> {
+        let is_stdout_listening = !atty::is(atty::Stream::Stdout);
+        if !is_stdout_listening {
+            return self.buffered();
+        }
+
+        let (enabled, store_info, batcher_config) = self.into_args();
+
+        if enabled {
+            RecordingStream::new(
+                store_info,
+                batcher_config,
+                Box::new(crate::sink::FileSink::stdout()?),
+            )
+        } else {
+            re_log::debug!("Rerun disabled - call to stdout() ignored");
+            Ok(RecordingStream::disabled())
+        }
+    }
+
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
     /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
     ///
@@ -1318,6 +1350,32 @@ impl RecordingStream {
         }
 
         let sink = crate::sink::FileSink::new(path)?;
+        self.set_sink(Box::new(sink));
+
+        Ok(())
+    }
+
+    /// Swaps the underlying sink for a [`crate::sink::FileSink`] pointed at stdout.
+    ///
+    /// If there isn't any listener at the other end of the pipe, the [`RecordingStream`] will
+    /// default back to `buffered` mode, in order not to break the user's terminal.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn stdout(&self) -> Result<(), crate::sink::FileSinkError> {
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
+            return Ok(());
+        }
+
+        let is_stdout_listening = !atty::is(atty::Stream::Stdout);
+        if !is_stdout_listening {
+            self.set_sink(Box::new(crate::log_sink::BufferedSink::new()));
+            return Ok(());
+        }
+
+        let sink = crate::sink::FileSink::stdout()?;
         self.set_sink(Box::new(sink));
 
         Ok(())

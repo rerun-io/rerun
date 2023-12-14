@@ -4,7 +4,7 @@ use re_smart_channel::Sender;
 /// Asynchronously loads RRD data streaming in from standard input.
 ///
 /// This fails synchronously iff the standard input stream could not be opened, otherwise errors
-/// are handlded asynchronously (as in: they're logged).
+/// are handled asynchronously (as in: they're logged).
 pub fn load_stdin(tx: Sender<LogMsg>) -> anyhow::Result<()> {
     let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
 
