@@ -83,8 +83,8 @@ where
 
 impl std::fmt::Debug for EntityPathImpl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Like `Display`, but with quotes
-        write!(f, "'{self}'")
+        // Same as `Display` - since we always prefix paths with a slash, they are easily recognizable.
+        write!(f, "{self}")
     }
 }
 
@@ -92,17 +92,15 @@ impl std::fmt::Display for EntityPathImpl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use std::fmt::Write as _;
 
-        let mut iter = self.iter();
-        if let Some(first_comp) = iter.next() {
-            // no leading nor trailing slash
-            first_comp.fmt(f)?;
-            for comp in iter {
+        if self.is_root() {
+            f.write_char('/')
+        } else {
+            // We always lead with a slash
+            for comp in self.iter() {
                 f.write_char('/')?;
                 comp.fmt(f)?;
             }
             Ok(())
-        } else {
-            f.write_char('/') // root
         }
     }
 }
