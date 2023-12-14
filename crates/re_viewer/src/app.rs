@@ -207,6 +207,11 @@ impl App {
 
         let component_ui_registry = re_data_ui::create_component_ui_registry();
 
+        // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.;
+        let long_time_ago = web_time::Instant::now()
+            .checked_sub(web_time::Duration::from_secs(1_000_000_000))
+            .unwrap_or(web_time::Instant::now());
+
         Self {
             build_info,
             startup_options,
@@ -231,7 +236,7 @@ impl App {
 
             style_panel_open: false,
 
-            latest_queue_interest: web_time::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
+            latest_queue_interest: long_time_ago,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 

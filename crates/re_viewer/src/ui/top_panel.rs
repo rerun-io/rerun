@@ -63,7 +63,8 @@ fn top_bar_ui(
         ui.separator();
         frame_time_label_ui(ui, app);
         memory_use_label_ui(ui, gpu_resource_stats);
-        input_latency_label_ui(ui, app);
+
+        latency_ui(ui, app, store_context);
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -352,7 +353,68 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
     }
 }
 
-fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
+fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreContext<'_>>) {
+    if let Some(response) = e2e_latency_ui(ui, store_context) {
+        // Show queue latency on hover, as that is part of this.
+        // For instance, if the framerate is really bad we have less time to ingest incoming data,
+        // leading to an ever-increasing input queue.
+        let rx = app.msg_receive_set();
+        let queue_len = rx.queue_len();
+        let latency_sec = rx.latency_ns() as f32 / 1e9;
+        // empty queue == unreliable latency
+        if 0 < queue_len {
+            response.on_hover_ui(|ui| {
+                ui.label(format!(
+                    "Queue latency: {}, length: {}",
+                    latency_text(latency_sec),
+                    format_number(queue_len),
+                ));
+
+                ui.label(
+                    "When more data is arriving over network than the Rerun Viewer can ingest, a queue starts building up, leading to latency and increased RAM use.\n\
+                         We call this the queue latency.");
+            });
+        }
+    } else {
+        // If we don't know the e2e latency we can still show the queue latency.
+        input_queue_latency_ui(ui, app);
+    }
+}
+
+/// Shows the e2e latency.
+fn e2e_latency_ui(
+    ui: &mut egui::Ui,
+    store_context: Option<&StoreContext<'_>>,
+) -> Option<egui::Response> {
+    let Some(store_context) = store_context else {
+        return None;
+    };
+
+    let Some(recording) = store_context.recording else {
+        return None;
+    };
+
+    let Some(e2e_latency_sec) = recording.ingestion_stats().current_e2e_latency_sec() else {
+        return None;
+    };
+
+    if e2e_latency_sec > 60.0 {
+        return None; // Probably an old recording and not live data.
+    }
+
+    let text = format!("latency: {}", latency_text(e2e_latency_sec));
+    let response = ui.weak(text);
+
+    let hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
+                      This includes time for encoding, network latency, and decoding.\n\
+                      It is also affected by the framerate of the viewer.\n\
+                      This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
+
+    Some(response.on_hover_text(hover_text))
+}
+
+/// Shows the latency in the input queue.
+fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
     let rx = app.msg_receive_set();
 
     if rx.is_empty() {
@@ -374,12 +436,12 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
         ui.separator();
         if is_latency_interesting {
             let text = format!(
-                "Latency: {:.2}s, queue: {}",
-                latency_sec,
+                "Queue latency: {}, length: {}",
+                latency_text(latency_sec),
                 format_number(queue_len),
             );
             let hover_text =
-                    "When more data is arriving over network than the Rerun Viewer can index, a queue starts building up, leading to latency and increased RAM use.\n\
+                    "When more data is arriving over network than the Rerun Viewer can ingest, a queue starts building up, leading to latency and increased RAM use.\n\
                     This latency does NOT include network latency.";
 
             if latency_sec < app.app_options().warn_latency {
@@ -392,5 +454,13 @@ fn input_latency_label_ui(ui: &mut egui::Ui, app: &mut App) {
             ui.weak(format!("Queue: {}", format_number(queue_len)))
                 .on_hover_text("Number of messages in the inbound queue");
         }
+    }
+}
+
+fn latency_text(latency_sec: f32) -> String {
+    if latency_sec < 1.0 {
+        format!("{:.0} ms", 1e3 * latency_sec)
+    } else {
+        format!("{latency_sec:.1} s")
     }
 }
