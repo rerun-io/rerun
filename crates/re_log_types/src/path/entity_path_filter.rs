@@ -128,6 +128,8 @@ impl EntityPathFilter {
     pub fn most_specific_match(&self, path: &EntityPath) -> Option<RuleEffect> {
         // We sort the rule by entity path, with recursive coming before non-recursive.
         // This means the last matching rule is also the most specific one.
+        // We can definetly optimize this at some point, especially when matching
+        // again an `EntityTree` where we could potentially cut out whole subtrees.
         for (rule, effect) in self.rules.iter().rev() {
             if rule.matches(path) {
                 return Some(*effect);
