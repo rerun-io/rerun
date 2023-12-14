@@ -197,22 +197,42 @@ impl EntityTree {
     ///
     /// Only reacts to additions (`event.kind == StoreDiffKind::Addition`).
     pub fn on_store_additions(&mut self, events: &[StoreEvent]) -> ClearCascade {
+        re_tracing::profile_function!();
+
         let mut clear_cascade = ClearCascade::default();
-
         for event in events.iter().filter(|e| e.kind == StoreDiffKind::Addition) {
-            // REMINDER: This will also update the recursive_time_histogram of each node we need to
-            // traverse on the way!
-            let leaf = self.create_subtrees_recursively(
-                event.diff.entity_path.as_slice(),
-                0,
-                &event.diff.times,
-                event.num_components() as _,
-            );
+            self.on_store_addition(event, &mut clear_cascade);
+        }
+        clear_cascade
+    }
 
-            leaf.on_added_data(&mut clear_cascade, &event.diff);
+    fn on_store_addition(&mut self, event: &StoreEvent, clear_cascade: &mut ClearCascade) {
+        re_tracing::profile_function!();
+
+        let entity_path = &event.diff.entity_path;
+
+        // Book-keeping for each level in the hierarchy:
+        self.book_keep_recursive_data_on_node(&event.diff);
+
+        let mut tree = self;
+        for (i, part) in entity_path.iter().enumerate() {
+            tree = tree.children.entry(part.clone()).or_insert_with(|| {
+                EntityTree::new(
+                    entity_path.as_slice()[..i + 1].into(),
+                    tree.recursive_clears.clone(),
+                )
+            });
+            tree.book_keep_recursive_data_on_node(&event.diff);
         }
 
-        clear_cascade
+        // Finally book-keeping for the entity where data was actually added:
+        tree.on_added_data(clear_cascade, &event.diff);
+    }
+
+    fn book_keep_recursive_data_on_node(&mut self, diff: &StoreDiff) {
+        debug_assert_eq!(diff.kind, StoreDiffKind::Addition);
+        self.recursive_time_histogram
+            .add(&diff.times, diff.num_components() as _);
     }
 
     /// Handles the addition of new data into the tree.
@@ -449,32 +469,6 @@ impl EntityTree {
             child.on_store_deletions(&filtered_events, compacted);
             child.num_children_and_fields() > 0
         });
-    }
-
-    /// Traverse on the tree and creates the missing nodes (if any) in order to reach `full_path`.
-    ///
-    /// This updates the recursive time histogram on each node it traverses!
-    fn create_subtrees_recursively(
-        &mut self,
-        full_path: &[EntityPathPart],
-        depth: usize,
-        times: &[(Timeline, TimeInt)],
-        num_components: u32,
-    ) -> &mut Self {
-        self.recursive_time_histogram.add(times, num_components);
-
-        match full_path.get(depth) {
-            None => {
-                self // end of path
-            }
-            Some(component) => self
-                .children
-                .entry(component.clone())
-                .or_insert_with(|| {
-                    EntityTree::new(full_path[..depth + 1].into(), self.recursive_clears.clone())
-                })
-                .create_subtrees_recursively(full_path, depth + 1, times, num_components),
-        }
     }
 
     pub fn subtree(&self, path: &EntityPath) -> Option<&Self> {
