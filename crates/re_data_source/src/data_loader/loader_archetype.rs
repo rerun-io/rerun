@@ -174,17 +174,11 @@ fn load_point_cloud(
 
     let rows = [
         {
-            // TODO: see #1571 -> "log_mesh_file does not support PLY files"
-            // TODO: can a ply be 2D??! cant see why not, uh...
+            // TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
             let points3d = re_types::archetypes::Points3D::from_file_contents(contents)?;
             DataRow::from_archetype(RowId::new(), timepoint, entity_path.clone(), &points3d)?
         },
-        {
-            // TODO: literally anything is better than none.
-            // TODO: this seems to... not work?!
-            let arch = re_types::archetypes::ViewCoordinates::RIGHT_HAND_Z_UP;
-            DataRow::from_archetype(RowId::new(), TimePoint::timeless(), entity_path, &arch)?
-        },
+        //
     ];
 
     Ok(rows.into_iter())

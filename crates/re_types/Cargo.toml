@@ -62,18 +62,18 @@ arrow2 = { workspace = true, features = [
 ] }
 bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
 document-features.workspace = true
+half = { workspace = true, features = ["bytemuck"] }
 infer.workspace = true
 itertools.workspace = true
-half = { workspace = true, features = ["bytemuck"] }
+linked-hash-map.workspace = true
+mime_guess.workspace = true
 mime_guess2.workspace = true
 ndarray.workspace = true
 once_cell.workspace = true
+ply-rs.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
-# TODO
-linked-hash-map = "0.5"
-ply-rs = "0.1"
 
 # External (optional)
 ecolor = { workspace = true, optional = true }
@@ -103,8 +103,6 @@ re_types_builder.workspace = true
 rayon.workspace = true
 
 # `machete` is not a fan of `build-dependencies`.
-
-
 [package.metadata.cargo-machete]
 ignored = ["rayon", "re_build_tools", "re_types_builder"]
 
