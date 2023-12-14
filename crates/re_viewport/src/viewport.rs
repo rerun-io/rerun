@@ -8,7 +8,6 @@ use ahash::HashMap;
 
 use egui_tiles::Behavior as _;
 use once_cell::sync::Lazy;
-use parking_lot::RwLock;
 use re_data_store::EntityPropertyMap;
 use re_data_ui::item_ui;
 
@@ -22,8 +21,8 @@ use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
     space_view_highlights::highlights_for_space_view,
-    system_execution::execute_systems_for_space_views, viewport_blueprint::load_viewport_blueprint,
-    SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
+    system_execution::execute_systems_for_space_views, SpaceInfoCollection, SpaceViewBlueprint,
+    ViewportBlueprint,
 };
 
 // State for each `SpaceView` including both the auto properties and
@@ -76,33 +75,25 @@ impl ViewportState {
 // ----------------------------------------------------------------------------
 
 /// Defines the layout of the Viewport
-pub struct Viewport<'a> {
-    // This is what me mutate during the frame.
-    pub blueprint: ViewportBlueprint,
+pub struct Viewport<'a, 'b> {
+    pub blueprint: &'a ViewportBlueprint,
 
-    pub state: RwLock<&'a mut ViewportState>,
+    pub state: &'b mut ViewportState,
 }
 
-impl<'a> Viewport<'a> {
-    pub fn from_db(blueprint_db: &re_data_store::StoreDb, state: &'a mut ViewportState) -> Self {
+impl<'a, 'b> Viewport<'a, 'b> {
+    pub fn new(blueprint: &'a ViewportBlueprint, state: &'b mut ViewportState) -> Self {
         re_tracing::profile_function!();
 
-        let blueprint = load_viewport_blueprint(blueprint_db);
-
-        Self {
-            blueprint,
-            state: RwLock::new(state),
-        }
+        Self { blueprint, state }
     }
 
-    pub fn show_add_remove_entities_window(&self, space_view_id: SpaceViewId) {
-        self.state.write().space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
+    pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
+        self.state.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
     }
 
-    pub fn viewport_ui(&self, ui: &mut egui::Ui, ctx: &'a ViewerContext<'_>) {
+    pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a ViewerContext<'_>) {
         let Viewport { blueprint, state } = self;
-
-        let mut state = state.write();
 
         if let Some(window) = &mut state.space_view_entity_window {
             if let Some(space_view) = blueprint.space_views.get(&window.space_view_id) {
@@ -157,7 +148,7 @@ impl<'a> Viewport<'a> {
             re_tracing::profile_scope!("tree.ui");
 
             let mut tab_viewer = TabViewer {
-                viewport_state: &mut state,
+                viewport_state: state,
                 ctx,
                 space_views: &blueprint.space_views,
                 maximized: &mut maximized,
@@ -195,16 +186,14 @@ impl<'a> Viewport<'a> {
         }
     }
 
-    pub fn on_frame_start(&self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
+    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
         re_tracing::profile_function!();
-
-        let mut state = self.state.write();
 
         for space_view in self.blueprint.space_views.values() {
             let PerSpaceViewState {
                 auto_properties,
                 space_view_state,
-            } = state.space_view_state_mut(
+            } = self.state.space_view_state_mut(
                 ctx.space_view_class_registry,
                 space_view.id,
                 space_view.class_identifier(),

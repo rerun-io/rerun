@@ -39,7 +39,7 @@ impl SelectionPanel {
         &mut self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        viewport: &Viewport<'_>,
+        viewport: &mut Viewport<'_, '_>,
         expanded: bool,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
@@ -72,7 +72,7 @@ impl SelectionPanel {
                         if let Some(selection) = self.selection_state_ui.selection_ui(
                             ctx.re_ui,
                             ui,
-                            &viewport.blueprint,
+                            viewport.blueprint,
                             &mut history,
                         ) {
                             ctx.selection_state()
@@ -97,7 +97,12 @@ impl SelectionPanel {
     }
 
     #[allow(clippy::unused_self)]
-    fn contents(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, viewport: &Viewport<'_>) {
+    fn contents(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        viewport: &mut Viewport<'_, '_>,
+    ) {
         re_tracing::profile_function!();
 
         let query = ctx.current_query();
@@ -117,20 +122,15 @@ impl SelectionPanel {
         };
         for (i, item) in selection.iter().enumerate() {
             ui.push_id(i, |ui| {
-                what_is_selected_ui(ui, ctx, &viewport.blueprint, item);
+                what_is_selected_ui(ui, ctx, viewport.blueprint, item);
 
                 match item {
                     Item::Container(tile_id) => {
-                        container_top_level_properties(ui, ctx, &viewport.blueprint, tile_id);
+                        container_top_level_properties(ui, ctx, viewport.blueprint, tile_id);
                     }
 
                     Item::SpaceView(space_view_id) => {
-                        space_view_top_level_properties(
-                            ui,
-                            ctx,
-                            &viewport.blueprint,
-                            space_view_id,
-                        );
+                        space_view_top_level_properties(ui, ctx, viewport.blueprint, space_view_id);
                     }
 
                     _ => {}
@@ -512,7 +512,12 @@ fn has_blueprint_section(item: &Item) -> bool {
 }
 
 /// What is the blueprint stuff for this item?
-fn blueprint_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, viewport: &Viewport<'_>, item: &Item) {
+fn blueprint_ui(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    viewport: &mut Viewport<'_, '_>,
+    item: &Item,
+) {
     match item {
         Item::SpaceView(space_view_id) => {
             ui.horizontal(|ui| {
@@ -597,9 +602,7 @@ fn blueprint_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, viewport: &Viewport<
             if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                 let space_view_class = *space_view.class_identifier();
 
-                let mut state = viewport.state.write();
-
-                let space_view_state = state.space_view_state_mut(
+                let space_view_state = viewport.state.space_view_state_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
                     space_view.class_identifier(),

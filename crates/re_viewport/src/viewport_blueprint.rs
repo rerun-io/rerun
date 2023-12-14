@@ -60,6 +60,96 @@ pub struct ViewportBlueprint {
 }
 
 impl ViewportBlueprint {
+    pub fn try_from_db(blueprint_db: &re_data_store::StoreDb) -> Self {
+        re_tracing::profile_function!();
+
+        let query = LatestAtQuery::latest(Timeline::default());
+
+        let arch = match query_archetype::<crate::blueprint::archetypes::ViewportBlueprint>(
+            blueprint_db.store(),
+            &query,
+            &VIEWPORT_PATH.into(),
+        )
+        .and_then(|arch| arch.to_archetype())
+        {
+            Ok(arch) => arch,
+            Err(re_query::QueryError::PrimaryNotFound(_)) => {
+                // Empty Store
+                Default::default()
+            }
+            Err(err) => {
+                if cfg!(debug_assertions) {
+                    re_log::error!("Failed to load viewport blueprint: {err}.");
+                } else {
+                    re_log::debug!("Failed to load viewport blueprint: {err}.");
+                }
+                Default::default()
+            }
+        };
+
+        let space_view_ids: Vec<SpaceViewId> =
+            arch.space_views.0.iter().map(|id| (*id).into()).collect();
+
+        let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
+            .into_iter()
+            .filter_map(|space_view: SpaceViewId| {
+                SpaceViewBlueprint::try_from_db(&space_view.as_entity_path(), blueprint_db)
+            })
+            .map(|sv| (sv.id, sv))
+            .collect();
+
+        let auto_layout = arch.auto_layout.unwrap_or_default().0;
+
+        let auto_space_views = arch.auto_space_views.map_or_else(
+            || {
+                // Only enable auto-space-views if this is the app-default blueprint
+                blueprint_db
+                    .store_info()
+                    .map_or(false, |ri| ri.is_app_default_blueprint())
+            },
+            |auto| auto.0,
+        );
+
+        let maximized = arch.maximized.and_then(|id| id.0.map(|id| id.into()));
+
+        let tree = blueprint_db
+            .store()
+            .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
+            .map(|space_view| space_view.value)
+            .unwrap_or_default()
+            .0;
+
+        ViewportBlueprint {
+            space_views,
+            tree,
+            maximized,
+            auto_layout,
+            auto_space_views,
+            deferred_tree_actions: Default::default(),
+        }
+
+        // TODO(jleibs): Need to figure out if we have to re-enable support for
+        // auto-discovery of SpaceViews logged via the experimental blueprint APIs.
+        /*
+        let unknown_space_views: HashMap<_, _> = space_views
+            .iter()
+            .filter(|(k, _)| !viewport_layout.space_view_keys.contains(k))
+            .map(|(k, v)| (*k, v.clone()))
+            .collect();
+        */
+
+        // TODO(jleibs): It seems we shouldn't call this until later, after we've created
+        // the snapshot. Doing this here means we are mutating the state before it goes
+        // into the snapshot. For example, even if there's no visibility in the
+        // store, this will end up with default-visibility, which then *won't* be saved back.
+        // TODO(jleibs): what to do about auto-discovery?
+        /*
+        for (_, view) in unknown_space_views {
+            viewport.add_space_view(view);
+        }
+        */
+    }
+
     /// Determine whether all views in a blueprint are invalid.
     ///
     /// This most commonly happens due to a change in struct definition that
@@ -335,98 +425,6 @@ where
             ctx.store_context.blueprint.store_id().clone(),
             vec![row],
         ));
-}
-
-// ----------------------------------------------------------------------------
-
-pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint {
-    re_tracing::profile_function!();
-
-    let query = LatestAtQuery::latest(Timeline::default());
-
-    let arch = match query_archetype::<crate::blueprint::archetypes::ViewportBlueprint>(
-        blueprint_db.store(),
-        &query,
-        &VIEWPORT_PATH.into(),
-    )
-    .and_then(|arch| arch.to_archetype())
-    {
-        Ok(arch) => arch,
-        Err(re_query::QueryError::PrimaryNotFound(_)) => {
-            // Empty Store
-            Default::default()
-        }
-        Err(err) => {
-            if cfg!(debug_assertions) {
-                re_log::error!("Failed to load viewport blueprint: {err}.");
-            } else {
-                re_log::debug!("Failed to load viewport blueprint: {err}.");
-            }
-            Default::default()
-        }
-    };
-
-    let space_view_ids: Vec<SpaceViewId> =
-        arch.space_views.0.iter().map(|id| (*id).into()).collect();
-
-    let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
-        .into_iter()
-        .filter_map(|space_view: SpaceViewId| {
-            SpaceViewBlueprint::try_from_db(&space_view.as_entity_path(), blueprint_db)
-        })
-        .map(|sv| (sv.id, sv))
-        .collect();
-
-    let auto_layout = arch.auto_layout.unwrap_or_default().0;
-
-    let auto_space_views = arch.auto_space_views.map_or_else(
-        || {
-            // Only enable auto-space-views if this is the app-default blueprint
-            blueprint_db
-                .store_info()
-                .map_or(false, |ri| ri.is_app_default_blueprint())
-        },
-        |auto| auto.0,
-    );
-
-    let maximized = arch.maximized.and_then(|id| id.0.map(|id| id.into()));
-
-    let tree = blueprint_db
-        .store()
-        .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
-        .map(|space_view| space_view.value)
-        .unwrap_or_default()
-        .0;
-
-    ViewportBlueprint {
-        space_views,
-        tree,
-        maximized,
-        auto_layout,
-        auto_space_views,
-        deferred_tree_actions: Default::default(),
-    }
-
-    // TODO(jleibs): Need to figure out if we have to re-enable support for
-    // auto-discovery of SpaceViews logged via the experimental blueprint APIs.
-    /*
-    let unknown_space_views: HashMap<_, _> = space_views
-        .iter()
-        .filter(|(k, _)| !viewport_layout.space_view_keys.contains(k))
-        .map(|(k, v)| (*k, v.clone()))
-        .collect();
-    */
-
-    // TODO(jleibs): It seems we shouldn't call this until later, after we've created
-    // the snapshot. Doing this here means we are mutating the state before it goes
-    // into the snapshot. For example, even if there's no visibility in the
-    // store, this will end up with default-visibility, which then *won't* be saved back.
-    // TODO(jleibs): what to do about auto-discovery?
-    /*
-    for (_, view) in unknown_space_views {
-        viewport.add_space_view(view);
-    }
-    */
 }
 
 // ----------------------------------------------------------------------------

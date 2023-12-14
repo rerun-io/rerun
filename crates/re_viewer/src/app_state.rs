@@ -9,7 +9,8 @@ use re_viewer_context::{
     SelectionState, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{
-    identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportState,
+    identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportBlueprint,
+    ViewportState,
 };
 
 use crate::ui::recordings_panel_ui;
@@ -104,7 +105,8 @@ impl AppState {
             viewport_state,
         } = self;
 
-        let viewport = Viewport::from_db(store_context.blueprint, viewport_state);
+        let viewport_blueprint = ViewportBlueprint::try_from_db(store_context.blueprint);
+        let mut viewport = Viewport::new(&viewport_blueprint, viewport_state);
 
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {
@@ -141,8 +143,7 @@ impl AppState {
                 .values()
                 .flat_map(|space_view| {
                     space_view.queries.iter().map(|query| {
-                        let state = viewport.state.read();
-                        let props = state.space_view_props(space_view.id);
+                        let props = viewport.state.space_view_props(space_view.id);
                         let resolver = query.build_resolver(space_view.id, props);
                         (
                             query.id,
@@ -190,8 +191,7 @@ impl AppState {
                 .values()
                 .flat_map(|space_view| {
                     space_view.queries.iter().map(|query| {
-                        let state = viewport.state.read();
-                        let props = state.space_view_props(space_view.id);
+                        let props = viewport.state.space_view_props(space_view.id);
                         let resolver = query.build_resolver(space_view.id, props);
                         (
                             query.id,
@@ -208,7 +208,12 @@ impl AppState {
         ctx.query_results = &updated_query_results;
 
         time_panel.show_panel(&ctx, ui, app_blueprint.time_panel_expanded);
-        selection_panel.show_panel(&ctx, ui, &viewport, app_blueprint.selection_panel_expanded);
+        selection_panel.show_panel(
+            &ctx,
+            ui,
+            &mut viewport,
+            app_blueprint.selection_panel_expanded,
+        );
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
@@ -247,7 +252,7 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(&viewport.blueprint, &ctx, ui, &spaces_info);
+                        blueprint_panel_ui(viewport.blueprint, &ctx, ui, &spaces_info);
                     },
                 );
 
