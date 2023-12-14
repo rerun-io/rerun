@@ -49,6 +49,8 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add::<re_types::components::OutOfTreeTransform3D>(&mut registry);
     add::<re_types::components::ViewCoordinates>(&mut registry);
 
+    add::<re_types::blueprint::components::IncludedQueries>(&mut registry);
+
     registry
 }
 

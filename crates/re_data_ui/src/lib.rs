@@ -9,6 +9,7 @@ use re_types::ComponentName;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 mod annotation_context;
+mod blueprint_data;
 mod component;
 mod component_path;
 mod component_ui_registry;
