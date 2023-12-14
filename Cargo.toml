@@ -29,7 +29,6 @@ version = "0.12.0-alpha.1+dev"
 re_analytics = { path = "crates/re_analytics", version = "=0.12.0-alpha.1", default-features = false }
 re_arrow_store = { path = "crates/re_arrow_store", version = "=0.12.0-alpha.1", default-features = false }
 re_build_examples = { path = "crates/re_build_examples", version = "=0.12.0-alpha.1", default-features = false }
-re_build_examples_manifest = { path = "crates/re_build_examples_manifest", version = "=0.12.0-alpha.1", default-features = false }
 re_build_info = { path = "crates/re_build_info", version = "=0.12.0-alpha.1", default-features = false }
 re_build_tools = { path = "crates/re_build_tools", version = "=0.12.0-alpha.1", default-features = false }
 re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "=0.12.0-alpha.1", default-features = false }
@@ -38,7 +37,6 @@ re_data_source = { path = "crates/re_data_source", version = "=0.12.0-alpha.1", 
 re_data_store = { path = "crates/re_data_store", version = "=0.12.0-alpha.1", default-features = false }
 re_data_ui = { path = "crates/re_data_ui", version = "=0.12.0-alpha.1", default-features = false }
 re_error = { path = "crates/re_error", version = "=0.12.0-alpha.1", default-features = false }
-re_examples = { path = "crates/re_examples", version = "=0.12.0-alpha.1", default-features = false }
 re_format = { path = "crates/re_format", version = "=0.12.0-alpha.1", default-features = false }
 re_int_histogram = { path = "crates/re_int_histogram", version = "=0.12.0-alpha.1", default-features = false }
 re_log = { path = "crates/re_log", version = "=0.12.0-alpha.1", default-features = false }
@@ -98,6 +96,7 @@ emath = "0.24.1"
 ahash = "0.8"
 anyhow = "1.0"
 arboard = { version = "3.2", default-features = false }
+argh = "0.1.12"
 array-init = "2.1"
 arrow2 = "0.17"
 arrow2_convert = "0.5.0"

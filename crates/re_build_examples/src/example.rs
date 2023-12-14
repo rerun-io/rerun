@@ -14,21 +14,10 @@ pub struct Example {
     pub thumbnail_dimensions: [u64; 2],
     pub script_path: PathBuf,
     pub script_args: Vec<String>,
-    pub kind: ExampleKind,
 }
 
-impl ExampleKind {
-    #[allow(clippy::match_like_matches_macro)] // harder to read
-    pub fn included_in(&self, channel: Channel) -> bool {
-        match (channel, self) {
-            (Channel::Nightly, ExampleKind::Nightly | ExampleKind::Demo) => true,
-            (Channel::Main, ExampleKind::Demo) => true,
-            _ => false,
-        }
-    }
-}
-
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum Channel {
     #[default]
     Main,
@@ -65,8 +54,12 @@ impl Channel {
                     continue;
                 };
 
-                let kind = ExampleKind::infer(readme.demo, readme.nightly);
-                if !kind.included_in(self) {
+                let Some(channel) = readme.channel else {
+                    eprintln!("{name:?}: skipped");
+                    continue;
+                };
+
+                if channel != self {
                     eprintln!("{name:?}: skipped");
                     continue;
                 }
@@ -81,7 +74,6 @@ impl Channel {
                     thumbnail_dimensions: readme.thumbnail_dimensions,
                     script_path: folder.path().join("main.py"),
                     script_args: readme.build_args,
-                    kind,
                 });
             }
         }
@@ -106,33 +98,25 @@ impl Display for Channel {
 }
 
 impl FromStr for Channel {
-    type Err = ();
+    type Err = InvalidChannelName;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "main" => Ok(Self::Main),
             "nightly" => Ok(Self::Nightly),
-            _ => Err(()),
+            _ => Err(InvalidChannelName),
         }
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum ExampleKind {
-    Ignore,
-    Demo,
-    Nightly,
-}
+#[derive(Debug)]
+pub struct InvalidChannelName;
 
-impl ExampleKind {
-    fn infer(demo: bool, nightly: bool) -> Self {
-        if demo && nightly {
-            Self::Nightly
-        } else if demo {
-            Self::Demo
-        } else {
-            Self::Ignore
-        }
+impl std::error::Error for InvalidChannelName {}
+
+impl Display for InvalidChannelName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("invalid channel name")
     }
 }
 
@@ -149,9 +133,7 @@ struct Frontmatter {
     #[serde(default)]
     thumbnail_dimensions: [u64; 2],
     #[serde(default)]
-    demo: bool,
-    #[serde(default)]
-    nightly: bool,
+    channel: Option<Channel>,
     #[serde(default)]
     build_args: Vec<String>,
 }

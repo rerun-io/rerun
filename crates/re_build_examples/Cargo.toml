@@ -18,7 +18,6 @@ all-features = true
 
 [dependencies]
 re_build_tools.workspace = true
-re_examples.workspace = true
 re_format.workspace = true
 
 # External
@@ -27,3 +26,5 @@ indicatif.workspace = true
 rayon.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_yaml.workspace = true
+serde_json.workspace = true
+argh.workspace = true
