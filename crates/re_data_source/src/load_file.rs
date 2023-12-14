@@ -12,7 +12,7 @@ use crate::{DataLoaderError, LoadedData};
 /// errors are asynchronous and handled directly by the [`crate::DataLoader`]s themselves
 /// (i.e. they're logged).
 #[cfg(not(target_arch = "wasm32"))]
-pub fn load_from_file(
+pub fn load_from_path(
     store_id: &re_log_types::StoreId,
     file_source: FileSource,
     path: &std::path::Path,
@@ -48,7 +48,7 @@ pub fn load_from_file(
 /// and handled directly by the [`crate::DataLoader`]s themselves (i.e. they're logged).
 ///
 /// `path` is only used for informational purposes, no data is ever read from the filesystem.
-pub fn load_from_file_contents(
+pub fn load_from_path_contents(
     store_id: &re_log_types::StoreId,
     file_source: FileSource,
     filepath: &std::path::Path,
@@ -75,7 +75,7 @@ pub fn load_from_file_contents(
 
 // ---
 
-/// Empty string if not extension.
+/// Empty string if no extension.
 #[inline]
 fn extension(path: &std::path::Path) -> String {
     path.extension()
@@ -157,26 +157,43 @@ fn load(
         let (tx_loader, rx_loader) = std::sync::mpsc::channel();
 
         for loader in crate::iter_loaders() {
-            let mut contents = contents.clone(); // arc
             let loader = Arc::clone(&loader);
             let store_id = store_id.clone();
             let tx_loader = tx_loader.clone();
             let path = path.to_owned();
 
-            spawn(move || {
-                if let Some(contents) = contents.take() {
-                    if let Err(err) = loader.load_from_file_contents(
-                        store_id,
-                        path.clone(),
-                        Cow::Borrowed(&contents),
-                        tx_loader,
-                    ) {
+            #[cfg(not(target_arch = "wasm32"))]
+            spawn({
+                let contents = contents.clone(); // arc
+                move || {
+                    if let Some(contents) = contents.as_deref() {
+                        let contents = Cow::Borrowed(contents.as_ref());
+
+                        if let Err(err) = loader.load_from_path_contents(
+                            store_id,
+                            path.clone(),
+                            contents,
+                            tx_loader,
+                        ) {
+                            re_log::error!(?path, loader = loader.name(), %err, "failed to load data from file");
+                        }
+                    } else if let Err(err) =
+                        loader.load_from_path(store_id, path.clone(), tx_loader)
+                    {
                         re_log::error!(?path, loader = loader.name(), %err, "failed to load data from file");
                     }
-                } else {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if let Err(err) = loader.load_from_file(store_id, path.clone(), tx_loader) {
-                        re_log::error!(?path, loader = loader.name(), %err, "failed to load data from files");
+                }
+            });
+
+            #[cfg(target_arch = "wasm32")]
+            spawn(|| {
+                if let Some(contents) = contents.as_deref() {
+                    let contents = Cow::Borrowed(contents);
+
+                    if let Err(err) =
+                        loader.load_from_path_contents(store_id, path.clone(), contents, tx_loader)
+                    {
+                        re_log::error!(?path, loader = loader.name(), %err, "failed to load data from file");
                     }
                 }
             });

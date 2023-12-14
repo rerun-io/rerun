@@ -135,7 +135,7 @@ impl DataSource {
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                crate::load_from_file(&store_id, file_source, &path, &tx)
+                crate::load_from_path(&store_id, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
                 if let Some(on_msg) = on_msg {
@@ -157,7 +157,7 @@ impl DataSource {
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                crate::load_from_file_contents(
+                crate::load_from_path_contents(
                     &store_id,
                     file_source,
                     &std::path::PathBuf::from(file_contents.name),

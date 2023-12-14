@@ -14,7 +14,7 @@ impl DataLoader for ArchetypeLoader {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn load_from_file(
+    fn load_from_path(
         &self,
         store_id: re_log_types::StoreId,
         filepath: std::path::PathBuf,
@@ -32,10 +32,10 @@ impl DataLoader for ArchetypeLoader {
             .with_context(|| format!("Failed to read file {filepath:?}"))?;
         let contents = std::borrow::Cow::Owned(contents);
 
-        self.load_from_file_contents(store_id, filepath, contents, tx)
+        self.load_from_path_contents(store_id, filepath, contents, tx)
     }
 
-    fn load_from_file_contents(
+    fn load_from_path_contents(
         &self,
         _store_id: re_log_types::StoreId,
         filepath: std::path::PathBuf,
@@ -47,6 +47,7 @@ impl DataLoader for ArchetypeLoader {
         let entity_path = EntityPath::from_file_path(&filepath);
 
         let timepoint = TimePoint::timeless();
+        // TODO(cmc): log these once heuristics (I think?) are fixed
         // if let Ok(metadata) = filepath.metadata() {
         //     use re_log_types::{Time, Timeline};
         //

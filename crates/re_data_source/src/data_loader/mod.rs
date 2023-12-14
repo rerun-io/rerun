@@ -18,10 +18,10 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 /// ⚠ Drag-and-drop of folders does not yet work on the web version of Rerun Viewer ⚠
 ///
 /// Rerun comes with a few [`DataLoader`]s by default:
-/// - [`RrdLoader`] for `.rrd` files,
+/// - [`RrdLoader`] for [Rerun files],
 /// - [`ArchetypeLoader`] for:
-///     - 3D models (`.gltf`, `.glb`, `.obj`)
-///     - Images (most mainstream image formats)
+///     - [3D models]
+///     - [Images]
 ///
 /// ## Execution
 ///
@@ -30,6 +30,10 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 /// opposed to e.g. only being able to look at files' extensions.
 ///
 /// On native, [`DataLoader`]s are executed in parallel.
+///
+/// [Rerun extensions]: crate::SUPPORTED_RERUN_EXTENSIONS
+/// [3D models]: crate::SUPPORTED_MESH_EXTENSIONS
+/// [Images]: crate::SUPPORTED_IMAGE_EXTENSIONS
 //
 // TODO(#4525): `DataLoader`s should support arbitrary URIs
 // TODO(#4526): `DataLoader`s should be exposed to the SDKs
@@ -54,7 +58,7 @@ pub trait DataLoader: Send + Sync {
     ///
     /// ## Error handling
     ///
-    /// Most implementers of `load_from_file` are expected to be asynchronous in nature.
+    /// Most implementers of `load_from_path` are expected to be asynchronous in nature.
     ///
     /// Asynchronous implementers should make sure to fail early (and thus synchronously) when
     /// possible (e.g. didn't even manage to open the file).
@@ -63,7 +67,7 @@ pub trait DataLoader: Send + Sync {
     /// If a [`DataLoader`] has no interest in the given file, it should successfully return
     /// without pushing any data into `tx`.
     #[cfg(not(target_arch = "wasm32"))]
-    fn load_from_file(
+    fn load_from_path(
         &self,
         store_id: re_log_types::StoreId,
         path: std::path::PathBuf,
@@ -85,7 +89,7 @@ pub trait DataLoader: Send + Sync {
     ///
     /// ## Error handling
     ///
-    /// Most implementers of `load_from_file_contents` are expected to be asynchronous in nature.
+    /// Most implementers of `load_from_path_contents` are expected to be asynchronous in nature.
     ///
     /// Asynchronous implementers should make sure to fail early (and thus synchronously) when
     /// possible (e.g. didn't even manage to open the file).
@@ -93,7 +97,7 @@ pub trait DataLoader: Send + Sync {
     ///
     /// If a [`DataLoader`] has no interest in the given file, it should successfully return
     /// without pushing any data into `tx`.
-    fn load_from_file_contents(
+    fn load_from_path_contents(
         &self,
         store_id: re_log_types::StoreId,
         filepath: std::path::PathBuf,

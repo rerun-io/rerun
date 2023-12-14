@@ -12,7 +12,7 @@ impl crate::DataLoader for RrdLoader {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn load_from_file(
+    fn load_from_path(
         &self,
         // NOTE: The Store ID comes from the rrd file itself.
         _store_id: re_log_types::StoreId,
@@ -51,7 +51,7 @@ impl crate::DataLoader for RrdLoader {
         Ok(())
     }
 
-    fn load_from_file_contents(
+    fn load_from_path_contents(
         &self,
         // NOTE: The Store ID comes from the rrd file itself.
         _store_id: re_log_types::StoreId,

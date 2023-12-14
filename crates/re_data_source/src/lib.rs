@@ -22,15 +22,15 @@ pub use self::data_loader::{
     iter_loaders, ArchetypeLoader, DataLoader, DataLoaderError, LoadedData, RrdLoader,
 };
 pub use self::data_source::DataSource;
-pub use self::load_file::load_from_file_contents;
+pub use self::load_file::load_from_path_contents;
 pub use self::web_sockets::connect_to_ws_url;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use self::load_file::load_from_file;
+pub use self::load_file::load_from_path;
 
 // ---
 
-/// The contents of as file.
+/// The contents of a file.
 ///
 /// This is what you get when loading a file on Web, or when using drag-n-drop.
 #[derive(Clone, Debug)]
