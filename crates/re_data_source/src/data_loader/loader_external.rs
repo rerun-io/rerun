@@ -46,7 +46,7 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
     executables.into_iter().collect()
 });
 
-/// Iterator over all registered external [`DataLoader`]s.
+/// Iterator over all registered external [`crate::DataLoader`]s.
 #[inline]
 pub fn iter_external_loaders() -> impl ExactSizeIterator<Item = std::path::PathBuf> {
     EXTERNAL_LOADER_PATHS.iter().cloned()
@@ -68,7 +68,7 @@ impl crate::DataLoader for ExternalDataLoader {
         "rerun.data_loaders.External".into()
     }
 
-    fn load_from_file(
+    fn load_from_path(
         &self,
         store_id: re_log_types::StoreId,
         filepath: std::path::PathBuf,
@@ -153,7 +153,7 @@ impl crate::DataLoader for ExternalDataLoader {
     }
 
     #[inline]
-    fn load_from_file_contents(
+    fn load_from_path_contents(
         &self,
         _store_id: re_log_types::StoreId,
         _path: std::path::PathBuf,

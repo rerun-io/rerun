@@ -22,6 +22,9 @@ pub use self::load_file::{extension, load_from_file_contents};
 pub use self::web_sockets::connect_to_ws_url;
 
 #[cfg(not(target_arch = "wasm32"))]
+pub use self::data_loader::iter_external_loaders;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub use self::load_file::load_from_path;
 
 // ---

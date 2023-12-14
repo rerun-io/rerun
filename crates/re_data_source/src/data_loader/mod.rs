@@ -233,4 +233,6 @@ pub use self::loader_rrd::RrdLoader;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) use self::loader_external::EXTERNAL_LOADER_PATHS;
 #[cfg(not(target_arch = "wasm32"))]
-pub use self::loader_external::{ExternalDataLoader, EXTERNAL_DATA_LOADER_PREFIX};
+pub use self::loader_external::{
+    iter_external_loaders, ExternalDataLoader, EXTERNAL_DATA_LOADER_PREFIX,
+};
