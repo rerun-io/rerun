@@ -328,7 +328,7 @@ impl StoreDb {
         debug_assert!(clear_cascade.is_empty());
 
         // We inform the stats last, since it measures e2e latency.
-        self.stats.on_events(&original_store_events);
+        self.stats.on_events(original_store_events);
 
         Ok(())
     }
