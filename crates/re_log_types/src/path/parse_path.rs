@@ -12,9 +12,6 @@ pub enum PathParseError {
     #[error("No entity path found")]
     MissingPath,
 
-    #[error("Path had leading slash")]
-    LeadingSlash,
-
     #[error("Double-slashes with no part between")]
     DoubleSlash,
 
@@ -63,10 +60,12 @@ impl std::str::FromStr for DataPath {
 
     /// For instance:
     ///
-    /// * `world/points`
-    /// * `world/points:Color`
-    /// * `world/points[#42]`
-    /// * `world/points[#42]:rerun.components.Color`
+    /// * `/world/points`
+    /// * `/world/points:Color`
+    /// * `/world/points[#42]`
+    /// * `/world/points[#42]:rerun.components.Color`
+    ///
+    /// (the leadign slash is optional)
     fn from_str(path: &str) -> Result<Self, Self::Err> {
         if path.is_empty() {
             return Err(PathParseError::EmptyString);
@@ -219,7 +218,8 @@ fn entity_path_parts_from_tokens_strict(mut tokens: &[&str]) -> Result<Vec<Entit
     }
 
     if tokens[0] == "/" {
-        return Err(PathParseError::LeadingSlash);
+        // Leading slash is optional
+        tokens = &tokens[1..];
     }
 
     let mut parts = vec![];
@@ -328,12 +328,12 @@ fn test_parse_entity_path_forgiving() {
     assert_eq!(normalize(""), "/");
     assert_eq!(normalize("/"), "/");
     assert_eq!(normalize("//"), "/");
-    assert_eq!(normalize("/foo/bar/"), "foo/bar");
-    assert_eq!(normalize("/foo///bar//"), "foo/bar");
-    assert_eq!(normalize("foo/bar:baz"), r#"foo/bar\:baz"#);
-    assert_eq!(normalize("foo/42"), "foo/42");
-    assert_eq!(normalize("foo/#bar/baz"), r##"foo/\#bar/baz"##);
-    assert_eq!(normalize("foo/Hallå Där!"), r#"foo/Hallå\ Där\!"#);
+    assert_eq!(normalize("/foo/bar/"), "/foo/bar");
+    assert_eq!(normalize("/foo///bar//"), "/foo/bar");
+    assert_eq!(normalize("foo/bar:baz"), r#"/foo/bar\:baz"#);
+    assert_eq!(normalize("foo/42"), "/foo/42");
+    assert_eq!(normalize("foo/#bar/baz"), r##"/foo/\#bar/baz"##);
+    assert_eq!(normalize("foo/Hallå Där!"), r#"/foo/Hallå\ Där\!"#);
 }
 
 #[test]
@@ -347,8 +347,9 @@ fn test_parse_entity_path_strict() {
     assert_eq!(parse(""), Err(PathParseError::EmptyString));
     assert_eq!(parse("/"), Ok(entity_path_vec!()));
     assert_eq!(parse("foo"), Ok(entity_path_vec!("foo")));
-    assert_eq!(parse("/foo"), Err(PathParseError::LeadingSlash));
+    assert_eq!(parse("/foo"), Ok(entity_path_vec!("foo")));
     assert_eq!(parse("foo/bar"), Ok(entity_path_vec!("foo", "bar")));
+    assert_eq!(parse("/foo/bar"), Ok(entity_path_vec!("foo", "bar")));
     assert_eq!(parse("foo//bar"), Err(PathParseError::DoubleSlash));
 
     assert_eq!(parse("foo/bar/"), Err(PathParseError::TrailingSlash));
