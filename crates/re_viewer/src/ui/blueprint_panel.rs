@@ -1,7 +1,7 @@
 use re_viewer_context::{SystemCommandSender as _, ViewerContext};
 use re_viewport::{SpaceInfoCollection, Viewport};
 
-/// Show the Blueprint section of the left panel based on the current [`ViewportBlueprint`]
+/// Show the Blueprint section of the left panel based on the current [`Viewport`]
 pub fn blueprint_panel_ui(
     viewport: &mut Viewport<'_, '_>,
     ctx: &ViewerContext<'_>,
