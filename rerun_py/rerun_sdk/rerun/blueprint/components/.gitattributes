@@ -4,10 +4,14 @@
 __init__.py linguist-generated=true
 auto_layout.py linguist-generated=true
 auto_space_views.py linguist-generated=true
+entities_determined_by_user.py linguist-generated=true
 entity_properties_component.py linguist-generated=true
+included_queries.py linguist-generated=true
 included_space_views.py linguist-generated=true
+name.py linguist-generated=true
 panel_view.py linguist-generated=true
 query_expressions.py linguist-generated=true
-space_view_component.py linguist-generated=true
+space_view_class.py linguist-generated=true
 space_view_maximized.py linguist-generated=true
+space_view_origin.py linguist-generated=true
 viewport_layout.py linguist-generated=true
