@@ -37,7 +37,9 @@ impl EntityPathPart {
 
     /// Unescape the string, forgiving any syntax error with a best-effort approach.
     ///
-    /// Returns a warnings if there was any unknown escape sequences.
+    /// Returns a warnings for potentially serious problems:
+    /// * any unknown escape sequences
+    /// * unescaped spaces
     pub fn parse_forgiving_with_warning(
         input: &str,
         mut warnings: Option<&mut Vec<String>>,
@@ -88,6 +90,13 @@ impl EntityPathPart {
                     output.push('\\');
                 }
             } else {
+                if c.is_whitespace() {
+                    if let Some(warnings) = warnings.as_mut() {
+                        // This could be a sign of forgetting to split a string containing multiple entity paths.
+                        warnings.push("Unescaped whitespace".to_owned());
+                    }
+                }
+
                 output.push(c);
             }
         }
