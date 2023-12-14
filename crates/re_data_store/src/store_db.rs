@@ -311,24 +311,24 @@ impl StoreDb {
         //
         // This might result in a [`ClearCascade`] if the events trigger one or more immediate
         // and/or pending clears.
-        let store_events = &[store_event];
-        self.times_per_timeline.on_events(store_events);
-        let clear_cascade = self.tree.on_store_additions(store_events);
+        let original_store_events = &[store_event];
+        self.times_per_timeline.on_events(original_store_events);
+        let clear_cascade = self.tree.on_store_additions(original_store_events);
 
         // Second-pass: update the [`DataStore`] by applying the [`ClearCascade`].
         //
         // This will in turn generate new [`StoreEvent`]s that our internal views need to be
         // notified of, again!
-        let store_events = self.on_clear_cascade(clear_cascade);
-        self.times_per_timeline.on_events(&store_events);
-        let clear_cascade = self.tree.on_store_additions(&store_events);
+        let new_store_events = self.on_clear_cascade(clear_cascade);
+        self.times_per_timeline.on_events(&new_store_events);
+        let clear_cascade = self.tree.on_store_additions(&new_store_events);
 
         // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
         // cascades, thus this whole process must stabilize after one iteration.
         debug_assert!(clear_cascade.is_empty());
 
         // We inform the stats last, since it measures e2e latency.
-        self.stats.on_events(&store_events);
+        self.stats.on_events(&original_store_events);
 
         Ok(())
     }
