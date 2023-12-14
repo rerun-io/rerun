@@ -118,6 +118,13 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
             }
 
             if required_components_bitmap.all() {
+                re_log::debug!(
+                    "Entity {:?} in store {:?} is now applicable to visualizer {:?}",
+                    event.diff.entity_path,
+                    event.store_id,
+                    self.visualizer
+                );
+
                 store_mapping
                     .applicable_entities
                     .push(event.diff.entity_path.clone());
