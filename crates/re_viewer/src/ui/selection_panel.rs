@@ -126,7 +126,7 @@ impl SelectionPanel {
 
                 match item {
                     Item::Container(tile_id) => {
-                        container_top_level_properties(ui, ctx, viewport.blueprint, tile_id);
+                        container_top_level_properties(ui, ctx, viewport, tile_id);
                     }
 
                     Item::SpaceView(space_view_id) => {
@@ -407,11 +407,11 @@ fn space_view_top_level_properties(
 fn container_top_level_properties(
     ui: &mut egui::Ui,
     _ctx: &ViewerContext<'_>,
-    viewport: &ViewportBlueprint,
+    viewport: &mut Viewport<'_, '_>,
     tile_id: &egui_tiles::TileId,
 ) {
     // TODO(jleibs): fix container-editing
-    if let Some(Tile::Container(container)) = viewport.tree.tiles.get(*tile_id) {
+    if let Some(Tile::Container(container)) = viewport.tree.tiles.get_mut(*tile_id) {
         egui::Grid::new("container_top_level_properties")
             .num_columns(2)
             .show(ui, |ui| {
@@ -446,11 +446,7 @@ fn container_top_level_properties(
                         );
                     });
 
-                // TODO(jleibs): fix container-editing
-                if container_kind != container.kind() {
-                    re_log::warn!("TODO(jleibs): Fix container editing");
-                }
-                //container.set_kind(container_kind);
+                container.set_kind(container_kind);
 
                 ui.end_row();
 
@@ -470,30 +466,20 @@ fn container_top_level_properties(
                             ui.style_mut().wrap = Some(false);
                             ui.set_min_width(64.0);
 
-                            // TODO(jleibs): Fix container-editing
-                            ui.label(format!("Layout: {}", grid_layout_to_string(&grid.layout)));
-                            /*
                             ui.selectable_value(
                                 &mut grid.layout,
                                 GridLayout::Auto,
                                 grid_layout_to_string(&GridLayout::Auto),
                             );
-                            */
+
                             ui.separator();
 
                             for columns in 1..=grid.num_children() {
-                                // TODO(jleibs): fix container-editing
-                                ui.label(format!(
-                                    "Layout: {}",
-                                    grid_layout_to_string(&GridLayout::Columns(columns))
-                                ));
-                                /*
                                 ui.selectable_value(
                                     &mut grid.layout,
                                     GridLayout::Columns(columns),
                                     grid_layout_to_string(&GridLayout::Columns(columns)),
                                 );
-                                */
                             }
                         });
 
