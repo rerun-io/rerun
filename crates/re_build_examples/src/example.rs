@@ -156,9 +156,9 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatt
         anyhow::bail!("{:?} has invalid frontmatter", path);
     };
     Ok(Some(serde_yaml::from_str(&content[..end]).map_err(
-        |e| {
+        |err| {
             anyhow::anyhow!(
-                "failed to read {:?}: {e}",
+                "failed to read {:?}: {err}",
                 path.parent().unwrap().file_name().unwrap()
             )
         },
