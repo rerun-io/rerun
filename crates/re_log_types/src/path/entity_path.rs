@@ -76,7 +76,7 @@ impl std::fmt::Debug for EntityPathHash {
 ///
 /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
 ///
-/// `EntityPath` is reference-counted internally, so it is cheap to clone.
+/// This is basically implemented as a list of strings, but is reference-counted internally, so it is cheap to clone.
 /// It also has a precomputed hash and implemented [`nohash_hasher::IsEnabled`],
 /// so it is very cheap to use in a [`nohash_hasher::IntMap`] and [`nohash_hasher::IntSet`].
 ///
