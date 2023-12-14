@@ -22,11 +22,13 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 /// [There are plans to make this generic over any URI](https://github.com/rerun-io/rerun/issues/4525).
 ///
 /// Rerun comes with a few [`DataLoader`]s by default:
-/// - [`RrdLoader`] for [Rerun files],
+/// - [`RrdLoader`] for [Rerun files]
 /// - [`ArchetypeLoader`] for:
 ///     - [3D models]
 ///     - [Images]
+///     - [Point clouds]
 ///     - [Text files]
+/// - [`DirectoryLoader`] for recursively loading folders
 ///
 /// ## Execution
 ///
@@ -36,9 +38,10 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 ///
 /// On native, [`DataLoader`]s are executed in parallel.
 ///
-/// [Rerun extensions]: crate::SUPPORTED_RERUN_EXTENSIONS
+/// [Rerun files]: crate::SUPPORTED_RERUN_EXTENSIONS
 /// [3D models]: crate::SUPPORTED_MESH_EXTENSIONS
 /// [Images]: crate::SUPPORTED_IMAGE_EXTENSIONS
+/// [Point clouds]: crate::SUPPORTED_POINT_CLOUD_EXTENSIONS
 /// [Text files]: crate::SUPPORTED_TEXT_EXTENSIONS
 //
 // TODO(#4525): `DataLoader`s should support arbitrary URIs

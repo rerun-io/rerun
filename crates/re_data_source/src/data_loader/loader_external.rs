@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name
 /// starts with this prefix.
-pub const EXTERNAL_DATA_LOADER_PREFIX: &str = "rerun-loader";
+pub const EXTERNAL_DATA_LOADER_PREFIX: &str = "rerun-loader-";
 
 /// Keeps track of the paths all external executable [`crate::DataLoader`]s.
 ///
@@ -85,6 +85,8 @@ impl crate::DataLoader for ExternalDataLoader {
 
             // NOTE: spawn is fine, the entire loader is native-only.
             rayon::spawn(move || {
+                re_tracing::profile_function!();
+
                 let child = Command::new(exe)
                     .arg(filepath.clone())
                     .args(["--recording-id".to_owned(), store_id.to_string()])
@@ -153,7 +155,7 @@ impl crate::DataLoader for ExternalDataLoader {
     }
 
     #[inline]
-    fn load_from_path_contents(
+    fn load_from_file_contents(
         &self,
         _store_id: re_log_types::StoreId,
         _path: std::path::PathBuf,
