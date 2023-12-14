@@ -23,7 +23,7 @@ pub enum SpaceViewClassRegistryError {
     UnknownClassIdentifier(SpaceViewClassIdentifier),
 }
 
-/// Utility for registering space view systems, passed on to [`SpaceViewClass::on_register`].
+/// Utility for registering space view systems, passed on to [`crate::SpaceViewClass::on_register`].
 pub struct SpaceViewSystemRegistrator<'a> {
     registry: &'a mut SpaceViewClassRegistry,
     identifier: SpaceViewClassIdentifier,
