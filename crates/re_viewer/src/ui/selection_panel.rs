@@ -5,7 +5,7 @@ use re_data_store::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
-use re_log_types::{DataRow, EntityPathExpr, RowId, TimePoint};
+use re_log_types::{DataRow, RowId, TimePoint};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
@@ -545,10 +545,23 @@ fn blueprint_ui(
                     if edited_inclusions != inclusions || edited_exclusions != exclusions {
                         let timepoint = TimePoint::timeless();
 
-                        let expressions_component = QueryExpressions::new(
-                            edited_inclusions.split('\n').map(EntityPathExpr::from),
-                            edited_exclusions.split('\n').map(EntityPathExpr::from),
-                        );
+                        // TODO(jleibs): We intentionally avoid passing through a validated
+                        // intermediate state because we want the text-box-edits to be incrementally
+                        // preserved. Normalization instead happens when parsing the expressions.
+                        // This should all get replaced with the EntityFilter refactor coming down the
+                        // pipe.
+                        let expressions_component: QueryExpressions =
+                            re_space_view::blueprint::datatypes::QueryExpressions {
+                                inclusions: edited_inclusions
+                                    .split('\n')
+                                    .map(|s| s.into())
+                                    .collect(),
+                                exclusions: edited_exclusions
+                                    .split('\n')
+                                    .map(|s| s.into())
+                                    .collect(),
+                            }
+                            .into();
 
                         let row = DataRow::from_cells1_sized(
                             RowId::new(),
