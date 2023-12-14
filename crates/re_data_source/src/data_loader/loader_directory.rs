@@ -10,7 +10,7 @@ impl crate::DataLoader for DirectoryLoader {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn load_from_file(
+    fn load_from_path(
         &self,
         store_id: re_log_types::StoreId,
         dirpath: std::path::PathBuf,
@@ -62,7 +62,7 @@ impl crate::DataLoader for DirectoryLoader {
     }
 
     #[inline]
-    fn load_from_file_contents(
+    fn load_from_path_contents(
         &self,
         _store_id: re_log_types::StoreId,
         _path: std::path::PathBuf,
