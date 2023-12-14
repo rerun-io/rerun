@@ -47,7 +47,7 @@ def ensure_scene_available(root_dir: pathlib.Path, dataset_version: str, scene_n
         raise ValueError(f"{scene_name=} not found in dataset")
 
 
-def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) -> None:
+def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str, max_time_sec: float) -> None:
     """Log nuScenes scene."""
     nusc = nuscenes.NuScenes(version=dataset_version, dataroot=root_dir, verbose=True)
 
@@ -72,19 +72,25 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
         elif sample_data["sensor_modality"] == "camera":
             first_camera_tokens.append(sample_data_token)
 
-    log_lidar_and_ego_pose(first_lidar_token, nusc)
-    log_cameras(first_camera_tokens, nusc)
-    log_radars(first_radar_tokens, nusc)
-    log_annotations(first_sample_token, nusc)
+    first_timestamp_us = nusc.get("sample_data", first_lidar_token)["timestamp"]
+    max_timestamp_us = first_timestamp_us + 1e6 * max_time_sec
+
+    log_lidar_and_ego_pose(first_lidar_token, nusc, max_timestamp_us)
+    log_cameras(first_camera_tokens, nusc, max_timestamp_us)
+    log_radars(first_radar_tokens, nusc, max_timestamp_us)
+    log_annotations(first_sample_token, nusc, max_timestamp_us)
 
 
-def log_lidar_and_ego_pose(first_lidar_token: str, nusc: nuscenes.NuScenes) -> None:
+def log_lidar_and_ego_pose(first_lidar_token: str, nusc: nuscenes.NuScenes, max_timestamp_us: float) -> None:
     """Log lidar data and vehicle pose."""
     current_lidar_token = first_lidar_token
 
     while current_lidar_token != "":
         sample_data = nusc.get("sample_data", current_lidar_token)
         sensor_name = sample_data["channel"]
+
+        if max_timestamp_us < sample_data["timestamp"]:
+            break
 
         # timestamps are in microseconds
         rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
@@ -109,12 +115,14 @@ def log_lidar_and_ego_pose(first_lidar_token: str, nusc: nuscenes.NuScenes) -> N
         rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
 
 
-def log_cameras(first_camera_tokens: list[str], nusc: nuscenes.NuScenes) -> None:
+def log_cameras(first_camera_tokens: list[str], nusc: nuscenes.NuScenes, max_timestamp_us: float) -> None:
     """Log camera data."""
     for first_camera_token in first_camera_tokens:
         current_camera_token = first_camera_token
         while current_camera_token != "":
             sample_data = nusc.get("sample_data", current_camera_token)
+            if max_timestamp_us < sample_data["timestamp"]:
+                break
             sensor_name = sample_data["channel"]
             rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
             data_file_path = nusc.dataroot / sample_data["filename"]
@@ -122,12 +130,14 @@ def log_cameras(first_camera_tokens: list[str], nusc: nuscenes.NuScenes) -> None
             current_camera_token = sample_data["next"]
 
 
-def log_radars(first_radar_tokens: list[str], nusc: nuscenes.NuScenes) -> None:
+def log_radars(first_radar_tokens: list[str], nusc: nuscenes.NuScenes, max_timestamp_us: float) -> None:
     """Log radar data."""
     for first_radar_token in first_radar_tokens:
         current_camera_token = first_radar_token
         while current_camera_token != "":
             sample_data = nusc.get("sample_data", current_camera_token)
+            if max_timestamp_us < sample_data["timestamp"]:
+                break
             sensor_name = sample_data["channel"]
             rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
             data_file_path = nusc.dataroot / sample_data["filename"]
@@ -139,14 +149,16 @@ def log_radars(first_radar_tokens: list[str], nusc: nuscenes.NuScenes) -> None:
             current_camera_token = sample_data["next"]
 
 
-def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes) -> None:
+def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timestamp_us: float) -> None:
     """Log 3D bounding boxes."""
     label2id: dict[str, int] = {}
     current_sample_token = first_sample_token
     while current_sample_token != "":
-        sample = nusc.get("sample", current_sample_token)
-        rr.set_time_seconds("timestamp", sample["timestamp"] * 1e-6)
-        ann_tokens = sample["anns"]
+        sample_data = nusc.get("sample", current_sample_token)
+        if max_timestamp_us < sample_data["timestamp"]:
+            break
+        rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
+        ann_tokens = sample_data["anns"]
         sizes = []
         centers = []
         rotations = []
@@ -164,7 +176,7 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes) -> None:
             class_ids.append(label2id[ann["category_name"]])
 
         rr.log("world/anns", rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotations, class_ids=class_ids))
-        current_sample_token = sample["next"]
+        current_sample_token = sample_data["next"]
 
     # skipping for now since labels take too much space in 3D view (see https://github.com/rerun-io/rerun/issues/4451)
     # annotation_context = [(i, label) for label, i in label2id.items()]
@@ -213,13 +225,16 @@ def main() -> None:
         help="Scene name to visualize (typically of form 'scene-xxxx')",
     )
     parser.add_argument("--dataset_version", type=str, default="v1.0-mini", help="Scene id to visualize")
+    parser.add_argument(
+        "--seconds", type=float, default=float("inf"), help="If specified, limits the number of seconds logged"
+    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 
     ensure_scene_available(args.root_dir, args.dataset_version, args.scene_name)
 
     rr.script_setup(args, "rerun_example_nuscenes")
-    log_nuscenes(args.root_dir, args.dataset_version, args.scene_name)
+    log_nuscenes(args.root_dir, args.dataset_version, args.scene_name, max_time_sec=args.seconds)
 
     rr.script_teardown(args)
 
