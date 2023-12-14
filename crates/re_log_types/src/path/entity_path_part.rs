@@ -1,3 +1,5 @@
+use re_string_interner::InternedString;
+
 use crate::PathParseError;
 
 /// The different parts that make up an [`EntityPath`][crate::EntityPath].
@@ -14,14 +16,17 @@ use crate::PathParseError;
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EntityPathPart(
-    // TODO(emilk): consider other string types; e.g. interned strings, `Arc<str>`, …
-    String,
+    /// We use an interned string for fast copies, fast hashing, and to save memory.
+    /// Note that `re_string_interner` never frees memory, but even if a user
+    /// allocates 100k different entity parts (which is crazy many lot), the memory usage
+    /// will still only be in the low megabytes.
+    InternedString,
 );
 
 impl EntityPathPart {
     /// The given string is expected to be unescaped, i.e. any `\` is treated as a normal character.
     #[inline]
-    pub fn new(unescaped_string: impl Into<String>) -> Self {
+    pub fn new(unescaped_string: impl Into<InternedString>) -> Self {
         Self(unescaped_string.into())
     }
 
@@ -211,6 +216,13 @@ impl std::fmt::Display for EntityPathPart {
     }
 }
 
+impl From<InternedString> for EntityPathPart {
+    #[inline]
+    fn from(part: InternedString) -> Self {
+        Self(part)
+    }
+}
+
 impl From<&str> for EntityPathPart {
     #[inline]
     fn from(part: &str) -> Self {
@@ -221,7 +233,7 @@ impl From<&str> for EntityPathPart {
 impl From<String> for EntityPathPart {
     #[inline]
     fn from(part: String) -> Self {
-        Self(part)
+        Self(part.into())
     }
 }
 
