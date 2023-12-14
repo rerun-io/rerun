@@ -5,8 +5,7 @@ rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/raw_mesh/src/m
 tags: [mesh]
 thumbnail: https://static.rerun.io/raw_mesh/64bec98280b07794f7c9617f30ba2c20278601c3/480w.png
 thumbnail_dimensions: [480, 271]
-demo: true
-nightly: true
+channel: nightly
 ---
 
 <picture>

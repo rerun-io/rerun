@@ -4,8 +4,7 @@ python: https://github.com/rerun-io/rerun/tree/latest/examples/python/open_photo
 tags: [2d, 3d, camera, photogrammetry]
 thumbnail: https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/480w.png
 thumbnail_dimensions: [480, 310]
-demo: true
-nightly: true
+channel: nightly
 ---
 
 <picture>

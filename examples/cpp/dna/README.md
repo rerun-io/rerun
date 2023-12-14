@@ -7,7 +7,7 @@ tags: [3d, api-example]
 description: "Simple example of logging point and line primitives to draw a 3D helix."
 thumbnail: https://static.rerun.io/helix/f4c375546fa9d24f7cd3a1a715ebf75b2978817a/480w.png
 thumbnail_dimensions: [480, 285]
-demo: true
+channel: main
 ---
 
 <picture>

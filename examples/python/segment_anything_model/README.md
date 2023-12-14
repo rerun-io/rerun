@@ -4,8 +4,7 @@ python: https://github.com/rerun-io/rerun/tree/latest/examples/python/segment_an
 tags: [2D, sam, segmentation]
 thumbnail: https://static.rerun.io/segment_anything_model/6aa2651907efbcf81be55b343caa76b9de5f2138/480w.png
 thumbnail_dimensions: [480, 283]
-demo: true
-nightly: true
+channel: nightly
 ---
 
 <picture>
