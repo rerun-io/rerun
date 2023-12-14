@@ -124,11 +124,11 @@ impl StoreDb {
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             data_store: re_arrow_store::DataStore::new(
-                store_id,
+                store_id.clone(),
                 InstanceKey::name(),
                 DataStoreConfig::default(),
             ),
-            stats: Default::default(),
+            stats: IngestionStatistics::new(store_id),
         }
     }
 
@@ -307,8 +307,6 @@ impl StoreDb {
             DEFAULT_INSERT_ROW_STEP_SIZE,
         )?;
 
-        let row_id = store_event.row_id;
-
         // First-pass: update our internal views by notifying them of resulting [`StoreEvent`]s.
         //
         // This might result in a [`ClearCascade`] if the events trigger one or more immediate
@@ -329,7 +327,8 @@ impl StoreDb {
         // cascades, thus this whole process must stabilize after one iteration.
         debug_assert!(clear_cascade.is_empty());
 
-        self.stats.on_new_row_id(row_id);
+        // We inform the stats last, since it measures e2e latency.
+        self.stats.on_events(&store_events);
 
         Ok(())
     }
@@ -495,25 +494,47 @@ impl StoreDb {
 // ----------------------------------------------------------------------------
 
 pub struct IngestionStatistics {
+    store_id: StoreId,
     e2e_latency_sec_history: Mutex<emath::History<f32>>,
 }
 
-impl Default for IngestionStatistics {
-    fn default() -> Self {
+impl StoreSubscriber for IngestionStatistics {
+    fn name(&self) -> String {
+        "rerun.testing.store_subscribers.IngestionStatistics".into()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn on_events(&mut self, events: &[StoreEvent]) {
+        for event in events {
+            if event.store_id == self.store_id {
+                self.on_new_row_id(event.row_id);
+            }
+        }
+    }
+}
+
+impl IngestionStatistics {
+    pub fn new(store_id: StoreId) -> Self {
         let min_samples = 0; // 0: we stop displaying e2e latency if input stops
         let max_samples = 1024; // don't waste too much memory on this - we just need enough to get a good average
         let max_age = 1.0; // don't keep too long of a rolling average, or the stats get outdated.
         Self {
+            store_id,
             e2e_latency_sec_history: Mutex::new(emath::History::new(
                 min_samples..max_samples,
                 max_age,
             )),
         }
     }
-}
 
-impl IngestionStatistics {
-    pub fn on_new_row_id(&mut self, row_id: RowId) {
+    fn on_new_row_id(&mut self, row_id: RowId) {
         if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
             let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
 
