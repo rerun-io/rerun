@@ -89,7 +89,7 @@ jobs:
       - name: Build examples
         shell: bash
         run: |
-          pixi run build-examples \
+          pixi run build-examples rrd \
             --channel ${{ inputs.CHANNEL }} \
             example_data
 

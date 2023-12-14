@@ -107,7 +107,7 @@ jobs:
       - name: Build examples
         shell: bash
         run: |
-          pixi run build-examples \
+          pixi run build-examples rrd \
             --channel "main" \
             web_viewer/examples
 
@@ -117,7 +117,7 @@ jobs:
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           sha="$(echo $full_commit | cut -c1-7)"
 
-          pixi run build-examples-manifest \
+          pixi run build-examples manifest \
             --base-url "https://app.rerun.io/commit/$sha" \
             --channel "main" \
             web_viewer/examples_manifest.json
