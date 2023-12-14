@@ -18,6 +18,7 @@ Demonstrates how to log data to standard output with the Rerun SDK, and then vis
 
 To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash
-just cpp-build-examples
-echo 'hello from stdin!' | ./build/debug/examples/cpp/stdio/example_stdio | rerun -
+cmake .
+cmake --build . --target example_stdio
+echo 'hello from stdin!' | ./examples/cpp/stdio/example_stdio | rerun -
 ```
