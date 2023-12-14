@@ -51,6 +51,7 @@ def script_add_args(parser: ArgumentParser) -> None:
     )
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
+    parser.add_argument("-o", "--stdout", dest="stdout", action="store_true", help="Log data to standard output, to be piped into a Rerun Viewer")
 
 
 def script_setup(
@@ -77,7 +78,9 @@ def script_setup(
     rec: RecordingStream = rr.get_global_data_recording()  # type: ignore[assignment]
 
     # NOTE: mypy thinks these methods don't exist because they're monkey-patched.
-    if args.serve:
+    if args.stdout:
+        rec.stdout()  # type: ignore[attr-defined]
+    elif args.serve:
         rec.serve()  # type: ignore[attr-defined]
     elif args.connect:
         # Send logging data to separate `rerun` process.
