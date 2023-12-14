@@ -50,7 +50,9 @@ pub fn build_data_row_from_components(
     components: &PyDict,
     time_point: &TimePoint,
 ) -> PyResult<DataRow> {
-    let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+    // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+    // TODO(emilk): move to before we arrow-serialize the data
+    let row_id = RowId::new();
 
     let (arrays, fields): (Vec<Box<dyn Array>>, Vec<Field>) = itertools::process_results(
         components.iter().map(|(name, array)| {

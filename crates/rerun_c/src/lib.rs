@@ -579,7 +579,9 @@ fn rr_log_impl(
     data_row: CDataRow,
     inject_time: bool,
 ) -> Result<(), CError> {
-    let row_id = re_sdk::log::RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+    // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+    // TODO(emilk): move to before we arrow-serialize the data
+    let row_id = re_sdk::log::RowId::new();
 
     let stream = recording_stream(stream)?;
 
