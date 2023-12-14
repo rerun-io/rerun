@@ -196,8 +196,10 @@ impl SpaceViewBlueprint {
     }
 
     pub fn set_entity_determined_by_user(&self, ctx: &ViewerContext<'_>) {
-        let component = EntitiesDeterminedByUser(true);
-        save_single_component(&self.entity_path(), component, ctx);
+        if !self.entities_determined_by_user {
+            let component = EntitiesDeterminedByUser(true);
+            save_single_component(&self.entity_path(), component, ctx);
+        }
     }
 
     pub fn set_display_name(&self, name: String, ctx: &ViewerContext<'_>) {
