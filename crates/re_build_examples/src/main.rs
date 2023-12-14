@@ -39,16 +39,30 @@ fn main() -> anyhow::Result<()> {
 
     let examples = args.channel.examples()?;
     let progress = MultiProgress::new();
-    let results: Vec<anyhow::Result<()>> = examples
+    let results: Vec<anyhow::Result<PathBuf>> = examples
         .into_par_iter()
         .map(|example| example.build(&progress, &args.output_dir))
         .collect();
 
     let mut failed = false;
     for result in results {
-        if let Err(err) = result {
-            eprintln!("{err}");
-            failed = true;
+        match result {
+            Ok(rrd_path) => {
+                if let Ok(metadata) = std::fs::metadata(&rrd_path) {
+                    println!(
+                        "Output: {} ({})",
+                        rrd_path.display(),
+                        re_format::format_bytes(metadata.len() as _)
+                    );
+                } else {
+                    eprintln!("Missing rrd at {}", rrd_path.display());
+                    failed = true;
+                }
+            }
+            Err(err) => {
+                eprintln!("{err}");
+                failed = true;
+            }
         }
     }
     if failed {
@@ -117,15 +131,17 @@ impl Args {
 }
 
 trait Build {
-    fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<()>;
+    /// Returns the path to the resulting `.rrd` file.
+    fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf>;
 }
 
 impl Build for Example {
-    fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<()> {
+    fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf> {
+        let rrd_path = output_dir.join(&self.name).with_extension("rrd");
+
         let mut cmd = Command::new("python3");
         cmd.arg(self.script_path);
-        cmd.arg("--save")
-            .arg(output_dir.join(&self.name).with_extension("rrd"));
+        cmd.arg("--save").arg(&rrd_path);
         cmd.args(self.script_args);
 
         let final_args = cmd
@@ -141,7 +157,9 @@ impl Build for Example {
 
         let output = wait_for_output(cmd, &self.name, progress)?;
 
-        if !output.status.success() {
+        if output.status.success() {
+            Ok(rrd_path)
+        } else {
             anyhow::bail!(
                 "Failed to run `python3 {}`: \
                 \nstdout: \
@@ -153,8 +171,6 @@ impl Build for Example {
                 String::from_utf8(output.stderr)?,
             );
         }
-
-        Ok(())
     }
 }
 
