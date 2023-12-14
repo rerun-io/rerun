@@ -1,4 +1,4 @@
+rerun-sdk
 torch
 transformers
-rerun-sdk
 umap-learn
