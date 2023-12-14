@@ -32,7 +32,7 @@ pub struct EntityTree {
     pub entity: EntityInfo,
 
     /// Info about this subtree, including all children, recursively.
-    pub subtree: RecursiveTreeInfo,
+    pub subtree: SubtreeInfo,
 }
 
 // NOTE: This is only to let people know that this is in fact a [`StoreSubscriber`], so they A) don't try
@@ -76,7 +76,7 @@ pub struct EntityInfo {
 
 /// Info about stuff at a given [`EntityPath`], including all of its children, recursively.
 #[derive(Default)]
-pub struct RecursiveTreeInfo {
+pub struct SubtreeInfo {
     /// Book-keeping around whether we should clear recursively when data is added.
     clears: BTreeMap<RowId, TimePoint>,
 
@@ -90,7 +90,7 @@ pub struct RecursiveTreeInfo {
     pub time_histogram: TimeHistogramPerTimeline,
 }
 
-impl RecursiveTreeInfo {
+impl SubtreeInfo {
     /// Assumes the event has been filtered to be part of this subtree.
     fn on_event(&mut self, event: &StoreEvent) {
         match event.kind {
@@ -196,7 +196,7 @@ impl EntityTree {
                 clears: recursive_clears.clone(),
                 ..Default::default()
             },
-            subtree: RecursiveTreeInfo {
+            subtree: SubtreeInfo {
                 clears: recursive_clears,
                 ..Default::default()
             },
