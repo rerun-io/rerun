@@ -19,6 +19,7 @@ all-features = true
 [dependencies]
 re_build_tools.workspace = true
 re_examples.workspace = true
+re_format.workspace = true
 
 # External
 anyhow.workspace = true

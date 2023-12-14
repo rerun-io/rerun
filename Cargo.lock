@@ -4391,6 +4391,7 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "re_examples",
+ "re_format",
  "serde",
  "serde_yaml",
 ]
