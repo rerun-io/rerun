@@ -46,25 +46,32 @@ impl Channel {
             anyhow::bail!("{} is not a directory", dir.display())
         }
 
-        for folder in std::fs::read_dir(dir)? {
-            let folder = folder?;
+        let folders: std::collections::BTreeMap<String, std::fs::DirEntry> =
+            std::fs::read_dir(dir)?
+                .filter_map(Result::ok)
+                .map(|folder| {
+                    let name = folder.file_name().to_string_lossy().to_string();
+                    (name, folder)
+                })
+                .collect();
+
+        for (name, folder) in folders {
             let metadata = folder.metadata()?;
-            let name = folder.file_name().to_string_lossy().to_string();
             let readme = folder.path().join("README.md");
             if metadata.is_dir() && readme.exists() {
                 let readme = parse_frontmatter(readme)?;
                 let Some(readme) = readme else {
-                    eprintln!("Skipping example {name:?} because it has no frontmatter");
+                    eprintln!("{name:?}: skipped - MISSING FRONTMATTER");
                     continue;
                 };
 
                 let kind = ExampleKind::infer(readme.demo, readme.nightly);
                 if !kind.included_in(self) {
-                    eprintln!("Skipping example {name:?} because it is not included in the {self} channel");
+                    eprintln!("{name:?}: skipped");
                     continue;
                 }
 
-                eprintln!("Adding example {name:?}");
+                eprintln!("{name:?}: added");
                 examples.push(Example {
                     name,
                     title: readme.title,
