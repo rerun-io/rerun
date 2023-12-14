@@ -68,6 +68,34 @@ def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> 
     bindings.save(path=str(path), recording=recording)
 
 
+def stdout(recording: RecordingStream | None = None) -> None:
+    """
+    Stream all log-data to stdout.
+
+    Pipe it into a Rerun Viewer to visualize it.
+
+    Call this _before_ you log any data!
+
+    If there isn't any listener at the other end of the pipe, the `RecordingStream` will
+    default back to `buffered` mode, in order not to break the user's terminal.
+
+    Parameters
+    ----------
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+
+    if not bindings.is_enabled():
+        logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
+        return
+
+    recording = RecordingStream.to_native(recording)
+    bindings.stdout(recording=recording)
+
+
 def disconnect(recording: RecordingStream | None = None) -> None:
     """
     Closes all TCP connections, servers, and files.
