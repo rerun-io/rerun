@@ -47,7 +47,7 @@ deny = [
 
 skip = [
   { name = "ahash" },                # Popular crate + fast release schedule = lots of crates still using old versions
-  { name = "base64" },               # Too popular 
+  { name = "base64" },               # Too popular
   { name = "cargo_metadata" },       # Older version used by ply-rs. It's small, and it's build-time only!
   { name = "foreign-types" },        # used for cocoa bindings. wgpu uses newer than eframe.
   { name = "foreign-types-shared" }, # used for cocoa bindings. wgpu uses newer than eframe.
