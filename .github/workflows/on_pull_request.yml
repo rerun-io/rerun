@@ -138,7 +138,7 @@ jobs:
   track-sizes:
     name: "Track Sizes"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [build-examples]
+    needs: [build-web, build-examples]
     uses: ./.github/workflows/reusable_track_size.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
