@@ -131,9 +131,6 @@ impl EntityPath {
             file_path
                 .clean()
                 .iter()
-                // NOTE: This can only happen when hitting the leading `/` in an absolute path, and
-                // we currently don't support entity paths with leading `/`s.
-                .filter(|p| p != &std::ffi::OsStr::new("/"))
                 .map(|p| EntityPathPart::from(p.to_string_lossy().to_string()))
                 .collect(),
         )
