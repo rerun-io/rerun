@@ -47,7 +47,6 @@ impl DataLoader for ArchetypeLoader {
         let entity_path = EntityPath::from_file_path(&filepath);
 
         let timepoint = TimePoint::timeless();
-        // TODO: If I log these times, the space views disappear and cannot be created manually
         // if let Ok(metadata) = filepath.metadata() {
         //     use re_log_types::{Time, Timeline};
         //

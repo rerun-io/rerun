@@ -214,7 +214,13 @@ fn send(
                             re_log_types::DataTable::from_rows(re_log_types::TableId::new(), [row]);
                         table.compute_all_size_bytes();
 
-                        let arrow_msg = table.to_arrow_msg().unwrap(); // TODO
+                        let arrow_msg = match table.to_arrow_msg() {
+                            Ok(arrow_msg) => arrow_msg,
+                            Err(err) => {
+                                re_log::error!(%err, %store_id, "couldn't serialize component data");
+                                continue;
+                            }
+                        };
 
                         tx.send(LogMsg::ArrowMsg(store_id.clone(), arrow_msg)).ok();
                     }

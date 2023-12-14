@@ -31,9 +31,9 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 ///
 /// On native, [`DataLoader`]s are executed in parallel.
 //
-// TODO: issue -> DataLoader should support any URI, any platform, etc
-// TODO: issue -> dragndrop folder on web
-// TODO: issue -> make it available to SDKs
+// TODO(#4525): `DataLoader`s should support arbitrary URIs
+// TODO(#4526): `DataLoader`s should be exposed to the SDKs
+// TODO(#4527): Web Viewer `?url` parameter should accept anything our `DataLoader`s support
 pub trait DataLoader: Send + Sync {
     /// Name of the [`DataLoader`].
     ///
