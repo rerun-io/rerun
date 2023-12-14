@@ -116,6 +116,7 @@ impl FileSink {
     }
 }
 
+/// Set `filepath` to `None` to stream to standard output.
 fn spawn_and_stream<W: std::io::Write + Send + 'static>(
     filepath: Option<&std::path::Path>,
     mut encoder: crate::encoder::Encoder<W>,
@@ -159,7 +160,7 @@ impl fmt::Debug for FileSink {
         f.debug_struct("FileSink")
             .field(
                 "path",
-                &self.path.as_ref().cloned().unwrap_or("stdin".into()),
+                &self.path.as_ref().cloned().unwrap_or("stdout".into()),
             )
             .finish_non_exhaustive()
     }
