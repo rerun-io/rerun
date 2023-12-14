@@ -76,7 +76,6 @@ impl ViewportState {
 // so that we don't iterate over something while modifying it.
 #[derive(Clone, Default)]
 pub struct TreeActions {
-    pub reset: bool,
     pub create: Vec<SpaceViewId>,
     pub focus_tab: Option<SpaceViewId>,
     pub remove: Vec<egui_tiles::TileId>,
@@ -299,7 +298,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
     pub fn update_and_sync_tile_tree_to_blueprint(&mut self, ctx: &ViewerContext<'_>) {
         // At the end of the Tree-UI, we can safely apply deferred actions.
 
-        let mut reset = std::mem::take(&mut self.deferred_tree_actions.reset);
+        let mut reset = false;
         let create = std::mem::take(&mut self.deferred_tree_actions.create);
         let mut focus_tab = std::mem::take(&mut self.deferred_tree_actions.focus_tab);
         let remove = std::mem::take(&mut self.deferred_tree_actions.remove);
