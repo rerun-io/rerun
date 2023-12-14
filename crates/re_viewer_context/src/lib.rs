@@ -4,6 +4,7 @@
 
 mod annotations;
 mod app_options;
+mod blueprint_helpers;
 mod blueprint_id;
 mod caches;
 mod command_sender;

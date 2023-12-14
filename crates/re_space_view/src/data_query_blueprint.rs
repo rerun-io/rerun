@@ -4,6 +4,7 @@ use re_data_store::{
     EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree, StoreDb,
 };
 use re_log_types::{DataRow, EntityPath, EntityPathExpr, RowId, TimePoint};
+use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassIdentifier, SpaceViewId,
@@ -75,6 +76,11 @@ impl DataQueryBlueprint {
             space_view_class_identifier,
             expressions,
         })
+    }
+
+    pub fn clear(&self, ctx: &ViewerContext<'_>) {
+        let clear = Clear::recursive();
+        ctx.save_blueprint_component(&self.id.as_entity_path(), clear.is_recursive);
     }
 
     pub fn build_resolver<'a>(

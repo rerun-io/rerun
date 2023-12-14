@@ -8,6 +8,7 @@ use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQueryBlueprint, ScreenshotMode};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin};
+use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState,
@@ -16,7 +17,7 @@ use re_viewer_context::{
 };
 
 use crate::system_execution::create_and_run_space_view_systems;
-use crate::viewport_blueprint::{add_delta_from_single_component, save_single_component};
+use crate::viewport_blueprint::add_delta_from_single_component;
 
 // ----------------------------------------------------------------------------
 
@@ -172,24 +173,33 @@ impl SpaceViewBlueprint {
             ));
     }
 
+    pub fn clear(&self, ctx: &ViewerContext<'_>) {
+        let clear = Clear::recursive();
+        ctx.save_blueprint_component(&self.entity_path(), clear.is_recursive);
+
+        for query in &self.queries {
+            query.clear(ctx);
+        }
+    }
+
     pub fn set_entity_determined_by_user(&self, ctx: &ViewerContext<'_>) {
         if !self.entities_determined_by_user {
             let component = EntitiesDeterminedByUser(true);
-            save_single_component(&self.entity_path(), component, ctx);
+            ctx.save_blueprint_component(&self.entity_path(), component);
         }
     }
 
     pub fn set_display_name(&self, name: String, ctx: &ViewerContext<'_>) {
         if name != self.display_name {
             let component = Name(name.into());
-            save_single_component(&self.entity_path(), component, ctx);
+            ctx.save_blueprint_component(&self.entity_path(), component);
         }
     }
 
     pub fn set_origin(&self, origin: &EntityPath, ctx: &ViewerContext<'_>) {
         if origin != &self.space_origin {
             let component = SpaceViewOrigin(origin.into());
-            save_single_component(&self.entity_path(), component, ctx);
+            ctx.save_blueprint_component(&self.entity_path(), component);
         }
     }
 

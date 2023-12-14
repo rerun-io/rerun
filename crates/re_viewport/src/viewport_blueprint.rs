@@ -4,10 +4,7 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::{DataRow, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
-use re_types_core::{archetypes::Clear, AsComponents as _};
-use re_viewer_context::{
-    Item, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender, ViewerContext,
-};
+use re_viewer_context::{Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
 
 use crate::{
     blueprint::components::{
@@ -167,19 +164,17 @@ impl ViewportBlueprint {
     pub(crate) fn remove_space_view(&self, space_view_id: &SpaceViewId, ctx: &ViewerContext<'_>) {
         self.mark_user_interaction(ctx);
 
-        let timepoint = TimePoint::timeless();
-        let mut deltas = vec![];
-
-        if self.maximized == Some(*space_view_id) {
-            let component = SpaceViewMaximized(None);
-            add_delta_from_single_component(
-                &mut deltas,
-                &VIEWPORT_PATH.into(),
-                &timepoint,
-                component,
-            );
+        // Remove the space view from the store
+        if let Some(space_view) = self.space_views.get(space_view_id) {
+            space_view.clear(ctx);
         }
 
+        // If the space-view was maximized, clean it up
+        if self.maximized == Some(*space_view_id) {
+            self.set_maximized(None, ctx);
+        }
+
+        // Filter the space-view from the included space-views
         let component = IncludedSpaceViews(
             self.space_views
                 .keys()
@@ -187,15 +182,7 @@ impl ViewportBlueprint {
                 .map(|id| (*id).into())
                 .collect(),
         );
-        add_delta_from_single_component(&mut deltas, &VIEWPORT_PATH.into(), &timepoint, component);
-
-        clear_space_view(&mut deltas, space_view_id);
-
-        ctx.command_sender
-            .send_system(SystemCommand::UpdateBlueprint(
-                ctx.store_context.blueprint.store_id().clone(),
-                deltas,
-            ));
+        ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
     }
 
     /// If `false`, the item is referring to data that is not present in this blueprint.
@@ -283,7 +270,7 @@ impl ViewportBlueprint {
             let component =
                 IncludedSpaceViews(updated_ids.into_iter().map(|id| (*id).into()).collect());
 
-            save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
     }
 
@@ -313,21 +300,21 @@ impl ViewportBlueprint {
     pub fn set_auto_layout(&self, value: bool, ctx: &ViewerContext<'_>) {
         if self.auto_layout != value {
             let component = AutoLayout(value);
-            save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
     }
 
     pub fn set_auto_space_views(&self, value: bool, ctx: &ViewerContext<'_>) {
         if self.auto_layout != value {
             let component = AutoSpaceViews(value);
-            save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
     }
 
     pub fn set_maximized(&self, space_view_id: Option<SpaceViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != space_view_id {
             let component = SpaceViewMaximized(space_view_id.map(|id| id.into()));
-            save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
     }
 
@@ -335,7 +322,7 @@ impl ViewportBlueprint {
         if &self.tree != tree {
             re_log::trace!("Updating the layout tree");
             let component = ViewportLayout(tree.clone());
-            save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
     }
 }
@@ -362,47 +349,4 @@ pub fn add_delta_from_single_component<'a, C>(
     .unwrap(); // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
 
     deltas.push(row);
-}
-
-// TODO(jleibs): Move this helper to a better location
-pub fn save_single_component<'a, C>(entity_path: &EntityPath, component: C, ctx: &ViewerContext<'_>)
-where
-    C: re_types::Component + Clone + 'a,
-    std::borrow::Cow<'a, C>: std::convert::From<C>,
-{
-    let timepoint = TimePoint::timeless();
-
-    let row = DataRow::from_cells1_sized(
-        RowId::new(),
-        entity_path.clone(),
-        timepoint.clone(),
-        1,
-        [component],
-    )
-    .unwrap(); // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
-
-    ctx.command_sender
-        .send_system(SystemCommand::UpdateBlueprint(
-            ctx.store_context.blueprint.store_id().clone(),
-            vec![row],
-        ));
-}
-
-// ----------------------------------------------------------------------------
-
-pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) {
-    // TODO(jleibs): Seq instead of timeless?
-    let timepoint = TimePoint::timeless();
-
-    if let Ok(row) = DataRow::from_component_batches(
-        RowId::new(),
-        timepoint,
-        space_view_id.as_entity_path(),
-        Clear::recursive()
-            .as_component_batches()
-            .iter()
-            .map(|b| b.as_ref()),
-    ) {
-        deltas.push(row);
-    }
 }
