@@ -211,10 +211,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
         if maximized != blueprint.maximized {
             self.blueprint.set_maximized(maximized, ctx);
         }
-
-        // Finally, save any edits to the blueprint tree
-        // This is a no-op if the tree hasn't changed.
-        self.blueprint.set_tree(&self.tree, ctx);
     }
 
     pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
@@ -283,6 +279,82 @@ impl<'a, 'b> Viewport<'a, 'b> {
         }
 
         true
+    }
+
+    /// Process any deferred `TreeActions` and then sync to store
+    pub fn update_and_sync_layout(&mut self, ctx: &ViewerContext<'_>) {
+        // At the end of the Tree-UI, we can safely apply deferred actions.
+
+        let mut reset = std::mem::take(&mut self.deferred_tree_actions.reset);
+        let create = std::mem::take(&mut self.deferred_tree_actions.create);
+        let mut focus_tab = std::mem::take(&mut self.deferred_tree_actions.focus_tab);
+        let remove = std::mem::take(&mut self.deferred_tree_actions.remove);
+
+        for space_view in &create {
+            if self.blueprint.auto_layout {
+                // Re-run the auto-layout next frame:
+                re_log::trace!(
+                    "Added a space view with no user edits yet - will re-run auto-layout"
+                );
+
+                reset = true;
+            } else if let Some(root_id) = self.tree.root {
+                let tile_id = self.tree.tiles.insert_pane(*space_view);
+                if let Some(egui_tiles::Tile::Container(container)) =
+                    self.tree.tiles.get_mut(root_id)
+                {
+                    re_log::trace!("Inserting new space view into root container");
+                    container.add_child(tile_id);
+                } else {
+                    re_log::trace!("Root was not a container - will re-run auto-layout");
+                    reset = true;
+                }
+            } else {
+                re_log::trace!("No root found - will re-run auto-layout");
+            }
+
+            focus_tab = Some(*space_view);
+        }
+
+        if let Some(focus_tab) = &focus_tab {
+            let found = self.tree.make_active(|tile| match tile {
+                egui_tiles::Tile::Pane(space_view_id) => space_view_id == focus_tab,
+                egui_tiles::Tile::Container(_) => false,
+            });
+            re_log::trace!("Found tab {focus_tab}: {found}");
+        }
+
+        for tile_id in remove {
+            for tile in self.tree.tiles.remove_recursively(tile_id) {
+                re_log::trace!("Removing tile {tile_id:?}");
+                if let egui_tiles::Tile::Pane(space_view_id) = tile {
+                    re_log::trace!("Removing space-view {space_view_id}");
+                    self.tree.tiles.remove(tile_id);
+                    self.blueprint.remove_space_view(&space_view_id, ctx);
+                }
+            }
+
+            if Some(tile_id) == self.tree.root {
+                self.tree.root = None;
+            }
+        }
+
+        if self.tree.is_empty() && !self.blueprint.space_views.is_empty() {
+            re_log::trace!("Tree is empty - will re-run auto-layout");
+            reset = true;
+        }
+
+        if reset {
+            re_log::trace!("Resetting viewport tree");
+            self.tree = super::auto_layout::tree_from_space_views(
+                ctx.space_view_class_registry,
+                &self.blueprint.space_views,
+            );
+        }
+
+        // Finally, save any edits to the blueprint tree
+        // This is a no-op if the tree hasn't changed.
+        self.blueprint.set_tree(&self.tree, ctx);
     }
 
     /// If `false`, the item is referring to data that is not present in this blueprint.

@@ -275,6 +275,9 @@ impl AppState {
                     });
             });
 
+        // Process deferred layout operationsand apply updates back to blueprint
+        viewport.update_and_sync_layout(&ctx);
+
         {
             // We move the time at the very end of the frame,
             // so we have one frame to see the first data before we move the time.

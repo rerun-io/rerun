@@ -333,6 +333,7 @@ impl ViewportBlueprint {
 
     pub fn set_tree(&self, tree: &egui_tiles::Tree<SpaceViewId>, ctx: &ViewerContext<'_>) {
         if &self.tree != tree {
+            re_log::trace!("Updating the layout tree");
             let component = ViewportLayout(tree.clone());
             save_single_component(&VIEWPORT_PATH.into(), component, ctx);
         }
