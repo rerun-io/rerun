@@ -7,9 +7,9 @@ use crate::EntityPath;
 /// This implements as simple set of include/exclude rules:
 ///
 /// ```diff
-/// + world/**           # add everything…
-/// - world/roads/**     # …but remove all roads…
-/// + world/roads/main   # …but show main road
+/// + /world/**           # add everything…
+/// - /world/roads/**     # …but remove all roads…
+/// + /world/roads/main   # …but show main road
 /// ```
 ///
 /// If there is multiple matching rules, the most specific rule wins.
@@ -24,16 +24,16 @@ use crate::EntityPath;
 /// For instance:
 ///
 /// ```diff
-/// + world/**
-/// - world/
-/// - world/car/
-/// + world/car/driver
+/// + /world/**
+/// - /world
+/// - /world/car/**
+/// + /world/car/driver
 /// ```
 ///
-/// The last rule matching `world/car/driver` is `+ world/car/driver`, so it is included.
-/// The last rule matching `world/car/hood` is `- world/car/`, so it is excluded.
-/// The last rule matching `world` is `- world/`, so it is excluded.
-/// The last rule matching `world/house` is `+ world/**`, so it is included.
+/// The last rule matching `/world/car/driver` is `+ /world/car/driver`, so it is included.
+/// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
+/// The last rule matching `/world` is `- /world`, so it is excluded.
+/// The last rule matching `/world/house` is `+ /world/**`, so it is included.
 #[derive(Clone, Default)]
 pub struct EntityPathFilter {
     rules: BTreeMap<EntityPathRule, RuleEffect>,
@@ -57,9 +57,9 @@ impl EntityPathFilter {
     /// Example of rules:
     ///
     /// ```diff
-    /// + world/**
-    /// - world/roads/**
-    /// + world/roads/main
+    /// + /world/**
+    /// - /world/roads/**
+    /// + /world/roads/main
     /// ```
     ///
     /// Each line is a rule.
@@ -205,10 +205,10 @@ fn test_rule_order() {
     let rules = [
         "/**",
         "/apa",
-        "world/**",
-        "world/",
-        "world/car",
-        "world/car/driver",
+        "/world/**",
+        "/world/",
+        "/world/car",
+        "/world/car/driver",
         "/x/y/z",
     ];
     let rules = rules.map(EntityPathRule::parse_forgiving);
@@ -219,21 +219,21 @@ fn test_rule_order() {
 fn test_entity_path_filter() {
     let filter = EntityPathFilter::parse_forgiving(
         r#"
-        + world/**
-        - world/
-        - world/car/**
-        + world/car/driver
+        + /world/**
+        - /world/
+        - /world/car/**
+        + /world/car/driver
         "#,
     );
 
     for (path, expected_effect) in [
-        ("unworldly", None),
-        ("world", Some(RuleEffect::Exclude)),
-        ("world/house", Some(RuleEffect::Include)),
-        ("world/car", Some(RuleEffect::Exclude)),
-        ("world/car/hood", Some(RuleEffect::Exclude)),
-        ("world/car/driver", Some(RuleEffect::Include)),
-        ("world/car/driver/head", Some(RuleEffect::Exclude)),
+        ("/unworldly", None),
+        ("/world", Some(RuleEffect::Exclude)),
+        ("/world/house", Some(RuleEffect::Include)),
+        ("/world/car", Some(RuleEffect::Exclude)),
+        ("/world/car/hood", Some(RuleEffect::Exclude)),
+        ("/world/car/driver", Some(RuleEffect::Include)),
+        ("/world/car/driver/head", Some(RuleEffect::Exclude)),
     ] {
         assert_eq!(
             filter.most_specific_match(&EntityPath::from(path)),
