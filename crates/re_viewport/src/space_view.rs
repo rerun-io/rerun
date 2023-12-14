@@ -125,10 +125,17 @@ impl SpaceViewBlueprint {
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
 
-        let class_identifier = class_identifier.0.as_str().into();
+        let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
 
         let display_name = display_name.map_or_else(
-            || format!("{class_identifier} ({space_origin})"),
+            || {
+                if let Some(name) = space_origin.iter().last() {
+                    name.to_string()
+                } else {
+                    // Include class name in the display for root paths because they look a tad bit too short otherwise.
+                    format!("/ ({})", class_identifier.as_str())
+                }
+            },
             |v| v.0.to_string(),
         );
 
