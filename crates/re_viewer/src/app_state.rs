@@ -252,7 +252,7 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(viewport.blueprint, &ctx, ui, &spaces_info);
+                        blueprint_panel_ui(&mut viewport, &ctx, ui, &spaces_info);
                     },
                 );
 

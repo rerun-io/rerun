@@ -28,7 +28,7 @@ pub struct ViewportBlueprint {
     pub space_views: crate::blueprint::components::IncludedSpaceViews,
 
     /// The layout of the space-views
-    pub layout: crate::blueprint::components::ViewportLayout,
+    pub layout: Option<crate::blueprint::components::ViewportLayout>,
 
     /// Show one tab as maximized?
     pub maximized: Option<crate::blueprint::components::SpaceViewMaximized>,
@@ -42,23 +42,19 @@ pub struct ViewportBlueprint {
     pub auto_space_views: Option<crate::blueprint::components::AutoSpaceViews>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.blueprint.components.IncludedSpaceViews".into(),
-            "rerun.blueprint.components.ViewportLayout".into(),
-        ]
-    });
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.IncludedSpaceViews".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ViewportBlueprintIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.AutoLayout".into(),
             "rerun.blueprint.components.AutoSpaceViews".into(),
             "rerun.blueprint.components.SpaceViewMaximized".into(),
+            "rerun.blueprint.components.ViewportLayout".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
@@ -67,11 +63,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.IncludedSpaceViews".into(),
-            "rerun.blueprint.components.ViewportLayout".into(),
             "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
             "rerun.blueprint.components.AutoLayout".into(),
             "rerun.blueprint.components.AutoSpaceViews".into(),
             "rerun.blueprint.components.SpaceViewMaximized".into(),
+            "rerun.blueprint.components.ViewportLayout".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
@@ -140,19 +136,20 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.ViewportBlueprint#space_views")?
         };
-        let layout = {
-            let array = arrays_by_name
-                .get("rerun.blueprint.components.ViewportLayout")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ViewportBlueprint#layout")?;
-            <crate::blueprint::components::ViewportLayout>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ViewportBlueprint#layout")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ViewportBlueprint#layout")?
-        };
+        let layout =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ViewportLayout") {
+                Some({
+                    <crate::blueprint::components::ViewportLayout>::from_arrow_opt(&**array)
+                        .with_context("rerun.blueprint.archetypes.ViewportBlueprint#layout")?
+                        .into_iter()
+                        .next()
+                        .flatten()
+                        .ok_or_else(DeserializationError::missing_data)
+                        .with_context("rerun.blueprint.archetypes.ViewportBlueprint#layout")?
+                })
+            } else {
+                None
+            };
         let maximized = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.SpaceViewMaximized")
         {
@@ -214,7 +211,9 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
         [
             Some(Self::indicator()),
             Some((&self.space_views as &dyn ComponentBatch).into()),
-            Some((&self.layout as &dyn ComponentBatch).into()),
+            self.layout
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.maximized
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -237,17 +236,23 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
 }
 
 impl ViewportBlueprint {
-    pub fn new(
-        space_views: impl Into<crate::blueprint::components::IncludedSpaceViews>,
-        layout: impl Into<crate::blueprint::components::ViewportLayout>,
-    ) -> Self {
+    pub fn new(space_views: impl Into<crate::blueprint::components::IncludedSpaceViews>) -> Self {
         Self {
             space_views: space_views.into(),
-            layout: layout.into(),
+            layout: None,
             maximized: None,
             auto_layout: None,
             auto_space_views: None,
         }
+    }
+
+    #[inline]
+    pub fn with_layout(
+        mut self,
+        layout: impl Into<crate::blueprint::components::ViewportLayout>,
+    ) -> Self {
+        self.layout = Some(layout.into());
+        self
     }
 
     #[inline]

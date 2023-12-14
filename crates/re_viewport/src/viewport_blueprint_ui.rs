@@ -14,15 +14,13 @@ use re_viewer_context::{
 
 use crate::{
     space_view_heuristics::all_possible_space_views, SpaceInfoCollection, SpaceViewBlueprint,
-    ViewportBlueprint,
+    Viewport,
 };
 
-impl ViewportBlueprint {
+impl Viewport<'_, '_> {
     /// Show the blueprint panel tree view.
-    pub fn tree_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn tree_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         re_tracing::profile_function!();
-
-        let mut tree = self.tree.clone();
 
         egui::ScrollArea::both()
             .id_source("blueprint_tree_scroll_area")
@@ -30,31 +28,31 @@ impl ViewportBlueprint {
             .show(ui, |ui| {
                 ctx.re_ui.panel_content(ui, |_, ui| {
                     if let Some(root) = self.tree.root() {
-                        self.tile_ui(&mut tree, ctx, ui, root);
+                        self.tile_ui(ctx, ui, root);
                     }
                 });
             });
 
         // At the end of the Tree-UI, we can safely apply deferred actions.
 
-        let mut deferred = self.deferred_tree_actions.lock();
-
-        let mut reset = std::mem::take(&mut deferred.reset);
-        let create = std::mem::take(&mut deferred.create);
-        let mut focus_tab = std::mem::take(&mut deferred.focus_tab);
-        let remove = std::mem::take(&mut deferred.remove);
+        let mut reset = std::mem::take(&mut self.deferred_tree_actions.reset);
+        let create = std::mem::take(&mut self.deferred_tree_actions.create);
+        let mut focus_tab = std::mem::take(&mut self.deferred_tree_actions.focus_tab);
+        let remove = std::mem::take(&mut self.deferred_tree_actions.remove);
 
         for space_view in &create {
-            if self.auto_layout {
+            if self.blueprint.auto_layout {
                 // Re-run the auto-layout next frame:
                 re_log::trace!(
                     "Added a space view with no user edits yet - will re-run auto-layout"
                 );
 
                 reset = true;
-            } else if let Some(root_id) = tree.root {
-                let tile_id = tree.tiles.insert_pane(*space_view);
-                if let Some(egui_tiles::Tile::Container(container)) = tree.tiles.get_mut(root_id) {
+            } else if let Some(root_id) = self.tree.root {
+                let tile_id = self.tree.tiles.insert_pane(*space_view);
+                if let Some(egui_tiles::Tile::Container(container)) =
+                    self.tree.tiles.get_mut(root_id)
+                {
                     re_log::trace!("Inserting new space view into root container");
                     container.add_child(tile_id);
                 } else {
@@ -69,7 +67,7 @@ impl ViewportBlueprint {
         }
 
         if let Some(focus_tab) = &focus_tab {
-            let found = tree.make_active(|tile| match tile {
+            let found = self.tree.make_active(|tile| match tile {
                 egui_tiles::Tile::Pane(space_view_id) => space_view_id == focus_tab,
                 egui_tiles::Tile::Container(_) => false,
             });
@@ -77,32 +75,29 @@ impl ViewportBlueprint {
         }
 
         for tile_id in remove {
-            for tile in tree.tiles.remove_recursively(tile_id) {
+            for tile in self.tree.tiles.remove_recursively(tile_id) {
                 if let egui_tiles::Tile::Pane(space_view_id) = tile {
-                    tree.tiles.remove(tile_id);
-                    self.remove_space_view(&space_view_id, ctx);
+                    self.tree.tiles.remove(tile_id);
+                    self.blueprint.remove_space_view(&space_view_id, ctx);
                 }
             }
 
             if Some(tile_id) == self.tree.root {
-                tree.root = None;
+                self.tree.root = None;
             }
         }
 
-        if tree.is_empty() && !self.space_views.is_empty() {
+        if self.tree.is_empty() && !self.blueprint.space_views.is_empty() {
             re_log::trace!("Tree is empty - will re-run auto-layout");
             reset = true;
         }
 
         if reset {
             re_log::trace!("Resetting viewport tree");
-            tree = super::auto_layout::tree_from_space_views(
+            self.tree = super::auto_layout::tree_from_space_views(
                 ctx.space_view_class_registry,
-                &self.space_views,
+                &self.blueprint.space_views,
             );
-            Self::set_tree(tree, ctx);
-        } else if tree != self.tree {
-            Self::set_tree(tree, ctx);
         }
     }
 
@@ -112,34 +107,27 @@ impl ViewportBlueprint {
         2 <= num_children && num_children <= 3
     }
 
-    fn tile_ui(
-        &self,
-        tree: &mut egui_tiles::Tree<SpaceViewId>,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        tile_id: egui_tiles::TileId,
-    ) {
+    fn tile_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, tile_id: egui_tiles::TileId) {
         // Temporarily remove the tile so we don't get borrow-checker fights:
-        let Some(mut tile) = tree.tiles.remove(tile_id) else {
+        let Some(mut tile) = self.tree.tiles.remove(tile_id) else {
             return;
         };
 
         match &mut tile {
             egui_tiles::Tile::Container(container) => {
-                self.container_tree_ui(tree, ctx, ui, tile_id, container);
+                self.container_tree_ui(ctx, ui, tile_id, container);
             }
             egui_tiles::Tile::Pane(space_view_id) => {
                 // A space view
-                self.space_view_entry_ui(tree, ctx, ui, tile_id, space_view_id);
+                self.space_view_entry_ui(ctx, ui, tile_id, space_view_id);
             }
         };
 
-        tree.tiles.insert(tile_id, tile);
+        self.tree.tiles.insert(tile_id, tile);
     }
 
     fn container_tree_ui(
-        &self,
-        tree: &mut egui_tiles::Tree<SpaceViewId>,
+        &mut self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
@@ -150,8 +138,8 @@ impl ViewportBlueprint {
             // This means we won't be showing the visibility button of the parent container,
             // so if the child is made invisible, we should do the same for the parent.
             let child_is_visible = self.tree.is_visible(child_id);
-            tree.set_visible(tile_id, child_is_visible);
-            return self.tile_ui(tree, ctx, ui, child_id);
+            self.tree.set_visible(tile_id, child_is_visible);
+            return self.tile_ui(ctx, ui, child_id);
         }
 
         let item = Item::Container(tile_id);
@@ -176,7 +164,7 @@ impl ViewportBlueprint {
             })
             .show_collapsing(ui, ui.id().with(tile_id), default_open, |_, ui| {
                 for &child in container.children() {
-                    self.tile_ui(tree, ctx, ui, child);
+                    self.tile_ui(ctx, ui, child);
                 }
             })
             .item_response;
@@ -184,33 +172,32 @@ impl ViewportBlueprint {
         item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
         if remove {
-            self.mark_user_interaction(ctx);
-            self.deferred_tree_actions.lock().remove.push(tile_id);
+            self.blueprint.mark_user_interaction(ctx);
+            self.deferred_tree_actions.remove.push(tile_id);
         }
 
         if visibility_changed {
-            if self.auto_layout {
+            if self.blueprint.auto_layout {
                 re_log::trace!("Container visibility changed - will no longer auto-layout");
             }
 
             // Keep `auto_space_views` enabled.
-            Self::set_auto_layout(false, ctx);
+            self.blueprint.set_auto_layout(false, ctx);
 
-            tree.set_visible(tile_id, visible);
+            self.tree.set_visible(tile_id, visible);
         }
     }
 
     fn space_view_entry_ui(
-        &self,
-        tree: &mut egui_tiles::Tree<SpaceViewId>,
+        &mut self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         space_view_id: &SpaceViewId,
     ) {
-        let Some(space_view) = self.space_views.get(space_view_id) else {
+        let Some(space_view) = self.blueprint.space_views.get(space_view_id) else {
             re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
-            self.deferred_tree_actions.lock().remove.push(tile_id);
+            self.deferred_tree_actions.remove.push(tile_id);
             return;
         };
         debug_assert_eq!(space_view.id, *space_view_id);
@@ -245,7 +232,7 @@ impl ViewportBlueprint {
 
                 let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
                 if response.clicked() {
-                    self.deferred_tree_actions.lock().remove.push(tile_id);
+                    self.deferred_tree_actions.remove.push(tile_id);
                 }
 
                 response | vis_response
@@ -271,20 +258,20 @@ impl ViewportBlueprint {
             .on_hover_text("Space View");
 
         if response.clicked() {
-            self.deferred_tree_actions.lock().focus_tab = Some(space_view.id);
+            self.deferred_tree_actions.focus_tab = Some(space_view.id);
         }
 
         item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
         if visibility_changed {
-            if self.auto_layout {
+            if self.blueprint.auto_layout {
                 re_log::trace!("Space view visibility changed - will no longer auto-layout");
             }
 
             // Keep `auto_space_views` enabled.
-            Self::set_auto_layout(false, ctx);
+            self.blueprint.set_auto_layout(false, ctx);
 
-            tree.set_visible(tile_id, visible);
+            self.tree.set_visible(tile_id, visible);
         }
     }
 
@@ -453,7 +440,7 @@ impl ViewportBlueprint {
     }
 
     pub fn add_new_spaceview_button_ui(
-        &self,
+        &mut self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
@@ -465,26 +452,31 @@ impl ViewportBlueprint {
             |ui| {
                 ui.style_mut().wrap = Some(false);
 
-                let add_space_view_item = |ui: &mut egui::Ui, space_view: SpaceViewBlueprint| {
-                    if ctx
-                        .re_ui
-                        .selectable_label_with_icon(
-                            ui,
-                            space_view.class(ctx.space_view_class_registry).icon(),
-                            if space_view.space_origin.is_root() {
-                                space_view.display_name.clone()
-                            } else {
-                                space_view.space_origin.to_string()
-                            },
-                            false,
-                        )
-                        .clicked()
-                    {
-                        ui.close_menu();
-                        let new_space_view_id = self.add_space_view(space_view, ctx);
-                        ctx.set_single_selection(&Item::SpaceView(new_space_view_id));
-                    }
-                };
+                let mut add_space_view_item =
+                    |ui: &mut egui::Ui, space_view: SpaceViewBlueprint| {
+                        if ctx
+                            .re_ui
+                            .selectable_label_with_icon(
+                                ui,
+                                space_view.class(ctx.space_view_class_registry).icon(),
+                                if space_view.space_origin.is_root() {
+                                    space_view.display_name.clone()
+                                } else {
+                                    space_view.space_origin.to_string()
+                                },
+                                false,
+                            )
+                            .clicked()
+                        {
+                            ui.close_menu();
+                            ctx.set_single_selection(&Item::SpaceView(space_view.id));
+                            self.blueprint.add_space_views(
+                                std::iter::once(space_view),
+                                ctx,
+                                &mut self.deferred_tree_actions,
+                            );
+                        }
+                    };
 
                 // Space view options proposed by heuristics
                 let mut possible_space_views =

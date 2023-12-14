@@ -368,6 +368,7 @@ impl App {
             SystemCommand::ResetBlueprint => {
                 // By clearing the blueprint it will be re-populated with the defaults
                 // at the beginning of the next frame.
+                re_log::debug!("Reset blueprint");
                 store_hub.clear_blueprint();
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {

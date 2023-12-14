@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use parking_lot::Mutex;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::{DataRow, RowId, TimePoint, Timeline};
@@ -15,20 +14,11 @@ use crate::{
         AutoLayout, AutoSpaceViews, IncludedSpaceViews, SpaceViewMaximized, ViewportLayout,
     },
     space_view::SpaceViewBlueprint,
+    viewport::TreeActions,
     VIEWPORT_PATH,
 };
 
 // ----------------------------------------------------------------------------
-
-// We delay any modifications to the tree until the end of the frame,
-// so that we don't iterate over something while modifying it.
-#[derive(Clone, Default)]
-pub(crate) struct TreeActions {
-    pub reset: bool,
-    pub create: Vec<SpaceViewId>,
-    pub focus_tab: Option<SpaceViewId>,
-    pub remove: Vec<egui_tiles::TileId>,
-}
 
 /// Describes the layout and contents of the Viewport Panel.
 pub struct ViewportBlueprint {
@@ -50,13 +40,6 @@ pub struct ViewportBlueprint {
 
     /// Whether or not space views should be created automatically.
     pub auto_space_views: bool,
-
-    /// Actions to perform at the end of the frame.
-    ///
-    /// We delay any modifications to the tree until the end of the frame,
-    /// so that we don't mutate something while inspecitng it.
-    //TODO(jleibs): Can we use the SystemCommandSender for this, too?
-    pub(crate) deferred_tree_actions: Mutex<TreeActions>,
 }
 
 impl ViewportBlueprint {
@@ -125,7 +108,6 @@ impl ViewportBlueprint {
             maximized,
             auto_layout,
             auto_space_views,
-            deferred_tree_actions: Default::default(),
         }
 
         // TODO(jleibs): Need to figure out if we have to re-enable support for
@@ -258,54 +240,16 @@ impl ViewportBlueprint {
         save_single_component(&VIEWPORT_PATH.into(), component, ctx);
     }
 
-    pub fn add_space_view(
-        &self,
-        mut space_view: SpaceViewBlueprint,
-        ctx: &ViewerContext<'_>,
-    ) -> SpaceViewId {
-        let space_view_id = space_view.id;
-
-        // Find a unique name for the space view
-        let mut candidate_name = space_view.display_name.clone();
-        let mut append_count = 1;
-        let unique_name = 'outer: loop {
-            for view in &self.space_views {
-                if candidate_name == view.1.display_name {
-                    append_count += 1;
-                    candidate_name = format!("{} ({})", space_view.display_name, append_count);
-
-                    continue 'outer;
-                }
-            }
-            break candidate_name;
-        };
-
-        space_view.display_name = unique_name;
-
-        // Save the space view to the store
-        space_view.save_full(ctx);
-
-        // Update the space-view ids:
-        let component = IncludedSpaceViews(
-            self.space_views
-                .keys()
-                .map(|id| (*id).into())
-                .chain(std::iter::once(space_view_id.into()))
-                .collect(),
-        );
-        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
-
-        self.deferred_tree_actions.lock().create.push(space_view_id);
-
-        space_view_id
-    }
-
-    pub fn add_multi_space_view(
+    /// Add a set of space views to the viewport.
+    /// NOTE: Calling this more than once per frame will result in lost data.
+    // TODO(jleibs): Better safety check here.
+    pub fn add_space_views(
         &self,
         space_views: impl Iterator<Item = SpaceViewBlueprint>,
         ctx: &ViewerContext<'_>,
+        tree_actions: &mut TreeActions,
     ) {
-        let mut new_ids: Vec<_> = self.space_views.keys().cloned().collect();
+        let mut new_ids: Vec<_> = vec![];
 
         for mut space_view in space_views {
             let space_view_id = space_view.id;
@@ -329,15 +273,21 @@ impl ViewportBlueprint {
 
             // Save the space view to the store
             space_view.save_full(ctx);
-            new_ids.push(space_view_id);
 
             // Update the space-view ids:
-
-            self.deferred_tree_actions.lock().create.push(space_view_id);
+            new_ids.push(space_view_id);
         }
 
-        let component = IncludedSpaceViews(new_ids.into_iter().map(|id| id.into()).collect());
-        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+        if !new_ids.is_empty() {
+            tree_actions.create.extend(new_ids.iter());
+
+            let updated_ids: Vec<_> = self.space_views.keys().chain(new_ids.iter()).collect();
+
+            let component =
+                IncludedSpaceViews(updated_ids.into_iter().map(|id| (*id).into()).collect());
+
+            save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+        }
     }
 
     #[allow(clippy::unused_self)]
@@ -363,19 +313,25 @@ impl ViewportBlueprint {
             .collect()
     }
 
-    pub fn set_auto_layout(value: bool, ctx: &ViewerContext<'_>) {
-        let component = AutoLayout(value);
-        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+    pub fn set_auto_layout(&self, value: bool, ctx: &ViewerContext<'_>) {
+        if self.auto_layout != value {
+            let component = AutoLayout(value);
+            save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+        }
     }
 
-    pub fn set_maximized(space_view_id: Option<SpaceViewId>, ctx: &ViewerContext<'_>) {
-        let component = SpaceViewMaximized(space_view_id.map(|id| id.into()));
-        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+    pub fn set_maximized(&self, space_view_id: Option<SpaceViewId>, ctx: &ViewerContext<'_>) {
+        if self.maximized != space_view_id {
+            let component = SpaceViewMaximized(space_view_id.map(|id| id.into()));
+            save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+        }
     }
 
-    pub fn set_tree(tree: egui_tiles::Tree<SpaceViewId>, ctx: &ViewerContext<'_>) {
-        let component = ViewportLayout(tree);
-        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+    pub fn set_tree(&self, tree: &egui_tiles::Tree<SpaceViewId>, ctx: &ViewerContext<'_>) {
+        if &self.tree != tree {
+            let component = ViewportLayout(tree.clone());
+            save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+        }
     }
 }
 

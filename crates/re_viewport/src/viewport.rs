@@ -72,20 +72,51 @@ impl ViewportState {
     }
 }
 
+// We delay any modifications to the tree until the end of the frame,
+// so that we don't iterate over something while modifying it.
+#[derive(Clone, Default)]
+pub struct TreeActions {
+    pub reset: bool,
+    pub create: Vec<SpaceViewId>,
+    pub focus_tab: Option<SpaceViewId>,
+    pub remove: Vec<egui_tiles::TileId>,
+}
+
 // ----------------------------------------------------------------------------
 
 /// Defines the layout of the Viewport
 pub struct Viewport<'a, 'b> {
+    /// The blueprint that drives this viewport. This is the source of truth from the store
+    /// for this frame.
     pub blueprint: &'a ViewportBlueprint,
 
+    /// The persistent state of the viewport that is not saved to the store but otherwises
+    /// persis frame-to-frame.
     pub state: &'b mut ViewportState,
+
+    /// The [`egui_tiles::Tree`] tree that actually manages blueprint layout. This tree needs
+    /// to be mutable for things like drag-and-drop and is ultimately saved back to the store.
+    /// at the end of the frame if edited.
+    pub tree: egui_tiles::Tree<SpaceViewId>,
+
+    /// Actions to perform at the end of the frame.
+    ///
+    /// We delay any modifications to the tree until the end of the frame,
+    /// so that we don't mutate something while inspecitng it.
+    //TODO(jleibs): Can we use the SystemCommandSender for this, too?
+    pub deferred_tree_actions: TreeActions,
 }
 
 impl<'a, 'b> Viewport<'a, 'b> {
     pub fn new(blueprint: &'a ViewportBlueprint, state: &'b mut ViewportState) -> Self {
         re_tracing::profile_function!();
 
-        Self { blueprint, state }
+        Self {
+            blueprint,
+            state,
+            tree: blueprint.tree.clone(),
+            deferred_tree_actions: Default::default(),
+        }
     }
 
     pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
@@ -93,7 +124,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
     }
 
     pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a ViewerContext<'_>) {
-        let Viewport { blueprint, state } = self;
+        let Viewport {
+            blueprint, state, ..
+        } = self;
 
         if let Some(window) = &mut state.space_view_entity_window {
             if let Some(space_view) = blueprint.space_views.get(&window.space_view_id) {
@@ -123,18 +156,18 @@ impl<'a, 'b> Viewport<'a, 'b> {
             }
         }
 
+        let mut maximized_tree;
+
         // TODO(jleibs): This tree won't have the edits from `viewport_blueprint_ui`.
         // Maybe we should route that all the way through to here and only save it once.
-        let mut tree = if let Some(space_view_id) = blueprint.maximized {
+        let tree = if let Some(space_view_id) = blueprint.maximized {
             let mut tiles = egui_tiles::Tiles::default();
             let root = tiles.insert_pane(space_view_id);
-            egui_tiles::Tree::new("viewport_tree", root, tiles)
+            maximized_tree = egui_tiles::Tree::new("viewport_tree", root, tiles);
+            &mut maximized_tree
         } else {
-            blueprint.tree.clone()
+            &mut self.tree
         };
-
-        // Snapshot the tree so we can save it if it changes
-        let tree_snapshot = tree.clone();
 
         let executed_systems_per_space_view = execute_systems_for_space_views(
             ctx,
@@ -169,21 +202,19 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     );
                 }
 
-                ViewportBlueprint::set_auto_layout(false, ctx);
+                blueprint.set_auto_layout(false, ctx);
             }
 
             state.space_views_displayed_last_frame = tab_viewer.space_views_displayed_current_frame;
         });
 
-        // TODO(jleibs): These edits happen independently of those made by `viewport_blueprint_ui`.
-        // If both edit there will be a conflict and some will get missed.
-        if tree != tree_snapshot && blueprint.maximized.is_none() {
-            ViewportBlueprint::set_tree(tree, ctx);
+        if maximized != blueprint.maximized {
+            self.blueprint.set_maximized(maximized, ctx);
         }
 
-        if maximized != blueprint.maximized {
-            ViewportBlueprint::set_maximized(maximized, ctx);
-        }
+        // Finally, save any edits to the blueprint tree
+        // This is a no-op if the tree hasn't changed.
+        self.blueprint.set_tree(&self.tree, ctx);
     }
 
     pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
@@ -211,8 +242,12 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     new_space_views.push(space_view_candidate);
                 }
             }
-            self.blueprint
-                .add_multi_space_view(new_space_views.into_iter(), ctx);
+
+            self.blueprint.add_space_views(
+                new_space_views.into_iter(),
+                ctx,
+                &mut self.deferred_tree_actions,
+            );
         }
     }
 

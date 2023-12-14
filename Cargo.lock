@@ -5267,7 +5267,6 @@ dependencies = [
  "itertools 0.11.0",
  "nohash-hasher",
  "once_cell",
- "parking_lot 0.12.1",
  "rayon",
  "re_arrow_store",
  "re_data_store",
