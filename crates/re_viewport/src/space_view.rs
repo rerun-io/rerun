@@ -1,14 +1,15 @@
 use ahash::HashSet;
+use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 
-use re_log_types::EntityPathExpr;
+use re_log_types::{EntityPathExpr, Timeline};
+use re_query::query_archetype;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{
     DataQueryBlueprint, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
 };
 use re_space_view_time_series::TimeSeriesSpaceView;
-use re_types::blueprint::datatypes::SpaceViewComponent;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState,
@@ -98,23 +99,49 @@ impl SpaceViewBlueprint {
     }
 
     pub fn try_from_db(path: &EntityPath, blueprint_db: &StoreDb) -> Option<Self> {
-        let SpaceViewComponent {
+        re_tracing::profile_function!();
+
+        let query = LatestAtQuery::latest(Timeline::default());
+
+        let re_types::blueprint::archetypes::SpaceViewBlueprint {
             display_name,
             class_identifier,
             space_origin,
             entities_determined_by_user,
             contents,
-        } = blueprint_db
-            .store()
-            .query_timeless_component::<re_types::blueprint::components::SpaceViewComponent>(path)
-            .map(|c| c.value)?
-            .0;
+        } = query_archetype(blueprint_db.store(), &query, path)
+            .and_then(|arch| arch.to_archetype())
+            .map_err(|err| {
+                if cfg!(debug_assertions) {
+                    re_log::error!("Failed to load SpaceView blueprint: {err}.");
+                } else {
+                    re_log::debug!("Failed to load SpaceView blueprint: {err}.");
+                }
+                err
+            })
+            .ok()?;
 
         let id = SpaceViewId::from_entity_path(path);
 
-        let class_identifier = class_identifier.as_str().into();
+        let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
+
+        let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
+
+        let display_name = display_name.map_or_else(
+            || {
+                if let Some(name) = space_origin.iter().last() {
+                    name.to_string()
+                } else {
+                    // Include class name in the display for root paths because they look a tad bit too short otherwise.
+                    format!("/ ({})", class_identifier.as_str())
+                }
+            },
+            |v| v.0.to_string(),
+        );
 
         let queries = contents
+            .unwrap_or_default()
+            .0
             .into_iter()
             .map(DataQueryId::from)
             .filter_map(|id| {
@@ -126,11 +153,13 @@ impl SpaceViewBlueprint {
             })
             .collect();
 
+        let entities_determined_by_user = entities_determined_by_user.unwrap_or_default().0;
+
         Some(Self {
             id,
-            display_name: display_name.to_string(),
+            display_name,
             class_identifier,
-            space_origin: space_origin.into(),
+            space_origin,
             queries,
             entities_determined_by_user,
             auto_properties: Default::default(),

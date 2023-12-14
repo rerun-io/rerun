@@ -3,4 +3,3 @@
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
 query_expressions.py linguist-generated=true
-space_view_component.py linguist-generated=true
