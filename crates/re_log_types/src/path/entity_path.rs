@@ -154,6 +154,12 @@ impl EntityPath {
         self.path.is_root()
     }
 
+    /// Is this equals to, or a descendant of, the given path.
+    #[inline]
+    pub fn starts_with(&self, prefix: &EntityPath) -> bool {
+        prefix.len() <= self.len() && self.path.iter().zip(prefix.iter()).all(|(a, b)| a == b)
+    }
+
     /// Is this a strict descendant of the given path.
     #[inline]
     pub fn is_descendant_of(&self, other: &EntityPath) -> bool {

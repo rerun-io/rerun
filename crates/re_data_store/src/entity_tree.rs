@@ -446,7 +446,7 @@ impl EntityTree {
         // Only keep events relevant to this branch of the tree.
         let filtered_events = store_events
             .iter()
-            .filter(|e| &e.entity_path == path || e.entity_path.is_descendant_of(path))
+            .filter(|e| e.entity_path.starts_with(path))
             .copied() // NOTE: not actually copying, just removing the superfluous ref layer
             .collect_vec();
 
