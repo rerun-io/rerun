@@ -1,4 +1,3 @@
-use ahash::HashSet;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
@@ -39,28 +38,6 @@ pub struct SpaceViewBlueprint {
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
-}
-
-/// Determine whether this `SpaceViewBlueprint` has user-edits relative to another `SpaceViewBlueprint`
-impl SpaceViewBlueprint {
-    pub fn has_edits(&self, other: &Self) -> bool {
-        let Self {
-            id,
-            display_name,
-            class_identifier,
-            space_origin,
-            queries,
-            entities_determined_by_user,
-        } = self;
-
-        id != &other.id
-            || display_name != &other.display_name
-            || class_identifier != &other.class_identifier
-            || space_origin != &other.space_origin
-            || queries.iter().map(|q| q.id).collect::<HashSet<_>>()
-                != other.queries.iter().map(|q| q.id).collect::<HashSet<_>>()
-            || entities_determined_by_user != &other.entities_determined_by_user
-    }
 }
 
 impl SpaceViewBlueprint {
