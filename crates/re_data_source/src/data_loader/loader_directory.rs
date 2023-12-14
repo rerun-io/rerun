@@ -1,6 +1,9 @@
-// TODO: issue -> HIVE partitiong, timestamp regexes, zip files, that kinda thing
-
 /// Loads entire directories, using the appropriate [`crate::DataLoader`]:s for each files within.
+//
+// TODO(cmc): There are a lot more things than can be done be done when it comes to the semantics
+// of a folder, e.g.: HIVE-like partitioning, similarly named files with different indices and/or
+// timestamps (e.g. a folder of video frames), etc.
+// We could support some of those at some point, or at least add examples to show users how.
 pub struct DirectoryLoader;
 
 impl crate::DataLoader for DirectoryLoader {
@@ -69,7 +72,7 @@ impl crate::DataLoader for DirectoryLoader {
         _contents: std::borrow::Cow<'_, [u8]>,
         _tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
-        // TODO: zip file supports
+        // TODO(cmc): This could make sense to implement for e.g. archive formats (zip, tar, …)
         Ok(()) // simply not interested
     }
 }
