@@ -25,7 +25,7 @@ pub struct EntityTree {
     /// Full path prefix to the root of this (sub)tree.
     pub path: EntityPath,
 
-    /// Direct decendants of this (sub)tree.
+    /// Direct descendants of this (sub)tree.
     pub children: BTreeMap<EntityPathPart, EntityTree>,
 
     /// Information about this specific entity (excluding children).
@@ -257,7 +257,7 @@ impl EntityTree {
         for (i, part) in entity_path.iter().enumerate() {
             tree = tree.children.entry(part.clone()).or_insert_with(|| {
                 EntityTree::new(
-                    entity_path.as_slice()[..i + 1].into(),
+                    entity_path.as_slice()[..=i].into(),
                     tree.subtree.clears.clone(),
                 )
             });
