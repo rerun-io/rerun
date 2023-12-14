@@ -29,10 +29,10 @@ pub struct EntityTree {
     pub children: BTreeMap<EntityPathPart, EntityTree>,
 
     /// Book-keeping around whether we should clear fields when data is added.
-    pub flat_clears: BTreeMap<RowId, TimePoint>,
+    flat_clears: BTreeMap<RowId, TimePoint>,
 
     /// Book-keeping around whether we should clear recursively when data is added.
-    pub recursive_clears: BTreeMap<RowId, TimePoint>,
+    recursive_clears: BTreeMap<RowId, TimePoint>,
 
     /// Flat time histograms for each component of this [`EntityTree`].
     ///
