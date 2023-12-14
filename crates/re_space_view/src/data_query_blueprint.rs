@@ -630,10 +630,10 @@ mod tests {
                 exclusions: vec![],
                 outputs: vec![
                     "/",
-                    "parent/",
-                    "parent",
-                    "parent/skipped/", // Not an exact match and not found in tree
-                    "parent/skipped/child1", // Only child 1 has ViewParts
+                    "/parent/",
+                    "/parent",
+                    "/parent/skipped/", // Not an exact match and not found in tree
+                    "/parent/skipped/child1", // Only child 1 has ViewParts
                 ],
             },
             Scenario {
@@ -641,9 +641,9 @@ mod tests {
                 exclusions: vec![],
                 outputs: vec![
                     "/",
-                    "parent/",               // Only included because is a prefix
-                    "parent/skipped/",       // Not an exact match and not found in tree
-                    "parent/skipped/child1", // Only child 1 has ViewParts
+                    "/parent/",               // Only included because is a prefix
+                    "/parent/skipped/",       // Not an exact match and not found in tree
+                    "/parent/skipped/child1", // Only child 1 has ViewParts
                 ],
             },
             Scenario {
@@ -651,10 +651,10 @@ mod tests {
                 exclusions: vec![],
                 outputs: vec![
                     "/", // Trivial intermediate group -- could be collapsed
-                    "parent/",
-                    "parent",
-                    "parent/skipped/", // Trivial intermediate group -- could be collapsed
-                    "parent/skipped/child2",
+                    "/parent/",
+                    "/parent",
+                    "/parent/skipped/", // Trivial intermediate group -- could be collapsed
+                    "/parent/skipped/child2",
                 ],
             },
             Scenario {
@@ -662,12 +662,12 @@ mod tests {
                 exclusions: vec![],
                 outputs: vec![
                     "/",
-                    "parent/",
-                    "parent",
-                    "parent/skipped/",
-                    "parent/skipped",        // Included because an exact match
-                    "parent/skipped/child1", // Included because an exact match
-                    "parent/skipped/child2",
+                    "/parent/",
+                    "/parent",
+                    "/parent/skipped/",
+                    "/parent/skipped",        // Included because an exact match
+                    "/parent/skipped/child1", // Included because an exact match
+                    "/parent/skipped/child2",
                 ],
             },
             Scenario {
@@ -675,27 +675,27 @@ mod tests {
                 exclusions: vec!["parent"],
                 outputs: vec![
                     "/",
-                    "parent/", // Parent leaf has been excluded
-                    "parent/skipped/",
-                    "parent/skipped",        // Included because an exact match
-                    "parent/skipped/child1", // Included because an exact match
-                    "parent/skipped/child2",
+                    "/parent/", // Parent leaf has been excluded
+                    "/parent/skipped/",
+                    "/parent/skipped",        // Included because an exact match
+                    "/parent/skipped/child1", // Included because an exact match
+                    "/parent/skipped/child2",
                 ],
             },
             Scenario {
                 inclusions: vec!["parent/"],
                 exclusions: vec!["parent/skipped/"],
-                outputs: vec!["/", "parent"], // None of the children are hit since excluded
+                outputs: vec!["/", "/parent"], // None of the children are hit since excluded
             },
             Scenario {
                 inclusions: vec!["parent/", "parent/skipped/child2"],
                 exclusions: vec!["parent/skipped/child1"],
                 outputs: vec![
                     "/",
-                    "parent/",
-                    "parent",
-                    "parent/skipped/",
-                    "parent/skipped/child2", // No child1 since skipped.
+                    "/parent/",
+                    "/parent",
+                    "/parent/skipped/",
+                    "/parent/skipped/child2", // No child1 since skipped.
                 ],
             },
             Scenario {
