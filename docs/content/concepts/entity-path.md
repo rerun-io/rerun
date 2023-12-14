@@ -15,7 +15,7 @@ There _are_ valid reasons to logs different kinds of archetypes to the same enti
 Rerun treats entity paths as being arranged in a hierarchy with the `/` character acting as a separator between path
 elements. The conventional path semantics including concepts of *root* and *parent*/*child* generally apply.
 
-When writing paths in logging APIs the leading `/` is omitted.
+When writing paths in logging APIs the leading `/` is usually omitted.
 
 In the file path analogy, each entity is a folder, and a component is a file.
 This implies that any entity in a hierarchy can contain components.
