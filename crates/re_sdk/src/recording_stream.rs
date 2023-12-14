@@ -881,7 +881,11 @@ impl RecordingStream {
         } else {
             splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
             Some(DataRow::from_cells(
-                row_id, timepoint, ent_path, 1, splatted,
+                row_id.incremented_by(1), // we need a unique RowId from what is used for the instanced data
+                timepoint,
+                ent_path,
+                1,
+                splatted,
             )?)
         };
 
