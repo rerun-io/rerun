@@ -26,7 +26,7 @@ namespace rerun::blueprint::archetypes {
         rerun::blueprint::components::IncludedSpaceViews space_views;
 
         /// The layout of the space-views
-        rerun::blueprint::components::ViewportLayout layout;
+        std::optional<rerun::blueprint::components::ViewportLayout> layout;
 
         /// Show one tab as maximized?
         std::optional<rerun::blueprint::components::SpaceViewMaximized> maximized;
@@ -50,11 +50,15 @@ namespace rerun::blueprint::archetypes {
         ViewportBlueprint() = default;
         ViewportBlueprint(ViewportBlueprint&& other) = default;
 
-        explicit ViewportBlueprint(
-            rerun::blueprint::components::IncludedSpaceViews _space_views,
-            rerun::blueprint::components::ViewportLayout _layout
-        )
-            : space_views(std::move(_space_views)), layout(std::move(_layout)) {}
+        explicit ViewportBlueprint(rerun::blueprint::components::IncludedSpaceViews _space_views)
+            : space_views(std::move(_space_views)) {}
+
+        /// The layout of the space-views
+        ViewportBlueprint with_layout(rerun::blueprint::components::ViewportLayout _layout) && {
+            layout = std::move(_layout);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Show one tab as maximized?
         ViewportBlueprint with_maximized(rerun::blueprint::components::SpaceViewMaximized _maximized

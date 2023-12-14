@@ -21,8 +21,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        {
-            auto result = DataCell::from_loggable(archetype.layout);
+        if (archetype.layout.has_value()) {
+            auto result = DataCell::from_loggable(archetype.layout.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
