@@ -1297,20 +1297,28 @@ fn file_saver_progress_ui(egui_ctx: &egui::Context, background_tasks: &mut Backg
 #[cfg(not(target_arch = "wasm32"))]
 fn open_file_dialog_native() -> Vec<std::path::PathBuf> {
     re_tracing::profile_function!();
+    let supported: Vec<_> = re_data_source::SUPPORTED_RERUN_EXTENSIONS
+        .iter()
+        .chain(re_data_source::SUPPORTED_IMAGE_EXTENSIONS)
+        .chain(re_data_source::SUPPORTED_MESH_EXTENSIONS)
+        .copied()
+        .collect();
     rfd::FileDialog::new()
-        .add_filter("Rerun data file", &["rrd"])
-        .add_filter("Meshes", re_data_source::SUPPORTED_MESH_EXTENSIONS)
-        .add_filter("Images", re_data_source::SUPPORTED_IMAGE_EXTENSIONS)
+        .add_filter("Supported files", &supported)
         .pick_files()
         .unwrap_or_default()
 }
 
 #[cfg(target_arch = "wasm32")]
 async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
+    let supported: Vec<_> = re_data_source::SUPPORTED_RERUN_EXTENSIONS
+        .iter()
+        .chain(re_data_source::SUPPORTED_IMAGE_EXTENSIONS)
+        .chain(re_data_source::SUPPORTED_MESH_EXTENSIONS)
+        .copied()
+        .collect();
     let files = rfd::AsyncFileDialog::new()
-        .add_filter("Rerun data file", &["rrd"])
-        .add_filter("Meshes", re_data_source::SUPPORTED_MESH_EXTENSIONS)
-        .add_filter("Images", re_data_source::SUPPORTED_IMAGE_EXTENSIONS)
+        .add_filter("Supported files", &supported)
         .pick_files()
         .await
         .unwrap_or_default();
