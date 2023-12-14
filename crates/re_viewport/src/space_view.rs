@@ -182,6 +182,7 @@ impl SpaceViewBlueprint {
         }
     }
 
+    #[inline]
     pub fn set_entity_determined_by_user(&self, ctx: &ViewerContext<'_>) {
         if !self.entities_determined_by_user {
             let component = EntitiesDeterminedByUser(true);
@@ -189,6 +190,7 @@ impl SpaceViewBlueprint {
         }
     }
 
+    #[inline]
     pub fn set_display_name(&self, name: String, ctx: &ViewerContext<'_>) {
         if name != self.display_name {
             let component = Name(name.into());
@@ -196,6 +198,7 @@ impl SpaceViewBlueprint {
         }
     }
 
+    #[inline]
     pub fn set_origin(&self, origin: &EntityPath, ctx: &ViewerContext<'_>) {
         if origin != &self.space_origin {
             let component = SpaceViewOrigin(origin.into());

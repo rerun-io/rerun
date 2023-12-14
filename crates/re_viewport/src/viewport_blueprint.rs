@@ -297,6 +297,7 @@ impl ViewportBlueprint {
             .collect()
     }
 
+    #[inline]
     pub fn set_auto_layout(&self, value: bool, ctx: &ViewerContext<'_>) {
         if self.auto_layout != value {
             let component = AutoLayout(value);
@@ -304,6 +305,7 @@ impl ViewportBlueprint {
         }
     }
 
+    #[inline]
     pub fn set_auto_space_views(&self, value: bool, ctx: &ViewerContext<'_>) {
         if self.auto_layout != value {
             let component = AutoSpaceViews(value);
@@ -311,6 +313,7 @@ impl ViewportBlueprint {
         }
     }
 
+    #[inline]
     pub fn set_maximized(&self, space_view_id: Option<SpaceViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != space_view_id {
             let component = SpaceViewMaximized(space_view_id.map(|id| id.into()));
@@ -318,6 +321,7 @@ impl ViewportBlueprint {
         }
     }
 
+    #[inline]
     pub fn set_tree(&self, tree: &egui_tiles::Tree<SpaceViewId>, ctx: &ViewerContext<'_>) {
         if &self.tree != tree {
             re_log::trace!("Updating the layout tree");
