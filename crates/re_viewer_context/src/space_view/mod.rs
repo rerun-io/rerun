@@ -15,6 +15,7 @@ mod system_execution_output;
 mod view_context_system;
 mod view_part_system;
 mod view_query;
+mod visualizer_entity_subscriber;
 
 pub use auto_spawn_heuristic::AutoSpawnHeuristic;
 pub use dyn_space_view_class::{
