@@ -12,6 +12,8 @@ enum RerunBehavior {
 
     Save(PathBuf),
 
+    Stdout,
+
     #[cfg(feature = "web_viewer")]
     Serve,
 
@@ -46,6 +48,10 @@ pub struct RerunArgs {
     /// Saves the data to an rrd file rather than visualizing it immediately.
     #[clap(long)]
     save: Option<PathBuf>,
+
+    /// Log data to standard output, to be piped into a Rerun Viewer.
+    #[clap(long, short = 'o')]
+    stdout: bool,
 
     /// Connects and sends the logged data to a remote Rerun viewer.
     ///
@@ -89,6 +95,11 @@ impl RerunArgs {
     #[track_caller] // track_caller so that we can see if we are being called from an official example.
     pub fn init(&self, application_id: &str) -> anyhow::Result<(RecordingStream, ServeGuard)> {
         match self.to_behavior()? {
+            RerunBehavior::Stdout => Ok((
+                RecordingStreamBuilder::new(application_id).stdout()?,
+                Default::default(),
+            )),
+
             RerunBehavior::Connect(addr) => Ok((
                 RecordingStreamBuilder::new(application_id)
                     .connect_opts(addr, crate::default_flush_timeout())?,
@@ -144,6 +155,10 @@ impl RerunArgs {
 
     #[allow(clippy::unnecessary_wraps)] // False positive on some feature flags
     fn to_behavior(&self) -> anyhow::Result<RerunBehavior> {
+        if dbg!(self.stdout) {
+            return Ok(RerunBehavior::Stdout);
+        }
+
         if let Some(path) = self.save.as_ref() {
             return Ok(RerunBehavior::Save(path.clone()));
         }
