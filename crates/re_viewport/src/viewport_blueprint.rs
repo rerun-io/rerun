@@ -1,22 +1,20 @@
 use std::collections::BTreeMap;
 
+use parking_lot::Mutex;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, StoreDb};
+use re_data_store::EntityPath;
 use re_log_types::{DataRow, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
 use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
-    CommandSender, Item, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender,
-    ViewerContext,
+    Item, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender, ViewerContext,
 };
 
 use crate::{
     blueprint::components::{
         AutoLayout, AutoSpaceViews, IncludedSpaceViews, SpaceViewMaximized, ViewportLayout,
     },
-    space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
-    space_view_heuristics::default_created_space_views,
     VIEWPORT_PATH,
 };
 
@@ -26,16 +24,14 @@ use crate::{
 // so that we don't iterate over something while modifying it.
 #[derive(Clone, Default)]
 pub(crate) struct TreeActions {
+    pub reset: bool,
+    pub create: Option<SpaceViewId>,
     pub focus_tab: Option<SpaceViewId>,
     pub remove: Vec<egui_tiles::TileId>,
 }
 
 /// Describes the layout and contents of the Viewport Panel.
-#[derive(Clone)]
-pub struct ViewportBlueprint<'a> {
-    /// The StoreDb used to instantiate this blueprint
-    blueprint_db: &'a StoreDb,
-
+pub struct ViewportBlueprint {
     /// Where the space views are stored.
     ///
     /// Not a hashmap in order to preserve the order of the space views.
@@ -59,10 +55,11 @@ pub struct ViewportBlueprint<'a> {
     ///
     /// We delay any modifications to the tree until the end of the frame,
     /// so that we don't mutate something while inspecitng it.
-    pub(crate) deferred_tree_actions: TreeActions,
+    //TODO(jleibs): Can we use the SystemCommandSender for this, too?
+    pub(crate) deferred_tree_actions: Mutex<TreeActions>,
 }
 
-impl<'a> ViewportBlueprint<'a> {
+impl ViewportBlueprint {
     /// Determine whether all views in a blueprint are invalid.
     ///
     /// This most commonly happens due to a change in struct definition that
@@ -80,41 +77,6 @@ impl<'a> ViewportBlueprint<'a> {
                 .all(|sv| sv.class_identifier() == &SpaceViewClassIdentifier::invalid())
     }
 
-    /// Reset the blueprint to a default state using some heuristics.
-    pub fn reset(&mut self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
-        // TODO(jleibs): When using blueprint API, "reset" should go back to the initially transmitted
-        // blueprint, not the default blueprint.
-        re_tracing::profile_function!();
-
-        let ViewportBlueprint {
-            blueprint_db: _,
-            space_views,
-            tree,
-            maximized,
-            auto_layout,
-            auto_space_views,
-            deferred_tree_actions: tree_actions,
-        } = self;
-
-        // Note, it's important that these values match the behavior in `load_viewport_blueprint` below.
-        *space_views = Default::default();
-        *tree = egui_tiles::Tree::empty("viewport_tree");
-        *maximized = None;
-        *auto_layout = true;
-        // Only enable auto-space-views if this is the app-default blueprint
-        *auto_space_views = self
-            .blueprint_db
-            .store_info()
-            .map_or(false, |ri| ri.is_app_default_blueprint());
-        *tree_actions = Default::default();
-
-        for space_view in
-            default_created_space_views(ctx, spaces_info, ctx.entities_per_system_per_class)
-        {
-            self.add_space_view(space_view);
-        }
-    }
-
     pub fn space_view_ids(&self) -> impl Iterator<Item = &SpaceViewId> + '_ {
         self.space_views.keys()
     }
@@ -130,28 +92,38 @@ impl<'a> ViewportBlueprint<'a> {
         self.space_views.get_mut(space_view_id)
     }
 
-    pub(crate) fn remove(&mut self, space_view_id: &SpaceViewId) -> Option<SpaceViewBlueprint> {
-        self.mark_user_interaction();
+    pub(crate) fn remove_space_view(&self, space_view_id: &SpaceViewId, ctx: &ViewerContext<'_>) {
+        self.mark_user_interaction(ctx);
 
-        let Self {
-            blueprint_db: _,
-            space_views,
-            tree,
-            maximized,
-            auto_layout: _,
-            auto_space_views: _,
-            deferred_tree_actions: _,
-        } = self;
+        let timepoint = TimePoint::timeless();
+        let mut deltas = vec![];
 
-        if *maximized == Some(*space_view_id) {
-            *maximized = None;
+        if self.maximized == Some(*space_view_id) {
+            let component = SpaceViewMaximized(None);
+            add_delta_from_single_component(
+                &mut deltas,
+                &VIEWPORT_PATH.into(),
+                &timepoint,
+                component,
+            );
         }
 
-        if let Some(tile_id) = tree.tiles.find_pane(space_view_id) {
-            tree.tiles.remove(tile_id);
-        }
+        let component = IncludedSpaceViews(
+            self.space_views
+                .keys()
+                .filter(|id| id != &space_view_id)
+                .map(|id| (*id).into())
+                .collect(),
+        );
+        add_delta_from_single_component(&mut deltas, &VIEWPORT_PATH.into(), &timepoint, component);
 
-        space_views.remove(space_view_id)
+        clear_space_view(&mut deltas, space_view_id);
+
+        ctx.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                ctx.store_context.blueprint.store_id().clone(),
+                deltas,
+            ));
     }
 
     /// If `false`, the item is referring to data that is not present in this blueprint.
@@ -184,16 +156,23 @@ impl<'a> ViewportBlueprint<'a> {
         }
     }
 
-    pub fn mark_user_interaction(&mut self) {
+    pub fn mark_user_interaction(&self, ctx: &ViewerContext<'_>) {
         if self.auto_layout {
             re_log::trace!("User edits - will no longer auto-layout");
         }
 
-        self.auto_layout = false;
-        self.auto_space_views = false;
+        let component = AutoLayout(false);
+        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+
+        let component = AutoSpaceViews(false);
+        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
     }
 
-    pub fn add_space_view(&mut self, mut space_view: SpaceViewBlueprint) -> SpaceViewId {
+    pub fn add_space_view(
+        &self,
+        mut space_view: SpaceViewBlueprint,
+        ctx: &ViewerContext<'_>,
+    ) -> SpaceViewId {
         let space_view_id = space_view.id;
 
         // Find a unique name for the space view
@@ -213,31 +192,20 @@ impl<'a> ViewportBlueprint<'a> {
 
         space_view.display_name = unique_name;
 
-        self.space_views.insert(space_view_id, space_view);
+        // Save the space view to the store
+        space_view.save_full(ctx);
 
-        if self.auto_layout {
-            // Re-run the auto-layout next frame:
-            re_log::trace!("Added a space view with no user edits yet - will re-run auto-layout");
-            self.tree = egui_tiles::Tree::empty("viewport_tree");
-        } else {
-            // Try to insert it in the tree, in the top level:
-            if let Some(root_id) = self.tree.root {
-                let tile_id = self.tree.tiles.insert_pane(space_view_id);
-                if let Some(egui_tiles::Tile::Container(container)) =
-                    self.tree.tiles.get_mut(root_id)
-                {
-                    re_log::trace!("Inserting new space view into root container");
-                    container.add_child(tile_id);
-                } else {
-                    re_log::trace!("Root was not a container - will re-run auto-layout");
-                    self.tree = egui_tiles::Tree::empty("viewport_tree");
-                }
-            } else {
-                re_log::trace!("No root found - will re-run auto-layout");
-            }
-        }
+        // Update the space-view ids:
+        let component = IncludedSpaceViews(
+            self.space_views
+                .keys()
+                .map(|id| (*id).into())
+                .chain(std::iter::once(space_view_id.into()))
+                .collect(),
+        );
+        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
 
-        self.deferred_tree_actions.focus_tab = Some(space_view_id);
+        self.deferred_tree_actions.lock().create = Some(space_view_id);
 
         space_view_id
     }
@@ -265,79 +233,26 @@ impl<'a> ViewportBlueprint<'a> {
             .collect()
     }
 
-    /// Compares the before and after snapshots and sends any necessary deltas to the store.
-    pub fn sync_viewport_blueprint(
-        before: &ViewportBlueprint<'_>,
-        after: &ViewportBlueprint<'_>,
-        command_sender: &CommandSender,
-    ) {
-        let mut deltas = vec![];
+    pub fn set_auto_layout(value: bool, ctx: &ViewerContext<'_>) {
+        let component = AutoLayout(value);
+        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+    }
 
-        let entity_path = EntityPath::from(VIEWPORT_PATH);
+    pub fn set_maximized(space_view_id: Option<SpaceViewId>, ctx: &ViewerContext<'_>) {
+        let component = SpaceViewMaximized(space_view_id.map(|id| id.into()));
+        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+    }
 
-        // TODO(jleibs): Seq instead of timeless?
-        let timepoint = TimePoint::timeless();
-
-        if after.space_views.len() != before.space_views.len()
-            || after
-                .space_views
-                .keys()
-                .zip(before.space_views.keys())
-                .any(|(a, b)| a != b)
-        {
-            let component =
-                IncludedSpaceViews(after.space_views.keys().map(|id| (*id).into()).collect());
-            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
-        }
-
-        if after.auto_layout != before.auto_layout {
-            let component = AutoLayout(after.auto_layout);
-            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
-        }
-
-        if after.auto_space_views != before.auto_space_views {
-            let component = AutoSpaceViews(after.auto_space_views);
-            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
-        }
-
-        if after.maximized != before.maximized {
-            let component = SpaceViewMaximized(after.maximized.map(|id| id.into()));
-            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
-        }
-
-        if after.tree != before.tree {
-            re_log::trace!("Syncing tree");
-
-            let component = ViewportLayout(after.tree.clone());
-
-            add_delta_from_single_component(&mut deltas, &entity_path, &timepoint, component);
-        }
-
-        // Add any new or modified space views
-        for id in after.space_view_ids() {
-            if let Some(space_view) = after.space_view(id) {
-                sync_space_view(&mut deltas, space_view, before.space_view(id));
-            }
-        }
-
-        // Remove any deleted space views
-        for space_view_id in before.space_view_ids() {
-            if after.space_view(space_view_id).is_none() {
-                clear_space_view(&mut deltas, space_view_id);
-            }
-        }
-
-        command_sender.send_system(SystemCommand::UpdateBlueprint(
-            after.blueprint_db.store_id().clone(),
-            deltas,
-        ));
+    pub fn set_tree(tree: egui_tiles::Tree<SpaceViewId>, ctx: &ViewerContext<'_>) {
+        let component = ViewportLayout(tree);
+        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
     }
 }
 
 // ----------------------------------------------------------------------------
 
 // TODO(jleibs): Move this helper to a better location
-fn add_delta_from_single_component<'a, C>(
+pub fn add_delta_from_single_component<'a, C>(
     deltas: &mut Vec<DataRow>,
     entity_path: &EntityPath,
     timepoint: &TimePoint,
@@ -358,9 +273,33 @@ fn add_delta_from_single_component<'a, C>(
     deltas.push(row);
 }
 
+// TODO(jleibs): Move this helper to a better location
+pub fn save_single_component<'a, C>(entity_path: &EntityPath, component: C, ctx: &ViewerContext<'_>)
+where
+    C: re_types::Component + Clone + 'a,
+    std::borrow::Cow<'a, C>: std::convert::From<C>,
+{
+    let timepoint = TimePoint::timeless();
+
+    let row = DataRow::from_cells1_sized(
+        RowId::new(),
+        entity_path.clone(),
+        timepoint.clone(),
+        1,
+        [component],
+    )
+    .unwrap(); // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
+
+    ctx.command_sender
+        .send_system(SystemCommand::UpdateBlueprint(
+            ctx.store_context.blueprint.store_id().clone(),
+            vec![row],
+        ));
+}
+
 // ----------------------------------------------------------------------------
 
-pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint<'_> {
+pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint {
     re_tracing::profile_function!();
 
     let query = LatestAtQuery::latest(Timeline::default());
@@ -420,7 +359,6 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         .0;
 
     ViewportBlueprint {
-        blueprint_db,
         space_views,
         tree,
         maximized,
@@ -452,47 +390,6 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
 }
 
 // ----------------------------------------------------------------------------
-
-pub fn sync_space_view(
-    deltas: &mut Vec<DataRow>,
-    space_view: &SpaceViewBlueprint,
-    snapshot: Option<&SpaceViewBlueprint>,
-) {
-    if snapshot.map_or(true, |snapshot| space_view.has_edits(snapshot)) {
-        // TODO(jleibs): Seq instead of timeless?
-        let timepoint = TimePoint::timeless();
-
-        let arch = re_types::blueprint::archetypes::SpaceViewBlueprint::new(
-            space_view.class_identifier().as_str(),
-        )
-        .with_display_name(space_view.display_name.clone())
-        .with_space_origin(&space_view.space_origin)
-        .with_entities_determined_by_user(space_view.entities_determined_by_user)
-        .with_contents(space_view.queries.iter().map(|q| q.id));
-
-        if let Ok(row) = DataRow::from_archetype(
-            RowId::new(),
-            timepoint.clone(),
-            space_view.entity_path(),
-            &arch,
-        ) {
-            deltas.push(row);
-        }
-
-        // The only time we need to create a query is if this is a new space-view. All other edits
-        // happen directly via `UpdateBlueprint` commands.
-        if snapshot.is_none() {
-            for query in &space_view.queries {
-                add_delta_from_single_component(
-                    deltas,
-                    &query.id.as_entity_path(),
-                    &timepoint,
-                    query.expressions.clone(),
-                );
-            }
-        }
-    }
-}
 
 pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) {
     // TODO(jleibs): Seq instead of timeless?

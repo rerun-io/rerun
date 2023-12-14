@@ -141,8 +141,9 @@ impl AppState {
                 .values()
                 .flat_map(|space_view| {
                     space_view.queries.iter().map(|query| {
-                        let resolver =
-                            query.build_resolver(space_view.id, &space_view.auto_properties);
+                        let state = viewport.state.read();
+                        let props = state.space_view_props(space_view.id);
+                        let resolver = query.build_resolver(space_view.id, props);
                         (
                             query.id,
                             query.execute_query(
@@ -186,11 +187,12 @@ impl AppState {
             viewport
                 .blueprint
                 .space_views
-                .values_mut()
+                .values()
                 .flat_map(|space_view| {
                     space_view.queries.iter().map(|query| {
-                        let resolver =
-                            query.build_resolver(space_view.id, &space_view.auto_properties);
+                        let state = viewport.state.read();
+                        let props = state.space_view_props(space_view.id);
+                        let resolver = query.build_resolver(space_view.id, props);
                         (
                             query.id,
                             query.execute_query(
@@ -206,12 +208,7 @@ impl AppState {
         ctx.query_results = &updated_query_results;
 
         time_panel.show_panel(&ctx, ui, app_blueprint.time_panel_expanded);
-        selection_panel.show_panel(
-            &ctx,
-            ui,
-            &mut viewport,
-            app_blueprint.selection_panel_expanded,
-        );
+        selection_panel.show_panel(&ctx, ui, &viewport, app_blueprint.selection_panel_expanded);
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
@@ -250,7 +247,7 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(&mut viewport.blueprint, &ctx, ui, &spaces_info);
+                        blueprint_panel_ui(&viewport.blueprint, &ctx, ui, &spaces_info);
                     },
                 );
 
@@ -272,8 +269,6 @@ impl AppState {
                         }
                     });
             });
-
-        viewport.sync_blueprint_changes(command_sender);
 
         {
             // We move the time at the very end of the frame,
