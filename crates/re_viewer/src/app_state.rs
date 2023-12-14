@@ -106,7 +106,11 @@ impl AppState {
         } = self;
 
         let viewport_blueprint = ViewportBlueprint::try_from_db(store_context.blueprint);
-        let mut viewport = Viewport::new(&viewport_blueprint, viewport_state);
+        let mut viewport = Viewport::new(
+            &viewport_blueprint,
+            viewport_state,
+            space_view_class_registry,
+        );
 
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {
@@ -275,7 +279,7 @@ impl AppState {
                     });
             });
 
-        // Process deferred layout operationsand apply updates back to blueprint
+        // Process deferred layout operations and apply updates back to blueprint
         viewport.update_and_sync_layout(&ctx);
 
         {

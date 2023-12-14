@@ -108,13 +108,27 @@ pub struct Viewport<'a, 'b> {
 }
 
 impl<'a, 'b> Viewport<'a, 'b> {
-    pub fn new(blueprint: &'a ViewportBlueprint, state: &'b mut ViewportState) -> Self {
+    pub fn new(
+        blueprint: &'a ViewportBlueprint,
+        state: &'b mut ViewportState,
+        space_view_class_registry: &SpaceViewClassRegistry,
+    ) -> Self {
         re_tracing::profile_function!();
+
+        // If the blueprint tree is empty/missing we need to auto-layout.
+        let tree = if blueprint.tree.is_empty() && !blueprint.space_views.is_empty() {
+            super::auto_layout::tree_from_space_views(
+                space_view_class_registry,
+                &blueprint.space_views,
+            )
+        } else {
+            blueprint.tree.clone()
+        };
 
         Self {
             blueprint,
             state,
-            tree: blueprint.tree.clone(),
+            tree,
             deferred_tree_actions: Default::default(),
         }
     }
@@ -339,17 +353,11 @@ impl<'a, 'b> Viewport<'a, 'b> {
             }
         }
 
-        if self.tree.is_empty() && !self.blueprint.space_views.is_empty() {
-            re_log::trace!("Tree is empty - will re-run auto-layout");
-            reset = true;
-        }
-
         if reset {
-            re_log::trace!("Resetting viewport tree");
-            self.tree = super::auto_layout::tree_from_space_views(
-                ctx.space_view_class_registry,
-                &self.blueprint.space_views,
-            );
+            // We don't run auto-layout here since the new space views also haven't been
+            // written to the store yet.
+            re_log::trace!("Clearing the blueprint tree to force reset on the next frame");
+            self.tree = egui_tiles::Tree::empty("viewport_tree");
         }
 
         // Finally, save any edits to the blueprint tree
