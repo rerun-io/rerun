@@ -5,7 +5,7 @@ tags: [tensor, mri, dicom]
 description: "Example using a DICOM MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer."
 thumbnail: https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/480w.png
 thumbnail_dimensions: [480, 285]
-demo: true
+channel: main
 ---
 
 <picture>

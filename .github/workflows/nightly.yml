@@ -1,0 +1,55 @@
+name: Nightly
+
+on:
+  workflow_dispatch:
+  schedule:
+    # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule
+    # 12:15 UTC, every day
+    - cron: "15 12 * * *"
+
+jobs:
+  build-web:
+    name: "Build Web"
+    uses: ./.github/workflows/reusable_build_web.yml
+    with:
+      CONCURRENCY: nightly
+      CHANNEL: nightly
+    secrets: inherit
+
+  upload-web:
+    name: "Upload Web"
+    needs: [build-web]
+    uses: ./.github/workflows/reusable_upload_web.yml
+    with:
+      CONCURRENCY: nightly
+      NIGHTLY: true
+    secrets: inherit
+
+  build-wheel-linux:
+    name: "Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: nightly-linux
+      PLATFORM: linux
+      WHEEL_ARTIFACT_NAME: linux-wheel
+      MODE: "pr"
+    secrets: inherit
+
+  build-examples:
+    name: "Build Examples"
+    needs: [build-wheel-linux]
+    uses: ./.github/workflows/reusable_build_examples.yml
+    with:
+      CONCURRENCY: nightly
+      CHANNEL: nightly
+      WHEEL_ARTIFACT_NAME: linux-wheel
+    secrets: inherit
+
+  upload-examples:
+    name: "Upload Examples"
+    needs: [build-examples]
+    uses: ./.github/workflows/reusable_upload_examples.yml
+    with:
+      CONCURRENCY: nightly
+      NIGHTLY: true
+    secrets: inherit

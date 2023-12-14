@@ -111,6 +111,7 @@ jobs:
     uses: ./.github/workflows/reusable_build_web.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      CHANNEL: main
     secrets: inherit
 
   upload-web:
@@ -130,13 +131,14 @@ jobs:
     uses: ./.github/workflows/reusable_build_examples.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      CHANNEL: main
       WHEEL_ARTIFACT_NAME: linux-wheel-fast
     secrets: inherit
 
   track-sizes:
     name: "Track Sizes"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [build-examples]
+    needs: [build-web, build-examples]
     uses: ./.github/workflows/reusable_track_size.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}

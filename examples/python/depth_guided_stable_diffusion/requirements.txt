@@ -1,5 +1,5 @@
 accelerate
-diffusers>=0.12.1
+diffusers>=0.12.1,<=0.21
 ftfy
 numpy
 packaging
