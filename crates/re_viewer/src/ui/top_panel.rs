@@ -402,14 +402,15 @@ fn e2e_latency_ui(
         return None; // Probably an old recording and not live data.
     }
 
-    let text = format!("e2e latency: {}", latency_text(e2e_latency_sec));
+    let text = format!("latency: {}", latency_text(e2e_latency_sec));
+    let response = ui.weak(text);
 
     let hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
                       This includes time for encoding, network latency, and decoding.\n\
                       It is also affected by the framerate of the viewer.\n\
                       This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
 
-    Some(ui.weak(text).on_hover_text(hover_text))
+    Some(response.on_hover_text(hover_text))
 }
 
 /// Shows the latency in the input queue.
@@ -458,8 +459,8 @@ fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
 
 fn latency_text(latency_sec: f32) -> String {
     if latency_sec < 1.0 {
-        format!("{:.0}ms", 1e3 * latency_sec)
+        format!("{:.0} ms", 1e3 * latency_sec)
     } else {
-        format!("{latency_sec:.1}s")
+        format!("{latency_sec:.1} s")
     }
 }
