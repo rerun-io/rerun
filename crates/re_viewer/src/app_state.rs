@@ -327,7 +327,8 @@ fn recording_config_entry<'cfgs>(
                 // Live data - follow it!
                 re_smart_channel::SmartChannelSource::Sdk
                 | re_smart_channel::SmartChannelSource::WsClient { .. }
-                | re_smart_channel::SmartChannelSource::TcpServer { .. } => PlayState::Following,
+                | re_smart_channel::SmartChannelSource::TcpServer { .. }
+                | re_smart_channel::SmartChannelSource::Stdin => PlayState::Following,
             }
         } else {
             PlayState::Following // No known source 🤷‍♂️

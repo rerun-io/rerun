@@ -100,7 +100,9 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
         .into_iter()
         .filter(|source| {
             match source.as_ref() {
-                SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
+                SmartChannelSource::File(_)
+                | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::Stdin => {
                     false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
                 }
 
@@ -135,6 +137,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
 
         let tooltip = match source {
             SmartChannelSource::File(_)
+            | SmartChannelSource::Stdin
             | SmartChannelSource::RrdHttpStream { .. }
             | SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::Sdk
@@ -157,6 +160,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             re_smart_channel::SmartChannelSource::File(path) => {
                 format!("Loading {}…", path.display())
             }
+            re_smart_channel::SmartChannelSource::Stdin => "Loading stdin…".to_owned(),
             re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
                 format!("Loading {url}…")
             }
