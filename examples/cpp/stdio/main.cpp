@@ -2,9 +2,6 @@
 #include <string>
 
 #include <rerun.hpp>
-#include <rerun/demo_utils.hpp>
-
-using rerun::demo::grid3d;
 
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_stdio");
