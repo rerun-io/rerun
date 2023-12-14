@@ -124,16 +124,22 @@ impl Display for InvalidChannelName {
 struct Frontmatter {
     #[serde(default)]
     title: String,
+
     #[serde(default)]
     tags: Vec<String>,
+
     #[serde(default)]
     description: String,
+
     #[serde(default)]
     thumbnail: String,
+
     #[serde(default)]
     thumbnail_dimensions: [u64; 2],
+
     #[serde(default)]
     channel: Option<Channel>,
+
     #[serde(default)]
     build_args: Vec<String>,
 }
