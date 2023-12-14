@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
+from typing import Any
 
 import rerun as rr
 import torch
@@ -32,7 +33,7 @@ As the sun set, painting the sky in hues of orange and purple, the friends retur
 """
 
 
-def log_tokenized_text(token_words):
+def log_tokenized_text(token_words: list[str]) -> None:
     markdown = ""
     for i, token_word in enumerate(token_words):
         if token_word.startswith("##"):
@@ -44,8 +45,8 @@ def log_tokenized_text(token_words):
     rr.log("tokenized_text", rr.TextDocument(markdown, media_type="text/markdown"))
 
 
-def log_ner_results(ner_results):
-    entity_sets = defaultdict(set)
+def log_ner_results(ner_results: list[dict[str, Any]]) -> None:
+    entity_sets: dict[str, set[str]] = defaultdict(set)
 
     current_entity_name = None
     current_entity_set = None
@@ -53,11 +54,11 @@ def log_ner_results(ner_results):
         entity_class = ner_result["entity"]
         word = ner_result["word"]
         if entity_class.startswith("B-"):
-            if current_entity_set is not None:
+            if current_entity_set is not None and current_entity_name is not None:
                 current_entity_set.add(current_entity_name)
             current_entity_set = entity_sets[entity_class[2:]]
             current_entity_name = word
-        else:
+        elif current_entity_name is not None:
             if word.startswith("##"):
                 current_entity_name += word[2:]
             else:
@@ -105,7 +106,7 @@ def run_llm_ner(text: str) -> None:
     token_ids = tokenizer.encode(text)
     token_words = tokenizer.convert_ids_to_tokens(token_ids)
     embeddings = nlp.model.base_model(torch.tensor([token_ids])).last_hidden_state
-    ner_results = nlp(text)
+    ner_results: Any = nlp(text)
 
     # Visualize in Rerun
     rr.log("text", rr.TextDocument(text, media_type="text/markdown"))
@@ -113,6 +114,7 @@ def run_llm_ner(text: str) -> None:
     reducer = umap.UMAP(n_components=3, n_neighbors=4)
     umap_embeddings = reducer.fit_transform(embeddings.numpy(force=True)[0])
     class_ids = [0 for _ in token_words]
+    breakpoint()
     for ner_result in ner_results:
         class_ids[ner_result["index"]] = label2index[ner_result["entity"]]
     rr.log(
