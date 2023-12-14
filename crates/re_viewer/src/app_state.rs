@@ -280,7 +280,7 @@ impl AppState {
             });
 
         // Process deferred layout operations and apply updates back to blueprint
-        viewport.update_and_sync_layout(&ctx);
+        viewport.update_and_sync_tile_tree_to_blueprint(&ctx);
 
         {
             // We move the time at the very end of the frame,
