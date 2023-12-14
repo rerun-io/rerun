@@ -153,7 +153,7 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatt
         return Ok(None);
     };
     let Some(end) = content.find("---") else {
-        anyhow::bail!("{:?} has invalid frontmatter", path);
+        anyhow::bail!("{:?} has invalid frontmatter: missing --- terminator", path);
     };
     Ok(Some(serde_yaml::from_str(&content[..end]).map_err(
         |err| {
