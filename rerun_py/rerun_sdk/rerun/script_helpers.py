@@ -51,7 +51,13 @@ def script_add_args(parser: ArgumentParser) -> None:
     )
     parser.add_argument("--addr", type=str, default=None, help="Connect to this ip:port")
     parser.add_argument("--save", type=str, default=None, help="Save data to a .rrd file at this path")
-    parser.add_argument("-o", "--stdout", dest="stdout", action="store_true", help="Log data to standard output, to be piped into a Rerun Viewer")
+    parser.add_argument(
+        "-o",
+        "--stdout",
+        dest="stdout",
+        action="store_true",
+        help="Log data to standard output, to be piped into a Rerun Viewer",
+    )
 
 
 def script_setup(
