@@ -80,13 +80,16 @@ pub fn all_possible_space_views(
     // should not influence the heuristics.
     let entities_used_by_any_part_system_of_class: IntMap<_, _> = ctx
         .space_view_class_registry
-        .iter_system_registries()
-        .map(|(class_identifier, system_registry)| {
-            let parts = system_registry.new_part_collection();
+        .iter_classes()
+        .map(|class| {
+            let class_identifier = class.identifier();
+            let parts = ctx
+                .space_view_class_registry
+                .new_part_collection(class_identifier);
             (
-                *class_identifier,
+                class_identifier,
                 entities_per_system_per_class
-                    .get(class_identifier)
+                    .get(&class_identifier)
                     .unwrap_or(&empty_entities_per_system)
                     .iter()
                     .filter(|(system, _)| parts.get_by_identifier(**system).is_ok())
@@ -457,20 +460,17 @@ pub fn reachable_entities_from_root(
 // TODO(andreas): Still used in a bunch of places. Should instead use the global `EntitiesPerSystemPerClass` list.
 pub fn is_entity_processed_by_class(
     ctx: &ViewerContext<'_>,
-    class: &SpaceViewClassIdentifier,
+    class: SpaceViewClassIdentifier,
     ent_path: &EntityPath,
     heuristic_ctx: HeuristicFilterContext,
     query: &LatestAtQuery,
 ) -> bool {
-    let parts = ctx
-        .space_view_class_registry
-        .get_system_registry_or_log_error(class)
-        .new_part_collection();
+    let parts = ctx.space_view_class_registry.new_part_collection(class);
     is_entity_processed_by_part_collection(
         ctx.store_db.store(),
         &parts,
         ent_path,
-        heuristic_ctx.with_class(*class),
+        heuristic_ctx.with_class(class),
         query,
     )
 }
@@ -556,13 +556,14 @@ pub fn identify_entities_per_system_per_class(
         SpaceViewClassIdentifier,
         (ViewContextCollection, ViewPartCollection),
     > = space_view_class_registry
-        .iter_system_registries()
-        .map(|(class_identifier, entry)| {
+        .iter_classes()
+        .map(|class| {
+            let class_identifier = class.identifier();
             (
-                *class_identifier,
+                class_identifier,
                 (
-                    entry.new_context_collection(*class_identifier),
-                    entry.new_part_collection(),
+                    space_view_class_registry.new_context_collection(class_identifier),
+                    space_view_class_registry.new_part_collection(class_identifier),
                 ),
             )
         })

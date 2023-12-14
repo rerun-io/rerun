@@ -4,23 +4,23 @@ use ahash::HashMap;
 use rayon::prelude::*;
 
 use re_viewer_context::{
-    SpaceViewClassIdentifier, SpaceViewId, SpaceViewSystemRegistry, SystemExecutionOutput,
-    ViewQuery, ViewerContext,
+    SpaceViewClassIdentifier, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::{space_view_highlights::highlights_for_space_view, SpaceViewBlueprint};
 
 pub fn create_and_run_space_view_systems(
     ctx: &ViewerContext<'_>,
-    space_view_identifier: SpaceViewClassIdentifier,
-    systems: &SpaceViewSystemRegistry,
+    space_view_class: SpaceViewClassIdentifier,
     query: &ViewQuery<'_>,
 ) -> SystemExecutionOutput {
-    re_tracing::profile_function!(space_view_identifier.as_str());
+    re_tracing::profile_function!(space_view_class.as_str());
 
     let context_systems = {
         re_tracing::profile_wait!("ViewContextSystem::execute");
-        let mut context_systems = systems.new_context_collection(space_view_identifier);
+        let mut context_systems = ctx
+            .space_view_class_registry
+            .new_context_collection(space_view_class);
         context_systems
             .systems
             .par_iter_mut()
@@ -32,7 +32,9 @@ pub fn create_and_run_space_view_systems(
     };
 
     re_tracing::profile_wait!("ViewPartSystem::execute");
-    let mut view_systems = systems.new_part_collection();
+    let mut view_systems = ctx
+        .space_view_class_registry
+        .new_part_collection(space_view_class);
     let draw_data = view_systems
         .systems
         .par_iter_mut()

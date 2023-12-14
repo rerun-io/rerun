@@ -33,7 +33,7 @@ use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
 use re_viewer_context::SpaceViewClassRegistryError;
 use re_viewer_context::{
-    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfos, SpaceViewSystemRegistry,
+    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfos, SpaceViewSystemRegistrator,
     ViewPartCollection, ViewQuery,
 };
 
@@ -46,39 +46,39 @@ pub const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
 pub const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
 pub fn register_2d_spatial_parts(
-    system_registry: &mut SpaceViewSystemRegistry,
+    system_registry: &mut SpaceViewSystemRegistrator<'_>,
 ) -> Result<(), SpaceViewClassRegistryError> {
     // Note: 2D spatial systems don't include cameras as this
     // part only shows a 2D projection WITHIN a 3D view.
-    system_registry.register_part_system::<arrows3d::Arrows3DPart>()?;
-    system_registry.register_part_system::<assets3d::Asset3DPart>()?;
-    system_registry.register_part_system::<boxes2d::Boxes2DPart>()?;
-    system_registry.register_part_system::<boxes3d::Boxes3DPart>()?;
-    system_registry.register_part_system::<images::ImagesPart>()?;
-    system_registry.register_part_system::<lines2d::Lines2DPart>()?;
-    system_registry.register_part_system::<lines3d::Lines3DPart>()?;
-    system_registry.register_part_system::<meshes::Mesh3DPart>()?;
-    system_registry.register_part_system::<points2d::Points2DPart>()?;
-    system_registry.register_part_system::<points3d::Points3DPart>()?;
-    system_registry.register_part_system::<transform3d_arrows::Transform3DArrowsPart>()?;
+    system_registry.register_visualizer::<arrows3d::Arrows3DPart>()?;
+    system_registry.register_visualizer::<assets3d::Asset3DPart>()?;
+    system_registry.register_visualizer::<boxes2d::Boxes2DPart>()?;
+    system_registry.register_visualizer::<boxes3d::Boxes3DPart>()?;
+    system_registry.register_visualizer::<images::ImagesPart>()?;
+    system_registry.register_visualizer::<lines2d::Lines2DPart>()?;
+    system_registry.register_visualizer::<lines3d::Lines3DPart>()?;
+    system_registry.register_visualizer::<meshes::Mesh3DPart>()?;
+    system_registry.register_visualizer::<points2d::Points2DPart>()?;
+    system_registry.register_visualizer::<points3d::Points3DPart>()?;
+    system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsPart>()?;
     Ok(())
 }
 
 pub fn register_3d_spatial_parts(
-    system_registry: &mut SpaceViewSystemRegistry,
+    system_registry: &mut SpaceViewSystemRegistrator<'_>,
 ) -> Result<(), SpaceViewClassRegistryError> {
-    system_registry.register_part_system::<arrows3d::Arrows3DPart>()?;
-    system_registry.register_part_system::<assets3d::Asset3DPart>()?;
-    system_registry.register_part_system::<boxes2d::Boxes2DPart>()?;
-    system_registry.register_part_system::<boxes3d::Boxes3DPart>()?;
-    system_registry.register_part_system::<cameras::CamerasPart>()?;
-    system_registry.register_part_system::<images::ImagesPart>()?;
-    system_registry.register_part_system::<lines2d::Lines2DPart>()?;
-    system_registry.register_part_system::<lines3d::Lines3DPart>()?;
-    system_registry.register_part_system::<meshes::Mesh3DPart>()?;
-    system_registry.register_part_system::<points2d::Points2DPart>()?;
-    system_registry.register_part_system::<points3d::Points3DPart>()?;
-    system_registry.register_part_system::<transform3d_arrows::Transform3DArrowsPart>()?;
+    system_registry.register_visualizer::<arrows3d::Arrows3DPart>()?;
+    system_registry.register_visualizer::<assets3d::Asset3DPart>()?;
+    system_registry.register_visualizer::<boxes2d::Boxes2DPart>()?;
+    system_registry.register_visualizer::<boxes3d::Boxes3DPart>()?;
+    system_registry.register_visualizer::<cameras::CamerasPart>()?;
+    system_registry.register_visualizer::<images::ImagesPart>()?;
+    system_registry.register_visualizer::<lines2d::Lines2DPart>()?;
+    system_registry.register_visualizer::<lines3d::Lines3DPart>()?;
+    system_registry.register_visualizer::<meshes::Mesh3DPart>()?;
+    system_registry.register_visualizer::<points2d::Points2DPart>()?;
+    system_registry.register_visualizer::<points3d::Points3DPart>()?;
+    system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsPart>()?;
     Ok(())
 }
 

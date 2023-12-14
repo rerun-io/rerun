@@ -19,7 +19,7 @@ pub trait ViewContextSystem: Send + Sync {
     /// Return an empty vec to specify that the system should never run automatically for any
     /// specific entities.
     /// It may still run once per frame as part of the global context if it has been registered to
-    /// do so, see [`crate::SpaceViewSystemRegistry`].
+    /// do so, see [`crate::SpaceViewSystemRegistrator`].
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.

@@ -22,7 +22,7 @@ use crate::{
 };
 
 pub fn auto_spawn_heuristic(
-    class: &SpaceViewClassIdentifier,
+    class: SpaceViewClassIdentifier,
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
     view_kind: SpatialSpaceViewKind,
@@ -31,10 +31,7 @@ pub fn auto_spawn_heuristic(
 
     let mut score = 0.0;
 
-    let parts = ctx
-        .space_view_class_registry
-        .get_system_registry_or_log_error(class)
-        .new_part_collection();
+    let parts = ctx.space_view_class_registry.new_part_collection(class);
 
     // Gather all systems that advertise a "preferred view kind" matching the passed in kind.
     let system_names_with_matching_view_kind = parts
