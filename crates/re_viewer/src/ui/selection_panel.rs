@@ -447,7 +447,9 @@ fn container_top_level_properties(
                     });
 
                 // TODO(jleibs): fix container-editing
-                re_log::warn!("TODO(jleibs): Fix container editing");
+                if container_kind != container.kind() {
+                    re_log::warn!("TODO(jleibs): Fix container editing");
+                }
                 //container.set_kind(container_kind);
 
                 ui.end_row();

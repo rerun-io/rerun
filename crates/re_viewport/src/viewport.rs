@@ -214,20 +214,32 @@ impl<'a> Viewport<'a> {
         }
 
         if self.blueprint.auto_space_views {
+            let mut new_space_views = vec![];
             for space_view_candidate in
                 default_created_space_views(ctx, spaces_info, ctx.entities_per_system_per_class)
             {
-                if self.should_auto_add_space_view(&space_view_candidate) {
-                    self.blueprint.add_space_view(space_view_candidate, ctx);
+                if self.should_auto_add_space_view(&new_space_views, &space_view_candidate) {
+                    new_space_views.push(space_view_candidate);
                 }
             }
+            self.blueprint
+                .add_multi_space_view(new_space_views.into_iter(), ctx);
         }
     }
 
-    fn should_auto_add_space_view(&self, space_view_candidate: &SpaceViewBlueprint) -> bool {
+    fn should_auto_add_space_view(
+        &self,
+        already_added: &[SpaceViewBlueprint],
+        space_view_candidate: &SpaceViewBlueprint,
+    ) -> bool {
         re_tracing::profile_function!();
 
-        for existing_view in self.blueprint.space_views.values() {
+        for existing_view in self
+            .blueprint
+            .space_views
+            .values()
+            .chain(already_added.iter())
+        {
             if existing_view.space_origin == space_view_candidate.space_origin {
                 if existing_view.entities_determined_by_user {
                     // Since the user edited a space view with the same space path, we can't be sure our new one isn't redundant.

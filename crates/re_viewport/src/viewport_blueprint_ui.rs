@@ -44,7 +44,7 @@ impl ViewportBlueprint {
         let mut focus_tab = std::mem::take(&mut deferred.focus_tab);
         let remove = std::mem::take(&mut deferred.remove);
 
-        if let Some(create) = &create {
+        for space_view in &create {
             if self.auto_layout {
                 // Re-run the auto-layout next frame:
                 re_log::trace!(
@@ -53,7 +53,7 @@ impl ViewportBlueprint {
 
                 reset = true;
             } else if let Some(root_id) = tree.root {
-                let tile_id = tree.tiles.insert_pane(*create);
+                let tile_id = tree.tiles.insert_pane(*space_view);
                 if let Some(egui_tiles::Tile::Container(container)) = tree.tiles.get_mut(root_id) {
                     re_log::trace!("Inserting new space view into root container");
                     container.add_child(tile_id);
@@ -65,7 +65,7 @@ impl ViewportBlueprint {
                 re_log::trace!("No root found - will re-run auto-layout");
             }
 
-            focus_tab = Some(*create);
+            focus_tab = Some(*space_view);
         }
 
         if let Some(focus_tab) = &focus_tab {
@@ -87,6 +87,11 @@ impl ViewportBlueprint {
             if Some(tile_id) == self.tree.root {
                 tree.root = None;
             }
+        }
+
+        if tree.is_empty() && !self.space_views.is_empty() {
+            re_log::trace!("Tree is empty - will re-run auto-layout");
+            reset = true;
         }
 
         if reset {

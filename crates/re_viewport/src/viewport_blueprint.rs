@@ -25,7 +25,7 @@ use crate::{
 #[derive(Clone, Default)]
 pub(crate) struct TreeActions {
     pub reset: bool,
-    pub create: Option<SpaceViewId>,
+    pub create: Vec<SpaceViewId>,
     pub focus_tab: Option<SpaceViewId>,
     pub remove: Vec<egui_tiles::TileId>,
 }
@@ -205,9 +205,49 @@ impl ViewportBlueprint {
         );
         save_single_component(&VIEWPORT_PATH.into(), component, ctx);
 
-        self.deferred_tree_actions.lock().create = Some(space_view_id);
+        self.deferred_tree_actions.lock().create.push(space_view_id);
 
         space_view_id
+    }
+
+    pub fn add_multi_space_view(
+        &self,
+        space_views: impl Iterator<Item = SpaceViewBlueprint>,
+        ctx: &ViewerContext<'_>,
+    ) {
+        let mut new_ids: Vec<_> = self.space_views.keys().cloned().collect();
+
+        for mut space_view in space_views {
+            let space_view_id = space_view.id;
+
+            // Find a unique name for the space view
+            let mut candidate_name = space_view.display_name.clone();
+            let mut append_count = 1;
+            let unique_name = 'outer: loop {
+                for view in &self.space_views {
+                    if candidate_name == view.1.display_name {
+                        append_count += 1;
+                        candidate_name = format!("{} ({})", space_view.display_name, append_count);
+
+                        continue 'outer;
+                    }
+                }
+                break candidate_name;
+            };
+
+            space_view.display_name = unique_name;
+
+            // Save the space view to the store
+            space_view.save_full(ctx);
+            new_ids.push(space_view_id);
+
+            // Update the space-view ids:
+
+            self.deferred_tree_actions.lock().create.push(space_view_id);
+        }
+
+        let component = IncludedSpaceViews(new_ids.into_iter().map(|id| id.into()).collect());
+        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
     }
 
     #[allow(clippy::unused_self)]
