@@ -555,7 +555,7 @@ impl TimePanel {
                     time_area_response,
                     time_area_painter,
                     ui,
-                    tree.num_timeless_messages() as usize,
+                    tree.num_timeless_messages_recursive() as usize,
                     num_messages_at_time,
                     row_rect,
                     &self.time_ranges_ui,

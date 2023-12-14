@@ -200,8 +200,9 @@ impl StoreDb {
         self.tree().recursive_time_histogram.get(timeline)
     }
 
+    /// Total number of timeless messages for any entity.
     pub fn num_timeless_messages(&self) -> u64 {
-        self.tree.num_timeless_messages()
+        self.tree.num_timeless_messages_recursive()
     }
 
     pub fn num_rows(&self) -> usize {
