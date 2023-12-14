@@ -196,6 +196,7 @@ impl StoreDb {
         &self.times_per_timeline
     }
 
+    /// Historgram of all events on the timeeline, of all entities.
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
         self.tree().recursive_time_histogram.get(timeline)
     }
