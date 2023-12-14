@@ -2,12 +2,9 @@ name: Nightly
 
 on:
   workflow_dispatch:
-  # pull_request:
-  #   types:
-  #     - opened
-  #     - synchronize
   schedule:
-    # 12:15 every day
+    # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule
+    # 12:15 UTC, every day
     - cron: "15 12 * * *"
 
 jobs:
