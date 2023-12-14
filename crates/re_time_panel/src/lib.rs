@@ -544,7 +544,8 @@ impl TimePanel {
             if is_closed {
                 let empty = re_data_store::TimeHistogram::default();
                 let num_messages_at_time = tree
-                    .recursive_time_histogram
+                    .recursive_info
+                    .time_histogram
                     .get(time_ctrl.timeline())
                     .unwrap_or(&empty);
 
@@ -874,7 +875,7 @@ fn is_time_safe_to_show(
         return true; // no timeless messages, no problem
     }
 
-    if let Some(times) = store_db.tree().recursive_time_histogram.get(timeline) {
+    if let Some(times) = store_db.tree().recursive_info.time_histogram.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
                 re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),

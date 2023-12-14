@@ -19,20 +19,14 @@ use crate::TimeHistogramPerTimeline;
 // ----------------------------------------------------------------------------
 
 /// A recursive, manually updated [`re_arrow_store::StoreSubscriber`] that maintains the entity hierarchy.
+///
+/// The tree contains a list of subtrees, and so on recursively.
 pub struct EntityTree {
-    /// Full path to the root of this tree.
+    /// Full path prefix to the root of this (sub)tree.
     pub path: EntityPath,
 
+    /// Direct decendants of this (sub)tree.
     pub children: BTreeMap<EntityPathPart, EntityTree>,
-
-    /// Recursive time histogram for this [`EntityTree`].
-    ///
-    /// Keeps track of the _number of components logged_ per time per timeline, recursively across
-    /// all of the [`EntityTree`]'s children.
-    /// A component logged twice at the same timestamp is counted twice.
-    ///
-    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
-    pub recursive_time_histogram: TimeHistogramPerTimeline,
 
     /// Book-keeping around whether we should clear fields when data is added.
     pub flat_clears: BTreeMap<RowId, TimePoint>,
@@ -48,6 +42,9 @@ pub struct EntityTree {
     ///
     /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
     pub time_histograms_per_component: BTreeMap<ComponentName, TimeHistogramPerTimeline>,
+
+    /// Info about this subtree, including all children, recursively.
+    pub recursive_info: RecursiveTreeInfo,
 }
 
 // NOTE: This is only to let people know that this is in fact a [`StoreSubscriber`], so they A) don't try
@@ -70,6 +67,35 @@ impl StoreSubscriber for EntityTree {
         unimplemented!(
             r"EntityTree view is maintained manually, see `EntityTree::on_store_{{additions|deletions}}`"
         );
+    }
+}
+
+/// Info about stuff at a given [`EntityPath`], including all of its children, recursively.
+#[derive(Default)]
+pub struct RecursiveTreeInfo {
+    /// Recursive time histogram for this [`EntityTree`].
+    ///
+    /// Keeps track of the _number of components logged_ per time per timeline, recursively across
+    /// all of the [`EntityTree`]'s children.
+    /// A component logged twice at the same timestamp is counted twice.
+    ///
+    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
+    pub time_histogram: TimeHistogramPerTimeline,
+}
+
+impl RecursiveTreeInfo {
+    /// Assumes the event has been filtered to be part of this subtree.
+    fn on_event(&mut self, event: &StoreEvent) {
+        match event.kind {
+            StoreDiffKind::Addition => {
+                self.time_histogram
+                    .add(&event.times, event.num_components() as _);
+            }
+            StoreDiffKind::Deletion => {
+                self.time_histogram
+                    .remove(&event.timepoint(), event.num_components() as _);
+            }
+        }
     }
 }
 
@@ -159,10 +185,10 @@ impl EntityTree {
         Self {
             path,
             children: Default::default(),
-            recursive_time_histogram: Default::default(),
             flat_clears: recursive_clears.clone(),
             recursive_clears,
             time_histograms_per_component: Default::default(),
+            recursive_info: Default::default(),
         }
     }
 
@@ -177,7 +203,7 @@ impl EntityTree {
 
     /// Number of timeless messages in this tree, or any child, recursively.
     pub fn num_timeless_messages_recursive(&self) -> u64 {
-        self.recursive_time_histogram.num_timeless_messages()
+        self.recursive_info.time_histogram.num_timeless_messages()
     }
 
     pub fn time_histogram_for_component(
@@ -213,9 +239,9 @@ impl EntityTree {
         let entity_path = &event.diff.entity_path;
 
         // Book-keeping for each level in the hierarchy:
-        self.book_keep_recursive_data_on_node(&event.diff);
-
         let mut tree = self;
+        tree.recursive_info.on_event(event);
+
         for (i, part) in entity_path.iter().enumerate() {
             tree = tree.children.entry(part.clone()).or_insert_with(|| {
                 EntityTree::new(
@@ -223,17 +249,11 @@ impl EntityTree {
                     tree.recursive_clears.clone(),
                 )
             });
-            tree.book_keep_recursive_data_on_node(&event.diff);
+            tree.recursive_info.on_event(event);
         }
 
         // Finally book-keeping for the entity where data was actually added:
         tree.on_added_data(clear_cascade, &event.diff);
-    }
-
-    fn book_keep_recursive_data_on_node(&mut self, diff: &StoreDiff) {
-        debug_assert_eq!(diff.kind, StoreDiffKind::Addition);
-        self.recursive_time_histogram
-            .add(&diff.times, diff.num_components() as _);
     }
 
     /// Handles the addition of new data into the tree.
@@ -429,10 +449,10 @@ impl EntityTree {
         let Self {
             path,
             children,
-            recursive_time_histogram,
             flat_clears,
             recursive_clears,
             time_histograms_per_component: _,
+            recursive_info,
         } = self;
 
         {
@@ -462,8 +482,8 @@ impl EntityTree {
             }
         }
 
-        for event in &filtered_events {
-            recursive_time_histogram.remove(&event.timepoint(), event.num_components() as _);
+        for &event in &filtered_events {
+            recursive_info.on_event(event);
         }
 
         children.retain(|_, child| {
