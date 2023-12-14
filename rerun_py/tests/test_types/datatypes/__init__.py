@@ -21,6 +21,13 @@ from .affix_fuzzer21 import (
     AffixFuzzer21Like,
     AffixFuzzer21Type,
 )
+from .affix_fuzzer22 import (
+    AffixFuzzer22,
+    AffixFuzzer22ArrayLike,
+    AffixFuzzer22Batch,
+    AffixFuzzer22Like,
+    AffixFuzzer22Type,
+)
 from .flattened_scalar import (
     FlattenedScalar,
     FlattenedScalarArrayLike,
@@ -60,6 +67,11 @@ __all__ = [
     "AffixFuzzer21Batch",
     "AffixFuzzer21Like",
     "AffixFuzzer21Type",
+    "AffixFuzzer22",
+    "AffixFuzzer22ArrayLike",
+    "AffixFuzzer22Batch",
+    "AffixFuzzer22Like",
+    "AffixFuzzer22Type",
     "AffixFuzzer2ArrayLike",
     "AffixFuzzer2Batch",
     "AffixFuzzer2Like",

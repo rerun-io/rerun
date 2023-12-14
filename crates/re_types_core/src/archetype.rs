@@ -100,7 +100,25 @@ pub trait Archetype {
     /// logged to stderr.
     #[inline]
     fn from_arrow(
-        data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+        data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self>
+    where
+        Self: Sized,
+    {
+        Self::from_arrow_components(
+            data.into_iter()
+                .map(|(field, array)| (field.name.into(), array)),
+        )
+    }
+
+    /// Given an iterator of Arrow arrays and their respective `ComponentNames`, deserializes them
+    /// into this archetype.
+    ///
+    /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
+    /// logged to stderr.
+    #[inline]
+    fn from_arrow_components(
+        data: impl IntoIterator<Item = (ComponentName, Box<dyn ::arrow2::array::Array>)>,
     ) -> DeserializationResult<Self>
     where
         Self: Sized,

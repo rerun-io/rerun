@@ -13,4 +13,6 @@ A 16-byte uuid.
 
 ## Used by
 
+* [`IncludedSpaceViews`](../components/included_space_views.md?speculative-link)
+* [`SpaceViewMaximized`](../components/space_view_maximized.md?speculative-link)
 * [`SpaceViewComponent`](../datatypes/space_view_component.md?speculative-link)

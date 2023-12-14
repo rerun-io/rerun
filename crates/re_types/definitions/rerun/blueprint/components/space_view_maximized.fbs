@@ -14,12 +14,13 @@ namespace rerun.blueprint.components;
 /// Unstable. Used for the ongoing blueprint experimentations.
 table SpaceViewMaximized (
   "attr.arrow.transparent",
+  "attr.docs.unreleased",
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy, Default, PartialEq, Eq",
   "attr.rust.override_crate": "re_viewport",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  id: [ubyte] (order: 100, nullable, "attr.rust.serde_type": "re_viewer_context::SpaceViewId");
+  space_view_id: rerun.datatypes.Uuid (order: 100, nullable);
 }
 

@@ -94,7 +94,7 @@ namespace rerun::archetypes {
         static constexpr const char IndicatorComponentName[] = "rerun.components.PinholeIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         // Extensions to generated type defined in 'pinhole_ext.cpp'

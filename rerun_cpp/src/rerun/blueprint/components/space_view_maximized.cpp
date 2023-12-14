@@ -3,6 +3,8 @@
 
 #include "space_view_maximized.hpp"
 
+#include "../../datatypes/uuid.hpp"
+
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
@@ -11,40 +13,22 @@ namespace rerun::blueprint::components {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>&
         Loggable<blueprint::components::SpaceViewMaximized>::arrow_datatype() {
-        static const auto datatype = arrow::list(arrow::field("item", arrow::uint8(), false));
+        static const auto datatype = Loggable<rerun::datatypes::Uuid>::arrow_datatype();
         return datatype;
     }
 
     rerun::Error Loggable<blueprint::components::SpaceViewMaximized>::fill_arrow_array_builder(
-        arrow::ListBuilder* builder, const blueprint::components::SpaceViewMaximized* elements,
+        arrow::StructBuilder* builder, const blueprint::components::SpaceViewMaximized* elements,
         size_t num_elements
     ) {
-        if (builder == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-        }
-        if (elements == nullptr) {
+        (void)builder;
+        (void)elements;
+        (void)num_elements;
+        if (true) {
             return rerun::Error(
-                ErrorCode::UnexpectedNullArgument,
-                "Cannot serialize null pointer to arrow array."
+                ErrorCode::NotImplemented,
+                "TODO(andreas) Handle nullable extensions"
             );
-        }
-
-        auto value_builder = static_cast<arrow::UInt8Builder*>(builder->value_builder());
-        ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
-        ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 1)));
-
-        for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-            const auto& element = elements[elem_idx];
-            if (element.id.has_value()) {
-                ARROW_RETURN_NOT_OK(builder->Append());
-                ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                    element.id.value().data(),
-                    static_cast<int64_t>(element.id.value().size()),
-                    nullptr
-                ));
-            } else {
-                ARROW_RETURN_NOT_OK(builder->AppendNull());
-            }
         }
 
         return Error::ok();
@@ -62,7 +46,7 @@ namespace rerun {
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(
                 Loggable<blueprint::components::SpaceViewMaximized>::fill_arrow_array_builder(
-                    static_cast<arrow::ListBuilder*>(builder.get()),
+                    static_cast<arrow::StructBuilder*>(builder.get()),
                     instances,
                     num_instances
                 )

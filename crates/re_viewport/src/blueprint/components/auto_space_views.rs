@@ -21,7 +21,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: A flag indicating space views should be automatically populated.
+/// **Component**: Whether or not space views should be created automatically.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 #[derive(Clone, Debug, Copy, Default)]
@@ -30,8 +30,8 @@ pub struct AutoSpaceViews(pub bool);
 
 impl From<bool> for AutoSpaceViews {
     #[inline]
-    fn from(enabled: bool) -> Self {
-        Self(enabled)
+    fn from(auto_space_views: bool) -> Self {
+        Self(auto_space_views)
     }
 }
 
@@ -113,12 +113,12 @@ impl ::re_types_core::Loggable for AutoSpaceViews {
                     arrow_data.data_type().clone(),
                 )
             })
-            .with_context("rerun.blueprint.components.AutoSpaceViews#enabled")?
+            .with_context("rerun.blueprint.components.AutoSpaceViews#auto_space_views")?
             .into_iter()
             .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.blueprint.components.AutoSpaceViews#enabled")
+            .with_context("rerun.blueprint.components.AutoSpaceViews#auto_space_views")
             .with_context("rerun.blueprint.components.AutoSpaceViews")?)
     }
 }

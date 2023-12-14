@@ -9,16 +9,17 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// A flag indicating space views should be automatically populated.
+/// Whether or not space views should be created automatically.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 struct AutoSpaceViews (
   "attr.arrow.transparent",
+  "attr.docs.unreleased",
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Copy, Default",
   "attr.rust.override_crate": "re_viewport",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
-  enabled: bool (order: 100);
+  auto_space_views: bool (order: 100);
 }

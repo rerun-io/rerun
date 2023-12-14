@@ -1448,21 +1448,19 @@ fn quote_field_converter_from_field(
 
 fn fqname_to_type(fqname: &str) -> String {
     let fqname = fqname.replace(".testing", "");
-    let (from, class) = fqname.rsplit_once('.').unwrap_or(("", fqname.as_str()));
-    if from.starts_with("rerun.datatypes") {
-        format!("datatypes.{class}")
-    } else if from.starts_with("rerun.components") {
-        format!("components.{class}")
-    } else if from.starts_with("rerun.blueprint") {
-        format!("blueprint.{class}")
-    } else if from.starts_with("rerun.archetypes") {
-        // NOTE: This is assuming importing other archetypes is legal… which whether it is or
-        // isn't for this code generator to say.
-        format!("archetypes.{class}")
-    } else if from.is_empty() {
-        format!("from . import {class}")
-    } else {
-        format!("from {from} import {class}")
+
+    let parts = fqname.split('.').collect::<Vec<_>>();
+
+    match parts[..] {
+        ["rerun", "datatypes", name] => format!("datatypes.{name}"),
+        ["rerun", "components", name] => format!("components.{name}"),
+        ["rerun", "archetypes", name] => format!("archetypes.{name}"),
+        ["rerun", _scope, "datatypes", name] => format!("datatypes.{name}"),
+        ["rerun", _scope, "components", name] => format!("components.{name}"),
+        ["rerun", _scope, "archetypes", name] => format!("archetypes.{name}"),
+        _ => {
+            panic!("Unexpected fqname: {fqname}");
+        }
     }
 }
 

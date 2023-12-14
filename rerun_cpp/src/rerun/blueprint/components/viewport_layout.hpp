@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../../blueprint/datatypes/viewport_layout.hpp"
+#include "../../collection.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -13,30 +13,24 @@
 namespace arrow {
     class Array;
     class DataType;
-    class StructBuilder;
+    class ListBuilder;
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: A view of a space.
+    /// **Component**: The layouts of all the space views.
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct ViewportLayout {
-        rerun::blueprint::datatypes::ViewportLayout viewport_layout;
+        rerun::Collection<uint8_t> tree;
 
       public:
         ViewportLayout() = default;
 
-        ViewportLayout(rerun::blueprint::datatypes::ViewportLayout viewport_layout_)
-            : viewport_layout(std::move(viewport_layout_)) {}
+        ViewportLayout(rerun::Collection<uint8_t> tree_) : tree(std::move(tree_)) {}
 
-        ViewportLayout& operator=(rerun::blueprint::datatypes::ViewportLayout viewport_layout_) {
-            viewport_layout = std::move(viewport_layout_);
+        ViewportLayout& operator=(rerun::Collection<uint8_t> tree_) {
+            tree = std::move(tree_);
             return *this;
-        }
-
-        /// Cast to the underlying ViewportLayout datatype
-        operator rerun::blueprint::datatypes::ViewportLayout() const {
-            return viewport_layout;
         }
     };
 } // namespace rerun::blueprint::components
@@ -55,7 +49,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const blueprint::components::ViewportLayout* elements,
+            arrow::ListBuilder* builder, const blueprint::components::ViewportLayout* elements,
             size_t num_elements
         );
 

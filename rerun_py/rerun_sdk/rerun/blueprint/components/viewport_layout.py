@@ -5,28 +5,67 @@
 
 from __future__ import annotations
 
-from ..._baseclasses import ComponentBatchMixin
-from .. import datatypes
+from typing import Any, Sequence, Union
 
-__all__ = ["ViewportLayout", "ViewportLayoutBatch", "ViewportLayoutType"]
+import numpy as np
+import numpy.typing as npt
+import pyarrow as pa
+from attrs import define, field
+
+from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from ..._converters import (
+    to_np_uint8,
+)
+
+__all__ = [
+    "ViewportLayout",
+    "ViewportLayoutArrayLike",
+    "ViewportLayoutBatch",
+    "ViewportLayoutLike",
+    "ViewportLayoutType",
+]
 
 
-class ViewportLayout(datatypes.ViewportLayout):
+@define(init=False)
+class ViewportLayout:
     """
-    **Component**: A view of a space.
+    **Component**: The layouts of all the space views.
 
     Unstable. Used for the ongoing blueprint experimentations.
     """
 
-    # You can define your own __init__ function as a member of ViewportLayoutExt in viewport_layout_ext.py
+    def __init__(self: Any, tree: ViewportLayoutLike):
+        """Create a new instance of the ViewportLayout component."""
 
-    # Note: there are no fields here because ViewportLayout delegates to datatypes.ViewportLayout
-    pass
+        # You can define your own __init__ function as a member of ViewportLayoutExt in viewport_layout_ext.py
+        self.__attrs_init__(tree=tree)
+
+    tree: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can define your own __array__ function as a member of ViewportLayoutExt in viewport_layout_ext.py
+        return np.asarray(self.tree, dtype=dtype)
 
 
-class ViewportLayoutType(datatypes.ViewportLayoutType):
+ViewportLayoutLike = ViewportLayout
+ViewportLayoutArrayLike = Union[
+    ViewportLayout,
+    Sequence[ViewportLayoutLike],
+]
+
+
+class ViewportLayoutType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.ViewportLayout"
 
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(
+            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})), self._TYPE_NAME
+        )
 
-class ViewportLayoutBatch(datatypes.ViewportLayoutBatch, ComponentBatchMixin):
+
+class ViewportLayoutBatch(BaseBatch[ViewportLayoutArrayLike], ComponentBatchMixin):
     _ARROW_TYPE = ViewportLayoutType()
+
+    @staticmethod
+    def _native_to_pa_array(data: ViewportLayoutArrayLike, data_type: pa.DataType) -> pa.Array:
+        raise NotImplementedError  # You need to implement native_to_pa_array_override in viewport_layout_ext.py

@@ -1,0 +1,24 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+
+/// The id of a `SpaceView`.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+table IncludedSpaceViews (
+  "attr.docs.unreleased",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default",
+  "attr.rust.override_crate": "re_viewport",
+  "attr.rust.repr": "transparent"
+) {
+  space_view_ids: [rerun.datatypes.Uuid] (order: 100);
+}

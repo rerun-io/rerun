@@ -21,31 +21,23 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: A view of a space.
+/// **Component**: The layouts of all the space views.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ViewportLayout(pub crate::blueprint::datatypes::ViewportLayout);
+#[derive(Clone, Debug, PartialEq)]
+pub struct ViewportLayout(pub egui_tiles::Tree<re_viewer_context::SpaceViewId>);
 
-impl<T: Into<crate::blueprint::datatypes::ViewportLayout>> From<T> for ViewportLayout {
-    fn from(v: T) -> Self {
-        Self(v.into())
+impl From<egui_tiles::Tree<re_viewer_context::SpaceViewId>> for ViewportLayout {
+    #[inline]
+    fn from(tree: egui_tiles::Tree<re_viewer_context::SpaceViewId>) -> Self {
+        Self(tree)
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::datatypes::ViewportLayout> for ViewportLayout {
+impl From<ViewportLayout> for egui_tiles::Tree<re_viewer_context::SpaceViewId> {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::ViewportLayout {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ViewportLayout {
-    type Target = crate::blueprint::datatypes::ViewportLayout;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::ViewportLayout {
-        &self.0
+    fn from(value: ViewportLayout) -> Self {
+        value.0
     }
 }
 
@@ -63,36 +55,12 @@ impl ::re_types_core::Loggable for ViewportLayout {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
-            Field {
-                name: "space_view_keys".to_owned(),
-                data_type: DataType::List(Box::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::UInt8,
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "tree".to_owned(),
-                data_type: DataType::List(Box::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::UInt8,
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "auto_layout".to_owned(),
-                data_type: DataType::Boolean,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-        ])
+        DataType::List(Box::new(Field {
+            name: "item".to_owned(),
+            data_type: DataType::UInt8,
+            is_nullable: false,
+            metadata: [].into(),
+        }))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -122,8 +90,44 @@ impl ::re_types_core::Loggable for ViewportLayout {
                 any_nones.then(|| somes.into())
             };
             {
-                _ = data0_bitmap;
-                crate::blueprint::datatypes::ViewportLayout::to_arrow_opt(data0)?
+                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                let buffers: Vec<Option<Vec<u8>>> = data0
+                    .iter()
+                    .map(|opt| {
+                        use ::re_types_core::SerializationError;
+                        opt.as_ref()
+                            .map(|b| {
+                                let mut buf = Vec::new();
+                                rmp_serde::encode::write_named(&mut buf, b).map_err(|err| {
+                                    SerializationError::serde_failure(err.to_string())
+                                })?;
+                                Ok(buf)
+                            })
+                            .transpose()
+                    })
+                    .collect::<SerializationResult<Vec<_>>>()?;
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    buffers
+                        .iter()
+                        .map(|opt| opt.as_ref().map(|buf| buf.len()).unwrap_or_default()),
+                )
+                .unwrap()
+                .into();
+                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                let data0_inner_data: Buffer<u8> = buffers
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .concat()
+                    .into();
+                ListArray::new(
+                    Self::arrow_datatype(),
+                    offsets,
+                    PrimitiveArray::new(DataType::UInt8, data0_inner_data, data0_inner_bitmap)
+                        .boxed(),
+                    data0_bitmap,
+                )
+                .boxed()
             }
         })
     }
@@ -138,15 +142,77 @@ impl ::re_types_core::Loggable for ViewportLayout {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(
-            crate::blueprint::datatypes::ViewportLayout::from_arrow_opt(arrow_data)
-                .with_context("rerun.blueprint.components.ViewportLayout#viewport_layout")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.blueprint.components.ViewportLayout#viewport_layout")
-                .with_context("rerun.blueprint.components.ViewportLayout")?,
-        )
+        Ok({
+            let arrow_data = arrow_data
+                .as_any()
+                .downcast_ref::<arrow2::array::ListArray<i32>>()
+                .ok_or_else(|| {
+                    DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: DataType::UInt8,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        })),
+                        arrow_data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.blueprint.components.ViewportLayout#tree")?;
+            if arrow_data.is_empty() {
+                Vec::new()
+            } else {
+                let arrow_data_inner = {
+                    let arrow_data_inner = &**arrow_data.values();
+                    arrow_data_inner
+                        .as_any()
+                        .downcast_ref::<UInt8Array>()
+                        .ok_or_else(|| {
+                            DeserializationError::datatype_mismatch(
+                                DataType::UInt8,
+                                arrow_data_inner.data_type().clone(),
+                            )
+                        })
+                        .with_context("rerun.blueprint.components.ViewportLayout#tree")?
+                        .values()
+                };
+                let offsets = arrow_data.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    arrow_data.validity(),
+                )
+                .map(|elem| {
+                    elem.map(|(start, len)| {
+                        let start = *start as usize;
+                        let end = start + len;
+                        if end as usize > arrow_data_inner.len() {
+                            return Err(DeserializationError::offset_slice_oob(
+                                (start, end),
+                                arrow_data_inner.len(),
+                            ));
+                        }
+
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        let data = unsafe {
+                            arrow_data_inner
+                                .clone()
+                                .sliced_unchecked(start as usize, end - start as usize)
+                        };
+                        let data = rmp_serde::from_slice::<
+                            egui_tiles::Tree<re_viewer_context::SpaceViewId>,
+                        >(data.as_slice())
+                        .map_err(|err| DeserializationError::serde_failure(err.to_string()))?;
+                        Ok(data)
+                    })
+                    .transpose()
+                })
+                .collect::<DeserializationResult<Vec<Option<_>>>>()?
+            }
+            .into_iter()
+        }
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<DeserializationResult<Vec<Option<_>>>>()
+        .with_context("rerun.blueprint.components.ViewportLayout#tree")
+        .with_context("rerun.blueprint.components.ViewportLayout")?)
     }
 }

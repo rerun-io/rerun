@@ -29,9 +29,9 @@ namespace rerun {
             );
         }
 
-        static_assert(sizeof(*elements) == sizeof(elements->enabled));
+        static_assert(sizeof(*elements) == sizeof(elements->auto_space_views));
         ARROW_RETURN_NOT_OK(builder->AppendValues(
-            reinterpret_cast<const uint8_t*>(&elements->enabled),
+            reinterpret_cast<const uint8_t*>(&elements->auto_space_views),
             static_cast<int64_t>(num_elements)
         ));
 

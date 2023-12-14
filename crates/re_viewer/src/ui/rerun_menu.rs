@@ -4,7 +4,7 @@ use egui::{NumExt as _, Widget};
 
 use re_log_types::TimeZone;
 use re_ui::{ReUi, UICommand};
-use re_viewer_context::StoreContext;
+use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender};
 
 use crate::App;
 
@@ -205,6 +205,23 @@ impl App {
             {
                 ui.close_menu();
             }
+        }
+
+        if self
+            .re_ui
+            .checkbox(
+                ui,
+                &mut self.state.app_options.experimental_dataframe_space_view,
+                "(experimental) Dataframe Space View",
+            )
+            .on_hover_text("Enable the experimental dataframe space view.")
+            .clicked()
+        {
+            self.command_sender
+                .send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
+                    self.state.app_options.experimental_dataframe_space_view,
+                ));
+            ui.close_menu();
         }
 
         #[cfg(debug_assertions)]

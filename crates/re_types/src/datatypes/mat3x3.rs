@@ -106,9 +106,12 @@ impl ::re_types_core::Loggable for Mat3x3 {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
                     .iter()
-                    .flatten()
-                    .flatten()
-                    .cloned()
+                    .flat_map(|v| match v {
+                        Some(v) => itertools::Either::Left(v.iter().cloned()),
+                        None => itertools::Either::Right(
+                            std::iter::repeat(Default::default()).take(9usize),
+                        ),
+                    })
                     .map(Some)
                     .collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =

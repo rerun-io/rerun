@@ -16,7 +16,7 @@ struct Uuid  (
   // The deserializer barfs on list of fixed-sized-list.
   //"attr.arrow.transparent",
   "attr.docs.unreleased",
-  "attr.rust.derive": "Default",
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq",
   "attr.rust.repr": "transparent"
 ) {
   bytes: [ubyte: 16] (order: 100);

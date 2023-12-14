@@ -6,6 +6,7 @@
 #include "datatypes/affix_fuzzer2.hpp"
 #include "datatypes/affix_fuzzer20.hpp"
 #include "datatypes/affix_fuzzer21.hpp"
+#include "datatypes/affix_fuzzer22.hpp"
 #include "datatypes/affix_fuzzer3.hpp"
 #include "datatypes/affix_fuzzer4.hpp"
 #include "datatypes/affix_fuzzer5.hpp"

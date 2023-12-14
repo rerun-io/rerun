@@ -172,14 +172,14 @@ impl ::re_types_core::Archetype for TextDocument {
     }
 
     #[inline]
-    fn from_arrow(
-        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
+    fn from_arrow_components(
+        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
-            .map(|(field, array)| (field.name, array))
+            .map(|(name, array)| (name.full_name(), array))
             .collect();
         let text = {
             let array = arrays_by_name

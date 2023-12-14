@@ -16,6 +16,7 @@
 #include "components/affix_fuzzer2.hpp"
 #include "components/affix_fuzzer20.hpp"
 #include "components/affix_fuzzer21.hpp"
+#include "components/affix_fuzzer22.hpp"
 #include "components/affix_fuzzer3.hpp"
 #include "components/affix_fuzzer4.hpp"
 #include "components/affix_fuzzer5.hpp"

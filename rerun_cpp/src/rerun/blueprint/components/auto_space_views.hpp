@@ -15,19 +15,19 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: A flag indicating space views should be automatically populated.
+    /// **Component**: Whether or not space views should be created automatically.
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct AutoSpaceViews {
-        bool enabled;
+        bool auto_space_views;
 
       public:
         AutoSpaceViews() = default;
 
-        AutoSpaceViews(bool enabled_) : enabled(enabled_) {}
+        AutoSpaceViews(bool auto_space_views_) : auto_space_views(auto_space_views_) {}
 
-        AutoSpaceViews& operator=(bool enabled_) {
-            enabled = enabled_;
+        AutoSpaceViews& operator=(bool auto_space_views_) {
+            auto_space_views = auto_space_views_;
             return *this;
         }
     };

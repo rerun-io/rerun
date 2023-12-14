@@ -257,9 +257,12 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let fixed_size_shenanigans_inner_data: Vec<_> = fixed_size_shenanigans
                                 .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
+                                .flat_map(|v| match v {
+                                    Some(v) => itertools::Either::Left(v.iter().cloned()),
+                                    None => itertools::Either::Right(
+                                        std::iter::repeat(Default::default()).take(3usize),
+                                    ),
+                                })
                                 .map(Some)
                                 .collect();
                             let fixed_size_shenanigans_inner_bitmap: Option<

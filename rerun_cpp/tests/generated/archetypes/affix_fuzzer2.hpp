@@ -14,6 +14,7 @@
 #include "../components/affix_fuzzer17.hpp"
 #include "../components/affix_fuzzer18.hpp"
 #include "../components/affix_fuzzer2.hpp"
+#include "../components/affix_fuzzer22.hpp"
 #include "../components/affix_fuzzer3.hpp"
 #include "../components/affix_fuzzer4.hpp"
 #include "../components/affix_fuzzer5.hpp"
@@ -68,12 +69,14 @@ namespace rerun::archetypes {
 
         Collection<rerun::components::AffixFuzzer18> fuzz1118;
 
+        Collection<rerun::components::AffixFuzzer22> fuzz1122;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.testing.components.AffixFuzzer2Indicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
+        using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         AffixFuzzer2() = default;
@@ -97,7 +100,8 @@ namespace rerun::archetypes {
             Collection<rerun::components::AffixFuzzer15> _fuzz1115,
             Collection<rerun::components::AffixFuzzer16> _fuzz1116,
             Collection<rerun::components::AffixFuzzer17> _fuzz1117,
-            Collection<rerun::components::AffixFuzzer18> _fuzz1118
+            Collection<rerun::components::AffixFuzzer18> _fuzz1118,
+            Collection<rerun::components::AffixFuzzer22> _fuzz1122
         )
             : fuzz1101(std::move(_fuzz1101)),
               fuzz1102(std::move(_fuzz1102)),
@@ -116,7 +120,8 @@ namespace rerun::archetypes {
               fuzz1115(std::move(_fuzz1115)),
               fuzz1116(std::move(_fuzz1116)),
               fuzz1117(std::move(_fuzz1117)),
-              fuzz1118(std::move(_fuzz1118)) {}
+              fuzz1118(std::move(_fuzz1118)),
+              fuzz1122(std::move(_fuzz1122)) {}
 
         /// Returns the number of primary instances of this archetype.
         size_t num_instances() const {

@@ -185,9 +185,10 @@ impl App {
         analytics.on_viewer_started(&build_info, app_env);
 
         let mut space_view_class_registry = SpaceViewClassRegistry::default();
-        if let Err(err) =
-            populate_space_view_class_registry_with_builtin(&mut space_view_class_registry)
-        {
+        if let Err(err) = populate_space_view_class_registry_with_builtin(
+            &mut space_view_class_registry,
+            state.app_options(),
+        ) {
             re_log::error!(
                 "Failed to populate Space View type registry with built-in Space Views: {}",
                 err
@@ -205,6 +206,11 @@ impl App {
         let (command_sender, command_receiver) = command_channel();
 
         let component_ui_registry = re_data_ui::create_component_ui_registry();
+
+        // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.;
+        let long_time_ago = web_time::Instant::now()
+            .checked_sub(web_time::Duration::from_secs(1_000_000_000))
+            .unwrap_or(web_time::Instant::now());
 
         Self {
             build_info,
@@ -230,7 +236,7 @@ impl App {
 
             style_panel_open: false,
 
-            latest_queue_interest: web_time::Instant::now(), // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.
+            latest_queue_interest: long_time_ago,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
 
@@ -373,6 +379,22 @@ impl App {
                             re_log::warn_once!("Failed to store blueprint delta: {err}");
                         }
                     }
+                }
+            }
+            SystemCommand::EnableExperimentalDataframeSpaceView(enabled) => {
+                let result = if enabled {
+                    self.space_view_class_registry
+                        .add_class::<re_space_view_dataframe::DataframeSpaceView>()
+                } else {
+                    self.space_view_class_registry
+                        .remove_class::<re_space_view_dataframe::DataframeSpaceView>()
+                };
+
+                if let Err(err) = result {
+                    re_log::warn_once!(
+                        "Failed to {} experimental dataframe space view: {err}",
+                        if enabled { "enable" } else { "disable" }
+                    );
                 }
             }
         }
@@ -1155,6 +1177,7 @@ impl eframe::App for App {
 /// Add built-in space views to the registry.
 fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry: &mut SpaceViewClassRegistry,
+    app_options: &AppOptions,
 ) -> Result<(), SpaceViewClassRegistryError> {
     re_tracing::profile_function!();
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
@@ -1164,6 +1187,11 @@ fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry.add_class::<re_space_view_text_document::TextDocumentSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_text_log::TextSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_time_series::TimeSeriesSpaceView>()?;
+
+    if app_options.experimental_dataframe_space_view {
+        space_view_class_registry.add_class::<re_space_view_dataframe::DataframeSpaceView>()?;
+    }
+
     Ok(())
 }
 
