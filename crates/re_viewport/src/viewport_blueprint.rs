@@ -233,11 +233,8 @@ impl ViewportBlueprint {
             re_log::trace!("User edits - will no longer auto-layout");
         }
 
-        let component = AutoLayout(false);
-        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
-
-        let component = AutoSpaceViews(false);
-        save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+        self.set_auto_layout(false, ctx);
+        self.set_auto_space_views(false, ctx);
     }
 
     /// Add a set of space views to the viewport.
@@ -316,6 +313,13 @@ impl ViewportBlueprint {
     pub fn set_auto_layout(&self, value: bool, ctx: &ViewerContext<'_>) {
         if self.auto_layout != value {
             let component = AutoLayout(value);
+            save_single_component(&VIEWPORT_PATH.into(), component, ctx);
+        }
+    }
+
+    pub fn set_auto_space_views(&self, value: bool, ctx: &ViewerContext<'_>) {
+        if self.auto_layout != value {
+            let component = AutoSpaceViews(value);
             save_single_component(&VIEWPORT_PATH.into(), component, ctx);
         }
     }
