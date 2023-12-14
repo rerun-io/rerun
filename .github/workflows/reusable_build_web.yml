@@ -10,10 +10,6 @@ on:
         required: false
         type: string
         default: "prerelease"
-      EXTRA_FLAGS:
-        required: false
-        type: string
-        default: ""
       CHANNEL: # `nightly` or `main`
         required: true
         type: string
@@ -63,10 +59,11 @@ jobs:
 
       - name: Build web-viewer (release)
         shell: bash
-        env:
-          DEFAULT_EXAMPLES_MANIFEST_URL: "https://app.rerun.io/version/nightly/examples_manifest.json"
         run: |
-          cargo run --locked -p re_build_web_viewer -- --release ${{ inputs.EXTRA_FLAGS }}
+          if [ ${{ inputs.CHANNEL }} = "nightly" ]; then
+            export DEFAULT_EXAMPLES_MANIFEST_URL="https://app.rerun.io/version/nightly/examples_manifest.json"
+          fi
+          cargo run --locked -p re_build_web_viewer -- --release
 
       # We build a single manifest pointing to the `commit`
       # All the `pr`, `main`, release tag, etc. variants will always just point to the resolved commit
