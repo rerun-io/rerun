@@ -160,11 +160,6 @@ impl EntityPath {
             return Err(PathParseError::UnexpectedComponentName(component_name));
         }
 
-        let normalized = entity_path.to_string();
-        if normalized != input {
-            re_log::warn_once!("The entity path '{input}' was not in the normalized form. It will be interpreted as '{normalized}'. See https://www.rerun.io/docs/concepts/entity-path for more");
-        }
-
         Ok(entity_path)
     }
 
@@ -173,14 +168,7 @@ impl EntityPath {
     /// For a strict parses, use [`Self::parse_strict`] instead.
     pub fn parse_forgiving(input: &str) -> Self {
         let parts = parse_entity_path_forgiving(input);
-        let entity_path = EntityPath::from(parts);
-
-        let normalized = entity_path.to_string();
-        if normalized != input {
-            re_log::warn_once!("The entity path '{input}' was not in the normalized form. It will be interpreted as '{normalized}'. See https://www.rerun.io/docs/concepts/entity-path for more");
-        }
-
-        entity_path
+        EntityPath::from(parts)
     }
 }
 
