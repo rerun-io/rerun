@@ -9,13 +9,15 @@ on:
       WHEEL_ARTIFACT_NAME:
         required: true
         type: string
+      CHANNEL: # `nightly` or `main`
+        required: true
+        type: string
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-examples
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.8"
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
@@ -33,9 +35,6 @@ jobs:
 
     runs-on: ubuntu-latest-16-cores
 
-    container:
-      image: rerunio/ci_docker:0.11.0
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,20 +48,26 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.6.0
+
       - name: Download Wheel
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
 
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.6.0
+      - name: Install example dependencies
+        shell: bash
+        run: |
+          pixi run pip install \
+            -r scripts/ci/requirements-examples-${{ inputs.CHANNEL }}.txt \
+            --no-input
 
       - name: Install Python dependencies and wheel
         shell: bash
         run: |
-          pixi run pip install -r scripts/ci/requirements-web-demo.txt
           pixi run pip uninstall rerun-sdk -y
           pixi run pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
           pixi run pip install rerun-sdk --no-index --find-links wheel
@@ -84,7 +89,9 @@ jobs:
       - name: Build examples
         shell: bash
         run: |
-          pixi run build-examples example_data
+          pixi run build-examples rrd \
+            --channel ${{ inputs.CHANNEL }} \
+            example_data
 
       - name: Upload assets
         uses: actions/upload-artifact@v3

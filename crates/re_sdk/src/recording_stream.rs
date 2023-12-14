@@ -354,6 +354,38 @@ impl RecordingStreamBuilder {
         }
     }
 
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to stdout.
+    ///
+    /// If there isn't any listener at the other end of the pipe, the [`RecordingStream`] will
+    /// default back to `buffered` mode, in order not to break the user's terminal.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").stdout()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn stdout(self) -> RecordingStreamResult<RecordingStream> {
+        let is_stdout_listening = !atty::is(atty::Stream::Stdout);
+        if !is_stdout_listening {
+            return self.buffered();
+        }
+
+        let (enabled, store_info, batcher_config) = self.into_args();
+
+        if enabled {
+            RecordingStream::new(
+                store_info,
+                batcher_config,
+                Box::new(crate::sink::FileSink::stdout()?),
+            )
+        } else {
+            re_log::debug!("Rerun disabled - call to stdout() ignored");
+            Ok(RecordingStream::disabled())
+        }
+    }
+
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
     /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
     ///
@@ -768,7 +800,9 @@ impl RecordingStream {
         timeless: bool,
         arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
-        self.log_component_batches(
+        let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+        self.log_component_batches_impl(
+            row_id,
             ent_path,
             timeless,
             arch.as_component_batches()
@@ -799,6 +833,17 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     pub fn log_component_batches<'a>(
         &self,
+        ent_path: impl Into<EntityPath>,
+        timeless: bool,
+        comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+    ) -> RecordingStreamResult<()> {
+        let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+        self.log_component_batches_impl(row_id, ent_path, timeless, comp_batches)
+    }
+
+    fn log_component_batches_impl<'a>(
+        &self,
+        row_id: RowId,
         ent_path: impl Into<EntityPath>,
         timeless: bool,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
@@ -854,7 +899,7 @@ impl RecordingStream {
             None
         } else {
             Some(DataRow::from_cells(
-                RowId::new(),
+                row_id,
                 timepoint.clone(),
                 ent_path.clone(),
                 num_instances as _,
@@ -868,7 +913,7 @@ impl RecordingStream {
         } else {
             splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
             Some(DataRow::from_cells(
-                RowId::new(),
+                row_id.incremented_by(1), // we need a unique RowId from what is used for the instanced data
                 timepoint,
                 ent_path,
                 1,
@@ -1305,6 +1350,32 @@ impl RecordingStream {
         }
 
         let sink = crate::sink::FileSink::new(path)?;
+        self.set_sink(Box::new(sink));
+
+        Ok(())
+    }
+
+    /// Swaps the underlying sink for a [`crate::sink::FileSink`] pointed at stdout.
+    ///
+    /// If there isn't any listener at the other end of the pipe, the [`RecordingStream`] will
+    /// default back to `buffered` mode, in order not to break the user's terminal.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn stdout(&self) -> Result<(), crate::sink::FileSinkError> {
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
+            return Ok(());
+        }
+
+        let is_stdout_listening = !atty::is(atty::Stream::Stdout);
+        if !is_stdout_listening {
+            self.set_sink(Box::new(crate::log_sink::BufferedSink::new()));
+            return Ok(());
+        }
+
+        let sink = crate::sink::FileSink::stdout()?;
         self.set_sink(Box::new(sink));
 
         Ok(())

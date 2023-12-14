@@ -17,6 +17,9 @@ mod load_file_contents;
 mod web_sockets;
 
 #[cfg(not(target_arch = "wasm32"))]
+mod load_stdin;
+
+#[cfg(not(target_arch = "wasm32"))]
 mod load_file_path;
 
 pub use data_source::DataSource;

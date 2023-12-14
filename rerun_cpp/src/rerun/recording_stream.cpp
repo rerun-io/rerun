@@ -128,6 +128,12 @@ namespace rerun {
         return status;
     }
 
+    Error RecordingStream::to_stdout() const {
+        rr_error status = {};
+        rr_recording_stream_stdout(_id, &status);
+        return status;
+    }
+
     void RecordingStream::flush_blocking() const {
         rr_recording_stream_flush_blocking(_id);
     }

@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use re_string_interner::InternedString;
 use re_types_core::SizeBytes;
 
-use crate::{hash::Hash64, path::entity_path_impl::EntityPathImpl, EntityPathPart};
+use crate::{hash::Hash64, EntityPathPart};
 
 // ----------------------------------------------------------------------------
 
@@ -76,7 +77,7 @@ impl std::fmt::Debug for EntityPathHash {
 ///
 /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
 ///
-/// `EntityPath` is reference-counted internally, so it is cheap to clone.
+/// This is basically implemented as a list of strings, but is reference-counted internally, so it is cheap to clone.
 /// It also has a precomputed hash and implemented [`nohash_hasher::IsEnabled`],
 /// so it is very cheap to use in a [`nohash_hasher::IntMap`] and [`nohash_hasher::IntSet`].
 ///
@@ -99,13 +100,13 @@ pub struct EntityPath {
 
     // [`Arc`] used for cheap cloning, and to keep down the size of [`EntityPath`].
     // We mostly use the hash for lookups and comparisons anyway!
-    path: Arc<EntityPathImpl>,
+    parts: Arc<Vec<EntityPathPart>>,
 }
 
 impl EntityPath {
     #[inline]
     pub fn root() -> Self {
-        Self::from(EntityPathImpl::root())
+        Self::from(vec![])
     }
 
     #[inline]
@@ -125,52 +126,58 @@ impl EntityPath {
     /// Treat the string as one opaque string, NOT splitting on any slashes.
     ///
     /// The given string is expected to be unescaped, i.e. any `\` is treated as a normal character.
-    pub fn from_single_string(string: impl Into<String>) -> Self {
+    pub fn from_single_string(string: impl Into<InternedString>) -> Self {
         Self::new(vec![EntityPathPart::new(string)])
     }
 
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &EntityPathPart> {
-        self.path.iter()
+        self.parts.iter()
     }
 
     #[inline]
     pub fn last(&self) -> Option<&EntityPathPart> {
-        self.path.last()
+        self.parts.last()
     }
 
     #[inline]
     pub fn as_slice(&self) -> &[EntityPathPart] {
-        self.path.as_slice()
+        self.parts.as_slice()
     }
 
     #[inline]
     pub fn to_vec(&self) -> Vec<EntityPathPart> {
-        self.path.to_vec()
+        self.parts.to_vec()
     }
 
     #[inline]
     pub fn is_root(&self) -> bool {
-        self.path.is_root()
+        self.parts.is_empty()
+    }
+
+    /// Is this equals to, or a descendant of, the given path.
+    #[inline]
+    pub fn starts_with(&self, prefix: &EntityPath) -> bool {
+        prefix.len() <= self.len() && self.iter().zip(prefix.iter()).all(|(a, b)| a == b)
     }
 
     /// Is this a strict descendant of the given path.
     #[inline]
     pub fn is_descendant_of(&self, other: &EntityPath) -> bool {
-        other.len() < self.len() && self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
+        other.len() < self.len() && self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 
     /// Is this a direct child of the other path.
     #[inline]
     pub fn is_child_of(&self, other: &EntityPath) -> bool {
-        other.len() + 1 == self.len() && self.path.iter().zip(other.iter()).all(|(a, b)| a == b)
+        other.len() + 1 == self.len() && self.iter().zip(other.iter()).all(|(a, b)| a == b)
     }
 
     /// Number of parts
     #[inline]
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
-        self.path.len()
+        self.parts.len()
     }
 
     #[inline]
@@ -187,7 +194,10 @@ impl EntityPath {
     /// Return [`None`] if root.
     #[must_use]
     pub fn parent(&self) -> Option<Self> {
-        self.path.parent().map(Self::from)
+        self.parts
+            .len()
+            .checked_sub(1)
+            .map(|n_minus_1| Self::new(self.parts[..n_minus_1].to_vec()))
     }
 
     pub fn join(&self, other: &Self) -> Self {
@@ -225,27 +235,20 @@ impl FromIterator<EntityPathPart> for EntityPath {
     }
 }
 
-impl From<EntityPathImpl> for EntityPath {
-    #[inline]
-    fn from(path: EntityPathImpl) -> Self {
-        Self {
-            hash: EntityPathHash(Hash64::hash(&path)),
-            path: Arc::new(path),
-        }
-    }
-}
-
 impl From<Vec<EntityPathPart>> for EntityPath {
     #[inline]
     fn from(path: Vec<EntityPathPart>) -> Self {
-        Self::from(EntityPathImpl::from(path.iter()))
+        Self {
+            hash: EntityPathHash(Hash64::hash(&path)),
+            parts: Arc::new(path),
+        }
     }
 }
 
 impl From<&[EntityPathPart]> for EntityPath {
     #[inline]
     fn from(path: &[EntityPathPart]) -> Self {
-        Self::from(EntityPathImpl::from(path.iter()))
+        Self::from(path.to_vec())
     }
 }
 
@@ -325,7 +328,7 @@ impl Loggable for EntityPath {
         re_types_core::datatypes::Utf8::to_arrow(
             data.into_iter()
                 .map(Into::into)
-                .map(|ent_path| re_types_core::datatypes::Utf8(ent_path.path.to_string().into())),
+                .map(|ent_path| re_types_core::datatypes::Utf8(ent_path.to_string().into())),
         )
     }
 
@@ -345,7 +348,7 @@ impl Loggable for EntityPath {
 impl serde::Serialize for EntityPath {
     #[inline]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.path.serialize(serializer)
+        self.parts.serialize(serializer)
     }
 }
 
@@ -353,7 +356,8 @@ impl serde::Serialize for EntityPath {
 impl<'de> serde::Deserialize<'de> for EntityPath {
     #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        EntityPathImpl::deserialize(deserializer).map(Self::from)
+        let parts = Vec::<EntityPathPart>::deserialize(deserializer)?;
+        Ok(Self::new(parts))
     }
 }
 
@@ -378,14 +382,16 @@ impl nohash_hasher::IsEnabled for EntityPath {}
 // ----------------------------------------------------------------------------
 
 impl std::cmp::Ord for EntityPath {
+    #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.path.cmp(&other.path)
+        self.parts.cmp(&other.parts)
     }
 }
 
 impl std::cmp::PartialOrd for EntityPath {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.path.cmp(&other.path))
+        Some(self.parts.cmp(&other.parts))
     }
 }
 
@@ -393,15 +399,29 @@ impl std::cmp::PartialOrd for EntityPath {
 
 impl std::fmt::Debug for EntityPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.path.fmt(f)
+        // Same as `Display` - since we always prefix paths with a slash, they are easily recognizable.
+        write!(f, "{self}")
     }
 }
 
 impl std::fmt::Display for EntityPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.path.fmt(f)
+        use std::fmt::Write as _;
+
+        if self.is_root() {
+            f.write_char('/')
+        } else {
+            // We always lead with a slash
+            for comp in self.iter() {
+                f.write_char('/')?;
+                comp.fmt(f)?;
+            }
+            Ok(())
+        }
     }
 }
+
+// ----------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {

@@ -22,6 +22,10 @@ pub enum DataSource {
 
     /// A remote Rerun server.
     WebSocketAddr(String),
+
+    // RRD data streaming in from standard input.
+    #[cfg(not(target_arch = "wasm32"))]
+    Stdin,
 }
 
 impl DataSource {
@@ -63,6 +67,16 @@ impl DataSource {
             } else {
                 false // Too many dots; assume an url
             }
+        }
+
+        // Reading from standard input in non-TTY environments (e.g. GitHub Actions, but I'm sure we can
+        // come up with more convoluted than that…) can lead to many unexpected,
+        // platform-specific problems that aren't even necessarily consistent across runs.
+        //
+        // In order to avoid having to swallow errors based on unreliable heuristics (or inversely:
+        // throwing errors when we shouldn't), we just make reading from standard input explicit.
+        if uri == "-" {
+            return DataSource::Stdin;
         }
 
         let path = std::path::Path::new(&uri).to_path_buf();
@@ -146,6 +160,22 @@ impl DataSource {
 
             DataSource::WebSocketAddr(rerun_server_ws_url) => {
                 crate::web_sockets::connect_to_ws_url(&rerun_server_ws_url, on_msg)
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::Stdin => {
+                let (tx, rx) = re_smart_channel::smart_channel(
+                    SmartMessageSource::Stdin,
+                    SmartChannelSource::Stdin,
+                );
+
+                crate::load_stdin::load_stdin(tx).with_context(|| "stdin".to_owned())?;
+
+                if let Some(on_msg) = on_msg {
+                    on_msg();
+                }
+
+                Ok(rx)
             }
         }
     }

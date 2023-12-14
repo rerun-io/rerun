@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .space_view_blueprint import SpaceViewBlueprint
 from .viewport_blueprint import ViewportBlueprint
 
-__all__ = ["ViewportBlueprint"]
+__all__ = ["SpaceViewBlueprint", "ViewportBlueprint"]

@@ -174,6 +174,20 @@ namespace rerun {
         /// This function returns immediately.
         Error save(std::string_view path) const;
 
+        /// Stream all log-data to standard output.
+        ///
+        /// Pipe the result into the Rerun Viewer to visualize it.
+        ///
+        /// If there isn't any listener at the other end of the pipe, the `RecordingStream` will
+        /// default back to `buffered` mode, in order not to break the user's terminal.
+        ///
+        /// This function returns immediately.
+        //
+        // NOTE: This should be called `stdout` like in other SDK, but turns out that `stdout` is a
+        // macro when compiling with msvc [1].
+        // [1]: https://learn.microsoft.com/en-us/cpp/c-runtime-library/stdin-stdout-stderr?view=msvc-170
+        Error to_stdout() const;
+
         /// Initiates a flush the batching pipeline and waits for it to propagate.
         ///
         /// See `RecordingStream` docs for ordering semantics and multithreading guarantees.

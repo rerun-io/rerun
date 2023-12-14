@@ -161,6 +161,7 @@ pub enum CErrorCode {
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamCreationFailure,
     RecordingStreamSaveFailure,
+    RecordingStreamStdoutFailure,
     // TODO(cmc): Really this should be its own category…
     RecordingStreamSpawnFailure,
 
@@ -469,6 +470,24 @@ pub extern "C" fn rr_recording_stream_save(
 }
 
 #[allow(clippy::result_large_err)]
+fn rr_recording_stream_stdout_impl(stream: CRecordingStream) -> Result<(), CError> {
+    recording_stream(stream)?.stdout().map_err(|err| {
+        CError::new(
+            CErrorCode::RecordingStreamStdoutFailure,
+            &format!("Failed to forward recording stream to stdout: {err}"),
+        )
+    })
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_stdout(id: CRecordingStream, error: *mut CError) {
+    if let Err(err) = rr_recording_stream_stdout_impl(id) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_sequence_impl(
     stream: CRecordingStream,
     timeline_name: CStringView,
@@ -579,6 +598,10 @@ fn rr_log_impl(
     data_row: CDataRow,
     inject_time: bool,
 ) -> Result<(), CError> {
+    // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
+    // TODO(emilk): move to before we arrow-serialize the data
+    let row_id = re_sdk::log::RowId::new();
+
     let stream = recording_stream(stream)?;
 
     let CDataRow {
@@ -649,7 +672,7 @@ fn rr_log_impl(
     }
 
     let data_row = DataRow::from_cells(
-        re_sdk::log::RowId::new(),
+        row_id,
         TimePoint::default(), // we use the one in the recording stream for now
         entity_path,
         num_instances,

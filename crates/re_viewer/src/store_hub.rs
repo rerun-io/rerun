@@ -332,7 +332,7 @@ impl StoreHub {
                     if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id)
                     {
                         if !is_valid_blueprint(&store) {
-                            re_log::warn!("Blueprint for {app_id} appears invalid - restoring to default. This is expected if you have just upgraded Rerun versions.");
+                            re_log::warn_once!("Blueprint for {app_id} appears invalid - restoring to default. This is expected if you have just upgraded Rerun versions.");
                             continue;
                         }
                         // We found the blueprint we were looking for; make it active.

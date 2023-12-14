@@ -132,6 +132,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
+    m.add_function(wrap_pyfunction!(stdout, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
@@ -521,6 +522,22 @@ fn save(path: &str, recording: Option<&PyRecordingStream>, py: Python<'_>) -> Py
     py.allow_threads(|| {
         recording
             .save(path)
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    })
+}
+
+#[pyfunction]
+#[pyo3(signature = (recording = None))]
+fn stdout(recording: Option<&PyRecordingStream>, py: Python<'_>) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
+    // The call to stdout may internally flush.
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.allow_threads(|| {
+        recording
+            .stdout()
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     })
 }

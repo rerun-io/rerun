@@ -9,13 +9,6 @@ from .query_expressions import (
     QueryExpressionsLike,
     QueryExpressionsType,
 )
-from .space_view_component import (
-    SpaceViewComponent,
-    SpaceViewComponentArrayLike,
-    SpaceViewComponentBatch,
-    SpaceViewComponentLike,
-    SpaceViewComponentType,
-)
 
 __all__ = [
     "QueryExpressions",
@@ -23,9 +16,4 @@ __all__ = [
     "QueryExpressionsBatch",
     "QueryExpressionsLike",
     "QueryExpressionsType",
-    "SpaceViewComponent",
-    "SpaceViewComponentArrayLike",
-    "SpaceViewComponentBatch",
-    "SpaceViewComponentLike",
-    "SpaceViewComponentType",
 ]

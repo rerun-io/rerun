@@ -12,9 +12,6 @@ pub enum PathParseError {
     #[error("No entity path found")]
     MissingPath,
 
-    #[error("Path had leading slash")]
-    LeadingSlash,
-
     #[error("Double-slashes with no part between")]
     DoubleSlash,
 
@@ -63,10 +60,12 @@ impl std::str::FromStr for DataPath {
 
     /// For instance:
     ///
-    /// * `world/points`
-    /// * `world/points:Color`
-    /// * `world/points[#42]`
-    /// * `world/points[#42]:rerun.components.Color`
+    /// * `/world/points`
+    /// * `/world/points:Color`
+    /// * `/world/points[#42]`
+    /// * `/world/points[#42]:rerun.components.Color`
+    ///
+    /// (the leadign slash is optional)
     fn from_str(path: &str) -> Result<Self, Self::Err> {
         if path.is_empty() {
             return Err(PathParseError::EmptyString);
@@ -160,27 +159,34 @@ impl EntityPath {
             return Err(PathParseError::UnexpectedComponentName(component_name));
         }
 
-        let normalized = entity_path.to_string();
-        if normalized != input {
-            re_log::warn_once!("The entity path '{input}' was not in the normalized form. It will be interpreted as '{normalized}'. See https://www.rerun.io/docs/concepts/entity-path for more");
-        }
-
         Ok(entity_path)
     }
 
     /// Parses an entity path, handling any malformed input with a logged warning.
     ///
+    /// Things like `foo/Hallå Där!` will be accepted, and transformed into
+    /// the path `foo/Hallå\ Där\!`.
+    ///
     /// For a strict parses, use [`Self::parse_strict`] instead.
     pub fn parse_forgiving(input: &str) -> Self {
-        let parts = parse_entity_path_forgiving(input);
-        let entity_path = EntityPath::from(parts);
+        let mut warnings = vec![];
 
-        let normalized = entity_path.to_string();
-        if normalized != input {
-            re_log::warn_once!("The entity path '{input}' was not in the normalized form. It will be interpreted as '{normalized}'. See https://www.rerun.io/docs/concepts/entity-path for more");
+        let parts: Vec<_> = tokenize_entity_path(input)
+            .into_iter()
+            .filter(|&part| part != "/") // ignore duplicate slashes
+            .map(|part| EntityPathPart::parse_forgiving_with_warning(part, Some(&mut warnings)))
+            .collect();
+
+        let path = EntityPath::from(parts);
+
+        if let Some(warning) = warnings.first() {
+            // We want to warn on some things, like
+            // passing a windows file path (`C:\Users\image.jpg`) as an entity path,
+            // which would result in a lot of unknown escapes.
+            re_log::warn_once!("When parsing the entity path {input:?}: {warning}. The path will be interpreted as {path}");
         }
 
-        entity_path
+        path
     }
 }
 
@@ -209,18 +215,6 @@ impl FromStr for ComponentPath {
     }
 }
 
-/// A very forgiving parsing of the given entity path.
-///
-/// Things like `foo/Hallå Där!` will be accepted, and transformed into
-/// the path `foo/Hallå\ Där\!`.
-fn parse_entity_path_forgiving(path: &str) -> Vec<EntityPathPart> {
-    tokenize_entity_path(path)
-        .into_iter()
-        .filter(|&part| part != "/") // ignore duplicate slashes
-        .map(EntityPathPart::parse_forgiving)
-        .collect()
-}
-
 fn entity_path_parts_from_tokens_strict(mut tokens: &[&str]) -> Result<Vec<EntityPathPart>> {
     if tokens.is_empty() {
         return Err(PathParseError::MissingPath);
@@ -231,7 +225,8 @@ fn entity_path_parts_from_tokens_strict(mut tokens: &[&str]) -> Result<Vec<Entit
     }
 
     if tokens[0] == "/" {
-        return Err(PathParseError::LeadingSlash);
+        // Leading slash is optional
+        tokens = &tokens[1..];
     }
 
     let mut parts = vec![];
@@ -340,12 +335,12 @@ fn test_parse_entity_path_forgiving() {
     assert_eq!(normalize(""), "/");
     assert_eq!(normalize("/"), "/");
     assert_eq!(normalize("//"), "/");
-    assert_eq!(normalize("/foo/bar/"), "foo/bar");
-    assert_eq!(normalize("/foo///bar//"), "foo/bar");
-    assert_eq!(normalize("foo/bar:baz"), r#"foo/bar\:baz"#);
-    assert_eq!(normalize("foo/42"), "foo/42");
-    assert_eq!(normalize("foo/#bar/baz"), r##"foo/\#bar/baz"##);
-    assert_eq!(normalize("foo/Hallå Där!"), r#"foo/Hallå\ Där\!"#);
+    assert_eq!(normalize("/foo/bar/"), "/foo/bar");
+    assert_eq!(normalize("/foo///bar//"), "/foo/bar");
+    assert_eq!(normalize("foo/bar:baz"), r#"/foo/bar\:baz"#);
+    assert_eq!(normalize("foo/42"), "/foo/42");
+    assert_eq!(normalize("foo/#bar/baz"), r##"/foo/\#bar/baz"##);
+    assert_eq!(normalize("foo/Hallå Där!"), r#"/foo/Hallå\ Där\!"#);
 }
 
 #[test]
@@ -359,8 +354,9 @@ fn test_parse_entity_path_strict() {
     assert_eq!(parse(""), Err(PathParseError::EmptyString));
     assert_eq!(parse("/"), Ok(entity_path_vec!()));
     assert_eq!(parse("foo"), Ok(entity_path_vec!("foo")));
-    assert_eq!(parse("/foo"), Err(PathParseError::LeadingSlash));
+    assert_eq!(parse("/foo"), Ok(entity_path_vec!("foo")));
     assert_eq!(parse("foo/bar"), Ok(entity_path_vec!("foo", "bar")));
+    assert_eq!(parse("/foo/bar"), Ok(entity_path_vec!("foo", "bar")));
     assert_eq!(parse("foo//bar"), Err(PathParseError::DoubleSlash));
 
     assert_eq!(parse("foo/bar/"), Err(PathParseError::TrailingSlash));

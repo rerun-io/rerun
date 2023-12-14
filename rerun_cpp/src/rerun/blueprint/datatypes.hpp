@@ -3,4 +3,3 @@
 #pragma once
 
 #include "blueprint/datatypes/query_expressions.hpp"
-#include "blueprint/datatypes/space_view_component.hpp"

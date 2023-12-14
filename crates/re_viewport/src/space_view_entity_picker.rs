@@ -167,8 +167,7 @@ fn add_entities_tree_ui(
         .body(|ui| {
             for (path_comp, child_tree) in tree.children.iter().sorted_by_key(|(_, child_tree)| {
                 // Put descendants of the space path always first
-                let put_first = child_tree.path == space_view.space_origin
-                    || child_tree.path.is_descendant_of(&space_view.space_origin);
+                let put_first = child_tree.path.starts_with(&space_view.space_origin);
                 !put_first
             }) {
                 add_entities_tree_ui(
@@ -209,9 +208,7 @@ fn add_entities_line_ui(
         // TODO(jleibs): Speed this up
         let excluded = exclusions.iter().any(|expr| match expr {
             EntityPathExpr::Exact(expr) => expr == entity_path,
-            EntityPathExpr::Recursive(expr) => {
-                expr == entity_path || entity_path.is_descendant_of(expr)
-            }
+            EntityPathExpr::Recursive(expr) => entity_path.starts_with(expr),
         });
 
         ui.add_enabled_ui(add_info.can_add_self_or_descendant.is_compatible(), |ui| {
