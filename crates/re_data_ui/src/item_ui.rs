@@ -108,7 +108,7 @@ pub fn instance_path_button_to(
 fn entity_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, stats: &re_arrow_store::EntityStats) {
     use re_format::format_bytes;
 
-    let total_bytes = stats.size_bytes + stats.timelines_size_bytes;
+    let total_bytes = stats.size_bytes + stats.timeless_size_bytes;
 
     if total_bytes == 0 {
         return;
