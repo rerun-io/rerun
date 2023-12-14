@@ -164,10 +164,29 @@ impl EntityPath {
 
     /// Parses an entity path, handling any malformed input with a logged warning.
     ///
+    /// Things like `foo/Hallå Där!` will be accepted, and transformed into
+    /// the path `foo/Hallå\ Där\!`.
+    ///
     /// For a strict parses, use [`Self::parse_strict`] instead.
     pub fn parse_forgiving(input: &str) -> Self {
-        let parts = parse_entity_path_forgiving(input);
-        EntityPath::from(parts)
+        let mut warnings = vec![];
+
+        let parts: Vec<_> = tokenize_entity_path(input)
+            .into_iter()
+            .filter(|&part| part != "/") // ignore duplicate slashes
+            .map(|part| EntityPathPart::parse_forgiving_with_warning(part, Some(&mut warnings)))
+            .collect();
+
+        let path = EntityPath::from(parts);
+
+        if let Some(warning) = warnings.first() {
+            // We want to warn on some things, like
+            // passing a windows file path (`C:\Users\image.jpg`) as an entity path,
+            // which would result in a lot of unknown escapes.
+            re_log::warn_once!("When parsing the entity path {input:?}: {warning}. The path will be interpreted as {path}");
+        }
+
+        path
     }
 }
 
@@ -194,18 +213,6 @@ impl FromStr for ComponentPath {
             component_name,
         })
     }
-}
-
-/// A very forgiving parsing of the given entity path.
-///
-/// Things like `foo/Hallå Där!` will be accepted, and transformed into
-/// the path `foo/Hallå\ Där\!`.
-fn parse_entity_path_forgiving(path: &str) -> Vec<EntityPathPart> {
-    tokenize_entity_path(path)
-        .into_iter()
-        .filter(|&part| part != "/") // ignore duplicate slashes
-        .map(EntityPathPart::parse_forgiving)
-        .collect()
 }
 
 fn entity_path_parts_from_tokens_strict(mut tokens: &[&str]) -> Result<Vec<EntityPathPart>> {

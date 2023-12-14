@@ -27,8 +27,19 @@ impl EntityPathPart {
 
     /// Unescape the string, forgiving any syntax error with a best-effort approach.
     pub fn parse_forgiving(input: &str) -> Self {
+        Self::parse_forgiving_with_warning(input, None)
+    }
+
+    /// Unescape the string, forgiving any syntax error with a best-effort approach.
+    ///
+    /// Returns a warnings if there was any unknown escape sequences.
+    pub fn parse_forgiving_with_warning(
+        input: &str,
+        mut warnings: Option<&mut Vec<String>>,
+    ) -> Self {
         let mut output = String::with_capacity(input.len());
         let mut chars = input.chars();
+
         while let Some(c) = chars.next() {
             if c == '\\' {
                 if let Some(c) = chars.next() {
@@ -55,7 +66,17 @@ impl EntityPathPart {
                                 }
                             };
                         }
-                        _ => output.push(c),
+                        c if c.is_ascii_punctuation() || c == ' ' => {
+                            output.push(c);
+                        }
+                        _ => {
+                            if let Some(warnings) = warnings.as_mut() {
+                                // We want to warn on this, because it could be a serious mistake, like
+                                // passing a windows file path (`C:\Users\image.jpg`) as an entity path
+                                warnings.push(format!("Unknown escape sequence: '\\{c}'"));
+                            }
+                            output.push(c);
+                        }
                     }
                 } else {
                     // Trailing escape: treat it as a (escaped) backslash
