@@ -209,7 +209,7 @@ tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
 tokio = { version = "1.24", default-features = false }
 tokio-tungstenite = { version = "0.17.1", default-features = false }
-toml = "0.8.8"
+toml = "0.7.8"
 tracing = { version = "0.1", default-features = false }
 tungstenite = { version = "0.17", default-features = false }
 type-map = "0.5"
