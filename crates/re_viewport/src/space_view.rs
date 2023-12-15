@@ -11,7 +11,7 @@ use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState,
-    SpaceViewSystemRegistry, StoreContext, SystemExecutionOutput, ViewQuery, ViewerContext,
+    StoreContext, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::system_execution::create_and_run_space_view_systems;
@@ -175,13 +175,6 @@ impl SpaceViewBlueprint {
         space_view_class_registry.get_class_or_log_error(&self.class_identifier)
     }
 
-    pub fn class_system_registry<'a>(
-        &self,
-        space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
-    ) -> &'a SpaceViewSystemRegistry {
-        space_view_class_registry.get_system_registry_or_log_error(&self.class_identifier)
-    }
-
     pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, view_state: &mut dyn SpaceViewState) {
         while ScreenshotProcessor::next_readback_result(
             ctx.render_ctx,
@@ -287,7 +280,6 @@ impl SpaceViewBlueprint {
             });
         }
 
-        let system_registry = self.class_system_registry(ctx.space_view_class_registry);
         let query = re_viewer_context::ViewQuery {
             space_view_id: self.id,
             space_origin: &self.space_origin,
@@ -297,8 +289,7 @@ impl SpaceViewBlueprint {
             highlights,
         };
 
-        let system_output =
-            create_and_run_space_view_systems(ctx, class.identifier(), system_registry, &query);
+        let system_output = create_and_run_space_view_systems(ctx, class.identifier(), &query);
 
         (query, system_output)
     }

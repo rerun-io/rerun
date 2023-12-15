@@ -4,7 +4,7 @@ use re_types::ComponentName;
 
 use crate::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemRegistry, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 re_string_interner::declare_new_type!(
@@ -71,7 +71,7 @@ pub trait DynSpaceViewClass: Send + Sync {
     /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::ViewPartSystem`].
     fn on_register(
         &self,
-        system_registry: &mut SpaceViewSystemRegistry,
+        system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError>;
 
     /// Called once for every new space view instance of this class.

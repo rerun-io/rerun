@@ -45,9 +45,9 @@ pub use space_view::{
     HeuristicFilterContext, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
-    SystemExecutionOutput, ViewContextCollection, ViewContextSystem, ViewPartCollection,
-    ViewPartSystem, ViewQuery, ViewSystemIdentifier,
+    SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContextCollection, ViewContextSystem,
+    ViewPartCollection, ViewPartSystem, ViewQuery, ViewSystemIdentifier,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

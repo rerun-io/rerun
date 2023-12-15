@@ -1,6 +1,6 @@
 use crate::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistry, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 use re_data_store::EntityProperties;
 
@@ -24,7 +24,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
 
     fn on_register(
         &self,
-        _system_registry: &mut SpaceViewSystemRegistry,
+        _system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         Ok(())
     }
