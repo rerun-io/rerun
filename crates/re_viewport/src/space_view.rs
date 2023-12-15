@@ -48,6 +48,10 @@ pub struct SpaceViewBlueprint {
 }
 
 impl SpaceViewBlueprint {
+    /// Creates a new [`SpaceViewBlueprint`] with a single [`DataQueryBlueprint`].
+    ///
+    /// This [`SpaceViewBlueprint`] is ephemeral. If you want to make it permanent you
+    /// must call [`save_to_blueprint_store`].
     pub fn new(
         space_view_class: SpaceViewClassIdentifier,
         space_view_class_display_name: &str,
@@ -77,7 +81,8 @@ impl SpaceViewBlueprint {
         }
     }
 
-    pub fn try_from_db(path: &EntityPath, blueprint_db: &StoreDb) -> Option<Self> {
+    /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
+    pub fn try_from_db(id: SpaceViewId, blueprint_db: &StoreDb) -> Option<Self> {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
@@ -88,7 +93,7 @@ impl SpaceViewBlueprint {
             space_origin,
             entities_determined_by_user,
             contents,
-        } = query_archetype(blueprint_db.store(), &query, path)
+        } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
                 if cfg!(debug_assertions) {
@@ -99,8 +104,6 @@ impl SpaceViewBlueprint {
                 err
             })
             .ok()?;
-
-        let id = SpaceViewId::from_entity_path(path);
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
 
@@ -123,13 +126,7 @@ impl SpaceViewBlueprint {
             .0
             .into_iter()
             .map(DataQueryId::from)
-            .filter_map(|id| {
-                DataQueryBlueprint::try_from_db(
-                    &id.as_entity_path(),
-                    blueprint_db,
-                    class_identifier,
-                )
-            })
+            .filter_map(|id| DataQueryBlueprint::try_from_db(id, blueprint_db, class_identifier))
             .collect();
 
         let entities_determined_by_user = entities_determined_by_user.unwrap_or_default().0;
@@ -144,7 +141,13 @@ impl SpaceViewBlueprint {
         })
     }
 
-    pub fn save_full(&self, ctx: &ViewerContext<'_>) {
+    /// Persist the entire [`SpaceViewBlueprint`] to the blueprint store.
+    ///
+    /// This only needs to be called if the [`SpaceViewBlueprint`] was created with [`new`].
+    ///
+    /// Otherwise, incremental calls to `set_` functions will write just the necessary component
+    /// update directly to the store.
+    pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         let timepoint = TimePoint::timeless();
 
         let arch = re_types::blueprint::archetypes::SpaceViewBlueprint::new(

@@ -55,6 +55,10 @@ impl DataQueryBlueprint {
     pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
     pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
+    /// Creates a new [`DataQueryBlueprint`].
+    ///
+    /// This [`DataQueryBlueprint`] is ephemeral. It must be saved by calling
+    /// `save_to_blueprint_store` on the enclosing `SpaceViewBlueprint`.
     pub fn new(
         space_view_class_identifier: SpaceViewClassIdentifier,
         queries_entities: impl Iterator<Item = EntityPathExpr>,
@@ -66,17 +70,16 @@ impl DataQueryBlueprint {
         }
     }
 
+    /// Attempt to load a [`DataQueryBlueprint`] from the blueprint store.
     pub fn try_from_db(
-        path: &EntityPath,
+        id: DataQueryId,
         blueprint_db: &StoreDb,
         space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> Option<Self> {
         let expressions = blueprint_db
             .store()
-            .query_timeless_component::<QueryExpressions>(path)
+            .query_timeless_component::<QueryExpressions>(&id.as_entity_path())
             .map(|c| c.value)?;
-
-        let id = DataQueryId::from_entity_path(path);
 
         Some(Self {
             id,

@@ -73,7 +73,7 @@ impl ViewportBlueprint {
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
             .into_iter()
             .filter_map(|space_view: SpaceViewId| {
-                SpaceViewBlueprint::try_from_db(&space_view.as_entity_path(), blueprint_db)
+                SpaceViewBlueprint::try_from_db(space_view, blueprint_db)
             })
             .map(|sv| (sv.id, sv))
             .collect();
@@ -256,7 +256,7 @@ impl ViewportBlueprint {
             space_view.display_name = unique_name;
 
             // Save the space view to the store
-            space_view.save_full(ctx);
+            space_view.save_to_blueprint_store(ctx);
 
             // Update the space-view ids:
             new_ids.push(space_view_id);
