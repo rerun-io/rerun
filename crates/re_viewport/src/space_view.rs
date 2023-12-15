@@ -51,7 +51,7 @@ impl SpaceViewBlueprint {
     /// Creates a new [`SpaceViewBlueprint`] with a single [`DataQueryBlueprint`].
     ///
     /// This [`SpaceViewBlueprint`] is ephemeral. If you want to make it permanent you
-    /// must call [`save_to_blueprint_store`].
+    /// must call [`Self::save_to_blueprint_store`].
     pub fn new(
         space_view_class: SpaceViewClassIdentifier,
         space_view_class_display_name: &str,
@@ -143,7 +143,7 @@ impl SpaceViewBlueprint {
 
     /// Persist the entire [`SpaceViewBlueprint`] to the blueprint store.
     ///
-    /// This only needs to be called if the [`SpaceViewBlueprint`] was created with [`new`].
+    /// This only needs to be called if the [`SpaceViewBlueprint`] was created with [`Self::new`].
     ///
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
