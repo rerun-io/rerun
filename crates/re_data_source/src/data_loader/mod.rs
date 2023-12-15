@@ -29,7 +29,7 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 ///     - [Point clouds]
 ///     - [Text files]
 /// - [`DirectoryLoader`] for recursively loading folders.
-/// - `ExternalLoader`, which looks for user-defined data loaders in $PATH.
+/// - [`ExternalLoader`], which looks for user-defined data loaders in $PATH.
 ///
 /// ## Execution
 ///
