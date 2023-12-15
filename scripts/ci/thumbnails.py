@@ -49,7 +49,7 @@ def examples_with_thumbnails() -> Generator[Example, None, None]:
         if (path / "README.md").exists():
             readme = (path / "README.md").read_text()
             fm = load_frontmatter(readme)
-            if fm.get("thumbnail"):
+            if fm is not None and fm.get("thumbnail"):
                 yield Example(path, readme, fm)
 
 
