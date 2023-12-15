@@ -89,7 +89,7 @@ pub struct Viewport<'a, 'b> {
     /// for this frame.
     pub blueprint: &'a ViewportBlueprint,
 
-    /// The persistent state of the viewport that is not saved to the store but otherwises
+    /// The persistent state of the viewport that is not saved to the store but otherwise
     /// persis frame-to-frame.
     pub state: &'b mut ViewportState,
 
