@@ -229,8 +229,26 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
 
 /// Iterator over all registered [`DataLoader`]s.
 #[inline]
-pub fn iter_loaders() -> impl ExactSizeIterator<Item = Arc<dyn DataLoader>> {
-    BUILTIN_LOADERS.clone().into_iter()
+pub fn iter_loaders() -> impl Iterator<Item = Arc<dyn DataLoader>> {
+    BUILTIN_LOADERS
+        .clone()
+        .into_iter()
+        .chain(CUSTOM_LOADERS.read().clone())
+}
+
+/// Keeps track of all custom [`DataLoader`]s.
+///
+/// Use [`register_custom_data_loader`] to add new loaders.
+static CUSTOM_LOADERS: Lazy<parking_lot::RwLock<Vec<Arc<dyn DataLoader>>>> =
+    Lazy::new(parking_lot::RwLock::default);
+
+/// Register a custom [`DataLoader`].
+///
+/// Any time the Rerun Viewer opens a file or directory, this custom loader will be notified.
+/// Refer to [`DataLoader`]'s documentation for more information.
+#[inline]
+pub fn register_custom_data_loader(loader: impl DataLoader + 'static) {
+    CUSTOM_LOADERS.write().push(Arc::new(loader));
 }
 
 // ---

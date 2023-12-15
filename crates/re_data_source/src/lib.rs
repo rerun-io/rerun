@@ -15,8 +15,8 @@ mod web_sockets;
 mod load_stdin;
 
 pub use self::data_loader::{
-    iter_loaders, ArchetypeLoader, DataLoader, DataLoaderError, DirectoryLoader, LoadedData,
-    RrdLoader,
+    iter_loaders, register_custom_data_loader, ArchetypeLoader, DataLoader, DataLoaderError,
+    DirectoryLoader, LoadedData, RrdLoader,
 };
 pub use self::data_source::DataSource;
 pub use self::load_file::{extension, load_from_file_contents};
