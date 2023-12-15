@@ -1,4 +1,5 @@
-/// Loads entire directories, using the appropriate [`crate::DataLoader`]:s for each files within.
+/// Recursively oads entire directories, using the appropriate [`crate::DataLoader`]:s for each
+/// files within.
 //
 // TODO(cmc): There are a lot more things than can be done be done when it comes to the semantics
 // of a folder, e.g.: HIVE-like partitioning, similarly named files with different indices and/or
@@ -65,7 +66,7 @@ impl crate::DataLoader for DirectoryLoader {
     }
 
     #[inline]
-    fn load_from_path_contents(
+    fn load_from_file_contents(
         &self,
         _store_id: re_log_types::StoreId,
         _path: std::path::PathBuf,
