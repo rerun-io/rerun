@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
 
     const auto rec = rerun::RecordingStream("rerun_example_external_data_loader", recording_id);
     // The most important part of this: log to standard output so the Rerun Viewer can ingest it!
-    rec.stdout().exit_on_failure();
+    rec.to_stdout().exit_on_failure();
 
     rec.log_timeless(
         filepath,
