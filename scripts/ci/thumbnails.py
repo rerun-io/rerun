@@ -6,12 +6,28 @@ from __future__ import annotations
 import argparse
 from io import BytesIO
 from pathlib import Path
-from typing import Generator
+from typing import Any, Dict, Generator
 
 import requests
+import tomlkit
 from PIL import Image
 
-from ..frontmatter import Frontmatter, load_frontmatter
+Frontmatter = Dict[str, Any]
+
+
+def load_frontmatter(s: str) -> dict[str, Any] | None:
+    start = s.find("<--[metadata]")
+    if start == -1:
+        return None
+    start += len("<--[metadata]")
+
+    end = s.find("-->", start)
+    if end == -1:
+        return None
+
+    fm = s[start:end].strip()
+
+    return tomlkit.loads(fm).unwrap()
 
 
 class Example:

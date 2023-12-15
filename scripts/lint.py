@@ -12,11 +12,10 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Dict, Iterator
 
+import tomlkit
 from gitignore_parser import parse_gitignore
-
-from .frontmatter import Frontmatter, load_frontmatter
 
 # -----------------------------------------------------------------------------
 
@@ -37,6 +36,24 @@ anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 
 double_the = re.compile(r"\bthe the\b")
 double_word = re.compile(r" ([a-z]+) \1[ \.]")
+
+
+Frontmatter = Dict[str, Any]
+
+
+def load_frontmatter(s: str) -> dict[str, Any] | None:
+    start = s.find("<--[metadata]")
+    if start == -1:
+        return None
+    start += len("<--[metadata]")
+
+    end = s.find("-->", start)
+    if end == -1:
+        return None
+
+    fm = s[start:end].strip()
+
+    return tomlkit.loads(fm).unwrap()
 
 
 def is_valid_todo_part(part: str) -> bool:
