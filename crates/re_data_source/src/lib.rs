@@ -33,6 +33,8 @@ pub use self::load_file::load_from_path;
 /// The contents of a file.
 ///
 /// This is what you get when loading a file on Web, or when using drag-n-drop.
+//
+// TODO(#4554): drag-n-drop streaming support
 #[derive(Clone, Debug)]
 pub struct FileContents {
     pub name: String,

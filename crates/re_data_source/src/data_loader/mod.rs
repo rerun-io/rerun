@@ -17,6 +17,10 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 /// folders.
 /// ⚠ Drag-and-drop of folders does not yet work on the web version of Rerun Viewer ⚠
 ///
+/// We only support loading files from the local filesystem at the moment, and consequently only
+/// accept filepaths as input.
+/// [There are plans to make this generic over any URI](https://github.com/rerun-io/rerun/issues/4525).
+///
 /// Rerun comes with a few [`DataLoader`]s by default:
 /// - [`RrdLoader`] for [Rerun files],
 /// - [`ArchetypeLoader`] for:
@@ -123,6 +127,17 @@ pub enum DataLoaderError {
 
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+}
+
+impl DataLoaderError {
+    #[inline]
+    pub fn is_path_not_found(&self) -> bool {
+        match self {
+            #[cfg(not(target_arch = "wasm32"))]
+            DataLoaderError::IO(err) => err.kind() == std::io::ErrorKind::NotFound,
+            _ => false,
+        }
+    }
 }
 
 /// What [`DataLoader`]s load.

@@ -5,6 +5,9 @@ use crate::{DataLoader, DataLoaderError, LoadedData};
 // ---
 
 /// Loads data from any supported file or in-memory contents as native [`re_types::Archetype`]s.
+///
+/// This is a simple generic [`DataLoader`] for filetypes that match 1-to-1 with our builtin
+/// archetypes.
 pub struct ArchetypeLoader;
 
 impl DataLoader for ArchetypeLoader {
@@ -121,12 +124,9 @@ fn load_mesh(
                 contents,
                 re_types::components::MediaType::guess_from_path(filepath),
             );
-            DataRow::from_archetype(RowId::new(), timepoint, entity_path.clone(), &arch)?
+            DataRow::from_archetype(RowId::new(), timepoint, entity_path, &arch)?
         },
-        {
-            let arch = re_types::archetypes::ViewCoordinates::RIGHT_HAND_Z_UP;
-            DataRow::from_archetype(RowId::new(), TimePoint::timeless(), entity_path, &arch)?
-        },
+        //
     ];
 
     Ok(rows.into_iter())

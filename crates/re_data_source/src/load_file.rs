@@ -8,6 +8,10 @@ use crate::{DataLoaderError, LoadedData};
 
 // ---
 
+/// Loads the given `path` using all [`crate::DataLoader`]s available.
+///
+/// A single `path` might be handled by more than one loader.
+///
 /// Synchronously checks whether the file exists and can be loaded. Beyond that, all
 /// errors are asynchronous and handled directly by the [`crate::DataLoader`]s themselves
 /// (i.e. they're logged).
@@ -44,6 +48,10 @@ pub fn load_from_path(
     Ok(())
 }
 
+/// Loads the given `contents` using all [`crate::DataLoader`]s available.
+///
+/// A single file might be handled by more than one loader.
+///
 /// Synchronously checks that the file can be loaded. Beyond that, all errors are asynchronous
 /// and handled directly by the [`crate::DataLoader`]s themselves (i.e. they're logged).
 ///

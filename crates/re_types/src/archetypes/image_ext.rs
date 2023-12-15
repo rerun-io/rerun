@@ -51,7 +51,7 @@ impl Image {
     /// The image format will be inferred from the path (extension), or the contents if that fails.
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
-    pub fn from_file(filepath: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
+    pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
         let filepath = filepath.as_ref();
         Ok(Self::new(crate::datatypes::TensorData::from_image_file(
             filepath,
