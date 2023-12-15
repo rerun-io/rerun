@@ -1,9 +1,9 @@
 ---
-title: Lidar
-tags: [lidar, 3D]
-description: "Visualize the lidar data from the nuScenes dataset."
-thumbnail: https://static.rerun.io/lidar/bcea9337044919c1524429bd26bc51a3c4db8ccb/480w.png
-thumbnail_dimensions: [480, 286]
+title = "Lidar"
+tags = ["lidar", "3D"]
+description = "Visualize the lidar data from the nuScenes dataset."
+thumbnail = "https://static.rerun.io/lidar/bcea9337044919c1524429bd26bc51a3c4db8ccb/480w.png"
+thumbnail_dimensions = [480, 286]
 ---
 
 <picture>

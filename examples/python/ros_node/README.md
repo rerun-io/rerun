@@ -1,8 +1,8 @@
 ---
-title: ROS Node
-tags: [2D, 3D, mesh, pinhole-camera, ros, time-series]
-thumbnail: https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/480w.png
-thumbnail_dimensions: [480, 266]
+title = "ROS Node"
+tags = ["2D", "3D", "mesh", "pinhole-camera", "ros", "time-series"]
+thumbnail = "https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/480w.png"
+thumbnail_dimensions = [480, 266]
 ---
 
 <picture>
@@ -58,5 +58,3 @@ You can now connect to the running ROS system by running:
 ```
 python3 examples/python/ros_node/main.py
 ```
-
-

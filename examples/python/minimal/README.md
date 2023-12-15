@@ -1,7 +1,7 @@
 ---
-title: Minimal example
-thumbnail: https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/480w.png
-thumbnail_dimensions: [480, 322]
+title = "Minimal example"
+thumbnail = "https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/480w.png"
+thumbnail_dimensions = [480, 322]
 ---
 
 <picture>
@@ -18,4 +18,3 @@ This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-starte
 ```bash
 python examples/python/minimal/main.py
 ```
-

@@ -1,8 +1,8 @@
 ---
-title: Live Camera Edge Detection
-tags: [2D, canny, live, opencv]
-thumbnail: https://static.rerun.io/live_camera_edge_detection/bf877bffd225f6c62cae3b87eecbc8e247abb202/480w.png
-thumbnail_dimensions: [480, 364]
+title = "Live Camera Edge Detection"
+tags = ["2D", "canny", "live", "opencv"]
+thumbnail = "https://static.rerun.io/live_camera_edge_detection/bf877bffd225f6c62cae3b87eecbc8e247abb202/480w.png"
+thumbnail_dimensions = [480, 364]
 ---
 
 <picture>

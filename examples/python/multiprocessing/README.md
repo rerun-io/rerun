@@ -1,7 +1,7 @@
 ---
-title: Multiprocessing
-thumbnail: https://static.rerun.io/multiprocessing/72bcb7550d84f8e5ed5a39221093239e655f06de/480w.png
-thumbnail_dimensions: [480, 308]
+title = "Multiprocessing"
+thumbnail = "https://static.rerun.io/multiprocessing/72bcb7550d84f8e5ed5a39221093239e655f06de/480w.png"
+thumbnail_dimensions = [480, 308]
 ---
 
 <picture>

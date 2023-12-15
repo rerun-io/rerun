@@ -1,5 +1,5 @@
 ---
-title: Shared Recording
+title = "Shared Recording"
 ---
 
 <picture>

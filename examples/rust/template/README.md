@@ -1,6 +1,6 @@
 ---
-title: Template
-tags: [kebab-case, comma, separated]
+title = "Template"
+tags = ["kebab-case", "comma", "separated"]
 ---
 
 <!--
@@ -13,4 +13,3 @@ This is an example template. It is not a real example. You can duplicate the dir
 ```bash
 cargo run --release -p template
 ```
-
