@@ -9,49 +9,49 @@ use super::EntityDataUi;
 pub fn create_component_ui_registry() -> ComponentUiRegistry {
     re_tracing::profile_function!();
 
-    /// Registers how to show a given component in the ui.
-    pub fn add<C: EntityDataUi + re_types::Component>(registry: &mut ComponentUiRegistry) {
-        registry.add(
-            C::name(),
-            Box::new(
-                |ctx, ui, verbosity, query, entity_path, component, instance| match component
-                    .lookup::<C>(instance)
-                {
-                    Ok(component) => {
-                        component.entity_data_ui(ctx, ui, verbosity, entity_path, query);
-                    }
-                    Err(re_query::QueryError::ComponentNotFound) => {
-                        ui.weak("(not found)");
-                    }
-                    Err(err) => {
-                        re_log::warn_once!("Expected component {}, {}", C::name(), err);
-                    }
-                },
-            ),
-        );
-    }
-
     let mut registry = ComponentUiRegistry::new(Box::new(&fallback_component_ui));
 
-    add::<re_types::components::AnnotationContext>(&mut registry);
-    add::<re_types::components::ClassId>(&mut registry);
-    add::<re_types::components::Color>(&mut registry);
-    add::<re_types::components::PinholeProjection>(&mut registry);
-    add::<re_types::components::KeypointId>(&mut registry);
-    add::<re_types::components::LineStrip2D>(&mut registry);
-    add::<re_types::components::LineStrip3D>(&mut registry);
-    add::<re_types::components::Resolution>(&mut registry);
-    add::<re_types::components::Rotation3D>(&mut registry);
-    add::<re_types::components::Material>(&mut registry);
-    add::<re_types::components::MeshProperties>(&mut registry);
-    add::<re_types::components::TensorData>(&mut registry);
-    add::<re_types::components::Transform3D>(&mut registry);
-    add::<re_types::components::OutOfTreeTransform3D>(&mut registry);
-    add::<re_types::components::ViewCoordinates>(&mut registry);
+    add_to_registry::<re_types::components::AnnotationContext>(&mut registry);
+    add_to_registry::<re_types::components::ClassId>(&mut registry);
+    add_to_registry::<re_types::components::Color>(&mut registry);
+    add_to_registry::<re_types::components::PinholeProjection>(&mut registry);
+    add_to_registry::<re_types::components::KeypointId>(&mut registry);
+    add_to_registry::<re_types::components::LineStrip2D>(&mut registry);
+    add_to_registry::<re_types::components::LineStrip3D>(&mut registry);
+    add_to_registry::<re_types::components::Resolution>(&mut registry);
+    add_to_registry::<re_types::components::Rotation3D>(&mut registry);
+    add_to_registry::<re_types::components::Material>(&mut registry);
+    add_to_registry::<re_types::components::MeshProperties>(&mut registry);
+    add_to_registry::<re_types::components::TensorData>(&mut registry);
+    add_to_registry::<re_types::components::Transform3D>(&mut registry);
+    add_to_registry::<re_types::components::OutOfTreeTransform3D>(&mut registry);
+    add_to_registry::<re_types::components::ViewCoordinates>(&mut registry);
 
-    add::<re_types::blueprint::components::IncludedQueries>(&mut registry);
+    add_to_registry::<re_types::blueprint::components::IncludedQueries>(&mut registry);
 
     registry
+}
+
+/// Registers how to show a given component in the ui.
+pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut ComponentUiRegistry) {
+    registry.add(
+        C::name(),
+        Box::new(
+            |ctx, ui, verbosity, query, entity_path, component, instance| match component
+                .lookup::<C>(instance)
+            {
+                Ok(component) => {
+                    component.entity_data_ui(ctx, ui, verbosity, entity_path, query);
+                }
+                Err(re_query::QueryError::ComponentNotFound) => {
+                    ui.weak("(not found)");
+                }
+                Err(err) => {
+                    re_log::warn_once!("Expected component {}, {}", C::name(), err);
+                }
+            },
+        ),
+    );
 }
 
 fn fallback_component_ui(

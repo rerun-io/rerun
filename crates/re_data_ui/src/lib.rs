@@ -29,7 +29,7 @@ pub use crate::image::{
     show_zoomed_image_region, show_zoomed_image_region_area_outline,
     tensor_summary_ui_grid_contents,
 };
-pub use component_ui_registry::create_component_ui_registry;
+pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
 pub use image_meaning::image_meaning_for_entity;
 
 /// Filter out components that should not be shown in the UI,
