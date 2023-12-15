@@ -222,7 +222,7 @@ impl Viewport<'_, '_> {
         };
 
         let group_is_visible =
-            top_node.data_result.resolved_properties.visible && space_view_visible;
+            top_node.data_result.resolved_properties().visible && space_view_visible;
 
         // Always real children ahead of groups
         for child in top_node

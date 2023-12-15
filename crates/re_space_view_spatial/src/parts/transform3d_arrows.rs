@@ -67,7 +67,7 @@ impl ViewPartSystem for Transform3DArrowsPart {
                 continue;
             }
 
-            if !*data_result.resolved_properties.transform_3d_visible {
+            if !*data_result.resolved_properties().transform_3d_visible {
                 continue;
             }
 
@@ -91,7 +91,7 @@ impl ViewPartSystem for Transform3DArrowsPart {
                 &mut line_builder,
                 world_from_obj,
                 Some(&data_result.entity_path),
-                *data_result.resolved_properties.transform_3d_size,
+                *data_result.resolved_properties().transform_3d_size,
                 query
                     .highlights
                     .entity_outline_mask(data_result.entity_path.hash())

@@ -87,7 +87,7 @@ impl SpaceViewClass for DataframeSpaceView {
         // These are the entity paths whose content we must display.
         let sorted_entity_paths: BTreeSet<_> = query
             .iter_all_data_results()
-            .filter(|data_result| data_result.resolved_properties.visible)
+            .filter(|data_result| data_result.resolved_properties().visible)
             .map(|data_result| &data_result.entity_path)
             .cloned()
             .collect();

@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use itertools::Itertools;
+use once_cell::sync::Lazy;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
 use re_log_types::{DataCell, DataRow, RowId, TimePoint};
@@ -40,7 +41,7 @@ pub struct DataResult {
     /// The resolved properties (including any hierarchical flattening) to apply.
     // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.
     // For now, bundling this here acts as a good proxy for that future data-override mechanism.
-    pub resolved_properties: EntityProperties,
+    pub accumulated_properties: Option<EntityProperties>,
 
     /// The individual property set in this `DataResult`, if any.
     pub individual_properties: Option<EntityProperties>,
@@ -48,6 +49,8 @@ pub struct DataResult {
     /// `EntityPath` in the Blueprint store where updated overrides should be written back.
     pub override_path: EntityPath,
 }
+
+static DEFAULT_PROPS: Lazy<EntityProperties> = Lazy::<EntityProperties>::new(Default::default);
 
 impl DataResult {
     /// Write the [`EntityProperties`] for this result back to the Blueprint store.
@@ -104,6 +107,12 @@ impl DataResult {
                 vec![row],
             ));
     }
+
+    pub fn resolved_properties(&self) -> &EntityProperties {
+        self.accumulated_properties
+            .as_ref()
+            .unwrap_or(&DEFAULT_PROPS)
+    }
 }
 
 pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataResult>>;
@@ -144,7 +153,7 @@ impl<'s> ViewQuery<'s> {
                 itertools::Either::Right(
                     results
                         .iter()
-                        .filter(|result| result.resolved_properties.visible)
+                        .filter(|result| result.resolved_properties().visible)
                         .copied(),
                 )
             },

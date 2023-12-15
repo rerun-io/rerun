@@ -403,7 +403,7 @@ impl SpaceViewBlueprint {
             .query_timeless_component_quiet::<EntityPropertiesComponent>(&self.entity_path())
             .map(|result| result.value.0);
 
-        let resolved_properties = individual_properties.clone().unwrap_or_else(|| {
+        let accumulated_properties = individual_properties.clone().unwrap_or_else(|| {
             let mut props = EntityProperties::default();
             // better defaults for the time series space view
             // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
@@ -419,7 +419,7 @@ impl SpaceViewBlueprint {
             view_parts: Default::default(),
             is_group: true,
             direct_included: true,
-            resolved_properties,
+            accumulated_properties: Some(accumulated_properties),
             individual_properties,
             override_path: entity_path,
         }
@@ -555,7 +555,7 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert_eq!(result.resolved_properties, EntityProperties::default(),);
+                assert_eq!(result.resolved_properties(), &EntityProperties::default(),);
             }
 
             // Now, override visibility on parent but not group
@@ -592,10 +592,10 @@ mod tests {
                 .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
                 .unwrap();
 
-            assert!(!parent.resolved_properties.visible);
+            assert!(!parent.resolved_properties().visible);
 
             for result in [child1, child2] {
-                assert!(result.resolved_properties.visible);
+                assert!(result.resolved_properties().visible);
             }
 
             // Override visibility on parent group
@@ -632,7 +632,7 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(!result.resolved_properties.visible);
+                assert!(!result.resolved_properties().visible);
             }
         }
 
@@ -674,9 +674,9 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(result.resolved_properties.visible_history.enabled);
+                assert!(result.resolved_properties().visible_history.enabled);
                 assert_eq!(
-                    result.resolved_properties.visible_history.nanos,
+                    result.resolved_properties().visible_history.nanos,
                     VisibleHistory::ALL
                 );
             }
@@ -711,16 +711,16 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1] {
-                assert!(result.resolved_properties.visible_history.enabled);
+                assert!(result.resolved_properties().visible_history.enabled);
                 assert_eq!(
-                    result.resolved_properties.visible_history.nanos,
+                    result.resolved_properties().visible_history.nanos,
                     VisibleHistory::ALL
                 );
             }
 
-            assert!(child2.resolved_properties.visible_history.enabled);
+            assert!(child2.resolved_properties().visible_history.enabled);
             assert_eq!(
-                child2.resolved_properties.visible_history.nanos,
+                child2.resolved_properties().visible_history.nanos,
                 VisibleHistory::OFF
             );
         }

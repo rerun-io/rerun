@@ -421,10 +421,10 @@ impl<'a> QueryExpressionEvaluator<'a> {
             Default::default()
         };
 
-        let mut resolved_properties = inherited.clone();
+        let mut accumulated_properties = inherited.clone();
 
         if let Some(props) = overrides.group.get_opt(&entity_path) {
-            resolved_properties = resolved_properties.with_child(props);
+            accumulated_properties = accumulated_properties.with_child(props);
         }
 
         let base_entity_path = self.blueprint.id.as_entity_path().clone();
@@ -438,10 +438,10 @@ impl<'a> QueryExpressionEvaluator<'a> {
 
         let self_leaf = if !view_parts.is_empty() || exact_include {
             let individual_props = overrides.individual.get_opt(&entity_path);
-            let mut leaf_resolved_properties = resolved_properties.clone();
+            let mut leaf_accumulated_properties = accumulated_properties.clone();
 
             if let Some(props) = individual_props {
-                leaf_resolved_properties = leaf_resolved_properties.with_child(props);
+                leaf_accumulated_properties = leaf_accumulated_properties.with_child(props);
             }
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
@@ -450,7 +450,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     is_group: false,
                     direct_included: any_match,
                     individual_properties: overrides.individual.get_opt(&entity_path).cloned(),
-                    resolved_properties: leaf_resolved_properties,
+                    accumulated_properties: Some(leaf_accumulated_properties),
                     override_path: individual_override_path,
                 },
                 children: Default::default(),
@@ -470,7 +470,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                 self.add_entity_tree_to_data_results_recursive(
                     subtree,
                     overrides,
-                    &resolved_properties,
+                    &accumulated_properties,
                     data_results,
                     recursive_include, // Once we have hit a recursive match, it's always propagated
                 )
@@ -490,7 +490,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     is_group: true,
                     direct_included: any_match,
                     individual_properties,
-                    resolved_properties,
+                    accumulated_properties: Some(accumulated_properties),
                     override_path: recursive_override_path,
                 },
                 children,

@@ -132,14 +132,14 @@ impl TimeSeriesSystem {
 
             let visible_history = match query.timeline.typ() {
                 re_log_types::TimeType::Time => {
-                    data_result.resolved_properties.visible_history.nanos
+                    data_result.resolved_properties().visible_history.nanos
                 }
                 re_log_types::TimeType::Sequence => {
-                    data_result.resolved_properties.visible_history.sequences
+                    data_result.resolved_properties().visible_history.sequences
                 }
             };
 
-            let (from, to) = if data_result.resolved_properties.visible_history.enabled {
+            let (from, to) = if data_result.resolved_properties().visible_history.enabled {
                 (
                     visible_history.from(query.latest_at),
                     visible_history.to(query.latest_at),
