@@ -6,10 +6,11 @@ use re_smart_channel::ReceiveSet;
 use re_space_view::DataQuery as _;
 use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
-    SelectionState, SpaceViewClassRegistry, StoreContext, ViewerContext,
+    SelectionState, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{
-    identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportState,
+    identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportBlueprint,
+    ViewportState,
 };
 
 use crate::ui::recordings_panel_ui;
@@ -104,7 +105,25 @@ impl AppState {
             viewport_state,
         } = self;
 
-        let mut viewport = Viewport::from_db(store_context.blueprint, viewport_state);
+        let viewport_blueprint = ViewportBlueprint::try_from_db(store_context.blueprint);
+        let mut viewport = Viewport::new(
+            &viewport_blueprint,
+            viewport_state,
+            space_view_class_registry,
+        );
+
+        // If the blueprint is invalid, reset it.
+        if viewport.blueprint.is_invalid() {
+            re_log::warn!("Incompatible blueprint detected. Resetting to default.");
+            command_sender.send_system(re_viewer_context::SystemCommand::ResetBlueprint);
+
+            // The blueprint isn't valid so nothing past this is going to work properly.
+            // we might as well return and it will get fixed on the next frame.
+
+            // TODO(jleibs): If we move viewport loading up to a context where the StoreDb is mutable
+            // we can run the clear and re-load.
+            return;
+        }
 
         recording_config_entry(recording_configs, store_db.store_id().clone(), store_db)
             .selection_state
@@ -125,11 +144,11 @@ impl AppState {
             viewport
                 .blueprint
                 .space_views
-                .values_mut()
+                .values()
                 .flat_map(|space_view| {
                     space_view.queries.iter().map(|query| {
-                        let resolver =
-                            query.build_resolver(space_view.id, &space_view.auto_properties);
+                        let props = viewport.state.space_view_props(space_view.id);
+                        let resolver = query.build_resolver(space_view.id, props);
                         (
                             query.id,
                             query.execute_query(
@@ -163,12 +182,6 @@ impl AppState {
         // have the latest information.
         let spaces_info = SpaceInfoCollection::new(ctx.store_db);
 
-        // If the blueprint is invalid, reset it.
-        if viewport.blueprint.is_invalid() {
-            re_log::warn!("Incompatible blueprint detected. Resetting to default.");
-            viewport.blueprint.reset(&ctx, &spaces_info);
-        }
-
         viewport.on_frame_start(&ctx, &spaces_info);
 
         // TODO(jleibs): Running the queries a second time is annoying, but we need
@@ -179,11 +192,11 @@ impl AppState {
             viewport
                 .blueprint
                 .space_views
-                .values_mut()
+                .values()
                 .flat_map(|space_view| {
                     space_view.queries.iter().map(|query| {
-                        let resolver =
-                            query.build_resolver(space_view.id, &space_view.auto_properties);
+                        let props = viewport.state.space_view_props(space_view.id);
+                        let resolver = query.build_resolver(space_view.id, props);
                         (
                             query.id,
                             query.execute_query(
@@ -243,7 +256,7 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(&mut viewport.blueprint, &ctx, ui, &spaces_info);
+                        blueprint_panel_ui(&mut viewport, &ctx, ui, &spaces_info);
                     },
                 );
 
@@ -266,7 +279,8 @@ impl AppState {
                     });
             });
 
-        viewport.sync_blueprint_changes(command_sender);
+        // Process deferred layout operations and apply updates back to blueprint
+        viewport.update_and_sync_tile_tree_to_blueprint(&ctx);
 
         {
             // We move the time at the very end of the frame,

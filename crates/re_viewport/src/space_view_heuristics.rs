@@ -314,35 +314,42 @@ pub fn default_created_space_views(
 
         // `AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot` means we're competing with other candidates for the same root.
         if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score) = spawn_heuristic {
-            let mut should_spawn_new = true;
+            // [`SpaceViewBlueprint`]s don't implement clone so wrap in an option so we can
+            // track whether or not we've consumed it.
+            let mut candidate_still_considered = Some(candidate);
+
             for (prev_candidate, prev_spawn_heuristic) in &mut space_views {
-                if prev_candidate.space_origin == candidate.space_origin {
-                    #[allow(clippy::match_same_arms)]
-                    match prev_spawn_heuristic {
-                        AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(prev_score) => {
-                            // If we're competing with a candidate for the same root, we either replace a lower score, or we yield.
-                            should_spawn_new = false;
-                            if *prev_score < score {
-                                // Replace the previous candidate with this one.
-                                *prev_candidate = candidate.clone();
-                                *prev_spawn_heuristic = spawn_heuristic;
-                            } else {
-                                // We have a lower score, so we don't spawn.
+                if let Some(candidate) = candidate_still_considered.take() {
+                    if prev_candidate.space_origin == candidate.space_origin {
+                        #[allow(clippy::match_same_arms)]
+                        match prev_spawn_heuristic {
+                            AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(prev_score) => {
+                                // If we're competing with a candidate for the same root, we either replace a lower score, or we yield.
+                                if *prev_score < score {
+                                    // Replace the previous candidate with this one.
+                                    *prev_candidate = candidate;
+                                    *prev_spawn_heuristic = spawn_heuristic;
+                                }
+
+                                // Either way we're done with this candidate.
                                 break;
                             }
-                        }
-                        AutoSpawnHeuristic::AlwaysSpawn => {
-                            // We can live side by side with always-spawn candidates.
-                        }
-                        AutoSpawnHeuristic::NeverSpawn => {
-                            // Never spawn candidates should not be in the list, this is weird!
-                            // But let's not fail on this since our heuristics are not perfect anyways.
+                            AutoSpawnHeuristic::AlwaysSpawn => {
+                                // We can live side by side with always-spawn candidates.
+                            }
+                            AutoSpawnHeuristic::NeverSpawn => {
+                                // Never spawn candidates should not be in the list, this is weird!
+                                // But let's not fail on this since our heuristics are not perfect anyways.
+                            }
                         }
                     }
+
+                    // If we didn't hit the break condition, continue to consider the candidate
+                    candidate_still_considered = Some(candidate);
                 }
             }
 
-            if should_spawn_new {
+            if let Some(candidate) = candidate_still_considered {
                 // Spatial views with images get extra treatment as well.
                 if is_spatial_2d_class(candidate.class_identifier()) {
                     #[derive(Hash, PartialEq, Eq)]

@@ -1,9 +1,9 @@
 use re_viewer_context::{SystemCommandSender as _, ViewerContext};
-use re_viewport::{SpaceInfoCollection, ViewportBlueprint};
+use re_viewport::{SpaceInfoCollection, Viewport};
 
-/// Show the Blueprint section of the left panel based on the current [`ViewportBlueprint`]
+/// Show the Blueprint section of the left panel based on the current [`Viewport`]
 pub fn blueprint_panel_ui(
-    blueprint: &mut ViewportBlueprint<'_>,
+    viewport: &mut Viewport<'_, '_>,
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
@@ -14,7 +14,7 @@ pub fn blueprint_panel_ui(
             "Blueprint",
             Some("The Blueprint is where you can configure the Rerun Viewer"),
             |ui| {
-                blueprint.add_new_spaceview_button_ui(ctx, ui, spaces_info);
+                viewport.add_new_spaceview_button_ui(ctx, ui, spaces_info);
                 reset_blueprint_button_ui(ctx, ui);
             },
         );
@@ -22,7 +22,7 @@ pub fn blueprint_panel_ui(
 
     // This call is excluded from `panel_content` because it has a ScrollArea, which should not be
     // inset. Instead, it calls panel_content itself inside the ScrollArea.
-    blueprint.tree_ui(ctx, ui);
+    viewport.tree_ui(ctx, ui);
 }
 
 fn reset_blueprint_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {

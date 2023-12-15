@@ -1,17 +1,19 @@
-use ahash::HashSet;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 
-use re_log_types::{EntityPathExpr, Timeline};
+use re_log_types::{DataRow, EntityPathExpr, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQueryBlueprint, ScreenshotMode};
 use re_space_view_time_series::TimeSeriesSpaceView;
+use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin};
+use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState,
-    StoreContext, SystemExecutionOutput, ViewQuery, ViewerContext,
+    StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 
 use crate::system_execution::create_and_run_space_view_systems;
@@ -19,7 +21,13 @@ use crate::system_execution::create_and_run_space_view_systems;
 // ----------------------------------------------------------------------------
 
 /// A view of a space.
-#[derive(Clone)]
+///
+/// Note: [`SpaceViewBlueprint`] doesn't implement Clone because it stores an internal
+/// uuid used for identifying the path of its data in the blueprint store. It's ambiguous
+/// whether the intent is for a clone to write to the same place.
+///
+/// If you want a new space view otherwise identical to an existing one, use
+/// [`SpaceViewBlueprint::duplicate`].
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
@@ -36,36 +44,13 @@ pub struct SpaceViewBlueprint {
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
-
-    /// Auto Properties
-    // TODO(jleibs): This needs to be per-query
-    pub auto_properties: EntityPropertyMap,
-}
-
-/// Determine whether this `SpaceViewBlueprint` has user-edits relative to another `SpaceViewBlueprint`
-impl SpaceViewBlueprint {
-    pub fn has_edits(&self, other: &Self) -> bool {
-        let Self {
-            id,
-            display_name,
-            class_identifier,
-            space_origin,
-            queries,
-            entities_determined_by_user,
-            auto_properties: _,
-        } = self;
-
-        id != &other.id
-            || display_name != &other.display_name
-            || class_identifier != &other.class_identifier
-            || space_origin != &other.space_origin
-            || queries.iter().map(|q| q.id).collect::<HashSet<_>>()
-                != other.queries.iter().map(|q| q.id).collect::<HashSet<_>>()
-            || entities_determined_by_user != &other.entities_determined_by_user
-    }
 }
 
 impl SpaceViewBlueprint {
+    /// Creates a new [`SpaceViewBlueprint`] with a single [`DataQueryBlueprint`].
+    ///
+    /// This [`SpaceViewBlueprint`] is ephemeral. If you want to make it permanent you
+    /// must call [`Self::save_to_blueprint_store`].
     pub fn new(
         space_view_class: SpaceViewClassIdentifier,
         space_view_class_display_name: &str,
@@ -92,11 +77,11 @@ impl SpaceViewBlueprint {
             space_origin: space_path.clone(),
             queries: vec![query],
             entities_determined_by_user: false,
-            auto_properties: Default::default(),
         }
     }
 
-    pub fn try_from_db(path: &EntityPath, blueprint_db: &StoreDb) -> Option<Self> {
+    /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
+    pub fn try_from_db(id: SpaceViewId, blueprint_db: &StoreDb) -> Option<Self> {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
@@ -107,7 +92,7 @@ impl SpaceViewBlueprint {
             space_origin,
             entities_determined_by_user,
             contents,
-        } = query_archetype(blueprint_db.store(), &query, path)
+        } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
                 if cfg!(debug_assertions) {
@@ -118,8 +103,6 @@ impl SpaceViewBlueprint {
                 err
             })
             .ok()?;
-
-        let id = SpaceViewId::from_entity_path(path);
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
 
@@ -142,13 +125,7 @@ impl SpaceViewBlueprint {
             .0
             .into_iter()
             .map(DataQueryId::from)
-            .filter_map(|id| {
-                DataQueryBlueprint::try_from_db(
-                    &id.as_entity_path(),
-                    blueprint_db,
-                    class_identifier,
-                )
-            })
+            .filter_map(|id| DataQueryBlueprint::try_from_db(id, blueprint_db, class_identifier))
             .collect();
 
         let entities_determined_by_user = entities_determined_by_user.unwrap_or_default().0;
@@ -160,8 +137,90 @@ impl SpaceViewBlueprint {
             space_origin,
             queries,
             entities_determined_by_user,
-            auto_properties: Default::default(),
         })
+    }
+
+    /// Persist the entire [`SpaceViewBlueprint`] to the blueprint store.
+    ///
+    /// This only needs to be called if the [`SpaceViewBlueprint`] was created with [`Self::new`].
+    ///
+    /// Otherwise, incremental calls to `set_` functions will write just the necessary component
+    /// update directly to the store.
+    pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
+        let timepoint = TimePoint::timeless();
+
+        let arch = re_types::blueprint::archetypes::SpaceViewBlueprint::new(
+            self.class_identifier().as_str(),
+        )
+        .with_display_name(self.display_name.clone())
+        .with_space_origin(&self.space_origin)
+        .with_entities_determined_by_user(self.entities_determined_by_user)
+        .with_contents(self.queries.iter().map(|q| q.id));
+
+        let mut deltas = vec![];
+
+        if let Ok(row) =
+            DataRow::from_archetype(RowId::new(), timepoint.clone(), self.entity_path(), &arch)
+        {
+            deltas.push(row);
+        }
+
+        for query in &self.queries {
+            query.save_to_blueprint_store(ctx);
+        }
+
+        ctx.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                ctx.store_context.blueprint.store_id().clone(),
+                deltas,
+            ));
+    }
+
+    /// Creates a new [`SpaceViewBlueprint`] with a the same contents, but a different [`SpaceViewId`]
+    ///
+    /// Also duplicates all of the queries in the space view.
+    pub fn duplicate(&self) -> Self {
+        Self {
+            id: SpaceViewId::random(),
+            display_name: self.display_name.clone(),
+            class_identifier: self.class_identifier,
+            space_origin: self.space_origin.clone(),
+            queries: self.queries.iter().map(|q| q.duplicate()).collect(),
+            entities_determined_by_user: self.entities_determined_by_user,
+        }
+    }
+
+    pub fn clear(&self, ctx: &ViewerContext<'_>) {
+        let clear = Clear::recursive();
+        ctx.save_blueprint_component(&self.entity_path(), clear.is_recursive);
+
+        for query in &self.queries {
+            query.clear(ctx);
+        }
+    }
+
+    #[inline]
+    pub fn set_entity_determined_by_user(&self, ctx: &ViewerContext<'_>) {
+        if !self.entities_determined_by_user {
+            let component = EntitiesDeterminedByUser(true);
+            ctx.save_blueprint_component(&self.entity_path(), component);
+        }
+    }
+
+    #[inline]
+    pub fn set_display_name(&self, name: String, ctx: &ViewerContext<'_>) {
+        if name != self.display_name {
+            let component = Name(name.into());
+            ctx.save_blueprint_component(&self.entity_path(), component);
+        }
+    }
+
+    #[inline]
+    pub fn set_origin(&self, origin: &EntityPath, ctx: &ViewerContext<'_>) {
+        if origin != &self.space_origin {
+            let component = SpaceViewOrigin(origin.into());
+            ctx.save_blueprint_component(&self.entity_path(), component);
+        }
     }
 
     pub fn class_identifier(&self) -> &SpaceViewClassIdentifier {
@@ -175,7 +234,12 @@ impl SpaceViewBlueprint {
         space_view_class_registry.get_class_or_log_error(&self.class_identifier)
     }
 
-    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, view_state: &mut dyn SpaceViewState) {
+    pub fn on_frame_start(
+        &self,
+        ctx: &ViewerContext<'_>,
+        view_state: &mut dyn SpaceViewState,
+        view_props: &mut EntityPropertyMap,
+    ) {
         while ScreenshotProcessor::next_readback_result(
             ctx.render_ctx,
             self.id.gpu_readback_id(),
@@ -207,7 +271,7 @@ impl SpaceViewBlueprint {
             ctx,
             view_state,
             &per_system_entities,
-            &mut self.auto_properties,
+            view_props,
         );
     }
 
@@ -362,26 +426,26 @@ impl SpaceViewBlueprint {
     }
 
     // TODO(jleibs): Get rid of mut by sending blueprint update
-    pub fn add_entity_exclusion(&mut self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
         if let Some(query) = self.queries.first() {
             query.add_entity_exclusion(ctx, expr);
         }
-        self.entities_determined_by_user = true;
+        self.set_entity_determined_by_user(ctx);
     }
 
     // TODO(jleibs): Get rid of mut by sending blueprint update
-    pub fn add_entity_inclusion(&mut self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
         if let Some(query) = self.queries.first() {
             query.add_entity_inclusion(ctx, expr);
         }
-        self.entities_determined_by_user = true;
+        self.set_entity_determined_by_user(ctx);
     }
 
-    pub fn clear_entity_expression(&mut self, ctx: &ViewerContext<'_>, expr: &EntityPathExpr) {
+    pub fn clear_entity_expression(&self, ctx: &ViewerContext<'_>, expr: &EntityPathExpr) {
         if let Some(query) = self.queries.first() {
             query.clear_entity_expression(ctx, expr);
         }
-        self.entities_determined_by_user = true;
+        self.set_entity_determined_by_user(ctx);
     }
 
     pub fn exclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
@@ -449,6 +513,8 @@ mod tests {
             ),
         );
 
+        let auto_properties = Default::default();
+
         let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
         entities_per_system_per_class
             .entry("3D".into())
@@ -465,7 +531,7 @@ mod tests {
 
         let query = space_view.queries.first().unwrap();
 
-        let resolver = query.build_resolver(space_view.id, &space_view.auto_properties);
+        let resolver = query.build_resolver(space_view.id, &auto_properties);
 
         // No overrides set. Everybody has default values.
         {
