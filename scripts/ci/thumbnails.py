@@ -8,20 +8,14 @@ from io import BytesIO
 from pathlib import Path
 from typing import Generator
 
-import frontmatter
 import requests
 from PIL import Image
 
-
-def load_frontmatter(s: str) -> frontmatter.Post:
-    return frontmatter.loads(
-        s,
-        handler=frontmatter.TOMLHandler(start_delimiter="---", end_delimiter="---"),
-    )
+from ..frontmatter import Frontmatter, load_frontmatter
 
 
 class Example:
-    def __init__(self, path: Path, readme: str, fm: frontmatter.Post) -> None:
+    def __init__(self, path: Path, readme: str, fm: Frontmatter) -> None:
         self.path = path
         self.readme = readme
         self.fm = fm
