@@ -448,7 +448,7 @@ pub fn reachable_entities_from_root(
                 space_info
                     .descendants_without_transform
                     .iter()
-                    .filter(|ent_path| (ent_path.is_descendant_of(root) || ent_path == &root))
+                    .filter(|ent_path| ent_path.starts_with(root))
                     .cloned(),
             );
         });

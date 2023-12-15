@@ -1,23 +1,23 @@
 include "arrow/attributes.fbs";
-include "docs/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
 
-include "rerun/attributes.fbs";
 include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
 
 namespace rerun.blueprint.components;
 
 // ---
 
-/// A view of a space.
+
+/// All the queries belonging to a given `SpaceView`.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-table SpaceViewComponent (
+table IncludedQueries (
   "attr.docs.unreleased",
   "attr.rerun.scope": "blueprint",
-  "attr.docs.unreleased",
-  "attr.rust.derive_only": "Clone"
+  "attr.rust.derive": "Default",
+  "attr.rust.repr": "transparent"
 ) {
-  component: rerun.blueprint.datatypes.SpaceViewComponent (order: 100);
+  query_ids: [rerun.datatypes.Uuid] (order: 100);
 }

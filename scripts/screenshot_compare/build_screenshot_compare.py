@@ -151,11 +151,21 @@ def collect_code_examples() -> Iterable[Example]:
 
 
 def build_demo_examples() -> None:
-    cmd = ["cargo", "run", "--locked", "-p", "re_build_examples", "--", "example_data"]
+    # fmt: off
+    cmd = [
+        "cargo", "run", "--locked",
+        "-p", "re_build_examples", "--",
+        "rrd", "example_data",
+    ]
     run(cmd, cwd=RERUN_DIR)
 
-    cmd = ["cargo", "run", "--locked", "-p", "re_build_examples_manifest", "--", "example_data/examples_manifest.json"]
+    cmd = [
+        "cargo", "run", "--locked",
+        "-p", "re_build_examples", "--",
+        "manifest", "example_data/examples_manifest.json",
+    ]
     run(cmd, cwd=RERUN_DIR)
+    # fmt: on
 
 
 def collect_demo_examples() -> Iterable[Example]:

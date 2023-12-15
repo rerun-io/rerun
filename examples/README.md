@@ -47,3 +47,8 @@ The `manifest.yml` file describes the structure of the examples contained in thi
 
 You can base your example off of `python/template` or `rust/template`.
 Once it's ready to be displayed in the docs, add it to the [manifest](./manifest.yml).
+
+If you want to run the example on CI and include it in the in-viewer example page,
+add a `channel` entry to its README frontmatter. The available channels right now are:
+- `main` for simple/fast examples built on each PR and the `main` branch
+- `nightly` for heavier examples built once per day

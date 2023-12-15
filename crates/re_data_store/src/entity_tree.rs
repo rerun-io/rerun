@@ -19,35 +19,20 @@ use crate::TimeHistogramPerTimeline;
 // ----------------------------------------------------------------------------
 
 /// A recursive, manually updated [`re_arrow_store::StoreSubscriber`] that maintains the entity hierarchy.
+///
+/// The tree contains a list of subtrees, and so on recursively.
 pub struct EntityTree {
-    /// Full path to the root of this tree.
+    /// Full path prefix to the root of this (sub)tree.
     pub path: EntityPath,
 
+    /// Direct descendants of this (sub)tree.
     pub children: BTreeMap<EntityPathPart, EntityTree>,
 
-    /// Recursive time histogram for this [`EntityTree`].
-    ///
-    /// Keeps track of the _number of components logged_ per time per timeline, recursively across
-    /// all of the [`EntityTree`]'s children.
-    /// A component logged twice at the same timestamp is counted twice.
-    ///
-    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
-    pub recursive_time_histogram: TimeHistogramPerTimeline,
+    /// Information about this specific entity (excluding children).
+    pub entity: EntityInfo,
 
-    /// Book-keeping around whether we should clear fields when data is added.
-    pub flat_clears: BTreeMap<RowId, TimePoint>,
-
-    /// Book-keeping around whether we should clear recursively when data is added.
-    pub recursive_clears: BTreeMap<RowId, TimePoint>,
-
-    /// Flat time histograms for each component of this [`EntityTree`].
-    ///
-    /// Keeps track of the _number of times a component is logged_ per time per timeline, only for
-    /// this specific [`EntityTree`].
-    /// A component logged twice at the same timestamp is counted twice.
-    ///
-    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
-    pub time_histograms_per_component: BTreeMap<ComponentName, TimeHistogramPerTimeline>,
+    /// Info about this subtree, including all children, recursively.
+    pub subtree: SubtreeInfo,
 }
 
 // NOTE: This is only to let people know that this is in fact a [`StoreSubscriber`], so they A) don't try
@@ -70,6 +55,79 @@ impl StoreSubscriber for EntityTree {
         unimplemented!(
             r"EntityTree view is maintained manually, see `EntityTree::on_store_{{additions|deletions}}`"
         );
+    }
+}
+
+/// Information about this specific entity (excluding children).
+#[derive(Default)]
+pub struct EntityInfo {
+    /// Book-keeping around whether we should clear fields when data is added.
+    clears: BTreeMap<RowId, TimePoint>,
+
+    /// Flat time histograms for each component of this [`EntityTree`].
+    ///
+    /// Keeps track of the _number of times a component is logged_ per time per timeline, only for
+    /// this specific [`EntityTree`].
+    /// A component logged twice at the same timestamp is counted twice.
+    ///
+    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
+    pub components: BTreeMap<ComponentName, TimeHistogramPerTimeline>,
+}
+
+/// Info about stuff at a given [`EntityPath`], including all of its children, recursively.
+#[derive(Default)]
+pub struct SubtreeInfo {
+    /// Book-keeping around whether we should clear recursively when data is added.
+    clears: BTreeMap<RowId, TimePoint>,
+
+    /// Recursive time histogram for this [`EntityTree`].
+    ///
+    /// Keeps track of the _number of components logged_ per time per timeline, recursively across
+    /// all of the [`EntityTree`]'s children.
+    /// A component logged twice at the same timestamp is counted twice.
+    ///
+    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
+    pub time_histogram: TimeHistogramPerTimeline,
+
+    /// Number of bytes used by all arrow data
+    data_bytes: u64,
+}
+
+impl SubtreeInfo {
+    /// Assumes the event has been filtered to be part of this subtree.
+    fn on_event(&mut self, event: &StoreEvent) {
+        use re_types_core::SizeBytes as _;
+
+        match event.kind {
+            StoreDiffKind::Addition => {
+                self.time_histogram
+                    .add(&event.times, event.num_components() as _);
+
+                for cell in event.cells.values() {
+                    self.data_bytes += cell.total_size_bytes();
+                }
+            }
+            StoreDiffKind::Deletion => {
+                self.time_histogram
+                    .remove(&event.timepoint(), event.num_components() as _);
+
+                for cell in event.cells.values() {
+                    if let Some(bytes_left) = self.data_bytes.checked_sub(cell.total_size_bytes()) {
+                        self.data_bytes = bytes_left;
+                    } else if cfg!(debug_assertions) {
+                        re_log::warn_once!(
+                            "Error in book-keeping: we've removed more bytes then we've added"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// Number of bytes used by all arrow data in this tree (including their schemas, but otherwise ignoring book-keeping overhead).
+    #[inline]
+    pub fn data_bytes(&self) -> u64 {
+        self.data_bytes
     }
 }
 
@@ -159,10 +217,14 @@ impl EntityTree {
         Self {
             path,
             children: Default::default(),
-            recursive_time_histogram: Default::default(),
-            flat_clears: recursive_clears.clone(),
-            recursive_clears,
-            time_histograms_per_component: Default::default(),
+            entity: EntityInfo {
+                clears: recursive_clears.clone(),
+                ..Default::default()
+            },
+            subtree: SubtreeInfo {
+                clears: recursive_clears,
+                ..Default::default()
+            },
         }
     }
 
@@ -172,11 +234,12 @@ impl EntityTree {
     }
 
     pub fn num_children_and_fields(&self) -> usize {
-        self.children.len() + self.time_histograms_per_component.len()
+        self.children.len() + self.entity.components.len()
     }
 
-    pub fn num_timeless_messages(&self) -> u64 {
-        self.recursive_time_histogram.num_timeless_messages()
+    /// Number of timeless messages in this tree, or any child, recursively.
+    pub fn num_timeless_messages_recursive(&self) -> u64 {
+        self.subtree.time_histogram.num_timeless_messages()
     }
 
     pub fn time_histogram_for_component(
@@ -184,7 +247,8 @@ impl EntityTree {
         timeline: &Timeline,
         component_name: impl Into<ComponentName>,
     ) -> Option<&crate::TimeHistogram> {
-        self.time_histograms_per_component
+        self.entity
+            .components
             .get(&component_name.into())
             .and_then(|per_timeline| per_timeline.get(timeline))
     }
@@ -197,22 +261,36 @@ impl EntityTree {
     ///
     /// Only reacts to additions (`event.kind == StoreDiffKind::Addition`).
     pub fn on_store_additions(&mut self, events: &[StoreEvent]) -> ClearCascade {
+        re_tracing::profile_function!();
+
         let mut clear_cascade = ClearCascade::default();
-
         for event in events.iter().filter(|e| e.kind == StoreDiffKind::Addition) {
-            // REMINDER: This will also update the recursive_time_histogram of each node we need to
-            // traverse on the way!
-            let leaf = self.create_subtrees_recursively(
-                event.diff.entity_path.as_slice(),
-                0,
-                &event.diff.times,
-                event.num_components() as _,
-            );
+            self.on_store_addition(event, &mut clear_cascade);
+        }
+        clear_cascade
+    }
 
-            leaf.on_added_data(&mut clear_cascade, &event.diff);
+    fn on_store_addition(&mut self, event: &StoreEvent, clear_cascade: &mut ClearCascade) {
+        re_tracing::profile_function!();
+
+        let entity_path = &event.diff.entity_path;
+
+        // Book-keeping for each level in the hierarchy:
+        let mut tree = self;
+        tree.subtree.on_event(event);
+
+        for (i, part) in entity_path.iter().enumerate() {
+            tree = tree.children.entry(part.clone()).or_insert_with(|| {
+                EntityTree::new(
+                    entity_path.as_slice()[..=i].into(),
+                    tree.subtree.clears.clone(),
+                )
+            });
+            tree.subtree.on_event(event);
         }
 
-        clear_cascade
+        // Finally book-keeping for the entity where data was actually added:
+        tree.on_added_data(clear_cascade, &event.diff);
     }
 
     /// Handles the addition of new data into the tree.
@@ -227,12 +305,13 @@ impl EntityTree {
             let mut pending_clears = vec![];
 
             let per_component = self
-                .time_histograms_per_component
+                .entity
+                .components
                 .entry(component_path.component_name)
                 .or_insert_with(|| {
                     // If we needed to create a new leaf to hold this data, we also want to
                     // insert all of the historical pending clear operations.
-                    pending_clears = self.flat_clears.clone().into_iter().collect_vec();
+                    pending_clears = self.entity.clears.clone().into_iter().collect_vec();
                     Default::default()
                 });
             per_component.add(&store_diff.times, 1);
@@ -317,16 +396,17 @@ impl EntityTree {
         ) -> impl IntoIterator<Item = ComponentPath> + '_ {
             if is_recursive {
                 // Track that any future children need a Null at the right timepoint when added.
-                let cur_timepoint = tree.recursive_clears.entry(row_id).or_default();
+                let cur_timepoint = tree.subtree.clears.entry(row_id).or_default();
                 *cur_timepoint = timepoint.clone().union_max(cur_timepoint);
             }
 
             // Track that any future fields need a Null at the right timepoint when added.
-            let cur_timepoint = tree.flat_clears.entry(row_id).or_default();
+            let cur_timepoint = tree.entity.clears.entry(row_id).or_default();
             *cur_timepoint = timepoint.union_max(cur_timepoint);
 
             // For every existing field return a clear event.
-            tree.time_histograms_per_component
+            tree.entity
+                .components
                 .keys()
                 // Don't clear `Clear` components, or we'd end up with recursive cascades!
                 .filter(|comp_name| filter_out_clear_components(comp_name))
@@ -408,73 +488,58 @@ impl EntityTree {
         let Self {
             path,
             children,
-            recursive_time_histogram,
-            flat_clears,
-            recursive_clears,
-            time_histograms_per_component: _,
+            entity,
+            subtree,
         } = self;
 
-        {
-            re_tracing::profile_scope!("flat_clears");
-            flat_clears.retain(|row_id, _| !compacted.row_ids.contains(row_id));
-        }
-        {
-            re_tracing::profile_scope!("recursive_clears");
-            recursive_clears.retain(|row_id, _| !compacted.row_ids.contains(row_id));
-        }
-
         // Only keep events relevant to this branch of the tree.
-        let filtered_events = store_events
+        let subtree_events = store_events
             .iter()
-            .filter(|e| &e.entity_path == path || e.entity_path.is_descendant_of(path))
+            .filter(|e| e.entity_path.starts_with(path))
             .copied() // NOTE: not actually copying, just removing the superfluous ref layer
             .collect_vec();
 
-        for event in filtered_events.iter().filter(|e| &e.entity_path == path) {
-            for component_name in event.cells.keys() {
-                if let Some(histo) = self.time_histograms_per_component.get_mut(component_name) {
-                    histo.remove(&event.timepoint(), 1);
-                    if histo.is_empty() {
-                        self.time_histograms_per_component.remove(component_name);
+        {
+            re_tracing::profile_scope!("entity");
+
+            {
+                re_tracing::profile_scope!("clears");
+                entity
+                    .clears
+                    .retain(|row_id, _| !compacted.row_ids.contains(row_id));
+            }
+
+            re_tracing::profile_scope!("components");
+            for event in subtree_events.iter().filter(|e| &e.entity_path == path) {
+                for component_name in event.cells.keys() {
+                    if let Some(histo) = entity.components.get_mut(component_name) {
+                        histo.remove(&event.timepoint(), 1);
+                        if histo.is_empty() {
+                            entity.components.remove(component_name);
+                        }
                     }
                 }
             }
         }
 
-        for event in &filtered_events {
-            recursive_time_histogram.remove(&event.timepoint(), event.num_components() as _);
+        {
+            re_tracing::profile_scope!("subtree");
+            {
+                re_tracing::profile_scope!("clears");
+                subtree
+                    .clears
+                    .retain(|row_id, _| !compacted.row_ids.contains(row_id));
+            }
+            re_tracing::profile_scope!("on_event");
+            for &event in &subtree_events {
+                subtree.on_event(event);
+            }
         }
 
         children.retain(|_, child| {
-            child.on_store_deletions(&filtered_events, compacted);
+            child.on_store_deletions(&subtree_events, compacted);
             child.num_children_and_fields() > 0
         });
-    }
-
-    /// Traverse on the tree and creates the missing nodes (if any) in order to reach `full_path`.
-    ///
-    /// This updates the recursive time histogram on each node it traverses!
-    fn create_subtrees_recursively(
-        &mut self,
-        full_path: &[EntityPathPart],
-        depth: usize,
-        times: &[(Timeline, TimeInt)],
-        num_components: u32,
-    ) -> &mut Self {
-        self.recursive_time_histogram.add(times, num_components);
-
-        match full_path.get(depth) {
-            None => {
-                self // end of path
-            }
-            Some(component) => self
-                .children
-                .entry(component.clone())
-                .or_insert_with(|| {
-                    EntityTree::new(full_path[..depth + 1].into(), self.recursive_clears.clone())
-                })
-                .create_subtrees_recursively(full_path, depth + 1, times, num_components),
-        }
     }
 
     pub fn subtree(&self, path: &EntityPath) -> Option<&Self> {

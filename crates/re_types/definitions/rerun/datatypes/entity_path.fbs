@@ -14,7 +14,7 @@ namespace rerun.datatypes;
 table EntityPath  (
   "attr.arrow.transparent",
   "attr.docs.unreleased",
-  "attr.rust.derive": "Default",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct",
   "attr.rust.override_crate": "re_types_core"

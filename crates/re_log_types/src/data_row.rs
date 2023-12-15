@@ -185,6 +185,12 @@ impl RowId {
     pub fn incremented_by(&self, n: u64) -> Self {
         Self(self.0.incremented_by(n))
     }
+
+    /// When the `RowId` was created, in nanoseconds since unix epoch.
+    #[inline]
+    pub fn nanoseconds_since_epoch(&self) -> u64 {
+        self.0.nanoseconds_since_epoch()
+    }
 }
 
 impl SizeBytes for RowId {

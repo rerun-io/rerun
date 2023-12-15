@@ -1,3 +1,5 @@
+use re_string_interner::InternedString;
+
 use crate::PathParseError;
 
 /// The different parts that make up an [`EntityPath`][crate::EntityPath].
@@ -14,21 +16,37 @@ use crate::PathParseError;
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EntityPathPart(
-    // TODO(emilk): consider other string types; e.g. interned strings, `Arc<str>`, …
-    String,
+    /// We use an interned string for fast copies, fast hashing, and to save memory.
+    /// Note that `re_string_interner` never frees memory, but even if a user
+    /// allocates 100k different entity parts (which is crazy many lot), the memory usage
+    /// will still only be in the low megabytes.
+    InternedString,
 );
 
 impl EntityPathPart {
     /// The given string is expected to be unescaped, i.e. any `\` is treated as a normal character.
     #[inline]
-    pub fn new(unescaped_string: impl Into<String>) -> Self {
+    pub fn new(unescaped_string: impl Into<InternedString>) -> Self {
         Self(unescaped_string.into())
     }
 
     /// Unescape the string, forgiving any syntax error with a best-effort approach.
     pub fn parse_forgiving(input: &str) -> Self {
+        Self::parse_forgiving_with_warning(input, None)
+    }
+
+    /// Unescape the string, forgiving any syntax error with a best-effort approach.
+    ///
+    /// Returns a warnings for potentially serious problems:
+    /// * any unknown escape sequences
+    /// * unescaped spaces
+    pub fn parse_forgiving_with_warning(
+        input: &str,
+        mut warnings: Option<&mut Vec<String>>,
+    ) -> Self {
         let mut output = String::with_capacity(input.len());
         let mut chars = input.chars();
+
         while let Some(c) = chars.next() {
             if c == '\\' {
                 if let Some(c) = chars.next() {
@@ -55,13 +73,30 @@ impl EntityPathPart {
                                 }
                             };
                         }
-                        _ => output.push(c),
+                        c if c.is_ascii_punctuation() || c == ' ' => {
+                            output.push(c);
+                        }
+                        _ => {
+                            if let Some(warnings) = warnings.as_mut() {
+                                // We want to warn on this, because it could be a serious mistake, like
+                                // passing a windows file path (`C:\Users\image.jpg`) as an entity path
+                                warnings.push(format!("Unknown escape sequence: '\\{c}'"));
+                            }
+                            output.push(c);
+                        }
                     }
                 } else {
                     // Trailing escape: treat it as a (escaped) backslash
                     output.push('\\');
                 }
             } else {
+                if c.is_whitespace() {
+                    if let Some(warnings) = warnings.as_mut() {
+                        // This could be a sign of forgetting to split a string containing multiple entity paths.
+                        warnings.push("Unescaped whitespace".to_owned());
+                    }
+                }
+
                 output.push(c);
             }
         }
@@ -190,6 +225,13 @@ impl std::fmt::Display for EntityPathPart {
     }
 }
 
+impl From<InternedString> for EntityPathPart {
+    #[inline]
+    fn from(part: InternedString) -> Self {
+        Self(part)
+    }
+}
+
 impl From<&str> for EntityPathPart {
     #[inline]
     fn from(part: &str) -> Self {
@@ -200,7 +242,7 @@ impl From<&str> for EntityPathPart {
 impl From<String> for EntityPathPart {
     #[inline]
     fn from(part: String) -> Self {
-        Self(part)
+        Self(part.into())
     }
 }
 

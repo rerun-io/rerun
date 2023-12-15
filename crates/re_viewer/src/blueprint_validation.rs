@@ -1,10 +1,14 @@
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPropertiesComponent, StoreDb};
 use re_log_types::Timeline;
-use re_types::blueprint::components::SpaceViewComponent;
+use re_types::blueprint::components::{
+    EntitiesDeterminedByUser, IncludedQueries, Name, SpaceViewClass, SpaceViewOrigin,
+};
 use re_types_core::Component;
 use re_viewport::{
-    blueprint::components::{AutoSpaceViews, SpaceViewMaximized, ViewportLayout},
+    blueprint::components::{
+        AutoLayout, AutoSpaceViews, IncludedSpaceViews, SpaceViewMaximized, ViewportLayout,
+    },
     external::re_space_view::blueprint::components::QueryExpressions,
 };
 
@@ -53,10 +57,17 @@ fn validate_component<C: Component>(blueprint: &StoreDb) -> bool {
 pub fn is_valid_blueprint(blueprint: &StoreDb) -> bool {
     // TODO(jleibs): Generate this from codegen.
     validate_component::<AutoSpaceViews>(blueprint)
+        && validate_component::<AutoLayout>(blueprint)
+        && validate_component::<AutoSpaceViews>(blueprint)
+        && validate_component::<EntitiesDeterminedByUser>(blueprint)
         && validate_component::<EntityPropertiesComponent>(blueprint)
+        && validate_component::<Name>(blueprint)
         && validate_component::<PanelView>(blueprint)
         && validate_component::<QueryExpressions>(blueprint)
-        && validate_component::<SpaceViewComponent>(blueprint)
         && validate_component::<SpaceViewMaximized>(blueprint)
+        && validate_component::<SpaceViewOrigin>(blueprint)
+        && validate_component::<SpaceViewClass>(blueprint)
+        && validate_component::<IncludedSpaceViews>(blueprint)
+        && validate_component::<IncludedQueries>(blueprint)
         && validate_component::<ViewportLayout>(blueprint)
 }

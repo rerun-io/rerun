@@ -544,7 +544,8 @@ impl TimePanel {
             if is_closed {
                 let empty = re_data_store::TimeHistogram::default();
                 let num_messages_at_time = tree
-                    .recursive_time_histogram
+                    .subtree
+                    .time_histogram
                     .get(time_ctrl.timeline())
                     .unwrap_or(&empty);
 
@@ -555,7 +556,7 @@ impl TimePanel {
                     time_area_response,
                     time_area_painter,
                     ui,
-                    tree.num_timeless_messages() as usize,
+                    tree.num_timeless_messages_recursive() as usize,
                     num_messages_at_time,
                     row_rect,
                     &self.time_ranges_ui,
@@ -591,13 +592,11 @@ impl TimePanel {
         }
 
         // If this is an entity:
-        if !tree.time_histograms_per_component.is_empty() {
+        if !tree.entity.components.is_empty() {
             let clip_rect_save = ui.clip_rect();
 
-            for component_name in
-                re_data_ui::ui_visible_components(tree.time_histograms_per_component.keys())
-            {
-                let data = &tree.time_histograms_per_component[component_name];
+            for component_name in re_data_ui::ui_visible_components(tree.entity.components.keys()) {
+                let data = &tree.entity.components[component_name];
 
                 let component_has_data_in_current_timeline =
                     ctx.component_has_data_in_current_timeline(data);
@@ -874,7 +873,7 @@ fn is_time_safe_to_show(
         return true; // no timeless messages, no problem
     }
 
-    if let Some(times) = store_db.tree().recursive_time_histogram.get(timeline) {
+    if let Some(times) = store_db.tree().subtree.time_histogram.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
                 re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),

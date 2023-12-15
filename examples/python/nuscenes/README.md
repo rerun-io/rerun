@@ -5,6 +5,8 @@ tags: [lidar, 3D, 2D, object-detection, pinhole-camera]
 description: "Visualize the nuScenes dataset including lidar, radar, images, and bounding boxes."
 thumbnail: https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/480w.png
 thumbnail_dimensions: [480, 282]
+channel: nightly
+build_args: ["--seconds=5"]
 ---
 
 <picture>

@@ -10,10 +10,9 @@ on:
         required: false
         type: string
         default: "prerelease"
-      EXTRA_FLAGS:
-        required: false
+      CHANNEL: # `nightly` or `main`
+        required: true
         type: string
-        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-web
@@ -54,21 +53,29 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.6.0
+
       - name: Build web-viewer (release)
         shell: bash
         run: |
-          cargo run --locked -p re_build_web_viewer -- --release ${{ inputs.EXTRA_FLAGS }}
+          if [ ${{ inputs.CHANNEL }} = "nightly" ]; then
+            export DEFAULT_EXAMPLES_MANIFEST_URL="https://app.rerun.io/version/nightly/examples_manifest.json"
+          fi
+          cargo run --locked -p re_build_web_viewer -- --release
 
       # We build a single manifest pointing to the `commit`
-      # All the `pr`, `nightly`, release tag, etc. variants will always just point to the resolved commit
+      # All the `pr`, `main`, release tag, etc. variants will always just point to the resolved commit
       - name: Build examples manifest
         shell: bash
         run: |
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           sha="$(echo $full_commit | cut -c1-7)"
 
-          cargo run --locked -p re_build_examples_manifest -- \
+          pixi run build-examples manifest \
             --base-url "https://app.rerun.io/commit/$sha" \
+            --channel "${{ inputs.CHANNEL }}" \
             web_viewer/examples_manifest.json
 
       - name: Upload web assets

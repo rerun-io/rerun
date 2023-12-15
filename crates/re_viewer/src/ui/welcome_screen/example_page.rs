@@ -125,12 +125,17 @@ pub(super) struct ExamplePage {
 }
 
 fn default_manifest_url() -> String {
+    // Sometimes we want the default to point somewhere else, such as when doing nightly builds.
+    if let Some(url) = option_env!("DEFAULT_EXAMPLES_MANIFEST_URL") {
+        return url.into();
+    }
+
     let build_info = re_build_info::build_info!();
 
-    // Always point to `version/nightly` for rerun devs,
+    // Always point to `version/main` for rerun devs,
     // because the current commit's manifest is unlikely to be uploaded to GCS.
     if build_info.is_in_rerun_workspace {
-        return "https://app.rerun.io/version/nightly/examples_manifest.json".into();
+        return "https://app.rerun.io/version/main/examples_manifest.json".into();
     }
 
     // Otherwise point to the current commit

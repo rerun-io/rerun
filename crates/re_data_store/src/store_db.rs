@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+use parking_lot::Mutex;
 
 use re_arrow_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
@@ -108,6 +109,8 @@ pub struct StoreDb {
 
     /// Stores all components for all entities for all timelines.
     data_store: DataStore,
+
+    stats: IngestionStatistics,
 }
 
 impl StoreDb {
@@ -121,10 +124,11 @@ impl StoreDb {
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             data_store: re_arrow_store::DataStore::new(
-                store_id,
+                store_id.clone(),
                 InstanceKey::name(),
                 DataStoreConfig::default(),
             ),
+            stats: IngestionStatistics::new(store_id),
         }
     }
 
@@ -192,12 +196,14 @@ impl StoreDb {
         &self.times_per_timeline
     }
 
+    /// Histogram of all events on the timeeline, of all entities.
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
-        self.tree().recursive_time_histogram.get(timeline)
+        self.tree().subtree.time_histogram.get(timeline)
     }
 
+    /// Total number of timeless messages for any entity.
     pub fn num_timeless_messages(&self) -> u64 {
-        self.tree.num_timeless_messages()
+        self.tree.num_timeless_messages_recursive()
     }
 
     pub fn num_rows(&self) -> usize {
@@ -222,6 +228,11 @@ impl StoreDb {
     pub fn entity_paths(&self) -> Vec<&EntityPath> {
         use itertools::Itertools as _;
         self.entity_path_from_hash.values().sorted().collect()
+    }
+
+    #[inline]
+    pub fn ingestion_stats(&self) -> &IngestionStatistics {
+        &self.stats
     }
 
     #[inline]
@@ -302,21 +313,24 @@ impl StoreDb {
         //
         // This might result in a [`ClearCascade`] if the events trigger one or more immediate
         // and/or pending clears.
-        let store_events = &[store_event];
-        self.times_per_timeline.on_events(store_events);
-        let clear_cascade = self.tree.on_store_additions(store_events);
+        let original_store_events = &[store_event];
+        self.times_per_timeline.on_events(original_store_events);
+        let clear_cascade = self.tree.on_store_additions(original_store_events);
 
         // Second-pass: update the [`DataStore`] by applying the [`ClearCascade`].
         //
         // This will in turn generate new [`StoreEvent`]s that our internal views need to be
         // notified of, again!
-        let store_events = self.on_clear_cascade(clear_cascade);
-        self.times_per_timeline.on_events(&store_events);
-        let clear_cascade = self.tree.on_store_additions(&store_events);
+        let new_store_events = self.on_clear_cascade(clear_cascade);
+        self.times_per_timeline.on_events(&new_store_events);
+        let clear_cascade = self.tree.on_store_additions(&new_store_events);
 
         // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
         // cascades, thus this whole process must stabilize after one iteration.
         debug_assert!(clear_cascade.is_empty());
+
+        // We inform the stats last, since it measures e2e latency.
+        self.stats.on_events(original_store_events);
 
         Ok(())
     }
@@ -462,6 +476,7 @@ impl StoreDb {
             times_per_timeline,
             tree,
             data_store: _,
+            stats: _,
         } = self;
 
         times_per_timeline.on_events(store_events);
@@ -475,5 +490,81 @@ impl StoreDb {
     pub fn sort_key(&self) -> impl Ord + '_ {
         self.store_info()
             .map(|info| (info.application_id.0.as_str(), info.started))
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+pub struct IngestionStatistics {
+    store_id: StoreId,
+    e2e_latency_sec_history: Mutex<emath::History<f32>>,
+}
+
+impl StoreSubscriber for IngestionStatistics {
+    fn name(&self) -> String {
+        "rerun.testing.store_subscribers.IngestionStatistics".into()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    fn on_events(&mut self, events: &[StoreEvent]) {
+        for event in events {
+            if event.store_id == self.store_id {
+                self.on_new_row_id(event.row_id);
+            }
+        }
+    }
+}
+
+impl IngestionStatistics {
+    pub fn new(store_id: StoreId) -> Self {
+        let min_samples = 0; // 0: we stop displaying e2e latency if input stops
+        let max_samples = 1024; // don't waste too much memory on this - we just need enough to get a good average
+        let max_age = 1.0; // don't keep too long of a rolling average, or the stats get outdated.
+        Self {
+            store_id,
+            e2e_latency_sec_history: Mutex::new(emath::History::new(
+                min_samples..max_samples,
+                max_age,
+            )),
+        }
+    }
+
+    fn on_new_row_id(&mut self, row_id: RowId) {
+        if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
+            let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
+
+            // This only makes sense if the clocks are very good, i.e. if the recording was on the same machine!
+            if let Some(nanos_since_log) =
+                nanos_since_epoch.checked_sub(row_id.nanoseconds_since_epoch())
+            {
+                let now = nanos_since_epoch as f64 / 1e9;
+                let sec_since_log = nanos_since_log as f32 / 1e9;
+
+                self.e2e_latency_sec_history.lock().add(now, sec_since_log);
+            }
+        }
+    }
+
+    /// What is the mean latency between the time data was logged in the SDK and the time it was ingested?
+    ///
+    /// This is based on the clocks of the viewer and the SDK being in sync,
+    /// so if the recording was done on another machine, this is likely very inaccurate.
+    pub fn current_e2e_latency_sec(&self) -> Option<f32> {
+        let mut e2e_latency_sec_history = self.e2e_latency_sec_history.lock();
+
+        if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
+            let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
+            let now = nanos_since_epoch as f64 / 1e9;
+            e2e_latency_sec_history.flush(now); // make sure the average is up-to-date.
+        }
+
+        e2e_latency_sec_history.average()
     }
 }

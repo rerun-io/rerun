@@ -258,14 +258,14 @@ impl DataStore {
                 num_rows: table.buckets_num_rows,
                 size_bytes: table.buckets_size_bytes,
                 time_range: table.time_range(),
-                timelines_rows: 0,
-                timelines_size_bytes: 0,
+                timeless_rows: 0,
+                timeless_size_bytes: 0,
             },
         );
 
         if let Some(timeless) = self.timeless_tables.get(&entity_path_hash) {
-            entity_stats.timelines_rows = timeless.inner.read().num_rows();
-            entity_stats.timelines_size_bytes = timeless.total_size_bytes();
+            entity_stats.timeless_rows = timeless.inner.read().num_rows();
+            entity_stats.timeless_size_bytes = timeless.total_size_bytes();
         }
 
         entity_stats
@@ -284,10 +284,10 @@ pub struct EntityStats {
     pub time_range: re_log_types::TimeRange,
 
     /// Number of timeless rows
-    pub timelines_rows: u64,
+    pub timeless_rows: u64,
 
     /// Number of timeless bytes
-    pub timelines_size_bytes: u64,
+    pub timeless_size_bytes: u64,
 }
 
 impl Default for EntityStats {
@@ -296,8 +296,8 @@ impl Default for EntityStats {
             num_rows: 0,
             size_bytes: 0,
             time_range: re_log_types::TimeRange::EMPTY,
-            timelines_rows: 0,
-            timelines_size_bytes: 0,
+            timeless_rows: 0,
+            timeless_size_bytes: 0,
         }
     }
 }
