@@ -13,7 +13,7 @@ impl Points3D {
     ///
     /// The media type will be inferred from the path (extension), or the contents if that fails.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_file(filepath: &std::path::Path) -> anyhow::Result<Self> {
+    pub fn from_file_path(filepath: &std::path::Path) -> anyhow::Result<Self> {
         use anyhow::Context as _;
 
         let file = std::fs::File::open(filepath)
@@ -38,6 +38,8 @@ impl Points3D {
 }
 
 fn from_ply(ply: &ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
+    re_tracing::profile_function!();
+
     use std::borrow::Cow;
 
     use linked_hash_map::LinkedHashMap;
@@ -125,6 +127,7 @@ fn from_ply(ply: &ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
             const PROP_RED: &str = "red";
             const PROP_GREEN: &str = "green";
             const PROP_BLUE: &str = "blue";
+            const PROP_ALPHA: &str = "alpha";
             const PROP_RADIUS: &str = "radius";
             const PROP_LABEL: &str = "label";
 
@@ -148,7 +151,8 @@ fn from_ply(ply: &ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
                 props.get(PROP_GREEN).and_then(u8),
                 props.get(PROP_BLUE).and_then(u8),
             ) {
-                this.color = Some(Color::new((r, g, b)));
+                let a = props.get(PROP_ALPHA).and_then(u8).unwrap_or(255);
+                this.color = Some(Color::new((r, g, b, a)));
             };
 
             if let Some(radius) = props.get(PROP_RADIUS).and_then(f32) {

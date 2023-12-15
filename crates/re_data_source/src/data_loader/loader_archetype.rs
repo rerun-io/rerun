@@ -176,7 +176,7 @@ fn load_point_cloud(
         {
             // TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
             let points3d = re_types::archetypes::Points3D::from_file_contents(contents)?;
-            DataRow::from_archetype(RowId::new(), timepoint, entity_path.clone(), &points3d)?
+            DataRow::from_archetype(RowId::new(), timepoint, entity_path, &points3d)?
         },
         //
     ];

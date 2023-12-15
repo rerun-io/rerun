@@ -66,7 +66,6 @@ half = { workspace = true, features = ["bytemuck"] }
 infer.workspace = true
 itertools.workspace = true
 linked-hash-map.workspace = true
-mime_guess.workspace = true
 mime_guess2.workspace = true
 ndarray.workspace = true
 once_cell.workspace = true
