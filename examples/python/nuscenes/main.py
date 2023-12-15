@@ -213,18 +213,18 @@ def log_sensor_calibration(sample_data: dict[str, Any], nusc: nuscenes.NuScenes)
 def main() -> None:
     parser = argparse.ArgumentParser(description="Visualizes the nuScenes dataset using the Rerun SDK.")
     parser.add_argument(
-        "--root_dir",
+        "--root-dir",
         type=pathlib.Path,
         default=DATASET_DIR,
         help="Root directory of nuScenes dataset",
     )
     parser.add_argument(
-        "--scene_name",
+        "--scene-name",
         type=str,
         default="scene-0061",
         help="Scene name to visualize (typically of form 'scene-xxxx')",
     )
-    parser.add_argument("--dataset_version", type=str, default="v1.0-mini", help="Scene id to visualize")
+    parser.add_argument("--dataset-version", type=str, default="v1.0-mini", help="Scene id to visualize")
     parser.add_argument(
         "--seconds", type=float, default=float("inf"), help="If specified, limits the number of seconds logged"
     )

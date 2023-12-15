@@ -107,7 +107,7 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Use Canny-conditioned ControlNet to generate image.")
     parser.add_argument(
-        "--img_path",
+        "--img-path",
         type=str,
         help="Path to image used as input for Canny edge detector.",
         default=RERUN_LOGO_URL,
@@ -119,7 +119,7 @@ def main() -> None:
         default="aerial view, a futuristic research complex in a bright foggy jungle, hard lighting",
     )
     parser.add_argument(
-        "--negative_prompt",
+        "--negative-prompt",
         type=str,
         help="Negative prompt used as input for ControlNet.",
         default="low quality, bad quality, sketches",

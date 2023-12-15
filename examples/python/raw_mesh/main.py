@@ -93,7 +93,7 @@ def main() -> None:
         help="The name of the scene to load",
     )
     parser.add_argument(
-        "--scene_path",
+        "--scene-path",
         type=Path,
         help="Path to a scene to analyze. If set, overrides the `--scene` argument.",
     )
