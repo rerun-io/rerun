@@ -1,10 +1,11 @@
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include <rerun.hpp>
 
-const char* USAGE = R"(
+static const char* USAGE = R"(
 This is an example executable data-loader plugin for the Rerun Viewer.
 
 It will log C++ source code files as markdown documents.
