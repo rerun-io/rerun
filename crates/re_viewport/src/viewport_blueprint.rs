@@ -335,27 +335,3 @@ impl ViewportBlueprint {
         }
     }
 }
-
-// ----------------------------------------------------------------------------
-
-// TODO(jleibs): Move this helper to a better location
-pub fn add_delta_from_single_component<'a, C>(
-    deltas: &mut Vec<DataRow>,
-    entity_path: &EntityPath,
-    timepoint: &TimePoint,
-    component: C,
-) where
-    C: re_types::Component + Clone + 'a,
-    std::borrow::Cow<'a, C>: std::convert::From<C>,
-{
-    let row = DataRow::from_cells1_sized(
-        RowId::new(),
-        entity_path.clone(),
-        timepoint.clone(),
-        1,
-        [component],
-    )
-    .unwrap(); // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
-
-    deltas.push(row);
-}

@@ -17,7 +17,6 @@ use re_viewer_context::{
 };
 
 use crate::system_execution::create_and_run_space_view_systems;
-use crate::viewport_blueprint::add_delta_from_single_component;
 
 // ----------------------------------------------------------------------------
 
@@ -167,12 +166,7 @@ impl SpaceViewBlueprint {
         }
 
         for query in &self.queries {
-            add_delta_from_single_component(
-                &mut deltas,
-                &query.id.as_entity_path(),
-                &timepoint,
-                query.expressions.clone(),
-            );
+            query.save_to_blueprint_store(ctx);
         }
 
         ctx.command_sender

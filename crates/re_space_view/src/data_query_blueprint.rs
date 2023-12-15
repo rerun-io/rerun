@@ -88,6 +88,16 @@ impl DataQueryBlueprint {
         })
     }
 
+    /// Persist the entire [`DataQueryBlueprint`] to the blueprint store.
+    ///
+    /// This only needs to be called if the [`DataQueryBlueprint`] was created with [`Self::new`].
+    ///
+    /// Otherwise, incremental calls to `set_` functions will write just the necessary component
+    /// update directly to the store.
+    pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
+        ctx.save_blueprint_component(&self.id.as_entity_path(), self.expressions.clone());
+    }
+
     /// Creates a new [`DataQueryBlueprint`] with a the same contents, but a different [`DataQueryId`]
     pub fn duplicate(&self) -> Self {
         Self {
