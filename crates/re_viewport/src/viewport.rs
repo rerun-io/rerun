@@ -297,9 +297,12 @@ impl<'a, 'b> Viewport<'a, 'b> {
         // At the end of the Tree-UI, we can safely apply deferred actions.
 
         let mut reset = false;
-        let create = std::mem::take(&mut self.deferred_tree_actions.create);
-        let mut focus_tab = std::mem::take(&mut self.deferred_tree_actions.focus_tab);
-        let remove = std::mem::take(&mut self.deferred_tree_actions.remove);
+
+        let TreeActions {
+            create,
+            mut focus_tab,
+            remove,
+        } = std::mem::take(&mut self.deferred_tree_actions);
 
         for space_view in &create {
             if self.blueprint.auto_layout {

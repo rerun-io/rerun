@@ -11,19 +11,23 @@ impl ViewerContext<'_> {
     {
         let timepoint = TimePoint::timeless();
 
-        let row = DataRow::from_cells1_sized(
+        match DataRow::from_cells1_sized(
             RowId::new(),
             entity_path.clone(),
             timepoint.clone(),
             1,
             [component],
-        )
-        .unwrap(); // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
-
-        self.command_sender
-            .send_system(SystemCommand::UpdateBlueprint(
-                self.store_context.blueprint.store_id().clone(),
-                vec![row],
-            ));
+        ) {
+            Ok(row) => self
+                .command_sender
+                .send_system(SystemCommand::UpdateBlueprint(
+                    self.store_context.blueprint.store_id().clone(),
+                    vec![row],
+                )),
+            Err(err) => {
+                // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
+                re_log::error_once!("Failed to create DataRow for blueprint component: {}", err);
+            }
+        }
     }
 }

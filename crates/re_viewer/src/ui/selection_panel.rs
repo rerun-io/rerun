@@ -410,7 +410,6 @@ fn container_top_level_properties(
     viewport: &mut Viewport<'_, '_>,
     tile_id: &egui_tiles::TileId,
 ) {
-    // TODO(jleibs): fix container-editing
     if let Some(Tile::Container(container)) = viewport.tree.tiles.get_mut(*tile_id) {
         egui::Grid::new("container_top_level_properties")
             .num_columns(2)
