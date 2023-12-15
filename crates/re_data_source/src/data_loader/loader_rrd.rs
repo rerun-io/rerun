@@ -23,13 +23,7 @@ impl crate::DataLoader for RrdLoader {
 
         re_tracing::profile_function!(filepath.display().to_string());
 
-        let extension = filepath
-            .extension()
-            .unwrap_or_default()
-            .to_ascii_lowercase()
-            .to_string_lossy()
-            .to_string();
-
+        let extension = crate::extension(&filepath);
         if extension != "rrd" {
             return Ok(()); // simply not interested
         }
@@ -51,7 +45,7 @@ impl crate::DataLoader for RrdLoader {
         Ok(())
     }
 
-    fn load_from_path_contents(
+    fn load_from_file_contents(
         &self,
         // NOTE: The Store ID comes from the rrd file itself.
         _store_id: re_log_types::StoreId,
@@ -60,6 +54,11 @@ impl crate::DataLoader for RrdLoader {
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         re_tracing::profile_function!(filepath.display().to_string());
+
+        let extension = crate::extension(&filepath);
+        if extension != "rrd" {
+            return Ok(()); // simply not interested
+        }
 
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
         let contents = std::io::Cursor::new(contents);

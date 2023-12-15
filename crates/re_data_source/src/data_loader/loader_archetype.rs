@@ -32,10 +32,10 @@ impl DataLoader for ArchetypeLoader {
             .with_context(|| format!("Failed to read file {filepath:?}"))?;
         let contents = std::borrow::Cow::Owned(contents);
 
-        self.load_from_path_contents(store_id, filepath, contents, tx)
+        self.load_from_file_contents(store_id, filepath, contents, tx)
     }
 
-    fn load_from_path_contents(
+    fn load_from_file_contents(
         &self,
         _store_id: re_log_types::StoreId,
         filepath: std::path::PathBuf,
@@ -46,36 +46,34 @@ impl DataLoader for ArchetypeLoader {
 
         let entity_path = EntityPath::from_file_path(&filepath);
 
-        let timepoint = TimePoint::timeless();
+        let mut timepoint = TimePoint::timeless();
         // TODO(cmc): log these once heuristics (I think?) are fixed
-        // if let Ok(metadata) = filepath.metadata() {
-        //     use re_log_types::{Time, Timeline};
-        //
-        //     if let Some(created) = metadata.created().ok().and_then(|t| Time::try_from(t).ok()) {
-        //         timepoint.insert(Timeline::new_temporal("created_at"), created.into());
-        //     }
-        //     if let Some(modified) = metadata
-        //         .modified()
-        //         .ok()
-        //         .and_then(|t| Time::try_from(t).ok())
-        //     {
-        //         timepoint.insert(Timeline::new_temporal("modified_at"), modified.into());
-        //     }
-        //     if let Some(accessed) = metadata
-        //         .accessed()
-        //         .ok()
-        //         .and_then(|t| Time::try_from(t).ok())
-        //     {
-        //         timepoint.insert(Timeline::new_temporal("accessed_at"), accessed.into());
-        //     }
-        // }
+        if false {
+            if let Ok(metadata) = filepath.metadata() {
+                use re_log_types::{Time, Timeline};
 
-        let extension = filepath
-            .extension()
-            .unwrap_or_default()
-            .to_ascii_lowercase()
-            .to_string_lossy()
-            .to_string();
+                if let Some(created) = metadata.created().ok().and_then(|t| Time::try_from(t).ok())
+                {
+                    timepoint.insert(Timeline::new_temporal("created_at"), created.into());
+                }
+                if let Some(modified) = metadata
+                    .modified()
+                    .ok()
+                    .and_then(|t| Time::try_from(t).ok())
+                {
+                    timepoint.insert(Timeline::new_temporal("modified_at"), modified.into());
+                }
+                if let Some(accessed) = metadata
+                    .accessed()
+                    .ok()
+                    .and_then(|t| Time::try_from(t).ok())
+                {
+                    timepoint.insert(Timeline::new_temporal("accessed_at"), accessed.into());
+                }
+            }
+        }
+
+        let extension = crate::extension(&filepath);
 
         let mut rows = Vec::new();
 

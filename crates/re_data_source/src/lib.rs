@@ -22,7 +22,7 @@ pub use self::data_loader::{
     iter_loaders, ArchetypeLoader, DataLoader, DataLoaderError, LoadedData, RrdLoader,
 };
 pub use self::data_source::DataSource;
-pub use self::load_file::load_from_path_contents;
+pub use self::load_file::{extension, load_from_file_contents};
 pub use self::web_sockets::connect_to_ws_url;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -49,7 +49,17 @@ pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj"];
 
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rrd"];
 
-pub(crate) fn is_known_file_extension(extension: &str) -> bool {
+/// All file extension supported by our builtin [`DataLoader`]s.
+pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
+    SUPPORTED_RERUN_EXTENSIONS
+        .iter()
+        .chain(SUPPORTED_IMAGE_EXTENSIONS)
+        .chain(SUPPORTED_MESH_EXTENSIONS)
+        .copied()
+}
+
+/// Is this a supported file extension by any of our builtin [`DataLoader`]s?
+pub fn is_supported_file_extension(extension: &str) -> bool {
     SUPPORTED_IMAGE_EXTENSIONS.contains(&extension)
         || SUPPORTED_MESH_EXTENSIONS.contains(&extension)
         || SUPPORTED_RERUN_EXTENSIONS.contains(&extension)

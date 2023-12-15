@@ -48,7 +48,7 @@ pub fn load_from_path(
 /// and handled directly by the [`crate::DataLoader`]s themselves (i.e. they're logged).
 ///
 /// `path` is only used for informational purposes, no data is ever read from the filesystem.
-pub fn load_from_path_contents(
+pub fn load_from_file_contents(
     store_id: &re_log_types::StoreId,
     file_source: FileSource,
     filepath: &std::path::Path,
@@ -77,7 +77,7 @@ pub fn load_from_path_contents(
 
 /// Empty string if no extension.
 #[inline]
-fn extension(path: &std::path::Path) -> String {
+pub fn extension(path: &std::path::Path) -> String {
     path.extension()
         .unwrap_or_default()
         .to_ascii_lowercase()
@@ -89,8 +89,8 @@ fn extension(path: &std::path::Path) -> String {
 ///
 /// This does _not_ access the filesystem.
 #[inline]
-fn is_builtin(path: &std::path::Path, is_dir: bool) -> bool {
-    !is_dir && crate::is_known_file_extension(&extension(path))
+pub fn is_associated_with_builtin_loader(path: &std::path::Path, is_dir: bool) -> bool {
+    !is_dir && crate::is_supported_file_extension(&extension(path))
 }
 
 /// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
@@ -107,7 +107,7 @@ fn prepare_store_info(
     let app_id = re_log_types::ApplicationId(path.display().to_string());
     let store_source = re_log_types::StoreSource::File { file_source };
 
-    let is_builtin = is_builtin(path, is_dir);
+    let is_builtin = is_associated_with_builtin_loader(path, is_dir);
     let is_rrd = crate::SUPPORTED_RERUN_EXTENSIONS.contains(&extension(path).as_str());
 
     (!is_rrd && is_builtin).then(|| {
@@ -138,7 +138,7 @@ fn load(
     contents: Option<std::borrow::Cow<'_, [u8]>>,
 ) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
     let extension = extension(path);
-    let is_builtin = is_builtin(path, is_dir);
+    let is_builtin = is_associated_with_builtin_loader(path, is_dir);
 
     if !is_builtin {
         return if extension.is_empty() {
@@ -169,18 +169,18 @@ fn load(
                     if let Some(contents) = contents.as_deref() {
                         let contents = Cow::Borrowed(contents.as_ref());
 
-                        if let Err(err) = loader.load_from_path_contents(
+                        if let Err(err) = loader.load_from_file_contents(
                             store_id,
                             path.clone(),
                             contents,
                             tx_loader,
                         ) {
-                            re_log::error!(?path, loader = loader.name(), %err, "failed to load data from file");
+                            re_log::error!(?path, loader = loader.name(), %err, "Failed to load data from file");
                         }
                     } else if let Err(err) =
                         loader.load_from_path(store_id, path.clone(), tx_loader)
                     {
-                        re_log::error!(?path, loader = loader.name(), %err, "failed to load data from file");
+                        re_log::error!(?path, loader = loader.name(), %err, "Failed to load data from file");
                     }
                 }
             });
@@ -191,9 +191,9 @@ fn load(
                     let contents = Cow::Borrowed(contents);
 
                     if let Err(err) =
-                        loader.load_from_path_contents(store_id, path.clone(), contents, tx_loader)
+                        loader.load_from_file_contents(store_id, path.clone(), contents, tx_loader)
                     {
-                        re_log::error!(?path, loader = loader.name(), %err, "failed to load data from file");
+                        re_log::error!(?path, loader = loader.name(), %err, "Failed to load data from file");
                     }
                 }
             });
@@ -221,35 +221,18 @@ fn send(
         move || {
             // ## Ignoring channel errors
             //
-            // Not our problem whether or not the other end has hanged up, but we still want to
+            // Not our problem whether or not the other end has hung up, but we still want to
             // poll the channel in any case so as to make sure that the data producer
             // doesn't get stuck.
             for data in rx_loader {
-                match data {
-                    LoadedData::DataRow(row) => {
-                        let mut table =
-                            re_log_types::DataTable::from_rows(re_log_types::TableId::new(), [row]);
-                        table.compute_all_size_bytes();
-
-                        let arrow_msg = match table.to_arrow_msg() {
-                            Ok(arrow_msg) => arrow_msg,
-                            Err(err) => {
-                                re_log::error!(%err, %store_id, "couldn't serialize component data");
-                                continue;
-                            }
-                        };
-
-                        tx.send(LogMsg::ArrowMsg(store_id.clone(), arrow_msg)).ok();
+                let msg = match data.into_log_msg(&store_id) {
+                    Ok(msg) => msg,
+                    Err(err) => {
+                        re_log::error!(%err, %store_id, "Couldn't serialize component data");
+                        continue;
                     }
-
-                    LoadedData::ArrowMsg(msg) => {
-                        tx.send(LogMsg::ArrowMsg(store_id.clone(), msg)).ok();
-                    }
-
-                    LoadedData::LogMsg(msg) => {
-                        tx.send(msg).ok();
-                    }
-                }
+                };
+                tx.send(msg).ok();
             }
 
             tx.quit(None).ok();

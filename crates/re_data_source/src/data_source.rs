@@ -64,7 +64,7 @@ impl DataSource {
                 true // No dots. Weird. Let's assume it is a file path.
             } else if parts.len() == 2 {
                 // Extension or `.com` etc?
-                crate::is_known_file_extension(parts[1])
+                crate::is_supported_file_extension(parts[1])
             } else {
                 false // Too many dots; assume an url
             }
@@ -157,7 +157,7 @@ impl DataSource {
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
                 let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                crate::load_from_path_contents(
+                crate::load_from_file_contents(
                     &store_id,
                     file_source,
                     &std::path::PathBuf::from(file_contents.name),

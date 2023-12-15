@@ -87,9 +87,11 @@ pub trait DataLoader: Send + Sync {
     /// filesystem available to begin with.
     /// `path` is guaranteed to be a file path.
     ///
+    /// When running on the web (wasm), `filepath` only contains the file name.
+    ///
     /// ## Error handling
     ///
-    /// Most implementers of `load_from_path_contents` are expected to be asynchronous in nature.
+    /// Most implementers of `load_from_file_contents` are expected to be asynchronous in nature.
     ///
     /// Asynchronous implementers should make sure to fail early (and thus synchronously) when
     /// possible (e.g. didn't even manage to open the file).
@@ -97,7 +99,7 @@ pub trait DataLoader: Send + Sync {
     ///
     /// If a [`DataLoader`] has no interest in the given file, it should successfully return
     /// without pushing any data into `tx`.
-    fn load_from_path_contents(
+    fn load_from_file_contents(
         &self,
         store_id: re_log_types::StoreId,
         filepath: std::path::PathBuf,
@@ -135,20 +137,45 @@ pub enum LoadedData {
 }
 
 impl From<DataRow> for LoadedData {
+    #[inline]
     fn from(value: DataRow) -> Self {
         Self::DataRow(value)
     }
 }
 
 impl From<ArrowMsg> for LoadedData {
+    #[inline]
     fn from(value: ArrowMsg) -> Self {
         LoadedData::ArrowMsg(value)
     }
 }
 
 impl From<LogMsg> for LoadedData {
+    #[inline]
     fn from(value: LogMsg) -> Self {
         LoadedData::LogMsg(value)
+    }
+}
+
+impl LoadedData {
+    /// Pack the data into a [`LogMsg`].
+    pub fn into_log_msg(
+        self,
+        store_id: &re_log_types::StoreId,
+    ) -> Result<LogMsg, re_log_types::DataTableError> {
+        match self {
+            Self::DataRow(row) => {
+                let mut table =
+                    re_log_types::DataTable::from_rows(re_log_types::TableId::new(), [row]);
+                table.compute_all_size_bytes();
+
+                Ok(LogMsg::ArrowMsg(store_id.clone(), table.to_arrow_msg()?))
+            }
+
+            Self::ArrowMsg(msg) => Ok(LogMsg::ArrowMsg(store_id.clone(), msg)),
+
+            Self::LogMsg(msg) => Ok(msg),
+        }
     }
 }
 
