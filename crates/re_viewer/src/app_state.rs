@@ -146,17 +146,21 @@ impl AppState {
                 .space_views
                 .values()
                 .flat_map(|space_view| {
-                    space_view.queries.iter().map(|query| {
+                    space_view.queries.iter().filter_map(|query| {
                         let props = viewport.state.space_view_props(space_view.id);
                         let resolver = query.build_resolver(space_view.id, props);
-                        (
-                            query.id,
-                            query.execute_query(
-                                &resolver,
-                                store_context,
-                                &entities_per_system_per_class,
-                            ),
-                        )
+                        entities_per_system_per_class
+                            .get(&query.space_view_class_identifier)
+                            .map(|entities_per_system| {
+                                (
+                                    query.id,
+                                    query.execute_query(
+                                        &resolver,
+                                        store_context,
+                                        entities_per_system,
+                                    ),
+                                )
+                            })
                     })
                 })
                 .collect::<_>()
@@ -194,17 +198,21 @@ impl AppState {
                 .space_views
                 .values()
                 .flat_map(|space_view| {
-                    space_view.queries.iter().map(|query| {
+                    space_view.queries.iter().filter_map(|query| {
                         let props = viewport.state.space_view_props(space_view.id);
                         let resolver = query.build_resolver(space_view.id, props);
-                        (
-                            query.id,
-                            query.execute_query(
-                                &resolver,
-                                store_context,
-                                &entities_per_system_per_class,
-                            ),
-                        )
+                        entities_per_system_per_class
+                            .get(&query.space_view_class_identifier)
+                            .map(|entities_per_system| {
+                                (
+                                    query.id,
+                                    query.execute_query(
+                                        &resolver,
+                                        store_context,
+                                        entities_per_system,
+                                    ),
+                                )
+                            })
                     })
                 })
                 .collect::<_>()
