@@ -205,7 +205,8 @@ impl App {
 
         let (command_sender, command_receiver) = command_channel();
 
-        let component_ui_registry = re_data_ui::create_component_ui_registry();
+        let mut component_ui_registry = re_data_ui::create_component_ui_registry();
+        re_viewport::blueprint::register_ui_components(&mut component_ui_registry);
 
         // TODO(emilk): `Instant::MIN` when we have our own `Instant` that supports it.;
         let long_time_ago = web_time::Instant::now()
