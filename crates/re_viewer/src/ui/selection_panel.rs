@@ -522,8 +522,7 @@ fn blueprint_ui(
                     .clicked()
                 {
                     if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-                        let mut new_space_view = space_view.clone();
-                        new_space_view.id = SpaceViewId::random();
+                        let new_space_view = space_view.duplicate();
                         viewport.blueprint.add_space_views(std::iter::once(new_space_view), ctx, &mut viewport.deferred_tree_actions);
                         viewport.blueprint.mark_user_interaction(ctx);
                     }

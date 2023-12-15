@@ -29,7 +29,14 @@ use crate::{
 /// The results of recursive expressions are only included if they are found within the [`EntityTree`]
 /// and for which there is a valid `ViewPart` system. This keeps recursive expressions from incorrectly
 /// picking up irrelevant data within the tree.
-#[derive(Clone, PartialEq, Eq)]
+///
+/// Note: [`DataQueryBlueprint`] doesn't implement Clone because it stores an internal
+/// uuid used for identifying the path of its data in the blueprint store. It's ambiguous
+/// whether the intent is for a clone to write to the same place.
+///
+/// If you want a new space view otherwise identical to an existing one, use
+/// [`DataQueryBlueprint::duplicate`].
+#[derive(PartialEq, Eq)]
 pub struct DataQueryBlueprint {
     pub id: DataQueryId,
     pub space_view_class_identifier: SpaceViewClassIdentifier,
@@ -76,6 +83,15 @@ impl DataQueryBlueprint {
             space_view_class_identifier,
             expressions,
         })
+    }
+
+    /// Creates a new [`DataQueryBlueprint`] with a the same contents, but a different [`DataQueryId`]
+    pub fn duplicate(&self) -> Self {
+        Self {
+            id: DataQueryId::random(),
+            space_view_class_identifier: self.space_view_class_identifier,
+            expressions: self.expressions.clone(),
+        }
     }
 
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
