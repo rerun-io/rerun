@@ -409,6 +409,9 @@ fn container_top_level_properties(
     viewport: &mut Viewport<'_, '_>,
     tile_id: &egui_tiles::TileId,
 ) {
+    // This action is deferred to the end of the function to please the borrow checker.
+    let mut should_simplify_tree = false;
+
     if let Some(Tile::Container(container)) = viewport.tree.tiles.get_mut(*tile_id) {
         egui::Grid::new("container_top_level_properties")
             .num_columns(2)
@@ -485,7 +488,29 @@ fn container_top_level_properties(
 
                     ui.end_row();
                 }
+
+                if ui
+                    .button("Simplify hierarchy")
+                    .on_hover_text("Simplify this container and its children")
+                    .clicked()
+                {
+                    should_simplify_tree = true;
+                }
             });
+    }
+
+    if should_simplify_tree {
+        viewport.simplify_tree(
+            Some(*tile_id),
+            egui_tiles::SimplificationOptions {
+                prune_empty_tabs: true,
+                prune_empty_containers: true,
+                prune_single_child_tabs: true,
+                prune_single_child_containers: true,
+                all_panes_must_have_tabs: true,
+                join_nested_linear_containers: true,
+            },
+        );
     }
 }
 
