@@ -205,6 +205,7 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
     vec![
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
+        Arc::new(DirectoryLoader),
     ]
 });
 
@@ -217,7 +218,9 @@ pub fn iter_loaders() -> impl ExactSizeIterator<Item = Arc<dyn DataLoader>> {
 // ---
 
 mod loader_archetype;
+mod loader_directory;
 mod loader_rrd;
 
 pub use self::loader_archetype::ArchetypeLoader;
+pub use self::loader_directory::DirectoryLoader;
 pub use self::loader_rrd::RrdLoader;
