@@ -3,7 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use egui::Ui;
-use re_data_store::InstancePath;
+use re_data_store::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_viewer_context::{
     DataQueryId, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
@@ -105,62 +105,78 @@ pub fn instance_path_button_to(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
-fn entity_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, stats: &re_arrow_store::EntityStats) {
+fn entity_tree_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, tree: &EntityTree) {
     use re_format::format_bytes;
 
-    let total_bytes = stats.size_bytes + stats.timelines_size_bytes;
+    // Show total bytes used in whole subtree
+    let total_bytes = tree.subtree.data_bytes();
+
+    let subtree_caveat = if tree.children.is_empty() {
+        ""
+    } else {
+        " (including subtree)"
+    };
 
     if total_bytes == 0 {
         return;
     }
 
-    // `num_events` is approximate - we could be logging a Tensor image and a transform
-    // at approximately the same time. That should only count as one fence-post.
-    let num_events = stats.num_rows;
+    let mut data_rate = None;
 
-    if stats.time_range.min < stats.time_range.max && 1 < num_events {
-        // Estimate a data rate.
-        //
-        // Let's do our best to avoid fencepost errors.
-        // If we log 1 MiB every second, then after three
-        // events we have a span of 2 seconds, and 3 MiB,
-        // but the data rate is still 1 MiB/s.
-        //
-        //          <-----2 sec----->
-        // t:       0s      1s      2s
-        // data:   1MiB    1MiB    1MiB
+    // Try to estimate data-rate
+    if let Some(time_histogram) = tree.subtree.time_histogram.get(timeline) {
+        // `num_events` is approximate - we could be logging a Tensor image and a transform
+        // at _almost_ approximately the same time, but it  should only count as one fence-post.
+        let num_events = time_histogram.total_count(); // TODO(emilk): we should ask the histogram to count the number of non-zero keys instead.
 
-        let duration = stats.time_range.abs_length();
+        if let (Some(min_time), Some(max_time)) =
+            (time_histogram.min_key(), time_histogram.max_key())
+        {
+            if min_time < max_time && 1 < num_events {
+                // Let's do our best to avoid fencepost errors.
+                // If we log 1 MiB once every second, then after three
+                // events we have a span of 2 seconds, and 3 MiB,
+                // but the data rate is still 1 MiB/s.
+                //
+                //          <-----2 sec----->
+                // t:       0s      1s      2s
+                // data:   1MiB    1MiB    1MiB
 
-        let mut bytes_per_time = stats.size_bytes as f64 / duration as f64;
+                let duration = max_time - min_time;
 
-        // Fencepost adjustment:
-        bytes_per_time *= (num_events - 1) as f64 / num_events as f64;
+                let mut bytes_per_time = total_bytes as f64 / duration as f64;
 
-        let data_rate = match timeline.typ() {
-            re_log_types::TimeType::Time => {
-                let bytes_per_second = 1e9 * bytes_per_time;
+                // Fencepost adjustment:
+                bytes_per_time *= (num_events - 1) as f64 / num_events as f64;
 
-                format!(
-                    "{}/s in {}",
-                    format_bytes(bytes_per_second),
-                    timeline.name()
-                )
+                data_rate = Some(match timeline.typ() {
+                    re_log_types::TimeType::Time => {
+                        let bytes_per_second = 1e9 * bytes_per_time;
+
+                        format!(
+                            "{}/s in '{}'",
+                            format_bytes(bytes_per_second),
+                            timeline.name()
+                        )
+                    }
+
+                    re_log_types::TimeType::Sequence => {
+                        format!("{} / {}", format_bytes(bytes_per_time), timeline.name())
+                    }
+                });
             }
+        }
+    }
 
-            re_log_types::TimeType::Sequence => {
-                format!("{} / {}", format_bytes(bytes_per_time), timeline.name())
-            }
-        };
-
+    if let Some(data_rate) = data_rate {
         ui.label(format!(
-            "Using {} in total ≈ {}",
+            "Using {}{subtree_caveat} ≈ {}",
             format_bytes(total_bytes as f64),
             data_rate
         ));
     } else {
         ui.label(format!(
-            "Using {} in total",
+            "Using {}{subtree_caveat}",
             format_bytes(total_bytes as f64)
         ));
     }
@@ -341,9 +357,9 @@ pub fn instance_hover_card_ui(ui: &mut Ui, ctx: &ViewerContext<'_>, instance_pat
     let query = ctx.current_query();
 
     if instance_path.instance_key.is_splat() {
-        let store = ctx.store_db.store();
-        let stats = store.entity_stats(query.timeline, instance_path.entity_path.hash());
-        entity_stats_ui(ui, &query.timeline, &stats);
+        if let Some(subtree) = ctx.store_db.tree().subtree(&instance_path.entity_path) {
+            entity_tree_stats_ui(ui, &query.timeline, subtree);
+        }
     } else {
         // TODO(emilk): per-component stats
     }
