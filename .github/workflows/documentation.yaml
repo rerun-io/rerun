@@ -40,3 +40,5 @@ jobs:
           retryErrors: true
           retryErrorsCount: 5
           retryErrorsJitter: 2000
+          urlRewriteSearch: '(.*)"'
+          urlRewriteReplace: "$1"
