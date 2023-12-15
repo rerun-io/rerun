@@ -1,5 +1,3 @@
-use image::ImageFormat;
-
 use crate::{
     datatypes::TensorData,
     image::{find_non_empty_dim_indices, ImageConstructionError},
@@ -49,6 +47,7 @@ impl Image {
     /// Creates a new [`Image`] from a file.
     ///
     /// The image format will be inferred from the path (extension), or the contents if that fails.
+    #[cfg(feature = "image")]
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
@@ -61,10 +60,11 @@ impl Image {
     /// Creates a new [`Image`] from the contents of a file.
     ///
     /// If unspecified, the image format will be inferred from the contents.
+    #[cfg(feature = "image")]
     #[inline]
     pub fn from_file_contents(
         contents: Vec<u8>,
-        format: Option<ImageFormat>,
+        format: Option<image::ImageFormat>,
     ) -> anyhow::Result<Self> {
         let format = if let Some(format) = format {
             format
