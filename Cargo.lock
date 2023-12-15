@@ -4481,9 +4481,12 @@ dependencies = [
 name = "re_data_source"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
+ "ahash 0.8.6",
  "anyhow",
  "image",
  "itertools 0.11.0",
+ "once_cell",
+ "parking_lot 0.12.1",
  "rayon",
  "re_build_tools",
  "re_log",
@@ -4494,6 +4497,7 @@ dependencies = [
  "re_types",
  "re_ws_comms",
  "thiserror",
+ "walkdir",
 ]
 
 [[package]]
