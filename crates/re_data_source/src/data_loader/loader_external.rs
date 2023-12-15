@@ -55,7 +55,7 @@ pub fn iter_external_loaders() -> impl ExactSizeIterator<Item = std::path::PathB
 // ---
 
 /// A [`crate::DataLoader`] that forwards the path to load to all executables present in
-/// the user's `PATH` with name a name that starts with [`EXTERNAL_DATA_LOADER_PREFIX`].
+/// the user's `PATH` with a name that starts with `EXTERNAL_DATA_LOADER_PREFIX`.
 ///
 /// The external loaders are expected to log rrd data to their standard output.
 ///
