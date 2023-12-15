@@ -559,7 +559,7 @@ pub fn identify_entities_per_system_per_class(
             let mut entities_per_system = EntitiesPerSystem::default();
             let class_id = entry.class.identifier();
 
-            // TODO(andreas/jleibs): Once `heuristic_filter` is no longer applied, we don't need to instantiate the systems anymore.
+            // TODO(andreas): Once `heuristic_filter` is no longer applied, we don't need to instantiate the systems anymore.
             //for system_id in &entry.visualizer_system_ids {
             for (system_id, system) in space_view_class_registry
                 .new_part_collection(class_id)
@@ -568,7 +568,7 @@ pub fn identify_entities_per_system_per_class(
                 let entities: IntSet<EntityPath> = if let Some(entities) = space_view_class_registry
                     .applicable_entities_for_visualizer_system(system_id, store)
                 {
-                    // TODO(andreas/jleibs): Don't apply heuristic_filter here, this should be part of the query!
+                    // TODO(andreas): Don't apply heuristic_filter here, this should be part of the query!
                     // Note that once this is done, `EntitiesPerSystemPerClass` becomes just `EntitiesPerSystem` since there's never a need to distinguish per class!
                     entities
                         .into_iter()

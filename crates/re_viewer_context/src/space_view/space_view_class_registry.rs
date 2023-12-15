@@ -157,7 +157,7 @@ struct VisualizerTypeRegistryEntry {
 
 impl Drop for VisualizerTypeRegistryEntry {
     fn drop(&mut self) {
-        // TODO: Not yet implemented.
+        // TODO(andreas): DataStore unsubscribe is not yet implemented!
         //DataStore::unregister_subscriber(self.entity_subscriber_handle);
     }
 }
