@@ -1,6 +1,6 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::StoreSubscriber;
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
@@ -33,6 +33,7 @@ pub struct VisualizerEntitySubscriber {
 #[derive(Default)]
 struct VisualizerEntityMapping {
     /// For each entity, which of the required components are present.
+    ///
     /// In order of `required_components`.
     /// If all bits are set, the entity is applicable to the visualizer.
     // TODO(andreas): We could just limit the number of required components to 32 or 64 and
@@ -43,7 +44,8 @@ struct VisualizerEntityMapping {
     ///
     /// Guaranteed to not have any duplicate entries.
     /// Order is not defined.
-    applicable_entities: Vec<EntityPath>,
+    // TODO(andreas): It would be nice if these were just `EntityPathHash`.
+    applicable_entities: IntSet<EntityPath>,
 }
 
 impl VisualizerEntitySubscriber {
@@ -62,10 +64,10 @@ impl VisualizerEntitySubscriber {
 
     /// List of entities that are applicable to the visualizer.
     #[inline]
-    pub fn entities(&self, store: &StoreId) -> Option<&[EntityPath]> {
+    pub fn entities(&self, store: &StoreId) -> Option<&IntSet<EntityPath>> {
         self.per_store_mapping
             .get(store)
-            .map(|mapping| mapping.applicable_entities.as_slice())
+            .map(|mapping| &mapping.applicable_entities)
     }
 }
 
@@ -127,7 +129,7 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
 
                 store_mapping
                     .applicable_entities
-                    .push(event.diff.entity_path.clone());
+                    .insert(event.diff.entity_path.clone());
             }
         }
     }

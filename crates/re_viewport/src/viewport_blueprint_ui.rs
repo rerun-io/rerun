@@ -448,14 +448,14 @@ impl ViewportBlueprint<'_> {
                 // Empty space views of every available types
                 for space_view in ctx
                     .space_view_class_registry
-                    .iter_classes()
-                    .sorted_by_key(|space_view_class| space_view_class.display_name())
-                    .map(|class| {
+                    .iter_registry()
+                    .sorted_by_key(|entry| entry.class.display_name())
+                    .map(|entry| {
                         SpaceViewBlueprint::new(
-                            class.identifier(),
-                            &format!("empty {}", class.display_name()),
+                            entry.class.identifier(),
+                            &format!("empty {}", entry.class.display_name()),
                             &EntityPath::root(),
-                            DataQueryBlueprint::new(class.identifier(), std::iter::empty()),
+                            DataQueryBlueprint::new(entry.class.identifier(), std::iter::empty()),
                         )
                     })
                 {
