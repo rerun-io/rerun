@@ -72,7 +72,7 @@ impl MediaType {
     pub fn guess_from_path(path: impl AsRef<std::path::Path>) -> Option<Self> {
         let path = path.as_ref();
 
-        // `mime_guess` considers `.obj` to be a tgif… but really it's way more likely to be an obj.
+        // `mime_guess2` considers `.obj` to be a tgif… but really it's way more likely to be an obj.
         if path
             .extension()
             .and_then(|ext| ext.to_str().map(|s| s.to_lowercase()))
@@ -82,7 +82,7 @@ impl MediaType {
             return Some(Self::obj());
         }
 
-        mime_guess::from_path(path)
+        mime_guess2::from_path(path)
             .first_raw()
             .map(ToOwned::to_owned)
             .map(Into::into)

@@ -75,18 +75,18 @@ def log_nuscenes_lidar(root_dir: pathlib.Path, dataset_version: str, scene_name:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Visualizes lidar scans using the Rerun SDK.")
     parser.add_argument(
-        "--root_dir",
+        "--root-dir",
         type=pathlib.Path,
         default=DATASET_DIR,
         help="Root directory of nuScenes dataset",
     )
     parser.add_argument(
-        "--scene_name",
+        "--scene-name",
         type=str,
         default="scene-0061",
         help="Scene name to visualize (typically of form 'scene-xxxx')",
     )
-    parser.add_argument("--dataset_version", type=str, default="v1.0-mini", help="Scene id to visualize")
+    parser.add_argument("--dataset-version", type=str, default="v1.0-mini", help="Scene id to visualize")
     rr.script_add_args(parser)
     args = parser.parse_args()
 

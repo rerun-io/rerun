@@ -446,8 +446,8 @@ def main() -> None:
         choices=["horses, driving", "boats"],
         help="The example video to run on.",
     )
-    parser.add_argument("--dataset_dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
-    parser.add_argument("--video_path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
+    parser.add_argument("--dataset-dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
+    parser.add_argument("--video-path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
     parser.add_argument(
         "--max-frame",
         type=int,

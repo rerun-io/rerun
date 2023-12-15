@@ -65,7 +65,7 @@ document-features.workspace = true
 infer.workspace = true
 itertools.workspace = true
 half = { workspace = true, features = ["bytemuck"] }
-mime_guess.workspace = true
+mime_guess2.workspace = true
 ndarray.workspace = true
 once_cell.workspace = true
 smallvec.workspace = true

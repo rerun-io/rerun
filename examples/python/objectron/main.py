@@ -267,7 +267,7 @@ def main() -> None:
         help="Reprocess video frames even if they already exist",
     )
     parser.add_argument(
-        "--dataset_dir", type=Path, default=LOCAL_DATASET_DIR, help="Directory to save example videos to."
+        "--dataset-dir", type=Path, default=LOCAL_DATASET_DIR, help="Directory to save example videos to."
     )
 
     rr.script_add_args(parser)

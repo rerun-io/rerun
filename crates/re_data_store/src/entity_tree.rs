@@ -88,21 +88,46 @@ pub struct SubtreeInfo {
     ///
     /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
     pub time_histogram: TimeHistogramPerTimeline,
+
+    /// Number of bytes used by all arrow data
+    data_bytes: u64,
 }
 
 impl SubtreeInfo {
     /// Assumes the event has been filtered to be part of this subtree.
     fn on_event(&mut self, event: &StoreEvent) {
+        use re_types_core::SizeBytes as _;
+
         match event.kind {
             StoreDiffKind::Addition => {
                 self.time_histogram
                     .add(&event.times, event.num_components() as _);
+
+                for cell in event.cells.values() {
+                    self.data_bytes += cell.total_size_bytes();
+                }
             }
             StoreDiffKind::Deletion => {
                 self.time_histogram
                     .remove(&event.timepoint(), event.num_components() as _);
+
+                for cell in event.cells.values() {
+                    if let Some(bytes_left) = self.data_bytes.checked_sub(cell.total_size_bytes()) {
+                        self.data_bytes = bytes_left;
+                    } else if cfg!(debug_assertions) {
+                        re_log::warn_once!(
+                            "Error in book-keeping: we've removed more bytes then we've added"
+                        );
+                    }
+                }
             }
         }
+    }
+
+    /// Number of bytes used by all arrow data in this tree (including their schemas, but otherwise ignoring book-keeping overhead).
+    #[inline]
+    pub fn data_bytes(&self) -> u64 {
+        self.data_bytes
     }
 }
 

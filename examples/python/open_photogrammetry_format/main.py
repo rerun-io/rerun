@@ -21,6 +21,7 @@ import numpy as np
 import requests
 import rerun as rr
 import tqdm
+from PIL import Image
 from pyopf.io import load
 from pyopf.resolve import resolve
 
@@ -109,10 +110,10 @@ class OPFProject:
 
     def log_point_cloud(self) -> None:
         """Log the project's point cloud."""
-        pcl = self.project.point_cloud_objs[0]
-        rr.log("world/pcl", rr.Points3D(pcl.nodes[0].position, colors=pcl.nodes[0].color), timeless=True)
+        points = self.project.point_cloud_objs[0].nodes[0]
+        rr.log("world/points", rr.Points3D(points.position, colors=points.color), timeless=True)
 
-    def log_calibrated_cameras(self) -> None:
+    def log_calibrated_cameras(self, jpeg_quality: int | None) -> None:
         """
         Log the project's calibrated cameras as individual frames.
 
@@ -180,7 +181,12 @@ class OPFProject:
                     camera_xyz=rr.ViewCoordinates.RUB,
                 ),
             )
-            rr.log(entity + "/image/rgb", rr.ImageEncoded(path=self.path.parent / camera.uri))
+
+            if jpeg_quality is not None:
+                with Image.open(self.path.parent / camera.uri) as img:
+                    rr.log(entity + "/image/rgb", rr.Image(np.array(img)).compress(jpeg_quality=jpeg_quality))
+            else:
+                rr.log(entity + "/image/rgb", rr.ImageEncoded(path=self.path.parent / camera.uri))
 
 
 def main() -> None:
@@ -199,6 +205,12 @@ def main() -> None:
         action="store_true",
         help="Log all cameras globally instead of as individual frames in the timeline.",
     )
+    parser.add_argument(
+        "--jpeg-quality",
+        type=int,
+        default=None,
+        help="If specified, compress the camera images with the given JPEG quality.",
+    )
 
     rr.script_add_args(parser)
 
@@ -213,7 +225,7 @@ def main() -> None:
     rr.script_setup(args, "rerun_example_open_photogrammetry_format")
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
     project.log_point_cloud()
-    project.log_calibrated_cameras()
+    project.log_calibrated_cameras(jpeg_quality=args.jpeg_quality)
     rr.script_teardown(args)
 
 
