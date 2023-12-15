@@ -187,7 +187,7 @@ def main() -> None:
         help="The name of the mesh to analyze",
     )
     parser.add_argument(
-        "--mesh_path",
+        "--mesh-path",
         type=Path,
         help="Path to a mesh to analyze. If set, overrides the `--mesh` argument.",
     )
