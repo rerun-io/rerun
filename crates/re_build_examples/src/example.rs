@@ -164,12 +164,10 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatt
     let Some(end) = content.find("---") else {
         anyhow::bail!("{:?} has invalid frontmatter: missing --- terminator", path);
     };
-    Ok(Some(serde_yaml::from_str(&content[..end]).map_err(
-        |err| {
-            anyhow::anyhow!(
-                "failed to read {:?}: {err}",
-                path.parent().unwrap().file_name().unwrap()
-            )
-        },
-    )?))
+    Ok(Some(toml::from_str(&content[..end]).map_err(|err| {
+        anyhow::anyhow!(
+            "failed to read {:?}: {err}",
+            path.parent().unwrap().file_name().unwrap()
+        )
+    })?))
 }

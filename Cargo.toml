@@ -189,7 +189,6 @@ serde = "1"
 serde_bytes = "0.11"
 serde_json = { version = "1", default-features = false, features = ["std"] }
 serde_test = "1"
-serde_yaml = { version = "0.9.21", default-features = false }
 sha2 = "0.10"
 similar-asserts = "1.4.2"
 slotmap = { version = "1.0.6", features = ["serde"] }
@@ -210,6 +209,7 @@ tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
 tokio = { version = "1.24", default-features = false }
 tokio-tungstenite = { version = "0.17.1", default-features = false }
+toml = "0.8.8"
 tracing = { version = "0.1", default-features = false }
 tungstenite = { version = "0.17", default-features = false }
 type-map = "0.5"

@@ -13,6 +13,13 @@ import requests
 from PIL import Image
 
 
+def load_frontmatter(s: str) -> frontmatter.Post:
+    return frontmatter.loads(
+        s,
+        handler=frontmatter.TOMLHandler(start_delimiter="---", end_delimiter="---"),
+    )
+
+
 class Example:
     def __init__(self, path: Path, readme: str, fm: frontmatter.Post) -> None:
         self.path = path
@@ -31,7 +38,7 @@ def examples_with_thumbnails() -> Generator[Example, None, None]:
     for path in Path("examples/python").iterdir():
         if (path / "README.md").exists():
             readme = (path / "README.md").read_text()
-            fm = frontmatter.loads(readme)
+            fm = load_frontmatter(readme)
             if fm.get("thumbnail"):
                 yield Example(path, readme, fm)
 

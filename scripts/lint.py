@@ -38,6 +38,13 @@ double_the = re.compile(r"\bthe the\b")
 double_word = re.compile(r" ([a-z]+) \1[ \.]")
 
 
+def load_frontmatter(s: str) -> frontmatter.Post:
+    return frontmatter.loads(
+        s,
+        handler=frontmatter.TOMLHandler(start_delimiter="---", end_delimiter="---"),
+    )
+
+
 def is_valid_todo_part(part: str) -> bool:
     part = part.strip()
 
@@ -617,7 +624,7 @@ def lint_frontmatter(filepath: str, content: str) -> list[str]:
     if not filepath.endswith(".md"):
         return errors
 
-    fm = frontmatter.loads(content)
+    fm = load_frontmatter(content)
 
     errors += lint_example_description(filepath, fm)
 
