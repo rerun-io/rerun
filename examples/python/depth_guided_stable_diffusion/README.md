@@ -23,3 +23,4 @@ For more info see [here](https://github.com/Stability-AI/stablediffusion).
 pip install -r examples/python/depth_guided_stable_diffusion/requirements.txt
 python examples/python/depth_guided_stable_diffusion/main.py
 ```
+
