@@ -1,9 +1,10 @@
----
+<--[metadata]
 title = "ControlNet"
 tags = ["controlnet", "canny", "huggingface", "stable-diffusion", "tensor", "text"]
 thumbnail = "https://static.rerun.io/controlnet/8aace9c59a423c2eeabe4b7f9abb5187559c52e8/480w.png"
 thumbnail_dimensions = [480, 303]
----
+-->
+
 
 This example integrates Rerun into [Hugging Face's ControlNet example](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet). ControlNet allows to condition Stable Diffusion on various modalities. In this example we condition on edges detected by the Canny edge detector.
 

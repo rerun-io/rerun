@@ -1,10 +1,11 @@
----
+<--[metadata]
 title = "Depth Guided Stable Diffusion"
 tags = ["2D", "depth", "huggingface", "stable-diffusion", "tensor", "text"]
 thumbnail = "https://static.rerun.io/depth_guided_stable_diffusion/a85516aba09f72649517891d767e15383ce7f4ea/480w.png"
 thumbnail_dimensions = [480, 253]
 channel = "nightly"
----
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_guided_stable_diffusion/a85516aba09f72649517891d767e15383ce7f4ea/480w.png">

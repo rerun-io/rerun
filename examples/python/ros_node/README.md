@@ -1,9 +1,10 @@
----
+<--[metadata]
 title = "ROS Node"
 tags = ["2D", "3D", "mesh", "pinhole-camera", "ros", "time-series"]
 thumbnail = "https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/480w.png"
 thumbnail_dimensions = [480, 266]
----
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/480w.png">

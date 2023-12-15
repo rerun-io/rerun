@@ -1,8 +1,9 @@
----
+<--[metadata]
 title = "Minimal example"
 thumbnail = "https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/480w.png"
 thumbnail_dimensions = [480, 322]
----
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/480w.png">

@@ -1,9 +1,10 @@
----
+<--[metadata]
 title = "Live Depth Sensor"
 tags = ["2D", "3D", "live", "depth", "realsense"]
 thumbnail = "https://static.rerun.io/live_depth_sensor/d3c0392bebe2003d24110a779d6f6748167772d8/480w.png"
 thumbnail_dimensions = [480, 360]
----
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/live_depth_sensor/d3c0392bebe2003d24110a779d6f6748167772d8/480w.png">

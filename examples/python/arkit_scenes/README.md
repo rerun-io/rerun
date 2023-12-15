@@ -1,11 +1,12 @@
----
+<--[metadata]
 title = "ARKit Scenes"
 tags = ["2D", "3D", "depth", "mesh", "object-detection", "pinhole-camera"]
 description = "Visualize the ARKitScenes dataset, which contains color+depth images, the reconstructed mesh and labeled bounding boxes."
 thumbnail = "https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/480w.png"
 thumbnail_dimensions = [480, 243]
 channel = "main"
----
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/480w.png">

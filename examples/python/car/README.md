@@ -1,8 +1,9 @@
----
+<--[metadata]
 title = "Car"
 thumbnail = "https://static.rerun.io/car/014857675dfed92c3f6a9492e3291c48a982ac83/480w.png"
 thumbnail_dimensions = [480, 235]
----
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/car/014857675dfed92c3f6a9492e3291c48a982ac83/480w.png">

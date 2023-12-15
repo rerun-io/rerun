@@ -1,8 +1,9 @@
----
+<--[metadata]
 title = "Clock"
 thumbnail = "https://static.rerun.io/clock/ae4b8970edba8480431cb71e57b8cddd9e1769c7/480w.png"
 thumbnail_dimensions = [480, 341]
----
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/clock/05e69dc20c9a28005f1ffe7f0f2ac9eeaa95ba3b/480w.png">

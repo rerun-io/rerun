@@ -1,7 +1,8 @@
----
+<--[metadata]
 title = "Template"
 tags = ["kebab-case", "comma", "separated"]
----
+-->
+
 
 <!--
 Place a screenshot in place of this comment

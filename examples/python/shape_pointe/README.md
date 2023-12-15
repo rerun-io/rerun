@@ -1,10 +1,11 @@
----
+<--[metadata]
 title = "Point-E and Shap-E"
 source = "https://github.com/rerun-io/point-shap-e"
 tags = ["3D", "diffusion", "point", "mesh"]
 thumbnail = "https://static.rerun.io/overview/6516611ebcf25c4b946e3d99c21c6930d4c9f0bd/480w.png"
 thumbnail_dimensions = [480, 293]
----
+-->
+
 
 OpenAI has released two models for text-to-3d generation: Point-E and Shape-E. Both of these methods are fast and interesting but still low fidelity for now.
 

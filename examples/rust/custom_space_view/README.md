@@ -1,7 +1,8 @@
----
+<--[metadata]
 title = "Custom Space View UI"
 thumbnail = "https://static.rerun.io/custom_space_view/e05a073d64003645b6af6de91b068c2f646c1b8a/480w.jpeg"
----
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/api_demo/e05a073d64003645b6af6de91b068c2f646c1b8a/480w.jpeg">
