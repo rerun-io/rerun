@@ -22,7 +22,13 @@ use crate::viewport_blueprint::add_delta_from_single_component;
 // ----------------------------------------------------------------------------
 
 /// A view of a space.
-#[derive(Clone)]
+///
+/// Note: [`SpaceViewBlueprint`] doesn't implement Clone because it stores an internal
+/// uuid used for identifying the path of its data in the blueprint store. It's ambiguous
+/// whether the intent is for a clone to write to the same place.
+///
+/// If you want a new space view otherwise identical to an existing one, use
+/// [`SpaceViewBlueprint::duplicate`].
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
@@ -171,6 +177,20 @@ impl SpaceViewBlueprint {
                 ctx.store_context.blueprint.store_id().clone(),
                 deltas,
             ));
+    }
+
+    /// Creates a new [`SpaceViewBlueprint`] with a the same contents, but a different [`SpaceViewId`]
+    ///
+    /// Also duplicates all of the queries in the space view.
+    pub fn duplicate(&self) -> Self {
+        Self {
+            id: SpaceViewId::random(),
+            display_name: self.display_name.clone(),
+            class_identifier: self.class_identifier,
+            space_origin: self.space_origin.clone(),
+            queries: self.queries.iter().map(|q| q.duplicate()).collect(),
+            entities_determined_by_user: self.entities_determined_by_user,
+        }
     }
 
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
