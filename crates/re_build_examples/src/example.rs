@@ -154,20 +154,28 @@ struct Frontmatter {
 }
 
 fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatter>> {
+    const START: &str = "<--[metadata]";
+    const END: &str = "-->";
+
     let path = path.as_ref();
     let content = std::fs::read_to_string(path)?;
-    let content = content.replace('\r', ""); // Windows, god damn you
-    re_build_tools::rerun_if_changed(path);
-    let Some(content) = content.strip_prefix("---\n") else {
+
+    let Some(start) = content.find(START) else {
         return Ok(None);
     };
-    let Some(end) = content.find("---") else {
-        anyhow::bail!("{:?} has invalid frontmatter: missing --- terminator", path);
+    let start = start + START.len();
+
+    let Some(end) = content[start..].find(END) else {
+        anyhow::bail!("{:?} has invalid frontmatter: missing --> terminator", path);
     };
-    Ok(Some(toml::from_str(&content[..end]).map_err(|err| {
-        anyhow::anyhow!(
-            "failed to read {:?}: {err}",
-            path.parent().unwrap().file_name().unwrap()
-        )
-    })?))
+    let end = start + end;
+
+    toml::from_str(content[start..end].trim())
+        .map(Some)
+        .map_err(|err| {
+            anyhow::anyhow!(
+                "failed to read {:?}: {err}",
+                path.parent().unwrap().file_name().unwrap()
+            )
+        })
 }
