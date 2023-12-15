@@ -155,7 +155,7 @@ impl RerunArgs {
 
     #[allow(clippy::unnecessary_wraps)] // False positive on some feature flags
     fn to_behavior(&self) -> anyhow::Result<RerunBehavior> {
-        if dbg!(self.stdout) {
+        if self.stdout {
             return Ok(RerunBehavior::Stdout);
         }
 
