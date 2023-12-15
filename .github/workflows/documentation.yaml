@@ -35,7 +35,8 @@ jobs:
 
           # Avoid crates.io rate-limiting, skip changelog PR links (so many), and skip speculative links
           # TODO(#4085): https://rerun-io.github.io/rerun/dev/bench/ often 404:s for unknown reasons
-          linksToSkip: "https://crates.io/crates/.*, https://github.com/rerun-io/rerun/pull/.*, .*?speculative-link, https://rerun-io.github.io/rerun/dev/bench/"
+          # TODO(#4556): remove the `static.rerun.io` and `github.com` skips
+          linksToSkip: "https://static.rerun.io/.*, https://github.com/.*, https://crates.io/crates/.*, https://github.com/rerun-io/rerun/pull/.*, .*?speculative-link, https://rerun-io.github.io/rerun/dev/bench/"
           retry: true
           retryErrors: true
           retryErrorsCount: 5
