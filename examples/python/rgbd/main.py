@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -50,7 +51,7 @@ def read_depth_image(buf: bytes) -> npt.NDArray[Any]:
     return img
 
 
-def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
+def log_nyud_data(recording_path: Path, subset_idx: int, frames: int) -> None:
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
 
     with zipfile.ZipFile(recording_path, "r") as archive:
@@ -66,6 +67,9 @@ def log_nyud_data(recording_path: Path, subset_idx: int = 0) -> None:
         ]
         files_with_timestamps = [(parse_timestamp(f.filename), f) for f in subset]
         files_with_timestamps.sort(key=lambda t: t[0])
+
+        if len(files_with_timestamps) > frames:
+            files_with_timestamps = files_with_timestamps[:frames]
 
         for time, f in files_with_timestamps:
             rr.set_time_seconds("time", time.timestamp())
@@ -140,7 +144,7 @@ def download_progress(url: str, dst: Path) -> None:
             bar.update(size)
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     parser.add_argument(
         "--recording",
@@ -150,6 +154,9 @@ if __name__ == "__main__":
         help="Name of the NYU Depth Dataset V2 recording",
     )
     parser.add_argument("--subset-idx", type=int, default=0, help="The index of the subset of the recording to use.")
+    parser.add_argument(
+        "--frames", type=int, default=sys.maxsize, help="If specified, limits the number of frames logged"
+    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 
@@ -159,6 +166,11 @@ if __name__ == "__main__":
     log_nyud_data(
         recording_path=recording_path,
         subset_idx=args.subset_idx,
+        frames=args.frames,
     )
 
     rr.script_teardown(args)
+
+
+if __name__ == "__main__":
+    main()
