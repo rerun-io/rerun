@@ -146,6 +146,7 @@ itertools = "0.11"                                                 # updating it
 js-sys = "0.3"
 # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 libc = "0.2"
+linked-hash-map = { version = "0.5", default-features = false }
 log = "0.4"
 log-once = "0.4"
 lz4_flex = "0.11"
@@ -167,6 +168,7 @@ ordered-float = "4.2"
 parking_lot = "0.12"
 pathdiff = "0.2"
 pico-args = "0.5"
+ply-rs = { version = "0.1", default-features = false }
 polars-core = "0.29"
 polars-lazy = "0.29"
 polars-ops = "0.29"
