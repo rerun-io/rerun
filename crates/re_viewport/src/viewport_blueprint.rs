@@ -225,7 +225,12 @@ impl ViewportBlueprint {
     }
 
     /// Add a set of space views to the viewport.
+    ///
     /// NOTE: Calling this more than once per frame will result in lost data.
+    /// Each call to `add_space_views` emits an updated list of [`IncludedSpaceViews`]
+    /// Built by taking the list of [`IncludedSpaceViews`] from the current frame
+    /// and adding the new space views to it. Since this the edit is not applied until
+    /// the end of frame the second call will see a stale version of the data.
     // TODO(jleibs): Better safety check here.
     pub fn add_space_views(
         &self,

@@ -171,8 +171,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         let mut maximized_tree;
 
-        // TODO(jleibs): This tree won't have the edits from `viewport_blueprint_ui`.
-        // Maybe we should route that all the way through to here and only save it once.
         let tree = if let Some(space_view_id) = blueprint.maximized {
             let mut tiles = egui_tiles::Tiles::default();
             let root = tiles.insert_pane(space_view_id);
