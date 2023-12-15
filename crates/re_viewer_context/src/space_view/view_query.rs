@@ -47,18 +47,35 @@ pub struct DataResult {
     pub individual_properties: Option<EntityProperties>,
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back.
-    pub override_path: EntityPath,
+    pub base_override_path: EntityPath,
 }
 
 static DEFAULT_PROPS: Lazy<EntityProperties> = Lazy::<EntityProperties>::new(Default::default);
 
 impl DataResult {
+    pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
+    pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
+
+    pub fn override_path(&self) -> EntityPath {
+        if self.is_group {
+            self.base_override_path
+                .join(&Self::INDIVIDUAL_OVERRIDES_PREFIX.into())
+                .join(&self.entity_path)
+        } else {
+            self.base_override_path
+                .join(&Self::RECURSIVE_OVERRIDES_PREFIX.into())
+                .join(&self.entity_path)
+        }
+    }
+
     /// Write the [`EntityProperties`] for this result back to the Blueprint store.
     pub fn save_override(&self, props: Option<EntityProperties>, ctx: &ViewerContext<'_>) {
+        let override_path = self.override_path();
+
         let cell = match props {
             None => {
                 if self.individual_properties.is_some() {
-                    re_log::debug!("Clearing {:?}", self.override_path);
+                    re_log::debug!("Clearing {:?}", override_path);
 
                     Some(DataCell::from_arrow_empty(
                         EntityPropertiesComponent::name(),
@@ -77,7 +94,7 @@ impl DataResult {
                         .as_ref()
                         .unwrap_or(&EntityProperties::default()),
                 ) {
-                    re_log::debug!("Overriding {:?} with {:?}", self.override_path, props);
+                    re_log::debug!("Overriding {:?} with {:?}", override_path, props);
 
                     let component = EntityPropertiesComponent(props);
 
@@ -94,7 +111,7 @@ impl DataResult {
 
         let row = DataRow::from_cells1_sized(
             RowId::new(),
-            self.override_path.clone(),
+            override_path.clone(),
             TimePoint::timeless(),
             1,
             cell,

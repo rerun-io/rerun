@@ -15,20 +15,6 @@ pub trait PropertyResolver {
     fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityOverrides;
 }
 
-pub struct NoopResolver {}
-
-impl PropertyResolver for NoopResolver {
-    fn resolve_entity_overrides(&self, _ctx: &StoreContext<'_>) -> EntityOverrides {
-        EntityOverrides {
-            root: EntityProperties::default(),
-            individual: EntityPropertyMap::default(),
-            group: EntityPropertyMap::default(),
-        }
-    }
-}
-
-pub static NOOP_RESOLVER: NoopResolver = NoopResolver {};
-
 /// The common trait implemented for data queries
 ///
 /// Both interfaces return [`re_viewer_context::DataResult`]s, which are self-contained description of the data
@@ -42,6 +28,12 @@ pub trait DataQuery {
     fn execute_query(
         &self,
         property_resolver: &impl PropertyResolver,
+        ctx: &StoreContext<'_>,
+        entities_per_system: &EntitiesPerSystem,
+    ) -> DataQueryResult;
+
+    fn execute_query_fast(
+        &self,
         ctx: &StoreContext<'_>,
         entities_per_system: &EntitiesPerSystem,
     ) -> DataQueryResult;

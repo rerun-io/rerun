@@ -421,7 +421,7 @@ impl SpaceViewBlueprint {
             direct_included: true,
             accumulated_properties: Some(accumulated_properties),
             individual_properties,
-            override_path: entity_path,
+            base_override_path: entity_path,
         }
     }
 
@@ -562,7 +562,7 @@ mod tests {
             let mut overrides = parent.individual_properties.clone().unwrap_or_default();
             overrides.visible = false;
 
-            save_override(overrides, &parent.override_path, &mut blueprint);
+            save_override(overrides, &parent.override_path(), &mut blueprint);
         }
 
         // Parent is not visible, but children are
@@ -605,7 +605,7 @@ mod tests {
                 .unwrap_or_default();
             overrides.visible = false;
 
-            save_override(overrides, &parent_group.override_path, &mut blueprint);
+            save_override(overrides, &parent_group.override_path(), &mut blueprint);
         }
 
         // Nobody is visible
@@ -647,7 +647,7 @@ mod tests {
             overrides.visible_history.enabled = true;
             overrides.visible_history.nanos = VisibleHistory::ALL;
 
-            save_override(overrides, &root.override_path, &mut blueprint);
+            save_override(overrides, &root.override_path(), &mut blueprint);
         }
 
         // Everyone has visible history
@@ -684,7 +684,7 @@ mod tests {
             let mut overrides = child2.individual_properties.clone().unwrap_or_default();
             overrides.visible_history.enabled = true;
 
-            save_override(overrides, &child2.override_path, &mut blueprint);
+            save_override(overrides, &child2.override_path(), &mut blueprint);
         }
 
         // Child2 has its own visible history

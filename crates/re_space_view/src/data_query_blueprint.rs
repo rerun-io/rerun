@@ -3,6 +3,7 @@ use re_data_store::{
     EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree, StoreDb,
 };
 use re_log_types::{DataRow, EntityPath, EntityPathExpr, RowId, TimePoint};
+use re_tracing::profile_scope;
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
@@ -51,9 +52,6 @@ impl DataQueryBlueprint {
 }
 
 impl DataQueryBlueprint {
-    pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
-    pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
-
     /// Creates a new [`DataQueryBlueprint`].
     ///
     /// This [`DataQueryBlueprint`] is ephemeral. It must be saved by calling
@@ -122,11 +120,11 @@ impl DataQueryBlueprint {
             individual_override_root: self
                 .id
                 .as_entity_path()
-                .join(&Self::INDIVIDUAL_OVERRIDES_PREFIX.into()),
+                .join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into()),
             recursive_override_root: self
                 .id
                 .as_entity_path()
-                .join(&Self::RECURSIVE_OVERRIDES_PREFIX.into()),
+                .join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into()),
         }
     }
 
@@ -304,6 +302,31 @@ impl DataQuery for DataQueryBlueprint {
             tree: DataResultTree::new(data_results, root_handle),
         }
     }
+
+    fn execute_query_fast(
+        &self,
+        ctx: &re_viewer_context::StoreContext<'_>,
+        entities_per_system: &EntitiesPerSystem,
+    ) -> DataQueryResult {
+        re_tracing::profile_function!();
+
+        let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
+
+        let executor = QueryExpressionEvaluator::new(self, entities_per_system);
+
+        let root_handle = ctx.recording.and_then(|store| {
+            executor.add_entity_tree_to_data_results_recursive_fast(
+                store.tree(),
+                &mut data_results,
+                false,
+            )
+        });
+
+        DataQueryResult {
+            id: self.id,
+            tree: DataResultTree::new(data_results, root_handle),
+        }
+    }
 }
 
 /// Helper struct for executing the query from [`DataQueryBlueprint`]
@@ -326,6 +349,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
         blueprint: &'a DataQueryBlueprint,
         per_system_entity_list: &'a EntitiesPerSystem,
     ) -> Self {
+        profile_scope!("expression pre-processing");
         let inclusions: Vec<EntityPathExpr> = blueprint
             .expressions
             .inclusions
@@ -427,14 +451,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
             accumulated_properties = accumulated_properties.with_child(props);
         }
 
-        let base_entity_path = self.blueprint.id.as_entity_path().clone();
-
-        let individual_override_path = base_entity_path
-            .join(&DataQueryBlueprint::INDIVIDUAL_OVERRIDES_PREFIX.into())
-            .join(&entity_path);
-        let recursive_override_path = base_entity_path
-            .join(&DataQueryBlueprint::RECURSIVE_OVERRIDES_PREFIX.into())
-            .join(&entity_path);
+        let base_override_path = self.blueprint.id.as_entity_path().clone();
 
         let self_leaf = if !view_parts.is_empty() || exact_include {
             let individual_props = overrides.individual.get_opt(&entity_path);
@@ -451,7 +468,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     direct_included: any_match,
                     individual_properties: overrides.individual.get_opt(&entity_path).cloned(),
                     accumulated_properties: Some(leaf_accumulated_properties),
-                    override_path: individual_override_path,
+                    base_override_path: base_override_path.clone(),
                 },
                 children: Default::default(),
             }))
@@ -491,7 +508,106 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     direct_included: any_match,
                     individual_properties,
                     accumulated_properties: Some(accumulated_properties),
-                    override_path: recursive_override_path,
+                    base_override_path,
+                },
+                children,
+            }))
+        }
+    }
+
+    fn add_entity_tree_to_data_results_recursive_fast(
+        &self,
+        tree: &EntityTree,
+        data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
+        from_recursive: bool,
+    ) -> Option<DataResultHandle> {
+        // If we hit a prefix that is not allowed, we terminate. This is
+        // a pruned branch of the tree. Can come from either an explicit
+        // recursive exclusion, or an implicit missing inclusion.
+        // TODO(jleibs): If this space is disconnected, we should terminate here
+        if self.recursive_exclusions.contains(&tree.path)
+            || !(from_recursive || self.allowed_prefixes.contains(&tree.path))
+        {
+            return None;
+        }
+
+        let entity_path = tree.path.clone();
+
+        // Pre-compute our matches
+        let exact_include = self.exact_inclusions.contains(&entity_path);
+        let recursive_include = self.recursive_inclusions.contains(&entity_path) || from_recursive;
+        let exact_exclude = self.exact_exclusions.contains(&entity_path);
+        let any_match = (exact_include || recursive_include) && !exact_exclude;
+
+        // Only populate view_parts if this is a match
+        // Note that allowed prefixes that aren't matches can still create groups
+        let view_parts: SmallVec<_> = if any_match {
+            profile_scope!("test_view_parts");
+            self.per_system_entity_list
+                .iter()
+                .filter_map(|(part, ents)| {
+                    if ents.contains(&entity_path) {
+                        Some(*part)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else {
+            Default::default()
+        };
+
+        let base_override_path = self.blueprint.id.as_entity_path().clone();
+
+        let self_leaf = if !view_parts.is_empty() || exact_include {
+            profile_scope!("leaf insertion");
+            Some(data_results.insert(DataResultNode {
+                data_result: DataResult {
+                    entity_path: entity_path.clone(),
+                    view_parts,
+                    is_group: false,
+                    direct_included: any_match,
+                    individual_properties: None,
+                    accumulated_properties: None,
+                    base_override_path: base_override_path.clone(),
+                },
+                children: Default::default(),
+            }))
+        } else {
+            None
+        };
+
+        let maybe_self_iter = if let Some(self_leaf) = self_leaf {
+            itertools::Either::Left(std::iter::once(self_leaf))
+        } else {
+            itertools::Either::Right(std::iter::empty())
+        };
+
+        let children: SmallVec<_> = maybe_self_iter
+            .chain(tree.children.values().filter_map(|subtree| {
+                self.add_entity_tree_to_data_results_recursive_fast(
+                    subtree,
+                    data_results,
+                    recursive_include, // Once we have hit a recursive match, it's always propagated
+                )
+            }))
+            .collect();
+
+        // If the only child is the self-leaf, then we don't need to create a group
+        if children.is_empty() || children.len() == 1 && self_leaf.is_some() {
+            self_leaf
+        } else {
+            profile_scope!("node insertion");
+            // The 'individual' properties of a group are the group overrides
+            Some(data_results.insert(DataResultNode {
+                data_result: DataResult {
+                    entity_path,
+                    view_parts: Default::default(),
+                    is_group: true,
+                    direct_included: any_match,
+                    individual_properties: None,
+                    accumulated_properties: None,
+                    base_override_path,
                 },
                 children,
             }))
