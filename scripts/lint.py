@@ -16,7 +16,7 @@ from typing import Any, Callable, Iterator
 
 from gitignore_parser import parse_gitignore
 
-from .frontmatter import load_frontmatter, Frontmatter
+from .frontmatter import Frontmatter, load_frontmatter
 
 # -----------------------------------------------------------------------------
 
