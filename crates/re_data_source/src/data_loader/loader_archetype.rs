@@ -96,7 +96,15 @@ impl DataLoader for ArchetypeLoader {
                 entity_path,
                 contents.into_owned(),
             )?);
-        };
+        } else if crate::SUPPORTED_TEXT_EXTENSIONS.contains(&extension.as_str()) {
+            re_log::debug!(?filepath, loader = self.name(), "Loading text document…",);
+            rows.extend(load_text_document(
+                filepath,
+                timepoint,
+                entity_path,
+                contents.into_owned(),
+            )?);
+        }
 
         for row in rows {
             if tx.send(row.into()).is_err() {
@@ -145,6 +153,28 @@ fn load_image(
             let arch = re_types::archetypes::Image::from_file_contents(
                 contents,
                 image::ImageFormat::from_path(filepath).ok(),
+            )?;
+            DataRow::from_archetype(RowId::new(), timepoint, entity_path, &arch)?
+        },
+        //
+    ];
+
+    Ok(rows.into_iter())
+}
+
+fn load_text_document(
+    filepath: std::path::PathBuf,
+    timepoint: TimePoint,
+    entity_path: EntityPath,
+    contents: Vec<u8>,
+) -> Result<impl ExactSizeIterator<Item = DataRow>, DataLoaderError> {
+    re_tracing::profile_function!();
+
+    let rows = [
+        {
+            let arch = re_types::archetypes::TextDocument::from_file_contents(
+                contents,
+                re_types::components::MediaType::guess_from_path(filepath),
             )?;
             DataRow::from_archetype(RowId::new(), timepoint, entity_path, &arch)?
         },

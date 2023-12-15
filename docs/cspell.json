@@ -3,7 +3,8 @@
   "version": "0.2",
   "usePnP": true,
   "ignorePaths": [
-    "node_modules/**"
+    "node_modules/**",
+    "../examples/assets/**"
   ],
   "ignoreWords": [
     "-useb",

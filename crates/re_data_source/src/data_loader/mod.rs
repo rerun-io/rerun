@@ -26,6 +26,7 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 /// - [`ArchetypeLoader`] for:
 ///     - [3D models]
 ///     - [Images]
+///     - [Text files]
 ///
 /// ## Execution
 ///
@@ -38,6 +39,7 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 /// [Rerun extensions]: crate::SUPPORTED_RERUN_EXTENSIONS
 /// [3D models]: crate::SUPPORTED_MESH_EXTENSIONS
 /// [Images]: crate::SUPPORTED_IMAGE_EXTENSIONS
+/// [Text files]: crate::SUPPORTED_TEXT_EXTENSIONS
 //
 // TODO(#4525): `DataLoader`s should support arbitrary URIs
 // TODO(#4526): `DataLoader`s should be exposed to the SDKs

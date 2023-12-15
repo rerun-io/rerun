@@ -23,7 +23,7 @@ features = ["all"]
 default = []
 
 ## All features except `testing`.
-all = ["ecolor", "glam", "serde"]
+all = ["ecolor", "glam", "image", "serde"]
 
 ## Enables the `datagen` module, which exposes a number of tools for generating random data for
 ## tests and benchmarks.

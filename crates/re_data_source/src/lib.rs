@@ -4,11 +4,7 @@
 //! - Over WebSockets
 //! - From disk
 //!
-//! Also handles different file types:
-//!
-//! - .rrd
-//! - images
-//! - meshes
+//! Also handles different file types: rrd, images, text files, 3D models, point clouds…
 
 mod data_loader;
 mod data_source;
@@ -51,12 +47,16 @@ pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj"];
 
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rrd"];
 
+// TODO(#4555): Add catch-all builtin `DataLoader` for text files
+pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
+
 /// All file extension supported by our builtin [`DataLoader`]s.
 pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
     SUPPORTED_RERUN_EXTENSIONS
         .iter()
         .chain(SUPPORTED_IMAGE_EXTENSIONS)
         .chain(SUPPORTED_MESH_EXTENSIONS)
+        .chain(SUPPORTED_TEXT_EXTENSIONS)
         .copied()
 }
 
@@ -65,4 +65,5 @@ pub fn is_supported_file_extension(extension: &str) -> bool {
     SUPPORTED_IMAGE_EXTENSIONS.contains(&extension)
         || SUPPORTED_MESH_EXTENSIONS.contains(&extension)
         || SUPPORTED_RERUN_EXTENSIONS.contains(&extension)
+        || SUPPORTED_TEXT_EXTENSIONS.contains(&extension)
 }
