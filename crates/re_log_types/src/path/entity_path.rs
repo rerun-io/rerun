@@ -118,9 +118,22 @@ impl EntityPath {
     ///
     /// The file path separators will NOT become splits in the new path.
     /// The returned path will only have one part.
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn from_file_path_as_single_string(file_path: &std::path::Path) -> Self {
         Self::from_single_string(file_path.to_string_lossy().to_string())
+    }
+
+    /// Treat the file path as an entity path hierarchy.
+    ///
+    /// The file path separators will become splits in the new path.
+    pub fn from_file_path(file_path: &std::path::Path) -> Self {
+        use clean_path::Clean as _;
+        Self::new(
+            file_path
+                .clean()
+                .iter()
+                .map(|p| EntityPathPart::from(p.to_string_lossy().to_string()))
+                .collect(),
+        )
     }
 
     /// Treat the string as one opaque string, NOT splitting on any slashes.

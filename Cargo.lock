@@ -4631,6 +4631,7 @@ dependencies = [
  "arrow2",
  "backtrace",
  "bytemuck",
+ "clean-path",
  "criterion",
  "crossbeam",
  "document-features",

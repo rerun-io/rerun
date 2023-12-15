@@ -50,6 +50,7 @@ arrow2 = { workspace = true, features = [
 ] }
 backtrace.workspace = true
 bytemuck.workspace = true
+clean-path.workspace = true
 document-features.workspace = true
 fixed = { workspace = true, default-features = false, features = ["serde"] }
 # `fixed` depends on `half`, so even though `half` is not directly used in this crate,
