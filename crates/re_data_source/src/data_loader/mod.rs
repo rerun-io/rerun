@@ -22,13 +22,14 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 /// [There are plans to make this generic over any URI](https://github.com/rerun-io/rerun/issues/4525).
 ///
 /// Rerun comes with a few [`DataLoader`]s by default:
-/// - [`RrdLoader`] for [Rerun files]
+/// - [`RrdLoader`] for [Rerun files].
 /// - [`ArchetypeLoader`] for:
 ///     - [3D models]
 ///     - [Images]
 ///     - [Point clouds]
 ///     - [Text files]
-/// - [`DirectoryLoader`] for recursively loading folders
+/// - [`DirectoryLoader`] for recursively loading folders.
+/// - `ExternalLoader`, which looks for user-defined data loaders in $PATH.
 ///
 /// ## Execution
 ///
@@ -210,7 +211,7 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
         #[cfg(not(target_arch = "wasm32"))]
-        Arc::new(ExternalDataLoader),
+        Arc::new(ExternalLoader),
     ]
 });
 
@@ -237,5 +238,5 @@ pub use self::loader_rrd::RrdLoader;
 pub(crate) use self::loader_external::EXTERNAL_LOADER_PATHS;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::loader_external::{
-    iter_external_loaders, ExternalDataLoader, EXTERNAL_DATA_LOADER_PREFIX,
+    iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_PREFIX,
 };

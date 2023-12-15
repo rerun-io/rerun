@@ -60,9 +60,9 @@ pub fn iter_external_loaders() -> impl ExactSizeIterator<Item = std::path::PathB
 /// The external loaders are expected to log rrd data to their standard output.
 ///
 /// Refer to our `external_data_loader` example for more information.
-pub struct ExternalDataLoader;
+pub struct ExternalLoader;
 
-impl crate::DataLoader for ExternalDataLoader {
+impl crate::DataLoader for ExternalLoader {
     #[inline]
     fn name(&self) -> String {
         "rerun.data_loaders.External".into()

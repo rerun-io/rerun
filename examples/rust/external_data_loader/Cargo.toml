@@ -9,4 +9,4 @@ publish = false
 [dependencies]
 rerun = { path = "../../../crates/rerun" }
 
-pico-args = { version = "0.5.0", features = ["eq-separator"] }
+argh = "0.1"
