@@ -42,7 +42,7 @@ def log_tokenized_text(token_words: list[str]) -> None:
             clean_token_word = " " + token_word
 
         markdown += f"[{clean_token_word}](recording://umap_embeddings[#{i}])"
-    rr.log("tokenized_text", rr.TextDocument(markdown, media_type="text/markdown"))
+    rr.log("tokenized_text", rr.TextDocument(markdown, media_type=rr.MediaType.MARKDOWN))
 
 
 def log_ner_results(ner_results: list[dict[str, Any]]) -> None:
@@ -74,7 +74,7 @@ def log_ner_results(ner_results: list[dict[str, Any]]) -> None:
     if "MISC" in entity_sets:
         named_entities_str += f"Miscellaneous: {', '.join(entity_sets['MISC'])}\n\n"
 
-    rr.log("named_entities", rr.TextDocument(named_entities_str, media_type="text/markdown"))
+    rr.log("named_entities", rr.TextDocument(named_entities_str, media_type=rr.MediaType.MARKDOWN))
 
 
 def run_llm_ner(text: str) -> None:
@@ -109,12 +109,11 @@ def run_llm_ner(text: str) -> None:
     ner_results: Any = nlp(text)
 
     # Visualize in Rerun
-    rr.log("text", rr.TextDocument(text, media_type="text/markdown"))
+    rr.log("text", rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
     log_tokenized_text(token_words)
     reducer = umap.UMAP(n_components=3, n_neighbors=4)
     umap_embeddings = reducer.fit_transform(embeddings.numpy(force=True)[0])
     class_ids = [0 for _ in token_words]
-    breakpoint()
     for ner_result in ner_results:
         class_ids[ner_result["index"]] = label2index[ner_result["entity"]]
     rr.log(
@@ -125,7 +124,7 @@ def run_llm_ner(text: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(description="BERT-based named entity recognition (NER)")
     parser.add_argument(
         "--text",
         type=str,
