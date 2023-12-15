@@ -5508,6 +5508,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rerun-loader-rust-file"
+version = "0.12.0-alpha.1+dev"
+dependencies = [
+ "argh",
+ "rerun",
+]
+
+[[package]]
 name = "rerun_c"
 version = "0.12.0-alpha.1+dev"
 dependencies = [

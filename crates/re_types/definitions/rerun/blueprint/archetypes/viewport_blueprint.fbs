@@ -19,10 +19,10 @@ table ViewportBlueprint (
     /// All of the space-views that belong to the viewport.
     space_views: rerun.blueprint.components.IncludedSpaceViews ("attr.rerun.component_required", order: 1000);
 
-    /// The layout of the space-views
-    layout: rerun.blueprint.components.ViewportLayout ("attr.rerun.component_required", order: 2000);
-
     // --- Optional ---
+
+    /// The layout of the space-views
+    layout: rerun.blueprint.components.ViewportLayout ("attr.rerun.component_optional", nullable, order: 2000);
 
     /// Show one tab as maximized?
     maximized: rerun.blueprint.components.SpaceViewMaximized ("attr.rerun.component_optional", nullable, order: 3000);

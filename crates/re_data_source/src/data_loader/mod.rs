@@ -22,11 +22,14 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 /// [There are plans to make this generic over any URI](https://github.com/rerun-io/rerun/issues/4525).
 ///
 /// Rerun comes with a few [`DataLoader`]s by default:
-/// - [`RrdLoader`] for [Rerun files],
+/// - [`RrdLoader`] for [Rerun files].
 /// - [`ArchetypeLoader`] for:
 ///     - [3D models]
 ///     - [Images]
+///     - [Point clouds]
 ///     - [Text files]
+/// - [`DirectoryLoader`] for recursively loading folders.
+/// - [`ExternalLoader`], which looks for user-defined data loaders in $PATH.
 ///
 /// ## Execution
 ///
@@ -36,9 +39,10 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 ///
 /// On native, [`DataLoader`]s are executed in parallel.
 ///
-/// [Rerun extensions]: crate::SUPPORTED_RERUN_EXTENSIONS
+/// [Rerun files]: crate::SUPPORTED_RERUN_EXTENSIONS
 /// [3D models]: crate::SUPPORTED_MESH_EXTENSIONS
 /// [Images]: crate::SUPPORTED_IMAGE_EXTENSIONS
+/// [Point clouds]: crate::SUPPORTED_POINT_CLOUD_EXTENSIONS
 /// [Text files]: crate::SUPPORTED_TEXT_EXTENSIONS
 //
 // TODO(#4525): `DataLoader`s should support arbitrary URIs
@@ -206,6 +210,8 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
+        #[cfg(not(target_arch = "wasm32"))]
+        Arc::new(ExternalLoader),
     ]
 });
 
@@ -221,6 +227,16 @@ mod loader_archetype;
 mod loader_directory;
 mod loader_rrd;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod loader_external;
+
 pub use self::loader_archetype::ArchetypeLoader;
 pub use self::loader_directory::DirectoryLoader;
 pub use self::loader_rrd::RrdLoader;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use self::loader_external::EXTERNAL_LOADER_PATHS;
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::loader_external::{
+    iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_PREFIX,
+};
