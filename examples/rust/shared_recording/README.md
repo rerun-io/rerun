@@ -1,6 +1,5 @@
 ---
 title: Shared Recording
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/python/shared_recording/main.py?speculative-link
 ---
 
 <picture>

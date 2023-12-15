@@ -1,7 +1,6 @@
 ---
 title: Custom Store Subscriber
 tags: [store-event, store-diff, store-subscriber]
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_store_subscriber/src/main.rs?speculative-link
 ---
 
 <picture>

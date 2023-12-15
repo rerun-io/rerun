@@ -2,8 +2,6 @@
 title: Template
 tags: [kebab-case, comma, separated]
 description: "Short ~100-sign description of the example. No longer than 130 signs!"
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/template/main.py
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/template/src/main.rs
 ---
 
 <!--

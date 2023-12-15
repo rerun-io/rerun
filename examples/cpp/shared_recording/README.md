@@ -1,7 +1,5 @@
 ---
 title: Shared Recording
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/shared_recording/src/main.rs?speculative-link
-cpp: https://github.com/rerun-io/rerun/tree/latest/examples/cpp/shared_recording/main.cpp?speculative-link
 ---
 
 <picture>

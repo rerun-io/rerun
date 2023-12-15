@@ -1,6 +1,6 @@
 ---
 title: "VRS Viewer"
-cpp: https://github.com/rerun-io/cpp-example-vrs
+source: https://github.com/rerun-io/cpp-example-vrs
 tags: [2D, 3D, vrs, viewer, C++]
 thumbnail: https://static.rerun.io/cpp-example-vrs/c765460d4448da27bb9ee2a2a15f092f82a402d2/480w.png
 thumbnail_dimensions: [480, 286]

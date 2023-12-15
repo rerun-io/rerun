@@ -1,6 +1,6 @@
 ---
 title: "TAPIR: Tracking Any Point with per-frame Initialization and temporal Refinement"
-python: https://github.com/rerun-io/tapnet
+source: https://github.com/rerun-io/tapnet
 tags: [2D, point-tracking, time-series, tensor, jax]
 thumbnail: https://static.rerun.io/tapir/f6a7697848c2ac1e7f0b8db5964f39133c520896/480w.png
 thumbnail_dimensions: [480, 288]

@@ -1,6 +1,6 @@
 ---
 title: "Eigen and OpenCV C++ Integration"
-cpp: https://github.com/rerun-io/cpp-example-opencv-eigen
+source: https://github.com/rerun-io/cpp-example-opencv-eigen
 tags: [2D, 3D, C++, Eigen, OpenCV]
 thumbnail: https://static.rerun.io/cpp-example-opencv-eigen/2fc6355fd87fbb4d07cda384ee8805edb68b5e01/480w.png
 thumbnail_dimensions: [480, 267]

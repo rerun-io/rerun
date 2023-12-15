@@ -1,6 +1,6 @@
 ---
 title: "Differentiable Blocks World: Qualitative 3D Decomposition by Rendering Primitives"
-python: https://github.com/rerun-io/differentiable-blocksworld
+source: https://github.com/rerun-io/differentiable-blocksworld
 tags: [3D, mesh, pinhole-camera]
 thumbnail: https://static.rerun.io/dbw/1da9e778d5fc9875a28a1fd74b61654c287e950d/480w.png
 thumbnail_dimensions: [480, 311]

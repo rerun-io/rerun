@@ -1,6 +1,5 @@
 ---
 title: Extend Viewer UI
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/extend_viewer_ui/src/main.rs
 thumbnail: https://static.rerun.io/extend_viewer_ui/6ccfbe3718a50e659c484d31033db0bd9d40c262/480w.png
 ---
 

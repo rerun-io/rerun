@@ -1,6 +1,6 @@
 ---
 title: "SimpleRecon: 3D Reconstruction Without 3D Convolutions"
-python: https://github.com/rerun-io/simplerecon
+source: https://github.com/rerun-io/simplerecon
 tags: [3D, depth, time-series, pinhole-camera, mesh]
 thumbnail: https://static.rerun.io/simplerecon/e309760134e44ba5ca1a547cb310d47a19257e5b/480w.png
 thumbnail_dimensions: [480, 271]

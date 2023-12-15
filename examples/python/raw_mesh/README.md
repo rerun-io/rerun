@@ -1,7 +1,5 @@
 ---
 title: Raw Mesh
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/raw_mesh/main.py
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/raw_mesh/src/main.rs
 tags: [mesh]
 thumbnail: https://static.rerun.io/raw_mesh/64bec98280b07794f7c9617f30ba2c20278601c3/480w.png
 thumbnail_dimensions: [480, 271]

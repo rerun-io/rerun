@@ -1,6 +1,6 @@
 ---
 title: "Point-E and Shap-E"
-python: https://github.com/rerun-io/point-shap-e
+source: https://github.com/rerun-io/point-shap-e
 tags: [3D, diffusion, point, mesh]
 thumbnail: https://static.rerun.io/overview/6516611ebcf25c4b946e3d99c21c6930d4c9f0bd/480w.png
 thumbnail_dimensions: [480, 293]

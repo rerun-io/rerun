@@ -1,6 +1,5 @@
 ---
 title: ControlNet
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/controlnet/main.py
 tags: [controlnet, canny, huggingface, stable-diffusion, tensor, text]
 thumbnail: https://static.rerun.io/controlnet/8aace9c59a423c2eeabe4b7f9abb5187559c52e8/480w.png
 thumbnail_dimensions: [480, 303]

@@ -1,8 +1,6 @@
 ---
 title: Template
 tags: [kebab-case, comma, separated]
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/template/main.py
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/template/src/main.rs
 ---
 
 <!--

@@ -1,6 +1,5 @@
 ---
 title: Custom Space View UI
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_space_view/src/main.rs
 thumbnail: https://static.rerun.io/custom_space_view/e05a073d64003645b6af6de91b068c2f646c1b8a/480w.jpeg
 ---
 

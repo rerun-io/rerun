@@ -1,6 +1,5 @@
 ---
 title: Lidar
-python: https://github.com/rerun-io/rerun/blob/latest/examples/python/lidar/main.py?speculative-link
 tags: [lidar, 3D]
 description: "Visualize the lidar data from the nuScenes dataset."
 thumbnail: https://static.rerun.io/lidar/bcea9337044919c1524429bd26bc51a3c4db8ccb/480w.png

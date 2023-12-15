@@ -1,6 +1,5 @@
 ---
 title: Multiprocessing
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/multiprocessing/main.py
 thumbnail: https://static.rerun.io/multiprocessing/72bcb7550d84f8e5ed5a39221093239e655f06de/480w.png
 thumbnail_dimensions: [480, 308]
 ---

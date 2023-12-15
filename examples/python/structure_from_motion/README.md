@@ -1,6 +1,5 @@
 ---
 title: Structure from Motion
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/structure_from_motion/main.py
 tags: [2D, 3D, colmap, pinhole-camera, time-series]
 description: "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline."
 thumbnail: https://static.rerun.io/structure_from_motion/b17f8824291fa1102a4dc2184d13c91f92d2279c/480w.png
