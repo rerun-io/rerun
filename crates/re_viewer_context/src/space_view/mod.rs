@@ -24,7 +24,7 @@ pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOut
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use space_view_class::SpaceViewClass;
 pub use space_view_class_registry::{
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistry,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistrator,
 };
 pub use system_execution_output::SystemExecutionOutput;
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};

@@ -12,27 +12,30 @@ impl Asset3D {
     /// from the data at render-time. If it can't, rendering will fail with an error.
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
-    pub fn from_file(path: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
+    pub fn from_file(filepath: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
         use anyhow::Context as _;
-        let path = path.as_ref();
-        let data = std::fs::read(path)
-            .with_context(|| format!("could not read file contents: {path:?}"))?;
-        Ok(Self::from_bytes(data, MediaType::guess_from_path(path)))
+        let filepath = filepath.as_ref();
+        let contents = std::fs::read(filepath)
+            .with_context(|| format!("could not read file contents: {filepath:?}"))?;
+        Ok(Self::from_file_contents(
+            contents,
+            MediaType::guess_from_path(filepath),
+        ))
     }
 
-    /// Creates a new [`Asset3D`] from the given `bytes`.
+    /// Creates a new [`Asset3D`] from the given `contents`.
     ///
     /// The [`MediaType`] will be guessed from magic bytes in the data.
     ///
     /// If no [`MediaType`] can be guessed at the moment, the Rerun Viewer will try to guess one
     /// from the data at render-time. If it can't, rendering will fail with an error.
     #[inline]
-    pub fn from_bytes(bytes: impl AsRef<[u8]>, media_type: Option<impl Into<MediaType>>) -> Self {
-        let bytes = bytes.as_ref();
+    pub fn from_file_contents(contents: Vec<u8>, media_type: Option<impl Into<MediaType>>) -> Self {
         let media_type = media_type.map(Into::into);
+        let media_type = MediaType::or_guess_from_data(media_type, &contents);
         Self {
-            blob: bytes.to_vec().into(),
-            media_type: MediaType::or_guess_from_data(media_type, bytes),
+            blob: contents.into(),
+            media_type,
             transform: None,
         }
     }

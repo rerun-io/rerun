@@ -18,5 +18,5 @@ python examples/python/controlnet/main.py
 
 You can specify your own image and prompts using
 ```bash
-main.py [--img_path IMG_PATH] [--prompt PROMPT] [--negative_prompt NEGATIVE_PROMPT]
+main.py [--img-path IMG_PATH] [--prompt PROMPT] [--negative-prompt NEGATIVE_PROMPT]
 ```

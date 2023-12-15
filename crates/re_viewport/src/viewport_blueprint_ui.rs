@@ -340,16 +340,21 @@ impl Viewport<'_, '_> {
 
                         response | vis_response
                     })
-                    .show_collapsing(ui, ui.id().with(child), default_open, |_, ui| {
-                        Self::space_view_blueprint_ui(
-                            ctx,
-                            ui,
-                            query_result,
-                            *child,
-                            space_view,
-                            space_view_visible,
-                        );
-                    })
+                    .show_collapsing(
+                        ui,
+                        ui.id().with(&child_node.data_result.entity_path),
+                        default_open,
+                        |_, ui| {
+                            Self::space_view_blueprint_ui(
+                                ctx,
+                                ui,
+                                query_result,
+                                *child,
+                                space_view,
+                                space_view_visible,
+                            );
+                        },
+                    )
                     .item_response
                     .on_hover_ui(|ui| {
                         if data_result.is_group {

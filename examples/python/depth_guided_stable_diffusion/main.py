@@ -60,8 +60,8 @@ def main() -> None:
         choices=IMAGE_NAMES,
         help="The example image to run on.",
     )
-    parser.add_argument("--dataset_dir", type=Path, default=DATASET_DIR, help="Directory to save example images to.")
-    parser.add_argument("--image_path", type=str, default="", help="Full path to image to run on. Overrides `--image`.")
+    parser.add_argument("--dataset-dir", type=Path, default=DATASET_DIR, help="Directory to save example images to.")
+    parser.add_argument("--image-path", type=str, default="", help="Full path to image to run on. Overrides `--image`.")
 
     parser.add_argument(
         "--prompt",
@@ -70,7 +70,7 @@ def main() -> None:
         default="A tired robot sitting down on a dirt floor. Rusty metal. Unreal Engine. Wall-e",
     )
     parser.add_argument(
-        "--n_prompt",
+        "--n-prompt",
         type=str,
         help="Negative prompt describing what you don't want in the image you generate.",
         default="White uniform floor and background",
@@ -88,7 +88,7 @@ be maximum and the denoising process will run for the full number of iterations 
 """,
     )
     parser.add_argument(
-        "--guidance_scale",
+        "--guidance-scale",
         type=float,
         default=11,
         help="""
@@ -100,7 +100,7 @@ usually at the expense of lower image quality.
 """,
     )
     parser.add_argument(
-        "--num_inference_steps",
+        "--num-inference-steps",
         type=int,
         default=10,
         help="""

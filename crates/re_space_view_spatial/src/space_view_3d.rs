@@ -33,7 +33,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         register_spatial_contexts(system_registry)?;
         register_3d_spatial_parts(system_registry)?;
@@ -56,7 +56,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         let score = auto_spawn_heuristic(
-            &self.identifier(),
+            self.identifier(),
             ctx,
             per_system_entities,
             SpatialSpaceViewKind::ThreeD,

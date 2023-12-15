@@ -25,6 +25,15 @@ pub enum Channel {
 }
 
 impl Channel {
+    pub fn includes(self, other: Channel) -> bool {
+        match self {
+            Channel::Main => matches!(other, Channel::Main),
+
+            // Include all `main` examples in `nightly`
+            Channel::Nightly => matches!(other, Channel::Main | Channel::Nightly),
+        }
+    }
+
     pub fn examples(self) -> anyhow::Result<Vec<Example>> {
         let mut examples = vec![];
         let dir = Path::new("examples/python");
@@ -59,7 +68,7 @@ impl Channel {
                     continue;
                 };
 
-                if channel != self {
+                if !self.includes(channel) {
                     eprintln!("{name:?}: skipped");
                     continue;
                 }

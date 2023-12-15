@@ -6,6 +6,7 @@ tags: [2D, 3D, object-detection, pinhole-camera]
 thumbnail: https://static.rerun.io/objectron/8ea3a37e6b4af2e06f8e2ea5e70c1951af67fea8/480w.png
 thumbnail_dimensions: [480, 268]
 channel: nightly
+build_args: ["--frames=150"]
 ---
 
 <picture>

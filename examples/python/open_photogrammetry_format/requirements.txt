@@ -1,4 +1,5 @@
 numpy
+pillow
 pyopf; python_version >= '3.10'  # silence error if this requirements.txt gets pulled in a <3.10 venv
 requests
 rerun-sdk

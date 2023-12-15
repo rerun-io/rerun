@@ -43,6 +43,41 @@ impl Image {
             draw_order: None,
         })
     }
+
+    /// Creates a new [`Image`] from a file.
+    ///
+    /// The image format will be inferred from the path (extension), or the contents if that fails.
+    #[cfg(feature = "image")]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[inline]
+    pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
+        let filepath = filepath.as_ref();
+        Ok(Self::new(crate::datatypes::TensorData::from_image_file(
+            filepath,
+        )?))
+    }
+
+    /// Creates a new [`Image`] from the contents of a file.
+    ///
+    /// If unspecified, the image format will be inferred from the contents.
+    #[cfg(feature = "image")]
+    #[inline]
+    pub fn from_file_contents(
+        contents: Vec<u8>,
+        format: Option<image::ImageFormat>,
+    ) -> anyhow::Result<Self> {
+        let format = if let Some(format) = format {
+            format
+        } else {
+            image::guess_format(&contents)?
+        };
+
+        let tensor = crate::components::TensorData(crate::datatypes::TensorData::from_image_bytes(
+            contents, format,
+        )?);
+
+        Ok(Self::new(tensor))
+    }
 }
 
 fn assign_if_none(name: &mut Option<::re_types_core::ArrowString>, new_name: &str) {
@@ -80,5 +115,3 @@ forward_array_views!(i64, Image);
 forward_array_views!(half::f16, Image);
 forward_array_views!(f32, Image);
 forward_array_views!(f64, Image);
-
-// ----------------------------------------------------------------------------
