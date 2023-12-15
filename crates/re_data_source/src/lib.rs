@@ -47,6 +47,7 @@ pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj"];
 
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rrd"];
 
+// TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
 
 /// All file extension supported by our builtin [`DataLoader`]s.
