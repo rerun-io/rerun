@@ -89,7 +89,7 @@ pub struct SubtreeInfo {
     /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
     pub time_histogram: TimeHistogramPerTimeline,
 
-    /// Number of bytes used by all arrow data in this tree (ignores overhead from book-keeping, schemas, etc).
+    /// Number of bytes used by all arrow data
     data_bytes: u64,
 }
 
@@ -104,7 +104,7 @@ impl SubtreeInfo {
                     .add(&event.times, event.num_components() as _);
 
                 for cell in event.cells.values() {
-                    self.data_bytes += cell.heap_size_bytes();
+                    self.data_bytes += cell.total_size_bytes();
                 }
             }
             StoreDiffKind::Deletion => {
@@ -112,7 +112,7 @@ impl SubtreeInfo {
                     .remove(&event.timepoint(), event.num_components() as _);
 
                 for cell in event.cells.values() {
-                    if let Some(bytes_left) = self.data_bytes.checked_sub(cell.heap_size_bytes()) {
+                    if let Some(bytes_left) = self.data_bytes.checked_sub(cell.total_size_bytes()) {
                         self.data_bytes = bytes_left;
                     } else if cfg!(debug_assertions) {
                         re_log::warn_once!(
@@ -124,7 +124,7 @@ impl SubtreeInfo {
         }
     }
 
-    /// Number of bytes used by all arrow data in this tree (ignores overhead from book-keeping, schemas, etc).
+    /// Number of bytes used by all arrow data in this tree (including their schemas, but otherwise ignoring book-keeping overhead).
     #[inline]
     pub fn data_bytes(&self) -> u64 {
         self.data_bytes
