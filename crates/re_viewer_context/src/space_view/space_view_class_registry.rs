@@ -1,11 +1,17 @@
 use ahash::{HashMap, HashSet};
+use nohash_hasher::IntSet;
+use re_arrow_store::DataStore;
+use re_log_types::EntityPath;
 
 use crate::{
     DynSpaceViewClass, IdentifiedViewSystem, SpaceViewClassIdentifier, ViewContextCollection,
     ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemIdentifier,
 };
 
-use super::space_view_class_placeholder::SpaceViewClassPlaceholder;
+use super::{
+    space_view_class_placeholder::SpaceViewClassPlaceholder,
+    visualizer_entity_subscriber::VisualizerEntitySubscriber,
+};
 
 #[derive(Debug, thiserror::Error)]
 #[allow(clippy::enum_variant_names)]
@@ -54,7 +60,7 @@ impl SpaceViewSystemRegistrator<'_> {
             self.registry
                 .context_systems
                 .entry(T::identifier())
-                .or_insert_with(|| SystemTypeRegistryEntry {
+                .or_insert_with(|| ContextSystemTypeRegistryEntry {
                     factory_method: Box::new(|| Box::<T>::default()),
                     used_by: Default::default(),
                 })
@@ -91,9 +97,16 @@ impl SpaceViewSystemRegistrator<'_> {
             self.registry
                 .visualizers
                 .entry(T::identifier())
-                .or_insert_with(|| SystemTypeRegistryEntry {
-                    factory_method: Box::new(|| Box::<T>::default()),
-                    used_by: Default::default(),
+                .or_insert_with(|| {
+                    let entity_subscriber_handle = DataStore::register_subscriber(Box::new(
+                        VisualizerEntitySubscriber::new(&T::default()),
+                    ));
+
+                    VisualizerTypeRegistryEntry {
+                        factory_method: Box::new(|| Box::<T>::default()),
+                        used_by: Default::default(),
+                        entity_subscriber_handle,
+                    }
                 })
                 .used_by
                 .insert(self.identifier);
@@ -110,10 +123,10 @@ impl SpaceViewSystemRegistrator<'_> {
 }
 
 /// Space view class entry in [`SpaceViewClassRegistry`].
-struct SpaceViewClassRegistryEntry {
-    class: Box<dyn DynSpaceViewClass>,
-    context_systems: HashSet<ViewSystemIdentifier>,
-    visualizers: HashSet<ViewSystemIdentifier>,
+pub struct SpaceViewClassRegistryEntry {
+    pub class: Box<dyn DynSpaceViewClass>,
+    pub context_system_ids: HashSet<ViewSystemIdentifier>,
+    pub visualizer_system_ids: HashSet<ViewSystemIdentifier>,
 }
 
 #[allow(clippy::derivable_impls)] // Clippy gets this one wrong.
@@ -121,16 +134,32 @@ impl Default for SpaceViewClassRegistryEntry {
     fn default() -> Self {
         Self {
             class: Box::<SpaceViewClassPlaceholder>::default(),
-            context_systems: Default::default(),
-            visualizers: Default::default(),
+            context_system_ids: Default::default(),
+            visualizer_system_ids: Default::default(),
         }
     }
 }
 
-/// System type entry in [`SpaceViewClassRegistry`].
-struct SystemTypeRegistryEntry<T: ?Sized> {
-    factory_method: Box<dyn Fn() -> Box<T> + Send + Sync>,
+/// Context system type entry in [`SpaceViewClassRegistry`].
+struct ContextSystemTypeRegistryEntry {
+    factory_method: Box<dyn Fn() -> Box<dyn ViewContextSystem> + Send + Sync>,
     used_by: HashSet<SpaceViewClassIdentifier>,
+}
+
+/// Visualizer entry in [`SpaceViewClassRegistry`].
+struct VisualizerTypeRegistryEntry {
+    factory_method: Box<dyn Fn() -> Box<dyn ViewPartSystem> + Send + Sync>,
+    used_by: HashSet<SpaceViewClassIdentifier>,
+
+    /// Handle to subscription of [`VisualizerEntitySubscriber`] for this visualizer.
+    entity_subscriber_handle: re_arrow_store::StoreSubscriberHandle,
+}
+
+impl Drop for VisualizerTypeRegistryEntry {
+    fn drop(&mut self) {
+        // TODO(andreas): DataStore unsubscribe is not yet implemented!
+        //DataStore::unregister_subscriber(self.entity_subscriber_handle);
+    }
 }
 
 /// Registry of all known space view types.
@@ -139,8 +168,8 @@ struct SystemTypeRegistryEntry<T: ?Sized> {
 #[derive(Default)]
 pub struct SpaceViewClassRegistry {
     space_view_classes: HashMap<SpaceViewClassIdentifier, SpaceViewClassRegistryEntry>,
-    visualizers: HashMap<ViewSystemIdentifier, SystemTypeRegistryEntry<dyn ViewPartSystem>>,
-    context_systems: HashMap<ViewSystemIdentifier, SystemTypeRegistryEntry<dyn ViewContextSystem>>,
+    context_systems: HashMap<ViewSystemIdentifier, ContextSystemTypeRegistryEntry>,
+    visualizers: HashMap<ViewSystemIdentifier, VisualizerTypeRegistryEntry>,
     placeholder: SpaceViewClassRegistryEntry,
 }
 
@@ -175,8 +204,8 @@ impl SpaceViewClassRegistry {
                 identifier,
                 SpaceViewClassRegistryEntry {
                     class,
-                    context_systems,
-                    visualizers,
+                    context_system_ids: context_systems,
+                    visualizer_system_ids: visualizers,
                 },
             )
             .is_some()
@@ -245,10 +274,25 @@ impl SpaceViewClassRegistry {
     }
 
     /// Iterates over all registered Space View class types.
-    pub fn iter_classes(&self) -> impl Iterator<Item = &dyn DynSpaceViewClass> {
-        self.space_view_classes
-            .values()
-            .map(|entry| entry.class.as_ref())
+    pub fn iter_registry(&self) -> impl Iterator<Item = &SpaceViewClassRegistryEntry> {
+        self.space_view_classes.values()
+    }
+
+    /// Returns the set of entities that are applicable to the given visualizer.
+    ///
+    /// The list is kept up to date by a store subscriber.
+    pub fn applicable_entities_for_visualizer_system(
+        &self,
+        visualizer: ViewSystemIdentifier,
+        store: &re_log_types::StoreId,
+    ) -> Option<IntSet<EntityPath>> {
+        self.visualizers.get(&visualizer).and_then(|entry| {
+            DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
+                entry.entity_subscriber_handle,
+                |subscriber| subscriber.entities(store).cloned(),
+            )
+            .flatten()
+        })
     }
 
     pub fn new_context_collection(
@@ -266,7 +310,7 @@ impl SpaceViewClassRegistry {
 
         ViewContextCollection {
             systems: class
-                .context_systems
+                .context_system_ids
                 .iter()
                 .filter_map(|name| {
                     self.context_systems.get(name).map(|entry| {
@@ -293,7 +337,7 @@ impl SpaceViewClassRegistry {
 
         ViewPartCollection {
             systems: class
-                .visualizers
+                .visualizer_system_ids
                 .iter()
                 .filter_map(|name| {
                     self.visualizers.get(name).map(|entry| {

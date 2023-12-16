@@ -5287,6 +5287,7 @@ dependencies = [
  "ahash 0.8.6",
  "anyhow",
  "arboard",
+ "bit-vec",
  "bytemuck",
  "egui",
  "egui-wgpu",
