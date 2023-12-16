@@ -1,6 +1,7 @@
 #:schema ./schema.json
 
 [categories.real-data]
+order = 1
 title = "Examples with Real Data"
 prelude = """
 The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
@@ -33,6 +34,7 @@ examples = [
 ]
 
 [categories.artificial-data]
+order = 2
 title = "Examples with Artificial Data"
 prelude = """
 The following examples serve to illustrate various uses of the Rerun logging SDK.
@@ -51,6 +53,7 @@ examples = [
 ]
 
 [categories.paper-visualizations]
+order = 3
 title = "Paper Visualizations"
 prelude = """
 The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
@@ -71,6 +74,7 @@ examples = [
 ]
 
 [categories.setup]
+order = 4
 title = "Setup"
 prelude = """
 ### Examples with Real / Artificial Data
