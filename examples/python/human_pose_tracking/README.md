@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Human Pose Tracking"
 tags = ["mediapipe", "keypoint-detection", "2D", "3D"]
 description = "Use the MediaPipe Pose solution to detect and track a human pose in video."

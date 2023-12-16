@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Template"
 tags = ["kebab-case", "comma", "separated"]
 description = "Short ~100-sign description of the example. No longer than 130 signs!"

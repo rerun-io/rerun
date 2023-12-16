@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "VRS Viewer"
 source = "https://github.com/rerun-io/cpp-example-vrs"
 tags = ["2D", "3D", "vrs", "viewer", "C++"]

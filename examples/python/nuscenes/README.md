@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "nuScenes"
 tags = ["lidar", "3D", "2D", "object-detection", "pinhole-camera"]
 description = "Visualize the nuScenes dataset including lidar, radar, images, and bounding boxes."

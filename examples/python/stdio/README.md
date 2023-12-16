@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Standard Input/Output example"
 thumbnail = "https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca117/480w.png"
 thumbnail_dimensions = [480, 298]

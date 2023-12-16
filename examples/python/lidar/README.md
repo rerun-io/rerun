@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Lidar"
 tags = ["lidar", "3D"]
 description = "Visualize the lidar data from the nuScenes dataset."

@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Helix"
 tags = ["3d", "api-example"]
 description = "Simple example of logging point and line primitives to draw a 3D helix."

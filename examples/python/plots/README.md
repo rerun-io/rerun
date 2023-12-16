@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Plots"
 tags = ["2d", "plots", "api-example"]
 description = "Demonstration of various plots and charts supported by Rerun."

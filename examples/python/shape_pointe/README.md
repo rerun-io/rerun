@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Point-E and Shap-E"
 source = "https://github.com/rerun-io/point-shap-e"
 tags = ["3D", "diffusion", "point", "mesh"]

@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Decoupling Human and Camera Motion from Videos in the Wild"
 source = "https://github.com/rerun-io/slahmr"
 tags = ["3D", "SLAM", "keypoint-detection", "mesh", "time-series"]

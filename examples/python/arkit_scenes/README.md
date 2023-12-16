@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "ARKit Scenes"
 tags = ["2D", "3D", "depth", "mesh", "object-detection", "pinhole-camera"]
 description = "Visualize the ARKitScenes dataset, which contains color+depth images, the reconstructed mesh and labeled bounding boxes."

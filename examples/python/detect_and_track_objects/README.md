@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Detect and Track Objects"
 tags = ["2D", "huggingface", "object-detection", "object-tracking", "opencv"]
 description = "Visualize object detection and segmentation using the Huggingface `transformers` library."

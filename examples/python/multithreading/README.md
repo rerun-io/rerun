@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Multithreading"
 thumbnail = "https://static.rerun.io/multithreading/8521bf95a7ff6004c932e8fb72429683928fbab4/480w.png"
 thumbnail_dimensions = [480, 312]

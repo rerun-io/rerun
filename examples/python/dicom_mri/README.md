@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Dicom MRI"
 tags = ["tensor", "mri", "dicom"]
 description = "Example using a DICOM MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer."

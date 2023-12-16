@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Spawn Viewer"
 tags = ["spawn"]
 -->

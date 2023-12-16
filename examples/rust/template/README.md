@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Template"
 tags = ["kebab-case", "comma", "separated"]
 -->

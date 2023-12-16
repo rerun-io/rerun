@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Structure from Motion"
 tags = ["2D", "3D", "colmap", "pinhole-camera", "time-series"]
 description = "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline."

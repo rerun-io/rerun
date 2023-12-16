@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "ControlNet"
 tags = ["controlnet", "canny", "huggingface", "stable-diffusion", "tensor", "text"]
 thumbnail = "https://static.rerun.io/controlnet/8aace9c59a423c2eeabe4b7f9abb5187559c52e8/480w.png"

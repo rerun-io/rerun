@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Single Image 3D Reconstruction using MCC, SAM, and ZoeDepth"
 source = "https://github.com/rerun-io/MCC"
 tags = ["2D", "3D", "segmentation", "point-cloud", "sam"]

@@ -154,7 +154,7 @@ struct Frontmatter {
 }
 
 fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatter>> {
-    const START: &str = "<--[metadata]";
+    const START: &str = "<!--[metadata]";
     const END: &str = "-->";
 
     let path = path.as_ref();

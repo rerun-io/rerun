@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "SimpleRecon: 3D Reconstruction Without 3D Convolutions"
 source = "https://github.com/rerun-io/simplerecon"
 tags = ["3D", "depth", "time-series", "pinhole-camera", "mesh"]

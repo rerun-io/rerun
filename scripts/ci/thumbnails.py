@@ -16,10 +16,10 @@ Frontmatter = Dict[str, Any]
 
 
 def load_frontmatter(s: str) -> dict[str, Any] | None:
-    start = s.find("<--[metadata]")
+    start = s.find("<!--[metadata]")
     if start == -1:
         return None
-    start += len("<--[metadata]")
+    start += len("<!--[metadata]")
 
     end = s.find("-->", start)
     if end == -1:

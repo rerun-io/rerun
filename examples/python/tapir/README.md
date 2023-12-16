@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "TAPIR: Tracking Any Point with per-frame Initialization and temporal Refinement"
 source = "https://github.com/rerun-io/tapnet"
 tags = ["2D", "point-tracking", "time-series", "tensor", "jax"]

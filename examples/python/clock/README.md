@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "Clock"
 thumbnail = "https://static.rerun.io/clock/ae4b8970edba8480431cb71e57b8cddd9e1769c7/480w.png"
 thumbnail_dimensions = [480, 341]

@@ -1,4 +1,4 @@
-<--[metadata]
+<!--[metadata]
 title = "3D Line Mapping Revisited"
 source = "https://github.com/rerun-io/limap"
 tags = ["2D", "3D", "structure-from-motion", "time-series", "line-detection", "pinhole-camera"]
