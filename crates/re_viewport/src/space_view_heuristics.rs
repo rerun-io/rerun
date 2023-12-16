@@ -10,13 +10,11 @@ use re_types::components::{DisconnectedSpace, TensorData};
 use re_types::ComponentNameSet;
 use re_viewer_context::{
     AutoSpawnHeuristic, DataQueryResult, EntitiesPerSystem, EntitiesPerSystemPerClass,
-    HeuristicFilterContext, PerSystemEntities, SpaceViewClassIdentifier, ViewContextCollection,
-    ViewPartCollection, ViewSystemIdentifier, ViewerContext,
+    HeuristicFilterContext, PerSystemEntities, SpaceViewClassIdentifier, ViewPartCollection,
+    ViewerContext,
 };
-use tinyvec::TinyVec;
 
-use crate::query_pinhole;
-use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
+use crate::{query_pinhole, space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
 
 // ---------------------------------------------------------------------------
 // TODO(#3079): Knowledge of specific space view classes should not leak here.
@@ -80,13 +78,16 @@ pub fn all_possible_space_views(
     // should not influence the heuristics.
     let entities_used_by_any_part_system_of_class: IntMap<_, _> = ctx
         .space_view_class_registry
-        .iter_system_registries()
-        .map(|(class_identifier, system_registry)| {
-            let parts = system_registry.new_part_collection();
+        .iter_registry()
+        .map(|entry| {
+            let class_identifier = entry.class.identifier();
+            let parts = ctx
+                .space_view_class_registry
+                .new_part_collection(class_identifier);
             (
-                *class_identifier,
+                class_identifier,
                 entities_per_system_per_class
-                    .get(class_identifier)
+                    .get(&class_identifier)
                     .unwrap_or(&empty_entities_per_system)
                     .iter()
                     .filter(|(system, _)| parts.get_by_identifier(**system).is_ok())
@@ -311,35 +312,42 @@ pub fn default_created_space_views(
 
         // `AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot` means we're competing with other candidates for the same root.
         if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score) = spawn_heuristic {
-            let mut should_spawn_new = true;
+            // [`SpaceViewBlueprint`]s don't implement clone so wrap in an option so we can
+            // track whether or not we've consumed it.
+            let mut candidate_still_considered = Some(candidate);
+
             for (prev_candidate, prev_spawn_heuristic) in &mut space_views {
-                if prev_candidate.space_origin == candidate.space_origin {
-                    #[allow(clippy::match_same_arms)]
-                    match prev_spawn_heuristic {
-                        AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(prev_score) => {
-                            // If we're competing with a candidate for the same root, we either replace a lower score, or we yield.
-                            should_spawn_new = false;
-                            if *prev_score < score {
-                                // Replace the previous candidate with this one.
-                                *prev_candidate = candidate.clone();
-                                *prev_spawn_heuristic = spawn_heuristic;
-                            } else {
-                                // We have a lower score, so we don't spawn.
+                if let Some(candidate) = candidate_still_considered.take() {
+                    if prev_candidate.space_origin == candidate.space_origin {
+                        #[allow(clippy::match_same_arms)]
+                        match prev_spawn_heuristic {
+                            AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(prev_score) => {
+                                // If we're competing with a candidate for the same root, we either replace a lower score, or we yield.
+                                if *prev_score < score {
+                                    // Replace the previous candidate with this one.
+                                    *prev_candidate = candidate;
+                                    *prev_spawn_heuristic = spawn_heuristic;
+                                }
+
+                                // Either way we're done with this candidate.
                                 break;
                             }
-                        }
-                        AutoSpawnHeuristic::AlwaysSpawn => {
-                            // We can live side by side with always-spawn candidates.
-                        }
-                        AutoSpawnHeuristic::NeverSpawn => {
-                            // Never spawn candidates should not be in the list, this is weird!
-                            // But let's not fail on this since our heuristics are not perfect anyways.
+                            AutoSpawnHeuristic::AlwaysSpawn => {
+                                // We can live side by side with always-spawn candidates.
+                            }
+                            AutoSpawnHeuristic::NeverSpawn => {
+                                // Never spawn candidates should not be in the list, this is weird!
+                                // But let's not fail on this since our heuristics are not perfect anyways.
+                            }
                         }
                     }
+
+                    // If we didn't hit the break condition, continue to consider the candidate
+                    candidate_still_considered = Some(candidate);
                 }
             }
 
-            if should_spawn_new {
+            if let Some(candidate) = candidate_still_considered {
                 // Spatial views with images get extra treatment as well.
                 if is_spatial_2d_class(candidate.class_identifier()) {
                     #[derive(Hash, PartialEq, Eq)]
@@ -457,20 +465,17 @@ pub fn reachable_entities_from_root(
 // TODO(andreas): Still used in a bunch of places. Should instead use the global `EntitiesPerSystemPerClass` list.
 pub fn is_entity_processed_by_class(
     ctx: &ViewerContext<'_>,
-    class: &SpaceViewClassIdentifier,
+    class: SpaceViewClassIdentifier,
     ent_path: &EntityPath,
     heuristic_ctx: HeuristicFilterContext,
     query: &LatestAtQuery,
 ) -> bool {
-    let parts = ctx
-        .space_view_class_registry
-        .get_system_registry_or_log_error(class)
-        .new_part_collection();
+    let parts = ctx.space_view_class_registry.new_part_collection(class);
     is_entity_processed_by_part_collection(
         ctx.store_db.store(),
         &parts,
         ent_path,
-        heuristic_ctx.with_class(*class),
+        heuristic_ctx.with_class(class),
         query,
     )
 }
@@ -552,106 +557,61 @@ pub fn identify_entities_per_system_per_class(
 ) -> EntitiesPerSystemPerClass {
     re_tracing::profile_function!();
 
-    let system_collections_per_class: IntMap<
-        SpaceViewClassIdentifier,
-        (ViewContextCollection, ViewPartCollection),
-    > = space_view_class_registry
-        .iter_system_registries()
-        .map(|(class_identifier, entry)| {
-            (
-                *class_identifier,
-                (
-                    entry.new_context_collection(*class_identifier),
-                    entry.new_part_collection(),
-                ),
-            )
-        })
-        .collect();
-
-    let systems_per_required_components = {
-        re_tracing::profile_scope!("gather required components per systems");
-
-        let mut systems_per_required_components: HashMap<
-            ComponentNameSet,
-            IntMap<SpaceViewClassIdentifier, TinyVec<[ViewSystemIdentifier; 2]>>,
-        > = HashMap::default();
-        for (class_identifier, (_context_collection, part_collection)) in
-            &system_collections_per_class
-        {
-            for (system_identifier, part) in part_collection.iter_with_identifiers() {
-                systems_per_required_components
-                    .entry(part.required_components().into_iter().collect())
-                    .or_default()
-                    .entry(*class_identifier)
-                    .or_default()
-                    .push(system_identifier);
-            }
-            // TODO(#4377): Handle context systems but keep them parallel
-            /*
-            for (system_name, part) in context_collection.iter_with_names() {
-                for components in part.compatible_component_sets() {
-                    systems_per_required_components
-                        .entry(components.into_iter().collect())
-                        .or_default()
-                        .entry(*class_identifier)
-                        .or_default()
-                        .push(system_name);
-                }
-            }
-            */
-        }
-        systems_per_required_components
-    };
-
-    let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
-
+    let store = store_db.store().id();
     let heuristic_context = compute_heuristic_context_for_entities(store_db);
-    let store = store_db.store();
-    for ent_path in store_db.entity_paths() {
-        let Some(components) = store.all_components(&re_log_types::Timeline::log_time(), ent_path)
-        else {
-            continue;
-        };
 
-        let all_components: ComponentNameSet = components.into_iter().collect();
+    space_view_class_registry
+        .iter_registry()
+        .map(|entry| {
+            let mut entities_per_system = EntitiesPerSystem::default();
+            let class_id = entry.class.identifier();
 
-        for (required_components, systems_per_class) in &systems_per_required_components {
-            if !all_components.is_superset(required_components) {
-                continue;
-            }
+            // TODO(andreas): Once `heuristic_filter` is no longer applied, we don't need to instantiate the systems anymore.
+            //for system_id in &entry.visualizer_system_ids {
+            for (system_id, system) in space_view_class_registry
+                .new_part_collection(class_id)
+                .systems
+            {
+                let entities: IntSet<EntityPath> = if let Some(entities) = space_view_class_registry
+                    .applicable_entities_for_visualizer_system(system_id, store)
+                {
+                    // TODO(andreas): Don't apply heuristic_filter here, this should be part of the query!
+                    // Note that once this is done, `EntitiesPerSystemPerClass` becomes just `EntitiesPerSystem` since there's never a need to distinguish per class!
+                    entities
+                        .into_iter()
+                        .filter(|ent_path| {
+                            let Some(components) = store_db
+                                .store()
+                                .all_components(&re_log_types::Timeline::log_time(), ent_path)
+                            else {
+                                return false;
+                            };
 
-            for (class, systems) in systems_per_class {
-                let Some((_, part_collection)) = system_collections_per_class.get(class) else {
-                    continue;
+                            let all_components: ComponentNameSet = components.into_iter().collect();
+
+                            system.heuristic_filter(
+                                store_db.store(),
+                                ent_path,
+                                heuristic_context
+                                    .get(ent_path)
+                                    .copied()
+                                    .unwrap_or_default()
+                                    .with_class(class_id),
+                                current_query,
+                                &all_components,
+                            )
+                        })
+                        .collect()
+                } else {
+                    Default::default()
                 };
 
-                for system in systems {
-                    if let Ok(view_part_system) = part_collection.get_by_identifier(*system) {
-                        if !view_part_system.heuristic_filter(
-                            store,
-                            ent_path,
-                            heuristic_context
-                                .get(ent_path)
-                                .copied()
-                                .unwrap_or_default()
-                                .with_class(*class),
-                            current_query,
-                            &all_components,
-                        ) {
-                            continue;
-                        }
-                    }
-
-                    entities_per_system_per_class
-                        .entry(*class)
-                        .or_default()
-                        .entry(*system)
-                        .or_default()
-                        .insert(ent_path.clone());
-                }
+                entities_per_system.insert(system_id, entities);
             }
-        }
-    }
 
-    entities_per_system_per_class
+            // TODO(#4377): Handle context systems but keep them parallel
+
+            (class_id, entities_per_system)
+        })
+        .collect()
 }

@@ -30,6 +30,7 @@ re_ui.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
+bit-vec.workspace = true
 bytemuck.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true

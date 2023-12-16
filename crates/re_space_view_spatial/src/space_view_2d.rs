@@ -32,7 +32,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         register_spatial_contexts(system_registry)?;
         register_2d_spatial_parts(system_registry)?;
@@ -72,7 +72,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         let mut score = auto_spawn_heuristic(
-            &self.identifier(),
+            self.identifier(),
             ctx,
             per_system_entities,
             SpatialSpaceViewKind::TwoD,
@@ -92,8 +92,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         if space_origin.is_root() {
             let parts = ctx
                 .space_view_class_registry
-                .get_system_registry_or_log_error(&self.identifier())
-                .new_part_collection();
+                .new_part_collection(self.identifier());
 
             for part in per_system_entities.keys() {
                 if let Ok(part) = parts.get_by_identifier(*part) {

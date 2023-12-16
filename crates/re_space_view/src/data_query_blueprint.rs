@@ -4,6 +4,7 @@ use re_data_store::{
     EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree, StoreDb,
 };
 use re_log_types::{DataRow, EntityPath, EntityPathExpr, RowId, TimePoint};
+use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassIdentifier, SpaceViewId,
@@ -28,7 +29,14 @@ use crate::{
 /// The results of recursive expressions are only included if they are found within the [`EntityTree`]
 /// and for which there is a valid `ViewPart` system. This keeps recursive expressions from incorrectly
 /// picking up irrelevant data within the tree.
-#[derive(Clone, PartialEq, Eq)]
+///
+/// Note: [`DataQueryBlueprint`] doesn't implement Clone because it stores an internal
+/// uuid used for identifying the path of its data in the blueprint store. It's ambiguous
+/// whether the intent is for a clone to write to the same place.
+///
+/// If you want a new space view otherwise identical to an existing one, use
+/// [`DataQueryBlueprint::duplicate`].
+#[derive(PartialEq, Eq)]
 pub struct DataQueryBlueprint {
     pub id: DataQueryId,
     pub space_view_class_identifier: SpaceViewClassIdentifier,
@@ -47,6 +55,10 @@ impl DataQueryBlueprint {
     pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
     pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
+    /// Creates a new [`DataQueryBlueprint`].
+    ///
+    /// This [`DataQueryBlueprint`] is ephemeral. It must be saved by calling
+    /// `save_to_blueprint_store` on the enclosing `SpaceViewBlueprint`.
     pub fn new(
         space_view_class_identifier: SpaceViewClassIdentifier,
         queries_entities: impl Iterator<Item = EntityPathExpr>,
@@ -58,23 +70,46 @@ impl DataQueryBlueprint {
         }
     }
 
+    /// Attempt to load a [`DataQueryBlueprint`] from the blueprint store.
     pub fn try_from_db(
-        path: &EntityPath,
+        id: DataQueryId,
         blueprint_db: &StoreDb,
         space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> Option<Self> {
         let expressions = blueprint_db
             .store()
-            .query_timeless_component::<QueryExpressions>(path)
+            .query_timeless_component::<QueryExpressions>(&id.as_entity_path())
             .map(|c| c.value)?;
-
-        let id = DataQueryId::from_entity_path(path);
 
         Some(Self {
             id,
             space_view_class_identifier,
             expressions,
         })
+    }
+
+    /// Persist the entire [`DataQueryBlueprint`] to the blueprint store.
+    ///
+    /// This only needs to be called if the [`DataQueryBlueprint`] was created with [`Self::new`].
+    ///
+    /// Otherwise, incremental calls to `set_` functions will write just the necessary component
+    /// update directly to the store.
+    pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
+        ctx.save_blueprint_component(&self.id.as_entity_path(), self.expressions.clone());
+    }
+
+    /// Creates a new [`DataQueryBlueprint`] with a the same contents, but a different [`DataQueryId`]
+    pub fn duplicate(&self) -> Self {
+        Self {
+            id: DataQueryId::random(),
+            space_view_class_identifier: self.space_view_class_identifier,
+            expressions: self.expressions.clone(),
+        }
+    }
+
+    pub fn clear(&self, ctx: &ViewerContext<'_>) {
+        let clear = Clear::recursive();
+        ctx.save_blueprint_component(&self.id.as_entity_path(), clear.is_recursive);
     }
 
     pub fn build_resolver<'a>(

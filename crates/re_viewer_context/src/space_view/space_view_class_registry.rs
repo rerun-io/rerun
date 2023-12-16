@@ -1,11 +1,17 @@
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
+use nohash_hasher::IntSet;
+use re_arrow_store::DataStore;
+use re_log_types::EntityPath;
 
 use crate::{
     DynSpaceViewClass, IdentifiedViewSystem, SpaceViewClassIdentifier, ViewContextCollection,
     ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemIdentifier,
 };
 
-use super::space_view_class_placeholder::SpaceViewClassPlaceholder;
+use super::{
+    space_view_class_placeholder::SpaceViewClassPlaceholder,
+    visualizer_entity_subscriber::VisualizerEntitySubscriber,
+};
 
 #[derive(Debug, thiserror::Error)]
 #[allow(clippy::enum_variant_names)]
@@ -17,43 +23,50 @@ pub enum SpaceViewClassRegistryError {
     IdentifierAlreadyInUseForContextSystem(&'static str),
 
     #[error("A View Part System with identifier {0:?} was already registered.")]
-    IdentifierAlreadyInUseForViewSystem(&'static str),
+    IdentifierAlreadyInUseForVisualizer(&'static str),
 
     #[error("Space View with class identifier {0:?} was not registered.")]
     UnknownClassIdentifier(SpaceViewClassIdentifier),
 }
 
-/// System registry for a space view class.
-///
-/// All context & part systems that are registered here will be created and executed every frame
-/// for every instance of the space view class this belongs to.
-#[derive(Default)]
-pub struct SpaceViewSystemRegistry {
-    contexts:
-        HashMap<ViewSystemIdentifier, Box<dyn Fn() -> Box<dyn ViewContextSystem> + Send + Sync>>,
-    parts: HashMap<ViewSystemIdentifier, Box<dyn Fn() -> Box<dyn ViewPartSystem> + Send + Sync>>,
+/// Utility for registering space view systems, passed on to [`crate::SpaceViewClass::on_register`].
+pub struct SpaceViewSystemRegistrator<'a> {
+    registry: &'a mut SpaceViewClassRegistry,
+    identifier: SpaceViewClassIdentifier,
+    context_systems: HashSet<ViewSystemIdentifier>,
+    visualizers: HashSet<ViewSystemIdentifier>,
 }
 
-impl SpaceViewSystemRegistry {
-    /// Registers a new [`ViewContextSystem`] type for this space view class that will be created and executed every frame.
+impl SpaceViewSystemRegistrator<'_> {
+    /// Registers a new [`ViewContextSystem`] type for a space view class that will be created and executed every frame.
     ///
-    /// It is not allowed to register a given type more than once.
+    /// It is not allowed to register a given type more than once within the same space view class.
+    /// Different space view classes may however share the same [`ViewContextSystem`] type.
     pub fn register_context_system<
         T: ViewContextSystem + IdentifiedViewSystem + Default + 'static,
     >(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        // Name should also not overlap with part systems.
-        if self.parts.contains_key(&T::identifier()) {
+        // Name should not overlap with context systems.
+        if self.registry.visualizers.contains_key(&T::identifier()) {
             return Err(
-                SpaceViewClassRegistryError::IdentifierAlreadyInUseForViewSystem(
+                SpaceViewClassRegistryError::IdentifierAlreadyInUseForVisualizer(
                     T::identifier().as_str(),
                 ),
             );
         }
 
-        if let std::collections::hash_map::Entry::Vacant(e) = self.contexts.entry(T::identifier()) {
-            e.insert(Box::new(|| Box::<T>::default()));
+        if self.context_systems.insert(T::identifier()) {
+            self.registry
+                .context_systems
+                .entry(T::identifier())
+                .or_insert_with(|| ContextSystemTypeRegistryEntry {
+                    factory_method: Box::new(|| Box::<T>::default()),
+                    used_by: Default::default(),
+                })
+                .used_by
+                .insert(self.identifier);
+
             Ok(())
         } else {
             Err(
@@ -64,14 +77,15 @@ impl SpaceViewSystemRegistry {
         }
     }
 
-    /// Registers a new [`ViewPartSystem`] type for this space view class that will be created and executed every frame.
+    /// Registers a new [`ViewPartSystem`] type for a space view class that will be created and executed every frame.
     ///
-    /// It is not allowed to register a given type more than once.
-    pub fn register_part_system<T: ViewPartSystem + IdentifiedViewSystem + Default + 'static>(
+    /// It is not allowed to register a given type more than once within the same space view class.
+    /// Different space view classes may however share the same [`ViewPartSystem`] type.
+    pub fn register_visualizer<T: ViewPartSystem + IdentifiedViewSystem + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        // Name should also not overlap with context systems.
-        if self.parts.contains_key(&T::identifier()) {
+        // Name should not overlap with context systems.
+        if self.registry.context_systems.contains_key(&T::identifier()) {
             return Err(
                 SpaceViewClassRegistryError::IdentifierAlreadyInUseForContextSystem(
                     T::identifier().as_str(),
@@ -79,57 +93,40 @@ impl SpaceViewSystemRegistry {
             );
         }
 
-        if let std::collections::hash_map::Entry::Vacant(e) = self.parts.entry(T::identifier()) {
-            e.insert(Box::new(|| Box::<T>::default()));
+        if self.visualizers.insert(T::identifier()) {
+            self.registry
+                .visualizers
+                .entry(T::identifier())
+                .or_insert_with(|| {
+                    let entity_subscriber_handle = DataStore::register_subscriber(Box::new(
+                        VisualizerEntitySubscriber::new(&T::default()),
+                    ));
+
+                    VisualizerTypeRegistryEntry {
+                        factory_method: Box::new(|| Box::<T>::default()),
+                        used_by: Default::default(),
+                        entity_subscriber_handle,
+                    }
+                })
+                .used_by
+                .insert(self.identifier);
+
             Ok(())
         } else {
             Err(
-                SpaceViewClassRegistryError::IdentifierAlreadyInUseForViewSystem(
+                SpaceViewClassRegistryError::IdentifierAlreadyInUseForVisualizer(
                     T::identifier().as_str(),
                 ),
             )
-        }
-    }
-
-    pub fn new_context_collection(
-        &self,
-        space_view_class_identifier: SpaceViewClassIdentifier,
-    ) -> ViewContextCollection {
-        re_tracing::profile_function!();
-
-        ViewContextCollection {
-            systems: self
-                .contexts
-                .iter()
-                .map(|(name, factory)| {
-                    let part = factory();
-                    (*name, part)
-                })
-                .collect(),
-            space_view_class_identifier,
-        }
-    }
-
-    pub fn new_part_collection(&self) -> ViewPartCollection {
-        re_tracing::profile_function!();
-
-        ViewPartCollection {
-            systems: self
-                .parts
-                .iter()
-                .map(|(name, factory)| {
-                    let part = factory();
-                    (*name, part)
-                })
-                .collect(),
         }
     }
 }
 
-/// Entry in [`SpaceViewClassRegistry`]
-struct SpaceViewClassRegistryEntry {
-    class: Box<dyn DynSpaceViewClass>,
-    systems: SpaceViewSystemRegistry,
+/// Space view class entry in [`SpaceViewClassRegistry`].
+pub struct SpaceViewClassRegistryEntry {
+    pub class: Box<dyn DynSpaceViewClass>,
+    pub context_system_ids: HashSet<ViewSystemIdentifier>,
+    pub visualizer_system_ids: HashSet<ViewSystemIdentifier>,
 }
 
 #[allow(clippy::derivable_impls)] // Clippy gets this one wrong.
@@ -137,8 +134,31 @@ impl Default for SpaceViewClassRegistryEntry {
     fn default() -> Self {
         Self {
             class: Box::<SpaceViewClassPlaceholder>::default(),
-            systems: SpaceViewSystemRegistry::default(),
+            context_system_ids: Default::default(),
+            visualizer_system_ids: Default::default(),
         }
+    }
+}
+
+/// Context system type entry in [`SpaceViewClassRegistry`].
+struct ContextSystemTypeRegistryEntry {
+    factory_method: Box<dyn Fn() -> Box<dyn ViewContextSystem> + Send + Sync>,
+    used_by: HashSet<SpaceViewClassIdentifier>,
+}
+
+/// Visualizer entry in [`SpaceViewClassRegistry`].
+struct VisualizerTypeRegistryEntry {
+    factory_method: Box<dyn Fn() -> Box<dyn ViewPartSystem> + Send + Sync>,
+    used_by: HashSet<SpaceViewClassIdentifier>,
+
+    /// Handle to subscription of [`VisualizerEntitySubscriber`] for this visualizer.
+    entity_subscriber_handle: re_arrow_store::StoreSubscriberHandle,
+}
+
+impl Drop for VisualizerTypeRegistryEntry {
+    fn drop(&mut self) {
+        // TODO(andreas): DataStore unsubscribe is not yet implemented!
+        //DataStore::unregister_subscriber(self.entity_subscriber_handle);
     }
 }
 
@@ -147,7 +167,9 @@ impl Default for SpaceViewClassRegistryEntry {
 /// Expected to be populated on viewer startup.
 #[derive(Default)]
 pub struct SpaceViewClassRegistry {
-    registry: HashMap<SpaceViewClassIdentifier, SpaceViewClassRegistryEntry>,
+    space_view_classes: HashMap<SpaceViewClassIdentifier, SpaceViewClassRegistryEntry>,
+    context_systems: HashMap<ViewSystemIdentifier, ContextSystemTypeRegistryEntry>,
+    visualizers: HashMap<ViewSystemIdentifier, VisualizerTypeRegistryEntry>,
     placeholder: SpaceViewClassRegistryEntry,
 }
 
@@ -158,15 +180,36 @@ impl SpaceViewClassRegistry {
     pub fn add_class<T: DynSpaceViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        let mut entry = SpaceViewClassRegistryEntry {
-            class: Box::<T>::default(),
-            systems: SpaceViewSystemRegistry::default(),
+        let class = Box::<T>::default();
+
+        let mut registrator = SpaceViewSystemRegistrator {
+            registry: self,
+            identifier: class.identifier(),
+            context_systems: Default::default(),
+            visualizers: Default::default(),
         };
 
-        entry.class.on_register(&mut entry.systems)?;
+        class.on_register(&mut registrator)?;
 
-        let identifier = entry.class.identifier();
-        if self.registry.insert(identifier, entry).is_some() {
+        let SpaceViewSystemRegistrator {
+            registry: _,
+            identifier,
+            context_systems,
+            visualizers,
+        } = registrator;
+
+        if self
+            .space_view_classes
+            .insert(
+                identifier,
+                SpaceViewClassRegistryEntry {
+                    class,
+                    context_system_ids: context_systems,
+                    visualizer_system_ids: visualizers,
+                },
+            )
+            .is_some()
+        {
             return Err(SpaceViewClassRegistryError::DuplicateClassIdentifier(
                 identifier,
             ));
@@ -180,37 +223,41 @@ impl SpaceViewClassRegistry {
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         let identifier: SpaceViewClassIdentifier = T::identifier_str().into();
-        if self.registry.remove(&identifier).is_none() {
+        if self.space_view_classes.remove(&identifier).is_none() {
             return Err(SpaceViewClassRegistryError::UnknownClassIdentifier(
                 identifier,
             ));
         }
+
+        self.context_systems.retain(|_, context_system_entry| {
+            context_system_entry.used_by.remove(&identifier);
+            !context_system_entry.used_by.is_empty()
+        });
+
+        self.visualizers.retain(|_, visualizer_entry| {
+            visualizer_entry.used_by.remove(&identifier);
+            !visualizer_entry.used_by.is_empty()
+        });
 
         Ok(())
     }
 
     /// Queries a Space View type by class name, returning `None` if it is not registered.
     fn get_class(&self, name: &SpaceViewClassIdentifier) -> Option<&dyn DynSpaceViewClass> {
-        self.registry.get(name).map(|boxed| boxed.class.as_ref())
+        self.space_view_classes
+            .get(name)
+            .map(|boxed| boxed.class.as_ref())
     }
 
     /// Returns the user-facing name for the given space view class.
     ///
     /// If the class is unknown, returns a placeholder name.
     pub fn display_name(&self, name: &SpaceViewClassIdentifier) -> &'static str {
-        self.registry
+        self.space_view_classes
             .get(name)
             .map_or("<unknown space view class>", |boxed| {
                 boxed.class.display_name()
             })
-    }
-
-    /// Queries a Space View type's system registry by class name, returning `None` if the class is not registered.
-    fn get_system_registry(
-        &self,
-        name: &SpaceViewClassIdentifier,
-    ) -> Option<&SpaceViewSystemRegistry> {
-        self.registry.get(name).map(|boxed| &boxed.systems)
     }
 
     /// Queries a Space View type by class name and logs if it fails, returning a placeholder class.
@@ -226,30 +273,79 @@ impl SpaceViewClassRegistry {
         }
     }
 
-    /// Queries a Space View's system registry by class name and logs if it fails, returning a placeholder class.
-    pub fn get_system_registry_or_log_error(
+    /// Iterates over all registered Space View class types.
+    pub fn iter_registry(&self) -> impl Iterator<Item = &SpaceViewClassRegistryEntry> {
+        self.space_view_classes.values()
+    }
+
+    /// Returns the set of entities that are applicable to the given visualizer.
+    ///
+    /// The list is kept up to date by a store subscriber.
+    pub fn applicable_entities_for_visualizer_system(
         &self,
-        name: &SpaceViewClassIdentifier,
-    ) -> &SpaceViewSystemRegistry {
-        if let Some(result) = self.get_system_registry(name) {
-            result
-        } else {
-            re_log::error_once!("Unknown space view class {:?}", name);
-            &self.placeholder.systems
+        visualizer: ViewSystemIdentifier,
+        store: &re_log_types::StoreId,
+    ) -> Option<IntSet<EntityPath>> {
+        self.visualizers.get(&visualizer).and_then(|entry| {
+            DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
+                entry.entity_subscriber_handle,
+                |subscriber| subscriber.entities(store).cloned(),
+            )
+            .flatten()
+        })
+    }
+
+    pub fn new_context_collection(
+        &self,
+        space_view_class_identifier: SpaceViewClassIdentifier,
+    ) -> ViewContextCollection {
+        re_tracing::profile_function!();
+
+        let Some(class) = self.space_view_classes.get(&space_view_class_identifier) else {
+            return ViewContextCollection {
+                systems: Default::default(),
+                space_view_class_identifier,
+            };
+        };
+
+        ViewContextCollection {
+            systems: class
+                .context_system_ids
+                .iter()
+                .filter_map(|name| {
+                    self.context_systems.get(name).map(|entry| {
+                        let part = (entry.factory_method)();
+                        (*name, part)
+                    })
+                })
+                .collect(),
+            space_view_class_identifier,
         }
     }
 
-    /// Iterates over all registered Space View class names and their system registries.
-    pub fn iter_system_registries(
+    pub fn new_part_collection(
         &self,
-    ) -> impl Iterator<Item = (&SpaceViewClassIdentifier, &SpaceViewSystemRegistry)> {
-        self.registry
-            .iter()
-            .map(|(name, entry)| (name, &entry.systems))
-    }
+        space_view_class_identifier: SpaceViewClassIdentifier,
+    ) -> ViewPartCollection {
+        re_tracing::profile_function!();
 
-    /// Iterates over all registered Space View class types.
-    pub fn iter_classes(&self) -> impl Iterator<Item = &dyn DynSpaceViewClass> {
-        self.registry.values().map(|entry| entry.class.as_ref())
+        let Some(class) = self.space_view_classes.get(&space_view_class_identifier) else {
+            return ViewPartCollection {
+                systems: Default::default(),
+            };
+        };
+
+        ViewPartCollection {
+            systems: class
+                .visualizer_system_ids
+                .iter()
+                .filter_map(|name| {
+                    self.visualizers.get(name).map(|entry| {
+                        let part = (entry.factory_method)();
+                        (*name, part)
+                    })
+                })
+                .collect(),
+        }
     }
 }

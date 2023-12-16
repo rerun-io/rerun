@@ -5,12 +5,13 @@ use once_cell::sync::Lazy;
 use re_log_types::{EntityPath, EntityPathPart};
 
 pub trait BlueprintIdRegistry {
-    fn registry() -> &'static EntityPath;
+    fn registry_name() -> &'static str;
+    fn registry_path() -> &'static EntityPath;
 }
 
 /// A unique id for a type of Blueprint contents.
 #[derive(
-    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
+    Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
 )]
 pub struct BlueprintId<T: BlueprintIdRegistry> {
     id: uuid::Uuid,
@@ -34,7 +35,7 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
     }
 
     pub fn from_entity_path(path: &EntityPath) -> Self {
-        if !path.is_child_of(T::registry()) {
+        if !path.is_child_of(T::registry_path()) {
             return Self::invalid();
         }
 
@@ -77,7 +78,7 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
 
     #[inline]
     pub fn as_entity_path(&self) -> EntityPath {
-        T::registry()
+        T::registry_path()
             .iter()
             .cloned()
             .chain(std::iter::once(EntityPathPart::new(self.id.to_string())))
@@ -86,7 +87,7 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
 
     #[inline]
     pub fn registry() -> &'static EntityPath {
-        T::registry()
+        T::registry_path()
     }
 
     #[inline]
@@ -125,7 +126,14 @@ impl<T: BlueprintIdRegistry> From<BlueprintId<T>> for re_types::datatypes::Uuid 
 impl<T: BlueprintIdRegistry> std::fmt::Display for BlueprintId<T> {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}({:#})", T::registry(), self.id)
+        write!(f, "{}({})", T::registry_name(), self.id)
+    }
+}
+
+impl<T: BlueprintIdRegistry> std::fmt::Debug for BlueprintId<T> {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}({})", T::registry_name(), self.id)
     }
 }
 
@@ -141,7 +149,11 @@ macro_rules! define_blueprint_id_type {
         }
 
         impl BlueprintIdRegistry for $registry {
-            fn registry() -> &'static EntityPath {
+            fn registry_name() -> &'static str {
+                stringify!($type)
+            }
+
+            fn registry_path() -> &'static EntityPath {
                 static REGISTRY_PATH: Lazy<EntityPath> = Lazy::new(|| $registry::REGISTRY.into());
                 &REGISTRY_PATH
             }

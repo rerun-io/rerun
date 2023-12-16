@@ -7,7 +7,7 @@ use re_viewer::external::{
     re_viewer_context::{
         HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
         SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-        SpaceViewSystemRegistry, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
+        SpaceViewSystemRegistrator, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
     },
 };
 
@@ -81,9 +81,9 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     /// Register all systems (contexts & parts) that the space view needs.
     fn on_register(
         &self,
-        system_registry: &mut SpaceViewSystemRegistry,
+        system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_part_system::<InstanceColorSystem>()
+        system_registry.register_visualizer::<InstanceColorSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {

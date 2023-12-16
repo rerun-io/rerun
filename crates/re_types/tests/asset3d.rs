@@ -31,7 +31,7 @@ fn roundtrip() {
         )), //
     };
 
-    let arch = Asset3D::from_bytes(BYTES, Some(MediaType::gltf())).with_transform(
+    let arch = Asset3D::from_file_contents(BYTES.to_vec(), Some(MediaType::gltf())).with_transform(
         re_types::datatypes::Transform3D::from_translation_rotation_scale(
             [1.0, 2.0, 3.0],
             RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::Radians(0.5 * TAU)),

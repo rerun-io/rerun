@@ -72,7 +72,7 @@ impl SelectionPanel {
                         if let Some(selection) = self.selection_state_ui.selection_ui(
                             ctx.re_ui,
                             ui,
-                            &viewport.blueprint,
+                            viewport.blueprint,
                             &mut history,
                         ) {
                             ctx.selection_state()
@@ -122,20 +122,15 @@ impl SelectionPanel {
         };
         for (i, item) in selection.iter().enumerate() {
             ui.push_id(i, |ui| {
-                what_is_selected_ui(ui, ctx, &mut viewport.blueprint, item);
+                what_is_selected_ui(ui, ctx, viewport.blueprint, item);
 
                 match item {
                     Item::Container(tile_id) => {
-                        container_top_level_properties(ui, ctx, &mut viewport.blueprint, tile_id);
+                        container_top_level_properties(ui, ctx, viewport, tile_id);
                     }
 
                     Item::SpaceView(space_view_id) => {
-                        space_view_top_level_properties(
-                            ui,
-                            ctx,
-                            &mut viewport.blueprint,
-                            space_view_id,
-                        );
+                        space_view_top_level_properties(ui, ctx, viewport.blueprint, space_view_id);
                     }
 
                     _ => {}
@@ -197,7 +192,7 @@ fn space_view_button(
 fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    viewport: &mut ViewportBlueprint<'_>,
+    viewport: &ViewportBlueprint,
     item: &Item,
 ) {
     match item {
@@ -236,7 +231,7 @@ fn what_is_selected_ui(
             list_existing_data_blueprints(ui, ctx, entity_path, viewport);
         }
         Item::SpaceView(space_view_id) => {
-            if let Some(space_view) = viewport.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.space_view(space_view_id) {
                 let space_view_class = space_view.class(ctx.space_view_class_registry);
                 item_title_ui(
                     ctx.re_ui,
@@ -259,7 +254,7 @@ fn what_is_selected_ui(
             };
 
             if let Some(space_view_id) = space_view_id {
-                if let Some(space_view) = viewport.space_view_mut(space_view_id) {
+                if let Some(space_view) = viewport.space_view(space_view_id) {
                     item_title_ui(
                         ctx.re_ui,
                         ui,
@@ -334,7 +329,7 @@ fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     entity_path: &EntityPath,
-    blueprint: &ViewportBlueprint<'_>,
+    blueprint: &ViewportBlueprint,
 ) {
     let space_views_with_path = blueprint.space_views_containing_entity_path(ctx, entity_path);
 
@@ -367,19 +362,22 @@ fn list_existing_data_blueprints(
 fn space_view_top_level_properties(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    viewport: &mut ViewportBlueprint<'_>,
+    viewport: &ViewportBlueprint,
     space_view_id: &SpaceViewId,
 ) {
-    if let Some(space_view) = viewport.space_view_mut(space_view_id) {
+    if let Some(space_view) = viewport.space_view(space_view_id) {
         egui::Grid::new("space_view_top_level_properties")
             .num_columns(2)
             .show(ui, |ui| {
+                let mut name = space_view.display_name.clone();
                 ui.label("Name").on_hover_text(
                     "The name of the Space View used for display purposes. This can be any text \
                     string.",
                 );
-                ui.text_edit_singleline(&mut space_view.display_name);
+                ui.text_edit_singleline(&mut name);
                 ui.end_row();
+
+                space_view.set_display_name(name, ctx);
 
                 ui.label("Space origin").on_hover_text(
                     "The origin Entity for this Space View. For spatial Space Views, the Space \
@@ -409,7 +407,7 @@ fn space_view_top_level_properties(
 fn container_top_level_properties(
     ui: &mut egui::Ui,
     _ctx: &ViewerContext<'_>,
-    viewport: &mut ViewportBlueprint<'_>,
+    viewport: &mut Viewport<'_, '_>,
     tile_id: &egui_tiles::TileId,
 ) {
     if let Some(Tile::Container(container)) = viewport.tree.tiles.get_mut(*tile_id) {
@@ -472,6 +470,7 @@ fn container_top_level_properties(
                                 GridLayout::Auto,
                                 grid_layout_to_string(&GridLayout::Auto),
                             );
+
                             ui.separator();
 
                             for columns in 1..=grid.num_children() {
@@ -522,15 +521,14 @@ fn blueprint_ui(
                     .clicked()
                 {
                     if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-                        let mut new_space_view = space_view.clone();
-                        new_space_view.id = SpaceViewId::random();
-                        viewport.blueprint.add_space_view(new_space_view);
-                        viewport.blueprint.mark_user_interaction();
+                        let new_space_view = space_view.duplicate();
+                        viewport.blueprint.add_space_views(std::iter::once(new_space_view), ctx, &mut viewport.deferred_tree_actions);
+                        viewport.blueprint.mark_user_interaction(ctx);
                     }
                 }
             });
 
-            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                 if let Some(query) = space_view.queries.first() {
                     let inclusions = query.expressions.inclusions.join("\n");
                     let mut edited_inclusions = inclusions.clone();
@@ -578,15 +576,16 @@ fn blueprint_ui(
                                 vec![row],
                             ));
 
-                        space_view.entities_determined_by_user = true;
+                        space_view.set_entity_determined_by_user(ctx);
                     }
                 }
             }
 
             ui.add_space(ui.spacing().item_spacing.y);
 
-            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                 let space_view_class = *space_view.class_identifier();
+
                 let space_view_state = viewport.state.space_view_state_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
@@ -615,7 +614,7 @@ fn blueprint_ui(
                     .selection_ui(
                         ctx,
                         ui,
-                        space_view_state,
+                        space_view_state.space_view_state.as_mut(),
                         &space_view.space_origin,
                         space_view.id,
                         &mut props,
@@ -643,7 +642,7 @@ fn blueprint_ui(
 
         Item::InstancePath(space_view_id, instance_path) => {
             if let Some(space_view_id) = space_view_id {
-                if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+                if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                     if instance_path.instance_key.is_specific() {
                         ui.horizontal(|ui| {
                             ui.label("Part of");
@@ -687,7 +686,7 @@ fn blueprint_ui(
         }
 
         Item::DataBlueprintGroup(space_view_id, query_id, group_path) => {
-            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+            if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                 let as_group = true;
 
                 let query_result = ctx.lookup_query_result(*query_id);

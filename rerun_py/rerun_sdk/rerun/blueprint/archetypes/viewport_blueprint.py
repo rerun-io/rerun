@@ -24,8 +24,8 @@ class ViewportBlueprint(Archetype):
     def __init__(
         self: Any,
         space_views: components.IncludedSpaceViewsLike,
-        layout: components.ViewportLayoutLike,
         *,
+        layout: components.ViewportLayoutLike | None = None,
         maximized: datatypes.UuidLike | None = None,
         auto_layout: components.AutoLayoutLike | None = None,
         auto_space_views: components.AutoSpaceViewsLike | None = None,
@@ -86,9 +86,10 @@ class ViewportBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    layout: components.ViewportLayoutBatch = field(
-        metadata={"component": "required"},
-        converter=components.ViewportLayoutBatch._required,  # type: ignore[misc]
+    layout: components.ViewportLayoutBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ViewportLayoutBatch._optional,  # type: ignore[misc]
     )
     # The layout of the space-views
     #

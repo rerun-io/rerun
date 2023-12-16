@@ -7,21 +7,30 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 
 use egui_tiles::Behavior as _;
+use once_cell::sync::Lazy;
+use re_data_store::EntityPropertyMap;
 use re_data_ui::item_ui;
 
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    CommandSender, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
-    SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
+    Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId, SpaceViewState,
+    SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
     space_view_highlights::highlights_for_space_view,
-    system_execution::execute_systems_for_space_views, viewport_blueprint::load_viewport_blueprint,
-    SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
+    system_execution::execute_systems_for_space_views, SpaceInfoCollection, SpaceViewBlueprint,
+    ViewportBlueprint,
 };
+
+// State for each `SpaceView` including both the auto properties and
+// the internal state of the space view itself.
+pub struct PerSpaceViewState {
+    pub auto_properties: EntityPropertyMap,
+    pub space_view_state: Box<dyn SpaceViewState>,
+}
 
 // ----------------------------------------------------------------------------
 /// State for the [`Viewport`] that persists across frames but otherwise
@@ -29,7 +38,7 @@ use crate::{
 #[derive(Default)]
 pub struct ViewportState {
     pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
-    space_view_states: HashMap<SpaceViewId, Box<dyn SpaceViewState>>,
+    space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
 
     /// List of all space views that were visible *on screen* (excluding e.g. unselected tabs) the last frame.
     ///
@@ -37,62 +46,90 @@ pub struct ViewportState {
     space_views_displayed_last_frame: Vec<SpaceViewId>,
 }
 
+static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);
+
 impl ViewportState {
     pub fn space_view_state_mut(
         &mut self,
         space_view_class_registry: &SpaceViewClassRegistry,
         space_view_id: SpaceViewId,
         space_view_class: &SpaceViewClassIdentifier,
-    ) -> &mut dyn SpaceViewState {
+    ) -> &mut PerSpaceViewState {
         self.space_view_states
             .entry(space_view_id)
-            .or_insert_with(|| {
-                space_view_class_registry
+            .or_insert_with(|| PerSpaceViewState {
+                auto_properties: Default::default(),
+                space_view_state: space_view_class_registry
                     .get_class_or_log_error(space_view_class)
-                    .new_state()
+                    .new_state(),
             })
-            .as_mut()
     }
+
+    pub fn space_view_props(&self, space_view_id: SpaceViewId) -> &EntityPropertyMap {
+        self.space_view_states
+            .get(&space_view_id)
+            .map_or(&DEFAULT_PROPS, |state| &state.auto_properties)
+    }
+}
+
+// We delay any modifications to the tree until the end of the frame,
+// so that we don't iterate over something while modifying it.
+#[derive(Clone, Default)]
+pub struct TreeActions {
+    pub create: Vec<SpaceViewId>,
+    pub focus_tab: Option<SpaceViewId>,
+    pub remove: Vec<egui_tiles::TileId>,
 }
 
 // ----------------------------------------------------------------------------
 
 /// Defines the layout of the Viewport
 pub struct Viewport<'a, 'b> {
-    /// The initial state of the Viewport read from the blueprint store on this frame.
-    ///
-    /// This is used to compare to the possibly mutated blueprint to
-    /// determine whether or not we need to save changes back
-    /// to the store as part of `sync_blueprint_changes`.
-    start_of_frame_snapshot: ViewportBlueprint<'a>,
+    /// The blueprint that drives this viewport. This is the source of truth from the store
+    /// for this frame.
+    pub blueprint: &'a ViewportBlueprint,
 
-    // This is what me mutate during the frame.
-    pub blueprint: ViewportBlueprint<'a>,
-
+    /// The persistent state of the viewport that is not saved to the store but otherwise
+    /// persis frame-to-frame.
     pub state: &'b mut ViewportState,
+
+    /// The [`egui_tiles::Tree`] tree that actually manages blueprint layout. This tree needs
+    /// to be mutable for things like drag-and-drop and is ultimately saved back to the store.
+    /// at the end of the frame if edited.
+    pub tree: egui_tiles::Tree<SpaceViewId>,
+
+    /// Actions to perform at the end of the frame.
+    ///
+    /// We delay any modifications to the tree until the end of the frame,
+    /// so that we don't mutate something while inspecitng it.
+    //TODO(jleibs): Can we use the SystemCommandSender for this, too?
+    pub deferred_tree_actions: TreeActions,
 }
 
 impl<'a, 'b> Viewport<'a, 'b> {
-    pub fn from_db(blueprint_db: &'a re_data_store::StoreDb, state: &'b mut ViewportState) -> Self {
+    pub fn new(
+        blueprint: &'a ViewportBlueprint,
+        state: &'b mut ViewportState,
+        space_view_class_registry: &SpaceViewClassRegistry,
+    ) -> Self {
         re_tracing::profile_function!();
 
-        let blueprint = load_viewport_blueprint(blueprint_db);
-
-        let start_of_frame_snapshot = blueprint.clone();
+        // If the blueprint tree is empty/missing we need to auto-layout.
+        let tree = if blueprint.tree.is_empty() && !blueprint.space_views.is_empty() {
+            super::auto_layout::tree_from_space_views(
+                space_view_class_registry,
+                &blueprint.space_views,
+            )
+        } else {
+            blueprint.tree.clone()
+        };
 
         Self {
-            start_of_frame_snapshot,
             blueprint,
             state,
+            tree,
+            deferred_tree_actions: Default::default(),
         }
-    }
-
-    pub fn sync_blueprint_changes(&self, command_sender: &CommandSender) {
-        ViewportBlueprint::sync_viewport_blueprint(
-            &self.start_of_frame_snapshot,
-            &self.blueprint,
-            command_sender,
-        );
     }
 
     pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
@@ -105,7 +142,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         } = self;
 
         if let Some(window) = &mut state.space_view_entity_window {
-            if let Some(space_view) = blueprint.space_views.get_mut(&window.space_view_id) {
+            if let Some(space_view) = blueprint.space_views.get(&window.space_view_id) {
                 if !window.ui(ctx, ui, space_view) {
                     state.space_view_entity_window = None;
                 }
@@ -120,12 +157,14 @@ impl<'a, 'b> Viewport<'a, 'b> {
             return;
         }
 
+        let mut maximized = blueprint.maximized;
+
         if let Some(space_view_id) = blueprint.maximized {
             if !blueprint.space_views.contains_key(&space_view_id) {
-                blueprint.maximized = None; // protect against bad deserialized data
+                maximized = None;
             } else if let Some(tile_id) = blueprint.tree.tiles.find_pane(&space_view_id) {
                 if !blueprint.tree.tiles.is_visible(tile_id) {
-                    blueprint.maximized = None; // Automatically de-maximize views that aren't visible anymore.
+                    maximized = None;
                 }
             }
         }
@@ -138,13 +177,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             maximized_tree = egui_tiles::Tree::new("viewport_tree", root, tiles);
             &mut maximized_tree
         } else {
-            if blueprint.tree.is_empty() {
-                blueprint.tree = super::auto_layout::tree_from_space_views(
-                    ctx.space_view_class_registry,
-                    &blueprint.space_views,
-                );
-            }
-            &mut blueprint.tree
+            &mut self.tree
         };
 
         let executed_systems_per_space_view = execute_systems_for_space_views(
@@ -162,7 +195,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 viewport_state: state,
                 ctx,
                 space_views: &blueprint.space_views,
-                maximized: &mut blueprint.maximized,
+                maximized: &mut maximized,
                 edited: false,
                 space_views_displayed_current_frame: Vec::new(),
                 executed_systems_per_space_view,
@@ -180,41 +213,62 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     );
                 }
 
-                blueprint.auto_layout = false;
+                blueprint.set_auto_layout(false, ctx);
             }
 
             state.space_views_displayed_last_frame = tab_viewer.space_views_displayed_current_frame;
         });
+
+        self.blueprint.set_maximized(maximized, ctx);
     }
 
     pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
         re_tracing::profile_function!();
 
-        for space_view in self.blueprint.space_views.values_mut() {
-            let space_view_state = self.state.space_view_state_mut(
+        for space_view in self.blueprint.space_views.values() {
+            let PerSpaceViewState {
+                auto_properties,
+                space_view_state,
+            } = self.state.space_view_state_mut(
                 ctx.space_view_class_registry,
                 space_view.id,
                 space_view.class_identifier(),
             );
 
-            space_view.on_frame_start(ctx, space_view_state);
+            space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
         }
 
         if self.blueprint.auto_space_views {
+            let mut new_space_views = vec![];
             for space_view_candidate in
                 default_created_space_views(ctx, spaces_info, ctx.entities_per_system_per_class)
             {
-                if self.should_auto_add_space_view(&space_view_candidate) {
-                    self.blueprint.add_space_view(space_view_candidate);
+                if self.should_auto_add_space_view(&new_space_views, &space_view_candidate) {
+                    new_space_views.push(space_view_candidate);
                 }
             }
+
+            self.blueprint.add_space_views(
+                new_space_views.into_iter(),
+                ctx,
+                &mut self.deferred_tree_actions,
+            );
         }
     }
 
-    fn should_auto_add_space_view(&self, space_view_candidate: &SpaceViewBlueprint) -> bool {
+    fn should_auto_add_space_view(
+        &self,
+        already_added: &[SpaceViewBlueprint],
+        space_view_candidate: &SpaceViewBlueprint,
+    ) -> bool {
         re_tracing::profile_function!();
 
-        for existing_view in self.blueprint.space_views.values() {
+        for existing_view in self
+            .blueprint
+            .space_views
+            .values()
+            .chain(already_added.iter())
+        {
             if existing_view.space_origin == space_view_candidate.space_origin {
                 if existing_view.entities_determined_by_user {
                     // Since the user edited a space view with the same space path, we can't be sure our new one isn't redundant.
@@ -234,6 +288,79 @@ impl<'a, 'b> Viewport<'a, 'b> {
         }
 
         true
+    }
+
+    /// Process any deferred `TreeActions` and then sync to blueprint
+    pub fn update_and_sync_tile_tree_to_blueprint(&mut self, ctx: &ViewerContext<'_>) {
+        // At the end of the Tree-UI, we can safely apply deferred actions.
+
+        let mut reset = false;
+
+        let TreeActions {
+            create,
+            mut focus_tab,
+            remove,
+        } = std::mem::take(&mut self.deferred_tree_actions);
+
+        for space_view in &create {
+            if self.blueprint.auto_layout {
+                // Re-run the auto-layout next frame:
+                re_log::trace!(
+                    "Added a space view with no user edits yet - will re-run auto-layout"
+                );
+
+                reset = true;
+            } else if let Some(root_id) = self.tree.root {
+                let tile_id = self.tree.tiles.insert_pane(*space_view);
+                if let Some(egui_tiles::Tile::Container(container)) =
+                    self.tree.tiles.get_mut(root_id)
+                {
+                    re_log::trace!("Inserting new space view into root container");
+                    container.add_child(tile_id);
+                } else {
+                    re_log::trace!("Root was not a container - will re-run auto-layout");
+                    reset = true;
+                }
+            } else {
+                re_log::trace!("No root found - will re-run auto-layout");
+            }
+
+            focus_tab = Some(*space_view);
+        }
+
+        if let Some(focus_tab) = &focus_tab {
+            let found = self.tree.make_active(|tile| match tile {
+                egui_tiles::Tile::Pane(space_view_id) => space_view_id == focus_tab,
+                egui_tiles::Tile::Container(_) => false,
+            });
+            re_log::trace!("Found tab {focus_tab}: {found}");
+        }
+
+        for tile_id in remove {
+            for tile in self.tree.tiles.remove_recursively(tile_id) {
+                re_log::trace!("Removing tile {tile_id:?}");
+                if let egui_tiles::Tile::Pane(space_view_id) = tile {
+                    re_log::trace!("Removing space-view {space_view_id}");
+                    self.tree.tiles.remove(tile_id);
+                    self.blueprint.remove_space_view(&space_view_id, ctx);
+                }
+            }
+
+            if Some(tile_id) == self.tree.root {
+                self.tree.root = None;
+            }
+        }
+
+        if reset {
+            // We don't run auto-layout here since the new space views also haven't been
+            // written to the store yet.
+            re_log::trace!("Clearing the blueprint tree to force reset on the next frame");
+            self.tree = egui_tiles::Tree::empty("viewport_tree");
+        }
+
+        // Finally, save any edits to the blueprint tree
+        // This is a no-op if the tree hasn't changed.
+        self.blueprint.set_tree(&self.tree, ctx);
     }
 
     /// If `false`, the item is referring to data that is not present in this blueprint.
@@ -306,7 +433,10 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 space_view_blueprint.execute_systems(self.ctx, latest_at, highlights)
             };
 
-        let space_view_state = self.viewport_state.space_view_state_mut(
+        let PerSpaceViewState {
+            auto_properties: _,
+            space_view_state,
+        } = self.viewport_state.space_view_state_mut(
             self.ctx.space_view_class_registry,
             space_view_blueprint.id,
             space_view_blueprint.class_identifier(),
@@ -315,7 +445,13 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         self.space_views_displayed_current_frame
             .push(space_view_blueprint.id);
 
-        space_view_blueprint.scene_ui(space_view_state, self.ctx, ui, &query, system_output);
+        space_view_blueprint.scene_ui(
+            space_view_state.as_mut(),
+            self.ctx,
+            ui,
+            &query,
+            system_output,
+        );
 
         Default::default()
     }

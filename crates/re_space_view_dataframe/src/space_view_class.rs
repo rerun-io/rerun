@@ -40,9 +40,9 @@ impl SpaceViewClass for DataframeSpaceView {
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_part_system::<EmptySystem>()
+        system_registry.register_visualizer::<EmptySystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {

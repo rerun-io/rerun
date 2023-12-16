@@ -5,7 +5,7 @@ use re_types::ComponentName;
 use crate::{
     AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistry, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 /// Defines a class of space view.
@@ -50,7 +50,7 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::ViewPartSystem`].
     fn on_register(
         &self,
-        system_registry: &mut SpaceViewSystemRegistry,
+        system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError>;
 
     /// Preferred aspect ratio for the ui tiles of this space view.
@@ -159,7 +159,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
 
     fn on_register(
         &self,
-        system_registry: &mut SpaceViewSystemRegistry,
+        system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         self.on_register(system_registry)
     }

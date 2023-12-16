@@ -55,9 +55,9 @@ impl SpaceViewClass for TextSpaceView {
 
     fn on_register(
         &self,
-        system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
+        system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_part_system::<TextLogSystem>()
+        system_registry.register_visualizer::<TextLogSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {

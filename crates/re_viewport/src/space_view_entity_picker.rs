@@ -27,7 +27,7 @@ impl SpaceViewEntityPicker {
         &mut self,
         ctx: &ViewerContext<'_>,
         ui: &egui::Ui,
-        space_view: &mut SpaceViewBlueprint,
+        space_view: &SpaceViewBlueprint,
     ) -> bool {
         // This function fakes a modal window, since egui doesn't have them yet: https://github.com/emilk/egui/issues/686
 
@@ -83,11 +83,7 @@ impl SpaceViewEntityPicker {
     }
 }
 
-fn add_entities_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    space_view: &mut SpaceViewBlueprint,
-) {
+fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &SpaceViewBlueprint) {
     let spaces_info = SpaceInfoCollection::new(ctx.store_db);
     let tree = &ctx.store_db.tree();
     let heuristic_context_per_entity = compute_heuristic_context_for_entities(ctx.store_db);
@@ -123,7 +119,7 @@ fn add_entities_tree_ui(
     ui: &mut egui::Ui,
     name: &str,
     tree: &EntityTree,
-    space_view: &mut SpaceViewBlueprint,
+    space_view: &SpaceViewBlueprint,
     query_result: &DataQueryResult,
     inclusions: &HashSet<EntityPathExpr>,
     exclusions: &HashSet<EntityPathExpr>,
@@ -192,7 +188,7 @@ fn add_entities_line_ui(
     ui: &mut egui::Ui,
     name: &str,
     entity_tree: &EntityTree,
-    space_view: &mut SpaceViewBlueprint,
+    space_view: &SpaceViewBlueprint,
     query_result: &DataQueryResult,
     inclusions: &HashSet<EntityPathExpr>,
     exclusions: &HashSet<EntityPathExpr>,
@@ -389,7 +385,7 @@ fn create_entity_add_info(
     tree.visit_children_recursively(&mut |entity_path| {
         let heuristic_context_per_entity = heuristic_context_per_entity.get(entity_path).copied().unwrap_or_default();
         let can_add: CanAddToSpaceView =
-            if is_entity_processed_by_class(ctx, space_view.class_identifier(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
+            if is_entity_processed_by_class(ctx, *space_view.class_identifier(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
                         already_added: query_result.contains_any(entity_path),

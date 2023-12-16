@@ -4,6 +4,7 @@
 
 mod annotations;
 mod app_options;
+mod blueprint_helpers;
 mod blueprint_id;
 mod caches;
 mod command_sender;
@@ -26,7 +27,7 @@ pub use annotations::{
     AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos,
 };
 pub use app_options::AppOptions;
-pub use blueprint_id::{DataQueryId, SpaceViewId};
+pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, DataQueryId, SpaceViewId};
 pub use caches::{Cache, Caches};
 pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
@@ -45,9 +46,9 @@ pub use space_view::{
     HeuristicFilterContext, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
-    SystemExecutionOutput, ViewContextCollection, ViewContextSystem, ViewPartCollection,
-    ViewPartSystem, ViewQuery, ViewSystemIdentifier,
+    SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContextCollection, ViewContextSystem,
+    ViewPartCollection, ViewPartSystem, ViewQuery, ViewSystemIdentifier,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

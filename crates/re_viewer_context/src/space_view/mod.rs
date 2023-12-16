@@ -15,6 +15,7 @@ mod system_execution_output;
 mod view_context_system;
 mod view_part_system;
 mod view_query;
+mod visualizer_entity_subscriber;
 
 pub use auto_spawn_heuristic::AutoSpawnHeuristic;
 pub use dyn_space_view_class::{
@@ -24,7 +25,7 @@ pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOut
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use space_view_class::SpaceViewClass;
 pub use space_view_class_registry::{
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistry,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistrator,
 };
 pub use system_execution_output::SystemExecutionOutput;
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
