@@ -310,21 +310,34 @@ impl DataQuery for DataQueryBlueprint {
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
-        let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
+        let mut data_results = {
+            profile_scope!("create slotmap");
+            SlotMap::<DataResultHandle, DataResultNode>::default()
+        };
 
-        let executor = QueryExpressionEvaluator::new(self, entities_per_system);
+        let executor = {
+            profile_scope!("build evaluator");
+            QueryExpressionEvaluator::new(self, entities_per_system)
+        };
 
-        let root_handle = ctx.recording.and_then(|store| {
-            executor.add_entity_tree_to_data_results_recursive_fast(
-                store.tree(),
-                &mut data_results,
-                false,
-            )
-        });
+        let root_handle = {
+            profile_scope!("run queries");
+            ctx.recording.and_then(|store| {
+                executor.add_entity_tree_to_data_results_recursive_fast(
+                    store.tree(),
+                    &mut data_results,
+                    false,
+                )
+            })
+        };
 
-        DataQueryResult {
-            id: self.id,
-            tree: DataResultTree::new(data_results, root_handle),
+        {
+            profile_scope!("return results");
+
+            DataQueryResult {
+                id: self.id,
+                tree: DataResultTree::new(data_results, root_handle),
+            }
         }
     }
 }
@@ -349,7 +362,6 @@ impl<'a> QueryExpressionEvaluator<'a> {
         blueprint: &'a DataQueryBlueprint,
         per_system_entity_list: &'a EntitiesPerSystem,
     ) -> Self {
-        profile_scope!("expression pre-processing");
         let inclusions: Vec<EntityPathExpr> = blueprint
             .expressions
             .inclusions
@@ -483,15 +495,24 @@ impl<'a> QueryExpressionEvaluator<'a> {
         };
 
         let children: SmallVec<_> = maybe_self_iter
-            .chain(tree.children.values().filter_map(|subtree| {
-                self.add_entity_tree_to_data_results_recursive(
-                    subtree,
-                    overrides,
-                    &accumulated_properties,
-                    data_results,
-                    recursive_include, // Once we have hit a recursive match, it's always propagated
-                )
-            }))
+            .chain(
+                tree.children
+                    .values()
+                    .filter(|subtree| {
+                        !(self.recursive_exclusions.contains(&subtree.path)
+                            || !(recursive_include
+                                || self.allowed_prefixes.contains(&subtree.path)))
+                    })
+                    .filter_map(|subtree| {
+                        self.add_entity_tree_to_data_results_recursive(
+                            subtree,
+                            overrides,
+                            &accumulated_properties,
+                            data_results,
+                            recursive_include, // Once we have hit a recursive match, it's always propagated
+                        )
+                    }),
+            )
             .collect();
 
         // If the only child is the self-leaf, then we don't need to create a group
@@ -521,96 +542,138 @@ impl<'a> QueryExpressionEvaluator<'a> {
         data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
         from_recursive: bool,
     ) -> Option<DataResultHandle> {
+        //re_tracing::profile_function!();
         // If we hit a prefix that is not allowed, we terminate. This is
         // a pruned branch of the tree. Can come from either an explicit
         // recursive exclusion, or an implicit missing inclusion.
         // TODO(jleibs): If this space is disconnected, we should terminate here
-        if self.recursive_exclusions.contains(&tree.path)
-            || !(from_recursive || self.allowed_prefixes.contains(&tree.path))
         {
-            return None;
+            //profile_scope!("early_return");
+            if self.recursive_exclusions.contains(&tree.path)
+                || !(from_recursive || self.allowed_prefixes.contains(&tree.path))
+            {
+                return None;
+            }
         }
 
-        let entity_path = tree.path.clone();
+        let entity_path = &tree.path;
 
         // Pre-compute our matches
-        let exact_include = self.exact_inclusions.contains(&entity_path);
-        let recursive_include = self.recursive_inclusions.contains(&entity_path) || from_recursive;
-        let exact_exclude = self.exact_exclusions.contains(&entity_path);
-        let any_match = (exact_include || recursive_include) && !exact_exclude;
+        let (exact_include, recursive_include, any_match) = {
+            //profile_scope!("matchers");
+
+            let exact_include = self.exact_inclusions.contains(entity_path);
+            let recursive_include =
+                self.recursive_inclusions.contains(entity_path) || from_recursive;
+            let exact_exclude = self.exact_exclusions.contains(entity_path);
+            let any_match = (exact_include || recursive_include) && !exact_exclude;
+            (exact_include, recursive_include, any_match)
+        };
 
         // Only populate view_parts if this is a match
         // Note that allowed prefixes that aren't matches can still create groups
-        let view_parts: SmallVec<_> = if any_match {
-            profile_scope!("test_view_parts");
-            self.per_system_entity_list
-                .iter()
-                .filter_map(|(part, ents)| {
-                    if ents.contains(&entity_path) {
-                        Some(*part)
-                    } else {
-                        None
-                    }
-                })
+        let view_parts: SmallVec<_> = {
+            //profile_scope!("test_view_parts");
+            if any_match {
+                self.per_system_entity_list
+                    .iter()
+                    .filter_map(|(part, ents)| {
+                        if ents.contains(entity_path) {
+                            Some(*part)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            } else {
+                Default::default()
+            }
+        };
+
+        let self_leaf = {
+            //profile_scope!("leaf insertion");
+            if !view_parts.is_empty() || exact_include {
+                Some(data_results.insert(DataResultNode {
+                    data_result: DataResult {
+                        entity_path: entity_path.clone(),
+                        view_parts,
+                        is_group: false,
+                        direct_included: any_match,
+                        individual_properties: None,
+                        accumulated_properties: None,
+                        base_override_path: entity_path.clone(), // This is the wrong path but it will never be written to since this is the fast query
+                    },
+                    children: Default::default(),
+                }))
+            } else {
+                None
+            }
+        };
+
+        let maybe_self_iter = {
+            //profile_scope!("maybe iter");
+            if let Some(self_leaf) = self_leaf {
+                itertools::Either::Left(std::iter::once(self_leaf))
+            } else {
+                itertools::Either::Right(std::iter::empty())
+            }
+        };
+
+        let interesting_children: Vec<_> = {
+            if recursive_include {
+                //profile_scope!("recursive pre-filter");
+                tree.children
+                    .values()
+                    .filter(|subtree| {
+                        !(self.recursive_exclusions.contains(&subtree.path)
+                            || !(recursive_include
+                                || self.allowed_prefixes.contains(&subtree.path)))
+                    })
+                    .collect()
+            } else {
+                //profile_scope!("allowed-path pre-filter");
+                self.allowed_prefixes
+                    .iter()
+                    .filter(|prefix| prefix.is_child_of(entity_path))
+                    .filter_map(|prefix| prefix.last().and_then(|part| tree.children.get(part)))
+                    .collect()
+            }
+        };
+
+        let children: SmallVec<_> = {
+            //profile_scope!("tail recursion");
+            maybe_self_iter
+                .chain(interesting_children.iter().filter_map(|subtree| {
+                    self.add_entity_tree_to_data_results_recursive_fast(
+                        subtree,
+                        data_results,
+                        recursive_include, // Once we have hit a recursive match, it's always propagated
+                    )
+                }))
                 .collect()
-        } else {
-            Default::default()
         };
 
-        let base_override_path = self.blueprint.id.as_entity_path().clone();
+        {
+            //profile_scope!("final result insertion");
 
-        let self_leaf = if !view_parts.is_empty() || exact_include {
-            profile_scope!("leaf insertion");
-            Some(data_results.insert(DataResultNode {
-                data_result: DataResult {
-                    entity_path: entity_path.clone(),
-                    view_parts,
-                    is_group: false,
-                    direct_included: any_match,
-                    individual_properties: None,
-                    accumulated_properties: None,
-                    base_override_path: base_override_path.clone(),
-                },
-                children: Default::default(),
-            }))
-        } else {
-            None
-        };
-
-        let maybe_self_iter = if let Some(self_leaf) = self_leaf {
-            itertools::Either::Left(std::iter::once(self_leaf))
-        } else {
-            itertools::Either::Right(std::iter::empty())
-        };
-
-        let children: SmallVec<_> = maybe_self_iter
-            .chain(tree.children.values().filter_map(|subtree| {
-                self.add_entity_tree_to_data_results_recursive_fast(
-                    subtree,
-                    data_results,
-                    recursive_include, // Once we have hit a recursive match, it's always propagated
-                )
-            }))
-            .collect();
-
-        // If the only child is the self-leaf, then we don't need to create a group
-        if children.is_empty() || children.len() == 1 && self_leaf.is_some() {
-            self_leaf
-        } else {
-            profile_scope!("node insertion");
-            // The 'individual' properties of a group are the group overrides
-            Some(data_results.insert(DataResultNode {
-                data_result: DataResult {
-                    entity_path,
-                    view_parts: Default::default(),
-                    is_group: true,
-                    direct_included: any_match,
-                    individual_properties: None,
-                    accumulated_properties: None,
-                    base_override_path,
-                },
-                children,
-            }))
+            // If the only child is the self-leaf, then we don't need to create a group
+            if children.is_empty() || children.len() == 1 && self_leaf.is_some() {
+                self_leaf
+            } else {
+                // The 'individual' properties of a group are the group overrides
+                Some(data_results.insert(DataResultNode {
+                    data_result: DataResult {
+                        entity_path: entity_path.clone(),
+                        view_parts: Default::default(),
+                        is_group: true,
+                        direct_included: any_match,
+                        individual_properties: None,
+                        accumulated_properties: None,
+                        base_override_path: entity_path.clone(), // This is the wrong path but it will never be written to since this is the fast query,
+                    },
+                    children,
+                }))
+            }
         }
     }
 }
