@@ -640,7 +640,7 @@ class SourceFile:
     def __init__(self, path: str):
         self.path = os.path.abspath(path)
         self.ext = path.split(".")[-1]
-        with open(path) as f:
+        with open(path, encoding="utf8") as f:
             self.lines = f.readlines()
         self._update_content()
 
@@ -856,6 +856,7 @@ def main() -> None:
     if args.files:
         for filepath in args.files:
             filepath = os.path.join(".", os.path.relpath(filepath, root_dirpath))
+            filepath = str(filepath).replace("\\", "/")
             extension = filepath.split(".")[-1]
             if extension in extensions:
                 if should_ignore(filepath) or filepath.startswith(exclude_paths):
@@ -869,6 +870,8 @@ def main() -> None:
                 extension = filename.split(".")[-1]
                 if extension in extensions:
                     filepath = os.path.join(root, filename)
+                    filepath = os.path.join(".", os.path.relpath(filepath, root_dirpath))
+                    filepath = str(filepath).replace("\\", "/")
                     if should_ignore(filepath) or filepath.startswith(exclude_paths):
                         continue
                     num_errors += lint_file(filepath, args)
