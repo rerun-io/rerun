@@ -247,8 +247,7 @@ pub use self::loader_directory::DirectoryLoader;
 pub use self::loader_rrd::RrdLoader;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) use self::loader_external::EXTERNAL_LOADER_PATHS;
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::loader_external::{
-    iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_PREFIX,
+    iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE,
+    EXTERNAL_DATA_LOADER_PREFIX,
 };

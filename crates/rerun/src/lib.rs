@@ -137,6 +137,10 @@ pub use re_data_store::external::re_arrow_store::{
     DataStore, StoreDiff, StoreDiffKind, StoreEvent, StoreGeneration, StoreSubscriber,
 };
 
+pub use re_data_source::{
+    EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE, EXTERNAL_DATA_LOADER_PREFIX,
+};
+
 /// Re-exports of other crates.
 pub mod external {
     pub use anyhow;

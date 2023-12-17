@@ -6,6 +6,11 @@ use once_cell::sync::Lazy;
 /// starts with this prefix.
 pub const EXTERNAL_DATA_LOADER_PREFIX: &str = "rerun-loader-";
 
+/// When an external [`crate::DataLoader`] is asked to load some data that it doesn't know
+/// how to load, it should exit with this exit code.
+// NOTE: Always keep in sync with other languages.
+pub const EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE: i32 = 66;
+
 /// Keeps track of the paths all external executable [`crate::DataLoader`]s.
 ///
 /// Lazy initialized the first time a file is opened by running a full scan of the `$PATH`.
@@ -78,14 +83,16 @@ impl crate::DataLoader for ExternalLoader {
 
         re_tracing::profile_function!(filepath.display().to_string());
 
+        let (tx_feedback, rx_feedback) = std::sync::mpsc::channel();
+
         for exe in EXTERNAL_LOADER_PATHS.iter() {
             let store_id = store_id.clone();
             let filepath = filepath.clone();
             let tx = tx.clone();
+            let tx_feedback = tx_feedback.clone();
 
-            // NOTE: spawn is fine, the entire loader is native-only.
             rayon::spawn(move || {
-                re_tracing::profile_function!();
+                re_tracing::profile_function!(exe.to_string_lossy());
 
                 let child = Command::new(exe)
                     .arg(filepath.clone())
@@ -119,14 +126,28 @@ impl crate::DataLoader for ExternalLoader {
                 let stdout = std::io::BufReader::new(stdout);
                 match re_log_encoding::decoder::Decoder::new(version_policy, stdout) {
                     Ok(decoder) => {
-                        decode_and_stream(&filepath, &tx, decoder);
+                        let filepath = filepath.clone();
+                        let tx = tx.clone();
+                        // NOTE: This is completely IO bound, it must run on a dedicated thread, not the shared
+                        // rayon thread pool.
+                        if let Err(err) = std::thread::Builder::new()
+                            .name(format!("decode_and_stream({filepath:?})"))
+                            .spawn({
+                                let filepath = filepath.clone();
+                                move || {
+                                    decode_and_stream(&filepath, &tx, decoder);
+                                }
+                            })
+                        {
+                            re_log::error!(?filepath, loader = ?exe, %err, "Failed to open spawn IO thread");
+                            return;
+                        }
                     }
                     Err(re_log_encoding::decoder::DecodeError::Read(_)) => {
                         // The child was not interested in that file and left without logging
                         // anything.
                         // That's fine, we just need to make sure to check its exit status further
                         // down, still.
-                        return;
                     }
                     Err(err) => {
                         re_log::error!(?filepath, loader = ?exe, %err, "Failed to decode external loader's output");
@@ -142,13 +163,28 @@ impl crate::DataLoader for ExternalLoader {
                     }
                 };
 
-                if !status.success() {
+                let is_compatible =
+                    status.code() != Some(crate::EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE);
+
+                if is_compatible && !status.success() {
                     let mut stderr = std::io::BufReader::new(stderr);
                     let mut reason = String::new();
                     stderr.read_to_string(&mut reason).ok();
                     re_log::error!(?filepath, loader = ?exe, %reason, "Failed to execute external loader");
                 }
+
+                if is_compatible {
+                    re_log::debug!(loader = ?exe, ?filepath, "compatible external loader found");
+                    tx_feedback.send(()).ok();
+                }
             });
+        }
+
+        drop(tx_feedback);
+
+        let any_compatible_loader = rx_feedback.recv().is_ok(); // at least one compatible loader was found
+        if !any_compatible_loader {
+            return Err(crate::DataLoaderError::NotSupported(filepath.clone()));
         }
 
         Ok(())
@@ -158,13 +194,13 @@ impl crate::DataLoader for ExternalLoader {
     fn load_from_file_contents(
         &self,
         _store_id: re_log_types::StoreId,
-        _path: std::path::PathBuf,
+        path: std::path::PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
         _tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         // TODO(cmc): You could imagine a world where plugins can be streamed rrd data via their
         // standard input… but today is not world.
-        Ok(()) // simply not interested
+        Err(crate::DataLoaderError::NotSupported(path))
     }
 }
 
