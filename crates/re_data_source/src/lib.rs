@@ -66,6 +66,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
         .iter()
         .chain(SUPPORTED_IMAGE_EXTENSIONS)
         .chain(SUPPORTED_MESH_EXTENSIONS)
+        .chain(SUPPORTED_POINT_CLOUD_EXTENSIONS)
         .chain(SUPPORTED_TEXT_EXTENSIONS)
         .copied()
 }
