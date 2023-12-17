@@ -59,10 +59,9 @@ int main(int argc, char* argv[]) {
     bool is_file = std::filesystem::is_regular_file(filepath);
     bool is_cpp_file = std::filesystem::path(filepath).extension().string() == ".cpp";
 
-    // We're not interested: just exit silently.
-    // Don't return an error, as that would show up to the end user in the Rerun Viewer!
+    // Inform the Rerun Viewer that we do not support that kind of file.
     if (!(is_file && is_cpp_file)) {
-        return 0;
+        return rerun::EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE;
     }
 
     std::ifstream file(filepath);
