@@ -26,7 +26,7 @@ impl DataLoader for ArchetypeLoader {
         use anyhow::Context as _;
 
         if filepath.is_dir() {
-            return Ok(()); // simply not interested
+            return Err(crate::DataLoaderError::NotSupported(filepath.clone()));
         }
 
         re_tracing::profile_function!(filepath.display().to_string());
@@ -45,6 +45,11 @@ impl DataLoader for ArchetypeLoader {
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
+        let extension = crate::extension(&filepath);
+        if !crate::is_supported_file_extension(&extension) {
+            return Err(crate::DataLoaderError::NotSupported(filepath.clone()));
+        }
+
         re_tracing::profile_function!(filepath.display().to_string());
 
         let entity_path = EntityPath::from_file_path(&filepath);
@@ -75,8 +80,6 @@ impl DataLoader for ArchetypeLoader {
                 }
             }
         }
-
-        let extension = crate::extension(&filepath);
 
         let mut rows = Vec::new();
 
