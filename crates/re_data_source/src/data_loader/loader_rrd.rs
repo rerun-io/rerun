@@ -25,7 +25,7 @@ impl crate::DataLoader for RrdLoader {
 
         let extension = crate::extension(&filepath);
         if extension != "rrd" {
-            return Ok(()); // simply not interested
+            return Err(crate::DataLoaderError::NotSupported(filepath.clone()));
         }
 
         re_log::debug!(
@@ -40,7 +40,17 @@ impl crate::DataLoader for RrdLoader {
         let file = std::io::BufReader::new(file);
 
         let decoder = re_log_encoding::decoder::Decoder::new(version_policy, file)?;
-        decode_and_stream(&filepath, &tx, decoder);
+
+        // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
+        std::thread::Builder::new()
+            .name(format!("decode_and_stream({filepath:?})"))
+            .spawn({
+                let filepath = filepath.clone();
+                move || {
+                    decode_and_stream(&filepath, &tx, decoder);
+                }
+            })
+            .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
 
         Ok(())
     }
@@ -57,7 +67,7 @@ impl crate::DataLoader for RrdLoader {
 
         let extension = crate::extension(&filepath);
         if extension != "rrd" {
-            return Ok(()); // simply not interested
+            return Err(crate::DataLoaderError::NotSupported(filepath));
         }
 
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
@@ -71,7 +81,9 @@ impl crate::DataLoader for RrdLoader {
                 _ => return Err(err.into()),
             },
         };
+
         decode_and_stream(&filepath, &tx, decoder);
+
         Ok(())
     }
 }
