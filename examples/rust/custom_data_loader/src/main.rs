@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<std::process::ExitCode> {
 
 // ---
 
-/// A custom [`re_data_source::DataLoader`] that logs any file as a [`TextDocument`] of its hash.
+/// A custom [`re_data_source::DataLoader`] that logs any file as a [`rerun::TextDocument`] of its hash.
 struct HashLoader;
 
 impl re_data_source::DataLoader for HashLoader {
