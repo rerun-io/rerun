@@ -31,6 +31,10 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 /// - [`DirectoryLoader`] for recursively loading folders.
 /// - [`ExternalLoader`], which looks for user-defined data loaders in $PATH.
 ///
+/// ## Registering custom loaders
+///
+/// TODO(cmc): web guide in upcoming PR
+///
 /// ## Execution
 ///
 /// **All** registered [`DataLoader`]s get called when a user tries to open a file, unconditionally.
@@ -131,6 +135,9 @@ pub enum DataLoaderError {
     #[error(transparent)]
     Decode(#[from] re_log_encoding::decoder::DecodeError),
 
+    #[error("No data-loader support for {0:?}")]
+    NotSupported(std::path::PathBuf),
+
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -143,6 +150,11 @@ impl DataLoaderError {
             DataLoaderError::IO(err) => err.kind() == std::io::ErrorKind::NotFound,
             _ => false,
         }
+    }
+
+    #[inline]
+    pub fn is_not_supported(&self) -> bool {
+        matches!(self, Self::NotSupported { .. })
     }
 }
 

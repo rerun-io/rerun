@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::sync::Arc;
 
 use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
@@ -42,7 +41,7 @@ pub fn load_from_path(
         }
     }
 
-    let data = load(store_id, path, path.is_dir(), None)?;
+    let data = load(store_id, path, None)?;
     send(store_id, data, tx);
 
     Ok(())
@@ -75,7 +74,7 @@ pub fn load_from_file_contents(
         }
     }
 
-    let data = load(store_id, filepath, false, Some(contents))?;
+    let data = load(store_id, filepath, Some(contents))?;
     send(store_id, data, tx);
 
     Ok(())
@@ -135,52 +134,69 @@ pub(crate) fn prepare_store_info(
 
 /// Loads the data at `path` using all available [`crate::DataLoader`]s.
 ///
-/// Returns a channel with all the [`LoadedData`]:
+/// On success, returns a channel with all the [`LoadedData`]:
 /// - On native, this is filled asynchronously from other threads.
 /// - On wasm, this is pre-filled synchronously.
+///
+/// There is only one way this function can return an error: not a single [`crate::DataLoader`]
+/// (whether it is builtin, custom or external) was capable of loading the data, in which case
+/// `DataLoaderError::NotSupported` will be returned.
 #[cfg_attr(target_arch = "wasm32", allow(clippy::needless_pass_by_value))]
 pub(crate) fn load(
     store_id: &re_log_types::StoreId,
     path: &std::path::Path,
-    is_dir: bool,
     contents: Option<std::borrow::Cow<'_, [u8]>>,
 ) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
-    #[cfg(target_arch = "wasm32")]
-    let has_external_loaders = false;
-    #[cfg(not(target_arch = "wasm32"))]
-    let has_external_loaders = !crate::data_loader::EXTERNAL_LOADER_PATHS.is_empty();
-
-    let extension = extension(path);
-    let is_builtin = is_associated_with_builtin_loader(path, is_dir);
-
-    // If there are no external loaders registered (which is always the case on wasm) and we don't
-    // have a builtin loader for it, then we know for a fact that we won't be able to load it.
-    if !is_builtin && !has_external_loaders {
-        return if extension.is_empty() {
-            Err(anyhow::anyhow!("files without extensions (file.XXX) are not supported").into())
-        } else {
-            Err(anyhow::anyhow!(".{extension} files are not supported").into())
-        };
-    }
+    re_tracing::profile_function!(path.display().to_string());
 
     // On native we run loaders in parallel so this needs to become static.
     #[cfg(not(target_arch = "wasm32"))]
-    let contents: Option<Arc<std::borrow::Cow<'static, [u8]>>> =
-        contents.map(|contents| Arc::new(Cow::Owned(contents.into_owned())));
+    let contents: Option<std::sync::Arc<std::borrow::Cow<'static, [u8]>>> =
+        contents.map(|contents| std::sync::Arc::new(Cow::Owned(contents.into_owned())));
 
     let rx_loader = {
         let (tx_loader, rx_loader) = std::sync::mpsc::channel();
 
-        for loader in crate::iter_loaders() {
-            let loader = Arc::clone(&loader);
-            let store_id = store_id.clone();
-            let tx_loader = tx_loader.clone();
-            let path = path.to_owned();
+        #[cfg(target_arch = "wasm32")]
+        let any_compatible_loader = crate::iter_loaders().map(|loader| {
+            if let Some(contents) = contents.as_deref() {
+                let store_id = store_id.clone();
+                let tx_loader = tx_loader.clone();
+                let path = path.to_owned();
+                let contents = Cow::Borrowed(contents);
 
-            #[cfg(not(target_arch = "wasm32"))]
-            spawn({
+                if let Err(err) = loader.load_from_file_contents(store_id, path.clone(), contents, tx_loader) {
+                    if err.is_not_supported() {
+                        return false;
+                    }
+                    re_log::error!(?path, loader = loader.name(), %err, "Failed to load data from file");
+                }
+
+                true
+            } else {
+                false
+            }
+        })
+            .reduce(|any_compatible, is_compatible| any_compatible | is_compatible)
+            .unwrap_or(false);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let any_compatible_loader = {
+            let (tx_feedback, rx_feedback) = std::sync::mpsc::channel();
+
+            for loader in crate::iter_loaders() {
+                let loader = std::sync::Arc::clone(&loader);
+
+                let store_id = store_id.clone();
+                let path = path.to_owned();
                 let contents = contents.clone(); // arc
-                move || {
+
+                let tx_loader = tx_loader.clone();
+                let tx_feedback = tx_feedback.clone();
+
+                rayon::spawn(move || {
+                    re_tracing::profile_scope!("inner", loader.name());
+
                     if let Some(contents) = contents.as_deref() {
                         let contents = Cow::Borrowed(contents.as_ref());
 
@@ -190,36 +206,40 @@ pub(crate) fn load(
                             contents,
                             tx_loader,
                         ) {
-                            re_log::error!(?path, loader = loader.name(), %err, "Failed to load data from file");
+                            if err.is_not_supported() {
+                                return;
+                            }
+                            re_log::error!(?path, loader = loader.name(), %err, "Failed to load data");
                         }
                     } else if let Err(err) =
                         loader.load_from_path(store_id, path.clone(), tx_loader)
                     {
+                        if err.is_not_supported() {
+                            return;
+                        }
                         re_log::error!(?path, loader = loader.name(), %err, "Failed to load data from file");
                     }
-                }
-            });
 
-            #[cfg(target_arch = "wasm32")]
-            spawn(|| {
-                if let Some(contents) = contents.as_deref() {
-                    let contents = Cow::Borrowed(contents);
+                    re_log::debug!(loader = loader.name(), ?path, "compatible loader found");
+                    tx_feedback.send(()).ok();
+                });
+            }
 
-                    if let Err(err) =
-                        loader.load_from_file_contents(store_id, path.clone(), contents, tx_loader)
-                    {
-                        re_log::error!(?path, loader = loader.name(), %err, "Failed to load data from file");
-                    }
-                }
-            });
-        }
+            drop(tx_feedback);
+
+            rx_feedback.recv().is_ok() // at least one compatible loader was found
+        };
 
         // Implicitly closing `tx_loader`!
 
-        rx_loader
+        any_compatible_loader.then_some(rx_loader)
     };
 
-    Ok(rx_loader)
+    if let Some(rx_loader) = rx_loader {
+        Ok(rx_loader)
+    } else {
+        Err(DataLoaderError::NotSupported(path.to_owned()))
+    }
 }
 
 /// Forwards the data in `rx_loader` to `tx`, taking care of necessary conversions, if any.
@@ -231,6 +251,8 @@ pub(crate) fn send(
     tx: &Sender<LogMsg>,
 ) {
     spawn({
+        re_tracing::profile_function!();
+
         let tx = tx.clone();
         let store_id = store_id.clone();
         move || {
