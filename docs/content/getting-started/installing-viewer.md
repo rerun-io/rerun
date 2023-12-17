@@ -1,6 +1,6 @@
 ---
 title: Installing the Rerun Viewer
-order: 0
+order: -1
 ---
 
 The [Rerun Viewer](../reference/viewer/overview.md) can be installed independent of the SDK language you're using.
