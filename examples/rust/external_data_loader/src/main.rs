@@ -1,6 +1,8 @@
 //! Example of an external data-loader executable plugin for the Rerun Viewer.
 
-use rerun::{external::re_data_source::extension, MediaType};
+use rerun::{
+    external::re_data_source::extension, MediaType, EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE,
+};
 
 // The Rerun Viewer will always pass these two pieces of information:
 // 1. The path to be loaded, as a positional arg.
@@ -25,35 +27,41 @@ struct Args {
     recording_id: Option<String>,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     let args: Args = argh::from_env();
 
     let is_file = args.filepath.is_file();
     let is_rust_file = extension(&args.filepath) == "rs";
 
-    // We're not interested: just exit silently.
-    // Don't return an error, as that would show up to the end user in the Rerun Viewer!
+    // Inform the Rerun Viewer that we do not support that kind of file.
     if !(is_file && is_rust_file) {
-        return Ok(());
+        #[allow(clippy::exit)]
+        std::process::exit(EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE);
     }
 
-    let rec = {
-        let mut rec = rerun::RecordingStreamBuilder::new("rerun_example_external_data_loader");
-        if let Some(recording_id) = args.recording_id {
-            rec = rec.recording_id(recording_id);
+    let res = (|| {
+        let body = std::fs::read_to_string(&args.filepath)?;
+        let text = format!("## Some Rust code\n```rust\n{body}\n```\n");
+
+        let rec = {
+            let mut rec = rerun::RecordingStreamBuilder::new("rerun_example_external_data_loader");
+            if let Some(recording_id) = args.recording_id {
+                rec = rec.recording_id(recording_id);
+            };
+
+            // The most important part of this: log to standard output so the Rerun Viewer can ingest it!
+            rec.stdout()?
         };
 
-        // The most important part of this: log to standard output so the Rerun Viewer can ingest it!
-        rec.stdout()?
-    };
+        rec.log_timeless(
+            rerun::EntityPath::from_file_path(&args.filepath),
+            &rerun::TextDocument::new(text).with_media_type(MediaType::MARKDOWN),
+        )?;
 
-    let body = std::fs::read_to_string(&args.filepath)?;
-    let text = format!("## Some Rust code\n```rust\n{body}\n```\n");
+        Ok::<_, anyhow::Error>(())
+    })();
 
-    rec.log_timeless(
-        rerun::EntityPath::from_file_path(&args.filepath),
-        &rerun::TextDocument::new(text).with_media_type(MediaType::MARKDOWN),
-    )?;
-
-    Ok(())
+    if let Err(err) = res {
+        panic!("{err}")
+    }
 }
