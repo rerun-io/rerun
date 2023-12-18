@@ -149,7 +149,7 @@ def run_llm_ner(text: str) -> None:
     rr.log(
         "umap_embeddings",
         rr.Points3D(umap_embeddings, class_ids=class_ids),
-        rr.AnyValues(token=token_words, named_entity=entity_per_token(token_words, ner_results)),
+        rr.AnyValues(**{"Token": token_words, "Named Entity": entity_per_token(token_words, ner_results)}),
     )
     log_ner_results(ner_results)
 
