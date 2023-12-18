@@ -198,6 +198,11 @@ impl SizeBytes for RowId {
     fn heap_size_bytes(&self) -> u64 {
         0
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
+    }
 }
 
 impl std::ops::Deref for RowId {
