@@ -57,13 +57,7 @@ impl ContainerBlueprint {
             })
             .ok()?;
 
-        let container_kind = match container_kind.0 {
-            1 => ContainerKind::Tabs,
-            2 => ContainerKind::Horizontal,
-            3 => ContainerKind::Vertical,
-            4 => ContainerKind::Grid,
-            _ => ContainerKind::default(),
-        };
+        let container_kind = container_kind.into();
 
         // TODO(jleibs): Don't use debug print for this
         let display_name =
