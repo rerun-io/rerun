@@ -1,0 +1,36 @@
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+// ---
+
+/// The top-level description of the Viewport.
+table ContainerBlueprint (
+    "attr.docs.unreleased",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    // --- Required ---
+
+    /// The class of the view.
+    container_kind: rerun.blueprint.components.ContainerKind ("attr.rerun.component_required", order: 100);
+
+    // --- Optional ---
+
+    /// The name of the container.
+    display_name: rerun.blueprint.components.Name ("attr.rerun.component_optional", nullable, order: 200);
+
+    /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
+    contents: rerun.blueprint.components.IncludedContents ("attr.rerun.component_optional", nullable, order: 300);
+
+    /// The weights of the primary axis. For `Grid` this is the column weights.
+    ///
+    /// For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
+    primary_weights: rerun.blueprint.components.PrimaryWeights ("attr.rerun.component_optional", nullable, order: 400);
+
+    /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
+    secondary_weights: rerun.blueprint.components.SecondaryWeights ("attr.rerun.component_optional", nullable, order: 500);
+}
