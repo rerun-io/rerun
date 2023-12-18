@@ -34,7 +34,7 @@ The easiest way to do so is by implementing what we call an "external loader": a
 
 This executable is just a vanilla Rerun logger.
 It will be called by the Rerun Viewer when the user opens a file, and be passed the path to that file.
-From there, it can log data as usual, using the [`stdout` logging sink](TODO).
+From there, it can log data as usual, using the [`stdout` logging sink](https://www.rerun.io/docs/reference/sdk-operating-modes).
 
 The Rerun Viewer will then automatically load the data streamed to the external loader's standard output.
 
