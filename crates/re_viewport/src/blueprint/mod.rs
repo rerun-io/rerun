@@ -1,5 +1,13 @@
 pub mod archetypes;
-pub mod components;
+
+pub mod components {
+
+    #[path = "../components/mod.rs"]
+    mod _components;
+
+    pub use self::_components::*;
+    pub use re_types::blueprint::components::*;
+}
 
 mod data_ui;
 

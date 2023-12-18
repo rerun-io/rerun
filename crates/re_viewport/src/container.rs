@@ -29,6 +29,7 @@ pub struct ContainerBlueprint {
     pub contents: Vec<ContainerOrSpaceView>,
     pub primary_weights: Vec<f32>,
     pub secondary_weights: Vec<f32>,
+    pub tile_id: Option<egui_tiles::TileId>,
 }
 
 impl ContainerBlueprint {
@@ -37,12 +38,13 @@ impl ContainerBlueprint {
 
         let query = LatestAtQuery::latest(Timeline::default());
 
-        let re_types::blueprint::archetypes::ContainerBlueprint {
+        let crate::blueprint::archetypes::ContainerBlueprint {
             container_kind,
             display_name,
             contents,
             primary_weights,
             secondary_weights,
+            tile_id,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
@@ -88,6 +90,8 @@ impl ContainerBlueprint {
             .cloned()
             .collect();
 
+        let tile_id = tile_id.map(|id| id.0);
+
         Some(Self {
             id,
             container_kind,
@@ -95,6 +99,7 @@ impl ContainerBlueprint {
             contents,
             primary_weights,
             secondary_weights,
+            tile_id,
         })
     }
 }
