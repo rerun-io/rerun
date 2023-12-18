@@ -1,10 +1,9 @@
-use nohash_hasher::IntMap;
 use re_log_types::{EntityPathHash, TimePoint, TimeRange};
-use re_types_core::{ComponentName, SizeBytes};
+use re_types_core::SizeBytes;
 
 use crate::{
     store::{IndexedBucketInner, PersistentIndexedTableInner},
-    ClusterCellCache, DataStore, DataTypeRegistry, IndexedBucket, IndexedTable, MetadataRegistry,
+    ClusterCellCache, DataStore, IndexedBucket, IndexedTable, MetadataRegistry,
     PersistentIndexedTable,
 };
 

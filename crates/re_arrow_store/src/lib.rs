@@ -48,8 +48,8 @@ pub use self::store_subscriber::{StoreSubscriber, StoreSubscriberHandle};
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{
-    ClusterCellCache, DataTypeRegistry, IndexedBucket, IndexedBucketInner, IndexedTable,
-    MetadataRegistry, PersistentIndexedTable,
+    ClusterCellCache, IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry,
+    PersistentIndexedTable,
 };
 
 #[allow(unused_imports)] // only used with some sets of feature flags atm
