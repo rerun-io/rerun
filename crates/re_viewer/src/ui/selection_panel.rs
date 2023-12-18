@@ -14,8 +14,9 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClass, SpaceViewClassIdentifier,
-    SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, HoverHighlight, Item, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity,
+    ViewerContext,
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, Viewport, ViewportBlueprint,
@@ -126,6 +127,8 @@ impl SelectionPanel {
                 match item {
                     Item::Container(tile_id) => {
                         container_top_level_properties(ui, ctx, viewport, tile_id);
+                        ui.add_space(12.0);
+                        container_children(ui, ctx, viewport, tile_id);
                     }
 
                     Item::SpaceView(space_view_id) => {
@@ -512,6 +515,129 @@ fn container_top_level_properties(
             },
         );
     }
+}
+
+fn container_children(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    viewport: &mut ViewportBlueprint<'_>,
+    tile_id: &egui_tiles::TileId,
+) {
+    // Temporarily remove the tile so we don't get borrow-checker fights:
+    let Some(Tile::Container(container)) = viewport.tree.tiles.remove(*tile_id) else {
+        return;
+    };
+
+    let show_content = |ui: &mut egui::Ui| {
+        let mut has_child = false;
+        for &child_tile_id in container.children() {
+            has_child |= show_list_item_for_container_child(ui, ctx, viewport, child_tile_id);
+        }
+
+        if !has_child {
+            ListItem::new(ctx.re_ui, "empty — use the + button to add content")
+                .weak(true)
+                .italics(true)
+                .active(false)
+                .show(ui);
+        }
+    };
+
+    ui.horizontal(|ui| {
+        ui.strong("Contents");
+
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ctx
+                .re_ui
+                .small_icon_button(ui, &re_ui::icons::ADD)
+                .clicked()
+            {
+                // TODO
+            }
+        });
+    });
+
+    egui::Frame {
+        outer_margin: egui::Margin::ZERO,
+        inner_margin: egui::Margin::ZERO,
+        stroke: ui.visuals().widgets.noninteractive.bg_stroke,
+        ..Default::default()
+    }
+    .show(ui, |ui| {
+        let clip_rect = ui.clip_rect();
+        ui.set_clip_rect(ui.max_rect());
+        ui.spacing_mut().item_spacing.y = 0.0;
+
+        egui::Frame {
+            inner_margin: egui::Margin::symmetric(4.0, 0.0),
+            ..Default::default()
+        }
+        .show(ui, show_content);
+
+        ui.set_clip_rect(clip_rect);
+    });
+
+    viewport
+        .tree
+        .tiles
+        .insert(*tile_id, Tile::Container(container));
+}
+
+// TODO(#4560): this code should be generic and part of re_data_ui
+/// Show a list item for a single container child.
+///
+/// Return true if successful.
+fn show_list_item_for_container_child(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    viewport: &mut ViewportBlueprint<'_>,
+    child_tile_id: egui_tiles::TileId,
+) -> bool {
+    let Some(child_tile) = viewport.tree.tiles.get(child_tile_id) else {
+        //TODO: error mgmt
+        return false;
+    };
+
+    let (item, mut list_item) = match child_tile {
+        Tile::Pane(space_view_id) => {
+            let Some(space_view) = viewport.space_views.get(space_view_id) else {
+                //TODO: error mgmt
+                return false;
+            };
+
+            (
+                Item::SpaceView(*space_view_id),
+                ListItem::new(ctx.re_ui, space_view.display_name.clone())
+                    .with_icon(space_view.class(ctx.space_view_class_registry).icon()),
+            )
+        }
+        Tile::Container(container) => {
+            // TODO(#4285): this hack should be cleaned with "blueprintified" containers
+            if let (egui_tiles::Container::Tabs(_), Some(child_id)) =
+                (container, container.only_child())
+            {
+                return show_list_item_for_container_child(ui, ctx, viewport, child_id);
+            }
+
+            (
+                Item::Container(child_tile_id),
+                ListItem::new(ctx.re_ui, format!("{:?}", container.kind())).subdued(true),
+            )
+        }
+    };
+
+    let is_item_hovered =
+        ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
+
+    if is_item_hovered {
+        list_item = list_item.force_hovered(true);
+    }
+
+    let response = list_item.show(ui);
+
+    item_ui::select_hovered_on_click(ctx, &response, &[item]);
+
+    true
 }
 
 fn has_blueprint_section(item: &Item) -> bool {
