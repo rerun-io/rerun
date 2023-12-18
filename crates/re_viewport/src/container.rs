@@ -206,4 +206,13 @@ impl ContainerBlueprint {
             },
         }
     }
+
+    pub fn to_empty_tile_container(&self) -> egui_tiles::Container {
+        match self.container_kind {
+            egui_tiles::ContainerKind::Tabs => egui_tiles::Container::new_tabs(vec![]),
+            egui_tiles::ContainerKind::Horizontal => egui_tiles::Container::new_horizontal(vec![]),
+            egui_tiles::ContainerKind::Vertical => egui_tiles::Container::new_vertical(vec![]),
+            egui_tiles::ContainerKind::Grid => egui_tiles::Container::new_grid(vec![]),
+        }
+    }
 }
