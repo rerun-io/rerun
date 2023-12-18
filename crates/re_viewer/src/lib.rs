@@ -154,6 +154,10 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
             }),
             supported_backends: re_renderer::config::supported_backends(),
             device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter(adapter).device_descriptor()),
+
+            present_mode: wgpu::PresentMode::AutoNoVsync, // double-buffered: low-latency, may have tearing
+            // present_mode: wgpu::PresentMode::AutoVsync, // triple-buffered: high-latency, no tearing
+
             ..Default::default()
         }
 }
