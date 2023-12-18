@@ -4,12 +4,13 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::Timeline;
 use re_query::query_archetype;
-use re_viewer_context::{Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
 
 use crate::{
     blueprint::components::{
         AutoLayout, AutoSpaceViews, IncludedSpaceViews, SpaceViewMaximized, ViewportLayout,
     },
+    container::ContainerBlueprint,
     space_view::SpaceViewBlueprint,
     viewport::TreeActions,
     VIEWPORT_PATH,
@@ -23,6 +24,12 @@ pub struct ViewportBlueprint {
     ///
     /// Not a hashmap in order to preserve the order of the space views.
     pub space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint>,
+
+    /// All the containers found in the viewport.
+    pub containers: BTreeMap<ContainerId, ContainerBlueprint>,
+
+    /// The root container.
+    pub root_container: Option<ContainerId>,
 
     /// The layouts of all the space views.
     pub tree: egui_tiles::Tree<SpaceViewId>,
@@ -78,6 +85,27 @@ impl ViewportBlueprint {
             .map(|sv| (sv.id, sv))
             .collect();
 
+        // TODO(jleibs): Get rid of unwrap by making this a static path part.
+        let container_registry_part = ContainerId::registry().iter().next().unwrap();
+
+        let all_container_ids: Vec<ContainerId> = blueprint_db
+            .tree()
+            .children
+            .get(container_registry_part)
+            .map(|tree| {
+                tree.children
+                    .values()
+                    .map(|subtree| ContainerId::from_entity_path(&subtree.path))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let containers: BTreeMap<ContainerId, ContainerBlueprint> = all_container_ids
+            .into_iter()
+            .filter_map(|id| ContainerBlueprint::try_from_db(id, blueprint_db))
+            .map(|c| (c.id, c))
+            .collect();
+
         let auto_layout = arch.auto_layout.unwrap_or_default().0;
 
         let auto_space_views = arch.auto_space_views.map_or_else(
@@ -101,6 +129,8 @@ impl ViewportBlueprint {
 
         ViewportBlueprint {
             space_views,
+            containers,
+            root_container: None,
             tree,
             maximized,
             auto_layout,

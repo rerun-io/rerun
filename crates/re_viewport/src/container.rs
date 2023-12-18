@@ -4,7 +4,7 @@ use re_data_store::StoreDb;
 use re_log_types::{EntityPath, Timeline};
 use re_query::query_archetype;
 use re_viewer_context::{ContainerId, SpaceViewId};
-enum ContainerOrSpaceView {
+pub enum ContainerOrSpaceView {
     Container(ContainerId),
     SpaceView(SpaceViewId),
 }
@@ -23,11 +23,12 @@ impl ContainerOrSpaceView {
     }
 }
 pub struct ContainerBlueprint {
-    container_kind: egui_tiles::ContainerKind,
-    display_name: String,
-    contents: Vec<ContainerOrSpaceView>,
-    primary_weights: Vec<f32>,
-    secondary_weights: Vec<f32>,
+    pub id: ContainerId,
+    pub container_kind: egui_tiles::ContainerKind,
+    pub display_name: String,
+    pub contents: Vec<ContainerOrSpaceView>,
+    pub primary_weights: Vec<f32>,
+    pub secondary_weights: Vec<f32>,
 }
 
 impl ContainerBlueprint {
@@ -88,6 +89,7 @@ impl ContainerBlueprint {
             .collect();
 
         Some(Self {
+            id,
             container_kind,
             display_name,
             contents,
