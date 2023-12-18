@@ -139,7 +139,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
     pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a ViewerContext<'_>) {
         self.state
             .space_view_entity_window
-            .ui(ui, ctx, &self.blueprint);
+            .ui(ui, ctx, self.blueprint);
 
         let Viewport {
             blueprint, state, ..
