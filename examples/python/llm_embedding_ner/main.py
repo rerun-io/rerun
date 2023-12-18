@@ -77,6 +77,31 @@ def log_ner_results(ner_results: list[dict[str, Any]]) -> None:
     rr.log("named_entities", rr.TextDocument(named_entities_str, media_type=rr.MediaType.MARKDOWN))
 
 
+def entity_per_token(token_words: list[str], ner_results: list[dict[str, Any]]) -> list[str]:
+    index_to_entity: dict[int, str] = defaultdict(str)
+    current_entity_name = None
+    current_entity_indices = []
+    for ner_result in ner_results:
+        entity_class = ner_result["entity"]
+        word = ner_result["word"]
+        token_index = ner_result["index"]
+        if entity_class.startswith("B-"):
+            if current_entity_name is not None:
+                print(current_entity_name, current_entity_indices)
+                for i in current_entity_indices:
+                    index_to_entity[i] = current_entity_name
+            current_entity_indices = [token_index]
+            current_entity_name = word
+        elif current_entity_name is not None:
+            current_entity_indices.append(token_index)
+            if word.startswith("##"):
+                current_entity_name += word[2:]
+            else:
+                current_entity_name += f" {word}"
+    entity_per_token = [index_to_entity[i] for i in range(len(token_words))]
+    return entity_per_token
+
+
 def run_llm_ner(text: str) -> None:
     label2index = {
         "B-LOC": 1,
@@ -88,12 +113,13 @@ def run_llm_ner(text: str) -> None:
         "B-MISC": 4,
         "I-MISC": 4,
     }
+    # Define label for classes and set none class color to dark gray
     annotation_context = [
-        (0, "", (20, 20, 20)),
-        (1, "Location", (200, 40, 40)),
-        (2, "Person", (40, 200, 40)),
-        (3, "Organization", (40, 40, 200)),
-        (4, "Miscellaneous", (40, 200, 200)),
+        (0, "", (30, 30, 30)),
+        (1, "Location"),
+        (2, "Person"),
+        (3, "Organization"),
+        (4, "Miscellaneous"),
     ]
     rr.log("/", rr.AnnotationContext(annotation_context))
 
@@ -122,7 +148,8 @@ def run_llm_ner(text: str) -> None:
         class_ids[ner_result["index"]] = label2index[ner_result["entity"]]
     rr.log(
         "umap_embeddings",
-        rr.Points3D(umap_embeddings, labels=token_words, class_ids=class_ids),
+        rr.Points3D(umap_embeddings, class_ids=class_ids),
+        rr.AnyValues(token=token_words, named_entity=entity_per_token(token_words, ner_results)),
     )
     log_ner_results(ner_results)
 
