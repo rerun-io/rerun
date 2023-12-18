@@ -1,0 +1,22 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+/// An opaque egui_tiles::TileId.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+table TileId (
+    "attr.arrow.transparent",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "PartialEq",
+    "attr.rust.override_crate": "re_viewport"
+) {
+    tile_id: [ubyte] (order: 101, "attr.rust.serde_type": "egui_tiles::TileId");
+}
