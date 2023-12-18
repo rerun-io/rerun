@@ -25,7 +25,18 @@ pub trait SizeBytes {
 
     /// Returns the total size of `self` on the heap, in bytes.
     fn heap_size_bytes(&self) -> u64;
+
+    /// Is `Self` just plain old data?
+    ///
+    /// If `true`, this will make most blanket implementations of `SizeBytes` much faster (e.g. `Vec<T>`).
+    #[inline]
+    fn is_pod() -> bool {
+        false
+    }
 }
+
+// TODO(rust-lang/rust#31844): This isn't happening without specialization.
+// impl<T> SizeBytes for T where T: bytemuck::Pod { ... }
 
 // --- Std ---
 
