@@ -108,6 +108,8 @@ impl ViewportBlueprint {
 
         let auto_layout = arch.auto_layout.unwrap_or_default().0;
 
+        let root_container = arch.root_container.map(|id| id.0.into());
+
         let auto_space_views = arch.auto_space_views.map_or_else(
             || {
                 // Only enable auto-space-views if this is the app-default blueprint
@@ -130,7 +132,7 @@ impl ViewportBlueprint {
         ViewportBlueprint {
             space_views,
             containers,
-            root_container: None,
+            root_container,
             tree,
             maximized,
             auto_layout,
