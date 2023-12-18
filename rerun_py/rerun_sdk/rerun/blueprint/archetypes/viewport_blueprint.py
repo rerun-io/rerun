@@ -26,6 +26,7 @@ class ViewportBlueprint(Archetype):
         space_views: components.IncludedSpaceViewsLike,
         *,
         layout: components.ViewportLayoutLike | None = None,
+        root_container: datatypes.UuidLike | None = None,
         maximized: datatypes.UuidLike | None = None,
         auto_layout: components.AutoLayoutLike | None = None,
         auto_space_views: components.AutoSpaceViewsLike | None = None,
@@ -38,6 +39,8 @@ class ViewportBlueprint(Archetype):
         space_views:
             All of the space-views that belong to the viewport.
         layout:
+            The layout of the space-views
+        root_container:
             The layout of the space-views
         maximized:
             Show one tab as maximized?
@@ -54,6 +57,7 @@ class ViewportBlueprint(Archetype):
             self.__attrs_init__(
                 space_views=space_views,
                 layout=layout,
+                root_container=root_container,
                 maximized=maximized,
                 auto_layout=auto_layout,
                 auto_space_views=auto_space_views,
@@ -66,6 +70,7 @@ class ViewportBlueprint(Archetype):
         self.__attrs_init__(
             space_views=None,  # type: ignore[arg-type]
             layout=None,  # type: ignore[arg-type]
+            root_container=None,  # type: ignore[arg-type]
             maximized=None,  # type: ignore[arg-type]
             auto_layout=None,  # type: ignore[arg-type]
             auto_space_views=None,  # type: ignore[arg-type]
@@ -90,6 +95,15 @@ class ViewportBlueprint(Archetype):
         metadata={"component": "optional"},
         default=None,
         converter=components.ViewportLayoutBatch._optional,  # type: ignore[misc]
+    )
+    # The layout of the space-views
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    root_container: components.RootContainerBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.RootContainerBatch._optional,  # type: ignore[misc]
     )
     # The layout of the space-views
     #

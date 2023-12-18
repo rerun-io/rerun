@@ -5,5 +5,6 @@ auto_layout.rs linguist-generated=true
 auto_space_views.rs linguist-generated=true
 included_space_views.rs linguist-generated=true
 mod.rs linguist-generated=true
+root_container.rs linguist-generated=true
 space_view_maximized.rs linguist-generated=true
 viewport_layout.rs linguist-generated=true

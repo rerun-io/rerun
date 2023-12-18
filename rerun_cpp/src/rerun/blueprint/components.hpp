@@ -14,6 +14,7 @@
 #include "blueprint/components/panel_view.hpp"
 #include "blueprint/components/primary_weights.hpp"
 #include "blueprint/components/query_expressions.hpp"
+#include "blueprint/components/root_container.hpp"
 #include "blueprint/components/secondary_weights.hpp"
 #include "blueprint/components/space_view_class.hpp"
 #include "blueprint/components/space_view_maximized.hpp"
