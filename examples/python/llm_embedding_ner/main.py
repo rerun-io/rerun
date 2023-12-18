@@ -114,14 +114,14 @@ def run_llm_ner(text: str) -> None:
         "I-MISC": 4,
     }
     # Define label for classes and set none class color to dark gray
-    annotation_context = [
-        (0, "", (30, 30, 30)),
-        (1, "Location"),
-        (2, "Person"),
-        (3, "Organization"),
-        (4, "Miscellaneous"),
-    ]
-    rr.log("/", rr.AnnotationContext(annotation_context))
+    annotation_context = rr.AnnotationContext([
+        rr.AnnotationInfo(id=0, color=(30, 30, 30)),
+        rr.AnnotationInfo(id=1, label="Location"),
+        rr.AnnotationInfo(id=2, label="Person"),
+        rr.AnnotationInfo(id=3, label="Organization"),
+        rr.AnnotationInfo(id=4, label="Miscellaneous"),
+    ])
+    rr.log("/", annotation_context)
 
     # Initialize model
     tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
