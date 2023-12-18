@@ -463,7 +463,7 @@ mod tests {
     use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
     use re_space_view::DataQuery as _;
     use re_types::archetypes::Points3D;
-    use re_viewer_context::{EntitiesPerSystemPerClass, StoreContext};
+    use re_viewer_context::{EntitiesPerSystem, StoreContext};
 
     use super::*;
 
@@ -515,10 +515,8 @@ mod tests {
 
         let auto_properties = Default::default();
 
-        let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
-        entities_per_system_per_class
-            .entry("3D".into())
-            .or_default()
+        let mut entities_per_system = EntitiesPerSystem::default();
+        entities_per_system
             .entry("Points3D".into())
             .or_insert_with(|| {
                 [
@@ -541,7 +539,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
 
             let parent = query_result
                 .tree
@@ -575,7 +573,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
 
             let parent_group = query_result
                 .tree
@@ -618,7 +616,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
 
             let parent = query_result
                 .tree
@@ -660,7 +658,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
 
             let parent = query_result
                 .tree
@@ -697,7 +695,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
 
             let parent = query_result
                 .tree

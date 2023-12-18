@@ -1,5 +1,4 @@
 use nohash_hasher::IntSet;
-use once_cell::sync::Lazy;
 use re_data_store::{
     EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree, StoreDb,
 };
@@ -7,8 +6,8 @@ use re_log_types::{DataRow, EntityPath, EntityPathExpr, RowId, TimePoint};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassIdentifier, SpaceViewId,
-    StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext,
+    EntitiesPerSystem, SpaceViewClassIdentifier, SpaceViewId, StoreContext, SystemCommand,
+    SystemCommandSender as _, ViewerContext,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -280,21 +279,15 @@ impl DataQuery for DataQueryBlueprint {
         &self,
         property_resolver: &impl PropertyResolver,
         ctx: &re_viewer_context::StoreContext<'_>,
-        entities_per_system_per_class: &EntitiesPerSystemPerClass,
+        entities_per_system: &EntitiesPerSystem,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
-
-        static EMPTY_ENTITY_LIST: Lazy<EntitiesPerSystem> = Lazy::new(Default::default);
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
         let overrides = property_resolver.resolve_entity_overrides(ctx);
 
-        let per_system_entity_list = entities_per_system_per_class
-            .get(&self.space_view_class_identifier)
-            .unwrap_or(&EMPTY_ENTITY_LIST);
-
-        let executor = QueryExpressionEvaluator::new(self, per_system_entity_list);
+        let executor = QueryExpressionEvaluator::new(self, entities_per_system);
 
         let root_handle = ctx.recording.and_then(|store| {
             executor.add_entity_tree_to_data_results_recursive(
@@ -633,10 +626,9 @@ mod tests {
             recording.add_data_row(row).unwrap();
         }
 
-        let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
-        entities_per_system_per_class
-            .entry("3D".into())
-            .or_default()
+        let mut entities_per_system = EntitiesPerSystem::default();
+
+        entities_per_system
             .entry("Points3D".into())
             .or_insert_with(|| {
                 [
@@ -758,7 +750,7 @@ mod tests {
                 ),
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
 
             let mut visited = vec![];
             query_result.tree.visit(&mut |handle| {

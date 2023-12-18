@@ -70,33 +70,6 @@ pub fn all_possible_space_views(
         }
     }
 
-    let empty_entities_per_system = EntitiesPerSystem::default();
-
-    // Find all the entities that are used by the part (!) systems for each class.
-    // Note that entities_per_system_per_class includes both part-systems *and* context-systems
-    // so we filter out the context systems before aggregating the entities since context systems
-    // should not influence the heuristics.
-    let entities_used_by_any_part_system_of_class: IntMap<_, _> = ctx
-        .space_view_class_registry
-        .iter_registry()
-        .map(|entry| {
-            let class_identifier = entry.class.identifier();
-            let parts = ctx
-                .space_view_class_registry
-                .new_part_collection(class_identifier);
-            (
-                class_identifier,
-                entities_per_system_per_class
-                    .get(&class_identifier)
-                    .unwrap_or(&empty_entities_per_system)
-                    .iter()
-                    .filter(|(system, _)| parts.get_by_identifier(**system).is_ok())
-                    .flat_map(|(_, entities)| entities.iter().cloned())
-                    .collect::<IntSet<_>>(),
-            )
-        })
-        .collect();
-
     // For each candidate, create space views for all possible classes.
     candidate_space_view_paths(ctx, spaces_info)
         .flat_map(|candidate_space_path| {
@@ -106,9 +79,18 @@ pub fn all_possible_space_views(
                 return Vec::new();
             }
 
-            entities_used_by_any_part_system_of_class
+            entities_per_system_per_class
                 .iter()
-                .filter_map(|(class_identifier, _entities_used_by_any_part_system)| {
+                .filter_map(|(class_identifier, entities_per_system)| {
+                    // We only want to run the query if at least one entity is reachable from the candidate.
+                    if entities_per_system.values().all(|entities| {
+                        !entities
+                            .iter()
+                            .any(|entity| entity.starts_with(candidate_space_path))
+                    }) {
+                        return None;
+                    }
+
                     // TODO(#4377): The need to run a query-per-candidate for all possible candidates
                     // is way too expensive. This needs to be optimized significantly.
                     let candidate_query = DataQueryBlueprint::new(
@@ -119,7 +101,7 @@ pub fn all_possible_space_views(
                     let results = candidate_query.execute_query(
                         &NOOP_RESOLVER,
                         ctx.store_context,
-                        entities_per_system_per_class,
+                        entities_per_system,
                     );
 
                     if !results.is_empty() {
