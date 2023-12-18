@@ -508,8 +508,8 @@ fn container_top_level_properties(
             egui_tiles::SimplificationOptions {
                 prune_empty_tabs: true,
                 prune_empty_containers: true,
-                prune_single_child_tabs: true,
-                prune_single_child_containers: true,
+                prune_single_child_tabs: false,
+                prune_single_child_containers: false,
                 all_panes_must_have_tabs: true,
                 join_nested_linear_containers: true,
             },
@@ -520,7 +520,7 @@ fn container_top_level_properties(
 fn container_children(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    viewport: &mut ViewportBlueprint<'_>,
+    viewport: &mut Viewport<'_, '_>,
     tile_id: &egui_tiles::TileId,
 ) {
     // Temporarily remove the tile so we don't get borrow-checker fights:
@@ -590,7 +590,7 @@ fn container_children(
 fn show_list_item_for_container_child(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    viewport: &mut ViewportBlueprint<'_>,
+    viewport: &mut Viewport<'_, '_>,
     child_tile_id: egui_tiles::TileId,
 ) -> bool {
     let Some(child_tile) = viewport.tree.tiles.get(child_tile_id) else {
@@ -600,7 +600,7 @@ fn show_list_item_for_container_child(
 
     let (item, mut list_item) = match child_tile {
         Tile::Pane(space_view_id) => {
-            let Some(space_view) = viewport.space_views.get(space_view_id) else {
+            let Some(space_view) = viewport.blueprint.space_views.get(space_view_id) else {
                 //TODO: error mgmt
                 return false;
             };
