@@ -167,6 +167,7 @@ macro_rules! define_blueprint_id_type {
 // Definitions for the different [`BlueprintId`] types.
 define_blueprint_id_type!(SpaceViewId, SpaceViewIdRegistry, "space_view");
 define_blueprint_id_type!(DataQueryId, DataQueryIdRegistry, "data_query");
+define_blueprint_id_type!(ContainerId, ContainerIdRegistry, "container");
 
 // ----------------------------------------------------------------------------
 // Tests

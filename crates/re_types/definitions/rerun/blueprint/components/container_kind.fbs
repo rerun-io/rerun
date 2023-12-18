@@ -24,7 +24,7 @@ enum ContainerKind: byte {
 table ContainerKind (
     "attr.rerun.scope": "blueprint",
     "attr.docs.unreleased",
-    "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord"
+    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord"
 ) {
     /// Which kind of container this is.
     ///
