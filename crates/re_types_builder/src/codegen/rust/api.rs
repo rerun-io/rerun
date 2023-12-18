@@ -747,8 +747,10 @@ fn quote_trait_impls_from_obj(
                         arrow_data: &dyn arrow2::array::Array,
                     ) -> DeserializationResult<Vec<Self>>
                     where
-                        Self: Sized {
-                        re_tracing::profile_function!();
+                        Self: Sized
+                    {
+                        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+                        // re_tracing::profile_function!();
 
                         use arrow2::{datatypes::*, array::*, buffer::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -794,7 +796,8 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Clone + 'a
                     {
-                        re_tracing::profile_function!();
+                        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+                        // re_tracing::profile_function!();
 
                         use arrow2::{datatypes::*, array::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -810,7 +813,8 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized
                     {
-                        re_tracing::profile_function!();
+                        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+                        // re_tracing::profile_function!();
 
                         use arrow2::{datatypes::*, array::*, buffer::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};

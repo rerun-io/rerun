@@ -380,7 +380,9 @@ impl DataCell {
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
     pub fn try_to_native<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<C>> {
-        re_tracing::profile_function!(C::name().as_str());
+        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // re_tracing::profile_function!(C::name().as_str());
+
         Ok(C::from_arrow(self.inner.values.as_ref())?)
     }
 
@@ -389,7 +391,8 @@ impl DataCell {
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
     pub fn try_to_native_mono<'a, C: Component + 'a>(&'a self) -> DataCellResult<Option<C>> {
-        re_tracing::profile_function!(C::name().as_str());
+        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // re_tracing::profile_function!(C::name().as_str());
 
         let mut instances = C::from_arrow_opt(self.inner.values.as_ref())?.into_iter();
 
@@ -428,7 +431,9 @@ impl DataCell {
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
     pub fn try_to_native_opt<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<Option<C>>> {
-        re_tracing::profile_function!(C::name().as_str());
+        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // re_tracing::profile_function!(C::name().as_str());
+
         Ok(C::from_arrow_opt(self.inner.values.as_ref())?)
     }
 

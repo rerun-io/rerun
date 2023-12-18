@@ -215,6 +215,16 @@ where
     }
 }
 
+impl<IIter1, IIter2, VIter, C> ExactSizeIterator
+    for ComponentJoinedIterator<IIter1, IIter2, VIter, C>
+where
+    IIter1: ExactSizeIterator<Item = InstanceKey>,
+    IIter2: ExactSizeIterator<Item = InstanceKey>,
+    VIter: ExactSizeIterator<Item = Option<C>>,
+    C: Clone,
+{
+}
+
 /// A view of an [`Archetype`] at a particular point in time returned by [`crate::get_component_with_instances`]
 ///
 /// The required [`Component`]s of an [`ArchetypeView`] determines the length of an entity
@@ -271,7 +281,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Returns an iterator over [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> {
+    pub fn iter_instance_keys(&self) -> impl ExactSizeIterator<Item = InstanceKey> {
         re_tracing::profile_function!();
         // TODO(#2750): Maybe make this an intersection instead
         self.required_comp().instance_keys().into_iter()
@@ -288,8 +298,9 @@ impl<A: Archetype> ArchetypeView<A> {
     #[inline]
     pub fn iter_required_component<'a, C: Component + 'a>(
         &'a self,
-    ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
-        re_tracing::profile_function!();
+    ) -> DeserializationResult<impl ExactSizeIterator<Item = C> + '_> {
+        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // re_tracing::profile_function!();
 
         debug_assert!(A::required_components()
             .iter()
@@ -315,7 +326,8 @@ impl<A: Archetype> ArchetypeView<A> {
     /// Get a single required mono-component.
     #[inline]
     pub fn required_mono_component<C: Component>(&self) -> DeserializationResult<C> {
-        re_tracing::profile_function!();
+        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // re_tracing::profile_function!();
 
         let mut iter = self.iter_required_component::<C>()?;
         let value = iter
@@ -338,8 +350,9 @@ impl<A: Archetype> ArchetypeView<A> {
     #[inline]
     pub fn iter_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
-    ) -> DeserializationResult<impl Iterator<Item = Option<C>> + '_> {
-        re_tracing::profile_function!(C::name());
+    ) -> DeserializationResult<impl ExactSizeIterator<Item = Option<C>> + '_> {
+        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // re_tracing::profile_function!(C::name());
 
         let component = self.components.get(&C::name());
 
@@ -437,7 +450,8 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn iter_raw_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
     ) -> DeserializationResult<Option<impl Iterator<Item = C> + '_>> {
-        re_tracing::profile_function!(C::name());
+        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // re_tracing::profile_function!(C::name());
 
         let component = self.components.get(&C::name());
 

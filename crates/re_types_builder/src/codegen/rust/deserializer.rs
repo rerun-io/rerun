@@ -914,7 +914,9 @@ pub fn quote_arrow_deserializer_buffer_slice(
             let slice = #deserizlized_as_slice;
 
             {
-                re_tracing::profile_scope!("collect");
+                // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+                // re_tracing::profile_scope!("collect");
+
                 slice
                     .iter()
                     #quoted_iter_transparency
