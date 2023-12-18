@@ -88,6 +88,7 @@ impl Modal {
     }
 
     /// Set the default height of the modal window.
+    #[inline]
     pub fn default_height(mut self, default_height: f32) -> Self {
         self.default_height = Some(default_height);
         self
