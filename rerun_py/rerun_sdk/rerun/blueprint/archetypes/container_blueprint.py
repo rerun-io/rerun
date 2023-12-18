@@ -28,6 +28,7 @@ class ContainerBlueprint(Archetype):
         contents: components.IncludedContentsLike | None = None,
         primary_weights: components.PrimaryWeightsLike | None = None,
         secondary_weights: components.SecondaryWeightsLike | None = None,
+        tile_id: components.TileIdLike | None = None,
     ):
         """
         Create a new instance of the ContainerBlueprint archetype.
@@ -46,6 +47,8 @@ class ContainerBlueprint(Archetype):
             For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
         secondary_weights:
             The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
+        tile_id:
+            The egui TileId. This is an opaque type so we need to store it via serde.
         """
 
         # You can define your own __init__ function as a member of ContainerBlueprintExt in container_blueprint_ext.py
@@ -56,6 +59,7 @@ class ContainerBlueprint(Archetype):
                 contents=contents,
                 primary_weights=primary_weights,
                 secondary_weights=secondary_weights,
+                tile_id=tile_id,
             )
             return
         self.__attrs_clear__()
@@ -68,6 +72,7 @@ class ContainerBlueprint(Archetype):
             contents=None,  # type: ignore[arg-type]
             primary_weights=None,  # type: ignore[arg-type]
             secondary_weights=None,  # type: ignore[arg-type]
+            tile_id=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -120,6 +125,15 @@ class ContainerBlueprint(Archetype):
         converter=components.SecondaryWeightsBatch._optional,  # type: ignore[misc]
     )
     # The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    tile_id: components.TileIdBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.TileIdBatch._optional,  # type: ignore[misc]
+    )
+    # The egui TileId. This is an opaque type so we need to store it via serde.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
