@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use ahash::HashMap;
+use egui_tiles::TileId;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::Timeline;
@@ -8,7 +10,8 @@ use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId
 
 use crate::{
     blueprint::components::{
-        AutoLayout, AutoSpaceViews, IncludedSpaceViews, SpaceViewMaximized, ViewportLayout,
+        AutoLayout, AutoSpaceViews, IncludedSpaceViews, RootContainer, SpaceViewMaximized,
+        ViewportLayout,
     },
     container::ContainerBlueprint,
     space_view::SpaceViewBlueprint,
@@ -27,6 +30,9 @@ pub struct ViewportBlueprint {
 
     /// All the containers found in the viewport.
     pub containers: BTreeMap<ContainerId, ContainerBlueprint>,
+
+    /// Mapping from `TileId` back to `ContainerId`
+    pub tile_to_container_id: HashMap<TileId, ContainerId>,
 
     /// The root container.
     pub root_container: Option<ContainerId>,
@@ -106,6 +112,11 @@ impl ViewportBlueprint {
             .map(|c| (c.id, c))
             .collect();
 
+        let tile_to_container_id = containers
+            .iter()
+            .filter_map(|(id, container)| container.tile_id.map(|tile_id| (tile_id, *id)))
+            .collect();
+
         let auto_layout = arch.auto_layout.unwrap_or_default().0;
 
         let root_container = arch.root_container.map(|id| id.0.into());
@@ -132,6 +143,7 @@ impl ViewportBlueprint {
         ViewportBlueprint {
             space_views,
             containers,
+            tile_to_container_id,
             root_container,
             tree,
             maximized,
@@ -364,6 +376,73 @@ impl ViewportBlueprint {
             re_log::trace!("Updating the layout tree");
             let component = ViewportLayout(tree.clone());
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
+        }
+    }
+
+    #[inline]
+    pub fn save_tree_as_containers(
+        &self,
+        tree: &egui_tiles::Tree<SpaceViewId>,
+        ctx: &ViewerContext<'_>,
+    ) {
+        // No need to run this if the tree hasn't changed
+        if &self.tree != tree {
+            // Generate new container ids for any containers we don't know about.
+            // Need to do this first for all tiles so we can resolve references.
+            let mut tile_to_container_id = self.tile_to_container_id.clone();
+            for (tile_id, tile) in tree.tiles.iter() {
+                if tile.is_container() && !tile_to_container_id.contains_key(tile_id) {
+                    tile_to_container_id.insert(*tile_id, ContainerId::random());
+                }
+            }
+
+            for (tile_id, tile) in tree.tiles.iter() {
+                if let egui_tiles::Tile::Container(container) = tile {
+                    let Some(container_id) = self.tile_to_container_id.get(tile_id) else {
+                        re_log::warn_once!(
+                            "Missing primary container id that should have been generated"
+                        );
+                        continue;
+                    };
+
+                    let contents = container
+                        .children()
+                        .filter_map(|id| {
+                            tree.tiles.get(*id).map(|tile| match tile {
+                                egui_tiles::Tile::Pane(space_view_id) => (*space_view_id).into(),
+                                egui_tiles::Tile::Container(_) => {
+                                    if let Some(found_container_id) =
+                                        self.tile_to_container_id.get(tile_id)
+                                    {
+                                        (*found_container_id).into()
+                                    } else {
+                                        re_log::warn_once!(
+                                            "Missing referenced id that should have been generated"
+                                        );
+                                        ContainerId::invalid().into()
+                                    }
+                                }
+                            })
+                        })
+                        .collect();
+
+                    // TODO(abey79): Avoid using new here if the container already exists
+                    let blueprint =
+                        ContainerBlueprint::new(*tile_id, *container_id, contents, container);
+
+                    blueprint.save_to_blueprint_store(ctx);
+                }
+            }
+
+            if let Some(root_container) = tree
+                .root()
+                .and_then(|root| tile_to_container_id.get(&root))
+                .map(|container_id| RootContainer((*container_id).into()))
+            {
+                ctx.save_blueprint_component(&VIEWPORT_PATH.into(), root_container);
+            } else {
+                ctx.save_empty_blueprint_component::<RootContainer>(&VIEWPORT_PATH.into());
+            }
         }
     }
 }

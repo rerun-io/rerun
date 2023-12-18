@@ -1,9 +1,13 @@
-use egui_tiles::ContainerKind;
+use ahash::HashMap;
+use egui_tiles::{ContainerKind, TileId};
 use re_arrow_store::LatestAtQuery;
 use re_data_store::StoreDb;
-use re_log_types::{EntityPath, Timeline};
+use re_log_types::{DataRow, EntityPath, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
-use re_viewer_context::{ContainerId, SpaceViewId};
+use re_types_core::ArrowBuffer;
+use re_viewer_context::{
+    ContainerId, SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
+};
 pub enum ContainerOrSpaceView {
     Container(ContainerId),
     SpaceView(SpaceViewId),
@@ -21,7 +25,27 @@ impl ContainerOrSpaceView {
             }
         })
     }
+
+    fn to_entity_path(&self) -> EntityPath {
+        match self {
+            Self::Container(id) => id.as_entity_path(),
+            Self::SpaceView(id) => id.as_entity_path(),
+        }
+    }
 }
+
+impl From<SpaceViewId> for ContainerOrSpaceView {
+    fn from(id: SpaceViewId) -> Self {
+        Self::SpaceView(id)
+    }
+}
+
+impl From<ContainerId> for ContainerOrSpaceView {
+    fn from(id: ContainerId) -> Self {
+        Self::Container(id)
+    }
+}
+
 pub struct ContainerBlueprint {
     pub id: ContainerId,
     pub container_kind: egui_tiles::ContainerKind,
@@ -95,5 +119,91 @@ impl ContainerBlueprint {
             secondary_weights,
             tile_id,
         })
+    }
+
+    pub fn entity_path(&self) -> EntityPath {
+        self.id.as_entity_path()
+    }
+
+    /// Persist the entire [`ContainerBlueprint`] to the blueprint store.
+    pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
+        let timepoint = TimePoint::timeless();
+
+        let contents: Vec<_> = self
+            .contents
+            .iter()
+            .map(|item| item.to_entity_path())
+            .collect();
+
+        let primary_weights: ArrowBuffer<_> = self.primary_weights.clone().into();
+        let secondary_weights: ArrowBuffer<_> = self.secondary_weights.clone().into();
+
+        let mut arch = crate::blueprint::archetypes::ContainerBlueprint::new(self.container_kind)
+            .with_display_name(self.display_name.clone())
+            .with_contents(&contents)
+            .with_primary_weights(primary_weights)
+            .with_secondary_weights(secondary_weights);
+
+        if let Some(tile_id) = self.tile_id {
+            arch = arch.with_tile_id(tile_id);
+        }
+
+        let mut deltas = vec![];
+
+        if let Ok(row) =
+            DataRow::from_archetype(RowId::new(), timepoint.clone(), self.entity_path(), &arch)
+        {
+            deltas.push(row);
+        }
+
+        ctx.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                ctx.store_context.blueprint.store_id().clone(),
+                deltas,
+            ));
+    }
+
+    pub fn new(
+        tile_id: TileId,
+        container_id: ContainerId,
+        contents: Vec<ContainerOrSpaceView>,
+        container: &egui_tiles::Container,
+    ) -> Self {
+        match container {
+            egui_tiles::Container::Tabs(_) => Self {
+                id: container_id,
+                container_kind: egui_tiles::ContainerKind::Tabs,
+                display_name: format!("{:?}", egui_tiles::ContainerKind::Tabs),
+                contents,
+                primary_weights: vec![],
+                secondary_weights: vec![],
+                tile_id: Some(tile_id),
+            },
+            egui_tiles::Container::Linear(linear) => {
+                // TODO(abey79): This should be part of egui_tiles
+                let kind = match linear.dir {
+                    egui_tiles::LinearDir::Horizontal => egui_tiles::ContainerKind::Horizontal,
+                    egui_tiles::LinearDir::Vertical => egui_tiles::ContainerKind::Vertical,
+                };
+                Self {
+                    id: container_id,
+                    container_kind: kind,
+                    display_name: format!("{kind:?}"),
+                    contents,
+                    primary_weights: linear.shares.into_iter().map(|(_, share)| *share).collect(),
+                    secondary_weights: vec![],
+                    tile_id: Some(tile_id),
+                }
+            }
+            egui_tiles::Container::Grid(grid) => Self {
+                id: container_id,
+                container_kind: egui_tiles::ContainerKind::Grid,
+                display_name: format!("{:?}", egui_tiles::ContainerKind::Grid),
+                contents,
+                primary_weights: grid.col_shares.clone(),
+                secondary_weights: grid.row_shares.clone(),
+                tile_id: Some(tile_id),
+            },
+        }
     }
 }
