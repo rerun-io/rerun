@@ -690,10 +690,16 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     }
 
     /// What are the rules for simplifying the tree?
+    ///
+    /// These options are applied on every frame by `egui_tiles`.
     fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
         egui_tiles::SimplificationOptions {
+            prune_empty_tabs: false,
             all_panes_must_have_tabs: true,
-            ..Default::default()
+            prune_empty_containers: false,
+            prune_single_child_tabs: false,
+            prune_single_child_containers: false,
+            join_nested_linear_containers: true,
         }
     }
 
