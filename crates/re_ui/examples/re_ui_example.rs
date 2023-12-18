@@ -68,6 +68,8 @@ pub struct ExampleApp {
 
     tree: egui_tiles::Tree<Tab>,
 
+    modal_handler: re_ui::modal::ModalHandler,
+
     left_panel: bool,
     right_panel: bool,
     bottom_panel: bool,
@@ -99,6 +101,7 @@ impl ExampleApp {
             text_log_rx,
 
             tree,
+            modal_handler: Default::default(),
 
             left_panel: true,
             right_panel: true,
@@ -158,6 +161,8 @@ impl eframe::App for ExampleApp {
                 ui.strong("Bottom panel");
             });
 
+        // LEFT PANEL
+
         egui::SidePanel::left("left_panel")
             .default_width(500.0)
             .frame(egui::Frame {
@@ -180,13 +185,25 @@ impl eframe::App for ExampleApp {
                         });
 
                         if ui.button("Log info").clicked() {
-                            re_log::info!("A lot of text on info level.\nA lot of text in fact. So much that we should ideally be auto-wrapping it at some point, much earlier than this.");
+                            re_log::info!(
+                                "A lot of text on info level.\nA lot of text in fact. So \
+                             much that we should ideally be auto-wrapping it at some point, much \
+                             earlier than this."
+                            );
                         }
                         if ui.button("Log warn").clicked() {
-                            re_log::warn!("A lot of text on warn level.\nA lot of text in fact. So much that we should ideally be auto-wrapping it at some point, much earlier than this.");
+                            re_log::warn!(
+                                "A lot of text on warn level.\nA lot of text in fact. So \
+                            much that we should ideally be auto-wrapping it at some point, much \
+                            earlier than this."
+                            );
                         }
                         if ui.button("Log error").clicked() {
-                            re_log::error!("A lot of text on error level.\nA lot of text in fact. So much that we should ideally be auto-wrapping it at some point, much earlier than this.");
+                            re_log::error!(
+                                "A lot of text on error level.\nA lot of text in fact. \
+                            So much that we should ideally be auto-wrapping it at some point, much \
+                            earlier than this."
+                            );
                         }
                     });
 
@@ -204,6 +221,21 @@ impl eframe::App for ExampleApp {
                             });
                             ui.label(format!("Latest command: {}", self.latest_cmd));
 
+                            // ---
+
+                            if ui.button("Open modal").clicked() {
+                                self.modal_handler.open();
+                            }
+
+                            self.modal_handler.ui(
+                                &self.re_ui,
+                                ui,
+                                || re_ui::modal::Modal::new("Modal window"),
+                                |_, ui| ui.label("This is a modal window."),
+                            );
+
+                            // ---
+
                             self.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
                                 ui.label("Some data here");
                             });
@@ -213,10 +245,19 @@ impl eframe::App for ExampleApp {
                                     ui.label("Some blueprint stuff here, that might be wide.");
                                     self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
 
-                                    self.re_ui.collapsing_header(ui, "Collapsing header", true, |ui| {
-                                        ui.label("Some data here");
-                                        self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
-                                    });
+                                    self.re_ui.collapsing_header(
+                                        ui,
+                                        "Collapsing header",
+                                        true,
+                                        |ui| {
+                                            ui.label("Some data here");
+                                            self.re_ui.checkbox(
+                                                ui,
+                                                &mut self.dummy_bool,
+                                                "Checkbox",
+                                            );
+                                        },
+                                    );
                                 });
                         });
                     });
