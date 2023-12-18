@@ -37,7 +37,7 @@ pub struct PerSpaceViewState {
 /// is not saved.
 #[derive(Default)]
 pub struct ViewportState {
-    pub(crate) space_view_entity_window: Option<SpaceViewEntityPicker>,
+    space_view_entity_window: SpaceViewEntityPicker,
     space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
 
     /// List of all space views that were visible *on screen* (excluding e.g. unselected tabs) the last frame.
@@ -133,24 +133,17 @@ impl<'a, 'b> Viewport<'a, 'b> {
     }
 
     pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
-        self.state.space_view_entity_window = Some(SpaceViewEntityPicker { space_view_id });
+        self.state.space_view_entity_window.open(space_view_id);
     }
 
     pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a ViewerContext<'_>) {
+        self.state
+            .space_view_entity_window
+            .ui(ui, ctx, &self.blueprint);
+
         let Viewport {
             blueprint, state, ..
         } = self;
-
-        if let Some(window) = &mut state.space_view_entity_window {
-            if let Some(space_view) = blueprint.space_views.get(&window.space_view_id) {
-                if !window.ui(ctx, ui, space_view) {
-                    state.space_view_entity_window = None;
-                }
-            } else {
-                // The space view no longer exist, close the window!
-                state.space_view_entity_window = None;
-            }
-        }
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
         if is_zero_sized_viewport {
