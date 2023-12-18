@@ -24,6 +24,9 @@ table ViewportBlueprint (
     /// The layout of the space-views
     layout: rerun.blueprint.components.ViewportLayout ("attr.rerun.component_optional", nullable, order: 2000);
 
+    /// The layout of the space-views
+    root_container: rerun.blueprint.components.RootContainer ("attr.rerun.component_optional", nullable, order: 2500);
+
     /// Show one tab as maximized?
     maximized: rerun.blueprint.components.SpaceViewMaximized ("attr.rerun.component_optional", nullable, order: 3000);
 

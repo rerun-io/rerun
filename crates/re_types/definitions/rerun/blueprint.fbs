@@ -12,6 +12,7 @@ include "./blueprint/components/name.fbs";
 include "./blueprint/components/panel_view.fbs";
 include "./blueprint/components/primary_weights.fbs";
 include "./blueprint/components/query_expressions.fbs";
+include "./blueprint/components/root_container.fbs";
 include "./blueprint/components/secondary_weights.fbs";
 include "./blueprint/components/space_view_class.fbs";
 include "./blueprint/components/space_view_maximized.fbs";
