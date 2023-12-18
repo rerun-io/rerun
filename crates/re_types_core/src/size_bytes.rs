@@ -36,7 +36,7 @@ pub trait SizeBytes {
 }
 
 // TODO(rust-lang/rust#31844): This isn't happening without specialization.
-// impl<T> SizeBytes for T where T: bytemuck::Pod { ... }
+// impl<T> SizeBytes for T where T: bytemuck::Pod { … }
 
 // --- Std ---
 
