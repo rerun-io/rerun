@@ -5517,6 +5517,7 @@ dependencies = [
 name = "rerun-loader-rust-file"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
+ "anyhow",
  "argh",
  "rerun",
 ]

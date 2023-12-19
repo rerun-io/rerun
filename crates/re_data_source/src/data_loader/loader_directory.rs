@@ -21,7 +21,7 @@ impl crate::DataLoader for DirectoryLoader {
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         if dirpath.is_file() {
-            return Ok(()); // simply not interested
+            return Err(crate::DataLoaderError::Incompatible(dirpath.clone()));
         }
 
         re_tracing::profile_function!(dirpath.display().to_string());
@@ -43,22 +43,28 @@ impl crate::DataLoader for DirectoryLoader {
                 let filepath = filepath.to_owned();
                 let tx = tx.clone();
 
-                // NOTE: spawn is fine, this whole function is native-only.
-                rayon::spawn(move || {
-                    let data = match crate::load_file::load(&store_id, &filepath, false, None) {
-                        Ok(data) => data,
-                        Err(err) => {
-                            re_log::error!(?filepath, %err, "Failed to load directory entry");
-                            return;
-                        }
-                    };
+                // NOTE(1): `spawn` is fine, this whole function is native-only.
+                // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
+                // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
+                // their response via channels: we cannot be waiting for these responses on the
+                // common rayon thread pool.
+                _ = std::thread::Builder::new()
+                    .name(format!("load_dir_entry({filepath:?})"))
+                    .spawn(move || {
+                        let data = match crate::load_file::load(&store_id, &filepath, None) {
+                            Ok(data) => data,
+                            Err(err) => {
+                                re_log::error!(?filepath, %err, "Failed to load directory entry");
+                                return;
+                            }
+                        };
 
-                    for datum in data {
-                        if tx.send(datum).is_err() {
-                            break;
+                        for datum in data {
+                            if tx.send(datum).is_err() {
+                                break;
+                            }
                         }
-                    }
-                });
+                    });
             }
         }
 
@@ -69,11 +75,11 @@ impl crate::DataLoader for DirectoryLoader {
     fn load_from_file_contents(
         &self,
         _store_id: re_log_types::StoreId,
-        _path: std::path::PathBuf,
+        path: std::path::PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
         _tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         // TODO(cmc): This could make sense to implement for e.g. archive formats (zip, tar, …)
-        Ok(()) // simply not interested
+        Err(crate::DataLoaderError::Incompatible(path))
     }
 }
