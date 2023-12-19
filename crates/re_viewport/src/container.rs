@@ -59,7 +59,7 @@ impl ContainerOrSpaceView {
 }
 
 pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> TileId {
-    // TOOD(jleibs): This conversion to entity path is more expensive than it should be
+    // TODO(jleibs): This conversion to entity path is more expensive than it should be
     let path = id.as_entity_path();
 
     TileId::from_u64(path.hash64())
