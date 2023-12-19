@@ -231,7 +231,7 @@ impl eframe::App for ExampleApp {
                                 &self.re_ui,
                                 ui,
                                 || re_ui::modal::Modal::new("Modal window"),
-                                |_, ui| ui.label("This is a modal window."),
+                                |_, ui, _| ui.label("This is a modal window."),
                             );
 
                             // ---
