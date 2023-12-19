@@ -181,6 +181,15 @@ impl ItemCollection {
     }
 }
 
+impl<T> From<T> for ItemCollection
+where
+    T: Iterator<Item = Item>,
+{
+    fn from(value: T) -> Self {
+        ItemCollection::new(value)
+    }
+}
+
 impl std::iter::IntoIterator for ItemCollection {
     type Item = Item;
     type IntoIter = std::vec::IntoIter<Item>;

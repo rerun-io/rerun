@@ -136,22 +136,26 @@ impl SelectionState {
     }
 
     /// Selects the previous element in the history if any.
+    ///
+    /// Clears the selected space context.
     pub fn select_previous(&self) {
         if let Some(selection) = self.history.lock().select_previous() {
-            self.selection_this_frame.lock().items = selection;
+            self.set_selection(selection);
         }
     }
 
     /// Selections the next element in the history if any.
+    ///
+    /// Clears the selected space context.
     pub fn select_next(&self) {
         if let Some(selection) = self.history.lock().select_next() {
-            self.selection_this_frame.lock().items = selection;
+            self.set_selection(selection);
         }
     }
 
     /// Clears the current selection out.
     pub fn clear_current(&self) {
-        self.selection_this_frame.lock().items = ItemCollection::default();
+        self.set_selection(ItemCollection::default());
     }
 
     /// Sets a single selection, updating history as needed.
@@ -164,8 +168,8 @@ impl SelectionState {
     /// Sets several objects to be selected, updating history as needed.
     ///
     /// Clears the selected space context.
-    pub fn set_selection(&self, items: impl Iterator<Item = Item>) {
-        let new_selection = ItemCollection::new(items);
+    pub fn set_selection(&self, items: impl Into<ItemCollection>) {
+        let new_selection = items.into();
         let mut selection_state = self.selection_this_frame.lock();
         selection_state.items = new_selection;
         selection_state.space_context = SelectedSpaceContext::None;
