@@ -124,9 +124,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
             blueprint.tree.clone()
         };
 
-        let shadow_tree = blueprint.build_tree_from_containers();
-        re_log::trace!("shadow_tree: {shadow_tree:?}");
-
         Self {
             blueprint,
             state,

@@ -140,7 +140,7 @@ impl ViewportBlueprint {
             .unwrap_or_default()
             .0;
 
-        ViewportBlueprint {
+        let mut blueprint = ViewportBlueprint {
             space_views,
             containers,
             tile_to_container_id,
@@ -149,7 +149,16 @@ impl ViewportBlueprint {
             maximized,
             auto_layout,
             auto_space_views,
-        }
+        };
+
+        // TODO(jleibs): Patching this in here is awkward
+        let (shadow_tree, tile_to_container_id) = blueprint.build_tree_from_containers();
+        re_log::trace!("shadow_tree: {shadow_tree:?}");
+
+        blueprint.tree = shadow_tree;
+        blueprint.tile_to_container_id = tile_to_container_id;
+
+        blueprint
 
         // TODO(jleibs): Need to figure out if we have to re-enable support for
         // auto-discovery of SpaceViews logged via the experimental blueprint APIs.
@@ -451,7 +460,9 @@ impl ViewportBlueprint {
         }
     }
 
-    pub fn build_tree_from_containers(&self) -> egui_tiles::Tree<SpaceViewId> {
+    pub fn build_tree_from_containers(
+        &self,
+    ) -> (egui_tiles::Tree<SpaceViewId>, HashMap<TileId, ContainerId>) {
         let mut tree = egui_tiles::Tree::empty("viewport_tree");
 
         // Generate tile_ids for all the space-views
@@ -474,6 +485,11 @@ impl ViewportBlueprint {
                         .insert_container(container.to_empty_tile_container()),
                 )
             })
+            .collect();
+
+        let tile_to_container_id: HashMap<_, _> = container_to_tile_id
+            .iter()
+            .map(|(id, tile_id)| (*tile_id, **id))
             .collect();
 
         re_log::trace!("container_to_tile_id: {container_to_tile_id:#?}");
@@ -545,6 +561,6 @@ impl ViewportBlueprint {
             tree.root = Some(*root_container);
         }
 
-        tree
+        (tree, tile_to_container_id)
     }
 }
