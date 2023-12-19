@@ -392,13 +392,13 @@ impl ViewportBlueprint {
         }
     }
 
-    #[inline]
+    /// Save the current state of the viewport to the blueprint store.
+    /// This should only be called if the tree was edited.
     pub fn save_tree_as_containers(
         &self,
         tree: &egui_tiles::Tree<SpaceViewId>,
         ctx: &ViewerContext<'_>,
     ) {
-        // No need to run this if the tree hasn't changed
         re_log::debug!("Saving tree: {tree:#?}");
 
         // Update the mapping for all the previously known containers.
@@ -493,13 +493,9 @@ impl ViewportBlueprint {
 
         for (tile_id, container_id) in &updated_tile_to_container_id {
             if let Some(egui_tiles::Tile::Container(container)) = tree.tiles.get(*tile_id) {
-                let contents = container
-                    .children()
-                    .filter_map(|child_id| tile_to_contents.get(child_id).cloned())
-                    .collect();
-
                 // TODO(abey79): Avoid using new here if the container already exists
-                let blueprint = ContainerBlueprint::new(*container_id, contents, container);
+                let blueprint =
+                    ContainerBlueprint::new(*container_id, container, &tile_to_contents);
 
                 blueprint.save_to_blueprint_store(ctx);
             }

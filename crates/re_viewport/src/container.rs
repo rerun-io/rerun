@@ -1,3 +1,4 @@
+use ahash::HashMap;
 use egui_tiles::TileId;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::StoreDb;
@@ -84,6 +85,7 @@ pub struct ContainerBlueprint {
     pub contents: Vec<ContainerOrSpaceView>,
     pub primary_weights: Vec<f32>,
     pub secondary_weights: Vec<f32>,
+    pub active_tab: Option<ContainerOrSpaceView>,
 }
 
 impl ContainerBlueprint {
@@ -98,6 +100,7 @@ impl ContainerBlueprint {
             contents,
             primary_weights,
             secondary_weights,
+            active_tab,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             // TODO(jleibs): When we clear containers from the store this starts
@@ -142,6 +145,10 @@ impl ContainerBlueprint {
             .cloned()
             .collect();
 
+        let active_tab = active_tab
+            .map(|id| ContainerOrSpaceView::try_from(&id.0.into()))
+            .flatten();
+
         Some(Self {
             id,
             container_kind,
@@ -149,6 +156,7 @@ impl ContainerBlueprint {
             contents,
             primary_weights,
             secondary_weights,
+            active_tab,
         })
     }
 
@@ -169,11 +177,17 @@ impl ContainerBlueprint {
         let primary_weights: ArrowBuffer<_> = self.primary_weights.clone().into();
         let secondary_weights: ArrowBuffer<_> = self.secondary_weights.clone().into();
 
-        let arch = crate::blueprint::archetypes::ContainerBlueprint::new(self.container_kind)
+        let mut arch = crate::blueprint::archetypes::ContainerBlueprint::new(self.container_kind)
             .with_display_name(self.display_name.clone())
             .with_contents(&contents)
             .with_primary_weights(primary_weights)
             .with_secondary_weights(secondary_weights);
+
+        // TODO(jleibs): The need for this pattern is annoying. Should codegen
+        // a version of this that can take an Option.
+        if let Some(active_tab) = &self.active_tab {
+            arch = arch.with_active_tab(&active_tab.to_entity_path());
+        }
 
         let mut deltas = vec![];
 
@@ -192,18 +206,28 @@ impl ContainerBlueprint {
 
     pub fn new(
         container_id: ContainerId,
-        contents: Vec<ContainerOrSpaceView>,
         container: &egui_tiles::Container,
+        tile_to_contents: &HashMap<TileId, ContainerOrSpaceView>,
     ) -> Self {
+        let contents = container
+            .children()
+            .filter_map(|child_id| tile_to_contents.get(child_id).cloned())
+            .collect();
+
         match container {
-            egui_tiles::Container::Tabs(_) => Self {
-                id: container_id,
-                container_kind: egui_tiles::ContainerKind::Tabs,
-                display_name: format!("{:?}", egui_tiles::ContainerKind::Tabs),
-                contents,
-                primary_weights: vec![],
-                secondary_weights: vec![],
-            },
+            egui_tiles::Container::Tabs(tab) => {
+                let active_tab = tab.active.and_then(|id| tile_to_contents.get(&id).cloned());
+
+                Self {
+                    id: container_id,
+                    container_kind: egui_tiles::ContainerKind::Tabs,
+                    display_name: format!("{:?}", egui_tiles::ContainerKind::Tabs),
+                    contents,
+                    primary_weights: vec![],
+                    secondary_weights: vec![],
+                    active_tab,
+                }
+            }
             egui_tiles::Container::Linear(linear) => {
                 // TODO(abey79): This should be part of egui_tiles
                 let kind = match linear.dir {
@@ -217,6 +241,7 @@ impl ContainerBlueprint {
                     contents,
                     primary_weights: linear.shares.into_iter().map(|(_, share)| *share).collect(),
                     secondary_weights: vec![],
+                    active_tab: None,
                 }
             }
             egui_tiles::Container::Grid(grid) => Self {
@@ -226,6 +251,7 @@ impl ContainerBlueprint {
                 contents,
                 primary_weights: grid.col_shares.clone(),
                 secondary_weights: grid.row_shares.clone(),
+                active_tab: None,
             },
         }
     }
@@ -246,7 +272,11 @@ impl ContainerBlueprint {
             egui_tiles::ContainerKind::Tabs => {
                 let mut tabs = egui_tiles::Tabs::new(children);
                 // TODO(abey79): Need to add active tab to the blueprint spec
-                tabs.active = tabs.children.first().copied();
+                tabs.active = self
+                    .active_tab
+                    .as_ref()
+                    .map(|id| id.to_tile_id())
+                    .or_else(|| tabs.children.first().copied());
                 egui_tiles::Container::Tabs(tabs)
             }
             egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical => {
