@@ -1,5 +1,4 @@
-use ahash::HashMap;
-use egui_tiles::{ContainerKind, TileId};
+use egui_tiles::TileId;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::StoreDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint, Timeline};

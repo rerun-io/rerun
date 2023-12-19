@@ -389,18 +389,18 @@ impl ViewportBlueprint {
         if &self.tree != tree {
             // Generate new container ids for any containers we don't know about.
             // Need to do this first for all tiles so we can resolve references.
-            let mut tile_to_container_id = self.tile_to_container_id.clone();
+            let mut updated_tile_to_container_id = self.tile_to_container_id.clone();
             for (tile_id, tile) in tree.tiles.iter() {
-                if tile.is_container() && !tile_to_container_id.contains_key(tile_id) {
-                    tile_to_container_id.insert(*tile_id, ContainerId::random());
+                if tile.is_container() && !updated_tile_to_container_id.contains_key(tile_id) {
+                    updated_tile_to_container_id.insert(*tile_id, ContainerId::random());
                 }
             }
 
             for (tile_id, tile) in tree.tiles.iter() {
                 if let egui_tiles::Tile::Container(container) = tile {
-                    let Some(container_id) = self.tile_to_container_id.get(tile_id) else {
-                        re_log::warn_once!(
-                            "Missing primary container id that should have been generated"
+                    let Some(container_id) = updated_tile_to_container_id.get(tile_id) else {
+                        re_log::debug!(
+                            "Missing primary container for tile_id: {tile_id:?} - skipping"
                         );
                         continue;
                     };
@@ -412,12 +412,12 @@ impl ViewportBlueprint {
                                 egui_tiles::Tile::Pane(space_view_id) => (*space_view_id).into(),
                                 egui_tiles::Tile::Container(_) => {
                                     if let Some(found_container_id) =
-                                        self.tile_to_container_id.get(tile_id)
+                                        updated_tile_to_container_id.get(tile_id)
                                     {
                                         (*found_container_id).into()
                                     } else {
-                                        re_log::warn_once!(
-                                            "Missing referenced id that should have been generated"
+                                        re_log::debug!(
+                                            "Missing reference container for tile_id: {tile_id:?} - setting to invalid"
                                         );
                                         ContainerId::invalid().into()
                                     }
@@ -436,7 +436,7 @@ impl ViewportBlueprint {
 
             if let Some(root_container) = tree
                 .root()
-                .and_then(|root| tile_to_container_id.get(&root))
+                .and_then(|root| updated_tile_to_container_id.get(&root))
                 .map(|container_id| RootContainer((*container_id).into()))
             {
                 ctx.save_blueprint_component(&VIEWPORT_PATH.into(), root_container);

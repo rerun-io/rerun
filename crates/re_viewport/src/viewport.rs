@@ -124,6 +124,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
             blueprint.tree.clone()
         };
 
+        let shadow_tree = blueprint.build_tree_from_containers();
+        re_log::debug!("shadow_tree: {shadow_tree:?}");
+
         Self {
             blueprint,
             state,
@@ -360,7 +363,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         // Finally, save any edits to the blueprint tree
         // This is a no-op if the tree hasn't changed.
+        // TODO(abey79): This can go away once the new tree is working
         self.blueprint.set_tree(&self.tree, ctx);
+
+        self.blueprint.save_tree_as_containers(&self.tree, ctx);
     }
 
     /// If `false`, the item is referring to data that is not present in this blueprint.
