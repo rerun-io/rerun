@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<std::process::ExitCode> {
 
 // ---
 
-/// A custom [`re_data_source::DataLoader`] that logs any file as a [`rerun::TextDocument`] of its hash.
+/// A custom [`re_data_source::DataLoader`] that logs the hash of file as a [`rerun::TextDocument`].
 struct HashLoader;
 
 impl re_data_source::DataLoader for HashLoader {
@@ -42,7 +42,7 @@ impl re_data_source::DataLoader for HashLoader {
     ) -> Result<(), re_data_source::DataLoaderError> {
         let contents = std::fs::read(&path)?;
         if path.is_dir() {
-            return Err(re_data_source::DataLoaderError::NotSupported(path)); // simply not interested
+            return Err(re_data_source::DataLoaderError::Incompatible(path)); // simply not interested
         }
         hash_and_log(&tx, &path, &contents)
     }
@@ -69,7 +69,7 @@ fn hash_and_log(
     let mut h = DefaultHasher::new();
     contents.hash(&mut h);
 
-    let doc = rerun::TextDocument::new(format!("{:x}", h.finish()))
+    let doc = rerun::TextDocument::new(format!("{:08X}", h.finish()))
         .with_media_type(rerun::MediaType::TEXT);
 
     let entity_path = EntityPath::from_file_path(filepath);
