@@ -1,9 +1,7 @@
----
-title: Shared Recording
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/shared_recording/main.py?speculative-link
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/shared_recording/src/main.rs?speculative-link
-cpp: https://github.com/rerun-io/rerun/tree/latest/examples/cpp/shared_recording/main.cpp?speculative-link
----
+<!--[metadata]
+title = "Shared Recording"
+-->
+
 
 <picture>
   <img src="https://static.rerun.io/shared_recording/c3da85f1d4c158b8c7afb6bd3278db000b58049d/full.png" alt="">

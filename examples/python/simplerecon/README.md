@@ -1,10 +1,11 @@
----
-title: "SimpleRecon: 3D Reconstruction Without 3D Convolutions"
-python: https://github.com/rerun-io/simplerecon
-tags: [3D, depth, time-series, pinhole-camera, mesh]
-thumbnail: https://static.rerun.io/simplerecon/e309760134e44ba5ca1a547cb310d47a19257e5b/480w.png
-thumbnail_dimensions: [480, 271]
----
+<!--[metadata]
+title = "SimpleRecon: 3D Reconstruction Without 3D Convolutions"
+source = "https://github.com/rerun-io/simplerecon"
+tags = ["3D", "depth", "time-series", "pinhole-camera", "mesh"]
+thumbnail = "https://static.rerun.io/simplerecon/e309760134e44ba5ca1a547cb310d47a19257e5b/480w.png"
+thumbnail_dimensions = [480, 271]
+-->
+
 
 SimpleRecon is a back-to-basics approach for 3D scene reconstruction from posed monocular images by Niantic Labs. It offers state-of-the-art depth accuracy and competitive 3D scene reconstruction which makes it perfect for resource-constrained environments.
 

@@ -1,10 +1,9 @@
-use nohash_hasher::IntMap;
 use re_log_types::{EntityPathHash, TimePoint, TimeRange};
-use re_types_core::{ComponentName, SizeBytes};
+use re_types_core::SizeBytes;
 
 use crate::{
     store::{IndexedBucketInner, PersistentIndexedTableInner},
-    ClusterCellCache, DataStore, DataTypeRegistry, IndexedBucket, IndexedTable, MetadataRegistry,
+    ClusterCellCache, DataStore, IndexedBucket, IndexedTable, MetadataRegistry,
     PersistentIndexedTable,
 };
 
@@ -165,23 +164,6 @@ impl DataStoreStats {
 }
 
 // --- Data store ---
-
-impl SizeBytes for DataTypeRegistry {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        type K = ComponentName;
-
-        // NOTE: This is only here to make sure this method fails to compile if the inner type
-        // changes, as the following size computation assumes POD types.
-        let inner: &IntMap<K, _> = &self.0;
-
-        let keys_size_bytes = std::mem::size_of::<K>() * inner.len();
-        // NOTE: It's all on the heap at this point.
-        let values_size_bytes = self.values().map(SizeBytes::total_size_bytes).sum::<u64>();
-
-        keys_size_bytes as u64 + values_size_bytes
-    }
-}
 
 impl SizeBytes for MetadataRegistry<(TimePoint, EntityPathHash)> {
     #[inline]

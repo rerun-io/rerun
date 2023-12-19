@@ -1,9 +1,9 @@
----
-title: Multithreading
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/multithreading/main.py
-thumbnail: https://static.rerun.io/multithreading/8521bf95a7ff6004c932e8fb72429683928fbab4/480w.png
-thumbnail_dimensions: [480, 312]
----
+<!--[metadata]
+title = "Multithreading"
+thumbnail = "https://static.rerun.io/multithreading/8521bf95a7ff6004c932e8fb72429683928fbab4/480w.png"
+thumbnail_dimensions = [480, 312]
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/multithreading/8521bf95a7ff6004c932e8fb72429683928fbab4/480w.png">

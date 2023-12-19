@@ -1,9 +1,8 @@
----
-title: Template
-tags: [kebab-case, comma, separated]
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/template/main.py
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/template/src/main.rs
----
+<!--[metadata]
+title = "Template"
+tags = ["kebab-case", "comma", "separated"]
+-->
+
 
 <!--
 Place a screenshot in place of this comment
@@ -15,4 +14,3 @@ This is an example template. It is not a real example. You can duplicate the dir
 ```bash
 cargo run --release -p template
 ```
-

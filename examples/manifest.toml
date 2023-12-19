@@ -1,0 +1,99 @@
+#:schema ./schema.json
+
+[categories.real-data]
+order = 1
+title = "Examples with Real Data"
+prelude = """
+The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
+They all require additional data to be downloaded, so an internet connection is needed at least once.
+Each example downloads it's own data, so no additional steps are needed.
+For the simplest possible examples showing how to use each api,
+check out [Types](/docs/reference/types).
+"""
+examples = [
+  "arkit_scenes",
+  "controlnet",
+  "depth-guided-stable-diffusion",
+  "detect-and-track-objects",
+  "dicom-mri",
+  "face-tracking",
+  "human-pose-tracking",
+  "lidar",
+  "live-camera-edge-detection",
+  "live-depth-sensor",
+  "llm_embedding_ner",
+  "nuscenes",
+  "objectron",
+  "open-photogrammetry-format",
+  "raw-mesh",
+  "rgbd",
+  "ros-node",
+  "segment-anything-model",
+  "signed-distance-fields",
+  "structure-from-motion",
+  "vrs",
+]
+
+[categories.artificial-data]
+order = 2
+title = "Examples with Artificial Data"
+prelude = """
+The following examples serve to illustrate various uses of the Rerun logging SDK.
+They should not require any additional data downloads, and should run offline.
+For the simplest possible examples showing how to use each api,
+check out [Types](/docs/reference/types).
+"""
+examples = [
+  "minimal",
+  "car",
+  "clock",
+  "eigen-opencv",
+  "multithreading",
+  "multiprocessing",
+  "plots",
+]
+
+[categories.paper-visualizations]
+order = 3
+title = "Paper Visualizations"
+prelude = """
+The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
+from the official open-source implementations adding Rerun as the visualizer.
+Check out the respective READMEs for installation instructions.
+For the simplest possible examples showing how to use each api,
+check out [Types](/docs/reference/types).
+"""
+examples = [
+  "differentiable_blocks_world",
+  "limap",
+  "mcc",
+  "shape_pointe",
+  "simplerecon",
+  "slahmr",
+  "tapir",
+  "widebaseline",
+]
+
+[categories.setup]
+order = 4
+title = "Setup"
+prelude = """
+### Examples with Real / Artificial Data
+To run these examples, make sure you have the Rerun repository checked out
+and the latest SDK installed.
+
+```bash
+pip install --upgrade rerun-sdk  # install the latest Rerun SDK
+git clone git@github.com:rerun-io/rerun.git  # Clone the repository
+cd rerun
+git checkout latest  # Check out the commit matching the latest SDK release
+```
+> Note: Make sure your SDK version matches the examples.
+For example, if your SDK version is `0.3.1`, check out the matching tag
+in the Rerun repository by running `git checkout v0.3.1`.
+
+### Paper Visualizations
+To reproduce the paper visualizations check out the README of the respective
+Rerun forks.
+"""
+examples = []

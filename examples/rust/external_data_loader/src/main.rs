@@ -1,6 +1,8 @@
 //! Example of an external data-loader executable plugin for the Rerun Viewer.
 
-use rerun::{external::re_data_source::extension, MediaType};
+use rerun::{
+    external::re_data_source::extension, MediaType, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE,
+};
 
 // The Rerun Viewer will always pass these two pieces of information:
 // 1. The path to be loaded, as a positional arg.
@@ -25,17 +27,20 @@ struct Args {
     recording_id: Option<String>,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> anyhow::Result<()> {
     let args: Args = argh::from_env();
 
     let is_file = args.filepath.is_file();
     let is_rust_file = extension(&args.filepath) == "rs";
 
-    // We're not interested: just exit silently.
-    // Don't return an error, as that would show up to the end user in the Rerun Viewer!
-    if !(is_file && is_rust_file) {
-        return Ok(());
+    // Inform the Rerun Viewer that we do not support that kind of file.
+    if !is_file || !is_rust_file {
+        #[allow(clippy::exit)]
+        std::process::exit(EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE);
     }
+
+    let body = std::fs::read_to_string(&args.filepath)?;
+    let text = format!("## Some Rust code\n```rust\n{body}\n```\n");
 
     let rec = {
         let mut rec = rerun::RecordingStreamBuilder::new("rerun_example_external_data_loader");
@@ -47,13 +52,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rec.stdout()?
     };
 
-    let body = std::fs::read_to_string(&args.filepath)?;
-    let text = format!("## Some Rust code\n```rust\n{body}\n```\n");
-
     rec.log_timeless(
         rerun::EntityPath::from_file_path(&args.filepath),
         &rerun::TextDocument::new(text).with_media_type(MediaType::MARKDOWN),
     )?;
 
-    Ok(())
+    Ok::<_, anyhow::Error>(())
 }

@@ -89,7 +89,7 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 [dependencies]
 attrs = ">=23.1.0"
 blackdoc = "0.3.8"
-clang-tools = ">=15,<16"       # clang-format
+clang-tools = ">=15,<16"     # clang-format
 cmake = "3.27.6"
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
@@ -101,7 +101,6 @@ pip = ">=23"
 pyarrow = "10.0.1"
 pytest = ">=7"
 python = ">=3.8,<3.12"
-python-frontmatter = ">=1.0.0"
 ruff = "0.1.2"
 semver = ">=2.13,<2.14"
 taplo = ">=0.8.1"

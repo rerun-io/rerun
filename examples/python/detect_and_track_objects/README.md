@@ -1,12 +1,12 @@
----
-title: Detect and Track Objects
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/detect_and_track_objects/main.py
-tags: [2D, huggingface, object-detection, object-tracking, opencv]
-description: "Visualize object detection and segmentation using the Huggingface `transformers` library."
-thumbnail: https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/480w.png
-thumbnail_dimensions: [480, 279]
-channel: nightly
----
+<!--[metadata]
+title = "Detect and Track Objects"
+tags = ["2D", "huggingface", "object-detection", "object-tracking", "opencv"]
+description = "Visualize object detection and segmentation using the Huggingface `transformers` library."
+thumbnail = "https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/480w.png"
+thumbnail_dimensions = [480, 279]
+channel = "nightly"
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/480w.png">

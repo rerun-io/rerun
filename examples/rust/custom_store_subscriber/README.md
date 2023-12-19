@@ -1,8 +1,8 @@
----
-title: Custom Store Subscriber
-tags: [store-event, store-diff, store-subscriber]
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_store_subscriber/src/main.rs?speculative-link
----
+<!--[metadata]
+title = "Custom Store Subscriber"
+tags = ["store-event", "store-diff", "store-subscriber"]
+-->
+
 
 <picture>
   <img src="https://static.rerun.io/custom_store_view/f7258673486f91d944180bd4a83307bce09b741e/full.png" alt="">

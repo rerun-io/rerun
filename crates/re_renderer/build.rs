@@ -119,22 +119,11 @@ fn should_run() -> bool {
 }
 
 fn main() {
-    // TODO(andreas): Create an upstream PR `cfg_aliases` to fix this.
-    // Workaround for CARGO_CFG_DEBUG_ASSERTIONS not being set as expected.
-    // `cfg_aliases` relies on this.
-    if std::env::var("PROFILE") == Ok("debug".to_owned()) {
-        std::env::set_var("CARGO_CFG_DEBUG_ASSERTIONS", "1");
-    }
-
-    #[allow(clippy::str_to_string)]
-    // TODO(andreas): Create an upstream PR to `cfg_aliases` fix this.
-    {
-        cfg_aliases::cfg_aliases! {
-            native: { not(target_arch = "wasm32") },
-            webgl: { all(not(native), feature = "webgl") },
-            webgpu: { all(not(webgl), not(native)) },
-            load_shaders_from_disk: { all(native, debug_assertions) } // Shader reloading is only supported on native-debug currently.
-        }
+    cfg_aliases::cfg_aliases! {
+        native: { not(target_arch = "wasm32") },
+        webgl: { all(not(native), feature = "webgl") },
+        webgpu: { all(not(webgl), not(native)) },
+        load_shaders_from_disk: { all(native, debug_assertions) } // Shader reloading is only supported on native-debug currently.
     }
 
     if !should_run() {

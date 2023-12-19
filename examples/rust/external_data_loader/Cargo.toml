@@ -9,4 +9,5 @@ publish = false
 [dependencies]
 rerun = { path = "../../../crates/rerun" }
 
+anyhow = "1.0"
 argh = "0.1"

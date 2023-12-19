@@ -25,36 +25,90 @@ pub trait SizeBytes {
 
     /// Returns the total size of `self` on the heap, in bytes.
     fn heap_size_bytes(&self) -> u64;
+
+    /// Is `Self` just plain old data?
+    ///
+    /// If `true`, this will make most blanket implementations of `SizeBytes` much faster (e.g. `Vec<T>`).
+    #[inline]
+    fn is_pod() -> bool {
+        false
+    }
 }
+
+// TODO(rust-lang/rust#31844): This isn't happening without specialization.
+// impl<T> SizeBytes for T where T: bytemuck::Pod { … }
 
 // --- Std ---
 
 impl SizeBytes for String {
+    /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.capacity() as u64
+        self.as_bytes().len() as u64
     }
 }
 
 impl<K: SizeBytes, V: SizeBytes> SizeBytes for BTreeMap<K, V> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        // TODO(cmc): This is sub-optimal if these types are PODs.
-
         // NOTE: It's all on the heap at this point.
-        self.keys().map(SizeBytes::total_size_bytes).sum::<u64>()
-            + self.values().map(SizeBytes::total_size_bytes).sum::<u64>()
+
+        let keys_size_bytes = if K::is_pod() {
+            (self.len() * std::mem::size_of::<K>()) as _
+        } else {
+            self.keys().map(SizeBytes::total_size_bytes).sum::<u64>()
+        };
+
+        let values_size_bytes = if V::is_pod() {
+            (self.len() * std::mem::size_of::<V>()) as _
+        } else {
+            self.values().map(SizeBytes::total_size_bytes).sum::<u64>()
+        };
+
+        keys_size_bytes + values_size_bytes
     }
 }
 
 impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        // TODO(cmc): This is sub-optimal if these types are PODs.
-
         // NOTE: It's all on the heap at this point.
-        self.keys().map(SizeBytes::total_size_bytes).sum::<u64>()
-            + self.values().map(SizeBytes::total_size_bytes).sum::<u64>()
+
+        let keys_size_bytes = if K::is_pod() {
+            (self.len() * std::mem::size_of::<K>()) as _
+        } else {
+            self.keys().map(SizeBytes::total_size_bytes).sum::<u64>()
+        };
+
+        let values_size_bytes = if V::is_pod() {
+            (self.len() * std::mem::size_of::<V>()) as _
+        } else {
+            self.values().map(SizeBytes::total_size_bytes).sum::<u64>()
+        };
+
+        keys_size_bytes + values_size_bytes
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for &[T] {
+    /// Does not take capacity into account.
+    #[inline]
+    #[allow(clippy::manual_slice_size_calculation)]
+    fn heap_size_bytes(&self) -> u64 {
+        // NOTE: It's all on the heap at this point.
+        if T::is_pod() {
+            (self.len() * std::mem::size_of::<T>()) as _
+        } else {
+            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+        }
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for [T] {
+    /// Does not take capacity into account.
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        <&[T]>::heap_size_bytes(&self)
     }
 }
 
@@ -62,10 +116,7 @@ impl<T: SizeBytes> SizeBytes for Vec<T> {
     /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        // TODO(cmc): This is sub-optimal if these types are PODs.
-
-        // NOTE: It's all on the heap at this point.
-        self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+        <&[T]>::heap_size_bytes(&self.as_slice())
     }
 }
 
@@ -73,10 +124,12 @@ impl<T: SizeBytes> SizeBytes for VecDeque<T> {
     /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        // TODO(cmc): This is sub-optimal if these types are PODs.
-
         // NOTE: It's all on the heap at this point.
-        self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+        if T::is_pod() {
+            (self.len() * std::mem::size_of::<T>()) as _
+        } else {
+            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+        }
     }
 }
 
@@ -84,10 +137,7 @@ impl<T: SizeBytes, const N: usize> SizeBytes for SmallVec<[T; N]> {
     /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        // TODO(cmc): This is sub-optimal if these types are PODs.
-
-        // NOTE: It's all on the heap at this point.
-        self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+        <&[T]>::heap_size_bytes(&self.as_slice())
     }
 }
 
@@ -98,13 +148,19 @@ impl<T: SizeBytes> SizeBytes for Option<T> {
     }
 }
 
-// NOTE: `impl<T: bytemuck::Pod> SizeBytesExt for T {}` would be nice but violates orphan rules.
+// TODO(rust-lang/rust#31844): `impl<T: bytemuck::Pod> SizeBytesExt for T {}` would be nice but
+// violates orphan rules.
 macro_rules! impl_size_bytes_pod {
     ($ty:ty) => {
         impl SizeBytes for $ty {
             #[inline]
             fn heap_size_bytes(&self) -> u64 {
                 0
+            }
+
+            #[inline]
+            fn is_pod() -> bool {
+                true
             }
         }
     };
@@ -125,6 +181,11 @@ where
         let (a, b) = self;
         a.heap_size_bytes() + b.heap_size_bytes()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        T::is_pod() && U::is_pod()
+    }
 }
 
 impl<T, U, V> SizeBytes for (T, U, V)
@@ -137,6 +198,11 @@ where
     fn heap_size_bytes(&self) -> u64 {
         let (a, b, c) = self;
         a.heap_size_bytes() + b.heap_size_bytes() + c.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        T::is_pod() && U::is_pod() && V::is_pod()
     }
 }
 
@@ -151,6 +217,11 @@ where
     fn heap_size_bytes(&self) -> u64 {
         let (a, b, c, d) = self;
         a.heap_size_bytes() + b.heap_size_bytes() + c.heap_size_bytes() + d.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        T::is_pod() && U::is_pod() && V::is_pod() && W::is_pod()
     }
 }
 

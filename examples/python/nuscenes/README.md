@@ -1,13 +1,12 @@
----
-title: nuScenes
-python: https://github.com/rerun-io/rerun/blob/latest/examples/python/nuscenes/main.py?speculative-link
-tags: [lidar, 3D, 2D, object-detection, pinhole-camera]
-description: "Visualize the nuScenes dataset including lidar, radar, images, and bounding boxes."
-thumbnail: https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/480w.png
-thumbnail_dimensions: [480, 282]
-channel: nightly
-build_args: ["--seconds=5"]
----
+<!--[metadata]
+title = "nuScenes"
+tags = ["lidar", "3D", "2D", "object-detection", "pinhole-camera"]
+description = "Visualize the nuScenes dataset including lidar, radar, images, and bounding boxes."
+thumbnail = "https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/480w.png"
+thumbnail_dimensions = [480, 282]
+channel = "nightly"
+build_args = ["--seconds=5"]
+-->
 
 <picture>
   <img src="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/full.png" alt="">

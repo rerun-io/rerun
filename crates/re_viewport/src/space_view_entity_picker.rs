@@ -13,73 +13,51 @@ use crate::{
         compute_heuristic_context_for_entities, is_entity_processed_by_class,
         HeuristicFilterContextPerEntity,
     },
+    ViewportBlueprint,
 };
 
 /// Window for adding/removing entities from a space view.
-#[derive(Clone)]
+///
+/// Delegates to [`re_ui::modal::ModalHandler`]
+#[derive(Default)]
 pub struct SpaceViewEntityPicker {
-    pub space_view_id: SpaceViewId,
+    space_view_id: Option<SpaceViewId>,
+    modal_handler: re_ui::modal::ModalHandler,
 }
 
 impl SpaceViewEntityPicker {
+    pub fn open(&mut self, space_view_id: SpaceViewId) {
+        self.space_view_id = Some(space_view_id);
+        self.modal_handler.open();
+    }
+
     #[allow(clippy::unused_self)]
     pub fn ui(
         &mut self,
+        ui: &mut egui::Ui,
         ctx: &ViewerContext<'_>,
-        ui: &egui::Ui,
-        space_view: &SpaceViewBlueprint,
-    ) -> bool {
-        // This function fakes a modal window, since egui doesn't have them yet: https://github.com/emilk/egui/issues/686
+        viewport_blueprint: &ViewportBlueprint,
+    ) {
+        self.modal_handler.ui(
+            ctx.re_ui,
+            ui,
+            || re_ui::modal::Modal::new("Add/remove Entities").default_height(640.0),
+            |_, ui, open| {
+                let Some(space_view_id) = &self.space_view_id else {
+                    *open = false;
+                    return;
+                };
 
-        // In particular, we dim the background and close the window when the user clicks outside it
-        let painter = egui::Painter::new(
-            ui.ctx().clone(),
-            egui::LayerId::new(egui::Order::PanelResizeLine, egui::Id::new("DimLayer")),
-            egui::Rect::EVERYTHING,
-        );
-        painter.add(egui::Shape::rect_filled(
-            ui.ctx().screen_rect(),
-            egui::Rounding::ZERO,
-            egui::Color32::from_black_alpha(128),
-        ));
+                let Some(space_view) = viewport_blueprint.space_views.get(space_view_id) else {
+                    *open = false;
+                    return;
+                };
 
-        // Close window using escape button.
-        let mut open = ui.input(|i| !i.key_pressed(egui::Key::Escape));
-        let title = "Add/remove Entities";
-
-        let response = egui::Window::new(title)
-            // TODO(andreas): Doesn't center properly. `pivot(Align2::CENTER_CENTER)` seems to be broken. Also, should reset every time
-            .default_pos(ui.ctx().screen_rect().center())
-            .collapsible(false)
-            .default_height(640.0)
-            .resizable(true)
-            .frame(egui::Frame {
-                fill: ui.visuals().panel_fill,
-                inner_margin: re_ui::ReUi::view_padding().into(),
-                ..Default::default()
-            })
-            // We do a custom title bar for better adhoc styling.
-            // TODO(andreas): Ideally the default title bar would already adhere to that style
-            .title_bar(false)
-            .show(ui.ctx(), |ui| {
-                title_bar(ctx.re_ui, ui, title, &mut open);
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     add_entities_ui(ctx, ui, space_view);
                 });
-            });
-
-        // Any click outside causes the window to close.
-        let cursor_was_over_window = response
-            .and_then(|response| {
-                ui.input(|i| i.pointer.interact_pos())
-                    .map(|interact_pos| response.response.rect.contains(interact_pos))
-            })
-            .unwrap_or(false);
-        if !cursor_was_over_window && ui.input(|i| i.pointer.any_pressed()) {
-            open = false;
-        }
-
-        open
+            },
+        );
     }
 }
 
@@ -424,24 +402,4 @@ fn create_entity_add_info(
     });
 
     meta_data
-}
-
-fn title_bar(re_ui: &re_ui::ReUi, ui: &mut egui::Ui, title: &str, open: &mut bool) {
-    ui.horizontal(|ui| {
-        ui.strong(title);
-
-        ui.add_space(16.0);
-
-        let mut ui = ui.child_ui(
-            ui.max_rect(),
-            egui::Layout::right_to_left(egui::Align::Center),
-        );
-        if re_ui
-            .small_icon_button(&mut ui, &re_ui::icons::CLOSE)
-            .clicked()
-        {
-            *open = false;
-        }
-    });
-    ui.separator();
 }

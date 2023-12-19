@@ -12,9 +12,9 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Dict, Iterator
 
-import frontmatter
+from ci.frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
 
 # -----------------------------------------------------------------------------
@@ -36,6 +36,9 @@ anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 
 double_the = re.compile(r"\bthe the\b")
 double_word = re.compile(r" ([a-z]+) \1[ \.]")
+
+
+Frontmatter = Dict[str, Any]
 
 
 def is_valid_todo_part(part: str) -> bool:
@@ -597,7 +600,7 @@ def test_lint_forbidden_widgets() -> None:
     assert _index_to_line_nr(should_fail_two_times, res[1][1]) == 5
 
 
-def lint_example_description(filepath: str, fm: frontmatter.Post) -> list[str]:
+def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
     # only applies to examples' readme
 
     if not filepath.startswith("./examples/python") or not filepath.endswith("README.md"):
@@ -617,7 +620,9 @@ def lint_frontmatter(filepath: str, content: str) -> list[str]:
     if not filepath.endswith(".md"):
         return errors
 
-    fm = frontmatter.loads(content)
+    fm = load_frontmatter(content)
+    if fm is None:
+        return []
 
     errors += lint_example_description(filepath, fm)
 

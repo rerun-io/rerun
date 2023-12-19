@@ -6,15 +6,17 @@ from __future__ import annotations
 import argparse
 from io import BytesIO
 from pathlib import Path
-from typing import Generator
+from typing import Any, Dict, Generator
 
-import frontmatter
 import requests
+from frontmatter import load_frontmatter
 from PIL import Image
+
+Frontmatter = Dict[str, Any]
 
 
 class Example:
-    def __init__(self, path: Path, readme: str, fm: frontmatter.Post) -> None:
+    def __init__(self, path: Path, readme: str, fm: Frontmatter) -> None:
         self.path = path
         self.readme = readme
         self.fm = fm
@@ -31,8 +33,8 @@ def examples_with_thumbnails() -> Generator[Example, None, None]:
     for path in Path("examples/python").iterdir():
         if (path / "README.md").exists():
             readme = (path / "README.md").read_text()
-            fm = frontmatter.loads(readme)
-            if fm.get("thumbnail"):
+            fm = load_frontmatter(readme)
+            if fm is not None and fm.get("thumbnail"):
                 yield Example(path, readme, fm)
 
 

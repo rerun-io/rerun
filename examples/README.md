@@ -41,12 +41,12 @@ tags: [2D, huggingface, object-detection, object-tracking, opencv]
 
 The contents of this `README.md` file and its frontmatter are used to render the examples in [the documentation](https://rerun.io/examples). Individual examples are currently "stitched together" to form one large markdown file for every category of examples (`artificial-data`, `real-data`).
 
-The `manifest.yml` file describes the structure of the examples contained in this repository. Only the examples which appear in the manifest are included in the [generated documentation](https://rerun.io/examples). The file contains a description of its own format.
+The `manifest.toml` file describes the structure of the examples contained in this repository. Only the examples which appear in the manifest are included in the [generated documentation](https://rerun.io/examples). The file contains a description of its own format.
 
 ## Adding a new example
 
 You can base your example off of `python/template` or `rust/template`.
-Once it's ready to be displayed in the docs, add it to the [manifest](./manifest.yml).
+Once it's ready to be displayed in the docs, add it to the [manifest](./manifest.toml).
 
 If you want to run the example on CI and include it in the in-viewer example page,
 add a `channel` entry to its README frontmatter. The available channels right now are:

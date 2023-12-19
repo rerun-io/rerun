@@ -31,6 +31,10 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 /// - [`DirectoryLoader`] for recursively loading folders.
 /// - [`ExternalLoader`], which looks for user-defined data loaders in $PATH.
 ///
+/// ## Registering custom loaders
+///
+/// TODO(cmc): web guide in upcoming PR
+///
 /// ## Execution
 ///
 /// **All** registered [`DataLoader`]s get called when a user tries to open a file, unconditionally.
@@ -131,6 +135,9 @@ pub enum DataLoaderError {
     #[error(transparent)]
     Decode(#[from] re_log_encoding::decoder::DecodeError),
 
+    #[error("No data-loader support for {0:?}")]
+    Incompatible(std::path::PathBuf),
+
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -143,6 +150,11 @@ impl DataLoaderError {
             DataLoaderError::IO(err) => err.kind() == std::io::ErrorKind::NotFound,
             _ => false,
         }
+    }
+
+    #[inline]
+    pub fn is_incompatible(&self) -> bool {
+        matches!(self, Self::Incompatible { .. })
     }
 }
 
@@ -217,8 +229,26 @@ static BUILTIN_LOADERS: Lazy<Vec<Arc<dyn DataLoader>>> = Lazy::new(|| {
 
 /// Iterator over all registered [`DataLoader`]s.
 #[inline]
-pub fn iter_loaders() -> impl ExactSizeIterator<Item = Arc<dyn DataLoader>> {
-    BUILTIN_LOADERS.clone().into_iter()
+pub fn iter_loaders() -> impl Iterator<Item = Arc<dyn DataLoader>> {
+    BUILTIN_LOADERS
+        .clone()
+        .into_iter()
+        .chain(CUSTOM_LOADERS.read().clone())
+}
+
+/// Keeps track of all custom [`DataLoader`]s.
+///
+/// Use [`register_custom_data_loader`] to add new loaders.
+static CUSTOM_LOADERS: Lazy<parking_lot::RwLock<Vec<Arc<dyn DataLoader>>>> =
+    Lazy::new(parking_lot::RwLock::default);
+
+/// Register a custom [`DataLoader`].
+///
+/// Any time the Rerun Viewer opens a file or directory, this custom loader will be notified.
+/// Refer to [`DataLoader`]'s documentation for more information.
+#[inline]
+pub fn register_custom_data_loader(loader: impl DataLoader + 'static) {
+    CUSTOM_LOADERS.write().push(Arc::new(loader));
 }
 
 // ---
@@ -235,8 +265,7 @@ pub use self::loader_directory::DirectoryLoader;
 pub use self::loader_rrd::RrdLoader;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) use self::loader_external::EXTERNAL_LOADER_PATHS;
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::loader_external::{
-    iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_PREFIX,
+    iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE,
+    EXTERNAL_DATA_LOADER_PREFIX,
 };

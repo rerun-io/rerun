@@ -230,7 +230,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          pip install gitignore_parser python-frontmatter
+          pip install gitignore_parser
           pip install -r ./scripts/ci/requirements.txt
 
       - name: Rerun lints

@@ -1,10 +1,10 @@
----
-title: Signed Distance Fields
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/signed_distance_fields/main.py
-tags:  [3D, mesh, tensor]
-thumbnail: https://static.rerun.io/signed_distance_fields/99f6a886ed6f41b6a8e9023ba917a98668eaee70/480w.png
-thumbnail_dimensions: [480, 294]
----
+<!--[metadata]
+title = "Signed Distance Fields"
+tags = ["3D", "mesh", "tensor"]
+thumbnail = "https://static.rerun.io/signed_distance_fields/99f6a886ed6f41b6a8e9023ba917a98668eaee70/480w.png"
+thumbnail_dimensions = [480, 294]
+-->
+
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/signed_distance_fields/99f6a886ed6f41b6a8e9023ba917a98668eaee70/480w.png">
