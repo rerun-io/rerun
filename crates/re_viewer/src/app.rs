@@ -1170,6 +1170,13 @@ impl eframe::App for App {
             }
         });
 
+        egui_ctx.output_mut(|o| {
+            // Open all links in a new tab (https://github.com/rerun-io/rerun/issues/4105)
+            if let Some(open_url) = &mut o.open_url {
+                open_url.new_tab = true;
+            }
+        });
+
         // Frame time measurer - must be last
         self.frame_time_history.add(
             egui_ctx.input(|i| i.time),
