@@ -503,15 +503,15 @@ pub fn view_3d(
         &mut line_builder,
         space_cameras,
         state,
-        ctx.selection_state().hovered_space_context(),
-        egui::Color32::WHITE,
+        ctx.selection_state().selected_space_context(),
+        ui.style().visuals.selection.bg_fill,
     );
     show_projections_from_2d_space(
         &mut line_builder,
         space_cameras,
         state,
-        ctx.selection_state().selected_space_context(),
-        ui.style().visuals.selection.bg_fill,
+        ctx.selection_state().hovered_space_context(),
+        egui::Color32::WHITE,
     );
 
     {

@@ -369,11 +369,20 @@ pub fn view_2d(
             ui.visuals().extreme_bg_color.into(),
         ));
 
+        // Make sure to _first_ draw the selected, and *then* the hovered context on top!
         painter.extend(show_projections_from_3d_space(
-            ctx,
             ui,
             query.space_origin,
             &ui_from_canvas,
+            ctx.selection_state().selected_space_context(),
+            ui.style().visuals.selection.bg_fill,
+        ));
+        painter.extend(show_projections_from_3d_space(
+            ui,
+            query.space_origin,
+            &ui_from_canvas,
+            ctx.selection_state().hovered_space_context(),
+            egui::Color32::WHITE,
         ));
 
         // Add egui driven labels on top of re_renderer content.
@@ -497,16 +506,17 @@ fn re_render_rect_from_egui_rect(rect: egui::Rect) -> re_renderer::RectF32 {
 // ------------------------------------------------------------------------
 
 fn show_projections_from_3d_space(
-    ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
     space: &EntityPath,
     ui_from_canvas: &RectTransform,
+    space_context: &SelectedSpaceContext,
+    color: egui::Color32,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
     if let SelectedSpaceContext::ThreeD {
         point_in_space_cameras: target_spaces,
         ..
-    } = ctx.selection_state().hovered_space_context()
+    } = space_context
     {
         for (space_2d, pos_2d) in target_spaces {
             if space_2d == space {
@@ -519,7 +529,7 @@ fn show_projections_from_3d_space(
                         radius + 2.0,
                         Color32::BLACK,
                     ));
-                    shapes.push(Shape::circle_filled(pos_in_ui, radius, Color32::WHITE));
+                    shapes.push(Shape::circle_filled(pos_in_ui, radius, color));
 
                     let text = format!("Depth: {:.3} m", pos_2d.z);
                     let font_id = egui::TextStyle::Body.resolve(ui.style());
