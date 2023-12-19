@@ -13,6 +13,5 @@ colorama==0.4.6
 gitignore-parser==0.1.4
 google-cloud-storage==2.9.0
 packaging==23.1
-python-frontmatter==1.0.0
 requests>=2.31,<3
 tomlkit==0.11.8
