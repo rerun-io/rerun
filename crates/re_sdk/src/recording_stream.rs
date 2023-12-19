@@ -725,6 +725,10 @@ impl RecordingStream {
     /// transport.
     /// See [SDK Micro Batching] for more information.
     ///
+    /// The entity path can either be a string
+    /// (with special characters escaped, split on unescaped slashes)
+    /// or an [`EntityPath`] constructed with [`crate::entity_path`].
+    ///
     /// # Example:
     /// ```ignore
     /// # use rerun;

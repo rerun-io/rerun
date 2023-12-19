@@ -38,10 +38,12 @@ macro_rules! entity_path_vec {
     };
 }
 
-/// Build a `EntityPath`:
+/// Build an [`EntityPath`] from parts that are _not_ escaped:
+///
 /// ```
 /// # use re_log_types::*;
-/// let path: EntityPath = entity_path!("foo", "bar");
+/// let path: EntityPath = entity_path!("world", "my image!");
+/// assert_eq!(path, EntityPath::parse_strict(r"world/my\ image\!").unwrap());
 /// ```
 #[macro_export]
 macro_rules! entity_path {
