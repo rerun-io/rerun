@@ -139,67 +139,45 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.ContainerBlueprint#container_kind")?
         };
-        let display_name = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.Name")
-        {
-            Some({
+        let display_name =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Name") {
                 <crate::blueprint::components::Name>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ContainerBlueprint#display_name")?
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#display_name")?
-            })
-        } else {
-            None
-        };
+            } else {
+                None
+            };
         let contents = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.IncludedContents")
         {
-            Some({
-                <crate::blueprint::components::IncludedContents>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
-            })
+            <crate::blueprint::components::IncludedContents>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
-        let primary_weights = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.PrimaryWeights")
-        {
-            Some({
+        let primary_weights =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.PrimaryWeights") {
                 <crate::blueprint::components::PrimaryWeights>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ContainerBlueprint#primary_weights")?
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#primary_weights")?
-            })
-        } else {
-            None
-        };
+            } else {
+                None
+            };
         let secondary_weights = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.SecondaryWeights")
         {
-            Some({
-                <crate::blueprint::components::SecondaryWeights>::from_arrow_opt(&**array)
-                    .with_context(
-                        "rerun.blueprint.archetypes.ContainerBlueprint#secondary_weights",
-                    )?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context(
-                        "rerun.blueprint.archetypes.ContainerBlueprint#secondary_weights",
-                    )?
-            })
+            <crate::blueprint::components::SecondaryWeights>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#secondary_weights")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };

@@ -170,29 +170,21 @@ impl ::re_types_core::Archetype for Asset3D {
                 .with_context("rerun.archetypes.Asset3D#blob")?
         };
         let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
-            Some({
-                <crate::components::MediaType>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Asset3D#media_type")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Asset3D#media_type")?
-            })
+            <crate::components::MediaType>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Asset3D#media_type")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let transform =
             if let Some(array) = arrays_by_name.get("rerun.components.OutOfTreeTransform3D") {
-                Some({
-                    <crate::components::OutOfTreeTransform3D>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Asset3D#transform")?
-                        .into_iter()
-                        .next()
-                        .flatten()
-                        .ok_or_else(DeserializationError::missing_data)
-                        .with_context("rerun.archetypes.Asset3D#transform")?
-                })
+                <crate::components::OutOfTreeTransform3D>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Asset3D#transform")?
+                    .into_iter()
+                    .next()
+                    .flatten()
             } else {
                 None
             };

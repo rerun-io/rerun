@@ -143,66 +143,46 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#class_identifier")?
         };
-        let display_name = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.Name")
-        {
-            Some({
+        let display_name =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Name") {
                 <crate::blueprint::components::Name>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#display_name")?
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#display_name")?
-            })
-        } else {
-            None
-        };
-        let space_origin = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.SpaceViewOrigin")
-        {
-            Some({
+            } else {
+                None
+            };
+        let space_origin =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.SpaceViewOrigin") {
                 <crate::blueprint::components::SpaceViewOrigin>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#space_origin")?
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#space_origin")?
-            })
-        } else {
-            None
-        };
+            } else {
+                None
+            };
         let entities_determined_by_user = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.EntitiesDeterminedByUser")
         {
-            Some({
-                <crate::blueprint::components::EntitiesDeterminedByUser>::from_arrow_opt(&**array)
-                    .with_context(
-                        "rerun.blueprint.archetypes.SpaceViewBlueprint#entities_determined_by_user",
-                    )?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context(
-                        "rerun.blueprint.archetypes.SpaceViewBlueprint#entities_determined_by_user",
-                    )?
-            })
+            <crate::blueprint::components::EntitiesDeterminedByUser>::from_arrow_opt(&**array)
+                .with_context(
+                    "rerun.blueprint.archetypes.SpaceViewBlueprint#entities_determined_by_user",
+                )?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let contents =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.IncludedQueries") {
-                Some({
-                    <crate::blueprint::components::IncludedQueries>::from_arrow_opt(&**array)
-                        .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#contents")?
-                        .into_iter()
-                        .next()
-                        .flatten()
-                        .ok_or_else(DeserializationError::missing_data)
-                        .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#contents")?
-                })
+                <crate::blueprint::components::IncludedQueries>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#contents")?
+                    .into_iter()
+                    .next()
+                    .flatten()
             } else {
                 None
             };

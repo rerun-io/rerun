@@ -143,77 +143,55 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
         };
         let layout =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ViewportLayout") {
-                Some({
-                    <crate::blueprint::components::ViewportLayout>::from_arrow_opt(&**array)
-                        .with_context("rerun.blueprint.archetypes.ViewportBlueprint#layout")?
-                        .into_iter()
-                        .next()
-                        .flatten()
-                        .ok_or_else(DeserializationError::missing_data)
-                        .with_context("rerun.blueprint.archetypes.ViewportBlueprint#layout")?
-                })
+                <crate::blueprint::components::ViewportLayout>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#layout")?
+                    .into_iter()
+                    .next()
+                    .flatten()
             } else {
                 None
             };
-        let root_container = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.RootContainer")
-        {
-            Some({
+        let root_container =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.RootContainer") {
                 <crate::blueprint::components::RootContainer>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ViewportBlueprint#root_container")?
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#root_container")?
-            })
-        } else {
-            None
-        };
+            } else {
+                None
+            };
         let maximized = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.SpaceViewMaximized")
         {
-            Some({
-                <crate::blueprint::components::SpaceViewMaximized>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#maximized")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#maximized")?
-            })
+            <crate::blueprint::components::SpaceViewMaximized>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ViewportBlueprint#maximized")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let auto_layout =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.AutoLayout") {
-                Some({
-                    <crate::blueprint::components::AutoLayout>::from_arrow_opt(&**array)
-                        .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_layout")?
-                        .into_iter()
-                        .next()
-                        .flatten()
-                        .ok_or_else(DeserializationError::missing_data)
-                        .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_layout")?
-                })
+                <crate::blueprint::components::AutoLayout>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_layout")?
+                    .into_iter()
+                    .next()
+                    .flatten()
             } else {
                 None
             };
-        let auto_space_views = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.AutoSpaceViews")
-        {
-            Some({
+        let auto_space_views =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.AutoSpaceViews") {
                 <crate::blueprint::components::AutoSpaceViews>::from_arrow_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_space_views")?
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#auto_space_views")?
-            })
-        } else {
-            None
-        };
+            } else {
+                None
+            };
         Ok(Self {
             space_views,
             layout,

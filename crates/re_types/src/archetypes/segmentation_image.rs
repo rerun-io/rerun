@@ -168,15 +168,11 @@ impl ::re_types_core::Archetype for SegmentationImage {
                 .with_context("rerun.archetypes.SegmentationImage#data")?
         };
         let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
-            Some({
-                <crate::components::DrawOrder>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.SegmentationImage#draw_order")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.SegmentationImage#draw_order")?
-            })
+            <crate::components::DrawOrder>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.SegmentationImage#draw_order")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
