@@ -108,9 +108,8 @@ impl Modal {
         let mut open = ui.input(|i| !i.key_pressed(egui::Key::Escape));
 
         let mut window = egui::Window::new(&self.title)
-            // TODO(andreas): Doesn't center properly. `pivot(Align2::CENTER_CENTER)` seems to be
-            // broken. Also, should reset every time
-            .default_pos(ui.ctx().screen_rect().center())
+            .pivot(egui::Align2::CENTER_CENTER)
+            .fixed_pos(ui.ctx().screen_rect().center())
             .collapsible(false)
             .resizable(true)
             .frame(egui::Frame {
