@@ -277,3 +277,5 @@ debug = true
 # egui_extras = { path = "../../egui/crates/egui_extras" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
+
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "dcdcde10b493683f3e97db47d128683bec0e65b9" } # https://github.com/rerun-io/egui_tiles/pull/40

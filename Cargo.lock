@@ -1732,12 +1732,11 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b0d2e43a355b2d49f85e288c80ba28a94d581a47abb8cf3de13262a2500abf6"
+source = "git+https://github.com/rerun-io/egui_tiles?rev=dcdcde10b493683f3e97db47d128683bec0e65b9#dcdcde10b493683f3e97db47d128683bec0e65b9"
 dependencies = [
  "ahash 0.8.6",
  "egui",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "log",
  "serde",
 ]
@@ -2860,6 +2859,15 @@ name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
 dependencies = [
  "either",
 ]
