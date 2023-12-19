@@ -125,7 +125,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         };
 
         let shadow_tree = blueprint.build_tree_from_containers();
-        re_log::debug!("shadow_tree: {shadow_tree:?}");
+        re_log::trace!("shadow_tree: {shadow_tree:?}");
 
         Self {
             blueprint,

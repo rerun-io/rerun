@@ -396,28 +396,29 @@ impl ViewportBlueprint {
                 }
             }
 
-            for (tile_id, tile) in tree.tiles.iter() {
+            for (parent_tile_id, tile) in tree.tiles.iter() {
                 if let egui_tiles::Tile::Container(container) = tile {
-                    let Some(container_id) = updated_tile_to_container_id.get(tile_id) else {
+                    let Some(container_id) = updated_tile_to_container_id.get(parent_tile_id)
+                    else {
                         re_log::debug!(
-                            "Missing primary container for tile_id: {tile_id:?} - skipping"
+                            "Missing primary container for tile_id: {parent_tile_id:?} - skipping"
                         );
                         continue;
                     };
 
                     let contents = container
                         .children()
-                        .filter_map(|id| {
-                            tree.tiles.get(*id).map(|tile| match tile {
+                        .filter_map(|child_id| {
+                            tree.tiles.get(*child_id).map(|tile| match tile {
                                 egui_tiles::Tile::Pane(space_view_id) => (*space_view_id).into(),
                                 egui_tiles::Tile::Container(_) => {
                                     if let Some(found_container_id) =
-                                        updated_tile_to_container_id.get(tile_id)
+                                        updated_tile_to_container_id.get(child_id)
                                     {
                                         (*found_container_id).into()
                                     } else {
                                         re_log::debug!(
-                                            "Missing reference container for tile_id: {tile_id:?} - setting to invalid"
+                                            "Missing reference container for tile_id: {parent_tile_id:?} - setting to invalid"
                                         );
                                         ContainerId::invalid().into()
                                     }
@@ -427,8 +428,12 @@ impl ViewportBlueprint {
                         .collect();
 
                     // TODO(abey79): Avoid using new here if the container already exists
-                    let blueprint =
-                        ContainerBlueprint::new(*tile_id, *container_id, contents, container);
+                    let blueprint = ContainerBlueprint::new(
+                        *parent_tile_id,
+                        *container_id,
+                        contents,
+                        container,
+                    );
 
                     blueprint.save_to_blueprint_store(ctx);
                 }
@@ -456,6 +461,8 @@ impl ViewportBlueprint {
             .map(|id| (id, tree.tiles.insert_pane(*id)))
             .collect();
 
+        re_log::trace!("space_view_to_tile_id: {space_view_to_tile_id:#?}");
+
         // Generate tile_ids for all the containers
         let container_to_tile_id: HashMap<_, _> = self
             .containers
@@ -469,26 +476,36 @@ impl ViewportBlueprint {
             })
             .collect();
 
+        re_log::trace!("container_to_tile_id: {container_to_tile_id:#?}");
+
         // Now populate children
         for (container_id, container_blueprint) in &self.containers {
-            let Some(tile_id) = container_to_tile_id.get(container_id) else {
-                re_log::warn_once!("Missing container id that should have been generated");
+            let Some(container_tile_id) = container_to_tile_id.get(container_id) else {
+                re_log::debug_once!("Missing container id that should have been generated");
                 continue;
             };
 
-            if let Some(egui_tiles::Tile::Container(container)) = tree.tiles.get_mut(*tile_id) {
+            if let Some(egui_tiles::Tile::Container(container)) =
+                tree.tiles.get_mut(*container_tile_id)
+            {
                 for child in &container_blueprint.contents {
-                    if let Some(tile_id) = match child {
-                        ContainerOrSpaceView::Container(container) => {
-                            container_to_tile_id.get(&container)
+                    if let Some(child_tile_id) = match child {
+                        ContainerOrSpaceView::Container(child_container) => {
+                            container_to_tile_id.get(&child_container)
                         }
                         ContainerOrSpaceView::SpaceView(space_view) => {
                             space_view_to_tile_id.get(&space_view)
                         }
                     } {
-                        container.add_child(*tile_id);
+                        re_log::trace!(
+                            "Adding child tile_id: {child_tile_id:?} to container: {container_tile_id:?}"
+                        );
+                        debug_assert!(*child_tile_id != *container_tile_id);
+                        container.add_child(*child_tile_id);
                     } else {
-                        re_log::warn_once!("Missing referenced id that should have been generated");
+                        re_log::debug_once!(
+                            "Missing referenced id that should have been generated"
+                        );
                     }
                 }
 
