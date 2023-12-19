@@ -10,7 +10,7 @@ use re_space_view::ScreenshotMode;
 use re_types::components::{DepthMeter, InstanceKey, TensorData};
 use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
-    resolve_mono_instance_path, HoverHighlight, HoveredSpace, Item, SelectionHighlight,
+    resolve_mono_instance_path, HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight,
     SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache,
     TensorStatsCache, UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery,
     ViewerContext,
@@ -630,7 +630,7 @@ pub fn picking(
     item_ui::select_hovered_on_click(ctx, &response, &hovered_items);
 
     let hovered_space = match spatial_kind {
-        SpatialSpaceViewKind::TwoD => HoveredSpace::TwoD {
+        SpatialSpaceViewKind::TwoD => SelectedSpaceContext::TwoD {
             space_2d: query.space_origin.clone(),
             pos: picking_context
                 .pointer_in_space2d
@@ -638,7 +638,7 @@ pub fn picking(
         },
         SpatialSpaceViewKind::ThreeD => {
             let hovered_point = picking_result.space_position();
-            HoveredSpace::ThreeD {
+            SelectedSpaceContext::ThreeD {
                 space_3d: query.space_origin.clone(),
                 pos: hovered_point,
                 tracked_space_camera: state.state_3d.tracked_camera.clone(),
@@ -656,7 +656,12 @@ pub fn picking(
             }
         }
     };
-    ctx.selection_state().set_hovered_space(hovered_space);
+    ctx.selection_state()
+        .set_hovered_space_context(hovered_space.clone());
+    if response.clicked() {
+        ctx.selection_state()
+            .set_selected_space_context(hovered_space);
+    }
 
     Ok(response)
 }

@@ -9,8 +9,8 @@ use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{archetypes::Pinhole, components::ViewCoordinates};
 use re_viewer_context::{
-    gpu_bridge, HoveredSpace, SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    gpu_bridge, SelectedSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
+    ViewQuery, ViewerContext,
 };
 
 use super::{
@@ -503,10 +503,10 @@ fn show_projections_from_3d_space(
     ui_from_canvas: &RectTransform,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
-    if let HoveredSpace::ThreeD {
+    if let SelectedSpaceContext::ThreeD {
         point_in_space_cameras: target_spaces,
         ..
-    } = ctx.selection_state().hovered_space()
+    } = ctx.selection_state().hovered_space_context()
     {
         for (space_2d, pos_2d) in target_spaces {
             if space_2d == space {
