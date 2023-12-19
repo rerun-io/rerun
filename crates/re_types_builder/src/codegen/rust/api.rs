@@ -939,9 +939,29 @@ fn quote_trait_impls_from_obj(
                         }
                     };
 
+
                     // NOTE: An archetype cannot have overlapped component types by definition, so use the
                     // component's fqname to do the mapping.
-                    let quoted_deser = if is_nullable {
+                    let quoted_deser = if is_nullable && !is_plural{
+                        // For a nullable mono-component, it's valid for data to be missing
+                        // after a clear.
+                        let quoted_collection =
+                            quote! {
+                                .into_iter()
+                                .next()
+                                .flatten()
+                            };
+
+                        quote! {
+                            if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
+                                <#component>::from_arrow_opt(&**array)
+                                    .with_context(#obj_field_fqname)?
+                                    #quoted_collection
+                            } else {
+                                None
+                            }
+                        }
+                    } else if is_nullable {
                         quote! {
                             if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
                                 Some({
