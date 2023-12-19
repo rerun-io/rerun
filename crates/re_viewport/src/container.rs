@@ -46,14 +46,14 @@ impl ContainerOrSpaceView {
     pub fn as_container_id(&self) -> Option<ContainerId> {
         match self {
             Self::Container(id) => Some(*id),
-            _ => None,
+            Self::SpaceView(_) => None,
         }
     }
 
     pub fn as_space_view_id(&self) -> Option<SpaceViewId> {
         match self {
             Self::SpaceView(id) => Some(*id),
-            _ => None,
+            Self::Container(_) => None,
         }
     }
 }
@@ -145,9 +145,7 @@ impl ContainerBlueprint {
             .cloned()
             .collect();
 
-        let active_tab = active_tab
-            .map(|id| ContainerOrSpaceView::try_from(&id.0.into()))
-            .flatten();
+        let active_tab = active_tab.and_then(|id| ContainerOrSpaceView::try_from(&id.0.into()));
 
         Some(Self {
             id,
