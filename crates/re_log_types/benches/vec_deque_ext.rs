@@ -1,18 +1,26 @@
 //! Simple benchmark suite to keep track of how the different removal methods for [`VecDeque`]
 //! behave in practice.
 
-#[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 use std::collections::VecDeque;
 
 use criterion::{criterion_group, criterion_main, Criterion};
+use itertools::Itertools;
 
-use re_log_types::VecDequeRemovalExt as _;
+use re_log_types::{VecDequeInsertionExt as _, VecDequeRemovalExt as _};
 
 // ---
 
-criterion_group!(benches, remove, swap_remove, swap_remove_front);
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+criterion_group!(
+    benches,
+    insert_range,
+    remove_range,
+    remove,
+    swap_remove,
+    swap_remove_front,
+);
 criterion_main!(benches);
 
 // ---
@@ -21,11 +29,13 @@ criterion_main!(benches);
 #[cfg(debug_assertions)]
 mod constants {
     pub const INITIAL_NUM_ENTRIES: usize = 1;
+    pub const NUM_MODIFIED_ELEMENTS: usize = 1;
 }
 
 #[cfg(not(debug_assertions))]
 mod constants {
     pub const INITIAL_NUM_ENTRIES: usize = 20_000;
+    pub const NUM_MODIFIED_ELEMENTS: usize = 1_000;
 }
 
 #[allow(clippy::wildcard_imports)]
@@ -33,97 +43,189 @@ use self::constants::*;
 
 // ---
 
-fn remove(c: &mut Criterion) {
-    {
-        let mut group = c.benchmark_group("flat_vec_deque");
-        group.throughput(criterion::Throughput::Elements(1));
-        group.bench_function("remove/prefilled/front", |b| {
-            let base = create_prefilled();
-            b.iter(|| {
-                let mut v: VecDeque<i64> = base.clone();
-                v.remove(0);
-                v
-            });
-        });
-        group.bench_function("remove/prefilled/middle", |b| {
-            let base = create_prefilled();
-            b.iter(|| {
-                let mut v: VecDeque<i64> = base.clone();
-                v.remove(INITIAL_NUM_ENTRIES / 2);
-                v
-            });
-        });
-        group.bench_function("remove/prefilled/back", |b| {
-            let base = create_prefilled();
-            b.iter(|| {
-                let mut v: VecDeque<i64> = base.clone();
-                v.remove(INITIAL_NUM_ENTRIES - 1);
-                v
-            });
-        });
+fn insert_range(c: &mut Criterion) {
+    if cfg!(feature = "core_benchmarks_only") {
+        return;
     }
+
+    let inserted = (0..NUM_MODIFIED_ELEMENTS as i64).collect_vec();
+
+    let mut group = c.benchmark_group("vec_deque");
+    group.throughput(criterion::Throughput::Elements(inserted.len() as _));
+
+    group.bench_function("insert_range/prefilled/front", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.insert_range(0, inserted.clone().into_iter());
+            v
+        });
+    });
+
+    group.bench_function("insert_range/prefilled/middle", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.insert_range(INITIAL_NUM_ENTRIES / 2, inserted.clone().into_iter());
+            v
+        });
+    });
+
+    group.bench_function("insert_range/prefilled/back", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.insert_range(INITIAL_NUM_ENTRIES, inserted.clone().into_iter());
+            v
+        });
+    });
+}
+
+fn remove_range(c: &mut Criterion) {
+    if cfg!(feature = "core_benchmarks_only") {
+        return;
+    }
+
+    let mut group = c.benchmark_group("vec_deque");
+    group.throughput(criterion::Throughput::Elements(NUM_MODIFIED_ELEMENTS as _));
+
+    group.bench_function("remove_range/prefilled/front", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.remove_range(0..NUM_MODIFIED_ELEMENTS);
+            v
+        });
+    });
+
+    group.bench_function("remove_range/prefilled/middle", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.remove_range(
+                INITIAL_NUM_ENTRIES / 2 - NUM_MODIFIED_ELEMENTS / 2
+                    ..INITIAL_NUM_ENTRIES / 2 + NUM_MODIFIED_ELEMENTS / 2,
+            );
+            v
+        });
+    });
+
+    group.bench_function("remove_range/prefilled/back", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.remove_range(INITIAL_NUM_ENTRIES - NUM_MODIFIED_ELEMENTS..INITIAL_NUM_ENTRIES);
+            v
+        });
+    });
+}
+
+fn remove(c: &mut Criterion) {
+    if cfg!(feature = "core_benchmarks_only") {
+        return;
+    }
+
+    let mut group = c.benchmark_group("vec_deque");
+    group.throughput(criterion::Throughput::Elements(1));
+
+    group.bench_function("remove/prefilled/front", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.remove(0);
+            v
+        });
+    });
+
+    group.bench_function("remove/prefilled/middle", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.remove(INITIAL_NUM_ENTRIES / 2);
+            v
+        });
+    });
+
+    group.bench_function("remove/prefilled/back", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.remove(INITIAL_NUM_ENTRIES - 1);
+            v
+        });
+    });
 }
 
 fn swap_remove(c: &mut Criterion) {
-    {
-        let mut group = c.benchmark_group("flat_vec_deque");
-        group.throughput(criterion::Throughput::Elements(1));
-        group.bench_function("swap_remove/prefilled/front", |b| {
-            let base = create_prefilled();
-            b.iter(|| {
-                let mut v: VecDeque<i64> = base.clone();
-                v.swap_remove(0);
-                v
-            });
-        });
-        group.bench_function("swap_remove/prefilled/middle", |b| {
-            let base = create_prefilled();
-            b.iter(|| {
-                let mut v: VecDeque<i64> = base.clone();
-                v.swap_remove(INITIAL_NUM_ENTRIES / 2);
-                v
-            });
-        });
-        group.bench_function("swap_remove/prefilled/back", |b| {
-            let base = create_prefilled();
-            b.iter(|| {
-                let mut v: VecDeque<i64> = base.clone();
-                v.swap_remove(INITIAL_NUM_ENTRIES - 1);
-                v
-            });
-        });
+    if cfg!(feature = "core_benchmarks_only") {
+        return;
     }
+
+    let mut group = c.benchmark_group("vec_deque");
+    group.throughput(criterion::Throughput::Elements(1));
+
+    group.bench_function("swap_remove/prefilled/front", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.swap_remove(0);
+            v
+        });
+    });
+
+    group.bench_function("swap_remove/prefilled/middle", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.swap_remove(INITIAL_NUM_ENTRIES / 2);
+            v
+        });
+    });
+
+    group.bench_function("swap_remove/prefilled/back", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.swap_remove(INITIAL_NUM_ENTRIES - 1);
+            v
+        });
+    });
 }
 
 fn swap_remove_front(c: &mut Criterion) {
-    {
-        let mut group = c.benchmark_group("flat_vec_deque");
-        group.throughput(criterion::Throughput::Elements(1));
-        group.bench_function("swap_remove_front/prefilled/front", |b| {
-            let base = create_prefilled();
-            b.iter(|| {
-                let mut v: VecDeque<i64> = base.clone();
-                v.swap_remove_front(0);
-                v
-            });
-        });
-        group.bench_function("swap_remove_front/prefilled/middle", |b| {
-            let base = create_prefilled();
-            b.iter(|| {
-                let mut v: VecDeque<i64> = base.clone();
-                v.swap_remove_front(INITIAL_NUM_ENTRIES / 2);
-                v
-            });
-        });
-        group.bench_function("swap_remove_front/prefilled/back", |b| {
-            let base = create_prefilled();
-            b.iter(|| {
-                let mut v: VecDeque<i64> = base.clone();
-                v.swap_remove_front(INITIAL_NUM_ENTRIES - 1);
-                v
-            });
-        });
+    if cfg!(feature = "core_benchmarks_only") {
+        return;
     }
+
+    let mut group = c.benchmark_group("vec_deque");
+    group.throughput(criterion::Throughput::Elements(1));
+
+    group.bench_function("swap_remove_front/prefilled/front", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.swap_remove_front(0);
+            v
+        });
+    });
+
+    group.bench_function("swap_remove_front/prefilled/middle", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.swap_remove_front(INITIAL_NUM_ENTRIES / 2);
+            v
+        });
+    });
+
+    group.bench_function("swap_remove_front/prefilled/back", |b| {
+        let base = create_prefilled();
+        b.iter(|| {
+            let mut v: VecDeque<i64> = base.clone();
+            v.swap_remove_front(INITIAL_NUM_ENTRIES - 1);
+            v
+        });
+    });
 }
 
 // ---

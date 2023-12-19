@@ -28,6 +28,10 @@ serde = [
   "re_types_core/serde",
 ]
 
+## When set, only run the core set of benchmark suites.
+## Commonly set implicitly by --all-features, e.g. on CI.
+core_benchmarks_only = []
+
 testing = []
 
 [dependencies]
