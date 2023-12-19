@@ -1,10 +1,8 @@
----
-title: Standard Input/Output example
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/stdio/main.py?speculative-link
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/stdio/src/main.rs?speculative-link
-cpp: https://github.com/rerun-io/rerun/tree/latest/examples/cpp/stdio/main.cpp?speculative-link
-thumbnail: https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca117/480w.png
----
+<!--[metadata]
+title = "Standard Input/Output example"
+thumbnail = "https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca117/480w.png"
+-->
+
 
 <picture>
   <img src="https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca117/full.png" alt="">
