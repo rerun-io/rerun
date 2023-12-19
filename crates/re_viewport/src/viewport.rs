@@ -371,9 +371,20 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         // Finally, save any edits to the blueprint tree
         // This is a no-op if the tree hasn't changed.
-        // TODO(abey79): This can go away once the new tree is working
         if ctx.app_options.experimental_container_blueprints {
             if self.edited {
+                // TODO(abey79): Decide what simplification to do here. Some of this
+                // might need to get rolled into the save logic instead.
+
+                // Simplify before we save the tree. Normally additional simplification will
+                // happen on the next render loop, but that's too late -- unsimplified
+                // changes will be baked into the tree.
+                let options = egui_tiles::SimplificationOptions {
+                    all_panes_must_have_tabs: true,
+                    ..Default::default()
+                };
+                self.tree.simplify(&options);
+
                 self.blueprint.save_tree_as_containers(&self.tree, ctx);
             }
         } else {
