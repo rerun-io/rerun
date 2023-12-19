@@ -23,7 +23,7 @@ __all__ = ["TileId", "TileIdArrayLike", "TileIdBatch", "TileIdLike", "TileIdType
 @define(init=False)
 class TileId:
     """
-    **Component**: An opaque egui_tiles::TileId.
+    **Component**: An opaque `egui_tiles::TileId`.
 
     Unstable. Used for the ongoing blueprint experimentations.
     """

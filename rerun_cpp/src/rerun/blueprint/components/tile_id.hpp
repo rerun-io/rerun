@@ -17,7 +17,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: An opaque egui_tiles::TileId.
+    /// **Component**: An opaque `egui_tiles::TileId`.
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct TileId {

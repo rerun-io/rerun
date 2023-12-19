@@ -21,10 +21,10 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: An opaque egui_tiles::TileId.
+/// **Component**: An opaque `egui_tiles::TileId`.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TileId(pub egui_tiles::TileId);
 
 impl From<egui_tiles::TileId> for TileId {
