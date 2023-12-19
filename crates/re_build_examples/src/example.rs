@@ -174,7 +174,7 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatt
         .map(Some)
         .map_err(|err| {
             anyhow::anyhow!(
-                "failed to read {:?}: {err}",
+                "Failed to parse TOML metadata of {:?}: {err}",
                 path.parent().unwrap().file_name().unwrap()
             )
         })
