@@ -54,7 +54,7 @@ pub use self::time::{Duration, Time, TimeZone};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
-pub use self::vec_deque_ext::{VecDequeRemovalExt, VecDequeSortingExt};
+pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::data_table_batcher::{

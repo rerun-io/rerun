@@ -1,5 +1,6 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, ops::Range};
 
+// --
 // ---
 
 /// Extends [`VecDeque`] with extra sorting routines.
@@ -71,6 +72,67 @@ fn is_sorted() {
 
 // ---
 
+/// Extends [`VecDeque`] with extra insertion routines.
+pub trait VecDequeInsertionExt<T> {
+    /// Inserts multiple elements at `index` within the deque, shifting all elements
+    /// with indices greater than or equal to `index` towards the back.
+    ///
+    /// This is O(1) if `index` corresponds to either the start or the end of the deque.
+    /// Otherwise, this means splitting the deque into two pieces then stitching them back together
+    /// at both ends of the added data.
+    ///
+    /// Panics if `index` is out of bounds.
+    fn insert_range(&mut self, index: usize, values: impl ExactSizeIterator<Item = T>);
+}
+
+impl<T> VecDequeInsertionExt<T> for VecDeque<T> {
+    fn insert_range(&mut self, index: usize, values: impl ExactSizeIterator<Item = T>) {
+        if index == self.len() {
+            self.extend(values); // has a specialization fast-path builtin
+        } else if index == 0 {
+            let n = values.len();
+            self.extend(values);
+            self.rotate_right(n);
+        } else {
+            let right = self.split_off(index);
+
+            // NOTE: definitely more elegant, but _much_ slower :(
+            // self.extend(values);
+            // self.extend(right);
+
+            *self = std::mem::take(self)
+                .into_iter()
+                .chain(values)
+                .chain(right)
+                .collect();
+        }
+    }
+}
+
+#[test]
+fn insert_range() {
+    let mut v: VecDeque<i64> = vec![].into();
+
+    assert!(v.is_empty());
+
+    v.insert_range(0, [1, 2, 3].into_iter());
+    assert_deque_eq([1, 2, 3], v.clone());
+
+    v.insert_range(0, [4, 5].into_iter());
+    assert_deque_eq([4, 5, 1, 2, 3], v.clone());
+
+    v.insert_range(2, std::iter::once(6));
+    assert_deque_eq([4, 5, 6, 1, 2, 3], v.clone());
+
+    v.insert_range(v.len(), [7, 8, 9, 10].into_iter());
+    assert_deque_eq([4, 5, 6, 1, 2, 3, 7, 8, 9, 10], v.clone());
+
+    v.insert_range(5, [11, 12].into_iter());
+    assert_deque_eq([4, 5, 6, 1, 2, 11, 12, 3, 7, 8, 9, 10], v.clone());
+}
+
+// ---
+
 /// Extends [`VecDeque`] with extra removal routines.
 pub trait VecDequeRemovalExt<T> {
     /// Removes an element from anywhere in the deque and returns it, replacing it with
@@ -81,8 +143,6 @@ pub trait VecDequeRemovalExt<T> {
     /// In either case, this is *O*(1).
     ///
     /// Returns `None` if `index` is out of bounds.
-    ///
-    /// Element at index 0 is the front of the queue.
     fn swap_remove(&mut self, index: usize) -> Option<T>;
 
     /// Splits the deque into two at the given index.
@@ -93,9 +153,29 @@ pub trait VecDequeRemovalExt<T> {
     /// If `at` is equal or greater than the length, the returned `VecDeque` is empty.
     ///
     /// Note that the capacity of `self` does not change.
-    ///
-    /// Element at index 0 is the front of the queue.
     fn split_off_or_default(&mut self, at: usize) -> Self;
+
+    /// Shortens the deque, keeping the first N elements up to `at` (excluded) and
+    /// dropping the rest.
+    ///
+    /// If at is greater or equal to the deque's current length, this has no effect.
+    fn truncate_at(&mut self, at: usize);
+
+    /// Removes and returns the elements in the given `range` from the deque.
+    ///
+    /// This is O(1) if `range` either starts at the beginning of the deque, or ends at the end of
+    /// the deque, or both.
+    /// Otherwise, this means splitting the deque into three pieces, dropping the middle one, then
+    /// stitching back the remaining two.
+    ///
+    /// This doesn't do any kind of element re-ordering: if the deque was sorted before, it's
+    /// still sorted after.
+    ///
+    /// Panics if `index` is out of bounds.
+    //
+    // NOTE: We take a `Range` rather than a `impl RangeBounds` because we rely on the fact that
+    // `range` must be contiguous.
+    fn remove_range(&mut self, range: Range<usize>);
 }
 
 impl<T: Clone> VecDequeRemovalExt<T> for VecDeque<T> {
@@ -128,6 +208,27 @@ impl<T: Clone> VecDequeRemovalExt<T> for VecDeque<T> {
         }
         self.split_off(at)
     }
+
+    #[inline]
+    fn truncate_at(&mut self, at: usize) {
+        self.truncate(self.len() - at);
+    }
+
+    #[inline]
+    fn remove_range(&mut self, range: Range<usize>) {
+        if range.start == 0 && range.end == self.len() {
+            self.clear();
+        } else if range.start == 0 {
+            self.rotate_left(range.len());
+            self.truncate(self.len() - range.len());
+        } else if range.end == self.len() {
+            self.truncate(self.len() - range.len());
+        } else {
+            let right = self.split_off(range.end);
+            let _mid = self.split_off(range.start);
+            self.extend(right);
+        }
+    }
 }
 
 #[test]
@@ -158,4 +259,45 @@ fn swap_remove() {
 
     assert_eq!(Some(5), v.swap_remove(0));
     assert!(v.is_sorted());
+}
+
+#[test]
+fn remove_range() {
+    let mut v: VecDeque<i64> = vec![].into();
+
+    assert!(v.is_empty());
+    assert!(v.is_sorted());
+
+    v.insert_range(0, [1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter());
+    assert_deque_eq([1, 2, 3, 4, 5, 6, 7, 8, 9], v.clone());
+    assert!(v.is_sorted());
+
+    v.remove_range(0..2);
+    assert_deque_eq([3, 4, 5, 6, 7, 8, 9], v.clone());
+    assert!(v.is_sorted());
+
+    v.remove_range(v.len() - 2..v.len());
+    assert_deque_eq([3, 4, 5, 6, 7], v.clone());
+    assert!(v.is_sorted());
+
+    v.remove_range(1..v.len() - 1);
+    assert_deque_eq([3, 7], v.clone());
+    assert!(v.is_sorted());
+
+    v.remove_range(0..1);
+    assert_deque_eq([7], v.clone());
+    assert!(v.is_sorted());
+
+    v.remove_range(0..1);
+    assert_deque_eq([], v.clone());
+    assert!(v.is_sorted());
+}
+
+// ---
+
+#[cfg(test)]
+fn assert_deque_eq(expected: impl IntoIterator<Item = i64>, got: impl IntoIterator<Item = i64>) {
+    let expected = expected.into_iter().collect::<Vec<_>>();
+    let got = got.into_iter().collect::<Vec<_>>();
+    similar_asserts::assert_eq!(expected, got);
 }
