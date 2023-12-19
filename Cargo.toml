@@ -112,7 +112,7 @@ bytemuck = { version = "1.11", features = ["extern_crate_alloc"] }
 camino = "1.1"
 cargo_metadata = "0.18"
 cargo-run-wasm = "0.3.2"
-cfg_aliases = "0.1"
+cfg_aliases = "0.2"
 cfg-if = "1.0"
 clang-format = "0.3"
 clap = "4.0"
