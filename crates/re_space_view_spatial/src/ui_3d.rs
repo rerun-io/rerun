@@ -504,12 +504,14 @@ pub fn view_3d(
         space_cameras,
         state,
         ctx.selection_state().hovered_space_context(),
+        egui::Color32::WHITE,
     );
     show_projections_from_2d_space(
         &mut line_builder,
         space_cameras,
         state,
         ctx.selection_state().selected_space_context(),
+        ui.style().visuals.selection.bg_fill,
     );
 
     {
@@ -635,6 +637,7 @@ fn show_projections_from_2d_space(
     space_cameras: &[SpaceCamera3D],
     state: &SpatialSpaceViewState,
     space_context: &SelectedSpaceContext,
+    color: egui::Color32,
 ) {
     match space_context {
         SelectedSpaceContext::TwoD { space_2d, pos } => {
@@ -661,7 +664,13 @@ fn show_projections_from_2d_space(
                         macaw::Ray3::from_origin_dir(origin, (stop_in_world - origin).normalize());
 
                     let thick_ray_length = (stop_in_world - origin).length();
-                    add_picking_ray(line_builder, ray, &state.scene_bbox_accum, thick_ray_length);
+                    add_picking_ray(
+                        line_builder,
+                        ray,
+                        &state.scene_bbox_accum,
+                        thick_ray_length,
+                        color,
+                    );
                 }
             }
         }
@@ -679,7 +688,7 @@ fn show_projections_from_2d_space(
                     let cam_to_pos = *pos - cam.position();
                     let distance = cam_to_pos.length();
                     let ray = macaw::Ray3::from_origin_dir(cam.position(), cam_to_pos / distance);
-                    add_picking_ray(line_builder, ray, &state.scene_bbox_accum, distance);
+                    add_picking_ray(line_builder, ray, &state.scene_bbox_accum, distance, color);
                 }
             }
         }
@@ -692,6 +701,7 @@ fn add_picking_ray(
     ray: macaw::Ray3,
     scene_bbox_accum: &BoundingBox,
     thick_ray_length: f32,
+    color: egui::Color32,
 ) {
     let mut line_batch = line_builder.batch("picking ray");
 
@@ -702,11 +712,11 @@ fn add_picking_ray(
 
     line_batch
         .add_segment(origin, main_ray_end)
-        .color(egui::Color32::WHITE)
+        .color(color)
         .radius(Size::new_points(1.0));
     line_batch
         .add_segment(main_ray_end, fallback_ray_end)
-        .color(egui::Color32::DARK_GRAY)
+        .color(color.gamma_multiply(0.7))
         // TODO(andreas): Make this dashed.
         .radius(Size::new_points(0.5));
 }
