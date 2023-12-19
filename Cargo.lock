@@ -1429,6 +1429,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "custom_data_loader"
+version = "0.12.0-alpha.1+dev"
+dependencies = [
+ "re_build_tools",
+ "rerun",
+]
+
+[[package]]
 name = "custom_space_view"
 version = "0.12.0-alpha.1+dev"
 dependencies = [

@@ -34,14 +34,16 @@ pub fn load_from_path(
 
     re_log::info!("Loading {path:?}…");
 
-    let store_info = prepare_store_info(store_id, file_source, path, path.is_dir());
+    let data = load(store_id, path, None)?;
+
+    // If we reach this point, then at least one compatible `DataLoader` has been found.
+    let store_info = prepare_store_info(store_id, file_source, path);
     if let Some(store_info) = store_info {
         if tx.send(store_info).is_err() {
             return Ok(()); // other end has hung up.
         }
     }
 
-    let data = load(store_id, path, None)?;
     send(store_id, data, tx);
 
     Ok(())
@@ -67,14 +69,16 @@ pub fn load_from_file_contents(
 
     re_log::info!("Loading {filepath:?}…");
 
-    let store_info = prepare_store_info(store_id, file_source, filepath, false);
+    let data = load(store_id, filepath, Some(contents))?;
+
+    // If we reach this point, then at least one compatible `DataLoader` has been found.
+    let store_info = prepare_store_info(store_id, file_source, filepath);
     if let Some(store_info) = store_info {
         if tx.send(store_info).is_err() {
             return Ok(()); // other end has hung up.
         }
     }
 
-    let data = load(store_id, filepath, Some(contents))?;
     send(store_id, data, tx);
 
     Ok(())
@@ -92,20 +96,11 @@ pub fn extension(path: &std::path::Path) -> String {
         .to_string()
 }
 
-/// Returns whether the given path is supported by builtin [`crate::DataLoader`]s.
-///
-/// This does _not_ access the filesystem.
-#[inline]
-pub fn is_associated_with_builtin_loader(path: &std::path::Path, is_dir: bool) -> bool {
-    is_dir || crate::is_supported_file_extension(&extension(path))
-}
-
 /// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
 pub(crate) fn prepare_store_info(
     store_id: &re_log_types::StoreId,
     file_source: FileSource,
     path: &std::path::Path,
-    is_dir: bool,
 ) -> Option<LogMsg> {
     re_tracing::profile_function!(path.display().to_string());
 
@@ -114,10 +109,9 @@ pub(crate) fn prepare_store_info(
     let app_id = re_log_types::ApplicationId(path.display().to_string());
     let store_source = re_log_types::StoreSource::File { file_source };
 
-    let is_builtin = is_associated_with_builtin_loader(path, is_dir);
     let is_rrd = crate::SUPPORTED_RERUN_EXTENSIONS.contains(&extension(path).as_str());
 
-    (!is_rrd && is_builtin).then(|| {
+    (!is_rrd).then(|| {
         LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: re_log_types::RowId::new(),
             info: re_log_types::StoreInfo {
