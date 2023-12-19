@@ -25,10 +25,6 @@ deadlock_detection = ["parking_lot/deadlock_detection"]
 ## Integration with `polars`, to efficiently use the datastore with dataframes.
 polars = ["dep:polars-core", "dep:polars-ops"]
 
-## When set, only run the core set of benchmark suites.
-## Commonly set implicitly by --all-features, e.g. on CI.
-core_benchmarks_only = []
-
 
 [dependencies]
 # Rerun dependencies:

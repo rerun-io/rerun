@@ -12,12 +12,7 @@ use tinyvec::TinyVec;
 
 criterion_group!(benches, sort, split, swap, swap_opt);
 
-#[cfg(not(feature = "core_benchmarks_only"))]
 criterion::criterion_main!(benches);
-
-// Don't run these benchmarks on CI: they measure the performance of third-party libraries.
-#[cfg(feature = "core_benchmarks_only")]
-fn main() {}
 
 // ---
 
@@ -35,6 +30,10 @@ const SMALLVEC_SIZE: usize = 1;
 // --- Benchmarks ---
 
 fn split(c: &mut Criterion) {
+    if std::env::var("CI").is_ok() {
+        return;
+    }
+
     let mut group = c.benchmark_group(format!("vector_ops/split_off/instances={NUM_INSTANCES}"));
     group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
@@ -146,6 +145,10 @@ fn split(c: &mut Criterion) {
 }
 
 fn sort(c: &mut Criterion) {
+    if std::env::var("CI").is_ok() {
+        return;
+    }
+
     let mut group = c.benchmark_group(format!("vector_ops/sort/instances={NUM_INSTANCES}"));
     group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
@@ -193,6 +196,10 @@ fn sort(c: &mut Criterion) {
 }
 
 fn swap(c: &mut Criterion) {
+    if std::env::var("CI").is_ok() {
+        return;
+    }
+
     let mut group = c.benchmark_group(format!("vector_ops/swap/instances={NUM_INSTANCES}"));
     group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
@@ -264,6 +271,10 @@ fn swap(c: &mut Criterion) {
 }
 
 fn swap_opt(c: &mut Criterion) {
+    if std::env::var("CI").is_ok() {
+        return;
+    }
+
     let mut group = c.benchmark_group(format!("vector_ops/swap_opt/instances={NUM_INSTANCES}"));
     group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
