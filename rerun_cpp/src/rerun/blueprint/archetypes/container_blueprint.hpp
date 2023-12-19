@@ -8,7 +8,6 @@
 #include "../../blueprint/components/name.hpp"
 #include "../../blueprint/components/primary_weights.hpp"
 #include "../../blueprint/components/secondary_weights.hpp"
-#include "../../blueprint/components/tile_id.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../data_cell.hpp"
@@ -39,9 +38,6 @@ namespace rerun::blueprint::archetypes {
 
         /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
         std::optional<rerun::blueprint::components::SecondaryWeights> secondary_weights;
-
-        /// The egui TileId. This is an opaque type so we need to store it via serde.
-        std::optional<rerun::blueprint::components::TileId> tile_id;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -88,13 +84,6 @@ namespace rerun::blueprint::archetypes {
             rerun::blueprint::components::SecondaryWeights _secondary_weights
         ) && {
             secondary_weights = std::move(_secondary_weights);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// The egui TileId. This is an opaque type so we need to store it via serde.
-        ContainerBlueprint with_tile_id(rerun::blueprint::components::TileId _tile_id) && {
-            tile_id = std::move(_tile_id);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

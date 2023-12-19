@@ -34,8 +34,4 @@ table ContainerBlueprint (
 
     /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
     secondary_weights: rerun.blueprint.components.SecondaryWeights ("attr.rerun.component_optional", nullable, order: 500);
-
-    /// The egui TileId. This is an opaque type so we need to store it via serde.
-    tile_id: rerun.blueprint.components.TileId ("attr.rerun.component_optional", nullable, order: 600);
-
 }

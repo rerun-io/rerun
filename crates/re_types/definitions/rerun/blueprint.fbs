@@ -17,7 +17,6 @@ include "./blueprint/components/secondary_weights.fbs";
 include "./blueprint/components/space_view_class.fbs";
 include "./blueprint/components/space_view_maximized.fbs";
 include "./blueprint/components/space_view_origin.fbs";
-include "./blueprint/components/tile_id.fbs";
 include "./blueprint/components/viewport_layout.fbs";
 
 include "./blueprint/archetypes/container_blueprint.fbs";

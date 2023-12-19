@@ -40,9 +40,6 @@ pub struct ContainerBlueprint {
 
     /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
     pub secondary_weights: Option<crate::blueprint::components::SecondaryWeights>,
-
-    /// The egui TileId. This is an opaque type so we need to store it via serde.
-    pub tile_id: Option<crate::blueprint::components::TileId>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
@@ -53,19 +50,18 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
         || ["rerun.blueprint.components.ContainerBlueprintIndicator".into()],
     );
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.IncludedContents".into(),
             "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.PrimaryWeights".into(),
             "rerun.blueprint.components.SecondaryWeights".into(),
-            "rerun.blueprint.components.TileId".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ContainerKind".into(),
@@ -74,13 +70,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.PrimaryWeights".into(),
             "rerun.blueprint.components.SecondaryWeights".into(),
-            "rerun.blueprint.components.TileId".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl ContainerBlueprint {
-    pub const NUM_COMPONENTS: usize = 8usize;
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`ContainerBlueprint`] [`::re_types_core::Archetype`]
@@ -208,26 +203,12 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
         } else {
             None
         };
-        let tile_id = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.TileId") {
-            Some({
-                <crate::blueprint::components::TileId>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#tile_id")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#tile_id")?
-            })
-        } else {
-            None
-        };
         Ok(Self {
             container_kind,
             display_name,
             contents,
             primary_weights,
             secondary_weights,
-            tile_id,
         })
     }
 }
@@ -251,9 +232,6 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
             self.secondary_weights
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.tile_id
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -274,7 +252,6 @@ impl ContainerBlueprint {
             contents: None,
             primary_weights: None,
             secondary_weights: None,
-            tile_id: None,
         }
     }
 
@@ -311,15 +288,6 @@ impl ContainerBlueprint {
         secondary_weights: impl Into<crate::blueprint::components::SecondaryWeights>,
     ) -> Self {
         self.secondary_weights = Some(secondary_weights.into());
-        self
-    }
-
-    #[inline]
-    pub fn with_tile_id(
-        mut self,
-        tile_id: impl Into<crate::blueprint::components::TileId>,
-    ) -> Self {
-        self.tile_id = Some(tile_id.into());
         self
     }
 }

@@ -79,7 +79,6 @@ from .space_view_class import (
 )
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
-from .tile_id import TileId, TileIdArrayLike, TileIdBatch, TileIdLike, TileIdType
 from .viewport_layout import (
     ViewportLayout,
     ViewportLayoutArrayLike,
@@ -166,11 +165,6 @@ __all__ = [
     "SpaceViewOrigin",
     "SpaceViewOriginBatch",
     "SpaceViewOriginType",
-    "TileId",
-    "TileIdArrayLike",
-    "TileIdBatch",
-    "TileIdLike",
-    "TileIdType",
     "ViewportLayout",
     "ViewportLayoutArrayLike",
     "ViewportLayoutBatch",
