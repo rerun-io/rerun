@@ -9,25 +9,10 @@ from pathlib import Path
 from typing import Any, Dict, Generator
 
 import requests
-import tomlkit
+from frontmatter import load_frontmatter
 from PIL import Image
 
 Frontmatter = Dict[str, Any]
-
-
-def load_frontmatter(s: str) -> dict[str, Any] | None:
-    start = s.find("<!--[metadata]")
-    if start == -1:
-        return None
-    start += len("<!--[metadata]")
-
-    end = s.find("-->", start)
-    if end == -1:
-        return None
-
-    fm = s[start:end].strip()
-
-    return tomlkit.loads(fm).unwrap()
 
 
 class Example:

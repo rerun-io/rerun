@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator
 
-import tomlkit
+from frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
 
 # -----------------------------------------------------------------------------
@@ -39,21 +39,6 @@ double_word = re.compile(r" ([a-z]+) \1[ \.]")
 
 
 Frontmatter = Dict[str, Any]
-
-
-def load_frontmatter(s: str) -> dict[str, Any] | None:
-    start = s.find("<!--[metadata]")
-    if start == -1:
-        return None
-    start += len("<!--[metadata]")
-
-    end = s.find("-->", start)
-    if end == -1:
-        return None
-
-    fm = s[start:end].strip()
-
-    return tomlkit.loads(fm).unwrap()
 
 
 def is_valid_todo_part(part: str) -> bool:

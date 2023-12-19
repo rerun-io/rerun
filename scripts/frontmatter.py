@@ -8,6 +8,7 @@ Frontmatter = Dict[str, Any]
 
 
 def load_frontmatter(s: str) -> dict[str, Any] | None:
+    """Load frontmatter from the contents of an example README.md."""
     start = s.find("<!--[metadata]")
     if start == -1:
         return None
