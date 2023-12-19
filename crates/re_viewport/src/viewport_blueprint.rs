@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 use egui_tiles::TileId;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
@@ -405,10 +405,31 @@ impl ViewportBlueprint {
         if &self.tree != tree {
             // Generate new container ids for any containers we don't know about.
             // Need to do this first for all tiles so we can resolve references.
-            let mut updated_tile_to_container_id = self.tile_to_container_id.clone();
-            for (tile_id, tile) in tree.tiles.iter() {
-                if tile.is_container() && !updated_tile_to_container_id.contains_key(tile_id) {
-                    updated_tile_to_container_id.insert(*tile_id, ContainerId::random());
+            let updated_tile_to_container_id: HashMap<TileId, ContainerId> = tree
+                .tiles
+                .iter()
+                .filter_map(|(tile_id, tile)| {
+                    if tile.is_container() {
+                        Some((
+                            *tile_id,
+                            self.tile_to_container_id
+                                .get(tile_id)
+                                .cloned()
+                                .unwrap_or_else(ContainerId::random),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            let protected_containers: HashSet<&ContainerId> =
+                updated_tile_to_container_id.values().collect();
+
+            // Clear any existing container blueprints that are no longer valid
+            for (container_id, container) in &self.containers {
+                if !protected_containers.contains(container_id) {
+                    container.clear(ctx);
                 }
             }
 
@@ -533,7 +554,10 @@ impl ViewportBlueprint {
                 }
 
                 match container {
-                    egui_tiles::Container::Tabs(_) => {}
+                    egui_tiles::Container::Tabs(tabs) => {
+                        // TODO(abey79): Need to add active tab to the blueprint spec
+                        tabs.active = tabs.children.first().copied();
+                    }
                     egui_tiles::Container::Linear(linear) => {
                         for (share, id) in container_blueprint
                             .primary_weights

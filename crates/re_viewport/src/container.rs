@@ -3,7 +3,7 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::StoreDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
-use re_types_core::ArrowBuffer;
+use re_types_core::{archetypes::Clear, ArrowBuffer};
 use re_viewer_context::{
     ContainerId, SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
@@ -70,6 +70,10 @@ impl ContainerBlueprint {
             tile_id,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
+            // TODO(jleibs): When we clear containers from the store this starts
+            // failing to to a missing required component -- query_archetype sohuld
+            // be able to handle this case gracefully.
+            /*
             .map_err(|err| {
                 if cfg!(debug_assertions) {
                     re_log::error!("Failed to load Container blueprint: {err}.");
@@ -78,6 +82,7 @@ impl ContainerBlueprint {
                 }
                 err
             })
+            */
             .ok()?;
 
         let container_kind = container_kind.into();
@@ -204,6 +209,11 @@ impl ContainerBlueprint {
                 tile_id: Some(tile_id),
             },
         }
+    }
+
+    pub fn clear(&self, ctx: &ViewerContext<'_>) {
+        let clear = Clear::recursive();
+        ctx.save_blueprint_component(&self.entity_path(), clear.is_recursive);
     }
 
     pub fn to_empty_tile_container(&self) -> egui_tiles::Container {

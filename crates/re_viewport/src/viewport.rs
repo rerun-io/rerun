@@ -361,10 +361,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
         // Finally, save any edits to the blueprint tree
         // This is a no-op if the tree hasn't changed.
         // TODO(abey79): This can go away once the new tree is working
-        self.blueprint.set_tree(&self.tree, ctx);
-
         if ctx.app_options.experimental_container_blueprints {
             self.blueprint.save_tree_as_containers(&self.tree, ctx);
+        } else {
+            self.blueprint.set_tree(&self.tree, ctx);
         }
     }
 
