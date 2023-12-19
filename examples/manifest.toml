@@ -21,6 +21,7 @@ examples = [
   "lidar",
   "live-camera-edge-detection",
   "live-depth-sensor",
+  "llm_embedding_ner",
   "nuscenes",
   "objectron",
   "open-photogrammetry-format",

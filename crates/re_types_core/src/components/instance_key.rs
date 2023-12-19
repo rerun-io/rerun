@@ -64,7 +64,6 @@ impl crate::Loggable for InstanceKey {
     where
         Self: Clone + 'a,
     {
-        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
@@ -99,7 +98,6 @@ impl crate::Loggable for InstanceKey {
     where
         Self: Sized,
     {
-        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
@@ -127,7 +125,6 @@ impl crate::Loggable for InstanceKey {
     where
         Self: Sized,
     {
-        re_tracing::profile_function!();
         use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         if let Some(validity) = arrow_data.validity() {
@@ -149,7 +146,6 @@ impl crate::Loggable for InstanceKey {
                 .values()
                 .as_slice();
             {
-                re_tracing::profile_scope!("collect");
                 slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
             }
         })

@@ -83,7 +83,6 @@ impl ::re_types_core::Loggable for Mat3x3 {
     where
         Self: Clone + 'a,
     {
-        re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
@@ -148,7 +147,6 @@ impl ::re_types_core::Loggable for Mat3x3 {
     where
         Self: Sized,
     {
-        re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({

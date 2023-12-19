@@ -1,5 +1,5 @@
 use re_data_store::{EntityProperties, EntityPropertyMap};
-use re_viewer_context::{DataQueryResult, EntitiesPerSystemPerClass, StoreContext};
+use re_viewer_context::{DataQueryResult, EntitiesPerSystem, StoreContext};
 
 pub struct EntityOverrides {
     pub root: EntityProperties,
@@ -43,6 +43,6 @@ pub trait DataQuery {
         &self,
         property_resolver: &impl PropertyResolver,
         ctx: &StoreContext<'_>,
-        entities_per_system_per_class: &EntitiesPerSystemPerClass,
+        entities_per_system: &EntitiesPerSystem,
     ) -> DataQueryResult;
 }
