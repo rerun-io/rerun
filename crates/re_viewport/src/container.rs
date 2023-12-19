@@ -5,7 +5,8 @@ use re_log_types::{DataRow, EntityPath, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
 use re_types_core::{archetypes::Clear, ArrowBuffer};
 use re_viewer_context::{
-    ContainerId, SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
+    BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId, SystemCommand,
+    SystemCommandSender as _, ViewerContext,
 };
 
 pub enum ContainerOrSpaceView {
@@ -32,6 +33,20 @@ impl ContainerOrSpaceView {
             Self::SpaceView(id) => id.as_entity_path(),
         }
     }
+
+    fn to_tile_id(&self) -> TileId {
+        match self {
+            Self::Container(id) => blueprint_id_to_tile_id(id),
+            Self::SpaceView(id) => blueprint_id_to_tile_id(id),
+        }
+    }
+}
+
+pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> TileId {
+    // TOOD(jleibs): This conversion to entity path is more expensive than it should be
+    let path = id.as_entity_path();
+
+    TileId::from_u64(path.hash64())
 }
 
 impl From<SpaceViewId> for ContainerOrSpaceView {
@@ -53,7 +68,6 @@ pub struct ContainerBlueprint {
     pub contents: Vec<ContainerOrSpaceView>,
     pub primary_weights: Vec<f32>,
     pub secondary_weights: Vec<f32>,
-    pub tile_id: Option<egui_tiles::TileId>,
 }
 
 impl ContainerBlueprint {
@@ -68,7 +82,6 @@ impl ContainerBlueprint {
             contents,
             primary_weights,
             secondary_weights,
-            tile_id,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             // TODO(jleibs): When we clear containers from the store this starts
@@ -113,8 +126,6 @@ impl ContainerBlueprint {
             .cloned()
             .collect();
 
-        let tile_id = tile_id.map(|id| id.0);
-
         Some(Self {
             id,
             container_kind,
@@ -122,7 +133,6 @@ impl ContainerBlueprint {
             contents,
             primary_weights,
             secondary_weights,
-            tile_id,
         })
     }
 
@@ -143,15 +153,11 @@ impl ContainerBlueprint {
         let primary_weights: ArrowBuffer<_> = self.primary_weights.clone().into();
         let secondary_weights: ArrowBuffer<_> = self.secondary_weights.clone().into();
 
-        let mut arch = crate::blueprint::archetypes::ContainerBlueprint::new(self.container_kind)
+        let arch = crate::blueprint::archetypes::ContainerBlueprint::new(self.container_kind)
             .with_display_name(self.display_name.clone())
             .with_contents(&contents)
             .with_primary_weights(primary_weights)
             .with_secondary_weights(secondary_weights);
-
-        if let Some(tile_id) = self.tile_id {
-            arch = arch.with_tile_id(tile_id);
-        }
 
         let mut deltas = vec![];
 
@@ -169,7 +175,6 @@ impl ContainerBlueprint {
     }
 
     pub fn new(
-        tile_id: TileId,
         container_id: ContainerId,
         contents: Vec<ContainerOrSpaceView>,
         container: &egui_tiles::Container,
@@ -182,7 +187,6 @@ impl ContainerBlueprint {
                 contents,
                 primary_weights: vec![],
                 secondary_weights: vec![],
-                tile_id: Some(tile_id),
             },
             egui_tiles::Container::Linear(linear) => {
                 // TODO(abey79): This should be part of egui_tiles
@@ -197,7 +201,6 @@ impl ContainerBlueprint {
                     contents,
                     primary_weights: linear.shares.into_iter().map(|(_, share)| *share).collect(),
                     secondary_weights: vec![],
-                    tile_id: Some(tile_id),
                 }
             }
             egui_tiles::Container::Grid(grid) => Self {
@@ -207,7 +210,6 @@ impl ContainerBlueprint {
                 contents,
                 primary_weights: grid.col_shares.clone(),
                 secondary_weights: grid.row_shares.clone(),
-                tile_id: Some(tile_id),
             },
         }
     }
@@ -217,12 +219,44 @@ impl ContainerBlueprint {
         ctx.save_blueprint_component(&self.entity_path(), clear.is_recursive);
     }
 
-    pub fn to_empty_tile_container(&self) -> egui_tiles::Container {
-        match self.container_kind {
-            egui_tiles::ContainerKind::Tabs => egui_tiles::Container::new_tabs(vec![]),
-            egui_tiles::ContainerKind::Horizontal => egui_tiles::Container::new_horizontal(vec![]),
-            egui_tiles::ContainerKind::Vertical => egui_tiles::Container::new_vertical(vec![]),
-            egui_tiles::ContainerKind::Grid => egui_tiles::Container::new_grid(vec![]),
-        }
+    pub fn to_tile(&self) -> egui_tiles::Tile<SpaceViewId> {
+        let children = self
+            .contents
+            .iter()
+            .map(|item| item.to_tile_id())
+            .collect::<Vec<_>>();
+
+        let container = match self.container_kind {
+            egui_tiles::ContainerKind::Tabs => {
+                let mut tabs = egui_tiles::Tabs::new(children);
+                // TODO(abey79): Need to add active tab to the blueprint spec
+                tabs.active = tabs.children.first().copied();
+                egui_tiles::Container::Tabs(tabs)
+            }
+            egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical => {
+                let linear_dir = match self.container_kind {
+                    egui_tiles::ContainerKind::Horizontal => egui_tiles::LinearDir::Horizontal,
+                    egui_tiles::ContainerKind::Vertical => egui_tiles::LinearDir::Vertical,
+                    _ => unreachable!(),
+                };
+                let mut linear = egui_tiles::Linear::new(linear_dir, children.clone());
+
+                for (share, id) in self.primary_weights.iter().zip(children.iter()) {
+                    linear.shares[*id] = *share;
+                }
+
+                egui_tiles::Container::Linear(linear)
+            }
+            egui_tiles::ContainerKind::Grid => {
+                let mut grid = egui_tiles::Grid::new(children);
+
+                grid.col_shares = self.primary_weights.clone();
+                grid.row_shares = self.secondary_weights.clone();
+
+                egui_tiles::Container::Grid(grid)
+            }
+        };
+
+        egui_tiles::Tile::Container(container)
     }
 }

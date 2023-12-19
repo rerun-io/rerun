@@ -329,7 +329,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         }
 
         if let Some(focus_tab) = &focus_tab {
-            let found = self.tree.make_active(|tile| match tile {
+            let found = self.tree.make_active(|_, tile| match tile {
                 egui_tiles::Tile::Pane(space_view_id) => space_view_id == focus_tab,
                 egui_tiles::Tile::Container(_) => false,
             });

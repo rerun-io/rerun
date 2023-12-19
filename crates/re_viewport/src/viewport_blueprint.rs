@@ -15,7 +15,7 @@ use crate::{
         AutoLayout, AutoSpaceViews, IncludedSpaceViews, RootContainer, SpaceViewMaximized,
         ViewportLayout,
     },
-    container::{ContainerBlueprint, ContainerOrSpaceView},
+    container::{blueprint_id_to_tile_id, ContainerBlueprint},
     space_view::SpaceViewBlueprint,
     viewport::TreeActions,
     VIEWPORT_PATH,
@@ -32,9 +32,6 @@ pub struct ViewportBlueprint {
 
     /// All the containers found in the viewport.
     pub containers: BTreeMap<ContainerId, ContainerBlueprint>,
-
-    /// Mapping from `TileId` back to `ContainerId`
-    pub tile_to_container_id: HashMap<TileId, ContainerId>,
 
     /// The root container.
     pub root_container: Option<ContainerId>,
@@ -114,13 +111,6 @@ impl ViewportBlueprint {
             .map(|c| (c.id, c))
             .collect();
 
-        // TODO(abey79): These ids loaded from the store aren't useful because we can't provide them back to
-        // the store when building it.
-        let tile_to_container_id = containers
-            .iter()
-            .filter_map(|(id, container)| container.tile_id.map(|tile_id| (tile_id, *id)))
-            .collect();
-
         let auto_layout = arch.auto_layout.unwrap_or_default().0;
 
         let root_container = arch.root_container.map(|id| id.0.into());
@@ -147,7 +137,6 @@ impl ViewportBlueprint {
         let mut blueprint = ViewportBlueprint {
             space_views,
             containers,
-            tile_to_container_id,
             root_container,
             tree,
             maximized,
@@ -158,11 +147,10 @@ impl ViewportBlueprint {
         if app_options.experimental_container_blueprints {
             // Note: we have to replace the tile_to_container_id with the actual ids generated
             // from inserting content into the tree.
-            let (shadow_tree, tile_to_container_id) = blueprint.build_tree_from_containers();
+            let shadow_tree = blueprint.build_tree_from_containers();
             re_log::trace!("shadow_tree: {shadow_tree:?}");
 
             blueprint.tree = shadow_tree;
-            blueprint.tile_to_container_id = tile_to_container_id;
         }
 
         blueprint
@@ -403,6 +391,12 @@ impl ViewportBlueprint {
     ) {
         // No need to run this if the tree hasn't changed
         if &self.tree != tree {
+            let tile_to_container_id: HashMap<TileId, ContainerId> = self
+                .containers
+                .keys()
+                .map(|id| (blueprint_id_to_tile_id(id), id.clone()))
+                .collect();
+
             // Generate new container ids for any containers we don't know about.
             // Need to do this first for all tiles so we can resolve references.
             let updated_tile_to_container_id: HashMap<TileId, ContainerId> = tree
@@ -412,7 +406,7 @@ impl ViewportBlueprint {
                     if tile.is_container() {
                         Some((
                             *tile_id,
-                            self.tile_to_container_id
+                            tile_to_container_id
                                 .get(tile_id)
                                 .cloned()
                                 .unwrap_or_else(ContainerId::random),
@@ -465,12 +459,7 @@ impl ViewportBlueprint {
                         .collect();
 
                     // TODO(abey79): Avoid using new here if the container already exists
-                    let blueprint = ContainerBlueprint::new(
-                        *parent_tile_id,
-                        *container_id,
-                        contents,
-                        container,
-                    );
+                    let blueprint = ContainerBlueprint::new(*container_id, contents, container);
 
                     blueprint.save_to_blueprint_store(ctx);
                 }
@@ -488,110 +477,28 @@ impl ViewportBlueprint {
         }
     }
 
-    pub fn build_tree_from_containers(
-        &self,
-    ) -> (egui_tiles::Tree<SpaceViewId>, HashMap<TileId, ContainerId>) {
+    pub fn build_tree_from_containers(&self) -> egui_tiles::Tree<SpaceViewId> {
         let mut tree = egui_tiles::Tree::empty("viewport_tree");
 
-        // Generate tile_ids for all the space-views
-        let space_view_to_tile_id: HashMap<_, _> = self
-            .space_views
-            .keys()
-            .map(|id| (id, tree.tiles.insert_pane(*id)))
-            .collect();
+        // First add all the space_views
+        for space_view in self.space_views.keys() {
+            let tile_id = blueprint_id_to_tile_id(space_view);
+            let pane = egui_tiles::Tile::Pane(*space_view);
+            tree.tiles.insert(tile_id, pane);
+        }
 
-        re_log::trace!("space_view_to_tile_id: {space_view_to_tile_id:#?}");
+        // Now add all the containers
+        for container in self.containers.values() {
+            let tile_id = blueprint_id_to_tile_id(&container.id);
 
-        // Generate tile_ids for all the containers
-        let container_to_tile_id: HashMap<_, _> = self
-            .containers
-            .iter()
-            .map(|(id, container)| {
-                (
-                    id,
-                    tree.tiles
-                        .insert_container(container.to_empty_tile_container()),
-                )
-            })
-            .collect();
-
-        let tile_to_container_id: HashMap<_, _> = container_to_tile_id
-            .iter()
-            .map(|(id, tile_id)| (*tile_id, **id))
-            .collect();
-
-        re_log::trace!("container_to_tile_id: {container_to_tile_id:#?}");
-
-        // Now populate children
-        for (container_id, container_blueprint) in &self.containers {
-            let Some(container_tile_id) = container_to_tile_id.get(container_id) else {
-                re_log::debug_once!("Missing container id that should have been generated");
-                continue;
-            };
-
-            if let Some(egui_tiles::Tile::Container(container)) =
-                tree.tiles.get_mut(*container_tile_id)
-            {
-                for child in &container_blueprint.contents {
-                    if let Some(child_tile_id) = match child {
-                        ContainerOrSpaceView::Container(child_container) => {
-                            container_to_tile_id.get(&child_container)
-                        }
-                        ContainerOrSpaceView::SpaceView(space_view) => {
-                            space_view_to_tile_id.get(&space_view)
-                        }
-                    } {
-                        re_log::trace!(
-                            "Adding child tile_id: {child_tile_id:?} to container: {container_tile_id:?}"
-                        );
-                        debug_assert!(*child_tile_id != *container_tile_id);
-                        container.add_child(*child_tile_id);
-                    } else {
-                        re_log::debug_once!(
-                            "Missing referenced id that should have been generated"
-                        );
-                    }
-                }
-
-                match container {
-                    egui_tiles::Container::Tabs(tabs) => {
-                        // TODO(abey79): Need to add active tab to the blueprint spec
-                        tabs.active = tabs.children.first().copied();
-                    }
-                    egui_tiles::Container::Linear(linear) => {
-                        for (share, id) in container_blueprint
-                            .primary_weights
-                            .iter()
-                            .zip(container_blueprint.contents.iter())
-                        {
-                            if let Some(tile_id) = match id {
-                                ContainerOrSpaceView::Container(container) => {
-                                    container_to_tile_id.get(&container)
-                                }
-                                ContainerOrSpaceView::SpaceView(space_view) => {
-                                    space_view_to_tile_id.get(&space_view)
-                                }
-                            } {
-                                linear.shares[*tile_id] = *share;
-                            }
-                        }
-                    }
-                    egui_tiles::Container::Grid(grid) => {
-                        grid.col_shares = container_blueprint.primary_weights.clone();
-                        grid.row_shares = container_blueprint.secondary_weights.clone();
-                    }
-                }
-            }
+            tree.tiles.insert(tile_id, container.to_tile());
         }
 
         // And finally, set the root
-        if let Some(root_container) = self
-            .root_container
-            .and_then(|id| container_to_tile_id.get(&id))
-        {
-            tree.root = Some(*root_container);
+        if let Some(root_container) = self.root_container.map(|id| blueprint_id_to_tile_id(&id)) {
+            tree.root = Some(root_container);
         }
 
-        (tree, tile_to_container_id)
+        tree
     }
 }
