@@ -210,17 +210,14 @@ pub fn class_id_tensor_to_gpu(
         "Cannot apply annotations to tensor of shape {:?}",
         tensor.shape
     );
-    anyhow::ensure!(
-        tensor.dtype().is_integer(),
-        "Only integer tensors can be annotated"
-    );
 
-    let (min, max) = tensor_stats
+    let (_, mut max) = tensor_stats
         .range
         .ok_or_else(|| anyhow::anyhow!("compressed_tensor!?"))?;
-    anyhow::ensure!(0.0 <= min, "Negative class id");
 
-    anyhow::ensure!(max <= 65535.0, "Too many class ids"); // we only support u8 and u16 tensors
+    // We only support u8 and u16 class ids.
+    // Any values greater than this will be unmapped in the segmentation image.
+    max = max.min(65535.0);
 
     // We pack the colormap into a 2D texture so we don't go over the max texture size.
     // We only support u8 and u16 class ids, so 256^2 is the biggest texture we need.
