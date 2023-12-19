@@ -7,6 +7,7 @@ pub mod egui_helpers;
 pub mod icons;
 mod layout_job_builder;
 pub mod list_item;
+pub mod modal;
 pub mod toasts;
 mod toggle_switch;
 
