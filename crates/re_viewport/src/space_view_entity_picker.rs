@@ -41,13 +41,15 @@ impl SpaceViewEntityPicker {
         self.modal_handler.ui(
             ctx.re_ui,
             ui,
-            || re_ui::modal::Modal::new("Add/remove Entities"),
-            |_, ui| {
+            || re_ui::modal::Modal::new("Add/remove Entities").default_height(640.0),
+            |_, ui, open| {
                 let Some(space_view_id) = &self.space_view_id else {
+                    *open = false;
                     return;
                 };
 
                 let Some(space_view) = viewport_blueprint.space_views.get(space_view_id) else {
+                    *open = false;
                     return;
                 };
 

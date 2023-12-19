@@ -16,7 +16,7 @@
 ///     modal_handler.open();
 /// }
 ///
-/// modal_handler.ui(re_ui, ui, || Modal::new("Modal Window"), |_, ui| {
+/// modal_handler.ui(re_ui, ui, || Modal::new("Modal Window"), |_, ui, _| {
 ///     ui.label("Modal content");
 /// });
 /// # });
@@ -39,7 +39,7 @@ impl ModalHandler {
         re_ui: &crate::ReUi,
         ui: &mut egui::Ui,
         make_modal: impl FnOnce() -> Modal,
-        content_ui: impl FnOnce(&crate::ReUi, &mut egui::Ui) -> R,
+        content_ui: impl FnOnce(&crate::ReUi, &mut egui::Ui, &mut bool) -> R,
     ) -> Option<R> {
         if self.modal.is_none() && self.should_open {
             self.modal = Some(make_modal());
@@ -72,7 +72,9 @@ pub struct ModalResponse<R> {
 /// Show a modal window with Rerun style.
 ///
 /// [`Modal`] fakes as a modal window, since egui [doesn't have them yet](https://github.com/emilk/egui/issues/686).
-/// This is typically use via the [`ModalHandler`] helper object.
+/// This done by dimming the background and capturing clicks outside the window.
+///
+/// Note that [`Modal`] are typically used via the [`ModalHandler`] helper object to reduce boilerplate.
 pub struct Modal {
     title: String,
     default_height: Option<f32>,
@@ -101,7 +103,7 @@ impl Modal {
         &mut self,
         re_ui: &crate::ReUi,
         ui: &mut egui::Ui,
-        content_ui: impl FnOnce(&crate::ReUi, &mut egui::Ui) -> R,
+        content_ui: impl FnOnce(&crate::ReUi, &mut egui::Ui, &mut bool) -> R,
     ) -> ModalResponse<R> {
         Self::dim_background(ui);
 
@@ -110,6 +112,7 @@ impl Modal {
         let mut window = egui::Window::new(&self.title)
             .pivot(egui::Align2::CENTER_CENTER)
             .fixed_pos(ui.ctx().screen_rect().center())
+            .constrain_to(ui.ctx().screen_rect())
             .collapsible(false)
             .resizable(true)
             .frame(egui::Frame {
@@ -125,7 +128,7 @@ impl Modal {
 
         let response = window.show(ui.ctx(), |ui| {
             Self::title_bar(re_ui, ui, &self.title, &mut open);
-            content_ui(re_ui, ui)
+            content_ui(re_ui, ui, &mut open)
         });
 
         // Any click outside causes the window to close.
