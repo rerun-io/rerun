@@ -21,7 +21,7 @@ impl crate::DataLoader for DirectoryLoader {
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         if dirpath.is_file() {
-            return Err(crate::DataLoaderError::NotSupported(dirpath.clone()));
+            return Err(crate::DataLoaderError::Incompatible(dirpath.clone()));
         }
 
         re_tracing::profile_function!(dirpath.display().to_string());
@@ -45,9 +45,9 @@ impl crate::DataLoader for DirectoryLoader {
 
                 // NOTE(1): `spawn` is fine, this whole function is native-only.
                 // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
-                // `load` will spawn a bunch of loaders on the common thread pool and wait for
+                // `load` will spawn a bunch of loaders on the common rayon thread pool and wait for
                 // their response via channels: we cannot be waiting for these responses on the
-                // common thread pool.
+                // common rayon thread pool.
                 _ = std::thread::Builder::new()
                     .name(format!("load_dir_entry({filepath:?})"))
                     .spawn(move || {
@@ -80,6 +80,6 @@ impl crate::DataLoader for DirectoryLoader {
         _tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
         // TODO(cmc): This could make sense to implement for e.g. archive formats (zip, tar, …)
-        Err(crate::DataLoaderError::NotSupported(path))
+        Err(crate::DataLoaderError::Incompatible(path))
     }
 }

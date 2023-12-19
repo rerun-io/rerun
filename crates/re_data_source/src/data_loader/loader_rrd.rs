@@ -25,7 +25,7 @@ impl crate::DataLoader for RrdLoader {
 
         let extension = crate::extension(&filepath);
         if extension != "rrd" {
-            return Err(crate::DataLoaderError::NotSupported(filepath.clone()));
+            return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
         }
 
         re_log::debug!(
@@ -67,7 +67,7 @@ impl crate::DataLoader for RrdLoader {
 
         let extension = crate::extension(&filepath);
         if extension != "rrd" {
-            return Err(crate::DataLoaderError::NotSupported(filepath));
+            return Err(crate::DataLoaderError::Incompatible(filepath));
         }
 
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;

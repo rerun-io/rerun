@@ -2,6 +2,8 @@ use std::io::Read;
 
 use once_cell::sync::Lazy;
 
+// ---
+
 /// To register a new external data loader, simply add an executable in your $PATH whose name
 /// starts with this prefix.
 pub const EXTERNAL_DATA_LOADER_PREFIX: &str = "rerun-loader-";
@@ -9,7 +11,7 @@ pub const EXTERNAL_DATA_LOADER_PREFIX: &str = "rerun-loader-";
 /// When an external [`crate::DataLoader`] is asked to load some data that it doesn't know
 /// how to load, it should exit with this exit code.
 // NOTE: Always keep in sync with other languages.
-pub const EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE: i32 = 66;
+pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 
 /// Keeps track of the paths all external executable [`crate::DataLoader`]s.
 ///
@@ -83,7 +85,9 @@ impl crate::DataLoader for ExternalLoader {
 
         re_tracing::profile_function!(filepath.display().to_string());
 
-        let (tx_feedback, rx_feedback) = std::sync::mpsc::channel();
+        #[derive(PartialEq, Eq)]
+        struct CompatibleLoaderFound;
+        let (tx_feedback, rx_feedback) = std::sync::mpsc::channel::<CompatibleLoaderFound>();
 
         for exe in EXTERNAL_LOADER_PATHS.iter() {
             let store_id = store_id.clone();
@@ -163,8 +167,9 @@ impl crate::DataLoader for ExternalLoader {
                     }
                 };
 
+                // NOTE: We assume that plugins are compatible until proven otherwise.
                 let is_compatible =
-                    status.code() != Some(crate::EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE);
+                    status.code() != Some(crate::EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE);
 
                 if is_compatible && !status.success() {
                     let mut stderr = std::io::BufReader::new(stderr);
@@ -175,16 +180,20 @@ impl crate::DataLoader for ExternalLoader {
 
                 if is_compatible {
                     re_log::debug!(loader = ?exe, ?filepath, "compatible external loader found");
-                    tx_feedback.send(()).ok();
+                    tx_feedback.send(CompatibleLoaderFound).ok();
                 }
             });
         }
 
+        re_tracing::profile_wait!("compatible_loader");
+
         drop(tx_feedback);
 
-        let any_compatible_loader = rx_feedback.recv().is_ok(); // at least one compatible loader was found
+        let any_compatible_loader = rx_feedback.recv() == Ok(CompatibleLoaderFound);
         if !any_compatible_loader {
-            return Err(crate::DataLoaderError::NotSupported(filepath.clone()));
+            // NOTE: The only way to get here is if all loaders closed then sending end of the
+            // channel without sending anything, i.e. none of them are compatible.
+            return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
         }
 
         Ok(())
@@ -200,7 +209,7 @@ impl crate::DataLoader for ExternalLoader {
     ) -> Result<(), crate::DataLoaderError> {
         // TODO(cmc): You could imagine a world where plugins can be streamed rrd data via their
         // standard input… but today is not world.
-        Err(crate::DataLoaderError::NotSupported(path))
+        Err(crate::DataLoaderError::Incompatible(path))
     }
 }
 

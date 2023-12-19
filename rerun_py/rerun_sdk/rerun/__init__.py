@@ -170,7 +170,7 @@ from . import experimental  # isort: skip
 # UTILITIES
 
 __all__ += [
-    "EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE",
+    "EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE",
     "cleanup_if_forked_child",
     "init",
     "new_recording",
@@ -184,7 +184,7 @@ __all__ += [
 
 
 # NOTE: Always keep in sync with other languages.
-EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE = 66
+EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE = 66
 """
 When an external `DataLoader` is asked to load some data that it doesn't know how to load, it
 should exit with this exit code.

@@ -136,7 +136,7 @@ pub enum DataLoaderError {
     Decode(#[from] re_log_encoding::decoder::DecodeError),
 
     #[error("No data-loader support for {0:?}")]
-    NotSupported(std::path::PathBuf),
+    Incompatible(std::path::PathBuf),
 
     #[error(transparent)]
     Other(#[from] anyhow::Error),
@@ -153,8 +153,8 @@ impl DataLoaderError {
     }
 
     #[inline]
-    pub fn is_not_supported(&self) -> bool {
-        matches!(self, Self::NotSupported { .. })
+    pub fn is_incompatible(&self) -> bool {
+        matches!(self, Self::Incompatible { .. })
     }
 }
 
@@ -248,6 +248,6 @@ pub use self::loader_rrd::RrdLoader;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::loader_external::{
-    iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE,
+    iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE,
     EXTERNAL_DATA_LOADER_PREFIX,
 };

@@ -138,7 +138,7 @@ pub use re_data_store::external::re_arrow_store::{
 };
 
 pub use re_data_source::{
-    EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE, EXTERNAL_DATA_LOADER_PREFIX,
+    EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE, EXTERNAL_DATA_LOADER_PREFIX,
 };
 
 /// Re-exports of other crates.

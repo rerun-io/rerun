@@ -32,8 +32,8 @@ def main() -> None:
     is_python_file = os.path.splitext(args.filepath)[1].lower() == ".py"
 
     # Inform the Rerun Viewer that we do not support that kind of file.
-    if not (is_file and is_python_file):
-        exit(rr.EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE)
+    if not is_file or not is_python_file:
+        exit(rr.EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE)
 
     rr.init("rerun_example_external_data_loader", recording_id=args.recording_id)
     # The most important part of this: log to standard output so the Rerun Viewer can ingest it!

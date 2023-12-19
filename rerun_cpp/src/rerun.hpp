@@ -21,7 +21,7 @@ namespace rerun {
     /// When an external [`DataLoader`] is asked to load some data that it doesn't know how to load, it
     /// should exit with this exit code.
     // NOTE: Always keep in sync with other languages.
-    const int EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE = 66;
+    const int EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE = 66;
 
     // Archetypes are the quick-and-easy default way of logging data to Rerun.
     // Make them available in the rerun namespace.

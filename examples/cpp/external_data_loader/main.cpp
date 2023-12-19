@@ -60,8 +60,8 @@ int main(int argc, char* argv[]) {
     bool is_cpp_file = std::filesystem::path(filepath).extension().string() == ".cpp";
 
     // Inform the Rerun Viewer that we do not support that kind of file.
-    if (!(is_file && is_cpp_file)) {
-        return rerun::EXTERNAL_DATA_LOADER_NOT_SUPPORTED_EXIT_CODE;
+    if (!is_file || is_cpp_file) {
+        return rerun::EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE;
     }
 
     std::ifstream file(filepath);

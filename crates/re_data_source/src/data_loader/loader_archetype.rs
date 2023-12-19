@@ -26,7 +26,7 @@ impl DataLoader for ArchetypeLoader {
         use anyhow::Context as _;
 
         if filepath.is_dir() {
-            return Err(crate::DataLoaderError::NotSupported(filepath.clone()));
+            return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
         }
 
         re_tracing::profile_function!(filepath.display().to_string());
@@ -47,7 +47,7 @@ impl DataLoader for ArchetypeLoader {
     ) -> Result<(), crate::DataLoaderError> {
         let extension = crate::extension(&filepath);
         if !crate::is_supported_file_extension(&extension) {
-            return Err(crate::DataLoaderError::NotSupported(filepath.clone()));
+            return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
         }
 
         re_tracing::profile_function!(filepath.display().to_string());

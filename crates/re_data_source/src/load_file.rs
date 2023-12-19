@@ -140,8 +140,8 @@ pub(crate) fn prepare_store_info(
 ///
 /// There is only one way this function can return an error: not a single [`crate::DataLoader`]
 /// (whether it is builtin, custom or external) was capable of loading the data, in which case
-/// `DataLoaderError::NotSupported` will be returned.
-#[cfg_attr(target_arch = "wasm32", allow(clippy::needless_pass_by_value))]
+/// [`DataLoaderError::Incompatible`] will be returned.
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn load(
     store_id: &re_log_types::StoreId,
     path: &std::path::Path,
@@ -150,39 +150,16 @@ pub(crate) fn load(
     re_tracing::profile_function!(path.display().to_string());
 
     // On native we run loaders in parallel so this needs to become static.
-    #[cfg(not(target_arch = "wasm32"))]
     let contents: Option<std::sync::Arc<std::borrow::Cow<'static, [u8]>>> =
         contents.map(|contents| std::sync::Arc::new(Cow::Owned(contents.into_owned())));
 
     let rx_loader = {
         let (tx_loader, rx_loader) = std::sync::mpsc::channel();
 
-        #[cfg(target_arch = "wasm32")]
-        let any_compatible_loader = crate::iter_loaders().map(|loader| {
-            if let Some(contents) = contents.as_deref() {
-                let store_id = store_id.clone();
-                let tx_loader = tx_loader.clone();
-                let path = path.to_owned();
-                let contents = Cow::Borrowed(contents);
-
-                if let Err(err) = loader.load_from_file_contents(store_id, path.clone(), contents, tx_loader) {
-                    if err.is_not_supported() {
-                        return false;
-                    }
-                    re_log::error!(?path, loader = loader.name(), %err, "Failed to load data from file");
-                }
-
-                true
-            } else {
-                false
-            }
-        })
-            .reduce(|any_compatible, is_compatible| any_compatible | is_compatible)
-            .unwrap_or(false);
-
-        #[cfg(not(target_arch = "wasm32"))]
         let any_compatible_loader = {
-            let (tx_feedback, rx_feedback) = std::sync::mpsc::channel();
+            #[derive(PartialEq, Eq)]
+            struct CompatibleLoaderFound;
+            let (tx_feedback, rx_feedback) = std::sync::mpsc::channel::<CompatibleLoaderFound>();
 
             for loader in crate::iter_loaders() {
                 let loader = std::sync::Arc::clone(&loader);
@@ -206,7 +183,7 @@ pub(crate) fn load(
                             contents,
                             tx_loader,
                         ) {
-                            if err.is_not_supported() {
+                            if err.is_incompatible() {
                                 return;
                             }
                             re_log::error!(?path, loader = loader.name(), %err, "Failed to load data");
@@ -214,20 +191,22 @@ pub(crate) fn load(
                     } else if let Err(err) =
                         loader.load_from_path(store_id, path.clone(), tx_loader)
                     {
-                        if err.is_not_supported() {
+                        if err.is_incompatible() {
                             return;
                         }
                         re_log::error!(?path, loader = loader.name(), %err, "Failed to load data from file");
                     }
 
                     re_log::debug!(loader = loader.name(), ?path, "compatible loader found");
-                    tx_feedback.send(()).ok();
+                    tx_feedback.send(CompatibleLoaderFound).ok();
                 });
             }
 
+            re_tracing::profile_wait!("compatible_loader");
+
             drop(tx_feedback);
 
-            rx_feedback.recv().is_ok() // at least one compatible loader was found
+            rx_feedback.recv() == Ok(CompatibleLoaderFound)
         };
 
         // Implicitly closing `tx_loader`!
@@ -238,7 +217,60 @@ pub(crate) fn load(
     if let Some(rx_loader) = rx_loader {
         Ok(rx_loader)
     } else {
-        Err(DataLoaderError::NotSupported(path.to_owned()))
+        Err(DataLoaderError::Incompatible(path.to_owned()))
+    }
+}
+
+/// Loads the data at `path` using all available [`crate::DataLoader`]s.
+///
+/// On success, returns a channel (pre-filled synchronously) with all the [`LoadedData`].
+///
+/// There is only one way this function can return an error: not a single [`crate::DataLoader`]
+/// (whether it is builtin, custom or external) was capable of loading the data, in which case
+/// [`DataLoaderError::Incompatible`] will be returned.
+#[cfg(target_arch = "wasm32")]
+#[allow(clippy::needless_pass_by_value)]
+pub(crate) fn load(
+    store_id: &re_log_types::StoreId,
+    path: &std::path::Path,
+    contents: Option<std::borrow::Cow<'_, [u8]>>,
+) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
+    re_tracing::profile_function!(path.display().to_string());
+
+    let rx_loader = {
+        let (tx_loader, rx_loader) = std::sync::mpsc::channel();
+
+        let any_compatible_loader = crate::iter_loaders().map(|loader| {
+            if let Some(contents) = contents.as_deref() {
+                let store_id = store_id.clone();
+                let tx_loader = tx_loader.clone();
+                let path = path.to_owned();
+                let contents = Cow::Borrowed(contents);
+
+                if let Err(err) = loader.load_from_file_contents(store_id, path.clone(), contents, tx_loader) {
+                    if err.is_incompatible() {
+                        return false;
+                    }
+                    re_log::error!(?path, loader = loader.name(), %err, "Failed to load data from file");
+                }
+
+                true
+            } else {
+                false
+            }
+        })
+            .reduce(|any_compatible, is_compatible| any_compatible || is_compatible)
+            .unwrap_or(false);
+
+        // Implicitly closing `tx_loader`!
+
+        any_compatible_loader.then_some(rx_loader)
+    };
+
+    if let Some(rx_loader) = rx_loader {
+        Ok(rx_loader)
+    } else {
+        Err(DataLoaderError::Incompatible(path.to_owned()))
     }
 }
 
