@@ -749,7 +749,7 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized
                     {
-                        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+                        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                         // re_tracing::profile_function!();
 
                         use arrow2::{datatypes::*, array::*, buffer::*};
@@ -796,7 +796,7 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Clone + 'a
                     {
-                        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+                        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                         // re_tracing::profile_function!();
 
                         use arrow2::{datatypes::*, array::*};
@@ -813,7 +813,7 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized
                     {
-                        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+                        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                         // re_tracing::profile_function!();
 
                         use arrow2::{datatypes::*, array::*, buffer::*};

@@ -914,7 +914,7 @@ pub fn quote_arrow_deserializer_buffer_slice(
             let slice = #deserizlized_as_slice;
 
             {
-                // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+                // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                 // re_tracing::profile_scope!("collect");
 
                 slice

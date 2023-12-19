@@ -299,7 +299,7 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn iter_required_component<'a, C: Component + 'a>(
         &'a self,
     ) -> DeserializationResult<impl ExactSizeIterator<Item = C> + '_> {
-        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
         // re_tracing::profile_function!();
 
         debug_assert!(A::required_components()
@@ -326,7 +326,7 @@ impl<A: Archetype> ArchetypeView<A> {
     /// Get a single required mono-component.
     #[inline]
     pub fn required_mono_component<C: Component>(&self) -> DeserializationResult<C> {
-        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
         // re_tracing::profile_function!();
 
         let mut iter = self.iter_required_component::<C>()?;
@@ -351,7 +351,7 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn iter_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
     ) -> DeserializationResult<impl ExactSizeIterator<Item = Option<C>> + '_> {
-        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
         // re_tracing::profile_function!(C::name());
 
         let component = self.components.get(&C::name());
@@ -450,7 +450,7 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn iter_raw_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
     ) -> DeserializationResult<Option<impl Iterator<Item = C> + '_>> {
-        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
         // re_tracing::profile_function!(C::name());
 
         let component = self.components.get(&C::name());

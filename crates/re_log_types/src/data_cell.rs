@@ -380,7 +380,7 @@ impl DataCell {
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
     pub fn try_to_native<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<C>> {
-        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
         // re_tracing::profile_function!(C::name().as_str());
 
         Ok(C::from_arrow(self.inner.values.as_ref())?)
@@ -391,7 +391,7 @@ impl DataCell {
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
     pub fn try_to_native_mono<'a, C: Component + 'a>(&'a self) -> DataCellResult<Option<C>> {
-        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
         // re_tracing::profile_function!(C::name().as_str());
 
         let mut instances = C::from_arrow_opt(self.inner.values.as_ref())?.into_iter();
@@ -431,7 +431,7 @@ impl DataCell {
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
     pub fn try_to_native_opt<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<Option<C>>> {
-        // TODO(#3850): Don't, it's way too much and will therefore lie to you.
+        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
         // re_tracing::profile_function!(C::name().as_str());
 
         Ok(C::from_arrow_opt(self.inner.values.as_ref())?)
