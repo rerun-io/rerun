@@ -7,6 +7,7 @@ use re_types_core::{archetypes::Clear, ArrowBuffer};
 use re_viewer_context::{
     ContainerId, SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
+
 pub enum ContainerOrSpaceView {
     Container(ContainerId),
     SpaceView(SpaceViewId),
@@ -71,7 +72,7 @@ impl ContainerBlueprint {
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             // TODO(jleibs): When we clear containers from the store this starts
-            // failing to to a missing required component -- query_archetype sohuld
+            // failing to a missing required component -- query_archetype sohuld
             // be able to handle this case gracefully.
             /*
             .map_err(|err| {
