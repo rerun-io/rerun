@@ -4,9 +4,10 @@ use parking_lot::RwLock;
 use re_data_store::{store_db::StoreDb, EntityTree, TimeHistogramPerTimeline};
 
 use crate::{
-    item::resolve_mono_instance_path_item, query_context::DataQueryResult, AppOptions, Caches,
-    CommandSender, ComponentUiRegistry, DataQueryId, EntitiesPerSystemPerClass, Item,
-    ItemCollection, SelectionState, SpaceViewClassRegistry, StoreContext, TimeControl,
+    item::resolve_mono_instance_path_item, query_context::DataQueryResult, AppOptions,
+    ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry, DataQueryId,
+    EntitiesPerSystemPerClass, Item, ItemCollection, SpaceViewClassRegistry, StoreContext,
+    TimeControl,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -56,7 +57,7 @@ impl<'a> ViewerContext<'a> {
     pub fn set_single_selection(&self, item: &Item) {
         self.rec_cfg
             .selection_state
-            .set_single_selection(resolve_mono_instance_path_item(
+            .set_selection(resolve_mono_instance_path_item(
                 &self.rec_cfg.time_ctrl.read().current_query(),
                 self.store_db.store(),
                 item,
@@ -86,7 +87,7 @@ impl<'a> ViewerContext<'a> {
             }));
     }
 
-    pub fn selection_state(&self) -> &SelectionState {
+    pub fn selection_state(&self) -> &ApplicationSelectionState {
         &self.rec_cfg.selection_state
     }
 
@@ -123,5 +124,5 @@ pub struct RecordingConfig {
     pub time_ctrl: RwLock<TimeControl>,
 
     /// Selection & hovering state.
-    pub selection_state: SelectionState,
+    pub selection_state: ApplicationSelectionState,
 }

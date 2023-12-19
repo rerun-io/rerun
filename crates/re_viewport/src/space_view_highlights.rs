@@ -6,14 +6,14 @@ use nohash_hasher::IntMap;
 use re_log_types::EntityPathHash;
 use re_renderer::OutlineMaskPreference;
 use re_viewer_context::{
-    HoverHighlight, Item, SelectionHighlight, SelectionState, SpaceViewEntityHighlight,
+    ApplicationSelectionState, HoverHighlight, Item, SelectionHighlight, SpaceViewEntityHighlight,
     SpaceViewHighlights, SpaceViewId, SpaceViewOutlineMasks,
 };
 
 use crate::SpaceViewBlueprint;
 
 pub fn highlights_for_space_view(
-    selection_state: &SelectionState,
+    selection_state: &ApplicationSelectionState,
     space_view_id: SpaceViewId,
     _space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> SpaceViewHighlights {

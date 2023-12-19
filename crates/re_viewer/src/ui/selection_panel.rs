@@ -75,8 +75,7 @@ impl SelectionPanel {
                             viewport.blueprint,
                             &mut history,
                         ) {
-                            ctx.selection_state()
-                                .set_selection(selection.iter().cloned());
+                            ctx.selection_state().set_selection(selection);
                         }
                     });
             });

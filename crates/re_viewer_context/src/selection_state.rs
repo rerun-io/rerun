@@ -80,13 +80,46 @@ impl InteractionHighlight {
 }
 
 /// State that makes up a selection.
-#[derive(Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-struct Selection {
+#[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+pub struct Selection {
     /// The items that were selected.
-    items: ItemCollection,
+    pub items: ItemCollection,
 
     /// Additional spatial information about the selection.
-    space_context: SelectedSpaceContext,
+    pub space_context: SelectedSpaceContext,
+}
+
+impl Selection {
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty() && self.space_context == SelectedSpaceContext::None
+    }
+}
+
+impl From<ItemCollection> for Selection {
+    #[inline]
+    fn from(val: ItemCollection) -> Self {
+        Selection {
+            items: val,
+            space_context: SelectedSpaceContext::None,
+        }
+    }
+}
+
+impl From<Item> for Selection {
+    #[inline]
+    fn from(val: Item) -> Self {
+        ItemCollection::new(std::iter::once(val)).into()
+    }
+}
+
+impl<T> From<T> for Selection
+where
+    T: Iterator<Item = Item>,
+{
+    #[inline]
+    fn from(value: T) -> Self {
+        ItemCollection::new(value).into()
+    }
 }
 
 /// Selection and hover state.
@@ -95,7 +128,7 @@ struct Selection {
 /// Changes from one frame are only visible in the next frame.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct SelectionState {
+pub struct ApplicationSelectionState {
     /// History of selections (what was selected previously).
     #[serde(skip)]
     pub history: Mutex<SelectionHistory>,
@@ -116,7 +149,7 @@ pub struct SelectionState {
     hovered_this_frame: Mutex<Selection>,
 }
 
-impl SelectionState {
+impl ApplicationSelectionState {
     /// Called at the start of each frame
     pub fn on_frame_start(&mut self, item_retain_condition: impl Fn(&Item) -> bool) {
         re_tracing::profile_function!();
@@ -130,26 +163,22 @@ impl SelectionState {
         // Selection in contrast, is sticky!
         let selection_this_frame = self.selection_this_frame.get_mut();
         if selection_this_frame != &self.selection_previous_frame {
-            history.update_selection(&selection_this_frame.items);
+            history.update_selection(selection_this_frame);
             self.selection_previous_frame = selection_this_frame.clone();
         }
     }
 
     /// Selects the previous element in the history if any.
-    ///
-    /// Clears the selected space context.
     pub fn select_previous(&self) {
         if let Some(selection) = self.history.lock().select_previous() {
-            self.set_selection(selection);
+            *self.selection_this_frame.lock() = selection;
         }
     }
 
     /// Selections the next element in the history if any.
-    ///
-    /// Clears the selected space context.
     pub fn select_next(&self) {
         if let Some(selection) = self.history.lock().select_next() {
-            self.set_selection(selection);
+            *self.selection_this_frame.lock() = selection;
         }
     }
 
@@ -158,21 +187,11 @@ impl SelectionState {
         self.set_selection(ItemCollection::default());
     }
 
-    /// Sets a single selection, updating history as needed.
-    ///
-    /// Clears the selected space context.
-    pub fn set_single_selection(&self, item: Item) {
-        self.set_selection(std::iter::once(item));
-    }
-
     /// Sets several objects to be selected, updating history as needed.
     ///
-    /// Clears the selected space context.
-    pub fn set_selection(&self, items: impl Into<ItemCollection>) {
-        let new_selection = items.into();
-        let mut selection_state = self.selection_this_frame.lock();
-        selection_state.items = new_selection;
-        selection_state.space_context = SelectedSpaceContext::None;
+    /// Clears the selected space context if none was specified.
+    pub fn set_selection(&self, items: impl Into<Selection>) {
+        *self.selection_this_frame.lock() = items.into();
     }
 
     /// Returns the current selection.

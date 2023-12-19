@@ -5,8 +5,8 @@ use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
 use re_space_view::DataQuery as _;
 use re_viewer_context::{
-    AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
-    SelectionState, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
+    AppOptions, ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry, PlayState,
+    RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{
     identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportBlueprint,
@@ -377,7 +377,10 @@ fn recording_config_entry<'cfgs>(
 /// Detect and handle that here.
 ///
 /// Must run after any ui code, or other code that tells egui to open an url.
-fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, selection_state: &SelectionState) {
+fn check_for_clicked_hyperlinks(
+    egui_ctx: &egui::Context,
+    selection_state: &ApplicationSelectionState,
+) {
     let recording_scheme = "recording://";
 
     let mut path = None;
@@ -392,9 +395,9 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, selection_state: &Sele
     });
 
     if let Some(path) = path {
-        match path.parse() {
+        match path.parse::<re_viewer_context::Item>() {
             Ok(item) => {
-                selection_state.set_single_selection(item);
+                selection_state.set_selection(item);
             }
             Err(err) => {
                 re_log::warn!("Failed to parse entity path {path:?}: {err}");

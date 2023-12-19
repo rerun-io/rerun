@@ -39,7 +39,8 @@ pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataR
 use re_log_types::EntityPath;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
-    HoverHighlight, InteractionHighlight, SelectedSpaceContext, SelectionHighlight, SelectionState,
+    ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectedSpaceContext,
+    Selection, SelectionHighlight,
 };
 pub use space_view::{
     default_heuristic_filter, AutoSpawnHeuristic, DataResult, DynSpaceViewClass,

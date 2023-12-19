@@ -1,7 +1,7 @@
 use egui::RichText;
 use egui_tiles::Tile;
 use re_ui::UICommand;
-use re_viewer_context::{Item, ItemCollection, SelectionHistory};
+use re_viewer_context::{Item, ItemCollection, Selection, SelectionHistory};
 use re_viewport::ViewportBlueprint;
 
 // ---
@@ -17,7 +17,7 @@ impl SelectionHistoryUi {
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
-    ) -> Option<ItemCollection> {
+    ) -> Option<Selection> {
         let next = self.next_button_ui(re_ui, ui, blueprint, history);
         let prev = self.prev_button_ui(re_ui, ui, blueprint, history);
         prev.or(next)
@@ -29,7 +29,7 @@ impl SelectionHistoryUi {
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
-    ) -> Option<ItemCollection> {
+    ) -> Option<Selection> {
         // undo selection
         if let Some(previous) = history.previous() {
             let response = re_ui
@@ -40,7 +40,7 @@ impl SelectionHistoryUi {
                 \n\
                 Right-click for more.",
                     UICommand::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
-                    item_collection_to_string(blueprint, &previous.selection),
+                    item_collection_to_string(blueprint, &previous.selection.items),
                 ));
 
             let mut return_current = false;
@@ -79,7 +79,7 @@ impl SelectionHistoryUi {
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
-    ) -> Option<ItemCollection> {
+    ) -> Option<Selection> {
         // redo selection
         if let Some(next) = history.next() {
             let response = re_ui
@@ -90,7 +90,7 @@ impl SelectionHistoryUi {
                 \n\
                 Right-click for more.",
                     UICommand::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
-                    item_collection_to_string(blueprint, &next.selection),
+                    item_collection_to_string(blueprint, &next.selection.items),
                 ));
 
             let mut return_current = false;
@@ -135,7 +135,7 @@ impl SelectionHistoryUi {
             ui.horizontal(|ui| {
                 {
                     // borrow checker workaround
-                    let sel = item_collection_to_string(blueprint, sel);
+                    let sel = item_collection_to_string(blueprint, &sel.items);
                     if ui
                         .selectable_value(&mut history.current, index, sel)
                         .clicked()
@@ -143,8 +143,8 @@ impl SelectionHistoryUi {
                         ui.close_menu();
                     }
                 }
-                if sel.len() == 1 {
-                    item_kind_ui(ui, sel.iter().next().unwrap());
+                if sel.items.len() == 1 {
+                    item_kind_ui(ui, sel.items.iter().next().unwrap());
                 }
             });
         }
@@ -158,8 +158,10 @@ fn item_kind_ui(ui: &mut egui::Ui, sel: &Item) {
 }
 
 fn item_collection_to_string(blueprint: &ViewportBlueprint, items: &ItemCollection) -> String {
-    assert!(!items.is_empty()); // history never contains empty selections.
-    if items.len() == 1 {
+    if items.is_empty() {
+        // Can happen if no items are selected but the space context changed.
+        "<space context>".to_owned()
+    } else if items.len() == 1 {
         item_to_string(blueprint, items.iter().next().unwrap())
     } else if let Some(kind) = items.are_all_same_kind() {
         format!("{}x {}s", items.len(), kind)
