@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "blueprint/components/active_tab.hpp"
 #include "blueprint/components/auto_layout.hpp"
 #include "blueprint/components/auto_space_views.hpp"
 #include "blueprint/components/container_kind.hpp"

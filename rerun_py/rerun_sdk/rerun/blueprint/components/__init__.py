@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .active_tab import ActiveTab, ActiveTabBatch, ActiveTabType
 from .auto_layout import AutoLayout, AutoLayoutArrayLike, AutoLayoutBatch, AutoLayoutLike, AutoLayoutType
 from .auto_space_views import (
     AutoSpaceViews,
@@ -88,6 +89,9 @@ from .viewport_layout import (
 )
 
 __all__ = [
+    "ActiveTab",
+    "ActiveTabBatch",
+    "ActiveTabType",
     "AutoLayout",
     "AutoLayoutArrayLike",
     "AutoLayoutBatch",

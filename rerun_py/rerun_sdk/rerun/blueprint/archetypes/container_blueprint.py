@@ -9,6 +9,7 @@ from typing import Any
 
 from attrs import define, field
 
+from ... import datatypes
 from ..._baseclasses import Archetype
 from ...error_utils import catch_and_log_exceptions
 from .. import components
@@ -28,6 +29,7 @@ class ContainerBlueprint(Archetype):
         contents: components.IncludedContentsLike | None = None,
         primary_weights: components.PrimaryWeightsLike | None = None,
         secondary_weights: components.SecondaryWeightsLike | None = None,
+        active_tab: datatypes.EntityPathLike | None = None,
     ):
         """
         Create a new instance of the ContainerBlueprint archetype.
@@ -46,6 +48,10 @@ class ContainerBlueprint(Archetype):
             For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
         secondary_weights:
             The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
+        active_tab:
+            Which tab is active.
+
+            Only applies to `Tabs` containers.
         """
 
         # You can define your own __init__ function as a member of ContainerBlueprintExt in container_blueprint_ext.py
@@ -56,6 +62,7 @@ class ContainerBlueprint(Archetype):
                 contents=contents,
                 primary_weights=primary_weights,
                 secondary_weights=secondary_weights,
+                active_tab=active_tab,
             )
             return
         self.__attrs_clear__()
@@ -68,6 +75,7 @@ class ContainerBlueprint(Archetype):
             contents=None,  # type: ignore[arg-type]
             primary_weights=None,  # type: ignore[arg-type]
             secondary_weights=None,  # type: ignore[arg-type]
+            active_tab=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -120,6 +128,17 @@ class ContainerBlueprint(Archetype):
         converter=components.SecondaryWeightsBatch._optional,  # type: ignore[misc]
     )
     # The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    active_tab: components.ActiveTabBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ActiveTabBatch._optional,  # type: ignore[misc]
+    )
+    # Which tab is active.
+    #
+    # Only applies to `Tabs` containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

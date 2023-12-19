@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../blueprint/components/active_tab.hpp"
 #include "../../blueprint/components/container_kind.hpp"
 #include "../../blueprint/components/included_contents.hpp"
 #include "../../blueprint/components/name.hpp"
@@ -38,6 +39,11 @@ namespace rerun::blueprint::archetypes {
 
         /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
         std::optional<rerun::blueprint::components::SecondaryWeights> secondary_weights;
+
+        /// Which tab is active.
+        ///
+        /// Only applies to `Tabs` containers.
+        std::optional<rerun::blueprint::components::ActiveTab> active_tab;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -84,6 +90,15 @@ namespace rerun::blueprint::archetypes {
             rerun::blueprint::components::SecondaryWeights _secondary_weights
         ) && {
             secondary_weights = std::move(_secondary_weights);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Which tab is active.
+        ///
+        /// Only applies to `Tabs` containers.
+        ContainerBlueprint with_active_tab(rerun::blueprint::components::ActiveTab _active_tab) && {
+            active_tab = std::move(_active_tab);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

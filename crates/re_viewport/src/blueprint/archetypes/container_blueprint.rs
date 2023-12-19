@@ -40,6 +40,11 @@ pub struct ContainerBlueprint {
 
     /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
     pub secondary_weights: Option<crate::blueprint::components::SecondaryWeights>,
+
+    /// Which tab is active.
+    ///
+    /// Only applies to `Tabs` containers.
+    pub active_tab: Option<crate::blueprint::components::ActiveTab>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
@@ -50,9 +55,10 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
         || ["rerun.blueprint.components.ContainerBlueprintIndicator".into()],
     );
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.blueprint.components.ActiveTab".into(),
             "rerun.blueprint.components.IncludedContents".into(),
             "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.PrimaryWeights".into(),
@@ -61,11 +67,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ContainerKind".into(),
             "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
+            "rerun.blueprint.components.ActiveTab".into(),
             "rerun.blueprint.components.IncludedContents".into(),
             "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.PrimaryWeights".into(),
@@ -75,7 +82,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     });
 
 impl ContainerBlueprint {
-    pub const NUM_COMPONENTS: usize = 7usize;
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 /// Indicator component for the [`ContainerBlueprint`] [`::re_types_core::Archetype`]
@@ -181,12 +188,23 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
         } else {
             None
         };
+        let active_tab =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ActiveTab") {
+                <crate::blueprint::components::ActiveTab>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#active_tab")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         Ok(Self {
             container_kind,
             display_name,
             contents,
             primary_weights,
             secondary_weights,
+            active_tab,
         })
     }
 }
@@ -210,6 +228,9 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
             self.secondary_weights
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.active_tab
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -230,6 +251,7 @@ impl ContainerBlueprint {
             contents: None,
             primary_weights: None,
             secondary_weights: None,
+            active_tab: None,
         }
     }
 
@@ -266,6 +288,15 @@ impl ContainerBlueprint {
         secondary_weights: impl Into<crate::blueprint::components::SecondaryWeights>,
     ) -> Self {
         self.secondary_weights = Some(secondary_weights.into());
+        self
+    }
+
+    #[inline]
+    pub fn with_active_tab(
+        mut self,
+        active_tab: impl Into<crate::blueprint::components::ActiveTab>,
+    ) -> Self {
+        self.active_tab = Some(active_tab.into());
         self
     }
 }
