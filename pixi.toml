@@ -114,6 +114,7 @@ doxygen = "1.9.7.*"
 binaryen = "116.*"   # for `wasm-opt`
 nox = "2021.10.1.*"
 prettier = "2.8.8.*"
+tomlkit = "0.12.3.*"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
