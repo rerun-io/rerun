@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator
 
-from frontmatter import load_frontmatter
+from ci.frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
 
 # -----------------------------------------------------------------------------
