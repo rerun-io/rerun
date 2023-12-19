@@ -9,6 +9,7 @@ use re_viewer_context::{
     SystemCommandSender as _, ViewerContext,
 };
 
+#[derive(Clone, Debug)]
 pub enum ContainerOrSpaceView {
     Container(ContainerId),
     SpaceView(SpaceViewId),
@@ -40,6 +41,20 @@ impl ContainerOrSpaceView {
             Self::SpaceView(id) => blueprint_id_to_tile_id(id),
         }
     }
+
+    pub fn as_container_id(&self) -> Option<ContainerId> {
+        match self {
+            Self::Container(id) => Some(*id),
+            _ => None,
+        }
+    }
+
+    pub fn as_space_view_id(&self) -> Option<SpaceViewId> {
+        match self {
+            Self::SpaceView(id) => Some(*id),
+            _ => None,
+        }
+    }
 }
 
 pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> TileId {
@@ -61,6 +76,7 @@ impl From<ContainerId> for ContainerOrSpaceView {
     }
 }
 
+#[derive(Debug)]
 pub struct ContainerBlueprint {
     pub id: ContainerId,
     pub container_kind: egui_tiles::ContainerKind,

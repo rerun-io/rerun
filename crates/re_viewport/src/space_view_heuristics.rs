@@ -58,18 +58,6 @@ pub fn all_possible_space_views(
 ) -> Vec<(SpaceViewBlueprint, DataQueryResult)> {
     re_tracing::profile_function!();
 
-    for (class_identifier, entities_per_system) in entities_per_system_per_class {
-        for (system_name, entities) in entities_per_system {
-            if entities.is_empty() {
-                re_log::debug!(
-                    "SpaceViewClassRegistry: No entities for system {:?} of class {:?}",
-                    system_name,
-                    class_identifier
-                );
-            }
-        }
-    }
-
     // For each candidate, create space views for all possible classes.
     candidate_space_view_paths(ctx, spaces_info)
         .flat_map(|candidate_space_path| {

@@ -97,6 +97,7 @@ pub struct Viewport<'a, 'b> {
     /// to be mutable for things like drag-and-drop and is ultimately saved back to the store.
     /// at the end of the frame if edited.
     pub tree: egui_tiles::Tree<SpaceViewId>,
+    pub edited: bool,
 
     /// Actions to perform at the end of the frame.
     ///
@@ -114,8 +115,11 @@ impl<'a, 'b> Viewport<'a, 'b> {
     ) -> Self {
         re_tracing::profile_function!();
 
+        let mut edited = false;
+
         // If the blueprint tree is empty/missing we need to auto-layout.
         let tree = if blueprint.tree.is_empty() && !blueprint.space_views.is_empty() {
+            edited = true;
             super::auto_layout::tree_from_space_views(
                 space_view_class_registry,
                 &blueprint.space_views,
@@ -128,6 +132,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             blueprint,
             state,
             tree,
+            edited,
             deferred_tree_actions: Default::default(),
         }
     }
@@ -215,6 +220,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
                 blueprint.set_auto_layout(false, ctx);
             }
+
+            self.edited |= tab_viewer.edited;
 
             state.space_views_displayed_last_frame = tab_viewer.space_views_displayed_current_frame;
         });
@@ -326,6 +333,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             }
 
             focus_tab = Some(*space_view);
+            self.edited = true;
         }
 
         if let Some(focus_tab) = &focus_tab {
@@ -334,6 +342,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 egui_tiles::Tile::Container(_) => false,
             });
             re_log::trace!("Found tab {focus_tab}: {found}");
+            self.edited = true;
         }
 
         for tile_id in remove {
@@ -349,6 +358,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             if Some(tile_id) == self.tree.root {
                 self.tree.root = None;
             }
+            self.edited = true;
         }
 
         if reset {
@@ -356,13 +366,16 @@ impl<'a, 'b> Viewport<'a, 'b> {
             // written to the store yet.
             re_log::trace!("Clearing the blueprint tree to force reset on the next frame");
             self.tree = egui_tiles::Tree::empty("viewport_tree");
+            self.edited = true;
         }
 
         // Finally, save any edits to the blueprint tree
         // This is a no-op if the tree hasn't changed.
         // TODO(abey79): This can go away once the new tree is working
         if ctx.app_options.experimental_container_blueprints {
-            self.blueprint.save_tree_as_containers(&self.tree, ctx);
+            if self.edited {
+                self.blueprint.save_tree_as_containers(&self.tree, ctx);
+            }
         } else {
             self.blueprint.set_tree(&self.tree, ctx);
         }
