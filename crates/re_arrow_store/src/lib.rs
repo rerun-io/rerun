@@ -49,11 +49,8 @@ pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{
     ClusterCellCache, IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry,
-    PersistentIndexedTable,
+    PersistentIndexedTable, PersistentIndexedTableInner,
 };
-
-#[allow(unused_imports)] // only used with some sets of feature flags atm
-pub(crate) use self::store::PersistentIndexedTableInner;
 
 // Re-exports
 #[doc(no_inline)]
