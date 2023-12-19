@@ -1,0 +1,50 @@
+[package]
+name = "re_query_cache"
+authors.workspace = true
+description = "Caching datastructures for re_query"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+[dependencies]
+# Rerun dependencies:
+re_log_types.workspace = true
+re_query.workspace = true
+re_types_core.workspace = true
+
+# External dependencies:
+ahash.workspace = true
+document-features.workspace = true
+itertools = { workspace = true }
+thiserror.workspace = true
+
+
+[dev-dependencies]
+re_log_types = { workspace = true, features = ["testing"] }
+
+criterion = "0.5"
+itertools = { workspace = true }
+mimalloc.workspace = true
+similar-asserts.workspace = true
+
+
+[lib]
+bench = false
+
+
+[[bench]]
+name = "flat_vec_deque"
+harness = false
