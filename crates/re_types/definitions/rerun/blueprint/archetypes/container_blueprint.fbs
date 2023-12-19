@@ -34,4 +34,9 @@ table ContainerBlueprint (
 
     /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
     secondary_weights: rerun.blueprint.components.SecondaryWeights ("attr.rerun.component_optional", nullable, order: 500);
+
+    /// Which tab is active.
+    ///
+    /// Only applies to `Tabs` containers.
+    active_tab: rerun.blueprint.components.ActiveTab ("attr.rerun.component_optional", nullable, order: 600);
 }
