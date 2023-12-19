@@ -6,7 +6,9 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::Timeline;
 use re_query::query_archetype;
-use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext,
+};
 
 use crate::{
     blueprint::components::{
@@ -53,7 +55,7 @@ pub struct ViewportBlueprint {
 }
 
 impl ViewportBlueprint {
-    pub fn try_from_db(blueprint_db: &re_data_store::StoreDb) -> Self {
+    pub fn try_from_db(blueprint_db: &re_data_store::StoreDb, app_options: &AppOptions) -> Self {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
@@ -112,6 +114,8 @@ impl ViewportBlueprint {
             .map(|c| (c.id, c))
             .collect();
 
+        // TODO(abey79): These ids loaded from the store aren't useful because we can't provide them back to
+        // the store when building it.
         let tile_to_container_id = containers
             .iter()
             .filter_map(|(id, container)| container.tile_id.map(|tile_id| (tile_id, *id)))
@@ -151,12 +155,15 @@ impl ViewportBlueprint {
             auto_space_views,
         };
 
-        // TODO(jleibs): Patching this in here is awkward
-        let (shadow_tree, tile_to_container_id) = blueprint.build_tree_from_containers();
-        re_log::trace!("shadow_tree: {shadow_tree:?}");
+        if app_options.experimental_container_blueprints {
+            // Note: we have to replace the tile_to_container_id with the actual ids generated
+            // from inserting content into the tree.
+            let (shadow_tree, tile_to_container_id) = blueprint.build_tree_from_containers();
+            re_log::trace!("shadow_tree: {shadow_tree:?}");
 
-        blueprint.tree = shadow_tree;
-        blueprint.tile_to_container_id = tile_to_container_id;
+            blueprint.tree = shadow_tree;
+            blueprint.tile_to_container_id = tile_to_container_id;
+        }
 
         blueprint
 

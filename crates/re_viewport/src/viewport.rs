@@ -363,7 +363,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
         // TODO(abey79): This can go away once the new tree is working
         self.blueprint.set_tree(&self.tree, ctx);
 
-        self.blueprint.save_tree_as_containers(&self.tree, ctx);
+        if ctx.app_options.experimental_container_blueprints {
+            self.blueprint.save_tree_as_containers(&self.tree, ctx);
+        }
     }
 
     /// If `false`, the item is referring to data that is not present in this blueprint.
