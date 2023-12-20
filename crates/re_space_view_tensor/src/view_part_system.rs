@@ -3,12 +3,11 @@ use re_data_store::EntityPath;
 use re_log_types::RowId;
 use re_types::{
     archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor, Archetype,
-    ComponentNameSet,
+    ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{
-    default_heuristic_filter, HeuristicFilterContext, IdentifiedViewSystem,
-    SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext, VisualizerAdditionalApplicabilityFilter,
 };
 
 #[derive(Default)]
@@ -19,6 +18,19 @@ pub struct TensorSystem {
 impl IdentifiedViewSystem for TensorSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Tensor".into()
+    }
+}
+
+struct TensorVisualizerEntityFilter;
+
+impl VisualizerAdditionalApplicabilityFilter for TensorVisualizerEntityFilter {
+    fn update_applicability(&mut self, event: &re_arrow_store::StoreEvent) -> bool {
+        event.diff.cells.iter().any(|(component_name, cell)| {
+            component_name == &re_types::components::TensorData::name()
+                && re_types::components::TensorData::from_arrow(cell.as_arrow_ref())
+                    .map(|tensors| tensors.iter().any(|tensor| !tensor.is_vector()))
+                    .unwrap_or(false)
+        })
     }
 }
 
@@ -34,26 +46,8 @@ impl ViewPartSystem for TensorSystem {
         std::iter::once(Tensor::indicator().name()).collect()
     }
 
-    fn heuristic_filter(
-        &self,
-        store: &re_arrow_store::DataStore,
-        ent_path: &EntityPath,
-        _ctx: HeuristicFilterContext,
-        query: &LatestAtQuery,
-        entity_components: &ComponentNameSet,
-    ) -> bool {
-        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
-            return false;
-        }
-
-        // The tensor view can't display anything with less than two dimensions.
-        if let Some(tensor) =
-            store.query_latest_component::<re_types::components::TensorData>(ent_path, query)
-        {
-            !tensor.is_vector()
-        } else {
-            false
-        }
+    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
+        Some(Box::new(TensorVisualizerEntityFilter))
     }
 
     fn execute(

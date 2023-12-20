@@ -6,11 +6,11 @@ use re_types::{
     archetypes::{BarChart, Tensor},
     components::Color,
     datatypes::TensorData,
-    Archetype, ComponentNameSet,
+    Archetype, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
-    default_heuristic_filter, HeuristicFilterContext, IdentifiedViewSystem,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext, VisualizerAdditionalApplicabilityFilter,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -22,6 +22,19 @@ pub struct BarChartViewPartSystem {
 impl IdentifiedViewSystem for BarChartViewPartSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "BarChartView".into()
+    }
+}
+
+struct BarChartVisualizerEntityFilter;
+
+impl VisualizerAdditionalApplicabilityFilter for BarChartVisualizerEntityFilter {
+    fn update_applicability(&mut self, event: &re_arrow_store::StoreEvent) -> bool {
+        event.diff.cells.iter().any(|(component_name, cell)| {
+            component_name == &re_types::components::TensorData::name()
+                && re_types::components::TensorData::from_arrow(cell.as_arrow_ref())
+                    .map(|tensors| tensors.iter().any(|tensor| tensor.is_vector()))
+                    .unwrap_or(false)
+        })
     }
 }
 
@@ -42,28 +55,8 @@ impl ViewPartSystem for BarChartViewPartSystem {
             .collect()
     }
 
-    fn heuristic_filter(
-        &self,
-        store: &re_arrow_store::DataStore,
-        ent_path: &EntityPath,
-        _ctx: HeuristicFilterContext,
-        query: &LatestAtQuery,
-        entity_components: &ComponentNameSet,
-    ) -> bool {
-        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
-            return false;
-        }
-
-        // NOTE: We want to make sure we query at the right time, otherwise we might take into
-        // account a `Clear()` that actually only applies into the future, and then
-        // `is_vector` will righfully fail because of the empty tensor.
-        if let Some(tensor) =
-            store.query_latest_component::<re_types::components::TensorData>(ent_path, query)
-        {
-            tensor.is_vector()
-        } else {
-            false
-        }
+    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
+        Some(Box::new(BarChartVisualizerEntityFilter))
     }
 
     fn execute(
