@@ -11,24 +11,23 @@ use re_viewer_context::{
 };
 
 #[derive(Clone, Debug)]
-pub enum ContainerOrSpaceView {
+pub enum Contents {
     Container(ContainerId),
     SpaceView(SpaceViewId),
 }
 
-impl ContainerOrSpaceView {
+impl Contents {
     fn try_from(path: &EntityPath) -> Option<Self> {
-        path.parent().and_then(|parent| {
-            if &parent == SpaceViewId::registry() {
-                Some(Self::SpaceView(SpaceViewId::from_entity_path(path)))
-            } else if &parent == ContainerId::registry() {
-                Some(Self::Container(ContainerId::from_entity_path(path)))
-            } else {
-                None
-            }
-        })
+        if path.starts_with(SpaceViewId::registry()) {
+            Some(Self::SpaceView(SpaceViewId::from_entity_path(path)))
+        } else if path.starts_with(ContainerId::registry()) {
+            Some(Self::Container(ContainerId::from_entity_path(path)))
+        } else {
+            None
+        }
     }
 
+    #[inline]
     fn to_entity_path(&self) -> EntityPath {
         match self {
             Self::Container(id) => id.as_entity_path(),
@@ -36,6 +35,7 @@ impl ContainerOrSpaceView {
         }
     }
 
+    #[inline]
     fn to_tile_id(&self) -> TileId {
         match self {
             Self::Container(id) => blueprint_id_to_tile_id(id),
@@ -43,6 +43,7 @@ impl ContainerOrSpaceView {
         }
     }
 
+    #[inline]
     pub fn as_container_id(&self) -> Option<ContainerId> {
         match self {
             Self::Container(id) => Some(*id),
@@ -50,6 +51,7 @@ impl ContainerOrSpaceView {
         }
     }
 
+    #[inline]
     pub fn as_space_view_id(&self) -> Option<SpaceViewId> {
         match self {
             Self::SpaceView(id) => Some(*id),
@@ -58,6 +60,7 @@ impl ContainerOrSpaceView {
     }
 }
 
+#[inline]
 pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> TileId {
     // TODO(jleibs): This conversion to entity path is more expensive than it should be
     let path = id.as_entity_path();
@@ -65,31 +68,42 @@ pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> T
     TileId::from_u64(path.hash64())
 }
 
-impl From<SpaceViewId> for ContainerOrSpaceView {
+impl From<SpaceViewId> for Contents {
+    #[inline]
     fn from(id: SpaceViewId) -> Self {
         Self::SpaceView(id)
     }
 }
 
-impl From<ContainerId> for ContainerOrSpaceView {
+impl From<ContainerId> for Contents {
+    #[inline]
     fn from(id: ContainerId) -> Self {
         Self::Container(id)
     }
 }
 
+/// The native version of a [`crate::blueprint::archetypes::ContainerBlueprint`].
+///
+/// This represents a single container in the blueprint. On each frame, it is
+/// used to populate an [`egui_tiles::Container`]. Each child in `contents` can
+/// be be either a [`SpaceViewId`] or another [`ContainerId`].
+///
+/// The main reason this exists is to handle type conversions that aren't yet
+/// well handled by the code-generated archetypes.
 #[derive(Debug)]
 pub struct ContainerBlueprint {
     pub id: ContainerId,
     pub container_kind: egui_tiles::ContainerKind,
     pub display_name: String,
-    pub contents: Vec<ContainerOrSpaceView>,
+    pub contents: Vec<Contents>,
     pub primary_weights: Vec<f32>,
     pub secondary_weights: Vec<f32>,
-    pub active_tab: Option<ContainerOrSpaceView>,
+    pub active_tab: Option<Contents>,
 }
 
 impl ContainerBlueprint {
-    pub fn try_from_db(id: ContainerId, blueprint_db: &StoreDb) -> Option<Self> {
+    /// Attempt to load a [`ContainerBlueprint`] from the blueprint store.
+    pub fn try_from_db(blueprint_db: &StoreDb, id: ContainerId) -> Option<Self> {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
@@ -128,7 +142,7 @@ impl ContainerBlueprint {
             .unwrap_or_default()
             .0
             .into_iter()
-            .filter_map(|id| ContainerOrSpaceView::try_from(&id.into()))
+            .filter_map(|id| Contents::try_from(&id.into()))
             .collect();
 
         let primary_weights = primary_weights
@@ -145,7 +159,7 @@ impl ContainerBlueprint {
             .cloned()
             .collect();
 
-        let active_tab = active_tab.and_then(|id| ContainerOrSpaceView::try_from(&id.0.into()));
+        let active_tab = active_tab.and_then(|id| Contents::try_from(&id.0.into()));
 
         Some(Self {
             id,
@@ -163,6 +177,11 @@ impl ContainerBlueprint {
     }
 
     /// Persist the entire [`ContainerBlueprint`] to the blueprint store.
+    ///
+    /// This only needs to be called if the [`ContainerBlueprint`] was created with [`Self::new`].
+    ///
+    /// Otherwise, incremental calls to `set_` functions will write just the necessary component
+    /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         let timepoint = TimePoint::timeless();
 
@@ -202,10 +221,14 @@ impl ContainerBlueprint {
             ));
     }
 
+    /// Creates a new [`ContainerBlueprint`] from the given [`egui_tiles::Container`].
+    ///
+    /// This [`ContainerBlueprint`] is ephemeral. If you want to make it permanent you
+    /// must call [`Self::save_to_blueprint_store`].
     pub fn new(
         container_id: ContainerId,
         container: &egui_tiles::Container,
-        tile_to_contents: &HashMap<TileId, ContainerOrSpaceView>,
+        tile_to_contents: &HashMap<TileId, Contents>,
     ) -> Self {
         let contents = container
             .children()
@@ -227,7 +250,7 @@ impl ContainerBlueprint {
                 }
             }
             egui_tiles::Container::Linear(linear) => {
-                // TODO(abey79): This should be part of egui_tiles
+                // TODO(jleibs): This should be part of egui_tiles.
                 let kind = match linear.dir {
                     egui_tiles::LinearDir::Horizontal => egui_tiles::ContainerKind::Horizontal,
                     egui_tiles::LinearDir::Vertical => egui_tiles::ContainerKind::Vertical,
@@ -254,6 +277,8 @@ impl ContainerBlueprint {
         }
     }
 
+    /// Clears the blueprint component for this container.
+    // TODO(jleibs): Should this be a recursive clear?
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
         let clear = Clear::recursive();
         ctx.save_blueprint_component(&self.entity_path(), clear.is_recursive);
@@ -269,7 +294,6 @@ impl ContainerBlueprint {
         let container = match self.container_kind {
             egui_tiles::ContainerKind::Tabs => {
                 let mut tabs = egui_tiles::Tabs::new(children);
-                // TODO(abey79): Need to add active tab to the blueprint spec
                 tabs.active = self
                     .active_tab
                     .as_ref()

@@ -91,6 +91,11 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
     }
 
     #[inline]
+    pub fn registry_part() -> &'static EntityPathPart {
+        &T::registry_path().as_slice()[0]
+    }
+
+    #[inline]
     pub fn uuid(&self) -> uuid::Uuid {
         self.id
     }
