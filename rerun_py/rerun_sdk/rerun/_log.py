@@ -279,6 +279,27 @@ def log_components(
     )
 
 
+def escape_entity_path_part(part: str) -> str:
+    r"""
+    Escape an individual part of an entity path.
+
+    For instance, `escape_entity_path_parth("my image!")` will return `"my\ image\!"`.
+
+    See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+
+    Parameters
+    ----------
+    part:
+        An unescaped string
+
+    Returns
+    -------
+    str:
+        The escaped entity path.
+    """
+    return str(bindings.escape_entity_path_part(part))
+
+
 def new_entity_path(entity_path: list[Any]) -> str:
     r"""
     Construct an entity path, defined by a list of (unescaped) parts.

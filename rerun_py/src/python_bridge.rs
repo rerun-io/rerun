@@ -152,6 +152,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
     m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
+    m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
     m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
 
     // blueprint
@@ -937,6 +938,11 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))
     }
+}
+
+#[pyfunction]
+fn escape_entity_path_part(part: &str) -> String {
+    EntityPathPart::from(part).to_string()
 }
 
 #[pyfunction]
