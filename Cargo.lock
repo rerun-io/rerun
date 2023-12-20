@@ -4794,12 +4794,16 @@ dependencies = [
 name = "re_query"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
+ "ahash 0.8.6",
  "arrow2",
  "backtrace",
  "criterion",
  "document-features",
  "itertools 0.11.0",
  "mimalloc",
+ "nohash-hasher",
+ "once_cell",
+ "parking_lot 0.12.1",
  "polars-core",
  "rand",
  "re_arrow_store",
@@ -4810,6 +4814,35 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
+ "similar-asserts",
+ "thiserror",
+]
+
+[[package]]
+name = "re_query_cache"
+version = "0.12.0-alpha.1+dev"
+dependencies = [
+ "ahash 0.8.6",
+ "arrow2",
+ "backtrace",
+ "criterion",
+ "document-features",
+ "itertools 0.11.0",
+ "mimalloc",
+ "nohash-hasher",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "rand",
+ "re_arrow_store",
+ "re_data_store",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "similar-asserts",
  "thiserror",
 ]
 
@@ -5020,6 +5053,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
+ "re_query_cache",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -5085,6 +5119,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
+ "re_query_cache",
  "re_renderer",
  "re_tracing",
  "re_types",
@@ -5096,13 +5131,16 @@ dependencies = [
 name = "re_space_view_time_series"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
+ "ahash 0.8.6",
  "egui",
  "egui_plot",
  "itertools 0.11.0",
+ "parking_lot 0.12.1",
  "re_arrow_store",
  "re_format",
  "re_log_types",
  "re_query",
+ "re_query_cache",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -5231,6 +5269,7 @@ dependencies = [
  "anyhow",
  "arrow2",
  "backtrace",
+ "bytemuck",
  "criterion",
  "document-features",
  "once_cell",
@@ -5290,6 +5329,8 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
+ "re_query",
+ "re_query_cache",
  "re_renderer",
  "re_smart_channel",
  "re_space_view",

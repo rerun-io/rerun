@@ -1,5 +1,5 @@
 use re_arrow_store::TimeRange;
-use re_query::{range_archetype, QueryError};
+use re_query::QueryError;
 use re_types::{
     archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
@@ -9,6 +9,8 @@ use re_viewer_context::{
     AnnotationMap, DefaultColor, IdentifiedViewSystem, SpaceViewSystemExecutionError,
     ViewPartSystem, ViewQuery, ViewerContext,
 };
+
+use crate::TimeSeriesSpaceViewFeedback;
 
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {
@@ -48,6 +50,7 @@ pub enum PlotSeriesKind {
     Scatter,
 }
 
+// TODO: we need custom view cache for this stuff, on top of generic query cache
 #[derive(Clone, Debug)]
 pub struct PlotSeries {
     pub label: String,
@@ -123,7 +126,11 @@ impl TimeSeriesSystem {
         let store = ctx.store_db.store();
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            let mut points = Vec::new();
+            let ui_feedback = TimeSeriesSpaceViewFeedback::remove(&query.space_view_id);
+            let x_tick_size = ui_feedback.map_or(0.0, |feedback| {
+                feedback.plot_bounds.width() / feedback.plot_canvas_size.x.max(0.001) as f64
+            });
+
             let annotations = self.annotation_map.find(&data_result.entity_path);
             let annotation_info = annotations
                 .resolved_class_description(None)
@@ -132,17 +139,14 @@ impl TimeSeriesSystem {
 
             let visible_history = match query.timeline.typ() {
                 re_log_types::TimeType::Time => {
-                    data_result.accumulated_properties().visible_history.nanos
+                    data_result.resolved_properties.visible_history.nanos
                 }
                 re_log_types::TimeType::Sequence => {
-                    data_result
-                        .accumulated_properties()
-                        .visible_history
-                        .sequences
+                    data_result.resolved_properties.visible_history.sequences
                 }
             };
 
-            let (from, to) = if data_result.accumulated_properties().visible_history.enabled {
+            let (from, to) = if data_result.resolved_properties.visible_history.enabled {
                 (
                     visible_history.from(query.latest_at),
                     visible_history.to(query.latest_at),
@@ -168,6 +172,8 @@ impl TimeSeriesSystem {
                 &data_result.entity_path,
                 |it| {
                     re_tracing::profile_function!();
+
+                    let mut points = Vec::new();
 
                     {
                         re_tracing::profile_scope!("build");
@@ -197,31 +203,94 @@ impl TimeSeriesSystem {
                             }
                         }
                     }
+
+                    if points.is_empty() {
+                        return;
+                    }
+
+                    // TODO: seriously i dont get it, what's with the sort? doesnt seem to have
+                    // much impact though (because it's already sorted i assume).
+                    // TODO: cache should already be sorted at this point.
+                    // points.sort_by_key(|s| s.time);
+                    assert!(!points.windows(2).any(|p| p[0].time > p[1].time));
+
+                    if x_tick_size > 1.0 {
+                        re_tracing::profile_scope!("aggregate");
+
+                        let min_time = points.first().map_or(i64::MIN, |p| p.time);
+                        let max_time = points.last().map_or(i64::MAX, |p| p.time);
+
+                        let mut aggregated =
+                            Vec::with_capacity((points.len() as f64 / x_tick_size) as _);
+
+                        // let windowsz = usize::max(1, x_tick_size.ceil() as usize);
+                        let windowsz = usize::max(1, x_tick_size.floor() as usize);
+                        let x_tick_size_fract = x_tick_size.fract();
+                        let is_fract = x_tick_size_fract > 0.0;
+
+                        let mut i = 0;
+                        while i < points.len() {
+                            let mut j = 0;
+
+                            let mut acc = points[i + j].clone();
+                            j += 1;
+
+                            while j < windowsz && i + j < points.len() {
+                                let point = &points[i + j];
+                                acc.value += point.value;
+                                acc.attrs.radius += point.attrs.radius;
+                                j += 1;
+                            }
+
+                            if is_fract && i + j < points.len() {
+                                let point = &points[i + j];
+                                let w = x_tick_size_fract;
+                                acc.value += point.value * w;
+                                acc.attrs.radius += (point.attrs.radius as f64 * w) as f32;
+                            }
+
+                            acc.value /= x_tick_size;
+                            acc.attrs.radius = (acc.attrs.radius as f64 / x_tick_size) as _;
+
+                            aggregated.push(acc);
+
+                            i += windowsz;
+                        }
+
+                        points = aggregated;
+
+                        // TODO: explain
+                        if let Some(p) = points.first_mut() {
+                            p.time = min_time;
+                        }
+                        if let Some(p) = points.last_mut() {
+                            p.time = max_time;
+                        }
+                    }
+
+                    let points = &points;
+
+                    // TODO: can be cached too
+                    // If all points within a line share the label (and it isn't `None`), then we use it
+                    // as the whole line label for the plot legend.
+                    // Otherwise, we just use the entity path as-is.
+                    let same_label = |points: &[PlotPoint]| -> Option<String> {
+                        let label = points[0].attrs.label.as_ref()?;
+                        (points.iter().all(|p| p.attrs.label.as_ref() == Some(label)))
+                            .then(|| label.clone())
+                    };
+                    let line_label =
+                        same_label(points).unwrap_or_else(|| data_result.entity_path.to_string());
+
+                    self.add_line_segments(&line_label, points);
+
+                    let min_time = store
+                        .entity_min_time(&query.timeline, &data_result.entity_path)
+                        .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
+
+                    self.min_time = Some(self.min_time.map_or(min_time, |time| time.min(min_time)));
                 },
             );
-
-            if points.is_empty() {
-                continue;
-            }
-
-            let min_time = store
-                .entity_min_time(&query.timeline, &data_result.entity_path)
-                .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
-
-            self.min_time = Some(self.min_time.map_or(min_time, |time| time.min(min_time)));
-
-            // If all points within a line share the label (and it isn't `None`), then we use it
-            // as the whole line label for the plot legend.
-            // Otherwise, we just use the entity path as-is.
-            let same_label = |points: &[PlotPoint]| -> Option<String> {
-                let label = points[0].attrs.label.as_ref()?;
-                (points.iter().all(|p| p.attrs.label.as_ref() == Some(label)))
-                    .then(|| label.clone())
-            };
-            let line_label =
-                same_label(&points).unwrap_or_else(|| data_result.entity_path.to_string());
-
-            self.add_line_segments(&line_label, points);
         }
 
         Ok(())
@@ -231,8 +300,16 @@ impl TimeSeriesSystem {
     // segments.
     // A line segment is a continuous run of points with identical attributes: each time
     // we notice a change in attributes, we need a new line segment.
+    //
+    // TODO: sure it's slow, but that's because it needs:
+    // - to be done on the GPU
+    // - to compute level of details
+    // - to not split lines for imperceptible changes
+    // - etc
+    //
+    // and then does it really make sense to even cache it? who knows
     #[inline(never)] // Better callstacks on crashes
-    fn add_line_segments(&mut self, line_label: &str, points: Vec<PlotPoint>) {
+    fn add_line_segments(&mut self, line_label: &str, points: &[PlotPoint]) {
         re_tracing::profile_function!();
 
         let num_points = points.len();
@@ -249,7 +326,7 @@ impl TimeSeriesSystem {
             points: Vec::with_capacity(num_points),
         };
 
-        for (i, p) in points.into_iter().enumerate() {
+        for (i, p) in points.iter().enumerate() {
             if p.attrs == attrs {
                 // Same attributes, just add to the current line segment.
 

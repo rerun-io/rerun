@@ -47,6 +47,13 @@ impl InstanceKey {
     }
 }
 
+impl crate::SizeBytes for InstanceKey {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl std::fmt::Display for InstanceKey {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

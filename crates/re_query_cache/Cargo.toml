@@ -21,22 +21,35 @@ default = []
 
 [dependencies]
 # Rerun dependencies:
+re_arrow_store.workspace = true
+re_data_store.workspace = true
+re_format.workspace = true
+re_log.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
+re_tracing.workspace = true
+re_types_core.workspace = true
 
 # External dependencies:
 ahash.workspace = true
+arrow2.workspace = true
+backtrace = "0.3"
 document-features.workspace = true
 itertools = { workspace = true }
+nohash-hasher.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
 thiserror.workspace = true
 
 
 [dev-dependencies]
 re_log_types = { workspace = true, features = ["testing"] }
+re_types = { workspace = true, features = ["datagen"] }
 
 criterion = "0.5"
 itertools = { workspace = true }
 mimalloc.workspace = true
+rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true
 
 

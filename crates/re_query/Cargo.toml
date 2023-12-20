@@ -35,10 +35,14 @@ re_log.workspace = true
 re_tracing.workspace = true
 
 # External dependencies:
+ahash.workspace = true
 arrow2.workspace = true
 backtrace.workspace = true
 document-features.workspace = true
 itertools = { workspace = true }
+nohash-hasher.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
 thiserror.workspace = true
 
 # Optional dependencies:
@@ -62,6 +66,7 @@ polars-core = { workspace = true, features = [
   "fmt",
 ] }
 rand = { workspace = true, features = ["std", "std_rng"] }
+similar-asserts.workspace = true
 
 [lib]
 bench = false

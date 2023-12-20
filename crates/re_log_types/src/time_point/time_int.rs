@@ -9,6 +9,13 @@ use crate::time::{Duration, Time};
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimeInt(pub(crate) i64);
 
+impl re_types_core::SizeBytes for TimeInt {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl nohash_hasher::IsEnabled for TimeInt {}
 
 impl TimeInt {

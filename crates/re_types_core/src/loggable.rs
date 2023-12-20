@@ -198,7 +198,12 @@ impl ComponentName {
 impl crate::SizeBytes for ComponentName {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        0
+        0 // interned, assumed amortized
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }
 
@@ -240,6 +245,11 @@ impl DatatypeName {
 impl crate::SizeBytes for DatatypeName {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        0
+        0 // interned, assumed amortized
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

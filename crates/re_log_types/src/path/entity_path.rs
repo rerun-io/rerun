@@ -240,6 +240,11 @@ impl SizeBytes for EntityPath {
     fn heap_size_bytes(&self) -> u64 {
         0 // NOTE: we assume it's amortized due to the `Arc`
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true // because it's amortized
+    }
 }
 
 impl FromIterator<EntityPathPart> for EntityPath {

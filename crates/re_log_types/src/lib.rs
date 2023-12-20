@@ -101,6 +101,14 @@ pub enum StoreKind {
     Blueprint,
 }
 
+// TODO: pod
+impl re_types_core::SizeBytes for StoreKind {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl std::fmt::Display for StoreKind {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -120,6 +128,17 @@ impl std::fmt::Display for StoreKind {
 pub struct StoreId {
     pub kind: StoreKind,
     pub id: Arc<String>,
+}
+
+impl re_types_core::SizeBytes for StoreId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            kind,
+            id: _, // considered amortized
+        } = self;
+        kind.heap_size_bytes()
+    }
 }
 
 impl StoreId {

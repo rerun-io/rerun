@@ -232,7 +232,10 @@ where
 /// the required [`Component`]s using [`InstanceKey`] values.
 #[derive(Clone, Debug)]
 pub struct ArchetypeView<A: Archetype> {
+    // TODO: timeline, time, storegeneration?
+    // TODO: this is the RowId of
     pub(crate) primary_row_id: RowId,
+    // TODO:
     pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
     pub(crate) phantom: PhantomData<A>,
 }

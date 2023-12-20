@@ -205,7 +205,7 @@ fn test_tuid() {
     where
         T: Ord,
     {
-        data.windows(2).all(|w| w[0] <= w[1])
+        !data.windows(2).any(|w| w[0] > w[1])
     }
 
     let num = 100_000;

@@ -15,20 +15,27 @@ mod points3d;
 mod spatial_view_part;
 mod transform3d_arrows;
 
-pub use cameras::CamerasPart;
-pub use images::ImagesPart;
-pub use images::ViewerImage;
-use re_types::components::Text;
-pub use spatial_view_part::SpatialViewPartData;
-pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
+pub use self::cameras::CamerasPart;
+pub use self::entity_iterator::{
+    process_archetype_views, process_cached_archetype_views_r1,
+    process_cached_archetype_views_r1o1, process_cached_archetype_views_r1o2,
+    process_cached_archetype_views_r1o3, process_cached_archetype_views_r1o4,
+    process_cached_archetype_views_r1o5, process_cached_archetype_views_r1o6,
+    process_cached_archetype_views_r1o7, process_cached_archetype_views_r1o8,
+    process_cached_archetype_views_r1o9,
+};
+pub use self::images::ImagesPart;
+pub use self::images::ViewerImage;
+pub use self::spatial_view_part::SpatialViewPartData;
+pub use self::transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
 
 #[doc(hidden)] // Public for benchmarks
-pub use points3d::LoadedPoints;
+pub use points3d::{LoadedPoints, Points3DComponentData};
 
 use ahash::HashMap;
 
 use re_data_store::{EntityPath, InstancePathHash};
-use re_types::components::{Color, InstanceKey};
+use re_types::components::{Color, InstanceKey, Radius, Text};
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
 use re_viewer_context::SpaceViewClassRegistryError;
@@ -125,15 +132,14 @@ pub fn picking_id_from_instance_key(
 }
 
 /// Process [`Color`] components using annotations and default colors.
-#[allow(dead_code)]
 pub fn process_colors<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &'a EntityPath,
     annotation_infos: &'a ResolvedAnnotationInfos,
 ) -> Result<impl Iterator<Item = egui::Color32> + 'a, re_query::QueryError> {
     re_tracing::profile_function!();
-    let default_color = DefaultColor::EntityPath(ent_path);
 
+    let default_color = DefaultColor::EntityPath(ent_path);
     Ok(itertools::izip!(
         annotation_infos.iter(),
         arch_view.iter_optional_component::<Color>()?,
@@ -143,8 +149,23 @@ pub fn process_colors<'a, A: Archetype>(
     }))
 }
 
+/// Process [`Color`] components using annotations and default colors.
+pub fn process_cached_colors<'a>(
+    colors: &'a [Option<Color>],
+    ent_path: &'a EntityPath,
+    annotation_infos: &'a ResolvedAnnotationInfos,
+) -> Result<impl Iterator<Item = egui::Color32> + 'a, re_query::QueryError> {
+    re_tracing::profile_function!();
+
+    let default_color = DefaultColor::EntityPath(ent_path);
+    Ok(
+        itertools::izip!(annotation_infos.iter(), colors,).map(move |(annotation_info, color)| {
+            annotation_info.color(color.map(|c| c.to_array()), default_color)
+        }),
+    )
+}
+
 /// Process [`Text`] components using annotations.
-#[allow(dead_code)]
 pub fn process_labels<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     annotation_infos: &'a ResolvedAnnotationInfos,
@@ -158,6 +179,20 @@ pub fn process_labels<'a, A: Archetype>(
     .map(move |(annotation_info, text)| annotation_info.label(text.as_ref().map(|t| t.as_str()))))
 }
 
+/// Process [`Text`] components using annotations.
+pub fn process_cached_labels<'a>(
+    labels: &'a [Option<Text>],
+    annotation_infos: &'a ResolvedAnnotationInfos,
+) -> Result<impl Iterator<Item = Option<String>> + 'a, re_query::QueryError> {
+    re_tracing::profile_function!();
+
+    Ok(
+        itertools::izip!(annotation_infos.iter(), labels,).map(move |(annotation_info, text)| {
+            annotation_info.label(text.as_ref().map(|t| t.as_str()))
+        }),
+    )
+}
+
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
 pub fn process_radii<'a, A: Archetype>(
@@ -168,22 +203,37 @@ pub fn process_radii<'a, A: Archetype>(
     let ent_path = ent_path.clone();
     Ok(arch_view
         .iter_optional_component::<re_types::components::Radius>()?
-        .map(move |radius| {
-            radius.map_or(re_renderer::Size::AUTO, |r| {
-                if 0.0 <= r.0 && r.0.is_finite() {
-                    re_renderer::Size::new_scene(r.0)
-                } else {
-                    if r.0 < 0.0 {
-                        re_log::warn_once!("Found negative radius in entity {ent_path}");
-                    } else if r.0.is_infinite() {
-                        re_log::warn_once!("Found infinite radius in entity {ent_path}");
-                    } else {
-                        re_log::warn_once!("Found NaN radius in entity {ent_path}");
-                    }
-                    re_renderer::Size::AUTO
-                }
-            })
-        }))
+        .map(move |radius| process_radius(&ent_path, &radius)))
+}
+
+/// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
+/// where no radius is specified.
+pub fn process_cached_radii<'a>(
+    radii: &'a [Option<Radius>],
+    ent_path: &EntityPath,
+) -> Result<impl Iterator<Item = re_renderer::Size> + 'a, re_query::QueryError> {
+    re_tracing::profile_function!();
+    let ent_path = ent_path.clone();
+    Ok(radii
+        .iter()
+        .map(move |radius| process_radius(&ent_path, radius)))
+}
+
+fn process_radius(entity_path: &EntityPath, radius: &Option<Radius>) -> re_renderer::Size {
+    radius.map_or(re_renderer::Size::AUTO, |r| {
+        if 0.0 <= r.0 && r.0.is_finite() {
+            re_renderer::Size::new_scene(r.0)
+        } else {
+            if r.0 < 0.0 {
+                re_log::warn_once!("Found negative radius in entity {entity_path}");
+            } else if r.0.is_infinite() {
+                re_log::warn_once!("Found infinite radius in entity {entity_path}");
+            } else {
+                re_log::warn_once!("Found NaN radius in entity {entity_path}");
+            }
+            re_renderer::Size::AUTO
+        }
+    })
 }
 
 /// Resolves all annotations for the given entity view.
@@ -202,6 +252,7 @@ where
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
+// TODO
 fn process_annotations_and_keypoints<Primary, A: Archetype>(
     latest_at: re_log_types::TimeInt,
     arch_view: &re_query::ArchetypeView<A>,
@@ -248,6 +299,52 @@ where
         }
     })
     .collect();
+
+    Ok((ResolvedAnnotationInfos::Many(annotation_info), keypoints))
+}
+
+fn process_cached_annotations_and_keypoints<Primary>(
+    latest_at: re_log_types::TimeInt,
+    primary: &[Primary],
+    keypoint_ids: Option<&[Option<re_types::components::KeypointId>]>,
+    class_ids: Option<&[Option<re_types::components::ClassId>]>,
+    annotations: &Annotations,
+    mut primary_into_position: impl FnMut(&Primary) -> glam::Vec3,
+) -> Result<(ResolvedAnnotationInfos, Keypoints), re_query::QueryError>
+where
+    Primary: re_types::Component + Clone,
+{
+    re_tracing::profile_function!();
+
+    let mut keypoints: Keypoints = HashMap::default();
+
+    // No need to process annotations if we don't have keypoints or class-ids
+    let (Some(keypoint_ids), Some(class_ids)) = (keypoint_ids, class_ids) else {
+        let resolved_annotation = annotations
+            .resolved_class_description(None)
+            .annotation_info();
+
+        return Ok((
+            ResolvedAnnotationInfos::Same(primary.len(), resolved_annotation),
+            keypoints,
+        ));
+    };
+
+    let annotation_info = itertools::izip!(primary, keypoint_ids, class_ids)
+        .map(|(primary, &keypoint_id, &class_id)| {
+            let class_description = annotations.resolved_class_description(class_id);
+
+            if let (Some(keypoint_id), Some(class_id), primary) = (keypoint_id, class_id, primary) {
+                keypoints
+                    .entry((class_id, latest_at.as_i64()))
+                    .or_default()
+                    .insert(keypoint_id.0, primary_into_position(&primary));
+                class_description.annotation_info_with_keypoint(keypoint_id.0)
+            } else {
+                class_description.annotation_info()
+            }
+        })
+        .collect();
 
     Ok((ResolvedAnnotationInfos::Many(annotation_info), keypoints))
 }

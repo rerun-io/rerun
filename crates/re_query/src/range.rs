@@ -88,6 +88,8 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
         }
     }
 
+    cwis_latest = None; // TODO: need to be configurable
+
     // send the latest-at state before anything else
     cwis_latest
         .into_iter()
