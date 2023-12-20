@@ -82,6 +82,8 @@ impl DataResult {
     /// Write the [`EntityProperties`] for this result back to the Blueprint store.
     pub fn save_override(&self, props: Option<EntityProperties>, ctx: &ViewerContext<'_>) {
         // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
         let Some(override_path) = self.override_path() else {
             re_log::warn!(
                 "Tried to save override for {:?} but it has no override path",
@@ -147,9 +149,18 @@ impl DataResult {
 
     #[inline]
     pub fn accumulated_properties(&self) -> &EntityProperties {
-        self.property_overrides
-            .as_ref()
-            .map_or(&DEFAULT_PROPS, |p| &p.accumulated_properties)
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
+        let Some(property_overrides) = &self.property_overrides else {
+            re_log::warn!(
+                "Tried to get accumulated properties for {:?} but it has no property overrides",
+                self.entity_path
+            );
+            return &DEFAULT_PROPS;
+        };
+
+        &property_overrides.accumulated_properties
     }
 
     #[inline]
