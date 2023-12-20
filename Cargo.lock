@@ -5249,8 +5249,10 @@ version = "0.12.0-alpha.1+dev"
 dependencies = [
  "eframe",
  "egui",
+ "egui_commonmark",
  "egui_extras",
  "egui_tiles",
+ "parking_lot 0.12.1",
  "re_log",
  "serde",
  "serde_json",

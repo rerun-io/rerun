@@ -4,7 +4,7 @@ use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_data_store::{EntityPath, EntityTree};
-use re_log_types::{EntityPathExpr, TimeInt};
+use re_log_types::{EntityPathFilter, TimeInt};
 use re_space_view::{DataQuery as _, DataQueryBlueprint};
 use re_types::components::{DisconnectedSpace, TensorData};
 use re_types::ComponentNameSet;
@@ -79,12 +79,13 @@ pub fn all_possible_space_views(
                         return None;
                     }
 
+                    let mut entity_path_filter = EntityPathFilter::default();
+                    entity_path_filter.add_subtree(candidate_space_path.clone());
+
                     // TODO(#4377): The need to run a query-per-candidate for all possible candidates
                     // is way too expensive. This needs to be optimized significantly.
-                    let candidate_query = DataQueryBlueprint::new(
-                        *class_identifier,
-                        std::iter::once(EntityPathExpr::Recursive(candidate_space_path.clone())),
-                    );
+                    let candidate_query =
+                        DataQueryBlueprint::new(*class_identifier, entity_path_filter);
 
                     let results =
                         candidate_query.execute_query(ctx.store_context, entities_per_system);
@@ -256,9 +257,11 @@ pub fn default_created_space_views(
             query_result.tree.visit(&mut |handle| {
                 if let Some(result) = query_result.tree.lookup_result(handle) {
                     if !result.view_parts.is_empty() {
+                        let mut entity_path_filter = EntityPathFilter::default();
+                        entity_path_filter.add_exact(result.entity_path.clone());
                         let query = DataQueryBlueprint::new(
                             *candidate.class_identifier(),
-                            std::iter::once(EntityPathExpr::Exact(result.entity_path.clone())),
+                            entity_path_filter,
                         );
                         let mut space_view = SpaceViewBlueprint::new(
                             *candidate.class_identifier(),
@@ -367,14 +370,14 @@ pub fn default_created_space_views(
                     if images_by_bucket.len() > 1 {
                         // If all images end up in the same bucket, proceed as normal. Otherwise stack images as instructed.
                         for bucket in images_by_bucket.values() {
-                            let expressions: Vec<_> = bucket
-                                .iter()
-                                .map(|path| EntityPathExpr::Exact(path.clone()))
-                                .collect();
+                            let mut entity_path_filter = EntityPathFilter::default();
+                            for path in bucket {
+                                entity_path_filter.add_exact(path.clone());
+                            }
 
                             let query = DataQueryBlueprint::new(
                                 *candidate.class_identifier(),
-                                expressions.into_iter(),
+                                entity_path_filter,
                             );
 
                             let mut space_view = SpaceViewBlueprint::new(

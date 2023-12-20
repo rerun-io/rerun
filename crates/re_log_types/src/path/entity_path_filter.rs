@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::EntityPath;
+use crate::{EntityPath, EntityPathExpr};
 
 /// A way to filter a set of `EntityPath`s.
 ///
@@ -35,9 +35,9 @@ use crate::EntityPath;
 /// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
 /// The last rule matching `/world` is `- /world`, so it is excluded.
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub struct EntityPathFilter {
-    rules: BTreeMap<EntityPathRule, RuleEffect>,
+    pub rules: BTreeMap<EntityPathRule, RuleEffect>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -48,10 +48,45 @@ pub struct EntityPathRule {
     pub include_subtree: bool,
 }
 
+// TODO: remove EntityPathExpr
+impl From<EntityPathExpr> for EntityPathRule {
+    fn from(expr: EntityPathExpr) -> Self {
+        match expr {
+            EntityPathExpr::Exact(path) => Self {
+                path,
+                include_subtree: false,
+            },
+            EntityPathExpr::Recursive(path) => Self {
+                path,
+                include_subtree: true,
+            },
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RuleEffect {
     Include,
     Exclude,
+}
+
+impl std::ops::AddAssign for EntityPathFilter {
+    /// The union of all rules
+    #[inline]
+    fn add_assign(&mut self, mut rhs: Self) {
+        self.rules.append(&mut rhs.rules);
+    }
+}
+
+impl std::iter::Sum for EntityPathFilter {
+    /// The union of all rules
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        let mut sum = EntityPathFilter::default();
+        for item in iter {
+            sum += item;
+        }
+        sum
+    }
 }
 
 impl EntityPathFilter {
@@ -114,16 +149,6 @@ impl EntityPathFilter {
         s
     }
 
-    pub fn includes(&self, path: &EntityPath) -> bool {
-        let effect = self
-            .most_specific_match(path)
-            .unwrap_or(RuleEffect::Exclude);
-        match effect {
-            RuleEffect::Include => true,
-            RuleEffect::Exclude => false,
-        }
-    }
-
     /// Find the most specific matching rule and return its effect.
     /// If no rule matches, return `None`.
     pub fn most_specific_match(&self, path: &EntityPath) -> Option<RuleEffect> {
@@ -138,9 +163,69 @@ impl EntityPathFilter {
         }
         None
     }
+
+    pub fn is_included(&self, path: &EntityPath) -> bool {
+        let effect = self
+            .most_specific_match(path)
+            .unwrap_or(RuleEffect::Exclude);
+        match effect {
+            RuleEffect::Include => true,
+            RuleEffect::Exclude => false,
+        }
+    }
+
+    pub fn is_exact_included(&self, entity_path: &EntityPath) -> bool {
+        self.rules.iter().any(|(rule, effect)| {
+            effect == &RuleEffect::Include && !rule.include_subtree && rule.path == *entity_path
+        })
+    }
+
+    pub fn add_exact(&mut self, clone: EntityPath) {
+        self.rules
+            .insert(EntityPathRule::exact(clone), RuleEffect::Include);
+    }
+
+    pub fn add_subtree(&mut self, clone: EntityPath) {
+        self.rules.insert(
+            EntityPathRule::including_subtree(clone),
+            RuleEffect::Include,
+        );
+    }
+
+    pub fn contains_rule_for_exactly(&self, entity_path: &EntityPath) -> bool {
+        self.rules.iter().any(|(rule, _)| rule.path == *entity_path)
+    }
+
+    pub fn is_explicitly_excluded(&self, entity_path: &EntityPath) -> bool {
+        self.rules
+            .iter()
+            .any(|(rule, effect)| rule.path == *entity_path && effect == &RuleEffect::Exclude)
+    }
+
+    pub fn is_explicitly_included(&self, entity_path: &EntityPath) -> bool {
+        self.rules
+            .iter()
+            .any(|(rule, effect)| rule.path == *entity_path && effect == &RuleEffect::Include)
+    }
 }
 
 impl EntityPathRule {
+    #[inline]
+    pub fn exact(path: EntityPath) -> Self {
+        Self {
+            path,
+            include_subtree: false,
+        }
+    }
+
+    #[inline]
+    pub fn including_subtree(path: EntityPath) -> Self {
+        Self {
+            path,
+            include_subtree: true,
+        }
+    }
+
     pub fn parse_forgiving(expression: &str) -> Self {
         let expression = expression.trim();
         if let Some(path) = expression.strip_suffix("/**") {

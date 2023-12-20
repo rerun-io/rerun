@@ -5,7 +5,7 @@ use re_data_store::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
-use re_log_types::{DataRow, RowId, TimePoint};
+use re_log_types::{DataRow, EntityPathFilter, RowId, TimePoint};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
@@ -520,7 +520,7 @@ fn blueprint_ui(
                     .on_hover_text("Create an exact duplicate of this Space View including all Blueprint settings")
                     .clicked()
                 {
-                    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+                     if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                         let new_space_view = space_view.duplicate();
                         viewport.blueprint.add_space_views(std::iter::once(new_space_view), ctx, &mut viewport.deferred_tree_actions);
                         viewport.blueprint.mark_user_interaction(ctx);
@@ -530,36 +530,11 @@ fn blueprint_ui(
 
             if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                 if let Some(query) = space_view.queries.first() {
-                    let inclusions = query.expressions.inclusions.join("\n");
-                    let mut edited_inclusions = inclusions.clone();
-                    let exclusions = query.expressions.exclusions.join("\n");
-                    let mut edited_exclusions = exclusions.clone();
-
-                    ui.label("Inclusion expressions");
-                    ui.text_edit_multiline(&mut edited_inclusions);
-                    ui.label("Exclusion expressions");
-                    ui.text_edit_multiline(&mut edited_exclusions);
-
-                    if edited_inclusions != inclusions || edited_exclusions != exclusions {
+                    if let Some(new_entity_path_filter) =
+                        entity_path_filter_ui(ui, &query.entity_path_filter)
+                    {
                         let timepoint = TimePoint::timeless();
-
-                        // TODO(jleibs): We intentionally avoid passing through a validated
-                        // intermediate state because we want the text-box-edits to be incrementally
-                        // preserved. Normalization instead happens when parsing the expressions.
-                        // This should all get replaced with the EntityFilter refactor coming down the
-                        // pipe.
-                        let expressions_component: QueryExpressions =
-                            re_space_view::blueprint::datatypes::QueryExpressions {
-                                inclusions: edited_inclusions
-                                    .split('\n')
-                                    .map(|s| s.into())
-                                    .collect(),
-                                exclusions: edited_exclusions
-                                    .split('\n')
-                                    .map(|s| s.into())
-                                    .collect(),
-                            }
-                            .into();
+                        let expressions_component = QueryExpressions::from(&new_entity_path_filter);
 
                         let row = DataRow::from_cells1_sized(
                             RowId::new(),
@@ -718,6 +693,86 @@ fn blueprint_ui(
 
         Item::ComponentPath(_) | Item::Container(_) => {}
     }
+}
+
+/// Returns a new filter when the editing is done, and there has been a change.
+fn entity_path_filter_ui(ui: &mut egui::Ui, filter: &EntityPathFilter) -> Option<EntityPathFilter> {
+    fn entity_path_filter_help_ui(ui: &mut egui::Ui) {
+        let markdown = r#"
+A way to filter a set of `EntityPath`s.
+
+This implements as simple set of include/exclude rules:
+
+```diff
++ /world/**           # add everything…
+- /world/roads/**     # …but remove all roads…
++ /world/roads/main   # …but show main road
+```
+
+If there is multiple matching rules, the most specific rule wins.
+If there are multiple rules of the same specificity, the last one wins.
+If no rules match, the path is excluded.
+
+The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
+(`/world/**` matches both `/world` and `/world/car/driver`).
+Other uses of `*` are not (yet) supported.
+
+`EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
+This means the last matching rule is also the most specific one.
+For instance:
+
+```diff
++ /world/**
+- /world
+- /world/car/**
++ /world/car/driver
+```
+
+The last rule matching `/world/car/driver` is `+ /world/car/driver`, so it is included.
+The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
+The last rule matching `/world` is `- /world`, so it is excluded.
+The last rule matching `/world/house` is `+ /world/**`, so it is included.
+    "#
+        .trim();
+
+        re_ui::markdownm_ui(ui, egui::Id::new("entity_path_filter_help_ui"), markdown);
+    }
+
+    // TODO(emilk): syntax highlighting
+
+    // We store the string we are temporarily editing in the `Ui`'s temporary data storage.
+    // This is so it can contain invalid rules while the user edits it, and it's only normalized
+    // when they press enter, or stops editing.
+    let filter_text_id = ui.id().with("filter_text");
+
+    let mut filter_string = ui.data_mut(|data| {
+        data.get_temp_mut_or_insert_with::<String>(filter_text_id, || filter.formatted())
+            .clone()
+    });
+
+    ui.horizontal(|ui| {
+        ui.label("Entity path filter");
+        re_ui::help_hover_button(ui).on_hover_ui(entity_path_filter_help_ui);
+    });
+    let response = ui.text_edit_multiline(&mut filter_string);
+
+    if response.has_focus() {
+        ui.data_mut(|data| data.insert_temp::<String>(filter_text_id, filter_string.clone()));
+    } else {
+        // Reconstruct it from the filter next frame
+        ui.data_mut(|data| data.remove::<String>(filter_text_id));
+    }
+
+    if response.lost_focus() {
+        // Apply the edit.
+        let new_filter = EntityPathFilter::parse_forgiving(&filter_string);
+
+        if &new_filter != filter {
+            return Some(new_filter);
+        }
+    }
+
+    None
 }
 
 fn entity_props_ui(

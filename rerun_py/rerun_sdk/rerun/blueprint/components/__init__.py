@@ -40,7 +40,13 @@ from .included_space_views import (
 )
 from .name import Name, NameArrayLike, NameBatch, NameLike, NameType
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
-from .query_expressions import QueryExpressions, QueryExpressionsBatch, QueryExpressionsType
+from .query_expressions import (
+    QueryExpressions,
+    QueryExpressionsArrayLike,
+    QueryExpressionsBatch,
+    QueryExpressionsLike,
+    QueryExpressionsType,
+)
 from .space_view_class import (
     SpaceViewClass,
     SpaceViewClassArrayLike,
@@ -100,7 +106,9 @@ __all__ = [
     "PanelViewLike",
     "PanelViewType",
     "QueryExpressions",
+    "QueryExpressionsArrayLike",
     "QueryExpressionsBatch",
+    "QueryExpressionsLike",
     "QueryExpressionsType",
     "SpaceViewClass",
     "SpaceViewClassArrayLike",
