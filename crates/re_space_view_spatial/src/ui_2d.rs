@@ -370,20 +370,24 @@ pub fn view_2d(
         ));
 
         // Make sure to _first_ draw the selected, and *then* the hovered context on top!
-        painter.extend(show_projections_from_3d_space(
-            ui,
-            query.space_origin,
-            &ui_from_canvas,
-            ctx.selection_state().selected_space_context(),
-            ui.style().visuals.selection.bg_fill,
-        ));
-        painter.extend(show_projections_from_3d_space(
-            ui,
-            query.space_origin,
-            &ui_from_canvas,
-            ctx.selection_state().hovered_space_context(),
-            egui::Color32::WHITE,
-        ));
+        for selected_context in ctx.selection_state().selected_space_context() {
+            painter.extend(show_projections_from_3d_space(
+                ui,
+                query.space_origin,
+                &ui_from_canvas,
+                selected_context,
+                ui.style().visuals.selection.bg_fill,
+            ));
+        }
+        if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
+            painter.extend(show_projections_from_3d_space(
+                ui,
+                query.space_origin,
+                &ui_from_canvas,
+                hovered_context,
+                egui::Color32::WHITE,
+            ));
+        }
 
         // Add egui driven labels on top of re_renderer content.
         painter.extend(label_shapes);

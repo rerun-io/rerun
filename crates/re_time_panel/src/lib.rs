@@ -12,7 +12,6 @@ mod time_selection_ui;
 
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
-use std::slice;
 
 use re_data_store::{EntityTree, InstancePath, TimeHistogram};
 use re_data_ui::item_ui;
@@ -484,7 +483,7 @@ impl TimePanel {
         let default_open = tree.path.len() <= 1 && !tree.is_leaf();
 
         let item = Item::InstancePath(None, InstancePath::entity_splat(tree.path.clone()));
-        let is_selected = ctx.selection().contains(&item);
+        let is_selected = ctx.selection().contains_item(&item);
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
@@ -517,7 +516,7 @@ impl TimePanel {
         let response = response
             .on_hover_ui(|ui| re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, &tree.path));
 
-        item_ui::select_hovered_on_click(ctx, &response, slice::from_ref(&item));
+        item_ui::select_hovered_on_click(ctx, &response, item.clone());
 
         let is_closed = body_response.is_none();
         let response_rect = response.rect;
@@ -611,7 +610,7 @@ impl TimePanel {
                 let response =
                     re_data_ui::temporary_style_ui_for_component(ui, component_name, |ui| {
                         ListItem::new(ctx.re_ui, short_component_name)
-                            .selected(ctx.selection().contains(&item))
+                            .selected(ctx.selection().contains_item(&item))
                             .width_allocation_mode(WidthAllocationMode::Compact)
                             .force_hovered(
                                 ctx.selection_state().highlight_for_ui_element(&item)
@@ -626,11 +625,7 @@ impl TimePanel {
 
                 ui.set_clip_rect(clip_rect_save);
 
-                re_data_ui::item_ui::select_hovered_on_click(
-                    ctx,
-                    &response,
-                    slice::from_ref(&item),
-                );
+                re_data_ui::item_ui::select_hovered_on_click(ctx, &response, item.clone());
 
                 let response_rect = response.rect;
 
@@ -751,7 +746,7 @@ fn highlight_timeline_row(
 ) {
     let item_hovered =
         ctx.selection_state().highlight_for_ui_element(item) == HoverHighlight::Hovered;
-    let item_selected = ctx.selection().contains(item);
+    let item_selected = ctx.selection().contains_item(item);
     let bg_color = if item_selected {
         Some(ui.visuals().selection.bg_fill.gamma_multiply(0.4))
     } else if item_hovered {

@@ -248,7 +248,7 @@ fn color_space_ui(
             item_ui::select_hovered_on_click(
                 ctx,
                 &interact,
-                &[Item::InstancePath(Some(query.space_view_id), instance)],
+                Item::InstancePath(Some(query.space_view_id), instance),
             );
         }
     }

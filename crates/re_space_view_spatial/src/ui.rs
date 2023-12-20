@@ -10,10 +10,9 @@ use re_space_view::ScreenshotMode;
 use re_types::components::{DepthMeter, InstanceKey, TensorData};
 use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
-    resolve_mono_instance_path, HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight,
-    SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache,
-    TensorStatsCache, UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery,
-    ViewerContext,
+    HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight, SpaceViewHighlights,
+    SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
+    UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
@@ -564,8 +563,6 @@ pub fn picking(
         if picked_image_with_coords.is_some() {
             // We don't support selecting pixels yet.
             instance_path.instance_key = InstanceKey::SPLAT;
-        } else {
-            instance_path = resolve_mono_instance_path(&ctx.current_query(), store, &instance_path);
         }
 
         hovered_items.push(Item::InstancePath(
@@ -627,41 +624,45 @@ pub fn picking(
         };
     }
 
-    item_ui::select_hovered_on_click(ctx, &response, &hovered_items);
+    // Associate the hovered space with the first item in the hovered item list.
+    // If we were to add several, space views might render unnecessary additional hints.
+    // TODO(andreas): Should there be context if no item is hovered at all? There's no usecase for that today it seems.
+    let mut hovered_items = hovered_items
+        .into_iter()
+        .map(|item| (item, None))
+        .collect::<Vec<_>>();
 
-    let hovered_space = match spatial_kind {
-        SpatialSpaceViewKind::TwoD => SelectedSpaceContext::TwoD {
-            space_2d: query.space_origin.clone(),
-            pos: picking_context
-                .pointer_in_space2d
-                .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
-        },
-        SpatialSpaceViewKind::ThreeD => {
-            let hovered_point = picking_result.space_position();
-            SelectedSpaceContext::ThreeD {
-                space_3d: query.space_origin.clone(),
-                pos: hovered_point,
-                tracked_space_camera: state.state_3d.tracked_camera.clone(),
-                point_in_space_cameras: parts
-                    .get::<CamerasPart>()?
-                    .space_cameras
-                    .iter()
-                    .map(|cam| {
-                        (
-                            cam.ent_path.clone(),
-                            hovered_point.and_then(|pos| cam.project_onto_2d(pos)),
-                        )
-                    })
-                    .collect(),
+    if let Some((_, context)) = hovered_items.first_mut() {
+        *context = Some(match spatial_kind {
+            SpatialSpaceViewKind::TwoD => SelectedSpaceContext::TwoD {
+                space_2d: query.space_origin.clone(),
+                pos: picking_context
+                    .pointer_in_space2d
+                    .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
+            },
+            SpatialSpaceViewKind::ThreeD => {
+                let hovered_point = picking_result.space_position();
+                SelectedSpaceContext::ThreeD {
+                    space_3d: query.space_origin.clone(),
+                    pos: hovered_point,
+                    tracked_space_camera: state.state_3d.tracked_camera.clone(),
+                    point_in_space_cameras: parts
+                        .get::<CamerasPart>()?
+                        .space_cameras
+                        .iter()
+                        .map(|cam| {
+                            (
+                                cam.ent_path.clone(),
+                                hovered_point.and_then(|pos| cam.project_onto_2d(pos)),
+                            )
+                        })
+                        .collect(),
+                }
             }
-        }
+        });
     };
-    ctx.selection_state()
-        .set_hovered_space_context(hovered_space.clone());
-    if response.clicked() {
-        ctx.selection_state()
-            .set_selected_space_context(hovered_space);
-    }
+
+    item_ui::select_hovered_on_click(ctx, &response, re_viewer_context::Selection(hovered_items));
 
     Ok(response)
 }

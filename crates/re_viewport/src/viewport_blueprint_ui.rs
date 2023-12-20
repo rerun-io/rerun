@@ -85,7 +85,7 @@ impl Viewport<'_, '_> {
 
         let response = ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
             .subdued(true)
-            .selected(ctx.selection().contains(&item))
+            .selected(ctx.selection().contains_item(&item))
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
                 visibility_changed = vis_response.changed();
@@ -102,7 +102,7 @@ impl Viewport<'_, '_> {
             })
             .item_response;
 
-        item_ui::select_hovered_on_click(ctx, &response, &[item]);
+        item_ui::select_hovered_on_click(ctx, &response, item);
 
         if remove {
             self.blueprint.mark_user_interaction(ctx);
@@ -155,7 +155,7 @@ impl Viewport<'_, '_> {
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
         let response = ListItem::new(ctx.re_ui, space_view.display_name.clone())
-            .selected(ctx.selection().contains(&item))
+            .selected(ctx.selection().contains_item(&item))
             .subdued(!visible)
             .force_hovered(is_item_hovered)
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
@@ -194,7 +194,7 @@ impl Viewport<'_, '_> {
             self.deferred_tree_actions.focus_tab = Some(space_view.id);
         }
 
-        item_ui::select_hovered_on_click(ctx, &response, &[item]);
+        item_ui::select_hovered_on_click(ctx, &response, item);
 
         if visibility_changed {
             if self.blueprint.auto_layout {
@@ -259,7 +259,7 @@ impl Viewport<'_, '_> {
                 )
             };
 
-            let is_selected = ctx.selection().contains(&item);
+            let is_selected = ctx.selection().contains_item(&item);
 
             let is_item_hovered =
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
@@ -373,7 +373,7 @@ impl Viewport<'_, '_> {
             };
             data_result.save_override(Some(properties), ctx);
 
-            item_ui::select_hovered_on_click(ctx, &response, &[item]);
+            item_ui::select_hovered_on_click(ctx, &response, item);
         }
     }
 
@@ -407,7 +407,8 @@ impl Viewport<'_, '_> {
                             .clicked()
                         {
                             ui.close_menu();
-                            ctx.set_single_selection(&Item::SpaceView(space_view.id));
+                            ctx.selection_state()
+                                .set_selection(Item::SpaceView(space_view.id));
                             self.blueprint.add_space_views(
                                 std::iter::once(space_view),
                                 ctx,

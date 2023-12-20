@@ -448,16 +448,16 @@ pub fn view_3d(
         state.state_3d.camera_before_tracked_camera = None;
 
         // While hovering an entity, focuses the camera on it.
-        if let Some(Item::InstancePath(_, instance_path)) = ctx.hovered().first() {
+        if let Some((Item::InstancePath(_, instance_path), _)) = ctx.hovered().first() {
             if let Some(camera) = find_camera(space_cameras, &instance_path.entity_path) {
                 state.state_3d.camera_before_tracked_camera =
                     state.state_3d.orbit_eye.map(|eye| eye.to_eye());
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_path.entity_path.clone());
-            } else if let SelectedSpaceContext::ThreeD {
+            } else if let Some(SelectedSpaceContext::ThreeD {
                 pos: Some(clicked_point),
                 ..
-            } = ctx.selection_state().hovered_space_context()
+            }) = ctx.selection_state().hovered_space_context()
             {
                 if let Some(mut new_orbit_eye) = state.state_3d.orbit_eye {
                     // TODO(andreas): It would be nice if we could focus on the center of the entity rather than the clicked point.
@@ -499,20 +499,24 @@ pub fn view_3d(
             .ok();
     }
 
-    show_projections_from_2d_space(
-        &mut line_builder,
-        space_cameras,
-        state,
-        ctx.selection_state().selected_space_context(),
-        ui.style().visuals.selection.bg_fill,
-    );
-    show_projections_from_2d_space(
-        &mut line_builder,
-        space_cameras,
-        state,
-        ctx.selection_state().hovered_space_context(),
-        egui::Color32::WHITE,
-    );
+    for selected_context in ctx.selection_state().selected_space_context() {
+        show_projections_from_2d_space(
+            &mut line_builder,
+            space_cameras,
+            state,
+            selected_context,
+            ui.style().visuals.selection.bg_fill,
+        );
+    }
+    if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
+        show_projections_from_2d_space(
+            &mut line_builder,
+            space_cameras,
+            state,
+            hovered_context,
+            egui::Color32::WHITE,
+        );
+    }
 
     {
         let mut box_batch = line_builder.batch("scene_bbox");
@@ -692,7 +696,7 @@ fn show_projections_from_2d_space(
                 }
             }
         }
-        _ => {}
+        SelectedSpaceContext::ThreeD { .. } => {}
     }
 }
 

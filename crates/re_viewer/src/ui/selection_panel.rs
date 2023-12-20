@@ -113,13 +113,13 @@ impl SelectionPanel {
         // no gap before the first item title
         ui.add_space(-ui.spacing().item_spacing.y);
 
-        let selection = ctx.selection().to_vec();
+        let selection = ctx.selection();
         let multi_selection_verbosity = if selection.len() > 1 {
             UiVerbosity::LimitHeight
         } else {
             UiVerbosity::Full
         };
-        for (i, item) in selection.iter().enumerate() {
+        for (i, item) in selection.iter_items().enumerate() {
             ui.push_id(i, |ui| {
                 what_is_selected_ui(ui, ctx, viewport.blueprint, item);
 
@@ -171,7 +171,7 @@ fn space_view_button(
     space_view: &re_viewport::SpaceViewBlueprint,
 ) -> egui::Response {
     let item = Item::SpaceView(space_view.id);
-    let is_selected = ctx.selection().contains(&item);
+    let is_selected = ctx.selection().contains_item(&item);
 
     let response = ctx
         .re_ui

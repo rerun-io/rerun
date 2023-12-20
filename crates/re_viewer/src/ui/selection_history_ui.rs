@@ -1,7 +1,7 @@
 use egui::RichText;
 use egui_tiles::Tile;
 use re_ui::UICommand;
-use re_viewer_context::{Item, ItemCollection, Selection, SelectionHistory};
+use re_viewer_context::{Item, Selection, SelectionHistory};
 use re_viewport::ViewportBlueprint;
 
 // ---
@@ -40,7 +40,7 @@ impl SelectionHistoryUi {
                 \n\
                 Right-click for more.",
                     UICommand::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
-                    item_collection_to_string(blueprint, &previous.selection.items),
+                    selection_to_string(blueprint, &previous.selection),
                 ));
 
             let mut return_current = false;
@@ -90,7 +90,7 @@ impl SelectionHistoryUi {
                 \n\
                 Right-click for more.",
                     UICommand::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
-                    item_collection_to_string(blueprint, &next.selection.items),
+                    selection_to_string(blueprint, &next.selection),
                 ));
 
             let mut return_current = false;
@@ -135,7 +135,7 @@ impl SelectionHistoryUi {
             ui.horizontal(|ui| {
                 {
                     // borrow checker workaround
-                    let sel = item_collection_to_string(blueprint, &sel.items);
+                    let sel = selection_to_string(blueprint, sel);
                     if ui
                         .selectable_value(&mut history.current, index, sel)
                         .clicked()
@@ -143,8 +143,8 @@ impl SelectionHistoryUi {
                         ui.close_menu();
                     }
                 }
-                if sel.items.len() == 1 {
-                    item_kind_ui(ui, sel.items.iter().next().unwrap());
+                if sel.iter_items().count() == 1 {
+                    item_kind_ui(ui, sel.iter_items().next().unwrap());
                 }
             });
         }
@@ -157,14 +157,18 @@ fn item_kind_ui(ui: &mut egui::Ui, sel: &Item) {
     ui.weak(RichText::new(format!("({})", sel.kind())));
 }
 
-fn item_collection_to_string(blueprint: &ViewportBlueprint, items: &ItemCollection) -> String {
-    if items.is_empty() {
-        // Can happen if no items are selected but the space context changed.
-        "<space context>".to_owned()
-    } else if items.len() == 1 {
-        item_to_string(blueprint, items.iter().next().unwrap())
-    } else if let Some(kind) = items.are_all_same_kind() {
-        format!("{}x {}s", items.len(), kind)
+fn selection_to_string(blueprint: &ViewportBlueprint, selection: &Selection) -> String {
+    debug_assert!(!selection.is_empty()); // history never contains empty selections.
+    if selection.len() == 1 {
+        if let Some(item) = selection.iter_items().next() {
+            item_to_string(blueprint, item)
+        } else {
+            // All items got removed or weren't there to begin with.
+            debug_assert!(selection.iter_space_context().next().is_some()); // Should never keep both empty item & context list.
+            "<space context>".to_owned()
+        }
+    } else if let Some(kind) = selection.are_all_items_same_kind() {
+        format!("{}x {}s", selection.len(), kind)
     } else {
         "<multiple selections>".to_owned()
     }
