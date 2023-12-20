@@ -34,23 +34,17 @@ mod constants {
 use constants::{NUM_ENTITY_PATHS, NUM_ROWS_PER_ENTITY_PATH};
 
 fn gc_batching() -> &'static [bool] {
-    #[cfg(feature = "core_benchmarks_only")]
-    {
+    if std::env::var("CI").is_ok() {
         &[false]
-    }
-    #[cfg(not(feature = "core_benchmarks_only"))]
-    {
+    } else {
         &[false, true]
     }
 }
 
 fn num_rows_per_bucket() -> &'static [u64] {
-    #[cfg(feature = "core_benchmarks_only")]
-    {
+    if std::env::var("CI").is_ok() {
         &[]
-    }
-    #[cfg(not(feature = "core_benchmarks_only"))]
-    {
+    } else {
         &[256, 512, 1024, 2048]
     }
 }

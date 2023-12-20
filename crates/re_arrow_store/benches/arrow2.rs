@@ -21,12 +21,7 @@ use re_types_core::{Component, SizeBytes as _};
 
 criterion::criterion_group!(benches, erased_clone, estimated_size_bytes);
 
-#[cfg(not(feature = "core_benchmarks_only"))]
 criterion::criterion_main!(benches);
-
-// Don't run these benchmarks on CI: they measure the performance of third-party libraries.
-#[cfg(feature = "core_benchmarks_only")]
-fn main() {}
 
 // ---
 
@@ -66,6 +61,10 @@ impl std::fmt::Display for ArrayKind {
 }
 
 fn erased_clone(c: &mut Criterion) {
+    if std::env::var("CI").is_ok() {
+        return;
+    }
+
     let kind = [
         ArrayKind::Primitive,
         ArrayKind::Struct,
@@ -179,6 +178,10 @@ fn erased_clone(c: &mut Criterion) {
 }
 
 fn estimated_size_bytes(c: &mut Criterion) {
+    if std::env::var("CI").is_ok() {
+        return;
+    }
+
     let kind = [
         ArrayKind::Primitive,
         ArrayKind::Struct,
