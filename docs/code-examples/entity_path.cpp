@@ -10,9 +10,8 @@ int main() {
         R"(world/42/escaped\ string\!)",
         rerun::TextDocument("This entity path was escaped manually")
     );
-    // TODO(emilk): implement entity path escaping in C++
-    // rec.log(
-    //     {"world", 42, "unescaped string!"},
-    //     rerun::TextDocument("This entity path was provided as a list of unescaped strings")
-    // );
+    rec.log(
+        rerun::escape_entity_path({"world", std::to_string(42), "unescaped string!"}),
+        rerun::TextDocument("This entity path was provided as a list of unescaped strings")
+    );
 }
