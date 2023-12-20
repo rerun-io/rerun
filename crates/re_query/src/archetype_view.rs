@@ -503,6 +503,16 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Convert an `ArchetypeView` back into a native Archetype instance
     pub fn to_archetype(&self) -> crate::Result<A> {
+        for component in A::required_components().iter() {
+            if self
+                .components
+                .get(component)
+                .map_or(true, |cwi| cwi.is_empty())
+            {
+                return Err(QueryError::PrimaryNotFound(*component));
+            }
+        }
+
         Ok(A::from_arrow_components(
             self.components
                 .values()

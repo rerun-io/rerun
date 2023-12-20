@@ -117,19 +117,15 @@ impl ContainerBlueprint {
             active_tab,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
-            // TODO(jleibs): When we clear containers from the store this starts
-            // failing to a missing required component -- query_archetype sohuld
-            // be able to handle this case gracefully.
-            /*
             .map_err(|err| {
-                if cfg!(debug_assertions) {
-                    re_log::error!("Failed to load Container blueprint: {err}.");
-                } else {
-                    re_log::debug!("Failed to load Container blueprint: {err}.");
+                if !matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
+                    if cfg!(debug_assertions) {
+                        re_log::error!("Failed to load Container blueprint: {err}.");
+                    } else {
+                        re_log::debug!("Failed to load Container blueprint: {err}.");
+                    }
                 }
-                err
             })
-            */
             .ok()?;
 
         let container_kind = container_kind.into();

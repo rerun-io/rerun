@@ -95,12 +95,13 @@ impl SpaceViewBlueprint {
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
-                if cfg!(debug_assertions) {
-                    re_log::error!("Failed to load SpaceView blueprint: {err}.");
-                } else {
-                    re_log::debug!("Failed to load SpaceView blueprint: {err}.");
+                if !matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
+                    if cfg!(debug_assertions) {
+                        re_log::error!("Failed to load SpaceView blueprint: {err}.");
+                    } else {
+                        re_log::debug!("Failed to load SpaceView blueprint: {err}.");
+                    }
                 }
-                err
             })
             .ok()?;
 
