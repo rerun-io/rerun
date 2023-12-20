@@ -25,7 +25,7 @@ pub use parse_path::PathParseError;
 /// Build a `Vec<EntityPathPart>`:
 /// ```
 /// # use re_log_types::*;
-/// let parts: Vec<EntityPathPart> = entity_path_vec!("foo", "bar");
+/// let parts: Vec<EntityPathPart> = entity_path_vec!("foo", 42, "my image!");
 /// ```
 #[macro_export]
 macro_rules! entity_path_vec {
@@ -34,7 +34,10 @@ macro_rules! entity_path_vec {
         ::std::vec::Vec::<$crate::EntityPathPart>::new()
     };
     ($($part: expr),* $(,)?) => {
-        vec![ $($crate::EntityPathPart::from($part),)+ ]
+        vec![ $($crate::EntityPathPart::from(
+            #[allow(clippy::str_to_string, clippy::string_to_string)]
+            $part.to_string()
+        ),)+ ]
     };
 }
 
@@ -42,8 +45,8 @@ macro_rules! entity_path_vec {
 ///
 /// ```
 /// # use re_log_types::*;
-/// let path: EntityPath = entity_path!("world", "my image!");
-/// assert_eq!(path, EntityPath::parse_strict(r"world/my\ image\!").unwrap());
+/// let path: EntityPath = entity_path!("world", 42, "my image!");
+/// assert_eq!(path, EntityPath::parse_strict(r"world/42/my\ image\!").unwrap());
 /// ```
 #[macro_export]
 macro_rules! entity_path {

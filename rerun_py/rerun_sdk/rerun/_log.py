@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Any, Iterable
 
 import pyarrow as pa
 import rerun_bindings as bindings
@@ -279,11 +279,13 @@ def log_components(
     )
 
 
-def escape_entity_path(entity_path: list[str]) -> str:
+def escape_entity_path(entity_path: list[Any]) -> str:
     r"""
     Construct an entity path, defined by a list of (unescaped) parts.
 
-    For instance, `escape_entity_path(["world", "my image!"])` will return `"world/my\ image\!"`.
+    If any part if not a string, it will be converted to a string using `str()`.
+
+    For instance, `escape_entity_path(["world", 42, "my image!"])` will return `"world/42/my\ image\!"`.
 
     See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
 
@@ -297,4 +299,4 @@ def escape_entity_path(entity_path: list[str]) -> str:
     str:
         The escaped entity path.
     """
-    return bindings.escape_entity_path([str(part) for part in entity_path])
+    return str(bindings.escape_entity_path([str(part) for part in entity_path]))

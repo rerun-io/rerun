@@ -7,12 +7,12 @@ int main() {
     rec.spawn().exit_on_failure();
 
     rec.log(
-        R"(world/escaped\ string\!)",
+        R"(world/42/escaped\ string\!)",
         rerun::TextDocument("This entity path was escaped manually")
     );
     // TODO: figure this one out
     // rec.log(
-    //     rerun::entity_path ![ "world", "unescaped string!" ],
+    //     {"world", 42, "unescaped string!"},
     //     rerun::TextDocument("This entity path was provided as a list of unescaped strings")
     // );
 }
