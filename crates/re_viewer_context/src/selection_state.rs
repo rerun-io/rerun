@@ -258,15 +258,16 @@ impl ApplicationSelectionState {
     pub fn toggle_selection(&self, toggle_items: Selection) {
         re_tracing::profile_function!();
 
-        // Make sure we preserve the order - old items kept in same order, new items added to the end.
-
-        // All the items to toggle. If an was already selected with the same context, it will be removed from this.
         let mut toggle_items_set: HashMap<Item, Option<SelectedSpaceContext>> =
             toggle_items.iter().cloned().collect();
 
         let mut new_selection = self.selection_previous_frame.clone();
+
+        // If an item was already selected with the exact same context remove it.
+        // If an item was already selected and loses its context, remove it.
         new_selection.0.retain(|(item, ctx)| {
-            if toggle_items_set.get(item) == Some(ctx) {
+            let new_ctx = toggle_items_set.get(item);
+            if new_ctx == Some(ctx) || new_ctx == Some(&None) {
                 toggle_items_set.remove(item);
                 false
             } else {
@@ -282,6 +283,7 @@ impl ApplicationSelectionState {
             }
         }
 
+        // Make sure we preserve the order - old items kept in same order, new items added to the end.
         // Add the new items, unless they were toggling out existing items:
         new_selection.extend(
             toggle_items
