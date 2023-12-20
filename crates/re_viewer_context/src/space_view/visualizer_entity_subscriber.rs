@@ -28,17 +28,45 @@ pub struct VisualizerEntitySubscriber {
     required_components_indices: IntMap<ComponentName, usize>,
 
     per_store_mapping: HashMap<StoreId, VisualizerEntityMapping>,
+
+    /// Additional filter for applicability.
+    applicability_filter: Box<dyn VisualizerAdditionalApplicabilityFilter>,
+}
+
+/// Additional filter for applicability on top of the default check for required components.
+pub trait VisualizerAdditionalApplicabilityFilter: Send + Sync {
+    /// Updates the internal applicability filter state based on the given events.
+    ///
+    /// Called for every update no matter whether the entity is already has all required components or not.
+    ///
+    /// Returns true if the entity is now applicable to the visualizer, false otherwise.
+    /// Once a entity passes this filter, it can never go back to being filtered out.
+    /// **This implies that the filter does not _need_ to be stateful.**
+    /// It is perfectly fine to return `true` only if something in the diff is regarded as applicable and false otherwise.
+    /// (However, if necessary, the applicability filter *can* keep track of state.)
+    fn update_applicability(&mut self, _event: &re_arrow_store::StoreEvent) -> bool;
+}
+
+struct DefaultVisualizerApplicabilityFilter;
+
+impl VisualizerAdditionalApplicabilityFilter for DefaultVisualizerApplicabilityFilter {
+    #[inline]
+    fn update_applicability(&mut self, _event: &re_arrow_store::StoreEvent) -> bool {
+        true
+    }
 }
 
 #[derive(Default)]
 struct VisualizerEntityMapping {
     /// For each entity, which of the required components are present.
     ///
+    /// Last bit is used for the applicability filter.
+    ///
     /// In order of `required_components`.
     /// If all bits are set, the entity is applicable to the visualizer.
     // TODO(andreas): We could just limit the number of required components to 32 or 64 and
     // then use a single u32/u64 as a bitmap.
-    required_component_bitmap_per_entity: IntMap<EntityPathHash, BitVec>,
+    required_component_and_filter_bitmap_per_entity: IntMap<EntityPathHash, BitVec>,
 
     /// Which entities the visualizer can be applied to.
     ///
@@ -59,6 +87,9 @@ impl VisualizerEntitySubscriber {
                 .map(|(i, name)| (name, i))
                 .collect(),
             per_store_mapping: Default::default(),
+            applicability_filter: visualizer
+                .applicability_filter()
+                .unwrap_or_else(|| Box::new(DefaultVisualizerApplicabilityFilter)),
         }
     }
 
@@ -102,10 +133,10 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
                 .or_default();
 
             let required_components_bitmap = store_mapping
-                .required_component_bitmap_per_entity
+                .required_component_and_filter_bitmap_per_entity
                 .entry(event.diff.entity_path.hash())
                 .or_insert_with(|| {
-                    BitVec::from_elem(self.required_components_indices.len(), false)
+                    BitVec::from_elem(self.required_components_indices.len() + 1, false)
                 });
 
             if required_components_bitmap.all() {
@@ -117,6 +148,15 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
                 if let Some(index) = self.required_components_indices.get(component_name) {
                     required_components_bitmap.set(*index, true);
                 }
+            }
+
+            let bit_index_for_filter = self.required_components_indices.len();
+            let custom_filter = required_components_bitmap[bit_index_for_filter];
+            if !custom_filter {
+                required_components_bitmap.set(
+                    bit_index_for_filter,
+                    self.applicability_filter.update_applicability(event),
+                );
             }
 
             if required_components_bitmap.all() {
