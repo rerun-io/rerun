@@ -503,10 +503,12 @@ pub fn show_zoomed_image_region_area_outline(
     let height = height as f32;
 
     // Show where on the original image the zoomed-in region is at:
+    // The area shown is ZOOMED_IMAGE_TEXEL_RADIUS _surrounding_ the center.
+    // Since the center is the top-left/rounded-down, coordinate, we need to add 1 to right/bottom.
     let left = (center_x - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-    let right = (center_x + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+    let right = (center_x + ZOOMED_IMAGE_TEXEL_RADIUS + 1) as f32;
     let top = (center_y - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-    let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
+    let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS + 1) as f32;
 
     let left = remap(left, 0.0..=width, image_rect.x_range());
     let right = remap(right, 0.0..=width, image_rect.x_range());
