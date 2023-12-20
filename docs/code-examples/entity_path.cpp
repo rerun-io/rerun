@@ -11,7 +11,7 @@ int main() {
         rerun::TextDocument("This entity path was escaped manually")
     );
     rec.log(
-        rerun::escape_entity_path({"world", std::to_string(42), "unescaped string!"}),
+        rerun::new_entity_path({"world", std::to_string(42), "unescaped string!"}),
         rerun::TextDocument("This entity path was provided as a list of unescaped strings")
     );
 }

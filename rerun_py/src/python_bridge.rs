@@ -152,7 +152,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
     m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
-    m.add_function(wrap_pyfunction!(escape_entity_path, m)?)?;
+    m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
 
     // blueprint
     m.add_function(wrap_pyfunction!(set_panels, m)?)?;
@@ -940,7 +940,7 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
 }
 
 #[pyfunction]
-fn escape_entity_path(parts: Vec<&str>) -> String {
+fn new_entity_path(parts: Vec<&str>) -> String {
     let path = EntityPath::from(parts.into_iter().map(EntityPathPart::from).collect_vec());
     path.to_string()
 }

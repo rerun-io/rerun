@@ -230,7 +230,7 @@ def log_components(
         num_instances = max(len(arr) for arr in arrow_arrays)
 
     if isinstance(entity_path, list):
-        entity_path = bindings.escape_entity_path([str(part) for part in entity_path])
+        entity_path = bindings.new_entity_path([str(part) for part in entity_path])
 
     added = set()
 
@@ -279,13 +279,13 @@ def log_components(
     )
 
 
-def escape_entity_path(entity_path: list[Any]) -> str:
+def new_entity_path(entity_path: list[Any]) -> str:
     r"""
     Construct an entity path, defined by a list of (unescaped) parts.
 
     If any part if not a string, it will be converted to a string using `str()`.
 
-    For instance, `escape_entity_path(["world", 42, "my image!"])` will return `"world/42/my\ image\!"`.
+    For instance, `new_entity_path(["world", 42, "my image!"])` will return `"world/42/my\ image\!"`.
 
     See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
 
@@ -299,4 +299,4 @@ def escape_entity_path(entity_path: list[Any]) -> str:
     str:
         The escaped entity path.
     """
-    return str(bindings.escape_entity_path([str(part) for part in entity_path]))
+    return str(bindings.new_entity_path([str(part) for part in entity_path]))

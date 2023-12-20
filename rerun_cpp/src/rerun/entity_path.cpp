@@ -5,7 +5,7 @@
 #include "string_utils.hpp"
 
 namespace rerun {
-    std::string escape_entity_path(const std::vector<std::string_view>& path) {
+    std::string new_entity_path(const std::vector<std::string_view>& path) {
         if (path.empty()) {
             return "/";
         }
@@ -22,7 +22,6 @@ namespace rerun {
                 if (!result.empty()) {
                     result += "/"; // leading slash would also have be fine
                 }
-
                 result += escaped_c_str;
                 _rr_free_string(escaped_c_str);
             }
