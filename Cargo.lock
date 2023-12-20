@@ -4185,9 +4185,23 @@ dependencies = [
 
 [[package]]
 name = "profiling"
-version = "1.0.8"
+version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "332cd62e95873ea4f41f3dfd6bbbfc5b52aec892d7e8d534197c4720a0bbbab2"
+checksum = "1de09527cd2ea2c2d59fb6c2f8c1ab8c71709ed9d1b6d60b0e1c9fbb6fdcb33c"
+dependencies = [
+ "profiling-procmacros",
+ "puffin",
+]
+
+[[package]]
+name = "profiling-procmacros"
+version = "1.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d8f36e3c621a72254893ed5cc57d1a069162adb3f98bfef610788661db6ad8d"
+dependencies = [
+ "quote",
+ "syn 2.0.32",
+]
 
 [[package]]
 name = "prost"
@@ -4815,6 +4829,7 @@ dependencies = [
  "ordered-float",
  "parking_lot 0.12.1",
  "pathdiff",
+ "profiling",
  "re_build_tools",
  "re_error",
  "re_log",

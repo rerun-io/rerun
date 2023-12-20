@@ -62,6 +62,9 @@ macaw.workspace = true
 never.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true
+# wgpu uses the `profiling` crate for its profiling scopes.
+# This will hook them up to the puffin profiler as backend:
+profiling = { workspace = true, features = ["profile-with-puffin"] }
 slotmap.workspace = true
 smallvec.workspace = true
 static_assertions.workspace = true
