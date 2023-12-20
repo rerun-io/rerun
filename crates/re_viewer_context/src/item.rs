@@ -8,8 +8,6 @@ use super::SpaceViewId;
 /// One "thing" in the UI.
 ///
 /// This is the granularity of what is selectable and hoverable.
-///
-/// A set of these is a an [`ItemCollection`].
 #[derive(Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Item {
     ComponentPath(ComponentPath),
