@@ -72,6 +72,10 @@ name = "disconnected_space"
 path = "disconnected_space.rs"
 
 [[bin]]
+name = "entity_path"
+path = "entity_path.rs"
+
+[[bin]]
 name = "image_simple"
 path = "image_simple.rs"
 

@@ -6,8 +6,6 @@ import numpy as np
 import pyarrow as pa
 
 from .._validators import find_non_empty_dim_indices
-from ..datatypes import TensorBufferType
-from ..datatypes.tensor_data_ext import _build_buffer_array
 from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
@@ -17,9 +15,6 @@ if TYPE_CHECKING:
 
 class SegmentationImageExt:
     """Extension for [SegmentationImage][rerun.archetypes.SegmentationImage]."""
-
-    U8_TYPE_ID = list(f.name for f in TensorBufferType().storage_type).index("U8")
-    U16_TYPE_ID = list(f.name for f in TensorBufferType().storage_type).index("U16")
 
     @staticmethod
     @catch_and_log_exceptions("SegmentationImage converter")
@@ -70,12 +65,6 @@ class SegmentationImageExt:
             ).cast(tensor_data_type.field("shape").type)
 
         buffer = tensor_data_arrow.storage.field(1)
-
-        # The viewer only supports u8 and u16 segmentation images at the moment:
-        # TODO(#3609): handle this in the viewer instead
-        if buffer[0].type_code not in (SegmentationImageExt.U8_TYPE_ID, SegmentationImageExt.U16_TYPE_ID):
-            np_buffer = np.require(buffer[0].value.values.to_numpy(), np.uint16)
-            buffer = _build_buffer_array(np_buffer)
 
         return TensorDataBatch(
             pa.StructArray.from_arrays(

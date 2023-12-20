@@ -65,6 +65,7 @@ __all__ = [
     "datatypes",
     "disable_timeline",
     "disconnect",
+    "escape_entity_path_part",
     "experimental",
     "get_application_id",
     "get_data_recording",
@@ -72,9 +73,10 @@ __all__ = [
     "get_recording_id",
     "get_thread_local_data_recording",
     "is_enabled",
-    "log",
     "log_components",
+    "log",
     "memory_recording",
+    "new_entity_path",
     "reset_time",
     "save",
     "script_add_args",
@@ -92,7 +94,15 @@ __all__ = [
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from ._image import ImageEncoded, ImageFormat
-from ._log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components
+from ._log import (
+    AsComponents,
+    ComponentBatchLike,
+    IndicatorComponentBatch,
+    escape_entity_path_part,
+    log,
+    log_components,
+    new_entity_path,
+)
 from .any_value import AnyValues
 from .archetypes import (
     AnnotationContext,

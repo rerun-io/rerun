@@ -719,6 +719,11 @@ impl RecordingStream {
     /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
     /// See [`RecordingStream::set_time_sequence`] etc for more information.
     ///
+    /// The entity path can either be a string
+    /// (with special characters escaped, split on unescaped slashes)
+    /// or an [`EntityPath`] constructed with [`crate::entity_path`].
+    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    ///
     /// See also: [`Self::log_timeless`] for logging timeless data.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
@@ -787,6 +792,11 @@ impl RecordingStream {
     /// internal clock.
     /// See `RecordingStream::set_time_*` family of methods for more information.
     ///
+    /// The entity path can either be a string
+    /// (with special characters escaped, split on unescaped slashes)
+    /// or an [`EntityPath`] constructed with [`crate::entity_path`].
+    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
     /// See [SDK Micro Batching] for more information.
@@ -825,6 +835,11 @@ impl RecordingStream {
     /// The number of instances will be determined by the longest batch in the bundle.
     /// All of the batches should have the same number of instances, or length 1 if the component is
     /// a splat, or 0 if the component is being cleared.
+    ///
+    /// The entity path can either be a string
+    /// (with special characters escaped, split on unescaped slashes)
+    /// or an [`EntityPath`] constructed with [`crate::entity_path`].
+    /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.

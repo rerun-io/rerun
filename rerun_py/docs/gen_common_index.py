@@ -233,6 +233,8 @@ SECTION_TABLE: Final[list[Section]] = [
             "set_global_data_recording",
             "set_thread_local_data_recording",
             "start_web_viewer_server",
+            "escape_entity_path_part",
+            "new_entity_path",
         ],
         class_list=["RecordingStream", "LoggingHandler", "MemoryRecording"],
     ),

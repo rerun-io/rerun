@@ -35,23 +35,17 @@ const NUM_ROWS: i64 = 1;
 const NUM_INSTANCES: i64 = 1;
 
 fn packed() -> &'static [bool] {
-    #[cfg(feature = "core_benchmarks_only")]
-    {
+    if std::env::var("CI").is_ok() {
         &[false]
-    }
-    #[cfg(not(feature = "core_benchmarks_only"))]
-    {
+    } else {
         &[false, true]
     }
 }
 
 fn num_rows_per_bucket() -> &'static [u64] {
-    #[cfg(feature = "core_benchmarks_only")]
-    {
+    if std::env::var("CI").is_ok() {
         &[]
-    }
-    #[cfg(not(feature = "core_benchmarks_only"))]
-    {
+    } else {
         &[0, 2, 32, 2048]
     }
 }

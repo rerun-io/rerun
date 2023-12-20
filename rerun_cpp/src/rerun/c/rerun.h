@@ -413,6 +413,23 @@ extern void rr_recording_stream_log(
 );
 
 // ----------------------------------------------------------------------------
+// Private functions
+
+/// PRIVATE FUNCTION: do not use.
+///
+/// Escape a single part of an entity path, returning an new null-terminated string.
+///
+/// The returned string must be freed with `_rr_free_string`.
+///
+/// Returns `nullptr` on failure (e.g. invalid UTF8, ore null bytes in the string).
+extern char* _rr_escape_entity_path_part(rr_string part);
+
+/// PRIVATE FUNCTION: do not use.
+///
+/// Must only be called with the results from `_rr_escape_entity_path_part`.
+extern void _rr_free_string(char* string);
+
+// ----------------------------------------------------------------------------
 
 #ifdef __cplusplus
 }
