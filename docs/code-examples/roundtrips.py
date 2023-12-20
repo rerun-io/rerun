@@ -41,7 +41,6 @@ opt_out_run = {
 opt_out_compare = {
     "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "asset3d_out_of_tree": ["cpp", "py", "rust"], # float issues since calculation is done slightly differently (also, Python uses doubles)
-    "entity_path": ["cpp"], # C++ doesn't have helpers for escaping an entity path yet
     "mesh3d_partial_updates": ["cpp", "py", "rust"], # float precision issues
     "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
