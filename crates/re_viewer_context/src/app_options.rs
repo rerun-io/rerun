@@ -43,7 +43,7 @@ impl Default for AppOptions {
 
             experimental_dataframe_space_view: false,
 
-            experimental_container_blueprints: false,
+            experimental_container_blueprints: cfg!(debug_assertions),
 
             show_picking_debug_overlay: false,
 
