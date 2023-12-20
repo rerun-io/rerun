@@ -676,7 +676,7 @@ fn blueprint_ui(
                                 &space_view_class,
                                 Some(entity_path),
                                 &mut props,
-                                data_result.resolved_properties(),
+                                data_result.accumulated_properties(),
                             );
                             data_result.save_override(Some(props), ctx);
                         }
@@ -707,7 +707,7 @@ fn blueprint_ui(
                         &space_view_class,
                         None,
                         &mut props,
-                        data_result.resolved_properties(),
+                        data_result.accumulated_properties(),
                     );
                     data_result.save_override(Some(props), ctx);
                 }

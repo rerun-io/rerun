@@ -62,6 +62,7 @@ impl DataResult {
     pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
     pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
+    #[inline]
     pub fn override_path(&self) -> Option<EntityPath> {
         self.property_overrides.as_ref().map(|property_overrides| {
             if self.is_group {
@@ -144,12 +145,14 @@ impl DataResult {
             ));
     }
 
-    pub fn resolved_properties(&self) -> &EntityProperties {
+    #[inline]
+    pub fn accumulated_properties(&self) -> &EntityProperties {
         self.property_overrides
             .as_ref()
             .map_or(&DEFAULT_PROPS, |p| &p.accumulated_properties)
     }
 
+    #[inline]
     pub fn individual_properties(&self) -> Option<&EntityProperties> {
         self.property_overrides
             .as_ref()
@@ -195,7 +198,7 @@ impl<'s> ViewQuery<'s> {
                 itertools::Either::Right(
                     results
                         .iter()
-                        .filter(|result| result.resolved_properties().visible)
+                        .filter(|result| result.accumulated_properties().visible)
                         .copied(),
                 )
             },

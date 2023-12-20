@@ -78,7 +78,7 @@ where
             ctx.store_db.store(),
             &query.timeline,
             &query.latest_at,
-            &data_result.resolved_properties().visible_history,
+            &data_result.accumulated_properties().visible_history,
             &data_result.entity_path,
         )
         .and_then(|entity_views| {
@@ -91,7 +91,7 @@ where
                 fun(
                     ctx,
                     &data_result.entity_path,
-                    data_result.resolved_properties(),
+                    data_result.accumulated_properties(),
                     ent_view,
                     &entity_context,
                 )?;

@@ -557,7 +557,10 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert_eq!(result.resolved_properties(), &EntityProperties::default(),);
+                assert_eq!(
+                    result.accumulated_properties(),
+                    &EntityProperties::default(),
+                );
             }
 
             // Now, override visibility on parent but not group
@@ -594,10 +597,10 @@ mod tests {
                 .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
                 .unwrap();
 
-            assert!(!parent.resolved_properties().visible);
+            assert!(!parent.accumulated_properties().visible);
 
             for result in [child1, child2] {
-                assert!(result.resolved_properties().visible);
+                assert!(result.accumulated_properties().visible);
             }
 
             // Override visibility on parent group
@@ -638,7 +641,7 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(!result.resolved_properties().visible);
+                assert!(!result.accumulated_properties().visible);
             }
         }
 
@@ -680,9 +683,9 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(result.resolved_properties().visible_history.enabled);
+                assert!(result.accumulated_properties().visible_history.enabled);
                 assert_eq!(
-                    result.resolved_properties().visible_history.nanos,
+                    result.accumulated_properties().visible_history.nanos,
                     VisibleHistory::ALL
                 );
             }
@@ -717,16 +720,16 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1] {
-                assert!(result.resolved_properties().visible_history.enabled);
+                assert!(result.accumulated_properties().visible_history.enabled);
                 assert_eq!(
-                    result.resolved_properties().visible_history.nanos,
+                    result.accumulated_properties().visible_history.nanos,
                     VisibleHistory::ALL
                 );
             }
 
-            assert!(child2.resolved_properties().visible_history.enabled);
+            assert!(child2.accumulated_properties().visible_history.enabled);
             assert_eq!(
-                child2.resolved_properties().visible_history.nanos,
+                child2.accumulated_properties().visible_history.nanos,
                 VisibleHistory::OFF
             );
         }
