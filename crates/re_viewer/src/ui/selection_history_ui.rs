@@ -158,13 +158,19 @@ fn item_kind_ui(ui: &mut egui::Ui, sel: &Item) {
 }
 
 fn selection_to_string(blueprint: &ViewportBlueprint, selection: &Selection) -> String {
-    debug_assert!(!selection.is_empty()); // history never contains empty selections.
+    debug_assert!(
+        !selection.is_empty(),
+        "History should never contain empty selections."
+    );
     if selection.len() == 1 {
         if let Some(item) = selection.iter_items().next() {
             item_to_string(blueprint, item)
         } else {
             // All items got removed or weren't there to begin with.
-            debug_assert!(selection.iter_space_context().next().is_some()); // Should never keep both empty item & context list.
+            debug_assert!(
+                selection.iter_space_context().next().is_some(),
+                "History should never keep selections that have both an empty item & context list."
+            );
             "<space context>".to_owned()
         }
     } else if let Some(kind) = selection.are_all_items_same_kind() {

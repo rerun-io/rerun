@@ -266,10 +266,13 @@ impl ApplicationSelectionState {
         // If an item was already selected with the exact same context remove it.
         // If an item was already selected and loses its context, remove it.
         new_selection.0.retain(|(item, ctx)| {
-            let new_ctx = toggle_items_set.get(item);
-            if new_ctx == Some(ctx) || new_ctx == Some(&None) {
-                toggle_items_set.remove(item);
-                false
+            if let Some(new_ctx) = toggle_items_set.get(item) {
+                if new_ctx == ctx || new_ctx.is_none() {
+                    toggle_items_set.remove(item);
+                    false
+                } else {
+                    true
+                }
             } else {
                 true
             }
