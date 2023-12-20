@@ -367,7 +367,7 @@ impl ViewportBlueprint {
 
     #[inline]
     pub fn set_auto_space_views(&self, value: bool, ctx: &ViewerContext<'_>) {
-        if self.auto_layout != value {
+        if self.auto_space_views != value {
             let component = AutoSpaceViews(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
