@@ -54,14 +54,14 @@ def _splat() -> cmp.InstanceKeyBatch:
 
 @catch_and_log_exceptions()
 def log(
-    entity_path: str,
+    entity_path: str | list[str],
     entity: AsComponents | Iterable[ComponentBatchLike],
     *extra: AsComponents | Iterable[ComponentBatchLike],
     timeless: bool = False,
     recording: RecordingStream | None = None,
     strict: bool | None = None,
 ) -> None:
-    """
+    r"""
     Log data to Rerun.
 
     This is the main entry point for logging data to rerun. It can be used to log anything
@@ -98,6 +98,15 @@ def log(
     ----------
     entity_path:
         Path to the entity in the space hierarchy.
+
+        The entity path can either be a string
+        (with special characters escaped, split on unescaped slashes)
+        or a list of unescaped strings.
+        This means that logging to `"world/my\ image\!"` is the same as logging
+        to ["world", "my image!"].
+
+        See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+
     entity:
         Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype.
     *extra:
@@ -163,7 +172,7 @@ def log(
 
 @catch_and_log_exceptions()
 def log_components(
-    entity_path: str,
+    entity_path: str | list[str],
     components: Iterable[ComponentBatchLike],
     *,
     num_instances: int | None = None,
@@ -171,7 +180,7 @@ def log_components(
     recording: RecordingStream | None = None,
     strict: bool | None = None,
 ) -> None:
-    """
+    r"""
     Log an entity from a collection of `ComponentBatchLike` objects.
 
     All of the batches should have the same length as the value of
@@ -182,6 +191,15 @@ def log_components(
     ----------
     entity_path:
         Path to the entity in the space hierarchy.
+
+        The entity path can either be a string
+        (with special characters escaped, split on unescaped slashes)
+        or a list of unescaped strings.
+        This means that logging to `"world/my\ image\!"` is the same as logging
+        to ["world", "my image!"].
+
+        See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+
     components:
         A collection of `ComponentBatchLike` objects that
     num_instances:
@@ -210,6 +228,9 @@ def log_components(
 
     if num_instances is None:
         num_instances = max(len(arr) for arr in arrow_arrays)
+
+    if isinstance(entity_path, list):
+        entity_path = bindings.escape_entity_path([str(part) for part in entity_path])
 
     added = set()
 
@@ -256,3 +277,24 @@ def log_components(
         timeless=timeless,
         recording=recording,
     )
+
+
+def escape_entity_path(entity_path: list[str]) -> str:
+    r"""
+    Construct an entity path, defined by a list of (unescaped) parts.
+
+    For instance, `escape_entity_path(["world", "my image!"])` will return `"world/my\ image\!"`.
+
+    See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+
+    Parameters
+    ----------
+    entity_path:
+        A list of strings to escape and join with slash.
+
+    Returns
+    -------
+    str:
+        The escaped entity path.
+    """
+    return bindings.escape_entity_path([str(part) for part in entity_path])
