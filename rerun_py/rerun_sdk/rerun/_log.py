@@ -283,7 +283,7 @@ def escape_entity_path_part(part: str) -> str:
     r"""
     Escape an individual part of an entity path.
 
-    For instance, `escape_entity_path_parth("my image!")` will return `"my\ image\!"`.
+    For instance, `escape_entity_path_path("my image!")` will return `"my\ image\!"`.
 
     See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
 
