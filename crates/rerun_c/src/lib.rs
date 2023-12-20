@@ -704,6 +704,39 @@ pub unsafe extern "C" fn rr_recording_stream_log(
 }
 
 // ----------------------------------------------------------------------------
+// Private functions
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn _rr_escape_entity_path_part(part: CStringView) -> *const c_char {
+    let Ok(part) = part.as_str("entity_path_part") else {
+        return std::ptr::null();
+    };
+
+    let part = re_sdk::EntityPathPart::from(part).to_string(); // escape the part
+
+    let Ok(part) = CString::new(part) else {
+        return std::ptr::null();
+    };
+
+    part.into_raw()
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn _rr_free_string(str: *mut c_char) {
+    if str.is_null() {
+        return;
+    }
+
+    // Free the string:
+    unsafe {
+        // SAFETY: `_rr_free_string` should only be called on strings allocated by `_rr_escape_entity_path_part`.
+        let _ = CString::from_raw(str);
+    }
+}
+
+// ----------------------------------------------------------------------------
 // Helper functions:
 
 fn initialize_logging() {
