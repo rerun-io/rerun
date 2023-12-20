@@ -39,7 +39,7 @@ pub trait VisualizerAdditionalApplicabilityFilter: Send + Sync {
     ///
     /// Called for every update no matter whether the entity is already has all required components or not.
     ///
-    /// Returns true if the entity is now applicable to the visualizer, false otherwise.
+    /// Returns true if the entity changed in the event is now applicable to the visualizer, false otherwise.
     /// Once a entity passes this filter, it can never go back to being filtered out.
     /// **This implies that the filter does not _need_ to be stateful.**
     /// It is perfectly fine to return `true` only if something in the diff is regarded as applicable and false otherwise.
