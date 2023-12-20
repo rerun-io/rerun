@@ -74,11 +74,17 @@ cpp-build-doc-examples = { cmd = "cmake --build build/debug --config Debug --tar
 cpp-build-log-benchmark = { cmd = "cmake --build build/release --config Release --target log_benchmark", depends_on = [
   "cpp-prepare-release",
 ] }
+cpp-build-plot-dashboard-stress = { cmd = "cmake --build build/release --config Release --target plot_dashboard_stress", depends_on = [
+  "cpp-prepare-release",
+] }
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/debug/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build-tests",
 ] }
 cpp-log-benchmark = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp/log_benchmark/log_benchmark", depends_on = [
   "cpp-build-log-benchmark",
+] }
+cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp/plot_dashboard_stress/plot_dashboard_stress", depends_on = [
+  "cpp-build-plot-dashboard-stress",
 ] }
 cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
 cpp-docs = { cmd = "doxygen docs/Doxyfile && echo '***************\nSuccess!\nOpen ./rerun_cpp/docs/html/index.html in your browser.'", cwd = "rerun_cpp" }
