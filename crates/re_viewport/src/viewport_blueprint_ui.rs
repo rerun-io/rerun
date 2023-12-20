@@ -420,8 +420,7 @@ impl Viewport<'_, '_> {
                     };
 
                 // Space view options proposed by heuristics
-                let mut possible_space_views =
-                    all_possible_space_views(ctx, spaces_info, ctx.entities_per_system_per_class);
+                let mut possible_space_views = all_possible_space_views(ctx, spaces_info);
                 possible_space_views
                     .sort_by_key(|(space_view, _)| space_view.space_origin.to_string());
 

@@ -1,16 +1,17 @@
 use ahash::{HashMap, HashSet};
 use nohash_hasher::{IntMap, IntSet};
 use re_arrow_store::DataStore;
-use re_log_types::{EntityPath, EntityPathHash};
+use re_log_types::EntityPathHash;
 
 use crate::{
-    DynSpaceViewClass, IdentifiedViewSystem, SpaceViewClassIdentifier, ViewContextCollection,
-    ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemIdentifier,
+    ApplicableEntitiesPerVisualizer, DynSpaceViewClass, IdentifiedViewSystem,
+    SpaceViewClassIdentifier, ViewContextCollection, ViewContextSystem, ViewPartCollection,
+    ViewPartSystem, ViewSystemIdentifier,
 };
 
 use super::{
     space_view_class_placeholder::SpaceViewClassPlaceholder,
-    visualizer_entity_subscriber::VisualizerEntitySubscriber,
+    visualizer_entity_subscriber::VisualizerEntitySubscriber, VisualizerApplicableEntities,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -278,21 +279,34 @@ impl SpaceViewClassRegistry {
         self.space_view_classes.values()
     }
 
-    /// Returns the set of entities that are applicable to the given visualizer.
+    /// For each visualizer, return the set of entities that is applicable to it.
     ///
-    /// The list is kept up to date by a store subscriber.
-    pub fn applicable_entities_for_visualizer_system(
+    /// The list is kept up to date by store subscribers.
+    pub fn applicable_entities_for_visualizer_systems(
         &self,
-        visualizer: ViewSystemIdentifier,
         store_id: &re_log_types::StoreId,
-    ) -> Option<IntSet<EntityPath>> {
-        self.visualizers.get(&visualizer).and_then(|entry| {
-            DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
-                entry.entity_subscriber_handle,
-                |subscriber| subscriber.applicable_entities(store_id).cloned(),
-            )
-            .flatten()
-        })
+    ) -> ApplicableEntitiesPerVisualizer {
+        re_tracing::profile_function!();
+
+        ApplicableEntitiesPerVisualizer(
+            self.visualizers
+                .iter()
+                .map(|(id, entry)| {
+                    let mut entities = VisualizerApplicableEntities::default();
+                    DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
+                        entry.entity_subscriber_handle,
+                        |subscriber| {
+                            if let Some(applicable_entities) =
+                                subscriber.applicable_entities(store_id)
+                            {
+                                entities = applicable_entities.clone();
+                            }
+                        },
+                    );
+                    (*id, entities)
+                })
+                .collect(),
+        )
     }
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.

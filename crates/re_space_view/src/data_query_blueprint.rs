@@ -9,9 +9,9 @@ use re_log_types::{
 };
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-    DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    EntitiesPerSystem, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, StoreContext,
-    SystemCommand, SystemCommandSender as _, ViewerContext,
+    ActiveEntitiesPerVisualizer, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
+    DataResultNode, DataResultTree, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId,
+    StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
 use crate::{
@@ -176,7 +176,7 @@ impl DataQuery for DataQueryBlueprint {
     fn execute_query(
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
-        entities_per_system: &EntitiesPerSystem,
+        entities_per_system: &ActiveEntitiesPerVisualizer,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
@@ -202,14 +202,14 @@ impl DataQuery for DataQueryBlueprint {
 /// used to efficiently determine if we should continue the walk or switch
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
-    per_system_entity_list: &'a EntitiesPerSystem,
+    per_system_entity_list: &'a ActiveEntitiesPerVisualizer,
     entity_path_filter: EntityPathFilter,
 }
 
 impl<'a> QueryExpressionEvaluator<'a> {
     fn new(
         blueprint: &'a DataQueryBlueprint,
-        per_system_entity_list: &'a EntitiesPerSystem,
+        per_system_entity_list: &'a ActiveEntitiesPerVisualizer,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -487,7 +487,7 @@ mod tests {
             recording.add_data_row(row).unwrap();
         }
 
-        let mut entities_per_system = EntitiesPerSystem::default();
+        let mut entities_per_system = ActiveEntitiesPerVisualizer::default();
 
         entities_per_system
             .entry("Points3D".into())

@@ -18,7 +18,6 @@ mod transform3d_arrows;
 pub use cameras::CamerasPart;
 pub use images::ImagesPart;
 pub use images::ViewerImage;
-use re_types::components::Text;
 pub use spatial_view_part::SpatialViewPartData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
 
@@ -28,14 +27,16 @@ pub use points3d::LoadedPoints;
 use ahash::HashMap;
 
 use re_data_store::{EntityPath, InstancePathHash};
-use re_types::components::{Color, InstanceKey};
+use re_types::components::{Color, InstanceKey, Text};
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
-use re_viewer_context::SpaceViewClassRegistryError;
 use re_viewer_context::{
-    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfos, SpaceViewSystemRegistrator,
-    ViewPartCollection, ViewQuery,
+    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfos, SpaceViewClassRegistryError,
+    SpaceViewSystemRegistrator, ViewPartCollection, ViewQuery, VisualizableEntities,
+    VisualizerApplicableEntities,
 };
+
+use crate::space_view_3d::VisualizableFilterContext3D;
 
 use super::contexts::SpatialSceneEntityContext;
 
@@ -340,4 +341,22 @@ pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
     // - y pointing down
     // - z pointing into the image plane (this is convenient for reading out a depth image which has typically positive z values)
     re_types::components::ViewCoordinates::RDF
+}
+
+fn filter_visualizable_2d_entities(
+    entities: &VisualizerApplicableEntities,
+    context: &dyn std::any::Any,
+) -> VisualizableEntities {
+    VisualizableEntities(
+        if let Some(context) = context.downcast_ref::<VisualizableFilterContext3D>() {
+            entities
+                .0
+                .iter()
+                .filter(|ent_path| context.entities_under_pinhole.contains(&ent_path.hash()))
+                .cloned()
+                .collect()
+        } else {
+            entities.0.clone()
+        },
+    )
 }

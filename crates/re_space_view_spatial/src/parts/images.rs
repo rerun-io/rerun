@@ -19,15 +19,15 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    gpu_bridge, DefaultColor, HeuristicFilterContext, SpaceViewClass,
-    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery,
-    ViewerContext, VisualizerAdditionalApplicabilityFilter,
+    gpu_bridge, DefaultColor, IdentifiedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError,
+    TensorDecodeCache, TensorStatsCache, ViewContextCollection, ViewPartSystem, ViewQuery,
+    ViewerContext, VisualizableEntities, VisualizerAdditionalApplicabilityFilter,
+    VisualizerApplicableEntities,
 };
-use re_viewer_context::{IdentifiedViewSystem, ViewContextCollection};
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
-    parts::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    parts::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     query_pinhole,
     view_kind::SpatialSpaceViewKind,
     SpatialSpaceView2D, SpatialSpaceView3D,
@@ -691,25 +691,14 @@ impl ViewPartSystem for ImagesPart {
         Some(Box::new(ImageVisualizerEntityFilter))
     }
 
-    fn heuristic_filter(
+    fn filter_visualizable_entities(
         &self,
-        entities_with_matching_indicator: &IntSet<EntityPathHash>,
-        ent_path: &EntityPath,
-        ctx: HeuristicFilterContext,
-    ) -> bool {
-        if !entities_with_matching_indicator.contains(&ent_path.hash()) {
-            return false;
-        }
-
-        // 2D parts can only ever be rendered properly as part of a 3D scene if the
-        // transform graph includes a pinhole projection. Pinholes only map from 2D children
-        // to 3D parents, so if the required pinhole exists, it must be an ancestor.
-        // Filter them otherwise to avoid ending up with 2D content mixed into 3D scenes.
-        if ctx.class == "3D" && !ctx.has_ancestor_pinhole {
-            return false;
-        }
-
-        true
+        entities: &VisualizerApplicableEntities,
+        _store: &re_arrow_store::DataStore,
+        context: &dyn std::any::Any,
+    ) -> VisualizableEntities {
+        re_tracing::profile_function!();
+        filter_visualizable_2d_entities(entities, context)
     }
 
     fn execute(

@@ -9,6 +9,51 @@ use re_types::{ComponentName, ComponentNameSet};
 
 use crate::{IdentifiedViewSystem, ViewPartSystem, ViewSystemIdentifier};
 
+/// List of entities that are *applicable* to a given visualizer.
+///
+/// An entity is applicable if it at any point in time on any timeline has all required components.
+#[derive(Default, Clone)]
+pub struct VisualizerApplicableEntities(pub IntSet<EntityPath>);
+
+impl std::ops::Deref for VisualizerApplicableEntities {
+    type Target = IntSet<EntityPath>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for VisualizerApplicableEntities {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+/// List of entities that are applicable to each visualizer.
+///
+/// See [`VisualizerApplicableEntities`].
+pub struct ApplicableEntitiesPerVisualizer(
+    pub IntMap<ViewSystemIdentifier, VisualizerApplicableEntities>,
+);
+
+impl std::ops::Deref for ApplicableEntitiesPerVisualizer {
+    type Target = IntMap<ViewSystemIdentifier, VisualizerApplicableEntities>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ApplicableEntitiesPerVisualizer {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 /// A store subscriber that keep track which entities in a store can be
 /// processed by a single given visualizer type.
 ///
@@ -73,11 +118,7 @@ struct VisualizerEntityMapping {
     required_component_and_filter_bitmap_per_entity: IntMap<EntityPathHash, BitVec>,
 
     /// Which entities the visualizer can be applied to.
-    ///
-    /// Guaranteed to not have any duplicate entries.
-    /// Order is not defined.
-    // TODO(andreas): It would be nice if these were just `EntityPathHash`.
-    applicable_entities: IntSet<EntityPath>,
+    applicable_entities: VisualizerApplicableEntities,
 
     /// List of all entities in this store that at some point in time had any of the indicator components.
     entities_with_matching_indicator: IntSet<EntityPathHash>,
@@ -103,7 +144,7 @@ impl VisualizerEntitySubscriber {
 
     /// List of entities that are applicable to the visualizer.
     #[inline]
-    pub fn applicable_entities(&self, store: &StoreId) -> Option<&IntSet<EntityPath>> {
+    pub fn applicable_entities(&self, store: &StoreId) -> Option<&VisualizerApplicableEntities> {
         self.per_store_mapping
             .get(store)
             .map(|mapping| &mapping.applicable_entities)

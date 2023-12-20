@@ -1,5 +1,7 @@
-use re_data_store::EntityProperties;
-use re_log_types::EntityPath;
+use nohash_hasher::IntSet;
+use re_arrow_store::{DataStore, LatestAtQuery};
+use re_data_store::{EntityProperties, EntityTree};
+use re_log_types::{EntityPath, EntityPathHash, Timeline};
 use re_viewer_context::{
     AutoSpawnHeuristic, IdentifiedViewSystem as _, PerSystemEntities, SpaceViewClass,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError, ViewQuery,
@@ -10,9 +12,17 @@ use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
     parts::{calculate_bounding_box, register_3d_spatial_parts, CamerasPart},
+    query_pinhole,
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
 };
+
+// TODO(andreas): This context is used to determine whether a 2D entity has a valid transform
+// and is thus visualizable. This should be expanded to cover any invalid transform as non-visualizable.
+pub struct VisualizableFilterContext3D {
+    /// Set of all entities that are under a pinhole camera.
+    pub entities_under_pinhole: IntSet<EntityPathHash>,
+}
 
 #[derive(Default)]
 pub struct SpatialSpaceView3D;
@@ -47,6 +57,76 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::High
+    }
+
+    fn visualizable_filter_context(
+        &self,
+        space_origin: &EntityPath,
+        store_db: &re_data_store::StoreDb,
+    ) -> Box<dyn std::any::Any> {
+        re_tracing::profile_function!();
+
+        let mut entities_under_pinhole = IntSet::default();
+
+        fn visit_children_recursively(
+            tree: &EntityTree,
+            store: &DataStore,
+            query: &LatestAtQuery,
+            entities_under_pinhole: &mut IntSet<EntityPathHash>,
+        ) {
+            if query_pinhole(store, query, &tree.path).is_some() {
+                // This and all children under it are under a pinhole camera!
+                tree.visit_children_recursively(&mut |ent_path| {
+                    entities_under_pinhole.insert(ent_path.hash());
+                });
+            } else {
+                for child in tree.children.values() {
+                    visit_children_recursively(child, store, query, entities_under_pinhole);
+                }
+            }
+        }
+
+        // TODO(andreas): A store subscriber should govern this!
+        // TODO(andreas): All of this here is fairly similar the space partitioning code in SpacesInfo and the tree-walk in TransformContext.
+        let query = LatestAtQuery::latest(Timeline::log_time());
+        let store = store_db.data_store();
+        let entity_tree = &store_db.tree();
+
+        // Find the entity path tree for the root.
+        let Some(mut current_tree) = &entity_tree.subtree(space_origin) else {
+            return Box::new(());
+        };
+
+        // Walk down the tree from the origin.
+        visit_children_recursively(current_tree, store, &query, &mut entities_under_pinhole);
+
+        // Walk up from the reference to the highest reachable parent.
+        // At each stop, add all child trees to the set.
+        while let Some(parent_path) = current_tree.path.parent() {
+            let Some(parent_tree) = entity_tree.subtree(&parent_path) else {
+                return Box::new(());
+            };
+
+            if query_pinhole(store, &query, &parent_tree.path).is_some() {
+                // What if would encounter a pinhole camera on the way up, i.e. an inverted pinhole?
+                // At this point we can just stop, because there's no valid transform to these entities anyways!
+                break;
+            }
+
+            for child in parent_tree.children.values() {
+                if child.path == current_tree.path {
+                    // Don't add the current tree again.
+                    continue;
+                }
+                visit_children_recursively(child, store, &query, &mut entities_under_pinhole);
+            }
+
+            current_tree = parent_tree;
+        }
+
+        Box::new(VisualizableFilterContext3D {
+            entities_under_pinhole,
+        })
     }
 
     fn auto_spawn_heuristic(

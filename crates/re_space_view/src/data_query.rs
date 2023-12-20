@@ -1,5 +1,5 @@
 use re_data_store::{EntityProperties, EntityPropertyMap};
-use re_viewer_context::{DataQueryResult, EntitiesPerSystem, StoreContext};
+use re_viewer_context::{ActiveEntitiesPerVisualizer, DataQueryResult, StoreContext};
 
 pub struct EntityOverrideContext {
     pub root: EntityProperties,
@@ -28,6 +28,8 @@ pub trait DataQuery {
     fn execute_query(
         &self,
         ctx: &StoreContext<'_>,
-        entities_per_system: &EntitiesPerSystem,
+        // TODO(andreas): This should get passed `VisualizableEntitiesPerVisualizer` instead of `ActiveEntitiesPerVisualizer`.
+        // Which entities are selected for each visualizer (via heuristic or otherwise) is up to the data query!
+        entities_per_system: &ActiveEntitiesPerVisualizer,
     ) -> DataQueryResult;
 }

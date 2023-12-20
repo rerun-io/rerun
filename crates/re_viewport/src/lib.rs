@@ -23,18 +23,23 @@ mod viewport_blueprint_ui;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
-// Transitive re-imports of blueprint dependencies.
-use re_types::datatypes;
-
 pub use space_info::SpaceInfoCollection;
 pub use space_view::SpaceViewBlueprint;
-pub use space_view_heuristics::identify_entities_per_system_per_class;
 pub use viewport::{Viewport, ViewportState};
 pub use viewport_blueprint::ViewportBlueprint;
 
 pub mod external {
     pub use re_space_view;
 }
+
+use re_data_store::StoreDb;
+use re_log_types::EntityPath;
+use re_types::datatypes;
+
+use re_viewer_context::{
+    ActiveEntitiesPerVisualizer, ApplicableEntitiesPerVisualizer, DynSpaceViewClass,
+    VisualizableEntities, VisualizableEntitiesPerVisualizer,
+};
 
 /// Utility for querying a pinhole archetype instance.
 ///
@@ -56,4 +61,47 @@ fn query_pinhole(
                 .query_latest_component(entity_path, query)
                 .map(|c| c.value),
         })
+}
+
+// TODO(andreas): Untangle this:
+// * Heuristics need to be applied as part of the query
+// * Visibility set is needed on several places, therefore store as part of the space view state (?)
+pub fn determine_heuristically_active_entities_per_system(
+    applicable_entities_per_visualizer: &ApplicableEntitiesPerVisualizer,
+    store_db: &StoreDb,
+    visualizers: &re_viewer_context::ViewPartCollection,
+    class: &dyn DynSpaceViewClass,
+    space_origin: &EntityPath,
+) -> ActiveEntitiesPerVisualizer {
+    re_tracing::profile_function!();
+
+    let filter_ctx = class.visualizable_filter_context(space_origin, store_db);
+
+    let visualizable_entities = VisualizableEntitiesPerVisualizer(
+        visualizers
+            .iter_with_identifiers()
+            .map(|(visualizer_identifier, visualizer_system)| {
+                let entities = if let Some(applicable_entities) =
+                    applicable_entities_per_visualizer.get(&visualizer_identifier)
+                {
+                    visualizer_system.filter_visualizable_entities(
+                        applicable_entities,
+                        store_db.store(),
+                        &filter_ctx,
+                    )
+                } else {
+                    VisualizableEntities::default()
+                };
+
+                (visualizer_identifier, entities)
+            })
+            .collect(),
+    );
+
+    class.filter_heuristic_entities_per_visualizer(
+        space_origin,
+        store_db.store(),
+        visualizers,
+        &visualizable_entities,
+    )
 }

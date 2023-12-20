@@ -130,7 +130,7 @@ impl ViewContextSystem for TransformContext {
         let mut encountered_pinhole = None;
         let mut reference_from_ancestor = glam::Affine3A::IDENTITY;
         while let Some(parent_path) = current_tree.path.parent() {
-            let Some(parent_tree) = &entity_tree.subtree(&parent_path) else {
+            let Some(parent_tree) = entity_tree.subtree(&parent_path) else {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
                     "Path {} is not part of the global Entity tree whereas its child {} is",

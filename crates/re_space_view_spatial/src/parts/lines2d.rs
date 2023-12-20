@@ -1,6 +1,4 @@
-use nohash_hasher::IntSet;
 use re_data_store::{EntityPath, InstancePathHash};
-use re_log_types::EntityPathHash;
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::LineStrips2D,
@@ -8,8 +6,9 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    HeuristicFilterContext, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext, VisualizableEntities,
+    VisualizerApplicableEntities,
 };
 
 use crate::{
@@ -21,7 +20,10 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::{picking_id_from_instance_key, process_annotations, SpatialViewPartData};
+use super::{
+    filter_visualizable_2d_entities, picking_id_from_instance_key, process_annotations,
+    SpatialViewPartData,
+};
 
 pub struct Lines2DPart {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
@@ -174,25 +176,14 @@ impl ViewPartSystem for Lines2DPart {
         std::iter::once(LineStrips2D::indicator().name()).collect()
     }
 
-    fn heuristic_filter(
+    fn filter_visualizable_entities(
         &self,
-        entities_with_matching_indicator: &IntSet<EntityPathHash>,
-        ent_path: &EntityPath,
-        ctx: HeuristicFilterContext,
-    ) -> bool {
-        if !entities_with_matching_indicator.contains(&ent_path.hash()) {
-            return false;
-        }
-
-        // 2D parts can only ever be rendered properly as part of a 3D scene if the
-        // transform graph includes a pinhole projection. Pinholes only map from 2D children
-        // to 3D parents, so if the required pinhole exists, it must be an ancestor.
-        // Filter them otherwise to avoid ending up with 2D content mixed into 3D scenes.
-        if ctx.class == "3D" && !ctx.has_ancestor_pinhole {
-            return false;
-        }
-
-        true
+        entities: &VisualizerApplicableEntities,
+        _store: &re_arrow_store::DataStore,
+        context: &dyn std::any::Any,
+    ) -> VisualizableEntities {
+        re_tracing::profile_function!();
+        filter_visualizable_2d_entities(entities, context)
     }
 
     fn execute(

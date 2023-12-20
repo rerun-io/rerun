@@ -37,6 +37,7 @@
         "Tonemapper",
         "tonemapping",
         "unsmoothed",
+        "visualizable",
         "voronoi",
         "vram",
         "Wgsl"
@@ -83,12 +84,10 @@
     "ruff.lint.args": [
         "--config=rerun_py/pyproject.toml"
     ],
-
     "prettier.configPath": ".prettierrc.toml",
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
     },
-
     "[javascript]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },

@@ -5,8 +5,11 @@ use re_types::ComponentName;
 use crate::{
     AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewPartCollection, ViewQuery,
+    ViewerContext,
 };
+
+use super::dyn_space_view_class::{ActiveEntitiesPerVisualizer, VisualizableEntitiesPerVisualizer};
 
 /// Defines a class of space view.
 ///
@@ -60,6 +63,60 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
 
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority;
+
+    // TODO: docs
+    // TODO: in the future this should not have store access directly, but instead subscribe.
+    fn visualizable_filter_context(
+        &self,
+        _space_origin: &EntityPath,
+        _store_db: &re_data_store::StoreDb,
+    ) -> Box<dyn std::any::Any> {
+        Box::new(())
+    }
+
+    // TODO: docs
+    // TODO: in the future this should not have store access directly, but instead subscribe.
+    // should work on subtrees etc.? Pass in some context?
+    fn filter_heuristic_entities_per_visualizer(
+        &self,
+        _space_origin: &EntityPath,
+        store: &re_arrow_store::DataStore,
+        visualizers: &ViewPartCollection,
+        visualizable_entities_per_visualizer: &VisualizableEntitiesPerVisualizer,
+    ) -> ActiveEntitiesPerVisualizer {
+        re_tracing::profile_function!();
+
+        ActiveEntitiesPerVisualizer(
+            visualizable_entities_per_visualizer
+                .0
+                .iter()
+                .filter_map(|(id, entities)| {
+                    let indicator_components = visualizers
+                        .get_by_identifier(*id)
+                        .ok()?
+                        .indicator_components();
+
+                    // If there are no indicator components, then show all entities.
+                    if indicator_components.is_empty() {
+                        return Some((*id, entities.0.clone()));
+                    }
+
+                    let filtered_entities = entities.iter().filter_map(|ent_path| {
+                        store
+                            .all_components(&re_log_types::Timeline::log_time(), ent_path)
+                            .and_then(|components| {
+                                components
+                                    .iter()
+                                    .any(|c| indicator_components.contains(c))
+                                    .then(|| ent_path.clone())
+                            })
+                    });
+
+                    Some((*id, filtered_entities.collect()))
+                })
+                .collect(),
+        )
+    }
 
     /// Heuristic used to determine which space view is the best fit for a set of paths.
     ///
@@ -171,6 +228,31 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
         self.layout_priority()
+    }
+
+    #[inline]
+    fn visualizable_filter_context(
+        &self,
+        space_origin: &EntityPath,
+        store_db: &re_data_store::StoreDb,
+    ) -> Box<dyn std::any::Any> {
+        self.visualizable_filter_context(space_origin, store_db)
+    }
+
+    #[inline]
+    fn filter_heuristic_entities_per_visualizer(
+        &self,
+        space_origin: &EntityPath,
+        store: &re_arrow_store::DataStore,
+        visualizers: &ViewPartCollection,
+        visualizable_entities_per_visualizer: &VisualizableEntitiesPerVisualizer,
+    ) -> ActiveEntitiesPerVisualizer {
+        self.filter_heuristic_entities_per_visualizer(
+            space_origin,
+            store,
+            visualizers,
+            visualizable_entities_per_visualizer,
+        )
     }
 
     #[inline]

@@ -1,10 +1,12 @@
+use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewPartCollection, ViewQuery,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 
 re_string_interner::declare_new_type!(
@@ -32,6 +34,52 @@ pub enum SpaceViewClassLayoutPriority {
     /// Give this space view lots of space.
     /// Used for spatial views (2D/3D).
     High,
+}
+
+/// List of entities that can be visualized per visualizer.
+#[derive(Default)]
+pub struct VisualizableEntitiesPerVisualizer(
+    pub IntMap<ViewSystemIdentifier, VisualizableEntities>,
+);
+
+impl std::ops::Deref for VisualizableEntitiesPerVisualizer {
+    type Target = IntMap<ViewSystemIdentifier, VisualizableEntities>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for VisualizableEntitiesPerVisualizer {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+/// A selection of entities that are currently active for each visualizer.
+///
+/// This list is either a direct copy of [`VisualizableEntitiesPerVisualizer`],
+/// a selection of visualizers per entity,
+/// or, most commonly, the result of a heuristic filter.
+#[derive(Default)]
+pub struct ActiveEntitiesPerVisualizer(pub IntMap<ViewSystemIdentifier, IntSet<EntityPath>>);
+
+impl std::ops::Deref for ActiveEntitiesPerVisualizer {
+    type Target = IntMap<ViewSystemIdentifier, IntSet<EntityPath>>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ActiveEntitiesPerVisualizer {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
 
 /// Defines a class of space view without any concrete types making it suitable for storage and interfacing.
@@ -89,6 +137,22 @@ pub trait DynSpaceViewClass: Send + Sync {
 
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
+
+    // TODO: docs
+    fn visualizable_filter_context(
+        &self,
+        space_origin: &EntityPath,
+        store_db: &re_data_store::StoreDb,
+    ) -> Box<dyn std::any::Any>;
+
+    // TODO: docs
+    fn filter_heuristic_entities_per_visualizer(
+        &self,
+        space_origin: &EntityPath,
+        store: &re_arrow_store::DataStore,
+        visualizers: &ViewPartCollection,
+        visualizable_entities_per_visualizer: &VisualizableEntitiesPerVisualizer,
+    ) -> ActiveEntitiesPerVisualizer;
 
     /// Heuristic used to determine which space view is the best fit for a set of paths.
     ///

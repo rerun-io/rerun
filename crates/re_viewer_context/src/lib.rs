@@ -41,14 +41,15 @@ pub use selection_state::{
     Selection, SelectionHighlight,
 };
 pub use space_view::{
-    AutoSpawnHeuristic, DataResult, DynSpaceViewClass, HeuristicFilterContext,
-    IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities, PropertyOverrides,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
+    ActiveEntitiesPerVisualizer, ApplicableEntitiesPerVisualizer, AutoSpawnHeuristic, DataResult,
+    DynSpaceViewClass, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
+    PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewEntityHighlight,
+    SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContextCollection, ViewContextSystem,
-    ViewPartCollection, ViewPartSystem, ViewQuery, ViewSystemIdentifier,
-    VisualizerAdditionalApplicabilityFilter,
+    ViewPartCollection, ViewPartSystem, ViewQuery, ViewSystemIdentifier, VisualizableEntities,
+    VisualizableEntitiesPerVisualizer, VisualizerAdditionalApplicabilityFilter,
+    VisualizerApplicableEntities,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
@@ -67,13 +68,6 @@ pub mod external {
 }
 
 // ---------------------------------------------------------------------------
-
-use nohash_hasher::{IntMap, IntSet};
-use re_log_types::EntityPath;
-
-pub type EntitiesPerSystem = IntMap<ViewSystemIdentifier, IntSet<EntityPath>>;
-
-pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassIdentifier, EntitiesPerSystem>;
 
 slotmap::new_key_type! {
     /// Identifier for a blueprint group.

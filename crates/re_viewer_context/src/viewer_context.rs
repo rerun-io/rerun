@@ -6,9 +6,9 @@ use re_data_store::{store_db::StoreDb, EntityTree, TimeHistogramPerTimeline};
 use re_log_types::EntityPathHash;
 
 use crate::{
-    query_context::DataQueryResult, AppOptions, ApplicationSelectionState, Caches, CommandSender,
-    ComponentUiRegistry, DataQueryId, EntitiesPerSystemPerClass, Selection, SpaceViewClassRegistry,
-    StoreContext, TimeControl, ViewSystemIdentifier,
+    query_context::DataQueryResult, AppOptions, ApplicableEntitiesPerVisualizer,
+    ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry, DataQueryId, Selection,
+    SpaceViewClassRegistry, StoreContext, TimeControl, ViewSystemIdentifier,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -35,7 +35,7 @@ pub struct ViewerContext<'a> {
     pub store_context: &'a StoreContext<'a>,
 
     /// Mapping from class and system to entities for the store
-    pub entities_per_system_per_class: &'a EntitiesPerSystemPerClass,
+    pub applicable_entities_per_visualizer: &'a ApplicableEntitiesPerVisualizer,
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.
     pub entities_with_matching_indicator_per_visualizer:
