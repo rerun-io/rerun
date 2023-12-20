@@ -2,7 +2,7 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 
-use re_log_types::{DataRow, EntityPathExpr, EntityPathFilter, RowId, TimePoint, Timeline};
+use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQueryBlueprint, ScreenshotMode};
@@ -428,17 +428,17 @@ impl SpaceViewBlueprint {
     }
 
     // TODO(jleibs): Get rid of mut by sending blueprint update
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         if let Some(query) = self.queries.first() {
-            query.add_entity_exclusion(ctx, expr);
+            query.add_entity_exclusion(ctx, rule);
         }
         self.set_entity_determined_by_user(ctx);
     }
 
     // TODO(jleibs): Get rid of mut by sending blueprint update
-    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         if let Some(query) = self.queries.first() {
-            query.add_entity_inclusion(ctx, expr);
+            query.add_entity_inclusion(ctx, rule);
         }
         self.set_entity_determined_by_user(ctx);
     }

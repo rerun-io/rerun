@@ -5,8 +5,7 @@ use re_data_store::{
     EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree, StoreDb,
 };
 use re_log_types::{
-    path::RuleEffect, DataRow, EntityPath, EntityPathExpr, EntityPathFilter, EntityPathRule, RowId,
-    TimePoint,
+    path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, TimePoint,
 };
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
@@ -147,39 +146,17 @@ impl DataQueryBlueprint {
             ));
     }
 
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
-
         let mut entity_path_filter = self.entity_path_filter.clone();
-
-        match expr {
-            EntityPathExpr::Exact(entit_path) => {
-                entity_path_filter.add_rule(RuleEffect::Exclude, EntityPathRule::exact(entit_path));
-            }
-            EntityPathExpr::Recursive(entit_path) => entity_path_filter.add_rule(
-                RuleEffect::Exclude,
-                EntityPathRule::including_subtree(entit_path),
-            ),
-        }
-
+        entity_path_filter.add_rule(RuleEffect::Exclude, rule);
         self.save_expressions(ctx, &entity_path_filter);
     }
 
-    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
-
         let mut entity_path_filter = self.entity_path_filter.clone();
-
-        match expr {
-            EntityPathExpr::Exact(entit_path) => {
-                entity_path_filter.add_rule(RuleEffect::Include, EntityPathRule::exact(entit_path));
-            }
-            EntityPathExpr::Recursive(entit_path) => entity_path_filter.add_rule(
-                RuleEffect::Include,
-                EntityPathRule::including_subtree(entit_path),
-            ),
-        }
-
+        entity_path_filter.add_rule(RuleEffect::Include, rule);
         self.save_expressions(ctx, &entity_path_filter);
     }
 

@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 
 use re_data_store::{EntityPath, EntityTree, InstancePath};
 use re_data_ui::item_ui;
-use re_log_types::{EntityPathExpr, EntityPathFilter};
+use re_log_types::{EntityPathFilter, EntityPathRule};
 use re_viewer_context::{DataQueryResult, SpaceViewId, ViewerContext};
 
 use crate::{
@@ -230,7 +230,7 @@ fn add_entities_line_ui(
                     if response.clicked() {
                         space_view.add_entity_exclusion(
                             ctx,
-                            EntityPathExpr::Recursive(entity_tree.path.clone()),
+                            EntityPathRule::including_subtree(entity_tree.path.clone()),
                         );
                     }
 
@@ -254,7 +254,7 @@ fn add_entities_line_ui(
                     if response.clicked() {
                         space_view.add_entity_inclusion(
                             ctx,
-                            EntityPathExpr::Recursive(entity_tree.path.clone()),
+                            EntityPathRule::including_subtree(entity_tree.path.clone()),
                         );
                     }
 

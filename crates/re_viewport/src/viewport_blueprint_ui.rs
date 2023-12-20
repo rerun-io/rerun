@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, EntityPathExpr};
+use re_log_types::{EntityPath, EntityPathRule};
 use re_space_view::DataQueryBlueprint;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
@@ -298,7 +298,7 @@ impl Viewport<'_, '_> {
                         if response.clicked() {
                             space_view.add_entity_exclusion(
                                 ctx,
-                                EntityPathExpr::Exact(entity_path.clone()),
+                                EntityPathRule::exact(entity_path.clone()),
                             );
                         }
 
@@ -365,8 +365,10 @@ impl Viewport<'_, '_> {
                     });
 
                 if remove_group {
-                    space_view
-                        .add_entity_exclusion(ctx, EntityPathExpr::Recursive(entity_path.clone()));
+                    space_view.add_entity_exclusion(
+                        ctx,
+                        EntityPathRule::including_subtree(entity_path.clone()),
+                    );
                 }
 
                 response

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{EntityPath, EntityPathExpr};
+use crate::EntityPath;
 
 /// A way to filter a set of `EntityPath`s.
 ///
@@ -46,22 +46,6 @@ pub struct EntityPathRule {
 
     /// If true, ALSO include children and grandchildren of this path (recursive rule).
     pub include_subtree: bool,
-}
-
-// TODO: remove EntityPathExpr
-impl From<EntityPathExpr> for EntityPathRule {
-    fn from(expr: EntityPathExpr) -> Self {
-        match expr {
-            EntityPathExpr::Exact(path) => Self {
-                path,
-                include_subtree: false,
-            },
-            EntityPathExpr::Recursive(path) => Self {
-                path,
-                include_subtree: true,
-            },
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

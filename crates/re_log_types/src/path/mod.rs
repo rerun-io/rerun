@@ -6,7 +6,6 @@
 mod component_path;
 mod data_path;
 mod entity_path;
-mod entity_path_expr;
 mod entity_path_filter;
 mod entity_path_part;
 mod natural_ordering;
@@ -15,7 +14,6 @@ mod parse_path;
 pub use component_path::ComponentPath;
 pub use data_path::DataPath;
 pub use entity_path::{EntityPath, EntityPathHash};
-pub use entity_path_expr::EntityPathExpr;
 pub use entity_path_filter::{EntityPathFilter, EntityPathRule, RuleEffect};
 pub use entity_path_part::EntityPathPart;
 pub use parse_path::PathParseError;
