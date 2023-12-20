@@ -9,7 +9,10 @@ namespace rerun.archetypes;
 /// An image made up of integer class-ids.
 ///
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
-/// Each pixel corresponds to a depth value in units specified by meter.
+/// Each pixel corresponds to a class-id that will be mapped to a color based on annotation context.
+///
+/// In the case of floating point images, the label will be looked up based on rounding to the nearest
+/// integer value.
 ///
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x1` is treated as a `640x480` image.
