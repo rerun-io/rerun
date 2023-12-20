@@ -603,8 +603,8 @@ fn blueprint_ui(
 
                 let root_data_result = space_view.root_data_result(ctx.store_context);
                 let mut props = root_data_result
-                    .individual_properties
-                    .clone()
+                    .individual_properties()
+                    .cloned()
                     .unwrap_or(resolved_entity_props.clone());
 
                 let cursor = ui.cursor();
@@ -667,8 +667,8 @@ fn blueprint_ui(
                             .cloned()
                         {
                             let mut props = data_result
-                                .individual_properties
-                                .clone()
+                                .individual_properties()
+                                .cloned()
                                 .unwrap_or_default();
                             entity_props_ui(
                                 ctx,
@@ -697,8 +697,8 @@ fn blueprint_ui(
                 {
                     let space_view_class = *space_view.class_identifier();
                     let mut props = data_result
-                        .individual_properties
-                        .clone()
+                        .individual_properties()
+                        .cloned()
                         .unwrap_or_default();
 
                     entity_props_ui(

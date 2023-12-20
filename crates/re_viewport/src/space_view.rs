@@ -11,9 +11,9 @@ use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewO
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState,
-    StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId,
+    SpaceViewState, StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput,
+    ViewQuery, ViewerContext,
 };
 
 use crate::system_execution::create_and_run_space_view_systems;
@@ -372,8 +372,8 @@ impl SpaceViewBlueprint {
 
         let root_data_result = self.root_data_result(ctx.store_context);
         let props = root_data_result
-            .individual_properties
-            .clone()
+            .individual_properties()
+            .cloned()
             .unwrap_or_default();
 
         ui.scope(|ui| {
@@ -419,9 +419,11 @@ impl SpaceViewBlueprint {
             view_parts: Default::default(),
             is_group: true,
             direct_included: true,
-            accumulated_properties: Some(accumulated_properties),
-            individual_properties,
-            base_override_path: entity_path,
+            property_overrides: Some(PropertyOverrides {
+                accumulated_properties,
+                individual_properties,
+                base_override_path: entity_path,
+            }),
         }
     }
 
@@ -559,10 +561,10 @@ mod tests {
             }
 
             // Now, override visibility on parent but not group
-            let mut overrides = parent.individual_properties.clone().unwrap_or_default();
+            let mut overrides = parent.individual_properties().cloned().unwrap_or_default();
             overrides.visible = false;
 
-            save_override(overrides, &parent.override_path(), &mut blueprint);
+            save_override(overrides, &parent.override_path().unwrap(), &mut blueprint);
         }
 
         // Parent is not visible, but children are
@@ -600,12 +602,16 @@ mod tests {
 
             // Override visibility on parent group
             let mut overrides = parent_group
-                .individual_properties
-                .clone()
+                .individual_properties()
+                .cloned()
                 .unwrap_or_default();
             overrides.visible = false;
 
-            save_override(overrides, &parent_group.override_path(), &mut blueprint);
+            save_override(
+                overrides,
+                &parent_group.override_path().unwrap(),
+                &mut blueprint,
+            );
         }
 
         // Nobody is visible
@@ -643,11 +649,11 @@ mod tests {
                 recording: Some(&recording),
                 all_recordings: vec![],
             });
-            let mut overrides = root.individual_properties.clone().unwrap_or_default();
+            let mut overrides = root.individual_properties().cloned().unwrap_or_default();
             overrides.visible_history.enabled = true;
             overrides.visible_history.nanos = VisibleHistory::ALL;
 
-            save_override(overrides, &root.override_path(), &mut blueprint);
+            save_override(overrides, &root.override_path().unwrap(), &mut blueprint);
         }
 
         // Everyone has visible history
@@ -681,10 +687,10 @@ mod tests {
                 );
             }
 
-            let mut overrides = child2.individual_properties.clone().unwrap_or_default();
+            let mut overrides = child2.individual_properties().cloned().unwrap_or_default();
             overrides.visible_history.enabled = true;
 
-            save_override(overrides, &child2.override_path(), &mut blueprint);
+            save_override(overrides, &child2.override_path().unwrap(), &mut blueprint);
         }
 
         // Child2 has its own visible history

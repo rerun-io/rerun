@@ -13,12 +13,26 @@ use crate::{
     ViewSystemIdentifier, ViewerContext,
 };
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct PropertyOverrides {
+    /// The accumulated properties (including any hierarchical flattening) to apply.
+    // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.
+    // For now, bundling this here acts as a good proxy for that future data-override mechanism.
+    pub accumulated_properties: EntityProperties,
+
+    /// The individual property set in this `DataResult`, if any.
+    pub individual_properties: Option<EntityProperties>,
+
+    /// `EntityPath` in the Blueprint store where updated overrides should be written back.
+    pub base_override_path: EntityPath,
+}
+
 /// This is the primary mechanism through which data is passed to a `SpaceView`.
 ///
 /// It contains everything necessary to properly use this data in the context of the
 /// `ViewSystem`s that it is a part of.
 ///
-/// In the future `resolved_properties` will be replaced by a `StoreView` that contains
+/// In the future `accumulated_properties` will be replaced by a `StoreView` that contains
 /// the relevant data overrides for the given query.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DataResult {
@@ -38,16 +52,8 @@ pub struct DataResult {
     // exists due to a common prefix.
     pub direct_included: bool,
 
-    /// The resolved properties (including any hierarchical flattening) to apply.
-    // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.
-    // For now, bundling this here acts as a good proxy for that future data-override mechanism.
-    pub accumulated_properties: Option<EntityProperties>,
-
-    /// The individual property set in this `DataResult`, if any.
-    pub individual_properties: Option<EntityProperties>,
-
-    /// `EntityPath` in the Blueprint store where updated overrides should be written back.
-    pub base_override_path: EntityPath,
+    /// The accumulated property overrides for this `DataResult`.
+    pub property_overrides: Option<PropertyOverrides>,
 }
 
 static DEFAULT_PROPS: Lazy<EntityProperties> = Lazy::<EntityProperties>::new(Default::default);
@@ -56,41 +62,54 @@ impl DataResult {
     pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
     pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
-    pub fn override_path(&self) -> EntityPath {
-        if self.is_group {
-            self.base_override_path
-                .join(&Self::INDIVIDUAL_OVERRIDES_PREFIX.into())
-                .join(&self.entity_path)
-        } else {
-            self.base_override_path
-                .join(&Self::RECURSIVE_OVERRIDES_PREFIX.into())
-                .join(&self.entity_path)
-        }
+    pub fn override_path(&self) -> Option<EntityPath> {
+        self.property_overrides.as_ref().map(|property_overrides| {
+            if self.is_group {
+                property_overrides
+                    .base_override_path
+                    .join(&Self::INDIVIDUAL_OVERRIDES_PREFIX.into())
+                    .join(&self.entity_path)
+            } else {
+                property_overrides
+                    .base_override_path
+                    .join(&Self::RECURSIVE_OVERRIDES_PREFIX.into())
+                    .join(&self.entity_path)
+            }
+        })
     }
 
     /// Write the [`EntityProperties`] for this result back to the Blueprint store.
     pub fn save_override(&self, props: Option<EntityProperties>, ctx: &ViewerContext<'_>) {
-        let override_path = self.override_path();
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        let Some(override_path) = self.override_path() else {
+            re_log::warn!(
+                "Tried to save override for {:?} but it has no override path",
+                self.entity_path
+            );
+            return;
+        };
+
+        // This should never happen if the above didn't return early.
+        let Some(property_overrides) = &self.property_overrides else {
+            return;
+        };
 
         let cell = match props {
             None => {
-                if self.individual_properties.is_some() {
-                    re_log::debug!("Clearing {:?}", override_path);
+                re_log::debug!("Clearing {:?}", override_path);
 
-                    Some(DataCell::from_arrow_empty(
-                        EntityPropertiesComponent::name(),
-                        EntityPropertiesComponent::arrow_datatype(),
-                    ))
-                } else {
-                    None
-                }
+                Some(DataCell::from_arrow_empty(
+                    EntityPropertiesComponent::name(),
+                    EntityPropertiesComponent::arrow_datatype(),
+                ))
             }
             Some(props) => {
                 // A value of `None` in the data store means "use the default value", so if
                 // `self.individual_properties` is `None`, we only must save if `props` is different
                 // from the default.
                 if props.has_edits(
-                    self.individual_properties
+                    property_overrides
+                        .individual_properties
                         .as_ref()
                         .unwrap_or(&EntityProperties::default()),
                 ) {
@@ -126,9 +145,15 @@ impl DataResult {
     }
 
     pub fn resolved_properties(&self) -> &EntityProperties {
-        self.accumulated_properties
+        self.property_overrides
             .as_ref()
-            .unwrap_or(&DEFAULT_PROPS)
+            .map_or(&DEFAULT_PROPS, |p| &p.accumulated_properties)
+    }
+
+    pub fn individual_properties(&self) -> Option<&EntityProperties> {
+        self.property_overrides
+            .as_ref()
+            .and_then(|p| p.individual_properties.as_ref())
     }
 }
 

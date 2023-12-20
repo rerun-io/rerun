@@ -7,8 +7,8 @@ use re_tracing::profile_scope;
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    EntitiesPerSystem, SpaceViewClassIdentifier, SpaceViewId, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewerContext,
+    EntitiesPerSystem, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, StoreContext,
+    SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -348,13 +348,13 @@ impl DataQuery for DataQueryBlueprint {
 /// used to efficiently determine if we should continue the walk or switch
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
-    blueprint: &'a DataQueryBlueprint,
     per_system_entity_list: &'a EntitiesPerSystem,
     exact_inclusions: IntSet<EntityPath>,
     recursive_inclusions: IntSet<EntityPath>,
     exact_exclusions: IntSet<EntityPath>,
     recursive_exclusions: IntSet<EntityPath>,
     allowed_prefixes: IntSet<EntityPath>,
+    base_override_path: EntityPath,
 }
 
 impl<'a> QueryExpressionEvaluator<'a> {
@@ -404,13 +404,13 @@ impl<'a> QueryExpressionEvaluator<'a> {
             .collect();
 
         Self {
-            blueprint,
             per_system_entity_list,
             exact_inclusions,
             recursive_inclusions,
             exact_exclusions,
             recursive_exclusions,
             allowed_prefixes,
+            base_override_path: blueprint.id.as_entity_path().clone(),
         }
     }
 
@@ -463,8 +463,6 @@ impl<'a> QueryExpressionEvaluator<'a> {
             accumulated_properties = accumulated_properties.with_child(props);
         }
 
-        let base_override_path = self.blueprint.id.as_entity_path().clone();
-
         let self_leaf = if !view_parts.is_empty() || exact_include {
             let individual_props = overrides.individual.get_opt(&entity_path);
             let mut leaf_accumulated_properties = accumulated_properties.clone();
@@ -478,9 +476,11 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     view_parts,
                     is_group: false,
                     direct_included: any_match,
-                    individual_properties: overrides.individual.get_opt(&entity_path).cloned(),
-                    accumulated_properties: Some(leaf_accumulated_properties),
-                    base_override_path: base_override_path.clone(),
+                    property_overrides: Some(PropertyOverrides {
+                        individual_properties: overrides.individual.get_opt(&entity_path).cloned(),
+                        accumulated_properties: leaf_accumulated_properties,
+                        base_override_path: self.base_override_path.clone(),
+                    }),
                 },
                 children: Default::default(),
             }))
@@ -527,9 +527,11 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     view_parts: Default::default(),
                     is_group: true,
                     direct_included: any_match,
-                    individual_properties,
-                    accumulated_properties: Some(accumulated_properties),
-                    base_override_path,
+                    property_overrides: Some(PropertyOverrides {
+                        individual_properties,
+                        accumulated_properties,
+                        base_override_path: self.base_override_path.clone(),
+                    }),
                 },
                 children,
             }))
@@ -599,9 +601,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                         view_parts,
                         is_group: false,
                         direct_included: any_match,
-                        individual_properties: None,
-                        accumulated_properties: None,
-                        base_override_path: entity_path.clone(), // This is the wrong path but it will never be written to since this is the fast query
+                        property_overrides: None,
                     },
                     children: Default::default(),
                 }))
@@ -667,9 +667,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                         view_parts: Default::default(),
                         is_group: true,
                         direct_included: any_match,
-                        individual_properties: None,
-                        accumulated_properties: None,
-                        base_override_path: entity_path.clone(), // This is the wrong path but it will never be written to since this is the fast query,
+                        property_overrides: None,
                     },
                     children,
                 }))

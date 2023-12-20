@@ -44,9 +44,9 @@ pub use selection_state::{
 pub use space_view::{
     default_heuristic_filter, AutoSpawnHeuristic, DataResult, DynSpaceViewClass,
     HeuristicFilterContext, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
+    PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewEntityHighlight,
+    SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContextCollection, ViewContextSystem,
     ViewPartCollection, ViewPartSystem, ViewQuery, ViewSystemIdentifier,
 };

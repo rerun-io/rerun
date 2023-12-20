@@ -265,8 +265,8 @@ impl Viewport<'_, '_> {
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
             let mut properties = data_result
-                .individual_properties
-                .clone()
+                .individual_properties()
+                .cloned()
                 .unwrap_or_default();
 
             let name = entity_path
