@@ -62,7 +62,7 @@ impl SpaceViewBlueprint {
         // Spaces are now always named after the final element of the space-path (or the root), independent of the
         // query entities.
         let display_name = if let Some(name) = space_path.iter().last() {
-            name.to_string()
+            name.ui_string()
         } else {
             // Include class name in the display for root paths because they look a tad bit too short otherwise.
             format!("/ ({space_view_class_display_name})")
@@ -111,7 +111,7 @@ impl SpaceViewBlueprint {
         let display_name = display_name.map_or_else(
             || {
                 if let Some(name) = space_origin.iter().last() {
-                    name.to_string()
+                    name.ui_string()
                 } else {
                     // Include class name in the display for root paths because they look a tad bit too short otherwise.
                     format!("/ ({})", class_identifier.as_str())

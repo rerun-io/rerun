@@ -8,9 +8,11 @@ use crate::PathParseError;
 ///
 /// Note that the contents of the string is NOT escaped,
 /// so escaping needs to be done when printing this
-/// (done by the `Display` impl).
+/// using [`Self::escaped_string`].
 ///
-/// Because of this, `EntityPathPart` does NOT implement `AsRef<str>` etc.
+/// Because of this, `EntityPathPart` does NOT implement `AsRef<str>` etc,
+/// nor does it implement `Display`: you must explicitly chose
+/// either the escaped or the unescaped version of it.
 ///
 /// In the file system analogy, this is the name of a folder.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -144,14 +146,23 @@ impl EntityPathPart {
         Ok(Self::from(output))
     }
 
+    /// The style of string to use in a UI
+    #[inline]
+    pub fn ui_string(&self) -> String {
+        self.unescaped_str().to_owned() // Make it pretty. We only _need_ escaping for full entity paths, and really only then in the contexts of a query language or similar.
+    }
+
     /// The unescaped string.
     ///
-    /// Use [`Self::escaped_string`] or `to_string` to escape it.
+    /// Use [`Self::escaped_string`] to escape it.
+    ///
+    /// Use this when it is standalone in a ui somewhere.
     #[inline]
     pub fn unescaped_str(&self) -> &str {
         &self.0
     }
 
+    /// Use this when it is part of a fulle entity path.
     #[inline]
     pub fn escaped_string(&self) -> String {
         let mut s = String::with_capacity(self.0.len());
@@ -217,12 +228,6 @@ fn parse_unicode_escape(input: &mut impl Iterator<Item = char>) -> Result<char, 
     };
 
     char::from_u32(num).ok_or(all_chars)
-}
-
-impl std::fmt::Display for EntityPathPart {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.escaped_string().fmt(f)
-    }
 }
 
 impl From<InternedString> for EntityPathPart {
