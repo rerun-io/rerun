@@ -3945,6 +3945,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "plot_dashboard_stress"
+version = "0.12.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rand",
+ "rerun",
+]
+
+[[package]]
 name = "plotters"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

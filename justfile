@@ -198,6 +198,8 @@ rs-run-all *ARGS:
     set -euo pipefail
     find examples/rust/ -name main.rs | xargs -I _ sh -c 'cd $(dirname _) && echo $(pwd) && cargo r'
 
+rs-plot-dashboard *ARGS:
+    pixi run rs-plot-dashboard {{ARGS}}
 
 ### TOML
 

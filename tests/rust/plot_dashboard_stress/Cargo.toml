@@ -1,0 +1,14 @@
+[package]
+name = "plot_dashboard_stress"
+version = "0.12.0-alpha.1+dev"
+edition = "2021"
+rust-version = "1.72"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+rerun = { path = "../../../crates/rerun" }
+
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+rand = "0.8"
