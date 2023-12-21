@@ -1,7 +1,6 @@
 use nohash_hasher::IntSet;
-use re_arrow_store::{DataStore, LatestAtQuery};
 use re_data_store::{EntityProperties, EntityTree};
-use re_log_types::{EntityPath, EntityPathHash, Timeline};
+use re_log_types::{EntityPath, EntityPathHash};
 use re_types::{components::PinholeProjection, Loggable as _};
 use re_viewer_context::{
     AutoSpawnHeuristic, IdentifiedViewSystem as _, PerSystemEntities, SpaceViewClass,
