@@ -35,6 +35,9 @@ pub enum SystemCommand {
 
     /// Enable or disable the experimental dataframe space views.
     EnableExperimentalDataframeSpaceView(bool),
+
+    /// Enable or disable the experimental primary caching for time series.
+    EnableExperimentalPrimaryCaching(bool),
 }
 
 /// Interface for sending [`SystemCommand`] messages.

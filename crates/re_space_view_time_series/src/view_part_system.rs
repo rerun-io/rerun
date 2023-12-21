@@ -188,8 +188,6 @@ impl TimeSeriesSystem {
                 }
             }
 
-            points.sort_by_key(|s| s.time);
-
             if points.is_empty() {
                 continue;
             }

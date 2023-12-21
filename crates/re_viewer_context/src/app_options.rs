@@ -20,6 +20,15 @@ pub struct AppOptions {
     /// Enable experimental support for new container blueprints
     pub experimental_container_blueprints: bool,
 
+    /// Enable experimental caching.
+    ///
+    /// Supported visualizers:
+    /// - Time series
+    /// - Text logs
+    /// - 2D point clouds
+    /// - 3D point clouds
+    pub experimental_primary_caching: bool,
+
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -44,6 +53,11 @@ impl Default for AppOptions {
             experimental_dataframe_space_view: false,
 
             experimental_container_blueprints: cfg!(debug_assertions),
+
+            // TODO: honestly we should just ship the real thing already.
+            // TODO(cmc): enable by default in debug once caching is actually there.
+            // experimental_primary_caching_time_series: cfg!(debug_assertions),
+            experimental_primary_caching: false,
 
             show_picking_debug_overlay: false,
 

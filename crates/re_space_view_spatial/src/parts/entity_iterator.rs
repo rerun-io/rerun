@@ -1,8 +1,8 @@
 use re_data_store::EntityProperties;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, RowId, TimeInt};
 use re_query::{query_archetype_with_history, ArchetypeView, QueryError};
 use re_renderer::DepthOffset;
-use re_types::Archetype;
+use re_types::{components::InstanceKey, Archetype, Component};
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewQuery, ViewerContext,
@@ -110,3 +110,138 @@ where
 
     Ok(())
 }
+
+// ---
+
+macro_rules! impl_process_cached_archetype_views_rNoM {
+    (impl $name:ident on top of $query_name:ident with required=[$($r:ident)+] optional=[$($o:ident)*]) => {
+        /// Cached implementation of [`process_archetype_views`].
+        #[allow(non_snake_case)]
+        pub fn $name<'a, S, const N: usize, A, $($r,)+ $($o,)* F>(
+            ctx: &ViewerContext<'_>,
+            query: &ViewQuery<'_>,
+            view_ctx: &ViewContextCollection,
+            default_depth_offset: DepthOffset,
+            mut f: F,
+        ) -> Result<(), SpaceViewSystemExecutionError>
+        where
+            S: IdentifiedViewSystem,
+            A: Archetype + 'a,
+            $($r: Component + Send + Sync + 'static,)+
+            $($o: Component + Send + Sync + 'static,)*
+            F: FnMut(
+                &ViewerContext<'_>,
+                &EntityPath,
+                &EntityProperties,
+                &SpatialSceneEntityContext<'_>,
+                &(TimeInt, RowId),
+                &[InstanceKey],
+                $(&[$r],)+
+                $(&[Option<$o>],)*
+            ) -> Result<(), QueryError>,
+        {
+            let transforms = view_ctx.get::<TransformContext>()?;
+            let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
+            let annotations = view_ctx.get::<AnnotationSceneContext>()?;
+            let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
+            let counter = view_ctx.get::<PrimitiveCounter>()?;
+
+            for data_result in query.iter_visible_data_results(S::identifier()) {
+                // The transform that considers pinholes only makes sense if this is a 3D space-view
+                let world_from_entity = if view_ctx.space_view_class_identifier() == SpatialSpaceView3D.identifier() {
+                    transforms.reference_from_entity(&data_result.entity_path)
+                } else {
+                    transforms.reference_from_entity_ignoring_pinhole(
+                        &data_result.entity_path,
+                        ctx.store_db.store(),
+                        &query.latest_at_query(),
+                    )
+                };
+
+                let Some(world_from_entity) = world_from_entity else {
+                    continue;
+                };
+                let entity_context = SpatialSceneEntityContext {
+                    world_from_entity,
+                    depth_offset: *depth_offsets
+                        .per_entity
+                        .get(&data_result.entity_path.hash())
+                        .unwrap_or(&default_depth_offset),
+                    annotations: annotations.0.find(&data_result.entity_path),
+                    shared_render_builders,
+                    highlight: query
+                        .highlights
+                        .entity_outline_mask(data_result.entity_path.hash()),
+                    space_view_class_identifier: view_ctx.space_view_class_identifier(),
+                };
+
+                ::re_query_cache::$query_name::<N, A, $($r,)+ $($o,)* _>(
+                    ctx.store_db.store(),
+                    &query.timeline,
+                    &query.latest_at,
+                    &data_result.resolved_properties.visible_history,
+                    &data_result.entity_path,
+                    |it| {
+                        for (t, keys, $($r,)+ $($o,)*) in it {
+                            counter
+                                .num_primitives
+                                .fetch_add(keys.len(), std::sync::atomic::Ordering::Relaxed);
+
+                            if let Err(err) = f(
+                                ctx,
+                                &data_result.entity_path,
+                                &data_result.resolved_properties,
+                                &entity_context,
+                                t,
+                                keys,
+                                $($r,)+
+                                $($o,)*
+                            ) {
+                                re_log::error_once!(
+                                    "Unexpected error querying {:?}: {err}",
+                                    &data_result.entity_path
+                                );
+                            }
+                        }
+                    }
+                )
+            }
+
+            Ok(())
+        }
+    };
+    (impl $name:ident on top of $query_name:ident with required=[$($r:ident)+]) => {
+        impl_process_cached_archetype_views_rNoM!(impl $name on top of $query_name with required=[$($r)+] optional=[]);
+    };
+}
+
+impl_process_cached_archetype_views_rNoM!(
+    impl process_cached_archetype_views_r1   on top of query_cached_archetype_with_history_r1
+        with required=[R1]);
+impl_process_cached_archetype_views_rNoM!(
+    impl process_cached_archetype_views_r1o1 on top of query_cached_archetype_with_history_r1o1
+        with required=[R1] optional=[O1]);
+impl_process_cached_archetype_views_rNoM!(
+    impl process_cached_archetype_views_r1o2 on top of query_cached_archetype_with_history_r1o2
+        with required=[R1] optional=[O1 O2]);
+impl_process_cached_archetype_views_rNoM!(
+    impl process_cached_archetype_views_r1o3 on top of query_cached_archetype_with_history_r1o3
+        with required=[R1] optional=[O1 O2 O3]);
+impl_process_cached_archetype_views_rNoM!(
+    impl process_cached_archetype_views_r1o4 on top of query_cached_archetype_with_history_r1o4
+        with required=[R1] optional=[O1 O2 O3 O4]);
+impl_process_cached_archetype_views_rNoM!(
+    impl process_cached_archetype_views_r1o5 on top of query_cached_archetype_with_history_r1o5
+        with required=[R1] optional=[O1 O2 O3 O4 O5]);
+impl_process_cached_archetype_views_rNoM!(
+    impl process_cached_archetype_views_r1o6 on top of query_cached_archetype_with_history_r1o6
+        with required=[R1] optional=[O1 O2 O3 O4 O5 O6]);
+impl_process_cached_archetype_views_rNoM!(
+    impl process_cached_archetype_views_r1o7 on top of query_cached_archetype_with_history_r1o7
+        with required=[R1] optional=[O1 O2 O3 O4 O5 O6 O7]);
+impl_process_cached_archetype_views_rNoM!(
+    impl process_cached_archetype_views_r1o8 on top of query_cached_archetype_with_history_r1o8
+        with required=[R1] optional=[O1 O2 O3 O4 O5 O6 O7 O8]);
+impl_process_cached_archetype_views_rNoM!(
+    impl process_cached_archetype_views_r1o9 on top of query_cached_archetype_with_history_r1o9
+        with required=[R1] optional=[O1 O2 O3 O4 O5 O6 O7 O8 O9]);

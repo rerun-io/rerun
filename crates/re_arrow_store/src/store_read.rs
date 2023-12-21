@@ -17,7 +17,7 @@ use crate::{
 /// A query at a given time, for a given timeline.
 ///
 /// Get the latest version of the data available at this time.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct LatestAtQuery {
     pub timeline: Timeline,
     pub at: TimeInt,
@@ -52,7 +52,7 @@ impl LatestAtQuery {
 /// interval.
 ///
 /// Motivation: all data is considered alive until the next logging to the same component path.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct RangeQuery {
     pub timeline: Timeline,
     pub range: TimeRange,

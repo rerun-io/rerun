@@ -224,6 +224,24 @@ impl App {
             ui.close_menu();
         }
 
+        if self
+            .re_ui
+            .checkbox(
+                ui,
+                &mut self.state.app_options.experimental_primary_caching,
+                "(experimental) Primary caching",
+            )
+            .on_hover_text("Enable experimental primary caching for time series, text logs and 2D/3D point clouds.")
+            .clicked()
+        {
+            self.command_sender.send_system(
+                SystemCommand::EnableExperimentalPrimaryCaching(
+                    self.state.app_options.experimental_primary_caching,
+                ),
+            );
+            ui.close_menu();
+        }
+
         #[cfg(debug_assertions)]
         {
             ui.separator();

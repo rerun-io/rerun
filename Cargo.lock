@@ -882,18 +882,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-run-wasm"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc1e37cf14ef470ed74ec2a8b95e51b8623bcf6f76d24f233ebaeb209f766230"
-dependencies = [
- "devserver_lib",
- "pico-args",
- "serde_json",
- "wasm-bindgen-cli-support",
-]
-
-[[package]]
 name = "cargo_metadata"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1076,15 +1064,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clock"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
 name = "cocoa"
 version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1113,15 +1092,6 @@ dependencies = [
  "foreign-types 0.3.2",
  "libc",
  "objc",
-]
-
-[[package]]
-name = "code_examples"
-version = "0.12.0-alpha.3"
-dependencies = [
- "ndarray",
- "rand",
- "rerun",
 ]
 
 [[package]]
@@ -1429,33 +1399,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom_data_loader"
-version = "0.12.0-alpha.3"
-dependencies = [
- "re_build_tools",
- "rerun",
-]
-
-[[package]]
-name = "custom_space_view"
-version = "0.12.0-alpha.3"
-dependencies = [
- "mimalloc",
- "re_crash_handler",
- "re_sdk_comms",
- "re_viewer",
- "tokio",
-]
-
-[[package]]
-name = "custom_store_subscriber"
-version = "0.12.0-alpha.3"
-dependencies = [
- "re_build_tools",
- "rerun",
-]
-
-[[package]]
 name = "d3d12"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1512,12 +1455,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "devserver_lib"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edf215dbb8cb1409cca7645aaed35f9e39fb0a21855bba1ac48bc0334903bf66"
-
-[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1561,15 +1498,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac1b7517328c04c2aa68422fc60a41b92208182142ed04a25879c26c8f878794"
 dependencies = [
  "libloading 0.7.4",
-]
-
-[[package]]
-name = "dna"
-version = "0.12.0-alpha.3"
-dependencies = [
- "itertools 0.12.0",
- "rand",
- "rerun",
 ]
 
 [[package]]
@@ -1988,17 +1916,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
-]
-
-[[package]]
-name = "extend_viewer_ui"
-version = "0.12.0-alpha.3"
-dependencies = [
- "mimalloc",
- "re_crash_handler",
- "re_sdk_comms",
- "re_viewer",
- "tokio",
 ]
 
 [[package]]
@@ -2771,12 +2688,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indoc"
-version = "1.0.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfa799dd5ed20a7e349f3b4639aa80d74549c81716d9ec4f994c9b5815598306"
-
-[[package]]
 name = "infer"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3148,17 +3059,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "log_benchmark"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "glam",
- "re_tracing",
- "rerun",
-]
-
-[[package]]
 name = "lz4_flex"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3240,15 +3140,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "memoffset"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a634b1c61a95585bd15607c6ab0c4e5b226e695ff2800ba0cdccddf208c406c"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "memory-stats"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3299,35 +3190,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "minimal"
-version = "0.12.0-alpha.3"
-dependencies = [
- "rerun",
-]
-
-[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
-
-[[package]]
-name = "minimal_options"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "glam",
- "rerun",
-]
-
-[[package]]
-name = "minimal_serve"
-version = "0.12.0-alpha.3"
-dependencies = [
- "rerun",
- "tokio",
-]
 
 [[package]]
 name = "miniz_oxide"
@@ -3359,12 +3225,6 @@ dependencies = [
  "wasi",
  "windows-sys 0.45.0",
 ]
-
-[[package]]
-name = "multimap"
-version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
 
 [[package]]
 name = "multiversion"
@@ -3736,20 +3596,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "objectron"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "glam",
- "prost",
- "prost-build",
- "protoc-prebuilt",
- "re_build_tools",
- "rerun",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3911,12 +3757,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pico-args"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3941,16 +3781,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc1691dd09e82f428ce8d6310bd6d5da2557c82ff17694d2a32cad7242aea89f"
 dependencies = [
  "array-init-cursor",
-]
-
-[[package]]
-name = "plot_dashboard_stress"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rand",
- "rerun",
 ]
 
 [[package]]
@@ -4213,70 +4043,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prost"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "146c289cda302b98a28d40c8b3b90498d6e526dd24ac2ecea73e4e491685b94a"
-dependencies = [
- "bytes",
- "prost-derive",
-]
-
-[[package]]
-name = "prost-build"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c55e02e35260070b6f716a2423c2ff1c3bb1642ddca6f99e1f26d06268a0e2d2"
-dependencies = [
- "bytes",
- "heck 0.4.1",
- "itertools 0.10.5",
- "log",
- "multimap",
- "once_cell",
- "petgraph",
- "prettyplease",
- "prost",
- "prost-types",
- "regex",
- "syn 2.0.32",
- "tempfile",
- "which",
-]
-
-[[package]]
-name = "prost-derive"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efb6c9a1dd1def8e2124d17e83a20af56f1570d6c2d2bd9e266ccb768df3840e"
-dependencies = [
- "anyhow",
- "itertools 0.10.5",
- "proc-macro2",
- "quote",
- "syn 2.0.32",
-]
-
-[[package]]
-name = "prost-types"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "193898f59edcf43c26227dcd4c8427f00d99d61e95dcde58dabd49fa291d470e"
-dependencies = [
- "prost",
-]
-
-[[package]]
-name = "protoc-prebuilt"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37aee930fb53074ec083bf049aa6133bb1a93cce8fc39f83e07f36a0937304dd"
-dependencies = [
- "ureq",
- "zip",
-]
-
-[[package]]
 name = "puffin"
 version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4313,66 +4079,6 @@ dependencies = [
  "bitflags 1.3.2",
  "memchr",
  "unicase",
-]
-
-[[package]]
-name = "pyo3"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cffef52f74ec3b1a1baf295d9b8fcc3070327aefc39a6d00656b13c1d0b8885c"
-dependencies = [
- "cfg-if",
- "indoc",
- "libc",
- "memoffset 0.9.0",
- "parking_lot 0.12.1",
- "pyo3-build-config",
- "pyo3-ffi",
- "pyo3-macros",
- "unindent",
-]
-
-[[package]]
-name = "pyo3-build-config"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "713eccf888fb05f1a96eb78c0dbc51907fee42b3377272dc902eb38985f418d5"
-dependencies = [
- "once_cell",
- "target-lexicon",
-]
-
-[[package]]
-name = "pyo3-ffi"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b2ecbdcfb01cbbf56e179ce969a048fd7305a66d4cdf3303e0da09d69afe4c3"
-dependencies = [
- "libc",
- "pyo3-build-config",
-]
-
-[[package]]
-name = "pyo3-macros"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b78fdc0899f2ea781c463679b20cb08af9247febc8d052de941951024cd8aea0"
-dependencies = [
- "proc-macro2",
- "pyo3-macros-backend",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "pyo3-macros-backend"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60da7b84f1227c3e2fe7593505de274dcf4c8928b4e0a1c23d551a14e4e80a0f"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -4435,18 +4141,6 @@ name = "raw-window-handle"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2ff9a1f06a88b01621b7ae906ef0211290d1c8a168a15542486a8f61c0833b9"
-
-[[package]]
-name = "raw_mesh"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "bytes",
- "clap",
- "gltf",
- "mimalloc",
- "rerun",
-]
 
 [[package]]
 name = "rawpointer"
@@ -4817,12 +4511,24 @@ name = "re_query_cache"
 version = "0.12.0-alpha.3"
 dependencies = [
  "ahash 0.8.6",
+ "arrow2",
+ "backtrace",
  "criterion",
  "document-features",
  "itertools 0.12.0",
  "mimalloc",
+ "nohash-hasher",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "rand",
+ "re_arrow_store",
+ "re_data_store",
+ "re_format",
+ "re_log",
  "re_log_types",
  "re_query",
+ "re_tracing",
+ "re_types",
  "re_types_core",
  "similar-asserts",
  "thiserror",
@@ -5035,6 +4741,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
+ "re_query_cache",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -5101,6 +4808,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
+ "re_query_cache",
  "re_renderer",
  "re_tracing",
  "re_types",
@@ -5112,13 +4820,16 @@ dependencies = [
 name = "re_space_view_time_series"
 version = "0.12.0-alpha.3"
 dependencies = [
+ "ahash 0.8.6",
  "egui",
  "egui_plot",
  "itertools 0.12.0",
+ "parking_lot 0.12.1",
  "re_arrow_store",
  "re_format",
  "re_log_types",
  "re_query",
+ "re_query_cache",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -5565,15 +5276,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rerun-loader-rust-file"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "argh",
- "rerun",
-]
-
-[[package]]
 name = "rerun_c"
 version = "0.12.0-alpha.3"
 dependencies = [
@@ -5583,35 +5285,6 @@ dependencies = [
  "parking_lot 0.12.1",
  "re_log",
  "re_sdk",
-]
-
-[[package]]
-name = "rerun_py"
-version = "0.12.0-alpha.3"
-dependencies = [
- "arrow2",
- "crossbeam",
- "document-features",
- "itertools 0.12.0",
- "mimalloc",
- "once_cell",
- "parking_lot 0.12.1",
- "pyo3",
- "pyo3-build-config",
- "rand",
- "re_build_info",
- "re_build_tools",
- "re_error",
- "re_log",
- "re_log_types",
- "re_memory",
- "re_viewer",
- "re_viewport",
- "re_web_viewer_server",
- "re_ws_comms",
- "rerun",
- "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -5685,183 +5358,6 @@ dependencies = [
  "base64 0.13.1",
  "bitflags 1.3.2",
  "serde",
-]
-
-[[package]]
-name = "roundtrip_annotation_context"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_arrows3d"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_boxes2d"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_boxes3d"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_depth_image"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "image",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_disconnected_space"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_image"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "half 2.3.1",
- "image",
- "ndarray",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_line_strips2d"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_line_strips3d"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_pinhole"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_points2d"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_points3d"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_segmentation_image"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "image",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_tensor"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "ndarray",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_text_document"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_text_log"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_transform3d"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "roundtrip_view_coordinates"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "rerun",
-]
-
-[[package]]
-name = "run_wasm"
-version = "0.12.0-alpha.3"
-dependencies = [
- "cargo-run-wasm",
- "pico-args",
- "webbrowser",
 ]
 
 [[package]]
@@ -6104,13 +5600,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shared_recording"
-version = "0.12.0-alpha.3"
-dependencies = [
- "rerun",
-]
-
-[[package]]
 name = "signal-hook"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6266,13 +5755,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spawn_viewer"
-version = "0.12.0-alpha.3"
-dependencies = [
- "rerun",
-]
-
-[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6308,13 +5790,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "stdio"
-version = "0.12.0-alpha.3"
-dependencies = [
- "rerun",
-]
 
 [[package]]
 name = "str-buf"
@@ -6411,12 +5886,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06f6b473c37f9add4cf1df5b4d66a8ef58ab6c895f1a3b3f949cf3e21230140e"
 
 [[package]]
-name = "target-lexicon"
-version = "0.12.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd1ba337640d60c3e96bc6f0638a939b9c9a7f2c316a1598c279828b3d1dc8c5"
-
-[[package]]
 name = "tempfile"
 version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6430,42 +5899,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "template"
-version = "0.12.0-alpha.3"
-dependencies = [
- "rerun",
-]
-
-[[package]]
 name = "termcolor"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be55cf8942feac5c765c2c993422806843c9a9a45d4d5c407ad6dd2ea95eb9b6"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "test_api"
-version = "0.12.0-alpha.3"
-dependencies = [
- "anyhow",
- "clap",
- "glam",
- "itertools 0.12.0",
- "ndarray",
- "ndarray-rand",
- "rand",
- "rerun",
-]
-
-[[package]]
-name = "test_image_memory"
-version = "0.12.0-alpha.3"
-dependencies = [
- "mimalloc",
- "re_format",
- "rerun",
 ]
 
 [[package]]
@@ -6611,7 +6050,6 @@ dependencies = [
  "mio",
  "num_cpus",
  "pin-project-lite",
- "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.48.0",
@@ -7422,18 +6860,6 @@ dependencies = [
  "bitflags 2.4.1",
  "js-sys",
  "web-sys",
-]
-
-[[package]]
-name = "which"
-version = "4.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87ba24419a2078cd2b0f2ede2691b6c66d8e47836da3b6db8265ebad47afbfc7"
-dependencies = [
- "either",
- "home",
- "once_cell",
- "rustix 0.38.24",
 ]
 
 [[package]]
