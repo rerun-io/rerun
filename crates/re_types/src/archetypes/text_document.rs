@@ -195,15 +195,11 @@ impl ::re_types_core::Archetype for TextDocument {
                 .with_context("rerun.archetypes.TextDocument#text")?
         };
         let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
-            Some({
-                <crate::components::MediaType>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TextDocument#media_type")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TextDocument#media_type")?
-            })
+            <crate::components::MediaType>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.TextDocument#media_type")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };

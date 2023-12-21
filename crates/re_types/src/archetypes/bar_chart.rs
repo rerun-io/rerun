@@ -147,15 +147,11 @@ impl ::re_types_core::Archetype for BarChart {
                 .with_context("rerun.archetypes.BarChart#values")?
         };
         let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.BarChart#color")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.BarChart#color")?
-            })
+            <crate::components::Color>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.BarChart#color")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };

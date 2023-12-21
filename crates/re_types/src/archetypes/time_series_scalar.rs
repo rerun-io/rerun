@@ -200,55 +200,39 @@ impl ::re_types_core::Archetype for TimeSeriesScalar {
                 .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?
         };
         let radius = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
-            Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#radius")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#radius")?
-            })
+            <crate::components::Radius>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.TimeSeriesScalar#radius")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#color")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#color")?
-            })
+            <crate::components::Color>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.TimeSeriesScalar#color")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let label = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
-            Some({
-                <crate::components::Text>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#label")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#label")?
-            })
+            <crate::components::Text>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.TimeSeriesScalar#label")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let scattered = if let Some(array) = arrays_by_name.get("rerun.components.ScalarScattering")
         {
-            Some({
-                <crate::components::ScalarScattering>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#scattered")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TimeSeriesScalar#scattered")?
-            })
+            <crate::components::ScalarScattering>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.TimeSeriesScalar#scattered")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };

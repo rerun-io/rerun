@@ -1,0 +1,22 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+/// The weights of the secondary axis.
+///
+/// For `Grid` this is the row weights.
+table SecondaryWeights (
+    "attr.docs.unreleased",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    /// The weighting of each container element.
+    weights: [float] (order: 100);
+}

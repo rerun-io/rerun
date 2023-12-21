@@ -164,28 +164,20 @@ impl ::re_types_core::Archetype for TextLog {
                 .with_context("rerun.archetypes.TextLog#text")?
         };
         let level = if let Some(array) = arrays_by_name.get("rerun.components.TextLogLevel") {
-            Some({
-                <crate::components::TextLogLevel>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TextLog#level")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TextLog#level")?
-            })
+            <crate::components::TextLogLevel>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.TextLog#level")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.TextLog#color")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.TextLog#color")?
-            })
+            <crate::components::Color>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.TextLog#color")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };

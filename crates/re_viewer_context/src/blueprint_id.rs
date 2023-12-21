@@ -91,8 +91,18 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
     }
 
     #[inline]
+    pub fn registry_part() -> &'static EntityPathPart {
+        &T::registry_path().as_slice()[0]
+    }
+
+    #[inline]
     pub fn uuid(&self) -> uuid::Uuid {
         self.id
+    }
+
+    #[inline]
+    pub fn hash(&self) -> u64 {
+        re_log_types::hash::Hash64::hash(self.id).hash64()
     }
 }
 
@@ -167,6 +177,7 @@ macro_rules! define_blueprint_id_type {
 // Definitions for the different [`BlueprintId`] types.
 define_blueprint_id_type!(SpaceViewId, SpaceViewIdRegistry, "space_view");
 define_blueprint_id_type!(DataQueryId, DataQueryIdRegistry, "data_query");
+define_blueprint_id_type!(ContainerId, ContainerIdRegistry, "container");
 
 // ----------------------------------------------------------------------------
 // Tests

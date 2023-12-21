@@ -1,0 +1,22 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+
+/// The container that sits at the root of a viewport.
+table RootContainer (
+    "attr.docs.unreleased",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default",
+    "attr.rust.override_crate": "re_viewport"
+) {
+    /// `ContainerId` for the root.
+    id: rerun.datatypes.Uuid (order: 100);
+}

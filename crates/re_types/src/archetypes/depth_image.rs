@@ -172,28 +172,20 @@ impl ::re_types_core::Archetype for DepthImage {
                 .with_context("rerun.archetypes.DepthImage#data")?
         };
         let meter = if let Some(array) = arrays_by_name.get("rerun.components.DepthMeter") {
-            Some({
-                <crate::components::DepthMeter>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.DepthImage#meter")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.DepthImage#meter")?
-            })
+            <crate::components::DepthMeter>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.DepthImage#meter")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
-            Some({
-                <crate::components::DrawOrder>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.DepthImage#draw_order")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.DepthImage#draw_order")?
-            })
+            <crate::components::DrawOrder>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.DepthImage#draw_order")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };

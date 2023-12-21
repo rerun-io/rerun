@@ -13,4 +13,6 @@ A path to an entity in the `DataStore`.
 
 ## Used by
 
+* [`ActiveTab`](../components/active_tab.md?speculative-link)
+* [`IncludedContents`](../components/included_contents.md?speculative-link)
 * [`SpaceViewOrigin`](../components/space_view_origin.md?speculative-link)

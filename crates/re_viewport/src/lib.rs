@@ -5,6 +5,7 @@
 pub const VIEWPORT_PATH: &str = "viewport";
 
 mod auto_layout;
+mod container;
 mod space_info;
 mod space_view;
 mod space_view_entity_picker;
