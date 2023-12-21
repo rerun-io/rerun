@@ -1,16 +1,18 @@
-use nohash_hasher::IntSet;
+use slotmap::SlotMap;
+use smallvec::SmallVec;
+
 use re_data_store::{
     EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree, StoreDb,
 };
-use re_log_types::{DataRow, EntityPath, EntityPathExpr, RowId, TimePoint};
+use re_log_types::{
+    path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, TimePoint,
+};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     EntitiesPerSystem, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, StoreContext,
     SystemCommand, SystemCommandSender as _, ViewerContext,
 };
-use slotmap::SlotMap;
-use smallvec::SmallVec;
 
 use crate::{
     blueprint::components::QueryExpressions, DataQuery, EntityOverrideContext, PropertyResolver,
@@ -19,15 +21,7 @@ use crate::{
 /// An implementation of [`DataQuery`] that is built from a collection of [`QueryExpressions`]
 ///
 /// During execution it will walk an [`EntityTree`] and return a [`DataResultTree`]
-/// containing any entities that match the input list of [`EntityPathExpr`]s.
-///
-/// Any exact expressions are included in the [`DataResultTree`] regardless of whether or not they are found
-/// this allows UI to show a "no data" message for entities that are being explicitly looked for but
-/// not found.
-///
-/// The results of recursive expressions are only included if they are found within the [`EntityTree`]
-/// and for which there is a valid `ViewPart` system. This keeps recursive expressions from incorrectly
-/// picking up irrelevant data within the tree.
+/// containing any entities that match a [`EntityPathFilter`]s.
 ///
 /// Note: [`DataQueryBlueprint`] doesn't implement Clone because it stores an internal
 /// uuid used for identifying the path of its data in the blueprint store. It's ambiguous
@@ -39,14 +33,14 @@ use crate::{
 pub struct DataQueryBlueprint {
     pub id: DataQueryId,
     pub space_view_class_identifier: SpaceViewClassIdentifier,
-    pub expressions: QueryExpressions,
+    pub entity_path_filter: EntityPathFilter,
 }
 
 impl DataQueryBlueprint {
     pub fn is_equivalent(&self, other: &DataQueryBlueprint) -> bool {
         self.space_view_class_identifier
             .eq(&other.space_view_class_identifier)
-            && self.expressions.eq(&other.expressions)
+            && self.entity_path_filter.eq(&other.entity_path_filter)
     }
 }
 
@@ -57,12 +51,12 @@ impl DataQueryBlueprint {
     /// `save_to_blueprint_store` on the enclosing `SpaceViewBlueprint`.
     pub fn new(
         space_view_class_identifier: SpaceViewClassIdentifier,
-        queries_entities: impl Iterator<Item = EntityPathExpr>,
+        entity_path_filter: EntityPathFilter,
     ) -> Self {
         Self {
             id: DataQueryId::random(),
             space_view_class_identifier,
-            expressions: QueryExpressions::new(queries_entities, std::iter::empty()),
+            entity_path_filter,
         }
     }
 
@@ -77,10 +71,12 @@ impl DataQueryBlueprint {
             .query_timeless_component::<QueryExpressions>(&id.as_entity_path())
             .map(|c| c.value)?;
 
+        let entity_path_filter = EntityPathFilter::from(&expressions);
+
         Some(Self {
             id,
             space_view_class_identifier,
-            expressions,
+            entity_path_filter,
         })
     }
 
@@ -91,7 +87,10 @@ impl DataQueryBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        ctx.save_blueprint_component(&self.id.as_entity_path(), self.expressions.clone());
+        ctx.save_blueprint_component(
+            &self.id.as_entity_path(),
+            QueryExpressions::from(&self.entity_path_filter),
+        );
     }
 
     /// Creates a new [`DataQueryBlueprint`] with a the same contents, but a different [`DataQueryId`]
@@ -99,7 +98,7 @@ impl DataQueryBlueprint {
         Self {
             id: DataQueryId::random(),
             space_view_class_identifier: self.space_view_class_identifier,
-            expressions: self.expressions.clone(),
+            entity_path_filter: self.entity_path_filter.clone(),
         }
     }
 
@@ -126,15 +125,10 @@ impl DataQueryBlueprint {
         }
     }
 
-    fn save_expressions(
-        &self,
-        ctx: &ViewerContext<'_>,
-        inclusions: impl Iterator<Item = EntityPathExpr>,
-        exclusions: impl Iterator<Item = EntityPathExpr>,
-    ) {
+    fn save_expressions(&self, ctx: &ViewerContext<'_>, entity_path_filter: &EntityPathFilter) {
         let timepoint = TimePoint::timeless();
 
-        let expressions_component = QueryExpressions::new(inclusions, exclusions);
+        let expressions_component = QueryExpressions::from(entity_path_filter);
 
         let row = DataRow::from_cells1_sized(
             RowId::new(),
@@ -152,121 +146,24 @@ impl DataQueryBlueprint {
             ));
     }
 
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
-        let mut edited = false;
-
-        let mut inclusions: Vec<EntityPathExpr> = self.inclusions().collect();
-        let mut exclusions: Vec<EntityPathExpr> = self.exclusions().collect();
-
-        // This exclusion would cancel out any inclusions or exclusions that are descendants of it
-        // so clean them up.
-        if let Some(recursive_exclude) = expr.recursive_entity_path() {
-            inclusions.retain(|inc_expr| {
-                if inc_expr.entity_path().is_descendant_of(recursive_exclude) {
-                    edited = true;
-                    false
-                } else {
-                    true
-                }
-            });
-
-            exclusions.retain(|exc_expr| {
-                if exc_expr.entity_path().is_descendant_of(recursive_exclude) {
-                    edited = true;
-                    false
-                } else {
-                    true
-                }
-            });
-        }
-
-        inclusions.retain(|inc_expr| {
-            if inc_expr == &expr {
-                edited = true;
-                false
-            } else {
-                true
-            }
-        });
-
-        if !exclusions.iter().any(|exc_expr| exc_expr == &expr) {
-            edited = true;
-            exclusions.push(expr);
-        }
-
-        if edited {
-            self.save_expressions(ctx, inclusions.into_iter(), exclusions.into_iter());
-        }
+    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
+        // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
+        let mut entity_path_filter = self.entity_path_filter.clone();
+        entity_path_filter.add_rule(RuleEffect::Exclude, rule);
+        self.save_expressions(ctx, &entity_path_filter);
     }
 
-    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
-        let mut edited = false;
-
-        let mut inclusions: Vec<EntityPathExpr> = self.inclusions().collect();
-        let mut exclusions: Vec<EntityPathExpr> = self.exclusions().collect();
-
-        exclusions.retain(|exc_expr| {
-            if exc_expr == &expr {
-                edited = true;
-                false
-            } else {
-                true
-            }
-        });
-
-        if !inclusions.iter().any(|inc_expr| inc_expr == &expr) {
-            edited = true;
-            inclusions.push(expr);
-        }
-
-        if edited {
-            self.save_expressions(ctx, inclusions.into_iter(), exclusions.into_iter());
-        }
+    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
+        // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
+        let mut entity_path_filter = self.entity_path_filter.clone();
+        entity_path_filter.add_rule(RuleEffect::Include, rule);
+        self.save_expressions(ctx, &entity_path_filter);
     }
 
-    pub fn clear_entity_expression(&self, ctx: &ViewerContext<'_>, expr: &EntityPathExpr) {
-        let mut edited = false;
-
-        let mut inclusions: Vec<EntityPathExpr> = self.inclusions().collect();
-        let mut exclusions: Vec<EntityPathExpr> = self.exclusions().collect();
-
-        exclusions.retain(|exc_expr| {
-            if exc_expr == expr {
-                edited = true;
-                false
-            } else {
-                true
-            }
-        });
-
-        inclusions.retain(|inc_expr| {
-            if inc_expr == expr {
-                edited = true;
-                false
-            } else {
-                true
-            }
-        });
-
-        if edited {
-            self.save_expressions(ctx, inclusions.into_iter(), exclusions.into_iter());
-        }
-    }
-
-    pub fn inclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
-        self.expressions
-            .inclusions
-            .iter()
-            .filter(|exp| !exp.as_str().is_empty())
-            .map(|exp| EntityPathExpr::from(exp.as_str()))
-    }
-
-    pub fn exclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
-        self.expressions
-            .exclusions
-            .iter()
-            .filter(|exp| !exp.as_str().is_empty())
-            .map(|exp| EntityPathExpr::from(exp.as_str()))
+    pub fn remove_filter_rule_for(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
+        let mut entity_path_filter = self.entity_path_filter.clone();
+        entity_path_filter.remove_rule_for(ent_path);
+        self.save_expressions(ctx, &entity_path_filter);
     }
 }
 
@@ -288,11 +185,8 @@ impl DataQuery for DataQueryBlueprint {
         let executor = QueryExpressionEvaluator::new(self, entities_per_system);
 
         let root_handle = ctx.recording.and_then(|store| {
-            executor.add_entity_tree_to_data_results_recursive(
-                store.tree(),
-                &mut data_results,
-                false,
-            )
+            re_tracing::profile_scope!("add_entity_tree_to_data_results_recursive");
+            executor.add_entity_tree_to_data_results_recursive(store.tree(), &mut data_results)
         });
 
         DataQueryResult {
@@ -309,11 +203,7 @@ impl DataQuery for DataQueryBlueprint {
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
     per_system_entity_list: &'a EntitiesPerSystem,
-    exact_inclusions: IntSet<EntityPath>,
-    recursive_inclusions: IntSet<EntityPath>,
-    exact_exclusions: IntSet<EntityPath>,
-    recursive_exclusions: IntSet<EntityPath>,
-    allowed_prefixes: IntSet<EntityPath>,
+    entity_path_filter: EntityPathFilter,
 }
 
 impl<'a> QueryExpressionEvaluator<'a> {
@@ -322,54 +212,10 @@ impl<'a> QueryExpressionEvaluator<'a> {
         per_system_entity_list: &'a EntitiesPerSystem,
     ) -> Self {
         re_tracing::profile_function!();
-        let inclusions: Vec<EntityPathExpr> = blueprint
-            .expressions
-            .inclusions
-            .iter()
-            .filter(|exp| !exp.as_str().is_empty())
-            .map(|exp| EntityPathExpr::from(exp.as_str()))
-            .collect();
-
-        let exclusions: Vec<EntityPathExpr> = blueprint
-            .expressions
-            .exclusions
-            .iter()
-            .filter(|exp| !exp.as_str().is_empty())
-            .map(|exp| EntityPathExpr::from(exp.as_str()))
-            .collect();
-
-        let exact_inclusions: IntSet<EntityPath> = inclusions
-            .iter()
-            .filter_map(|exp| exp.exact_entity_path().cloned())
-            .collect();
-
-        let recursive_inclusions = inclusions
-            .iter()
-            .filter_map(|exp| exp.recursive_entity_path().cloned())
-            .collect();
-
-        let exact_exclusions: IntSet<EntityPath> = exclusions
-            .iter()
-            .filter_map(|exp| exp.exact_entity_path().cloned())
-            .collect();
-
-        let recursive_exclusions: IntSet<EntityPath> = exclusions
-            .iter()
-            .filter_map(|exp| exp.recursive_entity_path().cloned())
-            .collect();
-
-        let allowed_prefixes = inclusions
-            .iter()
-            .flat_map(|exp| EntityPath::incremental_walk(None, exp.entity_path()))
-            .collect();
 
         Self {
             per_system_entity_list,
-            exact_inclusions,
-            recursive_inclusions,
-            exact_exclusions,
-            recursive_exclusions,
-            allowed_prefixes,
+            entity_path_filter: blueprint.entity_path_filter.clone(),
         }
     }
 
@@ -377,25 +223,21 @@ impl<'a> QueryExpressionEvaluator<'a> {
         &self,
         tree: &EntityTree,
         data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
-        from_recursive: bool,
     ) -> Option<DataResultHandle> {
-        // If we hit a prefix that is not allowed, we terminate. This is
-        // a pruned branch of the tree. Can come from either an explicit
-        // recursive exclusion, or an implicit missing inclusion.
-        // TODO(jleibs): If this space is disconnected, we should terminate here
-        if self.recursive_exclusions.contains(&tree.path)
-            || !(from_recursive || self.allowed_prefixes.contains(&tree.path))
+        // Early-out optimization
+        if !self
+            .entity_path_filter
+            .is_anything_in_subtree_included(&tree.path)
         {
             return None;
         }
 
+        // TODO(jleibs): If this space is disconnected, we should terminate here
+
         let entity_path = &tree.path;
 
         // Pre-compute our matches
-        let exact_include = self.exact_inclusions.contains(entity_path);
-        let recursive_include = self.recursive_inclusions.contains(entity_path) || from_recursive;
-        let exact_exclude = self.exact_exclusions.contains(entity_path);
-        let any_match = (exact_include || recursive_include) && !exact_exclude;
+        let any_match = self.entity_path_filter.is_included(entity_path);
 
         // Only populate view_parts if this is a match
         // Note that allowed prefixes that aren't matches can still create groups
@@ -414,20 +256,21 @@ impl<'a> QueryExpressionEvaluator<'a> {
             Default::default()
         };
 
-        let self_leaf = if !view_parts.is_empty() || exact_include {
-            Some(data_results.insert(DataResultNode {
-                data_result: DataResult {
-                    entity_path: entity_path.clone(),
-                    view_parts,
-                    is_group: false,
-                    direct_included: any_match,
-                    property_overrides: None,
-                },
-                children: Default::default(),
-            }))
-        } else {
-            None
-        };
+        let self_leaf =
+            if !view_parts.is_empty() || self.entity_path_filter.is_exact_included(entity_path) {
+                Some(data_results.insert(DataResultNode {
+                    data_result: DataResult {
+                        entity_path: entity_path.clone(),
+                        view_parts,
+                        is_group: false,
+                        direct_included: any_match,
+                        property_overrides: None,
+                    },
+                    children: Default::default(),
+                }))
+            } else {
+                None
+            };
 
         let maybe_self_iter = if let Some(self_leaf) = self_leaf {
             itertools::Either::Left(std::iter::once(self_leaf))
@@ -435,36 +278,11 @@ impl<'a> QueryExpressionEvaluator<'a> {
             itertools::Either::Right(std::iter::empty())
         };
 
-        let interesting_children: Vec<_> = {
-            if recursive_include {
-                tree.children
-                    .values()
-                    .filter(|subtree| {
-                        !(self.recursive_exclusions.contains(&subtree.path)
-                            || !(recursive_include
-                                || self.allowed_prefixes.contains(&subtree.path)))
-                    })
-                    .collect()
-            } else {
-                self.allowed_prefixes
-                    .iter()
-                    .filter(|prefix| prefix.is_child_of(entity_path))
-                    .filter_map(|prefix| prefix.last().and_then(|part| tree.children.get(part)))
-                    .collect()
-            }
-        };
-
-        let children: SmallVec<_> = {
-            maybe_self_iter
-                .chain(interesting_children.iter().filter_map(|subtree| {
-                    self.add_entity_tree_to_data_results_recursive(
-                        subtree,
-                        data_results,
-                        recursive_include, // Once we have hit a recursive match, it's always propagated
-                    )
-                }))
-                .collect()
-        };
+        let children: SmallVec<_> = maybe_self_iter
+            .chain(tree.children.values().filter_map(|subtree| {
+                self.add_entity_tree_to_data_results_recursive(subtree, data_results)
+            }))
+            .collect();
 
         // If the only child is the self-leaf, then we don't need to create a group
         if children.is_empty() || children.len() == 1 && self_leaf.is_some() {
@@ -689,108 +507,100 @@ mod tests {
         };
 
         struct Scenario {
-            inclusions: Vec<&'static str>,
-            exclusions: Vec<&'static str>,
+            filter: &'static str,
             outputs: Vec<&'static str>,
         }
 
         let scenarios: Vec<Scenario> = vec![
             Scenario {
-                inclusions: vec!["/"],
-                exclusions: vec![],
+                filter: "+ /**",
                 outputs: vec![
-                    "/",
-                    "/parent/",
+                    "/**",
+                    "/parent/**",
                     "/parent",
-                    "/parent/skipped/", // Not an exact match and not found in tree
+                    "/parent/skipped/**", // Not an exact match and not found in tree
                     "/parent/skipped/child1", // Only child 1 has ViewParts
                 ],
             },
             Scenario {
-                inclusions: vec!["parent/skipped/"],
-                exclusions: vec![],
+                filter: "+ parent/skipped/**",
                 outputs: vec![
-                    "/",
-                    "/parent/",               // Only included because is a prefix
-                    "/parent/skipped/",       // Not an exact match and not found in tree
+                    "/**",
+                    "/parent/**",             // Only included because is a prefix
+                    "/parent/skipped/**",     // Not an exact match and not found in tree
                     "/parent/skipped/child1", // Only child 1 has ViewParts
                 ],
             },
             Scenario {
-                inclusions: vec!["parent", "parent/skipped/child2"],
-                exclusions: vec![],
+                filter: r"+ parent
+                          + parent/skipped/child2",
                 outputs: vec![
-                    "/", // Trivial intermediate group -- could be collapsed
-                    "/parent/",
+                    "/**", // Trivial intermediate group -- could be collapsed
+                    "/parent/**",
                     "/parent",
-                    "/parent/skipped/", // Trivial intermediate group -- could be collapsed
+                    "/parent/skipped/**", // Trivial intermediate group -- could be collapsed
                     "/parent/skipped/child2",
                 ],
             },
             Scenario {
-                inclusions: vec!["parent/skipped", "parent/skipped/child2", "parent/"],
-                exclusions: vec![],
+                filter: r"+ parent/skipped
+                          + parent/skipped/child2
+                          + parent/**",
                 outputs: vec![
-                    "/",
-                    "/parent/",
+                    "/**",
+                    "/parent/**",
                     "/parent",
-                    "/parent/skipped/",
+                    "/parent/skipped/**",
                     "/parent/skipped",        // Included because an exact match
                     "/parent/skipped/child1", // Included because an exact match
                     "/parent/skipped/child2",
                 ],
             },
             Scenario {
-                inclusions: vec!["parent/skipped", "parent/skipped/child2", "parent/"],
-                exclusions: vec!["parent"],
+                filter: r"+ parent/skipped
+                          + parent/skipped/child2
+                          + parent/**
+                          - parent",
                 outputs: vec![
-                    "/",
-                    "/parent/", // Parent leaf has been excluded
-                    "/parent/skipped/",
+                    "/**",
+                    "/parent/**", // Parent leaf has been excluded
+                    "/parent/skipped/**",
                     "/parent/skipped",        // Included because an exact match
                     "/parent/skipped/child1", // Included because an exact match
                     "/parent/skipped/child2",
                 ],
             },
             Scenario {
-                inclusions: vec!["parent/"],
-                exclusions: vec!["parent/skipped/"],
-                outputs: vec!["/", "/parent"], // None of the children are hit since excluded
+                filter: r"+ parent/**
+                          - parent/skipped/**",
+                outputs: vec!["/**", "/parent"], // None of the children are hit since excluded
             },
             Scenario {
-                inclusions: vec!["parent/", "parent/skipped/child2"],
-                exclusions: vec!["parent/skipped/child1"],
+                filter: r"+ parent/**
+                          + parent/skipped/child2
+                          - parent/skipped/child1",
                 outputs: vec![
-                    "/",
-                    "/parent/",
+                    "/**",
+                    "/parent/**",
                     "/parent",
-                    "/parent/skipped/",
+                    "/parent/skipped/**",
                     "/parent/skipped/child2", // No child1 since skipped.
                 ],
             },
             Scenario {
-                inclusions: vec!["not/found"],
-                exclusions: vec![],
+                filter: r"+ not/found",
                 // TODO(jleibs): Making this work requires merging the EntityTree walk with a minimal-coverage ExactMatchTree walk
                 // not crucial for now until we expose a free-form UI for entering paths.
-                // vec!["/", "not/", "not/found"]),
+                // vec!["/**", "not/**", "not/found"]),
                 outputs: vec![],
             },
         ];
 
-        for Scenario {
-            inclusions,
-            exclusions,
-            outputs,
-        } in scenarios
-        {
+        for (i, Scenario { filter, outputs }) in scenarios.into_iter().enumerate() {
             let query = DataQueryBlueprint {
                 id: DataQueryId::random(),
                 space_view_class_identifier: "3D".into(),
-                expressions: QueryExpressions::new(
-                    inclusions.into_iter().map(EntityPathExpr::from),
-                    exclusions.into_iter().map(EntityPathExpr::from),
-                ),
+                entity_path_filter: EntityPathFilter::parse_forgiving(filter),
             };
 
             let query_result = query.execute_query(&ctx, &entities_per_system);
@@ -798,14 +608,16 @@ mod tests {
             let mut visited = vec![];
             query_result.tree.visit(&mut |handle| {
                 let result = query_result.tree.lookup_result(handle).unwrap();
-                if result.is_group && result.entity_path != EntityPath::root() {
-                    visited.push(format!("{}/", result.entity_path));
+                if result.is_group && result.entity_path == EntityPath::root() {
+                    visited.push("/**".to_owned());
+                } else if result.is_group {
+                    visited.push(format!("{}/**", result.entity_path));
                 } else {
                     visited.push(result.entity_path.to_string());
                 }
             });
 
-            assert_eq!(visited, outputs);
+            assert_eq!(visited, outputs, "Scenario {i}, filter: {filter}");
         }
     }
 }

@@ -2,7 +2,7 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 
-use re_log_types::{DataRow, EntityPathExpr, RowId, TimePoint, Timeline};
+use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQueryBlueprint, ScreenshotMode};
@@ -428,41 +428,40 @@ impl SpaceViewBlueprint {
     }
 
     // TODO(jleibs): Get rid of mut by sending blueprint update
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         if let Some(query) = self.queries.first() {
-            query.add_entity_exclusion(ctx, expr);
+            query.add_entity_exclusion(ctx, rule);
         }
         self.set_entity_determined_by_user(ctx);
     }
 
     // TODO(jleibs): Get rid of mut by sending blueprint update
-    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         if let Some(query) = self.queries.first() {
-            query.add_entity_inclusion(ctx, expr);
+            query.add_entity_inclusion(ctx, rule);
         }
         self.set_entity_determined_by_user(ctx);
     }
 
-    pub fn clear_entity_expression(&self, ctx: &ViewerContext<'_>, expr: &EntityPathExpr) {
+    pub fn remove_filter_rule_for(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
         if let Some(query) = self.queries.first() {
-            query.clear_entity_expression(ctx, expr);
+            query.remove_filter_rule_for(ctx, ent_path);
         }
         self.set_entity_determined_by_user(ctx);
     }
 
-    pub fn exclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
-        self.queries.iter().flat_map(|q| q.exclusions())
-    }
-
-    pub fn inclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
-        self.queries.iter().flat_map(|q| q.inclusions())
+    pub fn entity_path_filter(&self) -> EntityPathFilter {
+        self.queries
+            .iter()
+            .map(|q| q.entity_path_filter.clone())
+            .sum()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use re_data_store::StoreDb;
-    use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
+    use re_log_types::{DataCell, DataRow, EntityPathFilter, RowId, StoreId, TimePoint};
     use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
     use re_viewer_context::{EntitiesPerSystem, StoreContext};
@@ -506,12 +505,13 @@ mod tests {
             &EntityPath::root(),
             DataQueryBlueprint::new(
                 "3D".into(),
-                [
-                    "parent".into(),
-                    "parent/skip/child1".into(),
-                    "parent/skip/child2".into(),
-                ]
-                .into_iter(),
+                EntityPathFilter::parse_forgiving(
+                    r"
+                    + parent
+                    + parent/skip/child1
+                    + parent/skip/child2
+                ",
+                ),
             ),
         );
 

@@ -1043,3 +1043,18 @@ pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {
         egui::Label::new("❓").sense(egui::Sense::click()), // sensing clicks also gives hover effect
     )
 }
+
+/// Show some markdown
+pub fn markdownm_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
+    use parking_lot::Mutex;
+    use std::sync::Arc;
+
+    let commonmark_cache = ui.data_mut(|data| {
+        data.get_temp_mut_or_default::<Arc<Mutex<egui_commonmark::CommonMarkCache>>>(egui::Id::new(
+            "global_egui_commonmark_cache",
+        ))
+        .clone()
+    });
+
+    egui_commonmark::CommonMarkViewer::new(id).show(ui, &mut commonmark_cache.lock(), markdown);
+}
