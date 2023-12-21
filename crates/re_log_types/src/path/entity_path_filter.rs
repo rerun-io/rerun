@@ -163,17 +163,20 @@ impl EntityPathFilter {
         }
     }
 
+    /// Is there a rule for this exact entity path (ignoring subtree)?
     pub fn is_exact_included(&self, entity_path: &EntityPath) -> bool {
         self.rules.iter().any(|(rule, effect)| {
             effect == &RuleEffect::Include && !rule.include_subtree && rule.path == *entity_path
         })
     }
 
+    /// Include this entity, but not the subtree.
     pub fn add_exact(&mut self, clone: EntityPath) {
         self.rules
             .insert(EntityPathRule::exact(clone), RuleEffect::Include);
     }
 
+    /// Include this entity with subtree.
     pub fn add_subtree(&mut self, clone: EntityPath) {
         self.rules.insert(
             EntityPathRule::including_subtree(clone),
@@ -181,24 +184,34 @@ impl EntityPathFilter {
         );
     }
 
+    /// Is there any rule for this entity path?
+    ///
+    /// Wether or not the subtree is included is NOT important.
     pub fn contains_rule_for_exactly(&self, entity_path: &EntityPath) -> bool {
         self.rules.iter().any(|(rule, _)| rule.path == *entity_path)
     }
 
-    pub fn is_explicitly_excluded(&self, entity_path: &EntityPath) -> bool {
-        self.rules
-            .iter()
-            .any(|(rule, effect)| rule.path == *entity_path && effect == &RuleEffect::Exclude)
-    }
-
+    /// Is this entity path explicitly included?
+    ///
+    /// Wether or not the subtree is included is NOT important.
     pub fn is_explicitly_included(&self, entity_path: &EntityPath) -> bool {
         self.rules
             .iter()
             .any(|(rule, effect)| rule.path == *entity_path && effect == &RuleEffect::Include)
     }
+
+    /// Is this entity path explicitly excluded?
+    ///
+    /// Wether or not the subtree is included is NOT important.
+    pub fn is_explicitly_excluded(&self, entity_path: &EntityPath) -> bool {
+        self.rules
+            .iter()
+            .any(|(rule, effect)| rule.path == *entity_path && effect == &RuleEffect::Exclude)
+    }
 }
 
 impl EntityPathRule {
+    /// Match this path, but not children.
     #[inline]
     pub fn exact(path: EntityPath) -> Self {
         Self {
@@ -207,6 +220,7 @@ impl EntityPathRule {
         }
     }
 
+    /// Match this path and any entity in its subtree.
     #[inline]
     pub fn including_subtree(path: EntityPath) -> Self {
         Self {
@@ -217,7 +231,12 @@ impl EntityPathRule {
 
     pub fn parse_forgiving(expression: &str) -> Self {
         let expression = expression.trim();
-        if let Some(path) = expression.strip_suffix("/**") {
+        if expression == "/**" {
+            Self {
+                path: EntityPath::root(),
+                include_subtree: true,
+            }
+        } else if let Some(path) = expression.strip_suffix("/**") {
             Self {
                 path: EntityPath::parse_forgiving(path),
                 include_subtree: true,
@@ -230,6 +249,7 @@ impl EntityPathRule {
         }
     }
 
+    #[inline]
     pub fn matches(&self, path: &EntityPath) -> bool {
         if self.include_subtree {
             path.starts_with(&self.path)
@@ -241,12 +261,14 @@ impl EntityPathRule {
 
 impl std::cmp::Ord for EntityPathRule {
     /// Most specific last, which means recursive first.
+    #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         (&self.path, !self.include_subtree).cmp(&(&other.path, !other.include_subtree))
     }
 }
 
 impl std::cmp::PartialOrd for EntityPathRule {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
