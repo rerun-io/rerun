@@ -505,7 +505,7 @@ impl TimePanel {
         ui: &mut egui::Ui,
         show_root_as: &str,
     ) {
-        let tree_has_data_in_current_timeline = ctx.tree_has_data_in_current_timeline(tree);
+        let tree_has_data_in_current_timeline = time_ctrl.tree_has_data_in_current_timeline(tree);
 
         // The last part of the path component
         let text = if let Some(last_path_part) = last_path_part {
@@ -640,7 +640,7 @@ impl TimePanel {
                 let data = &tree.entity.components[component_name];
 
                 let component_has_data_in_current_timeline =
-                    ctx.component_has_data_in_current_timeline(data);
+                    time_ctrl.component_has_data_in_current_timeline(data);
                 let component_path = ComponentPath::new(tree.path.clone(), *component_name);
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path);
