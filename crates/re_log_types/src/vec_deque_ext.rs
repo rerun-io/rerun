@@ -155,12 +155,6 @@ pub trait VecDequeRemovalExt<T> {
     /// Note that the capacity of `self` does not change.
     fn split_off_or_default(&mut self, at: usize) -> Self;
 
-    /// Shortens the deque, keeping the first N elements up to `at` (excluded) and
-    /// dropping the rest.
-    ///
-    /// If at is greater or equal to the deque's current length, this has no effect.
-    fn truncate_at(&mut self, at: usize);
-
     /// Removes and returns the elements in the given `range` from the deque.
     ///
     /// This is O(1) if `range` either starts at the beginning of the deque, or ends at the end of
@@ -207,11 +201,6 @@ impl<T: Clone> VecDequeRemovalExt<T> for VecDeque<T> {
             return Default::default();
         }
         self.split_off(at)
-    }
-
-    #[inline]
-    fn truncate_at(&mut self, at: usize) {
-        self.truncate(self.len() - at);
     }
 
     #[inline]
