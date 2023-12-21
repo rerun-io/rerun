@@ -384,6 +384,9 @@ impl App {
                     }
                 }
             }
+            SystemCommand::ShowBlueprintInTimeline(show) => {
+                self.app_options_mut().show_blueprint_in_timeline = show;
+            }
             SystemCommand::EnableExperimentalDataframeSpaceView(enabled) => {
                 let result = if enabled {
                     self.space_view_class_registry

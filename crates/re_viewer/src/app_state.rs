@@ -30,9 +30,11 @@ pub struct AppState {
 
     /// Configuration for the current recording (found in [`EntityDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
+    blueprint_cfg: RecordingConfig,
 
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
+    blueprint_panel: re_time_panel::TimePanel,
 
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
@@ -106,8 +108,10 @@ impl AppState {
             app_options,
             cache,
             recording_configs,
+            blueprint_cfg,
             selection_panel,
             time_panel,
+            blueprint_panel,
             welcome_screen,
             viewport_state,
             focused_item,
@@ -201,6 +205,7 @@ impl AppState {
             indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
+            blueprint_cfg,
             re_ui,
             render_ctx,
             command_sender,
@@ -241,13 +246,30 @@ impl AppState {
             indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
+            blueprint_cfg,
             re_ui,
             render_ctx,
             command_sender,
             focused_item,
         };
 
-        time_panel.show_panel(&ctx, ui, app_blueprint.time_panel_expanded);
+        if app_options.show_blueprint_in_timeline {
+            blueprint_panel.show_panel(
+                &ctx,
+                ctx.store_context.blueprint,
+                blueprint_cfg,
+                ui,
+                app_blueprint.time_panel_expanded,
+            );
+        } else {
+            time_panel.show_panel(
+                &ctx,
+                ctx.store_db,
+                ctx.rec_cfg,
+                ui,
+                app_blueprint.time_panel_expanded,
+            );
+        }
         selection_panel.show_panel(
             &ctx,
             ui,

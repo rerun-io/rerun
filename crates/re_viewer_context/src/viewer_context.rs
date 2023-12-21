@@ -46,6 +46,9 @@ pub struct ViewerContext<'a> {
     /// UI config for the current recording (found in [`EntityDb`]).
     pub rec_cfg: &'a RecordingConfig,
 
+    /// UI config for the current blueprint.
+    pub blueprint_cfg: &'a RecordingConfig,
+
     /// The look and feel of the UI.
     pub re_ui: &'a re_ui::ReUi,
 
