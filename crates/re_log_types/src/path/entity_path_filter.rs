@@ -121,9 +121,14 @@ impl EntityPathFilter {
                 RuleEffect::Include => "+ ",
                 RuleEffect::Exclude => "- ",
             });
-            s.push_str(&rule.path.to_string());
-            if rule.include_subtree {
+            if rule.path.is_root() && rule.include_subtree {
+                // needs special casing, otherwise we end up with `//**`
                 s.push_str("/**");
+            } else {
+                s.push_str(&rule.path.to_string());
+                if rule.include_subtree {
+                    s.push_str("/**");
+                }
             }
             s.push('\n');
         }
@@ -313,4 +318,9 @@ fn test_entity_path_filter() {
             "path: {path:?}",
         );
     }
+
+    assert_eq!(
+        EntityPathFilter::parse_forgiving("/**").formatted(),
+        "+ /**"
+    );
 }
