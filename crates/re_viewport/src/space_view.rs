@@ -2,7 +2,7 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 
-use re_log_types::{DataRow, EntityPathExpr, RowId, TimePoint, Timeline};
+use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQueryBlueprint, ScreenshotMode};
@@ -11,9 +11,9 @@ use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewO
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState,
-    StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId,
+    SpaceViewState, StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput,
+    ViewQuery, ViewerContext,
 };
 
 use crate::system_execution::create_and_run_space_view_systems;
@@ -62,7 +62,7 @@ impl SpaceViewBlueprint {
         // Spaces are now always named after the final element of the space-path (or the root), independent of the
         // query entities.
         let display_name = if let Some(name) = space_path.iter().last() {
-            name.to_string()
+            name.ui_string()
         } else {
             // Include class name in the display for root paths because they look a tad bit too short otherwise.
             format!("/ ({space_view_class_display_name})")
@@ -112,7 +112,7 @@ impl SpaceViewBlueprint {
         let display_name = display_name.map_or_else(
             || {
                 if let Some(name) = space_origin.iter().last() {
-                    name.to_string()
+                    name.ui_string()
                 } else {
                     // Include class name in the display for root paths because they look a tad bit too short otherwise.
                     format!("/ ({})", class_identifier.as_str())
@@ -373,8 +373,8 @@ impl SpaceViewBlueprint {
 
         let root_data_result = self.root_data_result(ctx.store_context);
         let props = root_data_result
-            .individual_properties
-            .clone()
+            .individual_properties()
+            .cloned()
             .unwrap_or_default();
 
         ui.scope(|ui| {
@@ -404,7 +404,7 @@ impl SpaceViewBlueprint {
             .query_timeless_component_quiet::<EntityPropertiesComponent>(&self.entity_path())
             .map(|result| result.value.0);
 
-        let resolved_properties = individual_properties.clone().unwrap_or_else(|| {
+        let accumulated_properties = individual_properties.clone().unwrap_or_else(|| {
             let mut props = EntityProperties::default();
             // better defaults for the time series space view
             // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
@@ -420,49 +420,50 @@ impl SpaceViewBlueprint {
             view_parts: Default::default(),
             is_group: true,
             direct_included: true,
-            resolved_properties,
-            individual_properties,
-            override_path: entity_path,
+            property_overrides: Some(PropertyOverrides {
+                accumulated_properties,
+                individual_properties,
+                override_path: entity_path,
+            }),
         }
     }
 
     // TODO(jleibs): Get rid of mut by sending blueprint update
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         if let Some(query) = self.queries.first() {
-            query.add_entity_exclusion(ctx, expr);
+            query.add_entity_exclusion(ctx, rule);
         }
         self.set_entity_determined_by_user(ctx);
     }
 
     // TODO(jleibs): Get rid of mut by sending blueprint update
-    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         if let Some(query) = self.queries.first() {
-            query.add_entity_inclusion(ctx, expr);
+            query.add_entity_inclusion(ctx, rule);
         }
         self.set_entity_determined_by_user(ctx);
     }
 
-    pub fn clear_entity_expression(&self, ctx: &ViewerContext<'_>, expr: &EntityPathExpr) {
+    pub fn remove_filter_rule_for(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
         if let Some(query) = self.queries.first() {
-            query.clear_entity_expression(ctx, expr);
+            query.remove_filter_rule_for(ctx, ent_path);
         }
         self.set_entity_determined_by_user(ctx);
     }
 
-    pub fn exclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
-        self.queries.iter().flat_map(|q| q.exclusions())
-    }
-
-    pub fn inclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
-        self.queries.iter().flat_map(|q| q.inclusions())
+    pub fn entity_path_filter(&self) -> EntityPathFilter {
+        self.queries
+            .iter()
+            .map(|q| q.entity_path_filter.clone())
+            .sum()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use re_data_store::StoreDb;
-    use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
-    use re_space_view::DataQuery as _;
+    use re_log_types::{DataCell, DataRow, EntityPathFilter, RowId, StoreId, TimePoint};
+    use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
     use re_viewer_context::{EntitiesPerSystem, StoreContext};
 
@@ -505,12 +506,13 @@ mod tests {
             &EntityPath::root(),
             DataQueryBlueprint::new(
                 "3D".into(),
-                [
-                    "parent".into(),
-                    "parent/skip/child1".into(),
-                    "parent/skip/child2".into(),
-                ]
-                .into_iter(),
+                EntityPathFilter::parse_forgiving(
+                    r"
+                    + parent
+                    + parent/skip/child1
+                    + parent/skip/child2
+                ",
+                ),
             ),
         );
 
@@ -540,7 +542,8 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
                 .tree
@@ -556,14 +559,17 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert_eq!(result.resolved_properties, EntityProperties::default(),);
+                assert_eq!(
+                    result.accumulated_properties(),
+                    &EntityProperties::default(),
+                );
             }
 
             // Now, override visibility on parent but not group
-            let mut overrides = parent.individual_properties.clone().unwrap_or_default();
+            let mut overrides = parent.individual_properties().cloned().unwrap_or_default();
             overrides.visible = false;
 
-            save_override(overrides, &parent.override_path, &mut blueprint);
+            save_override(overrides, parent.override_path().unwrap(), &mut blueprint);
         }
 
         // Parent is not visible, but children are
@@ -574,7 +580,8 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            resolver.update_overrides(&ctx, &mut query_result);
 
             let parent_group = query_result
                 .tree
@@ -593,20 +600,24 @@ mod tests {
                 .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
                 .unwrap();
 
-            assert!(!parent.resolved_properties.visible);
+            assert!(!parent.accumulated_properties().visible);
 
             for result in [child1, child2] {
-                assert!(result.resolved_properties.visible);
+                assert!(result.accumulated_properties().visible);
             }
 
             // Override visibility on parent group
             let mut overrides = parent_group
-                .individual_properties
-                .clone()
+                .individual_properties()
+                .cloned()
                 .unwrap_or_default();
             overrides.visible = false;
 
-            save_override(overrides, &parent_group.override_path, &mut blueprint);
+            save_override(
+                overrides,
+                parent_group.override_path().unwrap(),
+                &mut blueprint,
+            );
         }
 
         // Nobody is visible
@@ -617,7 +628,8 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
                 .tree
@@ -633,7 +645,7 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(!result.resolved_properties.visible);
+                assert!(!result.accumulated_properties().visible);
             }
         }
 
@@ -644,11 +656,11 @@ mod tests {
                 recording: Some(&recording),
                 all_recordings: vec![],
             });
-            let mut overrides = root.individual_properties.clone().unwrap_or_default();
+            let mut overrides = root.individual_properties().cloned().unwrap_or_default();
             overrides.visible_history.enabled = true;
             overrides.visible_history.nanos = VisibleHistory::ALL;
 
-            save_override(overrides, &root.override_path, &mut blueprint);
+            save_override(overrides, root.override_path().unwrap(), &mut blueprint);
         }
 
         // Everyone has visible history
@@ -659,7 +671,8 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
                 .tree
@@ -675,17 +688,17 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(result.resolved_properties.visible_history.enabled);
+                assert!(result.accumulated_properties().visible_history.enabled);
                 assert_eq!(
-                    result.resolved_properties.visible_history.nanos,
+                    result.accumulated_properties().visible_history.nanos,
                     VisibleHistory::ALL
                 );
             }
 
-            let mut overrides = child2.individual_properties.clone().unwrap_or_default();
+            let mut overrides = child2.individual_properties().cloned().unwrap_or_default();
             overrides.visible_history.enabled = true;
 
-            save_override(overrides, &child2.override_path, &mut blueprint);
+            save_override(overrides, child2.override_path().unwrap(), &mut blueprint);
         }
 
         // Child2 has its own visible history
@@ -696,7 +709,8 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
                 .tree
@@ -712,16 +726,16 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1] {
-                assert!(result.resolved_properties.visible_history.enabled);
+                assert!(result.accumulated_properties().visible_history.enabled);
                 assert_eq!(
-                    result.resolved_properties.visible_history.nanos,
+                    result.accumulated_properties().visible_history.nanos,
                     VisibleHistory::ALL
                 );
             }
 
-            assert!(child2.resolved_properties.visible_history.enabled);
+            assert!(child2.accumulated_properties().visible_history.enabled);
             assert_eq!(
-                child2.resolved_properties.visible_history.nanos,
+                child2.accumulated_properties().visible_history.nanos,
                 VisibleHistory::OFF
             );
         }

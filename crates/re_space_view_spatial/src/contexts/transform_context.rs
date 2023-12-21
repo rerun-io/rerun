@@ -99,7 +99,7 @@ impl ViewContextSystem for TransformContext {
             .map(|results| {
                 results
                     .iter()
-                    .map(|r| (r.entity_path.clone(), r.resolved_properties.clone()))
+                    .map(|r| (r.entity_path.clone(), r.accumulated_properties().clone()))
                     .collect()
             })
             .unwrap_or_default();

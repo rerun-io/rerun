@@ -3,10 +3,10 @@ use ahash::HashMap;
 use re_data_store::StoreDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
-use re_space_view::DataQuery as _;
+use re_space_view::{DataQuery as _, PropertyResolver as _};
 use re_viewer_context::{
-    AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
-    SelectionState, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
+    AppOptions, ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry, PlayState,
+    RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{
     identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportBlueprint,
@@ -140,7 +140,7 @@ impl AppState {
         );
 
         // Execute the queries for every `SpaceView`
-        let query_results = {
+        let mut query_results = {
             re_tracing::profile_scope!("query_results");
             viewport
                 .blueprint
@@ -148,18 +148,12 @@ impl AppState {
                 .values()
                 .flat_map(|space_view| {
                     space_view.queries.iter().filter_map(|query| {
-                        let props = viewport.state.space_view_props(space_view.id);
-                        let resolver = query.build_resolver(space_view.id, props);
                         entities_per_system_per_class
                             .get(&query.space_view_class_identifier)
                             .map(|entities_per_system| {
                                 (
                                     query.id,
-                                    query.execute_query(
-                                        &resolver,
-                                        store_context,
-                                        entities_per_system,
-                                    ),
+                                    query.execute_query(store_context, entities_per_system),
                                 )
                             })
                     })
@@ -167,7 +161,7 @@ impl AppState {
                 .collect::<_>()
         };
 
-        let mut ctx = ViewerContext {
+        let ctx = ViewerContext {
             app_options,
             cache,
             space_view_class_registry,
@@ -189,36 +183,35 @@ impl AppState {
 
         viewport.on_frame_start(&ctx, &spaces_info);
 
-        // TODO(jleibs): Running the queries a second time is annoying, but we need
-        // to do this or else the auto_properties aren't right since they get populated
-        // in on_frame_start, but on_frame_start also needs the queries.
-        let updated_query_results = {
+        {
             re_tracing::profile_scope!("updated_query_results");
-            viewport
-                .blueprint
-                .space_views
-                .values()
-                .flat_map(|space_view| {
-                    space_view.queries.iter().filter_map(|query| {
+            for space_view in viewport.blueprint.space_views.values() {
+                for query in &space_view.queries {
+                    if let Some(query_result) = query_results.get_mut(&query.id) {
                         let props = viewport.state.space_view_props(space_view.id);
                         let resolver = query.build_resolver(space_view.id, props);
-                        entities_per_system_per_class
-                            .get(&query.space_view_class_identifier)
-                            .map(|entities_per_system| {
-                                (
-                                    query.id,
-                                    query.execute_query(
-                                        &resolver,
-                                        store_context,
-                                        entities_per_system,
-                                    ),
-                                )
-                            })
-                    })
-                })
-                .collect::<_>()
+                        resolver.update_overrides(store_context, query_result);
+                    }
+                }
+            }
         };
-        ctx.query_results = &updated_query_results;
+
+        // TODO(jleibs): The need to rebuild this after updating the queries is kind of annoying,
+        // but it's just a bunch of refs so not really that big of a deal in practice.
+        let ctx = ViewerContext {
+            app_options,
+            cache,
+            space_view_class_registry,
+            component_ui_registry,
+            store_db,
+            store_context,
+            entities_per_system_per_class: &entities_per_system_per_class,
+            query_results: &query_results,
+            rec_cfg,
+            re_ui,
+            render_ctx,
+            command_sender,
+        };
 
         time_panel.show_panel(&ctx, ui, app_blueprint.time_panel_expanded);
         selection_panel.show_panel(
@@ -378,7 +371,10 @@ fn recording_config_entry<'cfgs>(
 /// Detect and handle that here.
 ///
 /// Must run after any ui code, or other code that tells egui to open an url.
-fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, selection_state: &SelectionState) {
+fn check_for_clicked_hyperlinks(
+    egui_ctx: &egui::Context,
+    selection_state: &ApplicationSelectionState,
+) {
     let recording_scheme = "recording://";
 
     let mut path = None;
@@ -393,9 +389,9 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, selection_state: &Sele
     });
 
     if let Some(path) = path {
-        match path.parse() {
+        match path.parse::<re_viewer_context::Item>() {
             Ok(item) => {
-                selection_state.set_single_selection(item);
+                selection_state.set_selection(item);
             }
             Err(err) => {
                 re_log::warn!("Failed to parse entity path {path:?}: {err}");

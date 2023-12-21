@@ -13,7 +13,7 @@ use re_space_view::controls::{
 };
 use re_types::components::ViewCoordinates;
 use re_viewer_context::{
-    gpu_bridge, HoveredSpace, Item, SpaceViewSystemExecutionError, SystemExecutionOutput,
+    gpu_bridge, Item, SelectedSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
     ViewQuery, ViewerContext,
 };
 
@@ -448,16 +448,16 @@ pub fn view_3d(
         state.state_3d.camera_before_tracked_camera = None;
 
         // While hovering an entity, focuses the camera on it.
-        if let Some(Item::InstancePath(_, instance_path)) = ctx.hovered().first() {
+        if let Some((Item::InstancePath(_, instance_path), _)) = ctx.hovered().first() {
             if let Some(camera) = find_camera(space_cameras, &instance_path.entity_path) {
                 state.state_3d.camera_before_tracked_camera =
                     state.state_3d.orbit_eye.map(|eye| eye.to_eye());
                 state.state_3d.interpolate_to_eye(camera);
                 state.state_3d.tracked_camera = Some(instance_path.entity_path.clone());
-            } else if let HoveredSpace::ThreeD {
+            } else if let Some(SelectedSpaceContext::ThreeD {
                 pos: Some(clicked_point),
                 ..
-            } = ctx.selection_state().hovered_space()
+            }) = ctx.selection_state().hovered_space_context()
             {
                 if let Some(mut new_orbit_eye) = state.state_3d.orbit_eye {
                     // TODO(andreas): It would be nice if we could focus on the center of the entity rather than the clicked point.
@@ -499,13 +499,24 @@ pub fn view_3d(
             .ok();
     }
 
-    show_projections_from_2d_space(
-        ctx,
-        &mut line_builder,
-        space_cameras,
-        &state.state_3d.tracked_camera,
-        &state.scene_bbox_accum,
-    );
+    for selected_context in ctx.selection_state().selected_space_context() {
+        show_projections_from_2d_space(
+            &mut line_builder,
+            space_cameras,
+            state,
+            selected_context,
+            ui.style().visuals.selection.bg_fill,
+        );
+    }
+    if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
+        show_projections_from_2d_space(
+            &mut line_builder,
+            space_cameras,
+            state,
+            hovered_context,
+            egui::Color32::WHITE,
+        );
+    }
 
     {
         let mut box_batch = line_builder.batch("scene_bbox");
@@ -626,14 +637,14 @@ pub fn view_3d(
 }
 
 fn show_projections_from_2d_space(
-    ctx: &ViewerContext<'_>,
     line_builder: &mut LineStripSeriesBuilder,
     space_cameras: &[SpaceCamera3D],
-    tracked_space_camera: &Option<EntityPath>,
-    scene_bbox_accum: &BoundingBox,
+    state: &SpatialSpaceViewState,
+    space_context: &SelectedSpaceContext,
+    color: egui::Color32,
 ) {
-    match ctx.selection_state().hovered_space() {
-        HoveredSpace::TwoD { space_2d, pos } => {
+    match space_context {
+        SelectedSpaceContext::TwoD { space_2d, pos } => {
             if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
                 if let Some(pinhole) = cam.pinhole.as_ref() {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
@@ -657,19 +668,23 @@ fn show_projections_from_2d_space(
                         macaw::Ray3::from_origin_dir(origin, (stop_in_world - origin).normalize());
 
                     let thick_ray_length = (stop_in_world - origin).length();
-                    add_picking_ray(line_builder, ray, scene_bbox_accum, thick_ray_length);
+                    add_picking_ray(
+                        line_builder,
+                        ray,
+                        &state.scene_bbox_accum,
+                        thick_ray_length,
+                        color,
+                    );
                 }
             }
         }
-        HoveredSpace::ThreeD {
+        SelectedSpaceContext::ThreeD {
             pos: Some(pos),
             tracked_space_camera: Some(camera_path),
             ..
         } => {
-            if tracked_space_camera
-                .as_ref()
-                .map_or(true, |tracked| tracked != camera_path)
-            {
+            let current_tracked_camera = state.state_3d.tracked_camera.as_ref();
+            if current_tracked_camera.map_or(true, |tracked| tracked != camera_path) {
                 if let Some(cam) = space_cameras
                     .iter()
                     .find(|cam| &cam.ent_path == camera_path)
@@ -677,11 +692,11 @@ fn show_projections_from_2d_space(
                     let cam_to_pos = *pos - cam.position();
                     let distance = cam_to_pos.length();
                     let ray = macaw::Ray3::from_origin_dir(cam.position(), cam_to_pos / distance);
-                    add_picking_ray(line_builder, ray, scene_bbox_accum, distance);
+                    add_picking_ray(line_builder, ray, &state.scene_bbox_accum, distance, color);
                 }
             }
         }
-        _ => {}
+        SelectedSpaceContext::ThreeD { .. } => {}
     }
 }
 
@@ -690,6 +705,7 @@ fn add_picking_ray(
     ray: macaw::Ray3,
     scene_bbox_accum: &BoundingBox,
     thick_ray_length: f32,
+    color: egui::Color32,
 ) {
     let mut line_batch = line_builder.batch("picking ray");
 
@@ -700,11 +716,11 @@ fn add_picking_ray(
 
     line_batch
         .add_segment(origin, main_ray_end)
-        .color(egui::Color32::WHITE)
+        .color(color)
         .radius(Size::new_points(1.0));
     line_batch
         .add_segment(main_ray_end, fallback_ray_end)
-        .color(egui::Color32::DARK_GRAY)
+        .color(color.gamma_multiply(0.7))
         // TODO(andreas): Make this dashed.
         .radius(Size::new_points(0.5));
 }

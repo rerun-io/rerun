@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, EntityPathExpr};
+use re_log_types::{EntityPath, EntityPathRule};
 use re_space_view::DataQueryBlueprint;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
@@ -85,7 +85,7 @@ impl Viewport<'_, '_> {
 
         let response = ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
             .subdued(true)
-            .selected(ctx.selection().contains(&item))
+            .selected(ctx.selection().contains_item(&item))
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
                 visibility_changed = vis_response.changed();
@@ -102,7 +102,7 @@ impl Viewport<'_, '_> {
             })
             .item_response;
 
-        item_ui::select_hovered_on_click(ctx, &response, &[item]);
+        item_ui::select_hovered_on_click(ctx, &response, item);
 
         if remove {
             self.blueprint.mark_user_interaction(ctx);
@@ -155,7 +155,7 @@ impl Viewport<'_, '_> {
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
         let response = ListItem::new(ctx.re_ui, space_view.display_name.clone())
-            .selected(ctx.selection().contains(&item))
+            .selected(ctx.selection().contains_item(&item))
             .subdued(!visible)
             .force_hovered(is_item_hovered)
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
@@ -194,7 +194,7 @@ impl Viewport<'_, '_> {
             self.deferred_tree_actions.focus_tab = Some(space_view.id);
         }
 
-        item_ui::select_hovered_on_click(ctx, &response, &[item]);
+        item_ui::select_hovered_on_click(ctx, &response, item);
 
         if visibility_changed {
             if self.blueprint.auto_layout {
@@ -222,7 +222,7 @@ impl Viewport<'_, '_> {
         };
 
         let group_is_visible =
-            top_node.data_result.resolved_properties.visible && space_view_visible;
+            top_node.data_result.accumulated_properties().visible && space_view_visible;
 
         // Always real children ahead of groups
         for child in top_node
@@ -259,20 +259,20 @@ impl Viewport<'_, '_> {
                 )
             };
 
-            let is_selected = ctx.selection().contains(&item);
+            let is_selected = ctx.selection().contains_item(&item);
 
             let is_item_hovered =
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
             let mut properties = data_result
-                .individual_properties
-                .clone()
+                .individual_properties()
+                .cloned()
                 .unwrap_or_default();
 
             let name = entity_path
                 .iter()
                 .last()
-                .map_or("unknown".to_owned(), |e| e.to_string());
+                .map_or("unknown".to_owned(), |e| e.ui_string());
 
             let response = if child_node.children.is_empty() {
                 let label = format!("🔹 {name}");
@@ -298,7 +298,7 @@ impl Viewport<'_, '_> {
                         if response.clicked() {
                             space_view.add_entity_exclusion(
                                 ctx,
-                                EntityPathExpr::Exact(entity_path.clone()),
+                                EntityPathRule::exact(entity_path.clone()),
                             );
                         }
 
@@ -365,15 +365,17 @@ impl Viewport<'_, '_> {
                     });
 
                 if remove_group {
-                    space_view
-                        .add_entity_exclusion(ctx, EntityPathExpr::Recursive(entity_path.clone()));
+                    space_view.add_entity_exclusion(
+                        ctx,
+                        EntityPathRule::including_subtree(entity_path.clone()),
+                    );
                 }
 
                 response
             };
             data_result.save_override(Some(properties), ctx);
 
-            item_ui::select_hovered_on_click(ctx, &response, &[item]);
+            item_ui::select_hovered_on_click(ctx, &response, item);
         }
     }
 
@@ -407,7 +409,8 @@ impl Viewport<'_, '_> {
                             .clicked()
                         {
                             ui.close_menu();
-                            ctx.set_single_selection(&Item::SpaceView(space_view.id));
+                            ctx.selection_state()
+                                .set_selection(Item::SpaceView(space_view.id));
                             self.blueprint.add_space_views(
                                 std::iter::once(space_view),
                                 ctx,
@@ -441,7 +444,7 @@ impl Viewport<'_, '_> {
                             entry.class.identifier(),
                             &format!("empty {}", entry.class.display_name()),
                             &EntityPath::root(),
-                            DataQueryBlueprint::new(entry.class.identifier(), std::iter::empty()),
+                            DataQueryBlueprint::new(entry.class.identifier(), Default::default()),
                         )
                     })
                 {

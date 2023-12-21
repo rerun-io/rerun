@@ -3953,6 +3953,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "plot_dashboard_stress"
+version = "0.12.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rand",
+ "rerun",
+]
+
+[[package]]
 name = "plotters"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5044,6 +5054,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_renderer",
+ "re_space_view",
  "re_tracing",
  "re_types",
  "re_ui",
@@ -5247,8 +5258,10 @@ version = "0.12.0-alpha.1+dev"
 dependencies = [
  "eframe",
  "egui",
+ "egui_commonmark",
  "egui_extras",
  "egui_tiles",
+ "parking_lot 0.12.1",
  "re_log",
  "serde",
  "serde_json",

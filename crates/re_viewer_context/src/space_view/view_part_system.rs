@@ -7,6 +7,7 @@ use re_types::ComponentNameSet;
 use crate::{
     IdentifiedViewSystem, SpaceViewClassIdentifier, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewQuery, ViewSystemIdentifier, ViewerContext,
+    VisualizerAdditionalApplicabilityFilter,
 };
 
 /// This is additional context made available to the `heuristic_filter`.
@@ -79,6 +80,13 @@ pub trait ViewPartSystem: Send + Sync + 'static {
         entity_components: &ComponentNameSet,
     ) -> bool {
         default_heuristic_filter(entity_components, &self.indicator_components())
+    }
+
+    /// Additional filter for applicability.
+    ///
+    /// If none is specified, applicability is solely determined by required components.
+    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
+        None
     }
 
     /// Queries the data store and performs data conversions to make it ready for display.

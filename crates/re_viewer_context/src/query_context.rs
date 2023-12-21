@@ -136,6 +136,11 @@ impl DataResultTree {
         self.data_results.get(handle)
     }
 
+    /// Look up a [`DataResultNode`] in the tree based on its handle.
+    pub fn lookup_node_mut(&mut self, handle: DataResultHandle) -> Option<&mut DataResultNode> {
+        self.data_results.get_mut(handle)
+    }
+
     /// Look up a [`DataResultNode`] in the tree based on an [`EntityPath`].
     pub fn lookup_result_by_path_and_group(
         &self,

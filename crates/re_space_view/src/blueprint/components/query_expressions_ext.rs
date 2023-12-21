@@ -1,21 +1,15 @@
-use re_log_types::EntityPathExpr;
+use re_log_types::EntityPathFilter;
 
 use super::QueryExpressions;
 
-impl QueryExpressions {
-    pub fn new(
-        inclusions: impl Iterator<Item = EntityPathExpr>,
-        exclusions: impl Iterator<Item = EntityPathExpr>,
-    ) -> Self {
-        Self(crate::blueprint::datatypes::QueryExpressions {
-            inclusions: inclusions
-                .into_iter()
-                .map(|s| s.to_string().into())
-                .collect(),
-            exclusions: exclusions
-                .into_iter()
-                .map(|s| s.to_string().into())
-                .collect(),
-        })
+impl From<&EntityPathFilter> for QueryExpressions {
+    fn from(filter: &EntityPathFilter) -> Self {
+        Self(filter.formatted().into())
+    }
+}
+
+impl From<&QueryExpressions> for EntityPathFilter {
+    fn from(expressions: &QueryExpressions) -> Self {
+        EntityPathFilter::parse_forgiving(&expressions.0)
     }
 }

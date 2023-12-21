@@ -62,7 +62,13 @@ from .primary_weights import (
     PrimaryWeightsLike,
     PrimaryWeightsType,
 )
-from .query_expressions import QueryExpressions, QueryExpressionsBatch, QueryExpressionsType
+from .query_expressions import (
+    QueryExpressions,
+    QueryExpressionsArrayLike,
+    QueryExpressionsBatch,
+    QueryExpressionsLike,
+    QueryExpressionsType,
+)
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .secondary_weights import (
     SecondaryWeights,
@@ -148,7 +154,9 @@ __all__ = [
     "PrimaryWeightsLike",
     "PrimaryWeightsType",
     "QueryExpressions",
+    "QueryExpressionsArrayLike",
     "QueryExpressionsBatch",
+    "QueryExpressionsLike",
     "QueryExpressionsType",
     "RootContainer",
     "RootContainerBatch",

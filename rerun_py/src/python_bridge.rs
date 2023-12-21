@@ -942,7 +942,7 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
 
 #[pyfunction]
 fn escape_entity_path_part(part: &str) -> String {
-    EntityPathPart::from(part).to_string()
+    EntityPathPart::from(part).escaped_string()
 }
 
 #[pyfunction]

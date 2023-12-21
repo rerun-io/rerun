@@ -4,9 +4,9 @@ use parking_lot::RwLock;
 use re_data_store::{store_db::StoreDb, EntityTree, TimeHistogramPerTimeline};
 
 use crate::{
-    item::resolve_mono_instance_path_item, query_context::DataQueryResult, AppOptions, Caches,
-    CommandSender, ComponentUiRegistry, DataQueryId, EntitiesPerSystemPerClass, Item,
-    ItemCollection, SelectionState, SpaceViewClassRegistry, StoreContext, TimeControl,
+    query_context::DataQueryResult, AppOptions, ApplicationSelectionState, Caches, CommandSender,
+    ComponentUiRegistry, DataQueryId, EntitiesPerSystemPerClass, Selection, SpaceViewClassRegistry,
+    StoreContext, TimeControl,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -52,41 +52,17 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
-    /// Sets a single selection on the next frame, updating history as needed.
-    pub fn set_single_selection(&self, item: &Item) {
-        self.rec_cfg
-            .selection_state
-            .set_single_selection(resolve_mono_instance_path_item(
-                &self.rec_cfg.time_ctrl.read().current_query(),
-                self.store_db.store(),
-                item,
-            ));
-    }
-
     /// Returns the current selection.
-    pub fn selection(&self) -> &ItemCollection {
+    pub fn selection(&self) -> &Selection {
         self.rec_cfg.selection_state.current()
     }
 
     /// Returns the currently hovered objects.
-    pub fn hovered(&self) -> &ItemCollection {
+    pub fn hovered(&self) -> &Selection {
         self.rec_cfg.selection_state.hovered()
     }
 
-    /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
-    pub fn set_hovered<'b>(&self, hovered: impl Iterator<Item = &'b Item>) {
-        self.rec_cfg
-            .selection_state
-            .set_hovered(hovered.map(|item| {
-                resolve_mono_instance_path_item(
-                    &self.rec_cfg.time_ctrl.read().current_query(),
-                    self.store_db.store(),
-                    item,
-                )
-            }));
-    }
-
-    pub fn selection_state(&self) -> &SelectionState {
+    pub fn selection_state(&self) -> &ApplicationSelectionState {
         &self.rec_cfg.selection_state
     }
 
@@ -123,5 +99,5 @@ pub struct RecordingConfig {
     pub time_ctrl: RwLock<TimeControl>,
 
     /// Selection & hovering state.
-    pub selection_state: SelectionState,
+    pub selection_state: ApplicationSelectionState,
 }

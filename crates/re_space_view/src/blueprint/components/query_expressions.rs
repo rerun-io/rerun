@@ -21,31 +21,55 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: A set of expressions used for a `DataQueryBlueprint`.
+/// **Component**: A way to filter a set of `EntityPath`s.
+///
+/// This implements as simple set of include/exclude rules:
+///
+/// ```diff
+/// + /world/**           # add everything…
+/// - /world/roads/**     # …but remove all roads…
+/// + /world/roads/main   # …but show main road
+/// ```
+///
+/// If there is multiple matching rules, the most specific rule wins.
+/// If there are multiple rules of the same specificity, the last one wins.
+/// If no rules match, the path is excluded.
+///
+/// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
+/// (`/world/**` matches both `/world` and `/world/car/driver`).
+/// Other uses of `*` are not (yet) supported.
+///
+/// `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
+/// This means the last matching rule is also the most specific one.
+/// For instance:
+///
+/// ```diff
+/// + /world/**
+/// - /world
+/// - /world/car/**
+/// + /world/car/driver
+/// ```
+///
+/// The last rule matching `/world/car/driver` is `+ /world/car/driver`, so it is included.
+/// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
+/// The last rule matching `/world` is `- /world`, so it is excluded.
+/// The last rule matching `/world/house` is `+ /world/**`, so it is included.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct QueryExpressions(pub crate::blueprint::datatypes::QueryExpressions);
+pub struct QueryExpressions(pub ::re_types_core::ArrowString);
 
-impl<T: Into<crate::blueprint::datatypes::QueryExpressions>> From<T> for QueryExpressions {
-    fn from(v: T) -> Self {
-        Self(v.into())
+impl From<::re_types_core::ArrowString> for QueryExpressions {
+    #[inline]
+    fn from(filter: ::re_types_core::ArrowString) -> Self {
+        Self(filter)
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::datatypes::QueryExpressions> for QueryExpressions {
+impl From<QueryExpressions> for ::re_types_core::ArrowString {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::QueryExpressions {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for QueryExpressions {
-    type Target = crate::blueprint::datatypes::QueryExpressions;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::QueryExpressions {
-        &self.0
+    fn from(value: QueryExpressions) -> Self {
+        value.0
     }
 }
 
@@ -63,30 +87,7 @@ impl ::re_types_core::Loggable for QueryExpressions {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
-            Field {
-                name: "inclusions".to_owned(),
-                data_type: DataType::List(Box::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Utf8,
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "exclusions".to_owned(),
-                data_type: DataType::List(Box::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Utf8,
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-        ])
+        DataType::Utf8
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -115,8 +116,26 @@ impl ::re_types_core::Loggable for QueryExpressions {
                 any_nones.then(|| somes.into())
             };
             {
-                _ = data0_bitmap;
-                crate::blueprint::datatypes::QueryExpressions::to_arrow_opt(data0)?
+                let inner_data: arrow2::buffer::Buffer<u8> =
+                    data0.iter().flatten().flat_map(|s| s.0.clone()).collect();
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
+                )
+                .unwrap()
+                .into();
+
+                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                unsafe {
+                    Utf8Array::<i32>::new_unchecked(
+                        Self::arrow_datatype(),
+                        offsets,
+                        inner_data,
+                        data0_bitmap,
+                    )
+                }
+                .boxed()
             }
         })
     }
@@ -130,15 +149,51 @@ impl ::re_types_core::Loggable for QueryExpressions {
     {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(
-            crate::blueprint::datatypes::QueryExpressions::from_arrow_opt(arrow_data)
-                .with_context("rerun.blueprint.components.QueryExpressions#expressions")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.blueprint.components.QueryExpressions#expressions")
-                .with_context("rerun.blueprint.components.QueryExpressions")?,
-        )
+        Ok({
+            let arrow_data = arrow_data
+                .as_any()
+                .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                .ok_or_else(|| {
+                    DeserializationError::datatype_mismatch(
+                        DataType::Utf8,
+                        arrow_data.data_type().clone(),
+                    )
+                })
+                .with_context("rerun.blueprint.components.QueryExpressions#filter")?;
+            let arrow_data_buf = arrow_data.values();
+            let offsets = arrow_data.offsets();
+            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                offsets.iter().zip(offsets.lengths()),
+                arrow_data.validity(),
+            )
+            .map(|elem| {
+                elem.map(|(start, len)| {
+                    let start = *start as usize;
+                    let end = start + len;
+                    if end as usize > arrow_data_buf.len() {
+                        return Err(DeserializationError::offset_slice_oob(
+                            (start, end),
+                            arrow_data_buf.len(),
+                        ));
+                    }
+
+                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                    let data = unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
+                    Ok(data)
+                })
+                .transpose()
+            })
+            .map(|res_or_opt| {
+                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| ::re_types_core::ArrowString(v)))
+            })
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.blueprint.components.QueryExpressions#filter")?
+            .into_iter()
+        }
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<DeserializationResult<Vec<Option<_>>>>()
+        .with_context("rerun.blueprint.components.QueryExpressions#filter")
+        .with_context("rerun.blueprint.components.QueryExpressions")?)
     }
 }

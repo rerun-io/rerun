@@ -1,5 +1,3 @@
-include "./blueprint/datatypes/query_expressions.fbs";
-
 include "./blueprint/components/active_tab.fbs";
 include "./blueprint/components/auto_layout.fbs";
 include "./blueprint/components/auto_space_views.fbs";

@@ -40,7 +40,7 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
         }
 
         path.last()
-            .and_then(|last| uuid::Uuid::parse_str(last.to_string().as_str()).ok())
+            .and_then(|last| uuid::Uuid::parse_str(last.unescaped_str()).ok())
             .map_or(Self::invalid(), |id| Self {
                 id,
                 _registry: std::marker::PhantomData,

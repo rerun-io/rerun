@@ -1,16 +1,15 @@
-use ahash::HashSet;
+use ahash::HashMap;
 use parking_lot::Mutex;
 
 use re_data_store::EntityPath;
 
-use super::{Item, ItemCollection, SelectionHistory};
+use crate::{item::resolve_mono_instance_path_item, ViewerContext};
 
-#[derive(Clone, Default, Debug, PartialEq)]
-pub enum HoveredSpace {
-    #[default]
-    None,
+use super::{Item, SelectionHistory};
 
-    /// Hovering in a 2D space.
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+pub enum SelectedSpaceContext {
+    /// Hovering/Selecting in a 2D space.
     TwoD {
         space_2d: EntityPath,
 
@@ -18,7 +17,7 @@ pub enum HoveredSpace {
         pos: glam::Vec3,
     },
 
-    /// Hovering in a 3D space.
+    /// Hovering/Selecting in a 3D space.
     ThreeD {
         /// The 3D space with the camera(s)
         space_3d: EntityPath,
@@ -79,53 +78,131 @@ impl InteractionHighlight {
     }
 }
 
+/// An ordered collection of [`Item`] and optional associated selected space context objects.
+///
+/// Used to store what is currently selected and/or hovered.
+#[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+pub struct Selection(pub Vec<(Item, Option<SelectedSpaceContext>)>);
+
+impl From<Item> for Selection {
+    #[inline]
+    fn from(val: Item) -> Self {
+        Selection(vec![(val, None)])
+    }
+}
+
+impl<T> From<T> for Selection
+where
+    T: Iterator<Item = Item>,
+{
+    #[inline]
+    fn from(value: T) -> Self {
+        Selection(value.map(|item| (item, None)).collect())
+    }
+}
+
+impl std::ops::Deref for Selection {
+    type Target = Vec<(Item, Option<SelectedSpaceContext>)>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Selection {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Selection {
+    /// For each item in this selection, if it refers to the first element of an instance with a single element, resolve it to a splatted entity path.
+    pub fn resolve_mono_instance_path_items(&mut self, ctx: &ViewerContext<'_>) {
+        for (item, _) in self.iter_mut() {
+            *item =
+                resolve_mono_instance_path_item(&ctx.current_query(), ctx.store_db.store(), item);
+        }
+    }
+
+    /// The first selected object if any.
+    pub fn first_item(&self) -> Option<&Item> {
+        self.0.first().map(|(item, _)| item)
+    }
+
+    pub fn iter_items(&self) -> impl Iterator<Item = &Item> {
+        self.0.iter().map(|(item, _)| item)
+    }
+
+    pub fn iter_space_context(&self) -> impl Iterator<Item = &SelectedSpaceContext> {
+        self.0
+            .iter()
+            .filter_map(|(_, space_context)| space_context.as_ref())
+    }
+
+    /// Returns true if the exact selection is part of the current selection.
+    pub fn contains_item(&self, needle: &Item) -> bool {
+        self.0.iter().any(|(item, _)| item == needle)
+    }
+
+    pub fn are_all_items_same_kind(&self) -> Option<&'static str> {
+        if let Some(first_item) = self.first_item() {
+            if self
+                .iter_items()
+                .skip(1)
+                .all(|item| std::mem::discriminant(first_item) == std::mem::discriminant(item))
+            {
+                return Some(first_item.kind());
+            }
+        }
+        None
+    }
+
+    /// Retains elements that fulfill a certain condition.
+    pub fn retain(&mut self, f: impl Fn(&Item) -> bool) {
+        self.0.retain(|(item, _)| f(item));
+    }
+}
+
 /// Selection and hover state.
 ///
 /// Both hover and selection are double buffered:
 /// Changes from one frame are only visible in the next frame.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
-pub struct SelectionState {
+pub struct ApplicationSelectionState {
     /// History of selections (what was selected previously).
     #[serde(skip)]
     pub history: Mutex<SelectionHistory>,
 
     /// Selection of the previous frame. Read from this.
-    selection_previous_frame: ItemCollection,
+    selection_previous_frame: Selection,
 
     /// Selection of the current frame. Write to this.
     #[serde(skip)]
-    selection_this_frame: Mutex<ItemCollection>,
+    selection_this_frame: Mutex<Selection>,
 
     /// What objects are hovered? Read from this.
     #[serde(skip)]
-    hovered_previous_frame: ItemCollection,
+    hovered_previous_frame: Selection,
 
     /// What objects are hovered? Write to this.
     #[serde(skip)]
-    hovered_this_frame: Mutex<ItemCollection>,
-
-    /// What space is the pointer hovering over? Read from this.
-    #[serde(skip)]
-    hovered_space_previous_frame: HoveredSpace,
-
-    /// What space is the pointer hovering over? Write to this.
-    #[serde(skip)]
-    hovered_space_this_frame: Mutex<HoveredSpace>,
+    hovered_this_frame: Mutex<Selection>,
 }
 
-impl SelectionState {
+impl ApplicationSelectionState {
     /// Called at the start of each frame
     pub fn on_frame_start(&mut self, item_retain_condition: impl Fn(&Item) -> bool) {
-        re_tracing::profile_function!();
+        // Use a different name so we don't get a collision in puffin.
+        re_tracing::profile_scope!("SelectionState::on_frame_start");
 
         let history = self.history.get_mut();
         history.retain(&item_retain_condition);
 
         // Hovering needs to be refreshed every frame: If it wasn't hovered last frame, it's no longer hovered!
         self.hovered_previous_frame = std::mem::take(self.hovered_this_frame.get_mut());
-        self.hovered_space_previous_frame =
-            std::mem::replace(self.hovered_space_this_frame.get_mut(), HoveredSpace::None);
 
         // Selection in contrast, is sticky!
         let selection_this_frame = self.selection_this_frame.get_mut();
@@ -151,69 +228,89 @@ impl SelectionState {
 
     /// Clears the current selection out.
     pub fn clear_current(&self) {
-        *self.selection_this_frame.lock() = ItemCollection::default();
-    }
-
-    /// Sets a single selection, updating history as needed.
-    pub fn set_single_selection(&self, item: Item) {
-        self.set_selection(std::iter::once(item));
+        self.set_selection(Selection::default());
     }
 
     /// Sets several objects to be selected, updating history as needed.
-    pub fn set_selection(&self, items: impl Iterator<Item = Item>) {
-        let new_selection = ItemCollection::new(items);
-        *self.selection_this_frame.lock() = new_selection;
+    ///
+    /// Clears the selected space context if none was specified.
+    pub fn set_selection(&self, items: impl Into<Selection>) {
+        *self.selection_this_frame.lock() = items.into();
     }
 
     /// Returns the current selection.
-    pub fn current(&self) -> &ItemCollection {
+    pub fn current(&self) -> &Selection {
         &self.selection_previous_frame
     }
 
     /// Returns the currently hovered objects.
-    pub fn hovered(&self) -> &ItemCollection {
+    pub fn hovered(&self) -> &Selection {
         &self.hovered_previous_frame
     }
 
     /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
-    pub fn set_hovered(&self, items: impl Iterator<Item = Item>) {
-        *self.hovered_this_frame.lock() = ItemCollection::new(items);
+    pub fn set_hovered(&self, hovered: impl Into<Selection>) {
+        *self.hovered_this_frame.lock() = hovered.into();
     }
 
-    /// Select currently hovered objects unless already selected in which case they get unselected.
-    pub fn toggle_selection(&self, toggle_items: Vec<Item>) {
+    /// Select passed objects unless already selected in which case they get unselected.
+    /// If however an object is already selected but now gets passed a *different* selected space context, it stays selected after all
+    /// but with an updated selected space context!
+    pub fn toggle_selection(&self, toggle_items: Selection) {
         re_tracing::profile_function!();
 
+        let mut toggle_items_set: HashMap<Item, Option<SelectedSpaceContext>> =
+            toggle_items.iter().cloned().collect();
+
+        let mut new_selection = self.selection_previous_frame.clone();
+
+        // If an item was already selected with the exact same context remove it.
+        // If an item was already selected and loses its context, remove it.
+        new_selection.0.retain(|(item, ctx)| {
+            if let Some(new_ctx) = toggle_items_set.get(item) {
+                if new_ctx == ctx || new_ctx.is_none() {
+                    toggle_items_set.remove(item);
+                    false
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        });
+
+        // Update context for items that are remaining in the toggle_item_set:
+        for (item, ctx) in new_selection.iter_mut() {
+            if let Some(new_ctx) = toggle_items_set.get(item) {
+                *ctx = new_ctx.clone();
+                toggle_items_set.remove(item);
+            }
+        }
+
         // Make sure we preserve the order - old items kept in same order, new items added to the end.
-
-        // All the items to toggle. If an was already selected, it will be removed from this.
-        let mut toggle_items_set: HashSet<Item> = toggle_items.iter().cloned().collect();
-
-        let mut new_selection = self.selection_previous_frame.to_vec();
-        new_selection.retain(|item| !toggle_items_set.remove(item));
-
         // Add the new items, unless they were toggling out existing items:
         new_selection.extend(
             toggle_items
+                .0
                 .into_iter()
-                .filter(|item| toggle_items_set.contains(item)),
+                .filter(|(item, _)| toggle_items_set.contains_key(item)),
         );
 
-        self.set_selection(new_selection.into_iter());
+        *self.selection_this_frame.lock() = new_selection;
     }
 
-    pub fn hovered_space(&self) -> &HoveredSpace {
-        &self.hovered_space_previous_frame
+    pub fn selected_space_context(&self) -> impl Iterator<Item = &SelectedSpaceContext> {
+        self.selection_previous_frame.iter_space_context()
     }
 
-    pub fn set_hovered_space(&self, space: HoveredSpace) {
-        *self.hovered_space_this_frame.lock() = space;
+    pub fn hovered_space_context(&self) -> Option<&SelectedSpaceContext> {
+        self.hovered_previous_frame.iter_space_context().next()
     }
 
     pub fn highlight_for_ui_element(&self, test: &Item) -> HoverHighlight {
         let hovered = self
             .hovered_previous_frame
-            .iter()
+            .iter_items()
             .any(|current| match current {
                 Item::ComponentPath(_)
                 | Item::SpaceView(_)
