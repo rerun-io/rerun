@@ -530,19 +530,19 @@ mod tests {
             Scenario {
                 filter: "+ /**",
                 outputs: vec![
-                    "/",
-                    "/parent/",
+                    "/**",
+                    "/parent/**",
                     "/parent",
-                    "/parent/skipped/", // Not an exact match and not found in tree
+                    "/parent/skipped/**", // Not an exact match and not found in tree
                     "/parent/skipped/child1", // Only child 1 has ViewParts
                 ],
             },
             Scenario {
                 filter: "+ parent/skipped/**",
                 outputs: vec![
-                    "/",
-                    "/parent/",               // Only included because is a prefix
-                    "/parent/skipped/",       // Not an exact match and not found in tree
+                    "/**",
+                    "/parent/**",             // Only included because is a prefix
+                    "/parent/skipped/**",     // Not an exact match and not found in tree
                     "/parent/skipped/child1", // Only child 1 has ViewParts
                 ],
             },
@@ -550,66 +550,68 @@ mod tests {
                 filter: r"+ parent
                           + parent/skipped/child2",
                 outputs: vec![
-                    "/", // Trivial intermediate group -- could be collapsed
-                    "/parent/",
+                    "/**", // Trivial intermediate group -- could be collapsed
+                    "/parent/**",
                     "/parent",
-                    "/parent/skipped/", // Trivial intermediate group -- could be collapsed
+                    "/parent/skipped/**", // Trivial intermediate group -- could be collapsed
                     "/parent/skipped/child2",
                 ],
             },
-            // TODO: imlement these tests again
-            // Scenario {
-            //     inclusions: vec!["parent/skipped", "parent/skipped/child2", "parent/"],
-            //     exclusions: vec![],
-            //     outputs: vec![
-            //         "/",
-            //         "/parent/",
-            //         "/parent",
-            //         "/parent/skipped/",
-            //         "/parent/skipped",        // Included because an exact match
-            //         "/parent/skipped/child1", // Included because an exact match
-            //         "/parent/skipped/child2",
-            //     ],
-            // },
-            // Scenario {
-            //     inclusions: vec!["parent/skipped", "parent/skipped/child2", "parent/"],
-            //     exclusions: vec!["parent"],
-            //     outputs: vec![
-            //         "/",
-            //         "/parent/", // Parent leaf has been excluded
-            //         "/parent/skipped/",
-            //         "/parent/skipped",        // Included because an exact match
-            //         "/parent/skipped/child1", // Included because an exact match
-            //         "/parent/skipped/child2",
-            //     ],
-            // },
-            // Scenario {
-            //     inclusions: vec!["parent/"],
-            //     exclusions: vec!["parent/skipped/"],
-            //     outputs: vec!["/", "/parent"], // None of the children are hit since excluded
-            // },
-            // Scenario {
-            //     inclusions: vec!["parent/", "parent/skipped/child2"],
-            //     exclusions: vec!["parent/skipped/child1"],
-            //     outputs: vec![
-            //         "/",
-            //         "/parent/",
-            //         "/parent",
-            //         "/parent/skipped/",
-            //         "/parent/skipped/child2", // No child1 since skipped.
-            //     ],
-            // },
-            // Scenario {
-            //     inclusions: vec!["not/found"],
-            //     exclusions: vec![],
-            //     // TODO(jleibs): Making this work requires merging the EntityTree walk with a minimal-coverage ExactMatchTree walk
-            //     // not crucial for now until we expose a free-form UI for entering paths.
-            //     // vec!["/", "not/", "not/found"]),
-            //     outputs: vec![],
-            // },
+            Scenario {
+                filter: r"+ parent/skipped
+                          + parent/skipped/child2
+                          + parent/**",
+                outputs: vec![
+                    "/**",
+                    "/parent/**",
+                    "/parent",
+                    "/parent/skipped/**",
+                    "/parent/skipped",        // Included because an exact match
+                    "/parent/skipped/child1", // Included because an exact match
+                    "/parent/skipped/child2",
+                ],
+            },
+            Scenario {
+                filter: r"+ parent/skipped
+                          + parent/skipped/child2
+                          + parent/**
+                          - parent",
+                outputs: vec![
+                    "/**",
+                    "/parent/**", // Parent leaf has been excluded
+                    "/parent/skipped/**",
+                    "/parent/skipped",        // Included because an exact match
+                    "/parent/skipped/child1", // Included because an exact match
+                    "/parent/skipped/child2",
+                ],
+            },
+            Scenario {
+                filter: r"+ parent/**
+                          - parent/skipped/**",
+                outputs: vec!["/**", "/parent"], // None of the children are hit since excluded
+            },
+            Scenario {
+                filter: r"+ parent/**
+                          + parent/skipped/child2
+                          - parent/skipped/child1",
+                outputs: vec![
+                    "/**",
+                    "/parent/**",
+                    "/parent",
+                    "/parent/skipped/**",
+                    "/parent/skipped/child2", // No child1 since skipped.
+                ],
+            },
+            Scenario {
+                filter: r"+ not/found",
+                // TODO(jleibs): Making this work requires merging the EntityTree walk with a minimal-coverage ExactMatchTree walk
+                // not crucial for now until we expose a free-form UI for entering paths.
+                // vec!["/**", "not/**", "not/found"]),
+                outputs: vec![],
+            },
         ];
 
-        for Scenario { filter, outputs } in scenarios {
+        for (i, Scenario { filter, outputs }) in scenarios.into_iter().enumerate() {
             let query = DataQueryBlueprint {
                 id: DataQueryId::random(),
                 space_view_class_identifier: "3D".into(),
@@ -621,14 +623,16 @@ mod tests {
             let mut visited = vec![];
             query_result.tree.visit(&mut |handle| {
                 let result = query_result.tree.lookup_result(handle).unwrap();
-                if result.is_group && result.entity_path != EntityPath::root() {
-                    visited.push(format!("{}/", result.entity_path));
+                if result.is_group && result.entity_path == EntityPath::root() {
+                    visited.push("/**".to_owned());
+                } else if result.is_group {
+                    visited.push(format!("{}/**", result.entity_path));
                 } else {
                     visited.push(result.entity_path.to_string());
                 }
             });
 
-            assert_eq!(visited, outputs);
+            assert_eq!(visited, outputs, "Scenario {i}, filter: {filter}");
         }
     }
 }
