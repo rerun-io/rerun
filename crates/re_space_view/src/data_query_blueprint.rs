@@ -599,8 +599,8 @@ impl DataQueryPropertyResolver<'_> {
                         .individual
                         .get_opt(&node.data_result.entity_path);
 
-                    let accumulated_properties = if let Some(overidden) = overridden_properties {
-                        accumulated.with_child(overidden)
+                    let accumulated_properties = if let Some(overridden) = overridden_properties {
+                        accumulated.with_child(overridden)
                     } else {
                         accumulated.clone()
                     };
