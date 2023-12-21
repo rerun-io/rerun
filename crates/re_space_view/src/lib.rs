@@ -18,7 +18,7 @@ pub use unreachable_transform_reason::UnreachableTransformReason;
 
 use re_data_store::external::re_arrow_store;
 
-/// Utility for implementing [`VisualizerAdditionalApplicabilityFilter`] using on the properties of a concrete component.
+/// Utility for implementing [`re_viewer_context::VisualizerAdditionalApplicabilityFilter`] using on the properties of a concrete component.
 #[inline]
 pub fn diff_component_filter<T: re_types_core::Component>(
     event: &re_arrow_store::StoreEvent,
