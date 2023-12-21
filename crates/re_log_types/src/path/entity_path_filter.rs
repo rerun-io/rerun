@@ -37,7 +37,7 @@ use crate::EntityPath;
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct EntityPathFilter {
-    pub rules: BTreeMap<EntityPathRule, RuleEffect>,
+    rules: BTreeMap<EntityPathRule, RuleEffect>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -182,6 +182,11 @@ impl EntityPathFilter {
             EntityPathRule::including_subtree(clone),
             RuleEffect::Include,
         );
+    }
+
+    /// Remove any rule for the given entity path (ignoring wether or not that rule includes the subtree).
+    pub fn remove_rule_for(&mut self, entity_path: &EntityPath) {
+        self.rules.retain(|rule, _| rule.path != *entity_path);
     }
 
     /// Is there any rule for this entity path?

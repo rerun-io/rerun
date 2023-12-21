@@ -160,23 +160,10 @@ impl DataQueryBlueprint {
         self.save_expressions(ctx, &entity_path_filter);
     }
 
-    pub fn clear_entity_expression(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
-        let mut edited = false;
-
+    pub fn remove_filter_rule_for(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
         let mut entity_path_filter = self.entity_path_filter.clone();
-
-        entity_path_filter.rules.retain(|rule, _effect| {
-            if rule.path.starts_with(ent_path) {
-                edited = true;
-                false
-            } else {
-                true
-            }
-        });
-
-        if edited {
-            self.save_expressions(ctx, &entity_path_filter);
-        }
+        entity_path_filter.remove_rule_for(ent_path);
+        self.save_expressions(ctx, &entity_path_filter);
     }
 }
 

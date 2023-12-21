@@ -209,7 +209,7 @@ fn add_entities_line_ui(
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
 
                     if response.clicked() {
-                        space_view.clear_entity_filter_recursive(ctx, &entity_tree.path);
+                        space_view.remove_filter_rule_for(ctx, &entity_tree.path);
                     }
 
                     if enabled {

@@ -443,9 +443,9 @@ impl SpaceViewBlueprint {
         self.set_entity_determined_by_user(ctx);
     }
 
-    pub fn clear_entity_filter_recursive(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
+    pub fn remove_filter_rule_for(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
         if let Some(query) = self.queries.first() {
-            query.clear_entity_expression(ctx, ent_path);
+            query.remove_filter_rule_for(ctx, ent_path);
         }
         self.set_entity_determined_by_user(ctx);
     }
