@@ -1,7 +1,7 @@
 use ahash::HashMap;
 
-use re_arrow_store::LatestAtQuery;
-use re_log_types::EntityPath;
+use nohash_hasher::IntSet;
+use re_log_types::{EntityPath, EntityPathHash};
 use re_types::ComponentNameSet;
 
 use crate::{
@@ -62,24 +62,16 @@ pub trait ViewPartSystem: Send + Sync + 'static {
     /// the minimal set of required components), this method applies an arbitrary filter to determine whether
     /// or not the system should be instantiated by default.
     ///
-    /// The passed-in set of `entity_components` corresponds to all the different components that have ever
-    /// been logged on the entity path.
-    ///
-    /// By default, this returns true if either [`Self::indicator_components`] is empty or
-    /// `entity_components` contains at least one of these indicator components.
-    ///
     /// Override this method only if a more detailed condition is required to inform heuristics whether or not
     /// the given entity is relevant for this system.
     #[inline]
     fn heuristic_filter(
         &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &EntityPath,
+        entities_with_matching_indicator: &IntSet<EntityPathHash>,
+        ent_path: &EntityPath,
         _ctx: HeuristicFilterContext,
-        _query: &LatestAtQuery,
-        entity_components: &ComponentNameSet,
     ) -> bool {
-        default_heuristic_filter(entity_components, &self.indicator_components())
+        entities_with_matching_indicator.contains(&ent_path.hash())
     }
 
     /// Additional filter for applicability.
@@ -113,25 +105,6 @@ pub trait ViewPartSystem: Send + Sync + 'static {
     }
 
     fn as_any(&self) -> &dyn std::any::Any;
-}
-
-/// The default implementation for [`ViewPartSystem::heuristic_filter`].
-///
-/// Returns true if either `indicator_components` is empty or `entity_components` contains at least one
-/// of these indicator components.
-///
-/// Exported as a standalone function to simplify the implementation of custom filters.
-#[inline]
-pub fn default_heuristic_filter(
-    entity_components: &ComponentNameSet,
-    indicator_components: &ComponentNameSet,
-) -> bool {
-    if indicator_components.is_empty() {
-        true // if there are no indicator components, then show anything with the required compoonents
-    } else {
-        // do we have at least one of the indicator components?
-        entity_components.intersection(indicator_components).count() > 0
-    }
 }
 
 pub struct ViewPartCollection {
