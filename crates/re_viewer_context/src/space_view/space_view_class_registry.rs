@@ -310,7 +310,7 @@ impl SpaceViewClassRegistry {
     }
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.
-    pub fn entities_with_matching_indicator_per_visualizer(
+    pub fn indicator_matching_entities_per_visualizer(
         &self,
         store_id: &re_log_types::StoreId,
     ) -> IntMap<ViewSystemIdentifier, IntSet<EntityPathHash>> {
@@ -321,11 +321,7 @@ impl SpaceViewClassRegistry {
                     *id,
                     DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                         entry.entity_subscriber_handle,
-                        |subscriber| {
-                            subscriber
-                                .entities_with_matching_indicator(store_id)
-                                .cloned()
-                        },
+                        |subscriber| subscriber.indicator_matching_entities(store_id).cloned(),
                     )
                     .flatten()
                     .unwrap_or_default(),

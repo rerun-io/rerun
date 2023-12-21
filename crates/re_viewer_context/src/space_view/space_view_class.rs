@@ -1,11 +1,12 @@
+use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{EntityProperties, EntityPropertyMap};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathHash};
 use re_types::ComponentName;
 
 use crate::{
     AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewPartCollection, ViewQuery,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
     ViewerContext,
 };
 
@@ -79,9 +80,11 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     // should work on subtrees etc.? Pass in some context?
     fn filter_heuristic_entities_per_visualizer(
         &self,
+        indicator_matching_entities_per_visualizer: &IntMap<
+            ViewSystemIdentifier,
+            IntSet<EntityPathHash>,
+        >,
         _space_origin: &EntityPath,
-        store: &re_arrow_store::DataStore,
-        visualizers: &ViewPartCollection,
         visualizable_entities_per_visualizer: &VisualizableEntitiesPerVisualizer,
     ) -> ActiveEntitiesPerVisualizer {
         re_tracing::profile_function!();
@@ -91,28 +94,12 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
                 .0
                 .iter()
                 .filter_map(|(id, entities)| {
-                    let indicator_components = visualizers
-                        .get_by_identifier(*id)
-                        .ok()?
-                        .indicator_components();
-
-                    // If there are no indicator components, then show all entities.
-                    if indicator_components.is_empty() {
-                        return Some((*id, entities.0.clone()));
-                    }
-
-                    let filtered_entities = entities.iter().filter_map(|ent_path| {
-                        store
-                            .all_components(&re_log_types::Timeline::log_time(), ent_path)
-                            .and_then(|components| {
-                                components
-                                    .iter()
-                                    .any(|c| indicator_components.contains(c))
-                                    .then(|| ent_path.clone())
-                            })
-                    });
-
-                    Some((*id, filtered_entities.collect()))
+                    let indicator_matching_entities =
+                        indicator_matching_entities_per_visualizer.get(id)?;
+                    let entities = entities
+                        .iter()
+                        .filter(|k| indicator_matching_entities.contains(&k.hash()));
+                    Some((*id, entities.cloned().collect()))
                 })
                 .collect(),
         )
@@ -242,15 +229,16 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
     fn filter_heuristic_entities_per_visualizer(
         &self,
+        indicator_matching_entities_per_visualizer: &IntMap<
+            ViewSystemIdentifier,
+            IntSet<EntityPathHash>,
+        >,
         space_origin: &EntityPath,
-        store: &re_arrow_store::DataStore,
-        visualizers: &ViewPartCollection,
         visualizable_entities_per_visualizer: &VisualizableEntitiesPerVisualizer,
     ) -> ActiveEntitiesPerVisualizer {
         self.filter_heuristic_entities_per_visualizer(
+            indicator_matching_entities_per_visualizer,
             space_origin,
-            store,
-            visualizers,
             visualizable_entities_per_visualizer,
         )
     }

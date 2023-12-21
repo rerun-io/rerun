@@ -38,7 +38,7 @@ pub struct ViewerContext<'a> {
     pub applicable_entities_per_visualizer: &'a ApplicableEntitiesPerVisualizer,
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.
-    pub entities_with_matching_indicator_per_visualizer:
+    pub indicator_matching_entities_per_visualizer:
         &'a IntMap<ViewSystemIdentifier, IntSet<EntityPathHash>>,
 
     /// All the query results for this frame

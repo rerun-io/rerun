@@ -121,7 +121,7 @@ struct VisualizerEntityMapping {
     applicable_entities: VisualizerApplicableEntities,
 
     /// List of all entities in this store that at some point in time had any of the indicator components.
-    entities_with_matching_indicator: IntSet<EntityPathHash>,
+    indicator_matching_entities: IntSet<EntityPathHash>,
 }
 
 impl VisualizerEntitySubscriber {
@@ -154,13 +154,10 @@ impl VisualizerEntitySubscriber {
     ///
     /// Useful for quickly evaluating basic "should this visualizer apply by default"-heuristic.
     /// Does *not* imply that any of the given entities is also in the applicable-set!
-    pub fn entities_with_matching_indicator(
-        &self,
-        store: &StoreId,
-    ) -> Option<&IntSet<EntityPathHash>> {
+    pub fn indicator_matching_entities(&self, store: &StoreId) -> Option<&IntSet<EntityPathHash>> {
         self.per_store_mapping
             .get(store)
-            .map(|mapping| &mapping.entities_with_matching_indicator)
+            .map(|mapping| &mapping.indicator_matching_entities)
     }
 }
 
@@ -206,7 +203,7 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
                 .any(|component_name| event.diff.cells.keys().contains(component_name))
             {
                 store_mapping
-                    .entities_with_matching_indicator
+                    .indicator_matching_entities
                     .insert(entity_path_hash);
             }
 

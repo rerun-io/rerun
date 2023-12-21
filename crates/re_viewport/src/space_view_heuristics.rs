@@ -92,6 +92,7 @@ pub fn all_possible_space_views(
                     let active_entities_per_system =
                         determine_heuristically_active_entities_per_system(
                             ctx.applicable_entities_per_visualizer,
+                            ctx.indicator_matching_entities_per_visualizer,
                             ctx.store_db,
                             &ctx.space_view_class_registry
                                 .new_part_collection(class_identifier),

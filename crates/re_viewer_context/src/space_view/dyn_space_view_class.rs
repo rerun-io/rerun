@@ -1,12 +1,12 @@
 use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{EntityProperties, EntityPropertyMap};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathHash};
 use re_types::ComponentName;
 
 use crate::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewPartCollection, ViewQuery,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
+    ViewerContext, VisualizableEntities,
 };
 
 re_string_interner::declare_new_type!(
@@ -148,9 +148,11 @@ pub trait DynSpaceViewClass: Send + Sync {
     // TODO: docs
     fn filter_heuristic_entities_per_visualizer(
         &self,
+        indicator_matching_entities_per_visualizer: &IntMap<
+            ViewSystemIdentifier,
+            IntSet<EntityPathHash>,
+        >,
         space_origin: &EntityPath,
-        store: &re_arrow_store::DataStore,
-        visualizers: &ViewPartCollection,
         visualizable_entities_per_visualizer: &VisualizableEntitiesPerVisualizer,
     ) -> ActiveEntitiesPerVisualizer;
 

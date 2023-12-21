@@ -23,6 +23,7 @@ mod viewport_blueprint_ui;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
+use nohash_hasher::{IntMap, IntSet};
 pub use space_info::SpaceInfoCollection;
 pub use space_view::SpaceViewBlueprint;
 pub use viewport::{Viewport, ViewportState};
@@ -33,12 +34,12 @@ pub mod external {
 }
 
 use re_data_store::StoreDb;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathHash};
 use re_types::datatypes;
 
 use re_viewer_context::{
     ActiveEntitiesPerVisualizer, ApplicableEntitiesPerVisualizer, DynSpaceViewClass,
-    VisualizableEntities, VisualizableEntitiesPerVisualizer,
+    ViewSystemIdentifier, VisualizableEntities, VisualizableEntitiesPerVisualizer,
 };
 
 /// Utility for querying a pinhole archetype instance.
@@ -68,6 +69,10 @@ fn query_pinhole(
 // * Visibility set is needed on several places, therefore store as part of the space view state (?)
 pub fn determine_heuristically_active_entities_per_system(
     applicable_entities_per_visualizer: &ApplicableEntitiesPerVisualizer,
+    indicator_matching_entities_per_visualizer: &IntMap<
+        ViewSystemIdentifier,
+        IntSet<EntityPathHash>,
+    >,
     store_db: &StoreDb,
     visualizers: &re_viewer_context::ViewPartCollection,
     class: &dyn DynSpaceViewClass,
@@ -99,9 +104,8 @@ pub fn determine_heuristically_active_entities_per_system(
     );
 
     class.filter_heuristic_entities_per_visualizer(
+        indicator_matching_entities_per_visualizer,
         space_origin,
-        store_db.store(),
-        visualizers,
         &visualizable_entities,
     )
 }
