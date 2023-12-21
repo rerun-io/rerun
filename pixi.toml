@@ -51,6 +51,9 @@ py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
+py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py" }
+
+rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
 # All the cpp-* tasks can be configured with environment variables, e.g.:  RERUN_WERROR=ON  CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"

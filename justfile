@@ -139,6 +139,9 @@ py-bench *ARGS:
 py-docs-serve:
     mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py
 
+py-plot-dashboard *ARGS:
+    pixi run py-plot-dashboard {{ARGS}}
+
 ### Rust
 
 # Generate and open the documentation for Rerun and all of its Rust dependencies.
@@ -198,6 +201,8 @@ rs-run-all *ARGS:
     set -euo pipefail
     find examples/rust/ -name main.rs | xargs -I _ sh -c 'cd $(dirname _) && echo $(pwd) && cargo r'
 
+rs-plot-dashboard *ARGS:
+    pixi run rs-plot-dashboard {{ARGS}}
 
 ### TOML
 
