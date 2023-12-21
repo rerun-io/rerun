@@ -200,6 +200,8 @@ fn add_entities_line_ui(
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            // TODO(emilk): Show at most one button.
+
             // Reset-button
             {
                 let enabled = add_info.can_add_self_or_descendant.is_compatible()
