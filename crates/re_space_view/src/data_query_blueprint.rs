@@ -198,6 +198,7 @@ impl DataQuery for DataQueryBlueprint {
         let executor = QueryExpressionEvaluator::new(self, entities_per_system);
 
         let root_handle = ctx.recording.and_then(|store| {
+            re_tracing::profile_scope!("add_entity_tree_to_data_results_recursive");
             executor.add_entity_tree_to_data_results_recursive(store.tree(), &mut data_results)
         });
 
