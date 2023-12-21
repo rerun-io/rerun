@@ -172,7 +172,7 @@ impl ContainerBlueprint {
 
     /// Persist the entire [`ContainerBlueprint`] to the blueprint store.
     ///
-    /// This only needs to be called if the [`ContainerBlueprint`] was created with [`Self::new`].
+    /// This only needs to be called if the [`ContainerBlueprint`] was created with [`Self::from_egui_tiles_container`].
     ///
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
