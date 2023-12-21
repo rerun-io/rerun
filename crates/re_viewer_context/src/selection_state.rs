@@ -117,7 +117,8 @@ pub struct SelectionState {
 impl SelectionState {
     /// Called at the start of each frame
     pub fn on_frame_start(&mut self, item_retain_condition: impl Fn(&Item) -> bool) {
-        re_tracing::profile_function!();
+        // Use a different name so we don't get a collision in puffin.
+        re_tracing::profile_scope!("SelectionState::on_frame_start");
 
         let history = self.history.get_mut();
         history.retain(&item_retain_condition);

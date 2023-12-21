@@ -6,14 +6,14 @@ use re_log_types::{DataRow, EntityPath, EntityPathExpr, RowId, TimePoint};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    EntitiesPerSystem, SpaceViewClassIdentifier, SpaceViewId, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewerContext,
+    EntitiesPerSystem, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, StoreContext,
+    SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use crate::{
-    blueprint::components::QueryExpressions, DataQuery, EntityOverrides, PropertyResolver,
+    blueprint::components::QueryExpressions, DataQuery, EntityOverrideContext, PropertyResolver,
 };
 
 /// An implementation of [`DataQuery`] that is built from a collection of [`QueryExpressions`]
@@ -51,9 +51,6 @@ impl DataQueryBlueprint {
 }
 
 impl DataQueryBlueprint {
-    pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
-    pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
-
     /// Creates a new [`DataQueryBlueprint`].
     ///
     /// This [`DataQueryBlueprint`] is ephemeral. It must be saved by calling
@@ -116,17 +113,16 @@ impl DataQueryBlueprint {
         container: SpaceViewId,
         auto_properties: &'a EntityPropertyMap,
     ) -> DataQueryPropertyResolver<'a> {
+        let base_override_root = self.id.as_entity_path().clone();
+        let individual_override_root =
+            base_override_root.join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
+        let recursive_override_root =
+            base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
         DataQueryPropertyResolver {
             auto_properties,
             default_stack: vec![container.as_entity_path(), self.id.as_entity_path()],
-            individual_override_root: self
-                .id
-                .as_entity_path()
-                .join(&Self::INDIVIDUAL_OVERRIDES_PREFIX.into()),
-            recursive_override_root: self
-                .id
-                .as_entity_path()
-                .join(&Self::RECURSIVE_OVERRIDES_PREFIX.into()),
+            individual_override_root,
+            recursive_override_root,
         }
     }
 
@@ -275,9 +271,13 @@ impl DataQueryBlueprint {
 }
 
 impl DataQuery for DataQueryBlueprint {
+    /// Build up the initial [`DataQueryResult`] for this [`DataQueryBlueprint`]
+    ///
+    /// Note that this result will not have any resolved [`PropertyOverrides`]. Those can
+    /// be added by separately calling [`PropertyResolver::update_overrides`] on
+    /// the result.
     fn execute_query(
         &self,
-        property_resolver: &impl PropertyResolver,
         ctx: &re_viewer_context::StoreContext<'_>,
         entities_per_system: &EntitiesPerSystem,
     ) -> DataQueryResult {
@@ -285,15 +285,11 @@ impl DataQuery for DataQueryBlueprint {
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
-        let overrides = property_resolver.resolve_entity_overrides(ctx);
-
         let executor = QueryExpressionEvaluator::new(self, entities_per_system);
 
         let root_handle = ctx.recording.and_then(|store| {
             executor.add_entity_tree_to_data_results_recursive(
                 store.tree(),
-                &overrides,
-                &overrides.root,
                 &mut data_results,
                 false,
             )
@@ -312,7 +308,6 @@ impl DataQuery for DataQueryBlueprint {
 /// used to efficiently determine if we should continue the walk or switch
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
-    blueprint: &'a DataQueryBlueprint,
     per_system_entity_list: &'a EntitiesPerSystem,
     exact_inclusions: IntSet<EntityPath>,
     recursive_inclusions: IntSet<EntityPath>,
@@ -326,6 +321,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
         blueprint: &'a DataQueryBlueprint,
         per_system_entity_list: &'a EntitiesPerSystem,
     ) -> Self {
+        re_tracing::profile_function!();
         let inclusions: Vec<EntityPathExpr> = blueprint
             .expressions
             .inclusions
@@ -368,7 +364,6 @@ impl<'a> QueryExpressionEvaluator<'a> {
             .collect();
 
         Self {
-            blueprint,
             per_system_entity_list,
             exact_inclusions,
             recursive_inclusions,
@@ -381,8 +376,6 @@ impl<'a> QueryExpressionEvaluator<'a> {
     fn add_entity_tree_to_data_results_recursive(
         &self,
         tree: &EntityTree,
-        overrides: &EntityOverrides,
-        inherited: &EntityProperties,
         data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
         from_recursive: bool,
     ) -> Option<DataResultHandle> {
@@ -396,12 +389,12 @@ impl<'a> QueryExpressionEvaluator<'a> {
             return None;
         }
 
-        let entity_path = tree.path.clone();
+        let entity_path = &tree.path;
 
         // Pre-compute our matches
-        let exact_include = self.exact_inclusions.contains(&entity_path);
-        let recursive_include = self.recursive_inclusions.contains(&entity_path) || from_recursive;
-        let exact_exclude = self.exact_exclusions.contains(&entity_path);
+        let exact_include = self.exact_inclusions.contains(entity_path);
+        let recursive_include = self.recursive_inclusions.contains(entity_path) || from_recursive;
+        let exact_exclude = self.exact_exclusions.contains(entity_path);
         let any_match = (exact_include || recursive_include) && !exact_exclude;
 
         // Only populate view_parts if this is a match
@@ -410,7 +403,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
             self.per_system_entity_list
                 .iter()
                 .filter_map(|(part, ents)| {
-                    if ents.contains(&entity_path) {
+                    if ents.contains(entity_path) {
                         Some(*part)
                     } else {
                         None
@@ -421,37 +414,14 @@ impl<'a> QueryExpressionEvaluator<'a> {
             Default::default()
         };
 
-        let mut resolved_properties = inherited.clone();
-
-        if let Some(props) = overrides.group.get_opt(&entity_path) {
-            resolved_properties = resolved_properties.with_child(props);
-        }
-
-        let base_entity_path = self.blueprint.id.as_entity_path().clone();
-
-        let individual_override_path = base_entity_path
-            .join(&DataQueryBlueprint::INDIVIDUAL_OVERRIDES_PREFIX.into())
-            .join(&entity_path);
-        let recursive_override_path = base_entity_path
-            .join(&DataQueryBlueprint::RECURSIVE_OVERRIDES_PREFIX.into())
-            .join(&entity_path);
-
         let self_leaf = if !view_parts.is_empty() || exact_include {
-            let individual_props = overrides.individual.get_opt(&entity_path);
-            let mut leaf_resolved_properties = resolved_properties.clone();
-
-            if let Some(props) = individual_props {
-                leaf_resolved_properties = leaf_resolved_properties.with_child(props);
-            }
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
                     view_parts,
                     is_group: false,
                     direct_included: any_match,
-                    individual_properties: overrides.individual.get_opt(&entity_path).cloned(),
-                    resolved_properties: leaf_resolved_properties,
-                    override_path: individual_override_path,
+                    property_overrides: None,
                 },
                 children: Default::default(),
             }))
@@ -465,33 +435,49 @@ impl<'a> QueryExpressionEvaluator<'a> {
             itertools::Either::Right(std::iter::empty())
         };
 
-        let children: SmallVec<_> = maybe_self_iter
-            .chain(tree.children.values().filter_map(|subtree| {
-                self.add_entity_tree_to_data_results_recursive(
-                    subtree,
-                    overrides,
-                    &resolved_properties,
-                    data_results,
-                    recursive_include, // Once we have hit a recursive match, it's always propagated
-                )
-            }))
-            .collect();
+        let interesting_children: Vec<_> = {
+            if recursive_include {
+                tree.children
+                    .values()
+                    .filter(|subtree| {
+                        !(self.recursive_exclusions.contains(&subtree.path)
+                            || !(recursive_include
+                                || self.allowed_prefixes.contains(&subtree.path)))
+                    })
+                    .collect()
+            } else {
+                self.allowed_prefixes
+                    .iter()
+                    .filter(|prefix| prefix.is_child_of(entity_path))
+                    .filter_map(|prefix| prefix.last().and_then(|part| tree.children.get(part)))
+                    .collect()
+            }
+        };
+
+        let children: SmallVec<_> = {
+            maybe_self_iter
+                .chain(interesting_children.iter().filter_map(|subtree| {
+                    self.add_entity_tree_to_data_results_recursive(
+                        subtree,
+                        data_results,
+                        recursive_include, // Once we have hit a recursive match, it's always propagated
+                    )
+                }))
+                .collect()
+        };
 
         // If the only child is the self-leaf, then we don't need to create a group
         if children.is_empty() || children.len() == 1 && self_leaf.is_some() {
             self_leaf
         } else {
             // The 'individual' properties of a group are the group overrides
-            let individual_properties = overrides.group.get_opt(&entity_path).cloned();
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
-                    entity_path,
+                    entity_path: entity_path.clone(),
                     view_parts: Default::default(),
                     is_group: true,
                     direct_included: any_match,
-                    individual_properties,
-                    resolved_properties,
-                    override_path: recursive_override_path,
+                    property_overrides: None,
                 },
                 children,
             }))
@@ -507,40 +493,15 @@ pub struct DataQueryPropertyResolver<'a> {
 }
 
 impl DataQueryPropertyResolver<'_> {
-    fn resolve_entity_overrides_for_path(
-        &self,
-        ctx: &StoreContext<'_>,
-        props_path: &EntityPath,
-    ) -> EntityPropertyMap {
-        re_tracing::profile_function!();
-        let blueprint = ctx.blueprint;
-
-        let mut prop_map = self.auto_properties.clone();
-
-        if let Some(tree) = blueprint.tree().subtree(props_path) {
-            tree.visit_children_recursively(&mut |path: &EntityPath| {
-                if let Some(props) = blueprint
-                    .store()
-                    .query_timeless_component_quiet::<EntityPropertiesComponent>(path)
-                {
-                    let overridden_path =
-                        EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
-                    prop_map.update(overridden_path, props.value.0);
-                }
-            });
-        }
-        prop_map
-    }
-}
-
-impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
-    /// Helper function to lookup the properties for a given entity path.
+    /// Helper function to build the [`EntityOverrideContext`] for this [`DataQuery`]
     ///
-    /// We start with the auto properties for the `SpaceView` as the base layer and
-    /// then incrementally override from there.
-    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityOverrides {
+    /// The context is made up of 3 parts:
+    ///  - The root properties are build by merging a stack of paths from the Blueprint Tree. This
+    ///  may include properties from the `SpaceView` or `DataQuery`.
+    ///  - The individual overrides are found by walking an override subtree under the `data_query/<id>/individual_overrides`
+    ///  - The group overrides are found by walking an override subtree under the `data_query/<id>/group_overrides`
+    fn build_override_context(&self, ctx: &StoreContext<'_>) -> EntityOverrideContext {
         re_tracing::profile_function!();
-        let blueprint = ctx.blueprint;
 
         let mut root: EntityProperties = Default::default();
         for prefix in &self.default_stack {
@@ -553,26 +514,125 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
             }
         }
 
-        let mut individual = self.auto_properties.clone();
-
-        if let Some(tree) = blueprint.tree().subtree(&self.individual_override_root) {
-            tree.visit_children_recursively(&mut |path: &EntityPath| {
-                if let Some(props) = blueprint
-                    .store()
-                    .query_timeless_component::<EntityPropertiesComponent>(path)
-                {
-                    let overridden_path = EntityPath::from(
-                        &path.as_slice()[self.individual_override_root.len()..path.len()],
-                    );
-                    individual.update(overridden_path, props.value.0);
-                }
-            });
-        }
-
-        EntityOverrides {
+        EntityOverrideContext {
             root,
             individual: self.resolve_entity_overrides_for_path(ctx, &self.individual_override_root),
             group: self.resolve_entity_overrides_for_path(ctx, &self.recursive_override_root),
+        }
+    }
+
+    /// Find all of the overrides for a given path.
+    ///
+    /// These overrides are full entity-paths prefixed by the override root.
+    ///
+    /// For example the individual override for `world/points` in the context of the query-id `1234`
+    /// would be found at: `data_query/1234/individual_overrides/world/points`.
+    fn resolve_entity_overrides_for_path(
+        &self,
+        ctx: &StoreContext<'_>,
+        override_root: &EntityPath,
+    ) -> EntityPropertyMap {
+        re_tracing::profile_function!();
+        let blueprint = ctx.blueprint;
+
+        let mut prop_map = self.auto_properties.clone();
+
+        if let Some(tree) = blueprint.tree().subtree(override_root) {
+            tree.visit_children_recursively(&mut |path: &EntityPath| {
+                if let Some(props) = blueprint
+                    .store()
+                    .query_timeless_component_quiet::<EntityPropertiesComponent>(path)
+                {
+                    let overridden_path =
+                        EntityPath::from(&path.as_slice()[override_root.len()..path.len()]);
+                    prop_map.update(overridden_path, props.value.0);
+                }
+            });
+        }
+        prop_map
+    }
+
+    /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
+    ///
+    /// This will accumulate the group properties at each step down the tree, and then finally merge
+    /// with individual overrides at the leafs.
+    fn update_overrides_recursive(
+        &self,
+        query_result: &mut DataQueryResult,
+        override_context: &EntityOverrideContext,
+        accumulated: &EntityProperties,
+        handle: DataResultHandle,
+    ) {
+        if let Some((child_handles, accumulated)) =
+            query_result.tree.lookup_node_mut(handle).and_then(|node| {
+                if node.data_result.is_group {
+                    let overridden_properties = override_context
+                        .group
+                        .get_opt(&node.data_result.entity_path);
+
+                    let accumulated_properties = if let Some(overridden) = overridden_properties {
+                        accumulated.with_child(overridden)
+                    } else {
+                        accumulated.clone()
+                    };
+
+                    node.data_result.property_overrides = Some(PropertyOverrides {
+                        individual_properties: overridden_properties.cloned(),
+                        accumulated_properties: accumulated_properties.clone(),
+                        override_path: self
+                            .recursive_override_root
+                            .join(&node.data_result.entity_path),
+                    });
+
+                    Some((node.children.clone(), accumulated_properties))
+                } else {
+                    let overridden_properties = override_context
+                        .individual
+                        .get_opt(&node.data_result.entity_path);
+
+                    let accumulated_properties = if let Some(overridden) = overridden_properties {
+                        accumulated.with_child(overridden)
+                    } else {
+                        accumulated.clone()
+                    };
+
+                    node.data_result.property_overrides = Some(PropertyOverrides {
+                        individual_properties: overridden_properties.cloned(),
+                        accumulated_properties: accumulated_properties.clone(),
+                        override_path: self
+                            .individual_override_root
+                            .join(&node.data_result.entity_path),
+                    });
+
+                    None
+                }
+            })
+        {
+            for child in child_handles {
+                self.update_overrides_recursive(
+                    query_result,
+                    override_context,
+                    &accumulated,
+                    child,
+                );
+            }
+        }
+    }
+}
+
+impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
+    /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
+    fn update_overrides(&self, ctx: &StoreContext<'_>, query_result: &mut DataQueryResult) {
+        re_tracing::profile_function!();
+        let entity_overrides = self.build_override_context(ctx);
+
+        if let Some(root) = query_result.tree.root_handle() {
+            self.update_overrides_recursive(
+                query_result,
+                &entity_overrides,
+                &entity_overrides.root,
+                root,
+            );
         }
     }
 }
@@ -586,27 +646,10 @@ mod tests {
 
     use super::*;
 
-    struct StaticPropertyResolver {
-        overrides: EntityPropertyMap,
-    }
-
-    impl PropertyResolver for StaticPropertyResolver {
-        fn resolve_entity_overrides(&self, _ctx: &StoreContext<'_>) -> EntityOverrides {
-            EntityOverrides {
-                root: Default::default(),
-                individual: self.overrides.clone(),
-                group: self.overrides.clone(),
-            }
-        }
-    }
-
     #[test]
     fn test_query_results() {
         let mut recording = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let blueprint = StoreDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
-
-        let overrides = EntityPropertyMap::default();
-        let resolver = StaticPropertyResolver { overrides };
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
@@ -750,7 +793,7 @@ mod tests {
                 ),
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let query_result = query.execute_query(&ctx, &entities_per_system);
 
             let mut visited = vec![];
             query_result.tree.visit(&mut |handle| {

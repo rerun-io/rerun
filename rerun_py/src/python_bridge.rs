@@ -15,7 +15,7 @@ use pyo3::{
 //use re_viewport::{SpaceViewBlueprint, VIEWPORT_PATH};
 use re_viewport::VIEWPORT_PATH;
 
-use re_log_types::{DataRow, StoreKind};
+use re_log_types::{DataRow, EntityPathPart, StoreKind};
 use rerun::{
     log::RowId, sink::MemorySinkStorage, time::TimePoint, EntityPath, RecordingStream,
     RecordingStreamBuilder, StoreId,
@@ -152,6 +152,8 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(get_app_url, m)?)?;
     m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
+    m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
+    m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
 
     // blueprint
     m.add_function(wrap_pyfunction!(set_panels, m)?)?;
@@ -760,7 +762,7 @@ fn set_panel(entity_path: &str, is_expanded: bool, blueprint: Option<&PyRecordin
     use re_viewer::blueprint::components::PanelView;
 
     // TODO(jleibs): Validation this is a valid blueprint path?
-    let entity_path = parse_entity_path(entity_path);
+    let entity_path = EntityPath::parse_forgiving(entity_path);
 
     let panel_state = PanelView(is_expanded);
 
@@ -867,7 +869,7 @@ fn log_arrow_msg(
         return Ok(());
     };
 
-    let entity_path = parse_entity_path(entity_path);
+    let entity_path = EntityPath::parse_forgiving(entity_path);
 
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
@@ -936,6 +938,17 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))
     }
+}
+
+#[pyfunction]
+fn escape_entity_path_part(part: &str) -> String {
+    EntityPathPart::from(part).escaped_string()
+}
+
+#[pyfunction]
+fn new_entity_path(parts: Vec<&str>) -> String {
+    let path = EntityPath::from(parts.into_iter().map(EntityPathPart::from).collect_vec());
+    path.to_string()
 }
 
 // --- Helpers ---
@@ -1012,9 +1025,4 @@ authkey = multiprocessing.current_process().authkey
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     })
     .map(|authkey: &PyBytes| authkey.as_bytes().to_vec())
-}
-
-fn parse_entity_path(entity_path: &str) -> EntityPath {
-    // We accept anything!
-    EntityPath::parse_forgiving(entity_path)
 }

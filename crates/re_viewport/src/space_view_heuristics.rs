@@ -5,7 +5,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_data_store::{EntityPath, EntityTree};
 use re_log_types::{EntityPathExpr, TimeInt};
-use re_space_view::{DataQuery as _, DataQueryBlueprint, NOOP_RESOLVER};
+use re_space_view::{DataQuery as _, DataQueryBlueprint};
 use re_types::components::{DisconnectedSpace, TensorData};
 use re_types::ComponentNameSet;
 use re_viewer_context::{
@@ -58,18 +58,6 @@ pub fn all_possible_space_views(
 ) -> Vec<(SpaceViewBlueprint, DataQueryResult)> {
     re_tracing::profile_function!();
 
-    for (class_identifier, entities_per_system) in entities_per_system_per_class {
-        for (system_name, entities) in entities_per_system {
-            if entities.is_empty() {
-                re_log::debug!(
-                    "SpaceViewClassRegistry: No entities for system {:?} of class {:?}",
-                    system_name,
-                    class_identifier
-                );
-            }
-        }
-    }
-
     // For each candidate, create space views for all possible classes.
     candidate_space_view_paths(ctx, spaces_info)
         .flat_map(|candidate_space_path| {
@@ -98,11 +86,8 @@ pub fn all_possible_space_views(
                         std::iter::once(EntityPathExpr::Recursive(candidate_space_path.clone())),
                     );
 
-                    let results = candidate_query.execute_query(
-                        &NOOP_RESOLVER,
-                        ctx.store_context,
-                        entities_per_system,
-                    );
+                    let results =
+                        candidate_query.execute_query(ctx.store_context, entities_per_system);
 
                     if !results.is_empty() {
                         Some((

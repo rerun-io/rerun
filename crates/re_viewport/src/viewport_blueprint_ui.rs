@@ -222,7 +222,7 @@ impl Viewport<'_, '_> {
         };
 
         let group_is_visible =
-            top_node.data_result.resolved_properties.visible && space_view_visible;
+            top_node.data_result.accumulated_properties().visible && space_view_visible;
 
         // Always real children ahead of groups
         for child in top_node
@@ -265,14 +265,14 @@ impl Viewport<'_, '_> {
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
             let mut properties = data_result
-                .individual_properties
-                .clone()
+                .individual_properties()
+                .cloned()
                 .unwrap_or_default();
 
             let name = entity_path
                 .iter()
                 .last()
-                .map_or("unknown".to_owned(), |e| e.to_string());
+                .map_or("unknown".to_owned(), |e| e.ui_string());
 
             let response = if child_node.children.is_empty() {
                 let label = format!("🔹 {name}");

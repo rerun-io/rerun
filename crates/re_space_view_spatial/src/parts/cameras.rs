@@ -216,7 +216,7 @@ impl ViewPartSystem for CamerasPart {
                     transforms,
                     shared_render_builders,
                     &data_result.entity_path,
-                    &data_result.resolved_properties,
+                    data_result.accumulated_properties(),
                     &pinhole,
                     store
                         .query_latest_component::<Transform3D>(

@@ -31,7 +31,9 @@ pub use self::recording_stream::{
 
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
 
-pub use re_log_types::{entity_path, ApplicationId, EntityPath, StoreId, StoreKind};
+pub use re_log_types::{
+    entity_path, ApplicationId, EntityPath, EntityPathPart, StoreId, StoreKind,
+};
 
 pub use global::cleanup_if_forked_child;
 
