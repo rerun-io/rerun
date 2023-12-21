@@ -24,10 +24,16 @@ impl std::ops::Deref for VisualizerApplicableEntities {
     }
 }
 
-impl std::ops::DerefMut for VisualizerApplicableEntities {
+/// TODO:
+#[derive(Default, Clone)]
+pub struct IndicatorMatchingEntities(pub IntSet<EntityPathHash>);
+
+impl std::ops::Deref for IndicatorMatchingEntities {
+    type Target = IntSet<EntityPathHash>;
+
     #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -121,7 +127,7 @@ struct VisualizerEntityMapping {
     applicable_entities: VisualizerApplicableEntities,
 
     /// List of all entities in this store that at some point in time had any of the indicator components.
-    indicator_matching_entities: IntSet<EntityPathHash>,
+    indicator_matching_entities: IndicatorMatchingEntities,
 }
 
 impl VisualizerEntitySubscriber {
@@ -154,7 +160,10 @@ impl VisualizerEntitySubscriber {
     ///
     /// Useful for quickly evaluating basic "should this visualizer apply by default"-heuristic.
     /// Does *not* imply that any of the given entities is also in the applicable-set!
-    pub fn indicator_matching_entities(&self, store: &StoreId) -> Option<&IntSet<EntityPathHash>> {
+    pub fn indicator_matching_entities(
+        &self,
+        store: &StoreId,
+    ) -> Option<&IndicatorMatchingEntities> {
         self.per_store_mapping
             .get(store)
             .map(|mapping| &mapping.indicator_matching_entities)
@@ -204,6 +213,7 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
             {
                 store_mapping
                     .indicator_matching_entities
+                    .0
                     .insert(entity_path_hash);
             }
 
@@ -245,6 +255,7 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
 
                 store_mapping
                     .applicable_entities
+                    .0
                     .insert(entity_path.clone());
             }
         }

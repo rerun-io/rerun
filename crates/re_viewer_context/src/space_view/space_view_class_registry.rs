@@ -1,7 +1,6 @@
 use ahash::{HashMap, HashSet};
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 use re_arrow_store::DataStore;
-use re_log_types::EntityPathHash;
 
 use crate::{
     ApplicableEntitiesPerVisualizer, DynSpaceViewClass, IdentifiedViewSystem,
@@ -11,7 +10,8 @@ use crate::{
 
 use super::{
     space_view_class_placeholder::SpaceViewClassPlaceholder,
-    visualizer_entity_subscriber::VisualizerEntitySubscriber, VisualizerApplicableEntities,
+    visualizer_entity_subscriber::{IndicatorMatchingEntities, VisualizerEntitySubscriber},
+    VisualizerApplicableEntities,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -313,7 +313,7 @@ impl SpaceViewClassRegistry {
     pub fn indicator_matching_entities_per_visualizer(
         &self,
         store_id: &re_log_types::StoreId,
-    ) -> IntMap<ViewSystemIdentifier, IntSet<EntityPathHash>> {
+    ) -> IntMap<ViewSystemIdentifier, IndicatorMatchingEntities> {
         self.visualizers
             .iter()
             .map(|(id, entry)| {

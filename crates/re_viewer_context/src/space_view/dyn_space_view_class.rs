@@ -1,6 +1,6 @@
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 use re_data_store::{EntityProperties, EntityPropertyMap};
-use re_log_types::{EntityPath, EntityPathHash};
+use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
@@ -52,30 +52,6 @@ impl std::ops::Deref for VisualizableEntitiesPerVisualizer {
 }
 
 impl std::ops::DerefMut for VisualizableEntitiesPerVisualizer {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-/// A selection of entities that are currently active for each visualizer.
-///
-/// This list is either a direct copy of [`VisualizableEntitiesPerVisualizer`],
-/// a selection of visualizers per entity,
-/// or, most commonly, the result of a heuristic filter.
-#[derive(Default)]
-pub struct ActiveEntitiesPerVisualizer(pub IntMap<ViewSystemIdentifier, IntSet<EntityPath>>);
-
-impl std::ops::Deref for ActiveEntitiesPerVisualizer {
-    type Target = IntMap<ViewSystemIdentifier, IntSet<EntityPath>>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ActiveEntitiesPerVisualizer {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
@@ -144,17 +120,6 @@ pub trait DynSpaceViewClass: Send + Sync {
         space_origin: &EntityPath,
         store_db: &re_data_store::StoreDb,
     ) -> Box<dyn std::any::Any>;
-
-    // TODO: docs
-    fn filter_heuristic_entities_per_visualizer(
-        &self,
-        indicator_matching_entities_per_visualizer: &IntMap<
-            ViewSystemIdentifier,
-            IntSet<EntityPathHash>,
-        >,
-        space_origin: &EntityPath,
-        visualizable_entities_per_visualizer: &VisualizableEntitiesPerVisualizer,
-    ) -> ActiveEntitiesPerVisualizer;
 
     /// Heuristic used to determine which space view is the best fit for a set of paths.
     ///

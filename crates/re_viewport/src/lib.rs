@@ -23,7 +23,6 @@ mod viewport_blueprint_ui;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
-use nohash_hasher::{IntMap, IntSet};
 pub use space_info::SpaceInfoCollection;
 pub use space_view::SpaceViewBlueprint;
 pub use viewport::{Viewport, ViewportState};
@@ -34,12 +33,12 @@ pub mod external {
 }
 
 use re_data_store::StoreDb;
-use re_log_types::{EntityPath, EntityPathHash};
+use re_log_types::EntityPath;
 use re_types::datatypes;
 
 use re_viewer_context::{
-    ActiveEntitiesPerVisualizer, ApplicableEntitiesPerVisualizer, DynSpaceViewClass,
-    ViewSystemIdentifier, VisualizableEntities, VisualizableEntitiesPerVisualizer,
+    ApplicableEntitiesPerVisualizer, DynSpaceViewClass, VisualizableEntities,
+    VisualizableEntitiesPerVisualizer,
 };
 
 /// Utility for querying a pinhole archetype instance.
@@ -64,25 +63,19 @@ fn query_pinhole(
         })
 }
 
-// TODO(andreas): Untangle this:
-// * Heuristics need to be applied as part of the query
-// * Visibility set is needed on several places, therefore store as part of the space view state (?)
-pub fn determine_heuristically_active_entities_per_system(
+// TODO(andreas): Untangle this: Visibility set is needed on several places, therefore store as part of the space view state (?)
+pub fn determine_visualizable_entities(
     applicable_entities_per_visualizer: &ApplicableEntitiesPerVisualizer,
-    indicator_matching_entities_per_visualizer: &IntMap<
-        ViewSystemIdentifier,
-        IntSet<EntityPathHash>,
-    >,
     store_db: &StoreDb,
     visualizers: &re_viewer_context::ViewPartCollection,
     class: &dyn DynSpaceViewClass,
     space_origin: &EntityPath,
-) -> ActiveEntitiesPerVisualizer {
+) -> VisualizableEntitiesPerVisualizer {
     re_tracing::profile_function!();
 
     let filter_ctx = class.visualizable_filter_context(space_origin, store_db);
 
-    let visualizable_entities = VisualizableEntitiesPerVisualizer(
+    VisualizableEntitiesPerVisualizer(
         visualizers
             .iter_with_identifiers()
             .map(|(visualizer_identifier, visualizer_system)| {
@@ -101,11 +94,5 @@ pub fn determine_heuristically_active_entities_per_system(
                 (visualizer_identifier, entities)
             })
             .collect(),
-    );
-
-    class.filter_heuristic_entities_per_visualizer(
-        indicator_matching_entities_per_visualizer,
-        space_origin,
-        &visualizable_entities,
     )
 }

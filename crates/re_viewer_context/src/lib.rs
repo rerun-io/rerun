@@ -41,8 +41,8 @@ pub use selection_state::{
     Selection, SelectionHighlight,
 };
 pub use space_view::{
-    ActiveEntitiesPerVisualizer, ApplicableEntitiesPerVisualizer, AutoSpawnHeuristic, DataResult,
-    DynSpaceViewClass, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
+    ApplicableEntitiesPerVisualizer, AutoSpawnHeuristic, DataResult, DynSpaceViewClass,
+    IdentifiedViewSystem, IndicatorMatchingEntities, PerSystemDataResults, PerSystemEntities,
     PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority,
     SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewEntityHighlight,
     SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,

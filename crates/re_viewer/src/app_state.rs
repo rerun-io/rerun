@@ -9,8 +9,8 @@ use re_viewer_context::{
     RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{
-    determine_heuristically_active_entities_per_system, SpaceInfoCollection, Viewport,
-    ViewportBlueprint, ViewportState,
+    determine_visualizable_entities, SpaceInfoCollection, Viewport, ViewportBlueprint,
+    ViewportState,
 };
 
 use crate::ui::recordings_panel_ui;
@@ -139,10 +139,9 @@ impl AppState {
             .indicator_matching_entities_per_visualizer(store_db.store_id());
 
         // TODO(andreas): This shouldn't happen every frame and it shouldn't happen here. Instead we need to drive the visualizable set from a store subscriber.
-        // TODO(andreas): Without the query it's not actually possible to determine the active set, but only the visualizable set!
-        let active_entities_per_system_per_space_view: HashMap<
+        let visualizable_entities_per_system_per_space_vuiew: HashMap<
             re_viewer_context::SpaceViewId,
-            re_viewer_context::ActiveEntitiesPerVisualizer,
+            re_viewer_context::VisualizableEntitiesPerVisualizer,
         > = viewport
             .blueprint
             .space_views
@@ -150,9 +149,8 @@ impl AppState {
             .map(|space_view| {
                 (
                     space_view.id,
-                    determine_heuristically_active_entities_per_system(
+                    determine_visualizable_entities(
                         &applicable_entities_per_visualizer,
-                        &indicator_matching_entities_per_visualizer,
                         store_db,
                         &space_view_class_registry
                             .new_part_collection(*space_view.class_identifier()),
@@ -172,15 +170,19 @@ impl AppState {
                 .values()
                 .flat_map(|space_view| {
                     space_view.queries.iter().filter_map(|query| {
-                        let Some(active_entities) =
-                            active_entities_per_system_per_space_view.get(&space_view.id)
+                        let Some(visualizable_entities) =
+                            visualizable_entities_per_system_per_space_vuiew.get(&space_view.id)
                         else {
                             return None;
                         };
 
                         Some((
                             query.id,
-                            query.execute_query(store_context, active_entities),
+                            query.execute_query(
+                                store_context,
+                                visualizable_entities,
+                                &indicator_matching_entities_per_visualizer,
+                            ),
                         ))
                     })
                 })

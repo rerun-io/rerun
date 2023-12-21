@@ -1,16 +1,12 @@
-use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{EntityProperties, EntityPropertyMap};
-use re_log_types::{EntityPath, EntityPathHash};
+use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
     AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
-    ViewerContext,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
-
-use super::dyn_space_view_class::{ActiveEntitiesPerVisualizer, VisualizableEntitiesPerVisualizer};
 
 /// Defines a class of space view.
 ///
@@ -73,36 +69,6 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
         _store_db: &re_data_store::StoreDb,
     ) -> Box<dyn std::any::Any> {
         Box::new(())
-    }
-
-    // TODO: docs
-    // TODO: in the future this should not have store access directly, but instead subscribe.
-    // should work on subtrees etc.? Pass in some context?
-    fn filter_heuristic_entities_per_visualizer(
-        &self,
-        indicator_matching_entities_per_visualizer: &IntMap<
-            ViewSystemIdentifier,
-            IntSet<EntityPathHash>,
-        >,
-        _space_origin: &EntityPath,
-        visualizable_entities_per_visualizer: &VisualizableEntitiesPerVisualizer,
-    ) -> ActiveEntitiesPerVisualizer {
-        re_tracing::profile_function!();
-
-        ActiveEntitiesPerVisualizer(
-            visualizable_entities_per_visualizer
-                .0
-                .iter()
-                .filter_map(|(id, entities)| {
-                    let indicator_matching_entities =
-                        indicator_matching_entities_per_visualizer.get(id)?;
-                    let entities = entities
-                        .iter()
-                        .filter(|k| indicator_matching_entities.contains(&k.hash()));
-                    Some((*id, entities.cloned().collect()))
-                })
-                .collect(),
-        )
     }
 
     /// Heuristic used to determine which space view is the best fit for a set of paths.
@@ -224,23 +190,6 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         store_db: &re_data_store::StoreDb,
     ) -> Box<dyn std::any::Any> {
         self.visualizable_filter_context(space_origin, store_db)
-    }
-
-    #[inline]
-    fn filter_heuristic_entities_per_visualizer(
-        &self,
-        indicator_matching_entities_per_visualizer: &IntMap<
-            ViewSystemIdentifier,
-            IntSet<EntityPathHash>,
-        >,
-        space_origin: &EntityPath,
-        visualizable_entities_per_visualizer: &VisualizableEntitiesPerVisualizer,
-    ) -> ActiveEntitiesPerVisualizer {
-        self.filter_heuristic_entities_per_visualizer(
-            indicator_matching_entities_per_visualizer,
-            space_origin,
-            visualizable_entities_per_visualizer,
-        )
     }
 
     #[inline]

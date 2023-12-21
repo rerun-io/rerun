@@ -1,5 +1,9 @@
+use nohash_hasher::IntMap;
 use re_data_store::{EntityProperties, EntityPropertyMap};
-use re_viewer_context::{ActiveEntitiesPerVisualizer, DataQueryResult, StoreContext};
+use re_viewer_context::{
+    DataQueryResult, IndicatorMatchingEntities, StoreContext, ViewSystemIdentifier,
+    VisualizableEntitiesPerVisualizer,
+};
 
 pub struct EntityOverrideContext {
     pub root: EntityProperties,
@@ -28,8 +32,10 @@ pub trait DataQuery {
     fn execute_query(
         &self,
         ctx: &StoreContext<'_>,
-        // TODO(andreas): This should get passed `VisualizableEntitiesPerVisualizer` instead of `ActiveEntitiesPerVisualizer`.
-        // Which entities are selected for each visualizer (via heuristic or otherwise) is up to the data query!
-        entities_per_system: &ActiveEntitiesPerVisualizer,
+        visualizable_entities_for_visualizer_systems: &VisualizableEntitiesPerVisualizer,
+        indicator_matching_entities_per_visualizer: &IntMap<
+            ViewSystemIdentifier,
+            IndicatorMatchingEntities,
+        >,
     ) -> DataQueryResult;
 }

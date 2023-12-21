@@ -11,8 +11,8 @@ use re_viewer_context::{
 };
 
 use crate::{
-    determine_heuristically_active_entities_per_system, query_pinhole,
-    space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint,
+    determine_visualizable_entities, query_pinhole, space_info::SpaceInfoCollection,
+    space_view::SpaceViewBlueprint,
 };
 
 // ---------------------------------------------------------------------------
@@ -89,22 +89,23 @@ pub fn all_possible_space_views(
 
                     // TODO(#4377): The need to run a query-per-candidate for all possible candidates
                     // is way too expensive. This needs to be optimized significantly.
-                    let active_entities_per_system =
-                        determine_heuristically_active_entities_per_system(
-                            ctx.applicable_entities_per_visualizer,
-                            ctx.indicator_matching_entities_per_visualizer,
-                            ctx.store_db,
-                            &ctx.space_view_class_registry
-                                .new_part_collection(class_identifier),
-                            entry.class.as_ref(),
-                            candidate_space_path,
-                        );
-
                     let candidate_query =
                         DataQueryBlueprint::new(class_identifier, entity_path_filter);
 
-                    let results = candidate_query
-                        .execute_query(ctx.store_context, &active_entities_per_system);
+                    let visualizable_entities = determine_visualizable_entities(
+                        ctx.applicable_entities_per_visualizer,
+                        ctx.store_db,
+                        &ctx.space_view_class_registry
+                            .new_part_collection(class_identifier),
+                        entry.class.as_ref(),
+                        candidate_space_path,
+                    );
+
+                    let results = candidate_query.execute_query(
+                        ctx.store_context,
+                        &visualizable_entities,
+                        ctx.indicator_matching_entities_per_visualizer,
+                    );
 
                     if !results.is_empty() {
                         Some((
