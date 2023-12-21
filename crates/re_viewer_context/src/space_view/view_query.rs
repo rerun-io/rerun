@@ -24,7 +24,7 @@ pub struct PropertyOverrides {
     pub individual_properties: Option<EntityProperties>,
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back.
-    pub base_override_path: EntityPath,
+    pub override_path: EntityPath,
 }
 
 /// This is the primary mechanism through which data is passed to a `SpaceView`.
@@ -63,20 +63,8 @@ impl DataResult {
     pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
     #[inline]
-    pub fn override_path(&self) -> Option<EntityPath> {
-        self.property_overrides.as_ref().map(|property_overrides| {
-            if self.is_group {
-                property_overrides
-                    .base_override_path
-                    .join(&Self::INDIVIDUAL_OVERRIDES_PREFIX.into())
-                    .join(&self.entity_path)
-            } else {
-                property_overrides
-                    .base_override_path
-                    .join(&Self::RECURSIVE_OVERRIDES_PREFIX.into())
-                    .join(&self.entity_path)
-            }
-        })
+    pub fn override_path(&self) -> Option<&EntityPath> {
+        self.property_overrides.as_ref().map(|p| &p.override_path)
     }
 
     /// Write the [`EntityProperties`] for this result back to the Blueprint store.

@@ -12,7 +12,7 @@ pub struct EntityOverrides {
 /// The `SpaceViewBlueprint` is the only thing that likely implements this today
 /// but we use a trait here so we don't have to pick up a full dependency on `re_viewport`.
 pub trait PropertyResolver {
-    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityOverrides;
+    fn update_overrides(&self, ctx: &StoreContext<'_>, query_result: &mut DataQueryResult);
 }
 
 /// The common trait implemented for data queries
@@ -26,13 +26,6 @@ pub trait DataQuery {
     ///
     /// This is used when building up the contents for a `SpaceView`.
     fn execute_query(
-        &self,
-        property_resolver: &impl PropertyResolver,
-        ctx: &StoreContext<'_>,
-        entities_per_system: &EntitiesPerSystem,
-    ) -> DataQueryResult;
-
-    fn execute_query_fast(
         &self,
         ctx: &StoreContext<'_>,
         entities_per_system: &EntitiesPerSystem,

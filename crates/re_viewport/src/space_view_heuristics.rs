@@ -87,7 +87,7 @@ pub fn all_possible_space_views(
                     );
 
                     let results =
-                        candidate_query.execute_query_fast(ctx.store_context, entities_per_system);
+                        candidate_query.execute_query(ctx.store_context, entities_per_system);
 
                     if !results.is_empty() {
                         Some((

@@ -422,7 +422,7 @@ impl SpaceViewBlueprint {
             property_overrides: Some(PropertyOverrides {
                 accumulated_properties,
                 individual_properties,
-                base_override_path: entity_path,
+                override_path: entity_path,
             }),
         }
     }
@@ -463,7 +463,7 @@ impl SpaceViewBlueprint {
 mod tests {
     use re_data_store::StoreDb;
     use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
-    use re_space_view::DataQuery as _;
+    use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
     use re_viewer_context::{EntitiesPerSystem, StoreContext};
 
@@ -541,7 +541,8 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
                 .tree
@@ -567,7 +568,7 @@ mod tests {
             let mut overrides = parent.individual_properties().cloned().unwrap_or_default();
             overrides.visible = false;
 
-            save_override(overrides, &parent.override_path().unwrap(), &mut blueprint);
+            save_override(overrides, parent.override_path().unwrap(), &mut blueprint);
         }
 
         // Parent is not visible, but children are
@@ -578,7 +579,8 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            resolver.update_overrides(&ctx, &mut query_result);
 
             let parent_group = query_result
                 .tree
@@ -612,7 +614,7 @@ mod tests {
 
             save_override(
                 overrides,
-                &parent_group.override_path().unwrap(),
+                parent_group.override_path().unwrap(),
                 &mut blueprint,
             );
         }
@@ -625,7 +627,8 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
                 .tree
@@ -656,7 +659,7 @@ mod tests {
             overrides.visible_history.enabled = true;
             overrides.visible_history.nanos = VisibleHistory::ALL;
 
-            save_override(overrides, &root.override_path().unwrap(), &mut blueprint);
+            save_override(overrides, root.override_path().unwrap(), &mut blueprint);
         }
 
         // Everyone has visible history
@@ -667,7 +670,8 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
                 .tree
@@ -693,7 +697,7 @@ mod tests {
             let mut overrides = child2.individual_properties().cloned().unwrap_or_default();
             overrides.visible_history.enabled = true;
 
-            save_override(overrides, &child2.override_path().unwrap(), &mut blueprint);
+            save_override(overrides, child2.override_path().unwrap(), &mut blueprint);
         }
 
         // Child2 has its own visible history
@@ -704,7 +708,8 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system);
+            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
                 .tree
