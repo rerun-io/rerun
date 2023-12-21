@@ -1,7 +1,11 @@
 use crate::blueprint::components::PanelView;
+use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
-use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
+use re_viewer_context::{
+    blueprint_timeline, blueprint_timepoint, CommandSender, StoreContext, SystemCommand,
+    SystemCommandSender,
+};
 
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
@@ -108,8 +112,8 @@ impl<'a> AppBlueprint<'a> {
     ) {
         if let Some(blueprint_db) = self.blueprint_db {
             let entity_path = EntityPath::from(panel_name);
-            // TODO(jleibs): Seq instead of timeless?
-            let timepoint = TimePoint::timeless();
+
+            let timepoint = blueprint_timepoint();
 
             let component = PanelView(is_expanded);
 
@@ -127,8 +131,9 @@ impl<'a> AppBlueprint<'a> {
 
 fn load_panel_state(path: &EntityPath, blueprint_db: &re_entity_db::EntityDb) -> Option<bool> {
     re_tracing::profile_function!();
+    let query = LatestAtQuery::latest(blueprint_timeline());
     blueprint_db
         .store()
-        .query_timeless_component_quiet::<PanelView>(path)
+        .query_latest_component_quiet::<PanelView>(path, &query)
         .map(|p| p.0)
 }

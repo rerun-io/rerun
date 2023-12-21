@@ -264,7 +264,7 @@ impl AppState {
         } else {
             time_panel.show_panel(
                 &ctx,
-                ctx.store_db,
+                ctx.entity_db,
                 ctx.rec_cfg,
                 ui,
                 app_blueprint.time_panel_expanded,

@@ -28,6 +28,7 @@ pub use annotations::{
     AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos,
 };
 pub use app_options::AppOptions;
+pub use blueprint_helpers::{blueprint_timeline, blueprint_timepoint};
 pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, DataQueryId, SpaceViewId};
 pub use caches::{Cache, Caches};
 pub use command_sender::{

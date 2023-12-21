@@ -3,12 +3,12 @@ use egui_tiles::TileId;
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log::ResultExt;
-use re_log_types::{DataRow, EntityPath, RowId, TimePoint, Timeline};
+use re_log_types::{DataRow, EntityPath, RowId};
 use re_query::query_archetype;
 use re_types_core::{archetypes::Clear, ArrowBuffer};
 use re_viewer_context::{
-    BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId, SystemCommand,
-    SystemCommandSender as _, ViewerContext,
+    blueprint_timeline, blueprint_timepoint, BlueprintId, BlueprintIdRegistry, ContainerId,
+    SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
 use crate::blueprint::components::GridColumns;
@@ -108,7 +108,7 @@ impl ContainerBlueprint {
     pub fn try_from_db(blueprint_db: &EntityDb, id: ContainerId) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let query = LatestAtQuery::latest(Timeline::default());
+        let query = LatestAtQuery::latest(blueprint_timeline());
 
         let crate::blueprint::archetypes::ContainerBlueprint {
             container_kind,
@@ -179,7 +179,7 @@ impl ContainerBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        let timepoint = TimePoint::timeless();
+        let timepoint = blueprint_timepoint();
 
         let Self {
             id,

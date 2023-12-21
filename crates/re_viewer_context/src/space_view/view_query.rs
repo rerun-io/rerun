@@ -4,12 +4,12 @@ use itertools::Itertools;
 use once_cell::sync::Lazy;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
-use re_log_types::{DataCell, DataRow, RowId, TimePoint};
+use re_log_types::{DataCell, DataRow, RowId};
 use re_types::Loggable;
 use smallvec::SmallVec;
 
 use crate::{
-    SpaceViewHighlights, SpaceViewId, SystemCommand, SystemCommandSender as _,
+    blueprint_timepoint, SpaceViewHighlights, SpaceViewId, SystemCommand, SystemCommandSender as _,
     ViewSystemIdentifier, ViewerContext,
 };
 
@@ -119,14 +119,11 @@ impl DataResult {
             return;
         };
 
-        let row = DataRow::from_cells1_sized(
-            RowId::new(),
-            override_path.clone(),
-            TimePoint::timeless(),
-            1,
-            cell,
-        )
-        .unwrap();
+        let timepoint = blueprint_timepoint();
+
+        let row =
+            DataRow::from_cells1_sized(RowId::new(), override_path.clone(), timepoint, 1, cell)
+                .unwrap();
 
         ctx.command_sender
             .send_system(SystemCommand::UpdateBlueprint(

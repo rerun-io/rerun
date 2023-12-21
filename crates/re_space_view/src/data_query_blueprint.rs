@@ -3,17 +3,18 @@ use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use re_entity_db::{
-    EntityDb, EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree,
+    external::re_data_store::LatestAtQuery, EntityDb, EntityProperties, EntityPropertiesComponent,
+    EntityPropertyMap, EntityTree,
 };
 use re_log_types::{
-    path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, TimePoint,
+    path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId,
 };
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-    DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatorMatchingEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier,
-    SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _, ViewSystemIdentifier,
-    ViewerContext, VisualizableEntities,
+    blueprint_timeline, blueprint_timepoint, DataQueryId, DataQueryResult, DataResult,
+    DataResultHandle, DataResultNode, DataResultTree, IndicatorMatchingEntities, PerVisualizer,
+    PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, StoreContext, SystemCommand,
+    SystemCommandSender as _, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 
 use crate::{
@@ -68,9 +69,11 @@ impl DataQueryBlueprint {
         blueprint_db: &EntityDb,
         space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> Option<Self> {
+        let query = LatestAtQuery::latest(blueprint_timeline());
+
         let expressions = blueprint_db
             .store()
-            .query_timeless_component::<QueryExpressions>(&id.as_entity_path())
+            .query_latest_component::<QueryExpressions>(&id.as_entity_path(), &query)
             .map(|c| c.value)?;
 
         let entity_path_filter = EntityPathFilter::from(&expressions);
@@ -128,7 +131,7 @@ impl DataQueryBlueprint {
     }
 
     fn save_expressions(&self, ctx: &ViewerContext<'_>, entity_path_filter: &EntityPathFilter) {
-        let timepoint = TimePoint::timeless();
+        let timepoint = blueprint_timepoint();
 
         let expressions_component = QueryExpressions::from(entity_path_filter);
 
@@ -354,12 +357,14 @@ impl DataQueryPropertyResolver<'_> {
     fn build_override_context(&self, ctx: &StoreContext<'_>) -> EntityOverrideContext {
         re_tracing::profile_function!();
 
+        let query = LatestAtQuery::latest(blueprint_timeline());
+
         let mut root: EntityProperties = Default::default();
         for prefix in &self.default_stack {
             if let Some(overrides) = ctx
                 .blueprint
                 .store()
-                .query_timeless_component::<EntityPropertiesComponent>(prefix)
+                .query_latest_component::<EntityPropertiesComponent>(prefix, &query)
             {
                 root = root.with_child(&overrides.value.0);
             }
@@ -384,6 +389,7 @@ impl DataQueryPropertyResolver<'_> {
         override_root: &EntityPath,
     ) -> EntityPropertyMap {
         re_tracing::profile_function!();
+        let query = LatestAtQuery::latest(blueprint_timeline());
         let blueprint = ctx.blueprint;
 
         let mut prop_map = self.auto_properties.clone();
@@ -392,7 +398,7 @@ impl DataQueryPropertyResolver<'_> {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint
                     .store()
-                    .query_timeless_component_quiet::<EntityPropertiesComponent>(path)
+                    .query_latest_component_quiet::<EntityPropertiesComponent>(path, &query)
                 {
                     let overridden_path =
                         EntityPath::from(&path.as_slice()[override_root.len()..path.len()]);

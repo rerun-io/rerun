@@ -2,7 +2,7 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityProperties, TimeInt, VisibleHistory};
 use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 
-use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId, TimePoint, Timeline};
+use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId};
 use re_query::query_archetype;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQueryBlueprint, ScreenshotMode};
@@ -10,10 +10,10 @@ use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin, Visible};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-    DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
-    PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId,
-    SpaceViewState, StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput,
-    ViewQuery, ViewerContext,
+    blueprint_timeline, blueprint_timepoint, DataQueryId, DataResult, DynSpaceViewClass,
+    PerSystemDataResults, PerSystemEntities, PropertyOverrides, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState, StoreContext,
+    SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::system_execution::create_and_run_space_view_systems;
@@ -88,7 +88,7 @@ impl SpaceViewBlueprint {
     pub fn try_from_db(id: SpaceViewId, blueprint_db: &EntityDb) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let query = LatestAtQuery::latest(Timeline::default());
+        let query = LatestAtQuery::latest(blueprint_timeline());
 
         let re_types::blueprint::archetypes::SpaceViewBlueprint {
             display_name,
@@ -156,7 +156,7 @@ impl SpaceViewBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        let timepoint = TimePoint::timeless();
+        let timepoint = blueprint_timepoint();
 
         let Self {
             id,
@@ -427,10 +427,12 @@ impl SpaceViewBlueprint {
     pub fn root_data_result(&self, ctx: &StoreContext<'_>) -> DataResult {
         let entity_path = self.entity_path();
 
+        let query = LatestAtQuery::latest(blueprint_timeline());
+
         let individual_properties = ctx
             .blueprint
             .store()
-            .query_timeless_component_quiet::<EntityPropertiesComponent>(&self.entity_path())
+            .query_latest_component_quiet::<EntityPropertiesComponent>(&self.entity_path(), &query)
             .map(|result| result.value.0);
 
         let accumulated_properties = individual_properties.clone().unwrap_or_else(|| {

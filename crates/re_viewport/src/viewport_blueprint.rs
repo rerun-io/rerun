@@ -4,10 +4,10 @@ use ahash::{HashMap, HashSet};
 use egui_tiles::{SimplificationOptions, TileId};
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_log_types::Timeline;
 use re_query::query_archetype;
 use re_viewer_context::{
-    AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext,
+    blueprint_timeline, AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId,
+    ViewerContext,
 };
 
 use crate::{
@@ -63,7 +63,7 @@ impl ViewportBlueprint {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let query = LatestAtQuery::latest(Timeline::default());
+        let query = LatestAtQuery::latest(blueprint_timeline());
 
         let arch = match query_archetype::<crate::blueprint::archetypes::ViewportBlueprint>(
             blueprint_db.store(),
