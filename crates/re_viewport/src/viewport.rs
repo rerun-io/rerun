@@ -422,6 +422,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         for (tile_id, simplify_options) in simplify {
             re_log::trace!("Simplifying tile {tile_id:?}");
             self.tree.simplify_tile(tile_id, &simplify_options);
+            self.edited = true;
         }
 
         if reset {
@@ -439,14 +440,16 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 // TODO(abey79): Decide what simplification to do here. Some of this
                 // might need to get rolled into the save logic instead.
 
-                // Simplify before we save the tree. Normally additional simplification will
-                // happen on the next render loop, but that's too late -- unsimplified
-                // changes will be baked into the tree.
-                let options = egui_tiles::SimplificationOptions {
-                    all_panes_must_have_tabs: true,
-                    ..Default::default()
-                };
-                self.tree.simplify(&options);
+                if false {
+                    // Simplify before we save the tree. Normally additional simplification will
+                    // happen on the next render loop, but that's too late -- unsimplified
+                    // changes will be baked into the tree.
+                    let options = egui_tiles::SimplificationOptions {
+                        all_panes_must_have_tabs: true,
+                        ..Default::default()
+                    };
+                    self.tree.simplify(&options);
+                }
 
                 self.blueprint.save_tree_as_containers(&self.tree, ctx);
             }
