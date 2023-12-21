@@ -3,7 +3,6 @@ use re_data_store::{
     EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree, StoreDb,
 };
 use re_log_types::{DataRow, EntityPath, EntityPathExpr, RowId, TimePoint};
-use re_tracing::profile_scope;
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
@@ -14,7 +13,7 @@ use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use crate::{
-    blueprint::components::QueryExpressions, DataQuery, EntityOverrides, PropertyResolver,
+    blueprint::components::QueryExpressions, DataQuery, EntityOverrideContext, PropertyResolver,
 };
 
 /// An implementation of [`DataQuery`] that is built from a collection of [`QueryExpressions`]
@@ -272,6 +271,11 @@ impl DataQueryBlueprint {
 }
 
 impl DataQuery for DataQueryBlueprint {
+    /// Build up the initial [`DataQueryResult`] for this [`DataQueryBlueprint`]
+    ///
+    /// Note that this result will not have any resolved [`PropertyOverrides`]. Those can
+    /// be added by separately calling [`DataQueryPropertyResolver::update_overrides`] on
+    /// the result.
     fn execute_query(
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
@@ -283,24 +287,17 @@ impl DataQuery for DataQueryBlueprint {
 
         let executor = QueryExpressionEvaluator::new(self, entities_per_system);
 
-        let root_handle = {
-            profile_scope!("run queries");
-            ctx.recording.and_then(|store| {
-                executor.add_entity_tree_to_data_results_recursive(
-                    store.tree(),
-                    &mut data_results,
-                    false,
-                )
-            })
-        };
+        let root_handle = ctx.recording.and_then(|store| {
+            executor.add_entity_tree_to_data_results_recursive(
+                store.tree(),
+                &mut data_results,
+                false,
+            )
+        });
 
-        {
-            profile_scope!("return results");
-
-            DataQueryResult {
-                id: self.id,
-                tree: DataResultTree::new(data_results, root_handle),
-            }
+        DataQueryResult {
+            id: self.id,
+            tree: DataResultTree::new(data_results, root_handle),
         }
     }
 }
@@ -432,12 +429,10 @@ impl<'a> QueryExpressionEvaluator<'a> {
             None
         };
 
-        let maybe_self_iter = {
-            if let Some(self_leaf) = self_leaf {
-                itertools::Either::Left(std::iter::once(self_leaf))
-            } else {
-                itertools::Either::Right(std::iter::empty())
-            }
+        let maybe_self_iter = if let Some(self_leaf) = self_leaf {
+            itertools::Either::Left(std::iter::once(self_leaf))
+        } else {
+            itertools::Either::Right(std::iter::empty())
         };
 
         let interesting_children: Vec<_> = {
@@ -498,13 +493,15 @@ pub struct DataQueryPropertyResolver<'a> {
 }
 
 impl DataQueryPropertyResolver<'_> {
-    /// Helper function to lookup the properties for a given entity path.
+    /// Helper function to build the [`EntityOverrideContext`] for this [`DataQuery`]
     ///
-    /// We start with the auto properties for the `SpaceView` as the base layer and
-    /// then incrementally override from there.
-    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityOverrides {
+    /// The context is made up of 3 parts:
+    ///  - The root properties are build by merging a stack of paths from the Blueprint Tree. This
+    ///  may include properties from the `SpaceView` or `DataQuery`.
+    ///  - The individual overrides are found by walking an override subtree under the `data_query/<id>/individual_overrides`
+    ///  - The group overrides are found by walking an override subtree under the `data_query/<id>/group_overrides`
+    fn build_override_context(&self, ctx: &StoreContext<'_>) -> EntityOverrideContext {
         re_tracing::profile_function!();
-        let blueprint = ctx.blueprint;
 
         let mut root: EntityProperties = Default::default();
         for prefix in &self.default_stack {
@@ -517,47 +514,37 @@ impl DataQueryPropertyResolver<'_> {
             }
         }
 
-        let mut individual = self.auto_properties.clone();
-
-        if let Some(tree) = blueprint.tree().subtree(&self.individual_override_root) {
-            tree.visit_children_recursively(&mut |path: &EntityPath| {
-                if let Some(props) = blueprint
-                    .store()
-                    .query_timeless_component::<EntityPropertiesComponent>(path)
-                {
-                    let overridden_path = EntityPath::from(
-                        &path.as_slice()[self.individual_override_root.len()..path.len()],
-                    );
-                    individual.update(overridden_path, props.value.0);
-                }
-            });
-        }
-
-        EntityOverrides {
+        EntityOverrideContext {
             root,
             individual: self.resolve_entity_overrides_for_path(ctx, &self.individual_override_root),
             group: self.resolve_entity_overrides_for_path(ctx, &self.recursive_override_root),
         }
     }
 
+    /// Find all of the overrides for a given path.
+    ///
+    /// These overrides are full entity-paths prefixed by the override root.
+    ///
+    /// For example the individual override for `world/points` in the context of the query-id `1234`
+    /// would be found at: `data_query/1234/individual_overrides/world/points`.
     fn resolve_entity_overrides_for_path(
         &self,
         ctx: &StoreContext<'_>,
-        props_path: &EntityPath,
+        override_root: &EntityPath,
     ) -> EntityPropertyMap {
         re_tracing::profile_function!();
         let blueprint = ctx.blueprint;
 
         let mut prop_map = self.auto_properties.clone();
 
-        if let Some(tree) = blueprint.tree().subtree(props_path) {
+        if let Some(tree) = blueprint.tree().subtree(override_root) {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint
                     .store()
                     .query_timeless_component_quiet::<EntityPropertiesComponent>(path)
                 {
                     let overridden_path =
-                        EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
+                        EntityPath::from(&path.as_slice()[override_root.len()..path.len()]);
                     prop_map.update(overridden_path, props.value.0);
                 }
             });
@@ -565,17 +552,21 @@ impl DataQueryPropertyResolver<'_> {
         prop_map
     }
 
+    /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
+    ///
+    /// This will accumulate the group properties at each step down the tree, and then finally merge
+    /// with individual overrides at the leafs.
     fn update_overrides_recursive(
         &self,
         query_result: &mut DataQueryResult,
-        entity_overrides: &EntityOverrides,
+        override_context: &EntityOverrideContext,
         accumulated: &EntityProperties,
         handle: DataResultHandle,
     ) {
         if let Some((child_handles, accumulated)) =
             query_result.tree.lookup_node_mut(handle).and_then(|node| {
                 if node.data_result.is_group {
-                    let overridden_properties = entity_overrides
+                    let overridden_properties = override_context
                         .group
                         .get_opt(&node.data_result.entity_path);
 
@@ -595,7 +586,7 @@ impl DataQueryPropertyResolver<'_> {
 
                     Some((node.children.clone(), accumulated_properties))
                 } else {
-                    let overridden_properties = entity_overrides
+                    let overridden_properties = override_context
                         .individual
                         .get_opt(&node.data_result.entity_path);
 
@@ -620,7 +611,7 @@ impl DataQueryPropertyResolver<'_> {
             for child in child_handles {
                 self.update_overrides_recursive(
                     query_result,
-                    entity_overrides,
+                    override_context,
                     &accumulated,
                     child,
                 );
@@ -630,8 +621,10 @@ impl DataQueryPropertyResolver<'_> {
 }
 
 impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
+    /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
     fn update_overrides(&self, ctx: &StoreContext<'_>, query_result: &mut DataQueryResult) {
-        let entity_overrides = self.resolve_entity_overrides(ctx);
+        re_tracing::profile_function!();
+        let entity_overrides = self.build_override_context(ctx);
 
         if let Some(root) = query_result.tree.root_handle() {
             self.update_overrides_recursive(

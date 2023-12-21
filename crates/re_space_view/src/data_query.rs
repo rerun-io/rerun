@@ -1,7 +1,7 @@
 use re_data_store::{EntityProperties, EntityPropertyMap};
 use re_viewer_context::{DataQueryResult, EntitiesPerSystem, StoreContext};
 
-pub struct EntityOverrides {
+pub struct EntityOverrideContext {
     pub root: EntityProperties,
     pub individual: EntityPropertyMap,
     pub group: EntityPropertyMap,
