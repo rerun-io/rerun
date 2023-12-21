@@ -10,7 +10,6 @@ project(rerun_sdk LANGUAGES CXX)
 
 message("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER})")
 
-set(RERUN_CPP_VENDOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor" CACHE PATH "Rerun vendor directory")
 set(RERUN_CPP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src" CACHE PATH "Rerun include & source directory")
 
 file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
@@ -23,11 +22,6 @@ add_library(rerun_sdk ${rerun_sdk_SRC} ${rerun_sdk_PUBLIC_HEADER})
 # Make sure the compiler can find include files for rerun when other libraries or executables link to rerun:
 target_include_directories(rerun_sdk PUBLIC
     $<BUILD_INTERFACE:${RERUN_CPP_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-)
-
-target_include_directories(rerun_sdk SYSTEM PUBLIC
-    $<BUILD_INTERFACE:${RERUN_CPP_VENDOR_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 

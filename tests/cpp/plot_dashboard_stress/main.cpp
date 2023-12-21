@@ -19,8 +19,8 @@
 #include <thread>
 #include <vector>
 
-#include <cxxopts.hpp>
 #include <rerun.hpp>
+#include <rerun/third_party/cxxopts.hpp>
 
 int main(int argc, char** argv) {
     const auto rec = rerun::RecordingStream("rerun_example_plot_dashboard_stress");
