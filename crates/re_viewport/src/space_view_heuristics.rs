@@ -5,7 +5,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_data_store::{EntityPath, EntityTree};
 use re_log_types::{EntityPathExpr, TimeInt};
-use re_space_view::{DataQuery as _, DataQueryBlueprint, NOOP_RESOLVER};
+use re_space_view::{DataQuery as _, DataQueryBlueprint};
 use re_types::components::{DisconnectedSpace, TensorData};
 use re_types::ComponentNameSet;
 use re_viewer_context::{
@@ -86,11 +86,8 @@ pub fn all_possible_space_views(
                         std::iter::once(EntityPathExpr::Recursive(candidate_space_path.clone())),
                     );
 
-                    let results = candidate_query.execute_query(
-                        &NOOP_RESOLVER,
-                        ctx.store_context,
-                        entities_per_system,
-                    );
+                    let results =
+                        candidate_query.execute_query(ctx.store_context, entities_per_system);
 
                     if !results.is_empty() {
                         Some((

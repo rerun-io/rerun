@@ -9,7 +9,7 @@ mod data_query_blueprint;
 mod screenshot;
 mod unreachable_transform_reason;
 
-pub use data_query::{DataQuery, EntityOverrides, PropertyResolver, NOOP_RESOLVER};
+pub use data_query::{DataQuery, EntityOverrideContext, PropertyResolver};
 pub use data_query_blueprint::DataQueryBlueprint;
 pub use screenshot::ScreenshotMode;
 pub use unreachable_transform_reason::UnreachableTransformReason;

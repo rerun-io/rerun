@@ -1,7 +1,7 @@
 use re_data_store::{EntityProperties, EntityPropertyMap};
 use re_viewer_context::{DataQueryResult, EntitiesPerSystem, StoreContext};
 
-pub struct EntityOverrides {
+pub struct EntityOverrideContext {
     pub root: EntityProperties,
     pub individual: EntityPropertyMap,
     pub group: EntityPropertyMap,
@@ -12,22 +12,8 @@ pub struct EntityOverrides {
 /// The `SpaceViewBlueprint` is the only thing that likely implements this today
 /// but we use a trait here so we don't have to pick up a full dependency on `re_viewport`.
 pub trait PropertyResolver {
-    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityOverrides;
+    fn update_overrides(&self, ctx: &StoreContext<'_>, query_result: &mut DataQueryResult);
 }
-
-pub struct NoopResolver {}
-
-impl PropertyResolver for NoopResolver {
-    fn resolve_entity_overrides(&self, _ctx: &StoreContext<'_>) -> EntityOverrides {
-        EntityOverrides {
-            root: EntityProperties::default(),
-            individual: EntityPropertyMap::default(),
-            group: EntityPropertyMap::default(),
-        }
-    }
-}
-
-pub static NOOP_RESOLVER: NoopResolver = NoopResolver {};
 
 /// The common trait implemented for data queries
 ///
@@ -41,7 +27,6 @@ pub trait DataQuery {
     /// This is used when building up the contents for a `SpaceView`.
     fn execute_query(
         &self,
-        property_resolver: &impl PropertyResolver,
         ctx: &StoreContext<'_>,
         entities_per_system: &EntitiesPerSystem,
     ) -> DataQueryResult;
