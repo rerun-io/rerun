@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 
-use egui_tiles::Behavior as _;
+use egui_tiles::{Behavior as _, Tile};
 use once_cell::sync::Lazy;
 use re_data_store::EntityPropertyMap;
 use re_data_ui::item_ui;

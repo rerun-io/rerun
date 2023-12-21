@@ -8,13 +8,13 @@ use re_viewport::{SpaceViewBlueprint, Viewport};
 
 #[derive(Default)]
 pub struct AddSpaceViewOrContainerModal {
+    target_container: Option<egui_tiles::TileId>,
     modal_handler: re_ui::modal::ModalHandler,
-    //TODO: add target container
 }
 
 impl AddSpaceViewOrContainerModal {
-    //TODO: add target container
-    pub fn open(&mut self) {
+    pub fn open(&mut self, target_container: egui_tiles::TileId) {
+        self.target_container = Some(target_container);
         self.modal_handler.open();
     }
 
@@ -28,24 +28,50 @@ impl AddSpaceViewOrContainerModal {
             ctx.re_ui,
             ui,
             || re_ui::modal::Modal::new("Add Space View or Container"),
-            |_, ui, _| modal_ui(ui, ctx, viewport), //TODO: pass in target container
+            |_, ui, _| modal_ui(ui, ctx, viewport, self.target_container),
         );
     }
 }
 
-fn modal_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, viewport: &mut Viewport<'_, '_>) {
+fn modal_ui(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    viewport: &mut Viewport<'_, '_>,
+    target_container: Option<egui_tiles::TileId>,
+) {
     ui.spacing_mut().item_spacing = egui::vec2(14.0, 10.0);
 
     let container_data = [
-        ("Tabs", "Create a new tabbed container."),
-        ("Horizontal", "Create a new horizontal container."),
-        ("Vertical", "Create a new vertical container."),
-        ("Grid", "Create a new grid container."),
+        (
+            "Tabs",
+            "Create a new tabbed container.",
+            egui_tiles::ContainerKind::Tabs,
+        ),
+        (
+            "Horizontal",
+            "Create a new horizontal container.",
+            egui_tiles::ContainerKind::Horizontal,
+        ),
+        (
+            "Vertical",
+            "Create a new vertical container.",
+            egui_tiles::ContainerKind::Vertical,
+        ),
+        (
+            "Grid",
+            "Create a new grid container.",
+            egui_tiles::ContainerKind::Grid,
+        ),
     ];
 
-    for (title, subtitle) in container_data {
+    for (title, subtitle, kind) in container_data {
         if row_ui(ui, &re_ui::icons::CONTAINER, title, subtitle).clicked() {
-            //TODO
+            viewport.blueprint.add_container(
+                kind,
+                &mut viewport.deferred_tree_actions,
+                target_container,
+            );
+            viewport.blueprint.mark_user_interaction(ctx);
         }
     }
 
@@ -76,7 +102,9 @@ fn modal_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, viewport: &mut Viewport<
                 std::iter::once(space_view),
                 ctx,
                 &mut viewport.deferred_tree_actions,
+                target_container,
             );
+            viewport.blueprint.mark_user_interaction(ctx);
         }
     }
 }

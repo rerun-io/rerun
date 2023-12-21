@@ -163,7 +163,7 @@ impl ViewportBlueprint {
                 tree.simplify(&options);
             }
 
-            re_log::trace!("Loaded tree from blueprint: {tree:#?}");
+            //re_log::trace!("shadow_tree: {shadow_tree:#?}");
 
             blueprint.tree = tree;
         }

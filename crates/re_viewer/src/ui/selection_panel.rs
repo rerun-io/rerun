@@ -189,7 +189,7 @@ impl SelectionPanel {
                     .small_icon_button(ui, &re_ui::icons::ADD)
                     .clicked()
                 {
-                    self.add_space_view_or_container_modal.open();
+                    self.add_space_view_or_container_modal.open(*tile_id);
                 }
             });
         });
