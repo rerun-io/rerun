@@ -1,7 +1,7 @@
 use ahash::{HashMap, HashSet};
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_arrow_store::DataStore;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathHash};
 
 use crate::{
     DynSpaceViewClass, IdentifiedViewSystem, SpaceViewClassIdentifier, ViewContextCollection,
@@ -284,15 +284,40 @@ impl SpaceViewClassRegistry {
     pub fn applicable_entities_for_visualizer_system(
         &self,
         visualizer: ViewSystemIdentifier,
-        store: &re_log_types::StoreId,
+        store_id: &re_log_types::StoreId,
     ) -> Option<IntSet<EntityPath>> {
         self.visualizers.get(&visualizer).and_then(|entry| {
             DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                 entry.entity_subscriber_handle,
-                |subscriber| subscriber.applicable_entities(store).cloned(),
+                |subscriber| subscriber.applicable_entities(store_id).cloned(),
             )
             .flatten()
         })
+    }
+
+    /// For each visualizer, the set of entities that have at least one matching indicator component.
+    pub fn entities_with_matching_indicator_per_visualizer(
+        &self,
+        store_id: &re_log_types::StoreId,
+    ) -> IntMap<ViewSystemIdentifier, IntSet<EntityPathHash>> {
+        self.visualizers
+            .iter()
+            .map(|(id, entry)| {
+                (
+                    *id,
+                    DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
+                        entry.entity_subscriber_handle,
+                        |subscriber| {
+                            subscriber
+                                .entities_with_matching_indicator(store_id)
+                                .cloned()
+                        },
+                    )
+                    .flatten()
+                    .unwrap_or_default(),
+                )
+            })
+            .collect()
     }
 
     pub fn new_context_collection(
