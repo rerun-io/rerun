@@ -186,14 +186,14 @@ impl EntityPathFilter {
 
     /// Is there any rule for this entity path?
     ///
-    /// Wether or not the subtree is included is NOT important.
+    /// Whether or not the subtree is included is NOT important.
     pub fn contains_rule_for_exactly(&self, entity_path: &EntityPath) -> bool {
         self.rules.iter().any(|(rule, _)| rule.path == *entity_path)
     }
 
     /// Is this entity path explicitly included?
     ///
-    /// Wether or not the subtree is included is NOT important.
+    /// Whether or not the subtree is included is NOT important.
     pub fn is_explicitly_included(&self, entity_path: &EntityPath) -> bool {
         self.rules
             .iter()
@@ -202,7 +202,7 @@ impl EntityPathFilter {
 
     /// Is this entity path explicitly excluded?
     ///
-    /// Wether or not the subtree is included is NOT important.
+    /// Whether or not the subtree is included is NOT important.
     pub fn is_explicitly_excluded(&self, entity_path: &EntityPath) -> bool {
         self.rules
             .iter()
@@ -238,7 +238,7 @@ impl EntityPathFilter {
             }
         }
 
-        false // no mathcing rule and we are exclude-by-default.
+        false // no matching rule and we are exclude-by-default.
     }
 }
 
