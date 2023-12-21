@@ -33,13 +33,12 @@ pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
-pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
-use nohash_hasher::{IntMap, IntSet};
+pub use item::Item;
 pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataResultTree};
-use re_log_types::EntityPath;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
-    HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
+    ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectedSpaceContext,
+    Selection, SelectionHighlight,
 };
 pub use space_view::{
     default_heuristic_filter, AutoSpawnHeuristic, DataResult, DynSpaceViewClass,
@@ -67,6 +66,9 @@ pub mod external {
 }
 
 // ---------------------------------------------------------------------------
+
+use nohash_hasher::{IntMap, IntSet};
+use re_log_types::EntityPath;
 
 pub type EntitiesPerSystem = IntMap<ViewSystemIdentifier, IntSet<EntityPath>>;
 

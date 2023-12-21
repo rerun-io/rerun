@@ -499,11 +499,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         }
 
         if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
-            item_ui::select_hovered_on_click(
-                self.ctx,
-                &response,
-                &[Item::SpaceView(*space_view_id)],
-            );
+            item_ui::select_hovered_on_click(self.ctx, &response, Item::SpaceView(*space_view_id));
         }
 
         response
@@ -664,14 +660,14 @@ impl TabWidget {
             tab_viewer
                 .ctx
                 .selection()
-                .contains(&Item::SpaceView(space_view.id))
+                .contains_item(&Item::SpaceView(space_view.id))
         });
 
         let hovered = space_view.map_or(false, |space_view| {
             tab_viewer
                 .ctx
                 .hovered()
-                .contains(&Item::SpaceView(space_view.id))
+                .contains_item(&Item::SpaceView(space_view.id))
         });
 
         // tab icon

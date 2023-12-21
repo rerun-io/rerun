@@ -9,8 +9,8 @@ use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{archetypes::Pinhole, components::ViewCoordinates};
 use re_viewer_context::{
-    gpu_bridge, HoveredSpace, SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    gpu_bridge, SelectedSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
+    ViewQuery, ViewerContext,
 };
 
 use super::{
@@ -369,12 +369,25 @@ pub fn view_2d(
             ui.visuals().extreme_bg_color.into(),
         ));
 
-        painter.extend(show_projections_from_3d_space(
-            ctx,
-            ui,
-            query.space_origin,
-            &ui_from_canvas,
-        ));
+        // Make sure to _first_ draw the selected, and *then* the hovered context on top!
+        for selected_context in ctx.selection_state().selected_space_context() {
+            painter.extend(show_projections_from_3d_space(
+                ui,
+                query.space_origin,
+                &ui_from_canvas,
+                selected_context,
+                ui.style().visuals.selection.bg_fill,
+            ));
+        }
+        if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
+            painter.extend(show_projections_from_3d_space(
+                ui,
+                query.space_origin,
+                &ui_from_canvas,
+                hovered_context,
+                egui::Color32::WHITE,
+            ));
+        }
 
         // Add egui driven labels on top of re_renderer content.
         painter.extend(label_shapes);
@@ -497,16 +510,17 @@ fn re_render_rect_from_egui_rect(rect: egui::Rect) -> re_renderer::RectF32 {
 // ------------------------------------------------------------------------
 
 fn show_projections_from_3d_space(
-    ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
     space: &EntityPath,
     ui_from_canvas: &RectTransform,
+    space_context: &SelectedSpaceContext,
+    color: egui::Color32,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
-    if let HoveredSpace::ThreeD {
+    if let SelectedSpaceContext::ThreeD {
         point_in_space_cameras: target_spaces,
         ..
-    } = ctx.selection_state().hovered_space()
+    } = space_context
     {
         for (space_2d, pos_2d) in target_spaces {
             if space_2d == space {
@@ -519,7 +533,7 @@ fn show_projections_from_3d_space(
                         radius + 2.0,
                         Color32::BLACK,
                     ));
-                    shapes.push(Shape::circle_filled(pos_in_ui, radius, Color32::WHITE));
+                    shapes.push(Shape::circle_filled(pos_in_ui, radius, color));
 
                     let text = format!("Depth: {:.3} m", pos_2d.z);
                     let font_id = egui::TextStyle::Body.resolve(ui.style());

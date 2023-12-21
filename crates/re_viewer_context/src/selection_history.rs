@@ -1,14 +1,16 @@
-use super::{Item, ItemCollection};
+use crate::selection_state::Selection;
+
+use super::Item;
 
 /// A `Selection` and its index into the historical stack.
 #[derive(Debug, Clone)]
 pub struct HistoricalSelection {
     pub index: usize,
-    pub selection: ItemCollection,
+    pub selection: Selection,
 }
 
-impl From<(usize, ItemCollection)> for HistoricalSelection {
-    fn from((index, selection): (usize, ItemCollection)) -> Self {
+impl From<(usize, Selection)> for HistoricalSelection {
+    fn from((index, selection): (usize, Selection)) -> Self {
         Self { index, selection }
     }
 }
@@ -24,7 +26,7 @@ pub struct SelectionHistory {
     pub current: usize,
 
     /// Oldest first.
-    pub stack: Vec<ItemCollection>,
+    pub stack: Vec<Selection>,
 }
 
 impl SelectionHistory {
@@ -67,7 +69,7 @@ impl SelectionHistory {
     }
 
     #[must_use]
-    pub fn select_previous(&mut self) -> Option<ItemCollection> {
+    pub fn select_previous(&mut self) -> Option<Selection> {
         if let Some(previous) = self.previous() {
             if previous.index != self.current {
                 self.current = previous.index;
@@ -78,7 +80,7 @@ impl SelectionHistory {
     }
 
     #[must_use]
-    pub fn select_next(&mut self) -> Option<ItemCollection> {
+    pub fn select_next(&mut self) -> Option<Selection> {
         if let Some(next) = self.next() {
             if next.index != self.current {
                 self.current = next.index;
@@ -88,15 +90,15 @@ impl SelectionHistory {
         None
     }
 
-    pub fn update_selection(&mut self, item_collection: &ItemCollection) {
+    pub fn update_selection(&mut self, selection: &Selection) {
         // Selecting nothing is irrelevant from a history standpoint.
-        if item_collection.is_empty() {
+        if selection.is_empty() {
             return;
         }
 
         // Do not grow the history if the thing being selected is equal to the value that the
         // current history cursor points to.
-        if self.current().as_ref().map(|c| &c.selection) == Some(item_collection) {
+        if self.current().as_ref().map(|c| &c.selection) == Some(selection) {
             return;
         }
 
@@ -104,7 +106,7 @@ impl SelectionHistory {
         // diverging timeline!
         self.stack.truncate(self.current + 1);
 
-        self.stack.push(item_collection.clone());
+        self.stack.push(selection.clone());
 
         // Keep size under a certain maximum.
         if self.stack.len() > MAX_SELECTION_HISTORY_LENGTH {

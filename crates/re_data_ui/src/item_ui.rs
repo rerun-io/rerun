@@ -6,7 +6,7 @@ use egui::Ui;
 use re_data_store::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_viewer_context::{
-    DataQueryId, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
+    DataQueryId, HoverHighlight, Item, Selection, SpaceViewId, UiVerbosity, ViewerContext,
 };
 
 use super::DataUi;
@@ -97,7 +97,7 @@ pub fn instance_path_button_to(
     let item = Item::InstancePath(space_view_id, instance_path.clone());
 
     let response = ui
-        .selectable_label(ctx.selection().contains(&item), text)
+        .selectable_label(ctx.selection().contains_item(&item), text)
         .on_hover_ui(|ui| {
             instance_hover_card_ui(ui, ctx, instance_path);
         });
@@ -205,7 +205,7 @@ pub fn component_path_button_to(
     component_path: &ComponentPath,
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
-    let response = ui.selectable_label(ctx.selection().contains(&item), text);
+    let response = ui.selectable_label(ctx.selection().contains_item(&item), text);
     cursor_interact_with_selectable(ctx, response, item)
 }
 
@@ -224,7 +224,7 @@ pub fn data_blueprint_group_button_to(
             ui,
             &re_ui::icons::CONTAINER,
             text,
-            ctx.selection().contains(&item),
+            ctx.selection().contains_item(&item),
         )
         .on_hover_text("Group");
     cursor_interact_with_selectable(ctx, response, item)
@@ -242,7 +242,7 @@ pub fn data_blueprint_button_to(
         InstancePath::entity_splat(entity_path.clone()),
     );
     let response = ui
-        .selectable_label(ctx.selection().contains(&item), text)
+        .selectable_label(ctx.selection().contains_item(&item), text)
         .on_hover_ui(|ui| {
             entity_hover_card_ui(ui, ctx, entity_path);
         });
@@ -313,7 +313,7 @@ pub fn cursor_interact_with_selectable(
     let is_item_hovered =
         ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-    select_hovered_on_click(ctx, &response, &[item]);
+    select_hovered_on_click(ctx, &response, item);
     // TODO(andreas): How to deal with shift click for selecting ranges?
 
     if is_item_hovered {
@@ -324,18 +324,26 @@ pub fn cursor_interact_with_selectable(
 }
 
 // TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
-pub fn select_hovered_on_click(ctx: &ViewerContext<'_>, response: &egui::Response, items: &[Item]) {
+pub fn select_hovered_on_click(
+    ctx: &ViewerContext<'_>,
+    response: &egui::Response,
+    selection: impl Into<Selection>,
+) {
     re_tracing::profile_function!();
 
+    let mut selection = selection.into();
+    selection.resolve_mono_instance_path_items(ctx);
+    let selection_state = ctx.selection_state();
+
     if response.hovered() {
-        ctx.set_hovered(items.iter());
+        selection_state.set_hovered(selection.clone());
     }
 
     if response.clicked() {
         if response.ctx.input(|i| i.modifiers.command) {
-            ctx.selection_state().toggle_selection(items.to_vec());
+            selection_state.toggle_selection(selection);
         } else {
-            ctx.selection_state().set_selection(items.iter().cloned());
+            selection_state.set_selection(selection);
         }
     }
 }

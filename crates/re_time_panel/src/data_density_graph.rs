@@ -481,12 +481,10 @@ pub fn data_density_graph_ui(
     );
 
     if 0 < num_hovered_messages {
-        ctx.rec_cfg
-            .selection_state
-            .set_hovered(std::iter::once(item.clone()));
+        ctx.selection_state().set_hovered(item.clone());
 
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
-            ctx.set_single_selection(item);
+            ctx.selection_state().set_selection(item.clone());
             time_ctrl.set_time(hovered_time_range.min);
             time_ctrl.pause();
         } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
@@ -503,7 +501,7 @@ pub fn data_density_graph_ui(
 }
 
 fn graph_color(ctx: &ViewerContext<'_>, item: &Item, ui: &egui::Ui) -> Color32 {
-    let is_selected = ctx.selection().contains(item);
+    let is_selected = ctx.selection().contains_item(item);
     if is_selected {
         make_brighter(ui.visuals().widgets.active.fg_stroke.color)
     } else {
