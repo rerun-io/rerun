@@ -237,7 +237,6 @@ impl<'a> QueryExpressionEvaluator<'a> {
         let entity_path = &tree.path;
 
         // Pre-compute our matches
-        let exact_include = self.entity_path_filter.is_exact_included(entity_path);
         let any_match = self.entity_path_filter.is_included(entity_path);
 
         // Only populate view_parts if this is a match
@@ -257,20 +256,21 @@ impl<'a> QueryExpressionEvaluator<'a> {
             Default::default()
         };
 
-        let self_leaf = if !view_parts.is_empty() || exact_include {
-            Some(data_results.insert(DataResultNode {
-                data_result: DataResult {
-                    entity_path: entity_path.clone(),
-                    view_parts,
-                    is_group: false,
-                    direct_included: any_match,
-                    property_overrides: None,
-                },
-                children: Default::default(),
-            }))
-        } else {
-            None
-        };
+        let self_leaf =
+            if !view_parts.is_empty() || self.entity_path_filter.is_exact_included(entity_path) {
+                Some(data_results.insert(DataResultNode {
+                    data_result: DataResult {
+                        entity_path: entity_path.clone(),
+                        view_parts,
+                        is_group: false,
+                        direct_included: any_match,
+                        property_overrides: None,
+                    },
+                    children: Default::default(),
+                }))
+            } else {
+                None
+            };
 
         let maybe_self_iter = if let Some(self_leaf) = self_leaf {
             itertools::Either::Left(std::iter::once(self_leaf))
