@@ -162,7 +162,7 @@ impl EntityPathPart {
         &self.0
     }
 
-    /// Use this when it is part of a fulle entity path.
+    /// Use this when it is part of a full entity path.
     #[inline]
     pub fn escaped_string(&self) -> String {
         let mut s = String::with_capacity(self.0.len());
