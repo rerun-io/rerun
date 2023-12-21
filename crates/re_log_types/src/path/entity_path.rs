@@ -427,7 +427,7 @@ impl std::fmt::Display for EntityPath {
             // We always lead with a slash
             for comp in self.iter() {
                 f.write_char('/')?;
-                comp.fmt(f)?;
+                comp.escaped_string().fmt(f)?;
             }
             Ok(())
         }

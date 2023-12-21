@@ -272,7 +272,7 @@ impl Viewport<'_, '_> {
             let name = entity_path
                 .iter()
                 .last()
-                .map_or("unknown".to_owned(), |e| e.to_string());
+                .map_or("unknown".to_owned(), |e| e.ui_string());
 
             let response = if child_node.children.is_empty() {
                 let label = format!("🔹 {name}");

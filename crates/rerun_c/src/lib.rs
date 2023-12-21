@@ -713,7 +713,7 @@ pub unsafe extern "C" fn _rr_escape_entity_path_part(part: CStringView) -> *cons
         return std::ptr::null();
     };
 
-    let part = re_sdk::EntityPathPart::from(part).to_string(); // escape the part
+    let part = re_sdk::EntityPathPart::from(part).escaped_string();
 
     let Ok(part) = CString::new(part) else {
         return std::ptr::null();

@@ -471,10 +471,11 @@ impl TimePanel {
 
         // The last part of the path component
         let text = if let Some(last_path_part) = last_path_part {
+            let stem = last_path_part.ui_string();
             if tree.is_leaf() {
-                last_path_part.to_string()
+                stem
             } else {
-                format!("{last_path_part}/") // show we have children with a /
+                format!("{stem}/") // show we have children with a /
             }
         } else {
             show_root_as.to_owned()
