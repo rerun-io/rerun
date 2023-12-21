@@ -800,16 +800,13 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         ui.data_mut(|data| data.remove::<String>(filter_text_id));
     }
 
-    if response.lost_focus() {
-        // Apply the edit.
-        let new_filter = EntityPathFilter::parse_forgiving(&filter_string);
-
-        if &new_filter != filter {
-            return Some(new_filter);
-        }
+    // Apply the edit.
+    let new_filter = EntityPathFilter::parse_forgiving(&filter_string);
+    if &new_filter == filter {
+        None // no change
+    } else {
+        Some(new_filter)
     }
-
-    None
 }
 
 fn entity_props_ui(
