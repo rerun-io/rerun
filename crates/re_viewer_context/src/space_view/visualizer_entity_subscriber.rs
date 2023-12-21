@@ -1,10 +1,11 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
+use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::StoreSubscriber;
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
-use re_types::ComponentName;
+use re_types::{ComponentName, ComponentNameSet};
 
 use crate::{IdentifiedViewSystem, ViewPartSystem, ViewSystemIdentifier};
 
@@ -23,6 +24,9 @@ use crate::{IdentifiedViewSystem, ViewPartSystem, ViewSystemIdentifier};
 pub struct VisualizerEntitySubscriber {
     /// Visualizer type this subscriber is associated with.
     visualizer: ViewSystemIdentifier,
+
+    /// See [`ViewPartSystem::indicator_components`]
+    indicator_components: ComponentNameSet,
 
     /// Assigns each required component an index.
     required_components_indices: IntMap<ComponentName, usize>,
@@ -74,12 +78,16 @@ struct VisualizerEntityMapping {
     /// Order is not defined.
     // TODO(andreas): It would be nice if these were just `EntityPathHash`.
     applicable_entities: IntSet<EntityPath>,
+
+    /// List of all entities in this store that at some point in time had any of the indicator components.
+    entities_with_matching_indicator: IntSet<EntityPathHash>,
 }
 
 impl VisualizerEntitySubscriber {
     pub fn new<T: IdentifiedViewSystem + ViewPartSystem>(visualizer: &T) -> Self {
         Self {
             visualizer: T::identifier(),
+            indicator_components: visualizer.indicator_components(),
             required_components_indices: visualizer
                 .required_components()
                 .into_iter()
@@ -95,10 +103,23 @@ impl VisualizerEntitySubscriber {
 
     /// List of entities that are applicable to the visualizer.
     #[inline]
-    pub fn entities(&self, store: &StoreId) -> Option<&IntSet<EntityPath>> {
+    pub fn applicable_entities(&self, store: &StoreId) -> Option<&IntSet<EntityPath>> {
         self.per_store_mapping
             .get(store)
             .map(|mapping| &mapping.applicable_entities)
+    }
+
+    /// List of entities that at some point in time had any of the indicator components advertised by this visualizer.
+    ///
+    /// Useful for quickly evaluating basic "should this visualizer apply by default"-heuristic.
+    /// Does *not* imply that any of the given entities is also in the applicable-set!
+    pub fn entities_with_matching_indicator(
+        &self,
+        store: &StoreId,
+    ) -> Option<&IntSet<EntityPathHash>> {
+        self.per_store_mapping
+            .get(store)
+            .map(|mapping| &mapping.entities_with_matching_indicator)
     }
 }
 
@@ -119,6 +140,8 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
     }
 
     fn on_events(&mut self, events: &[re_arrow_store::StoreEvent]) {
+        re_tracing::profile_function!(self.visualizer);
+
         // TODO(andreas): Need to react to store removals as well. As of writing doesn't exist yet.
 
         for event in events {
@@ -132,9 +155,24 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
                 .entry(event.store_id.clone())
                 .or_default();
 
+            let entity_path = &event.diff.entity_path;
+            let entity_path_hash = entity_path.hash();
+
+            // Update indicator component tracking:
+            if self
+                .indicator_components
+                .iter()
+                .any(|component_name| event.diff.cells.keys().contains(component_name))
+            {
+                store_mapping
+                    .entities_with_matching_indicator
+                    .insert(entity_path_hash);
+            }
+
+            // Update required component tracking:
             let required_components_bitmap = store_mapping
                 .required_component_and_filter_bitmap_per_entity
-                .entry(event.diff.entity_path.hash())
+                .entry(entity_path_hash)
                 .or_insert_with(|| {
                     BitVec::from_elem(self.required_components_indices.len() + 1, false)
                 });
@@ -162,14 +200,14 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
             if required_components_bitmap.all() {
                 re_log::debug!(
                     "Entity {:?} in store {:?} is now applicable to visualizer {:?}",
-                    event.diff.entity_path,
+                    entity_path,
                     event.store_id,
                     self.visualizer
                 );
 
                 store_mapping
                     .applicable_entities
-                    .insert(event.diff.entity_path.clone());
+                    .insert(entity_path.clone());
             }
         }
     }

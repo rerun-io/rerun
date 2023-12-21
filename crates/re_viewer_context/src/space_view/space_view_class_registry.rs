@@ -289,7 +289,7 @@ impl SpaceViewClassRegistry {
         self.visualizers.get(&visualizer).and_then(|entry| {
             DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                 entry.entity_subscriber_handle,
-                |subscriber| subscriber.entities(store).cloned(),
+                |subscriber| subscriber.applicable_entities(store).cloned(),
             )
             .flatten()
         })

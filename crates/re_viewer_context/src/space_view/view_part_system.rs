@@ -65,7 +65,7 @@ pub trait ViewPartSystem: Send + Sync + 'static {
     /// The passed-in set of `entity_components` corresponds to all the different components that have ever
     /// been logged on the entity path.
     ///
-    /// By default, this returns true if eiher [`Self::indicator_components`] is empty or
+    /// By default, this returns true if either [`Self::indicator_components`] is empty or
     /// `entity_components` contains at least one of these indicator components.
     ///
     /// Override this method only if a more detailed condition is required to inform heuristics whether or not
