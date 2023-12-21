@@ -1,9 +1,10 @@
 use re_arrow_store::{LatestAtQuery, VersionedComponent};
 use re_data_store::EntityPath;
 use re_log_types::RowId;
+use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor, Archetype,
-    ComponentNameSet, Loggable as _,
+    ComponentNameSet,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
@@ -25,11 +26,8 @@ struct TensorVisualizerEntityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for TensorVisualizerEntityFilter {
     fn update_applicability(&mut self, event: &re_arrow_store::StoreEvent) -> bool {
-        event.diff.cells.iter().any(|(component_name, cell)| {
-            component_name == &re_types::components::TensorData::name()
-                && re_types::components::TensorData::from_arrow(cell.as_arrow_ref())
-                    .map(|tensors| tensors.iter().any(|tensor| !tensor.is_vector()))
-                    .unwrap_or(false)
+        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
+            !tensor.is_vector()
         })
     }
 }

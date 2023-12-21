@@ -12,11 +12,12 @@ use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     Colormap,
 };
+use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
     components::{Color, DrawOrder, TensorData, ViewCoordinates},
     tensor_data::{DecodedTensor, TensorDataMeaning},
-    Archetype as _, ComponentNameSet, Loggable as _,
+    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     default_heuristic_filter, gpu_bridge, DefaultColor, HeuristicFilterContext, SpaceViewClass,
@@ -647,15 +648,8 @@ struct ImageVisualizerEntityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
     fn update_applicability(&mut self, event: &re_arrow_store::StoreEvent) -> bool {
-        event.diff.cells.iter().any(|(component_name, cell)| {
-            component_name == &re_types::components::TensorData::name()
-                && re_types::components::TensorData::from_arrow(cell.as_arrow_ref())
-                    .map(|tensors| {
-                        tensors
-                            .iter()
-                            .any(|tensor| tensor.is_shaped_like_an_image())
-                    })
-                    .unwrap_or(false)
+        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
+            tensor.is_shaped_like_an_image()
         })
     }
 }

@@ -2,11 +2,12 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
+use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::{BarChart, Tensor},
     components::Color,
     datatypes::TensorData,
-    Archetype, ComponentNameSet, Loggable,
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
@@ -29,11 +30,8 @@ struct BarChartVisualizerEntityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for BarChartVisualizerEntityFilter {
     fn update_applicability(&mut self, event: &re_arrow_store::StoreEvent) -> bool {
-        event.diff.cells.iter().any(|(component_name, cell)| {
-            component_name == &re_types::components::TensorData::name()
-                && re_types::components::TensorData::from_arrow(cell.as_arrow_ref())
-                    .map(|tensors| tensors.iter().any(|tensor| tensor.is_vector()))
-                    .unwrap_or(false)
+        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
+            tensor.is_vector()
         })
     }
 }

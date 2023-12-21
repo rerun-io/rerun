@@ -13,3 +13,22 @@ pub use data_query::{DataQuery, EntityOverrideContext, PropertyResolver};
 pub use data_query_blueprint::DataQueryBlueprint;
 pub use screenshot::ScreenshotMode;
 pub use unreachable_transform_reason::UnreachableTransformReason;
+
+// -----------
+
+use re_data_store::external::re_arrow_store;
+
+/// Utility for implementing [`VisualizerAdditionalApplicabilityFilter`] using on the properties of a concrete component.
+#[inline]
+pub fn diff_component_filter<T: re_types_core::Component>(
+    event: &re_arrow_store::StoreEvent,
+    filter: impl Fn(&T) -> bool,
+) -> bool {
+    let filter = &filter;
+    event.diff.cells.iter().any(|(component_name, cell)| {
+        component_name == &T::name()
+            && T::from_arrow(cell.as_arrow_ref())
+                .map(|components| components.iter().any(filter))
+                .unwrap_or(false)
+    })
+}
