@@ -84,7 +84,10 @@ fn tensor_ui(
     let meter = if meaning == TensorDataMeaning::Depth {
         ctx.entity_db
             .store()
-            .query_latest_component::<DepthMeter>(entity_path, &ctx.current_query())
+            .query_latest_component::<DepthMeter>(
+                entity_path,
+                &ctx.current_query_for_entity_path(entity_path),
+            )
             .map(|meter| meter.value.0)
     } else {
         None

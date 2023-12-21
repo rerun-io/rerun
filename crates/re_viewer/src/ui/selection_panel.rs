@@ -111,8 +111,6 @@ impl SelectionPanel {
     ) {
         re_tracing::profile_function!();
 
-        let query = ctx.current_query();
-
         if ctx.selection().is_empty() {
             return;
         }
@@ -151,6 +149,11 @@ impl SelectionPanel {
 
                 if let Some(data_ui_item) = data_section_ui(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
+                        let query = if let Some(entity_path) = item.entity_path() {
+                            ctx.current_query_for_entity_path(entity_path)
+                        } else {
+                            ctx.current_query()
+                        };
                         data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query);
                     });
                 }
@@ -1079,7 +1082,7 @@ fn pinhole_props_ui(
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
 ) {
-    let query = ctx.current_query();
+    let query = ctx.current_query_for_entity_path(entity_path);
     let store = ctx.entity_db.store();
     if store
         .query_latest_component::<PinholeProjection>(entity_path, &query)
@@ -1111,7 +1114,7 @@ fn depth_props_ui(
 ) -> Option<()> {
     re_tracing::profile_function!();
 
-    let query = ctx.current_query();
+    let query = ctx.current_query_for_entity_path(entity_path);
     let store = ctx.entity_db.store();
 
     let meaning = image_meaning_for_entity(entity_path, ctx);
@@ -1212,7 +1215,7 @@ fn transform3d_visualization_ui(
 ) {
     re_tracing::profile_function!();
 
-    let query = ctx.current_query();
+    let query = ctx.current_query_for_entity_path(entity_path);
     if ctx
         .entity_db
         .store()

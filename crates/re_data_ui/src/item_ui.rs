@@ -374,7 +374,7 @@ pub fn instance_hover_card_ui(
 
     // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
     // Then we can move the size view into `data_ui`.
-    let query = ctx.current_query();
+    let query = ctx.current_query_for_entity_path(&instance_path.entity_path);
 
     if instance_path.instance_key.is_splat() {
         if let Some(subtree) = ctx.entity_db.tree().subtree(&instance_path.entity_path) {

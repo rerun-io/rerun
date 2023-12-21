@@ -16,13 +16,7 @@ impl DataUi for ComponentPath {
             component_name,
         } = self;
 
-        let store = if ctx.app_options.show_blueprint_in_timeline
-            && ctx.store_context.blueprint.is_logged_entity(entity_path)
-        {
-            ctx.store_context.blueprint.store()
-        } else {
-            ctx.entity_db.store()
-        };
+        let store = ctx.choose_store_for_query(query);
 
         if let Some(archetype_name) = component_name.indicator_component_archetype() {
             ui.label(format!(

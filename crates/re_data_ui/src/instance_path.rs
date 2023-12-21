@@ -19,13 +19,7 @@ impl DataUi for InstancePath {
             instance_key,
         } = self;
 
-        let store = if ctx.app_options.show_blueprint_in_timeline
-            && ctx.store_context.blueprint.is_logged_entity(entity_path)
-        {
-            ctx.store_context.blueprint.store()
-        } else {
-            ctx.entity_db.store()
-        };
+        let store = ctx.choose_store_for_query(query);
 
         let Some(components) = store.all_components(&query.timeline, entity_path) else {
             if ctx.entity_db.is_known_entity(entity_path) {
