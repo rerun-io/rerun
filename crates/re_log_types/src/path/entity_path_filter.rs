@@ -184,7 +184,7 @@ impl EntityPathFilter {
         );
     }
 
-    /// Remove any rule for the given entity path (ignoring wether or not that rule includes the subtree).
+    /// Remove any rule for the given entity path (ignoring whether or not that rule includes the subtree).
     pub fn remove_rule_for(&mut self, entity_path: &EntityPath) {
         self.rules.retain(|rule, _| rule.path != *entity_path);
     }
