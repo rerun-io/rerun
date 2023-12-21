@@ -10,9 +10,10 @@ use re_log_types::{
 };
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-     DataQueryId, DataQueryResult, DataResult, DataResultHandle,
-    DataResultNode, DataResultTree, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId,
-    StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext, VisualizableEntitiesPerVisualizer, ViewSystemIdentifier, IndicatorMatchingEntities,
+    DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
+    IndicatorMatchingEntities, IndicatorMatchingEntitiesPerVisualizer, PropertyOverrides,
+    SpaceViewClassIdentifier, SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntitiesPerVisualizer,
 };
 
 use crate::{
@@ -178,10 +179,7 @@ impl DataQuery for DataQueryBlueprint {
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
         visualizable_entities_for_visualizer_systems: &VisualizableEntitiesPerVisualizer,
-        indicator_matching_entities_per_visualizer: &IntMap<
-            ViewSystemIdentifier,
-            IndicatorMatchingEntities,
-        >,
+        indicator_matching_entities_per_visualizer: &IndicatorMatchingEntitiesPerVisualizer,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
@@ -639,9 +637,24 @@ mod tests {
                 entity_path_filter: EntityPathFilter::parse_forgiving(filter),
             };
 
-            let indicator_matching_entities_per_visualizer = ;
-            let query_result =
-                query.execute_query(&ctx, &visualizable_entities_for_visualizer_systems, indicator_matching_entities_per_visualizer);
+            let indicator_matching_entities_per_visualizer = IndicatorMatchingEntitiesPerVisualizer(
+                visualizable_entities_for_visualizer_systems
+                    .iter()
+                    .map(|(id, entities)| {
+                        (
+                            *id,
+                            IndicatorMatchingEntities(
+                                entities.0.iter().map(|path| path.hash()).collect(),
+                            ),
+                        )
+                    })
+                    .collect(),
+            );
+            let query_result = query.execute_query(
+                &ctx,
+                &visualizable_entities_for_visualizer_systems,
+                &indicator_matching_entities_per_visualizer,
+            );
 
             let mut visited = vec![];
             query_result.tree.visit(&mut |handle| {

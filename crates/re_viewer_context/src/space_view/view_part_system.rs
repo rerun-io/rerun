@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use nohash_hasher::IntSet;
+use nohash_hasher::{IntMap, IntSet};
 use re_log_types::EntityPath;
 use re_types::ComponentNameSet;
 
@@ -16,6 +16,21 @@ pub struct VisualizableEntities(pub IntSet<EntityPath>);
 
 impl std::ops::Deref for VisualizableEntities {
     type Target = IntSet<EntityPath>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// List of entities that can be visualized per visualizer.
+#[derive(Default)]
+pub struct VisualizableEntitiesPerVisualizer(
+    pub IntMap<ViewSystemIdentifier, VisualizableEntities>,
+);
+
+impl std::ops::Deref for VisualizableEntitiesPerVisualizer {
+    type Target = IntMap<ViewSystemIdentifier, VisualizableEntities>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {

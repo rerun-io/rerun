@@ -20,7 +20,6 @@ mod visualizer_entity_subscriber;
 pub use auto_spawn_heuristic::AutoSpawnHeuristic;
 pub use dyn_space_view_class::{
     DynSpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewState,
-    VisualizableEntitiesPerVisualizer,
 };
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
@@ -30,11 +29,14 @@ pub use space_view_class_registry::{
 };
 pub use system_execution_output::SystemExecutionOutput;
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
-pub use view_part_system::{ViewPartCollection, ViewPartSystem, VisualizableEntities};
+pub use view_part_system::{
+    ViewPartCollection, ViewPartSystem, VisualizableEntities, VisualizableEntitiesPerVisualizer,
+};
 pub use view_query::{DataResult, PerSystemDataResults, PropertyOverrides, ViewQuery};
 pub use visualizer_entity_subscriber::VisualizerAdditionalApplicabilityFilter;
 pub use visualizer_entity_subscriber::{
-    ApplicableEntitiesPerVisualizer, IndicatorMatchingEntities, VisualizerApplicableEntities,
+    ApplicableEntitiesPerVisualizer, IndicatorMatchingEntities,
+    IndicatorMatchingEntitiesPerVisualizer, VisualizerApplicableEntities,
 };
 
 // ---------------------------------------------------------------------------

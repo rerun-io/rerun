@@ -466,8 +466,8 @@ mod tests {
     use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
     use re_viewer_context::{
-        IndicatorMatchingEntities, StoreContext, VisualizableEntities,
-        VisualizableEntitiesPerVisualizer,
+        IndicatorMatchingEntities, IndicatorMatchingEntitiesPerVisualizer, StoreContext,
+        VisualizableEntities, VisualizableEntitiesPerVisualizer,
     };
 
     use super::*;
@@ -523,6 +523,7 @@ mod tests {
 
         let mut visualizable_entities = VisualizableEntitiesPerVisualizer::default();
         visualizable_entities
+            .0
             .entry("Points3D".into())
             .or_insert_with(|| {
                 VisualizableEntities(
@@ -534,16 +535,18 @@ mod tests {
                     .collect(),
                 )
             });
-        let indicator_matching_entities_per_visualizer = visualizable_entities
-            .0
-            .iter()
-            .map(|(id, entities)| {
-                (
-                    id.clone(),
-                    IndicatorMatchingEntities(entities.iter().map(|e| e.hash()).collect()),
-                )
-            })
-            .collect();
+        let indicator_matching_entities_per_visualizer = IndicatorMatchingEntitiesPerVisualizer(
+            visualizable_entities
+                .0
+                .iter()
+                .map(|(id, entities)| {
+                    (
+                        *id,
+                        IndicatorMatchingEntities(entities.iter().map(|e| e.hash()).collect()),
+                    )
+                })
+                .collect(),
+        );
 
         let query = space_view.queries.first().unwrap();
 

@@ -1,12 +1,10 @@
-use nohash_hasher::IntMap;
 use re_data_store::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
-    ViewerContext, VisualizableEntities,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 re_string_interner::declare_new_type!(
@@ -34,28 +32,6 @@ pub enum SpaceViewClassLayoutPriority {
     /// Give this space view lots of space.
     /// Used for spatial views (2D/3D).
     High,
-}
-
-/// List of entities that can be visualized per visualizer.
-#[derive(Default)]
-pub struct VisualizableEntitiesPerVisualizer(
-    pub IntMap<ViewSystemIdentifier, VisualizableEntities>,
-);
-
-impl std::ops::Deref for VisualizableEntitiesPerVisualizer {
-    type Target = IntMap<ViewSystemIdentifier, VisualizableEntities>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for VisualizableEntitiesPerVisualizer {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
 }
 
 /// Defines a class of space view without any concrete types making it suitable for storage and interfacing.

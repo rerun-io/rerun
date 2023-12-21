@@ -1,5 +1,4 @@
 use ahash::HashMap;
-use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
 use re_data_store::{store_db::StoreDb, EntityTree, TimeHistogramPerTimeline};
@@ -7,8 +6,8 @@ use re_data_store::{store_db::StoreDb, EntityTree, TimeHistogramPerTimeline};
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntitiesPerVisualizer,
     ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry, DataQueryId,
-    IndicatorMatchingEntities, Selection, SpaceViewClassRegistry, StoreContext, TimeControl,
-    ViewSystemIdentifier,
+    IndicatorMatchingEntitiesPerVisualizer, Selection, SpaceViewClassRegistry, StoreContext,
+    TimeControl,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -38,8 +37,7 @@ pub struct ViewerContext<'a> {
     pub applicable_entities_per_visualizer: &'a ApplicableEntitiesPerVisualizer,
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.
-    pub indicator_matching_entities_per_visualizer:
-        &'a IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>,
+    pub indicator_matching_entities_per_visualizer: &'a IndicatorMatchingEntitiesPerVisualizer,
 
     /// All the query results for this frame
     pub query_results: &'a HashMap<DataQueryId, DataQueryResult>,

@@ -1,7 +1,6 @@
-use nohash_hasher::IntMap;
 use re_data_store::{EntityProperties, EntityPropertyMap};
 use re_viewer_context::{
-    DataQueryResult, IndicatorMatchingEntities, StoreContext, ViewSystemIdentifier,
+    DataQueryResult, IndicatorMatchingEntitiesPerVisualizer, StoreContext,
     VisualizableEntitiesPerVisualizer,
 };
 
@@ -33,9 +32,6 @@ pub trait DataQuery {
         &self,
         ctx: &StoreContext<'_>,
         visualizable_entities_for_visualizer_systems: &VisualizableEntitiesPerVisualizer,
-        indicator_matching_entities_per_visualizer: &IntMap<
-            ViewSystemIdentifier,
-            IndicatorMatchingEntities,
-        >,
+        indicator_matching_entities_per_visualizer: &IndicatorMatchingEntitiesPerVisualizer,
     ) -> DataQueryResult;
 }

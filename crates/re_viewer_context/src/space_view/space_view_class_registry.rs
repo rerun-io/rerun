@@ -1,17 +1,15 @@
 use ahash::{HashMap, HashSet};
-use nohash_hasher::IntMap;
 use re_arrow_store::DataStore;
 
 use crate::{
     ApplicableEntitiesPerVisualizer, DynSpaceViewClass, IdentifiedViewSystem,
-    SpaceViewClassIdentifier, ViewContextCollection, ViewContextSystem, ViewPartCollection,
-    ViewPartSystem, ViewSystemIdentifier,
+    IndicatorMatchingEntitiesPerVisualizer, SpaceViewClassIdentifier, ViewContextCollection,
+    ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemIdentifier,
 };
 
 use super::{
     space_view_class_placeholder::SpaceViewClassPlaceholder,
-    visualizer_entity_subscriber::{IndicatorMatchingEntities, VisualizerEntitySubscriber},
-    VisualizerApplicableEntities,
+    visualizer_entity_subscriber::VisualizerEntitySubscriber, VisualizerApplicableEntities,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -313,21 +311,23 @@ impl SpaceViewClassRegistry {
     pub fn indicator_matching_entities_per_visualizer(
         &self,
         store_id: &re_log_types::StoreId,
-    ) -> IntMap<ViewSystemIdentifier, IndicatorMatchingEntities> {
-        self.visualizers
-            .iter()
-            .map(|(id, entry)| {
-                (
-                    *id,
-                    DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
-                        entry.entity_subscriber_handle,
-                        |subscriber| subscriber.indicator_matching_entities(store_id).cloned(),
+    ) -> IndicatorMatchingEntitiesPerVisualizer {
+        IndicatorMatchingEntitiesPerVisualizer(
+            self.visualizers
+                .iter()
+                .map(|(id, entry)| {
+                    (
+                        *id,
+                        DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
+                            entry.entity_subscriber_handle,
+                            |subscriber| subscriber.indicator_matching_entities(store_id).cloned(),
+                        )
+                        .flatten()
+                        .unwrap_or_default(),
                     )
-                    .flatten()
-                    .unwrap_or_default(),
-                )
-            })
-            .collect()
+                })
+                .collect(),
+        )
     }
 
     pub fn new_context_collection(

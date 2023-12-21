@@ -42,10 +42,11 @@ pub use selection_state::{
 };
 pub use space_view::{
     ApplicableEntitiesPerVisualizer, AutoSpawnHeuristic, DataResult, DynSpaceViewClass,
-    IdentifiedViewSystem, IndicatorMatchingEntities, PerSystemDataResults, PerSystemEntities,
-    PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority,
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewEntityHighlight,
-    SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
+    IdentifiedViewSystem, IndicatorMatchingEntities, IndicatorMatchingEntitiesPerVisualizer,
+    PerSystemDataResults, PerSystemEntities, PropertyOverrides, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContextCollection, ViewContextSystem,
     ViewPartCollection, ViewPartSystem, ViewQuery, ViewSystemIdentifier, VisualizableEntities,
     VisualizableEntitiesPerVisualizer, VisualizerAdditionalApplicabilityFilter,

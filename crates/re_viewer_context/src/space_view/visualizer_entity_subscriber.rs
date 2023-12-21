@@ -37,6 +37,21 @@ impl std::ops::Deref for IndicatorMatchingEntities {
     }
 }
 
+// TODO:
+#[derive(Default)]
+pub struct IndicatorMatchingEntitiesPerVisualizer(
+    pub IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>,
+);
+
+impl std::ops::Deref for IndicatorMatchingEntitiesPerVisualizer {
+    type Target = IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// List of entities that are applicable to each visualizer.
 ///
 /// See [`VisualizerApplicableEntities`].
@@ -50,13 +65,6 @@ impl std::ops::Deref for ApplicableEntitiesPerVisualizer {
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl std::ops::DerefMut for ApplicableEntitiesPerVisualizer {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
     }
 }
 
