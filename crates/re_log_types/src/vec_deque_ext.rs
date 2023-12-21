@@ -213,9 +213,14 @@ impl<T: Clone> VecDequeRemovalExt<T> for VecDeque<T> {
         } else if range.end == self.len() {
             self.truncate(self.len() - range.len());
         } else {
-            let right = self.split_off(range.end);
-            let _mid = self.split_off(range.start);
-            self.extend(right);
+            // NOTE: More elegant, but also 70% slower (!)
+            // let mid_and_right = self.split_off(range.start);
+            // self.extend(mid_and_right.into_iter().skip(range.len()));
+
+            let mut mid_and_right = self.split_off(range.start);
+            mid_and_right.rotate_left(range.len());
+            mid_and_right.truncate(mid_and_right.len() - range.len());
+            self.extend(mid_and_right);
         }
     }
 }
@@ -260,6 +265,13 @@ fn remove_range() {
     v.insert_range(0, [1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter());
     assert_deque_eq([1, 2, 3, 4, 5, 6, 7, 8, 9], v.clone());
     assert!(v.is_sorted());
+
+    {
+        let mut v = v.clone();
+        v.remove_range(0..v.len());
+        assert!(v.is_empty());
+        assert!(v.is_sorted());
+    }
 
     v.remove_range(0..2);
     assert_deque_eq([3, 4, 5, 6, 7, 8, 9], v.clone());
