@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ahash::{HashMap, HashSet};
+use ahash::HashMap;
 use egui_tiles::TileId;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
@@ -398,9 +398,9 @@ impl ViewportBlueprint {
         ctx: &ViewerContext<'_>,
     ) {
         re_tracing::profile_function!();
-        re_log::debug!("Saving tree: {tree:#?}");
+        re_log::trace!("Saving tree: {tree:#?}");
 
-        // Update the mapping for all the previously known containers.
+        // First, update the mapping for all the previously known containers.
         // These were inserted with their ids, so we want to keep these
         // constant if we find them again.
         let mut contents_from_tile_id: HashMap<TileId, Contents> = self
@@ -409,95 +409,79 @@ impl ViewportBlueprint {
             .map(|id| (blueprint_id_to_tile_id(id), Contents::Container(*id)))
             .collect();
 
-        // Generate new container ids for any containers we don't know about.
-        // Need to do this first for all tiles so we can resolve references.
-        // TODO(jleibs): Make this a loop instead of a filter_map.
-        // `container_id_from_tile_id` can go away
-        let container_id_from_tile_id: HashMap<TileId, ContainerId> = tree
-            .tiles
-            .iter()
-            .filter_map(|(tile_id, tile)| {
-                match tile {
-                    egui_tiles::Tile::Pane(space_view_id) => {
-                        // If a container has a pointer to a space-view
-                        // we want it to point at the space-view in the blueprint.
-                        contents_from_tile_id.insert(*tile_id, Contents::SpaceView(*space_view_id));
-                        None
-                    }
-                    egui_tiles::Tile::Container(container) => {
-                        if let Some(container_id) = contents_from_tile_id
-                            .get(tile_id)
-                            .and_then(|c| c.as_container_id())
+        // Now, update the content mapping for all the new tiles in the tree.
+        for (tile_id, tile) in tree.tiles.iter() {
+            // If we already know about this tile, then we don't need
+            // to do anything.
+            if contents_from_tile_id.contains_key(tile_id) {
+                continue;
+            }
+            match tile {
+                egui_tiles::Tile::Pane(space_view_id) => {
+                    // If a container has a pointer to a space-view
+                    // we want it to point at the space-view in the blueprint.
+                    contents_from_tile_id.insert(*tile_id, Contents::SpaceView(*space_view_id));
+                }
+                egui_tiles::Tile::Container(container) => {
+                    if tree.root != Some(*tile_id)
+                        && container.kind() == egui_tiles::ContainerKind::Tabs
+                        && container.num_children() == 1
+                    {
+                        // If this is a tab-container with a single child, then it might be a
+                        // "Trivial Tab", which egui_tiles adds to all space-views during simplification
+                        // but doesn't need to be persisted back to the store.
+                        if let Some(egui_tiles::Tile::Pane(space_view_id)) = container
+                            .children()
+                            .next()
+                            .and_then(|child| tree.tiles.get(*child))
                         {
-                            // If the container is already in the blueprint, use the existing id
-                            Some((*tile_id, container_id))
-                        } else {
-                            // Otherwise, check to see if its a trivial tab at a location other
-                            // than the root.
-                            // TODO(jleibs): Don't hardcode the root check
-                            if tree.root != Some(*tile_id)
-                                && container.kind() == egui_tiles::ContainerKind::Tabs
-                                && container.num_children() == 1
-                            {
-                                if let Some(egui_tiles::Tile::Pane(space_view_id)) = container
-                                    .children()
-                                    .next()
-                                    .and_then(|child| tree.tiles.get(*child))
-                                {
-                                    // This is a trivial Tab
-                                    // The container doesn't need to be updated, but when
-                                    // we encounter the contents in a child-list map it
-                                    // directly to the space-view instead.
-                                    contents_from_tile_id
-                                        .insert(*tile_id, Contents::SpaceView(*space_view_id));
-                                    None
-                                } else {
-                                    // This is not a trivial tab -- generate a new container id
-                                    // for it.
-                                    let container_id = ContainerId::random();
-                                    contents_from_tile_id
-                                        .insert(*tile_id, Contents::Container(container_id));
-                                    Some((*tile_id, container_id))
-                                }
-                            } else {
-                                let container_id = ContainerId::random();
-                                contents_from_tile_id
-                                    .insert(*tile_id, Contents::Container(container_id));
-                                Some((*tile_id, container_id))
-                            }
+                            // This is a trivial tab -- this tile can point directly to
+                            // the SpaceView and not to a Container.
+                            contents_from_tile_id
+                                .insert(*tile_id, Contents::SpaceView(*space_view_id));
+                            continue;
                         }
                     }
+
+                    // If this wasn't a container we knew about and wasn't a trivial container
+                    // we will need to create a new container for it.
+                    let container_id = ContainerId::random();
+                    contents_from_tile_id.insert(*tile_id, Contents::Container(container_id));
                 }
-            })
-            .collect();
+            }
+        }
 
-        let protected_containers: HashSet<&ContainerId> =
-            container_id_from_tile_id.values().collect();
-
-        // Clear any existing container blueprints that are no longer valid
+        // Clear any existing container blueprints that aren't referenced
+        // by any tiles.
         for (container_id, container) in &self.containers {
-            if !protected_containers.contains(container_id) {
+            let tile_id = blueprint_id_to_tile_id(container_id);
+            if !contents_from_tile_id.contains_key(&tile_id) {
                 container.clear(ctx);
             }
         }
 
-        for (tile_id, container_id) in &container_id_from_tile_id {
-            if let Some(egui_tiles::Tile::Container(container)) = tree.tiles.get(*tile_id) {
-                // TODO(jleibs): Avoid using new here if the container already exists
-                let blueprint = ContainerBlueprint::from_egui_tiles_container(
-                    *container_id,
-                    container,
-                    &contents_from_tile_id,
-                );
+        // Now save any contents that are a container back to the blueprint
+        for (tile_id, contents) in &contents_from_tile_id {
+            if let Contents::Container(container_id) = contents {
+                if let Some(egui_tiles::Tile::Container(container)) = tree.tiles.get(*tile_id) {
+                    // TODO(jleibs): Make this only update the changed fields.
+                    let blueprint = ContainerBlueprint::from_egui_tiles_container(
+                        *container_id,
+                        container,
+                        &contents_from_tile_id,
+                    );
 
-                blueprint.save_to_blueprint_store(ctx);
+                    blueprint.save_to_blueprint_store(ctx);
+                }
             }
         }
 
+        // Finally update the root
         if let Some(root_container) = tree
             .root()
-            .and_then(|root| container_id_from_tile_id.get(&root))
-            .map(|container_id| RootContainer((*container_id).into()))
+            .and_then(|root| contents_from_tile_id.get(&root))
+            .and_then(|contents| contents.as_container_id())
+            .map(|container_id| RootContainer((container_id).into()))
         {
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), root_container);
         } else {
