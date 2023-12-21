@@ -22,6 +22,7 @@ use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, Viewport, ViewportBlueprint,
 };
 
+use crate::ui::add_space_view_or_container_modal::AddSpaceViewOrContainerModal;
 use crate::ui::visible_history::visible_history_ui;
 
 use super::selection_history_ui::SelectionHistoryUi;
@@ -33,6 +34,9 @@ use super::selection_history_ui::SelectionHistoryUi;
 #[serde(default)]
 pub(crate) struct SelectionPanel {
     selection_state_ui: SelectionHistoryUi,
+
+    #[serde(skip)]
+    add_space_view_or_container_modal: AddSpaceViewOrContainerModal,
 }
 
 impl SelectionPanel {
@@ -127,8 +131,10 @@ impl SelectionPanel {
                 match item {
                     Item::Container(tile_id) => {
                         container_top_level_properties(ui, ctx, viewport, tile_id);
+
+                        //TODO: gate behind feature flag
                         ui.add_space(12.0);
-                        container_children(ui, ctx, viewport, tile_id);
+                        self.container_children(ui, ctx, viewport, tile_id);
                     }
 
                     Item::SpaceView(space_view_id) => {
@@ -157,6 +163,75 @@ impl SelectionPanel {
                 }
             });
         }
+    }
+
+    fn container_children(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &ViewerContext<'_>,
+        viewport: &mut Viewport<'_, '_>,
+        tile_id: &egui_tiles::TileId,
+    ) {
+        // Temporarily remove the tile so we don't get borrow-checker fights:
+        let Some(Tile::Container(container)) = viewport.tree.tiles.remove(*tile_id) else {
+            return;
+        };
+
+        ui.horizontal(|ui| {
+            ui.strong("Contents");
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ctx
+                    .re_ui
+                    .small_icon_button(ui, &re_ui::icons::ADD)
+                    .clicked()
+                {
+                    self.add_space_view_or_container_modal.open();
+                }
+            });
+        });
+
+        self.add_space_view_or_container_modal.ui(ui, ctx, viewport);
+
+        let show_content = |ui: &mut egui::Ui| {
+            let mut has_child = false;
+            for &child_tile_id in container.children() {
+                has_child |= show_list_item_for_container_child(ui, ctx, viewport, child_tile_id);
+            }
+
+            if !has_child {
+                ListItem::new(ctx.re_ui, "empty — use the + button to add content")
+                    .weak(true)
+                    .italics(true)
+                    .active(false)
+                    .show(ui);
+            }
+        };
+
+        egui::Frame {
+            outer_margin: egui::Margin::ZERO,
+            inner_margin: egui::Margin::ZERO,
+            stroke: ui.visuals().widgets.noninteractive.bg_stroke,
+            ..Default::default()
+        }
+        .show(ui, |ui| {
+            let clip_rect = ui.clip_rect();
+            ui.set_clip_rect(ui.max_rect());
+            ui.spacing_mut().item_spacing.y = 0.0;
+
+            egui::Frame {
+                inner_margin: egui::Margin::symmetric(4.0, 0.0),
+                ..Default::default()
+            }
+            .show(ui, show_content);
+
+            ui.set_clip_rect(clip_rect);
+        });
+
+        viewport
+            .tree
+            .tiles
+            .insert(*tile_id, Tile::Container(container));
     }
 }
 
@@ -492,6 +567,7 @@ fn container_top_level_properties(
                     ui.end_row();
                 }
 
+                //TODO: gate behind feature flag
                 if ui
                     .button("Simplify hierarchy")
                     .on_hover_text("Simplify this container and its children")
@@ -515,72 +591,6 @@ fn container_top_level_properties(
             },
         );
     }
-}
-
-fn container_children(
-    ui: &mut egui::Ui,
-    ctx: &ViewerContext<'_>,
-    viewport: &mut Viewport<'_, '_>,
-    tile_id: &egui_tiles::TileId,
-) {
-    // Temporarily remove the tile so we don't get borrow-checker fights:
-    let Some(Tile::Container(container)) = viewport.tree.tiles.remove(*tile_id) else {
-        return;
-    };
-
-    let show_content = |ui: &mut egui::Ui| {
-        let mut has_child = false;
-        for &child_tile_id in container.children() {
-            has_child |= show_list_item_for_container_child(ui, ctx, viewport, child_tile_id);
-        }
-
-        if !has_child {
-            ListItem::new(ctx.re_ui, "empty — use the + button to add content")
-                .weak(true)
-                .italics(true)
-                .active(false)
-                .show(ui);
-        }
-    };
-
-    ui.horizontal(|ui| {
-        ui.strong("Contents");
-
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ctx
-                .re_ui
-                .small_icon_button(ui, &re_ui::icons::ADD)
-                .clicked()
-            {
-                // TODO
-            }
-        });
-    });
-
-    egui::Frame {
-        outer_margin: egui::Margin::ZERO,
-        inner_margin: egui::Margin::ZERO,
-        stroke: ui.visuals().widgets.noninteractive.bg_stroke,
-        ..Default::default()
-    }
-    .show(ui, |ui| {
-        let clip_rect = ui.clip_rect();
-        ui.set_clip_rect(ui.max_rect());
-        ui.spacing_mut().item_spacing.y = 0.0;
-
-        egui::Frame {
-            inner_margin: egui::Margin::symmetric(4.0, 0.0),
-            ..Default::default()
-        }
-        .show(ui, show_content);
-
-        ui.set_clip_rect(clip_rect);
-    });
-
-    viewport
-        .tree
-        .tiles
-        .insert(*tile_id, Tile::Container(container));
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui

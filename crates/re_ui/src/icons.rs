@@ -57,6 +57,8 @@ pub const VISIBLE: Icon = Icon::new("visible", include_bytes!("../data/icons/vis
 pub const INVISIBLE: Icon = Icon::new("invisible", include_bytes!("../data/icons/invisible.png"));
 
 pub const ADD: Icon = Icon::new("add", include_bytes!("../data/icons/add.png"));
+
+pub const ADD_BIG: Icon = Icon::new("add_big", include_bytes!("../data/icons/add_big.png"));
 pub const REMOVE: Icon = Icon::new("remove", include_bytes!("../data/icons/remove.png"));
 
 pub const RESET: Icon = Icon::new("reset", include_bytes!("../data/icons/reset.png"));
