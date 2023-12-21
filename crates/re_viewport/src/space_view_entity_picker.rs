@@ -62,6 +62,8 @@ impl SpaceViewEntityPicker {
 }
 
 fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &SpaceViewBlueprint) {
+    re_tracing::profile_function!();
+
     let spaces_info = SpaceInfoCollection::new(ctx.store_db);
     let tree = &ctx.store_db.tree();
     let heuristic_context_per_entity = compute_heuristic_context_for_entities(ctx.store_db);
@@ -165,6 +167,8 @@ fn add_entities_line_ui(
     entity_path_filter: &EntityPathFilter,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
+    re_tracing::profile_function!();
+
     ui.horizontal(|ui| {
         let entity_path = &entity_tree.path;
 
@@ -196,7 +200,7 @@ fn add_entities_line_ui(
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Reset Button
+            // Reset-button
             {
                 let enabled = add_info.can_add_self_or_descendant.is_compatible()
                     && entity_path_filter.contains_rule_for_exactly(entity_path);
@@ -218,11 +222,11 @@ fn add_entities_line_ui(
                 });
             }
 
-            // Remove Button
+            // Remove-button
             {
-                let enabled = query_result.contains_any(&entity_tree.path)
+                let enabled = is_included
                     && add_info.can_add_self_or_descendant.is_compatible()
-                    && is_included;
+                    && query_result.contains_any(&entity_tree.path);
 
                 ui.add_enabled_ui(enabled, |ui| {
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
@@ -242,11 +246,9 @@ fn add_entities_line_ui(
                 });
             }
 
-            // Add Button
+            // Add-button
             {
-                let enabled = !is_included
-                    && !is_explicitly_excluded
-                    && add_info.can_add_self_or_descendant.is_compatible();
+                let enabled = !is_included && add_info.can_add_self_or_descendant.is_compatible();
 
                 ui.add_enabled_ui(enabled, |ui| {
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
