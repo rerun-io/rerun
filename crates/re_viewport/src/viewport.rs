@@ -291,7 +291,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
     }
 
     /// Process any deferred `TreeActions` and then sync to blueprint
-    pub fn update_and_sync_tile_tree_to_blueprint(&mut self, ctx: &ViewerContext<'_>) {
+    pub fn update_and_sync_tile_tree_to_blueprint(mut self, ctx: &ViewerContext<'_>) {
         // At the end of the Tree-UI, we can safely apply deferred actions.
 
         let mut reset = false;

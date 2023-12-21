@@ -99,6 +99,11 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
     pub fn uuid(&self) -> uuid::Uuid {
         self.id
     }
+
+    #[inline]
+    pub fn hash(&self) -> u64 {
+        re_log_types::hash::Hash64::hash(self.id).hash64()
+    }
 }
 
 impl<T: BlueprintIdRegistry> From<uuid::Uuid> for BlueprintId<T> {

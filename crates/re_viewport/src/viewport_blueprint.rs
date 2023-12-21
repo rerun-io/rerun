@@ -143,7 +143,7 @@ impl ViewportBlueprint {
         };
 
         if app_options.experimental_container_blueprints {
-            let mut shadow_tree = blueprint.build_tree_from_containers();
+            let mut tree = blueprint.build_tree_from_containers();
 
             // TODO(abey79): Figure out if we want to simplify here or not.
             if false {
@@ -152,12 +152,12 @@ impl ViewportBlueprint {
                     ..Default::default()
                 };
 
-                shadow_tree.simplify(&options);
+                tree.simplify(&options);
             }
 
-            re_log::trace!("shadow_tree: {shadow_tree:#?}");
+            re_log::trace!("Loaded tree from blueprint: {tree:#?}");
 
-            blueprint.tree = shadow_tree;
+            blueprint.tree = tree;
         }
 
         blueprint
@@ -411,6 +411,8 @@ impl ViewportBlueprint {
 
         // Generate new container ids for any containers we don't know about.
         // Need to do this first for all tiles so we can resolve references.
+        // TODO(jleibs): Make this a loop instead of a filter_map.
+        // `container_id_from_tile_id` can go away
         let container_id_from_tile_id: HashMap<TileId, ContainerId> = tree
             .tiles
             .iter()
@@ -432,6 +434,7 @@ impl ViewportBlueprint {
                         } else {
                             // Otherwise, check to see if its a trivial tab at a location other
                             // than the root.
+                            // TODO(jleibs): Don't hardcode the root check
                             if tree.root != Some(*tile_id)
                                 && container.kind() == egui_tiles::ContainerKind::Tabs
                                 && container.num_children() == 1
@@ -481,8 +484,11 @@ impl ViewportBlueprint {
         for (tile_id, container_id) in &container_id_from_tile_id {
             if let Some(egui_tiles::Tile::Container(container)) = tree.tiles.get(*tile_id) {
                 // TODO(jleibs): Avoid using new here if the container already exists
-                let blueprint =
-                    ContainerBlueprint::new(*container_id, container, &contents_from_tile_id);
+                let blueprint = ContainerBlueprint::from_egui_tiles_container(
+                    *container_id,
+                    container,
+                    &contents_from_tile_id,
+                );
 
                 blueprint.save_to_blueprint_store(ctx);
             }

@@ -2,6 +2,7 @@ use ahash::HashMap;
 use egui_tiles::TileId;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::StoreDb;
+use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
 use re_types_core::{archetypes::Clear, ArrowBuffer};
@@ -62,10 +63,7 @@ impl Contents {
 
 #[inline]
 pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> TileId {
-    // TODO(jleibs): This conversion to entity path is more expensive than it should be
-    let path = id.as_entity_path();
-
-    TileId::from_u64(path.hash64())
+    TileId::from_u64(id.hash())
 }
 
 impl From<SpaceViewId> for Contents {
@@ -204,31 +202,37 @@ impl ContainerBlueprint {
 
         let mut deltas = vec![];
 
-        if let Ok(row) =
+        if let Some(row) =
             DataRow::from_archetype(RowId::new(), timepoint.clone(), self.entity_path(), &arch)
+                .warn_on_err_once("Failed to create Container blueprint.")
         {
             deltas.push(row);
-        }
 
-        ctx.command_sender
-            .send_system(SystemCommand::UpdateBlueprint(
-                ctx.store_context.blueprint.store_id().clone(),
-                deltas,
-            ));
+            ctx.command_sender
+                .send_system(SystemCommand::UpdateBlueprint(
+                    ctx.store_context.blueprint.store_id().clone(),
+                    deltas,
+                ));
+        }
     }
 
     /// Creates a new [`ContainerBlueprint`] from the given [`egui_tiles::Container`].
     ///
     /// This [`ContainerBlueprint`] is ephemeral. If you want to make it permanent you
     /// must call [`Self::save_to_blueprint_store`].
-    pub fn new(
+    pub fn from_egui_tiles_container(
         container_id: ContainerId,
         container: &egui_tiles::Container,
         tile_to_contents: &HashMap<TileId, Contents>,
     ) -> Self {
         let contents = container
             .children()
-            .filter_map(|child_id| tile_to_contents.get(child_id).cloned())
+            .filter_map(|child_id| {
+                tile_to_contents.get(child_id).cloned().or_else(|| {
+                    re_log::warn_once!("Missing child when building container.");
+                    None
+                })
+            })
             .collect();
 
         match container {
