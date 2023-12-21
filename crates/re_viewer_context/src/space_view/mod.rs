@@ -33,6 +33,7 @@ pub use view_part_system::{
     default_heuristic_filter, HeuristicFilterContext, ViewPartCollection, ViewPartSystem,
 };
 pub use view_query::{DataResult, PerSystemDataResults, PropertyOverrides, ViewQuery};
+pub use visualizer_entity_subscriber::VisualizerAdditionalApplicabilityFilter;
 
 // ---------------------------------------------------------------------------
 

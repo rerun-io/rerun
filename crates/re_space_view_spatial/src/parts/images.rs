@@ -12,6 +12,7 @@ use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     Colormap,
 };
+use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
     components::{Color, DrawOrder, TensorData, ViewCoordinates},
@@ -21,7 +22,7 @@ use re_types::{
 use re_viewer_context::{
     default_heuristic_filter, gpu_bridge, DefaultColor, HeuristicFilterContext, SpaceViewClass,
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery,
-    ViewerContext,
+    ViewerContext, VisualizerAdditionalApplicabilityFilter,
 };
 use re_viewer_context::{IdentifiedViewSystem, ViewContextCollection};
 
@@ -643,6 +644,16 @@ impl IdentifiedViewSystem for ImagesPart {
     }
 }
 
+struct ImageVisualizerEntityFilter;
+
+impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
+    fn update_applicability(&mut self, event: &re_arrow_store::StoreEvent) -> bool {
+        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
+            tensor.is_shaped_like_an_image()
+        })
+    }
+}
+
 impl ViewPartSystem for ImagesPart {
     fn required_components(&self) -> ComponentNameSet {
         let image: ComponentNameSet = Image::required_components()
@@ -677,12 +688,16 @@ impl ViewPartSystem for ImagesPart {
         .collect()
     }
 
+    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
+        Some(Box::new(ImageVisualizerEntityFilter))
+    }
+
     fn heuristic_filter(
         &self,
-        store: &re_arrow_store::DataStore,
-        ent_path: &EntityPath,
+        _store: &re_arrow_store::DataStore,
+        _ent_path: &EntityPath,
         ctx: HeuristicFilterContext,
-        query: &LatestAtQuery,
+        _query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
@@ -697,14 +712,7 @@ impl ViewPartSystem for ImagesPart {
             return false;
         }
 
-        // NOTE: We want to make sure we query at the right time, otherwise we might take into
-        // account a `Clear()` that actually only applies into the future, and then
-        // `is_shaped_like_an_image` will righfully fail because of the empty tensor.
-        if let Some(tensor) = store.query_latest_component::<TensorData>(ent_path, query) {
-            tensor.is_shaped_like_an_image()
-        } else {
-            false
-        }
+        true
     }
 
     fn execute(
