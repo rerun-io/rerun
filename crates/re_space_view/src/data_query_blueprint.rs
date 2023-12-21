@@ -274,7 +274,7 @@ impl DataQuery for DataQueryBlueprint {
     /// Build up the initial [`DataQueryResult`] for this [`DataQueryBlueprint`]
     ///
     /// Note that this result will not have any resolved [`PropertyOverrides`]. Those can
-    /// be added by separately calling [`DataQueryPropertyResolver::update_overrides`] on
+    /// be added by separately calling [`PropertyResolver::update_overrides`] on
     /// the result.
     fn execute_query(
         &self,
