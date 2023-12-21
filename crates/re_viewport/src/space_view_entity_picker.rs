@@ -196,7 +196,7 @@ fn add_entities_line_ui(
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Reset Remove Button
+            // Reset Button
             {
                 let enabled = add_info.can_add_self_or_descendant.is_compatible()
                     && entity_path_filter.contains_rule_for_exactly(entity_path);
