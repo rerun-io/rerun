@@ -132,9 +132,12 @@ impl SelectionPanel {
                     Item::Container(tile_id) => {
                         container_top_level_properties(ui, ctx, viewport, tile_id);
 
-                        //TODO: gate behind feature flag
-                        ui.add_space(12.0);
-                        self.container_children(ui, ctx, viewport, tile_id);
+                        // the container children and related additive workflow is only available with the new container
+                        // blueprints feature
+                        if ctx.app_options.experimental_container_blueprints {
+                            ui.add_space(12.0);
+                            self.container_children(ui, ctx, viewport, tile_id);
+                        }
                     }
 
                     Item::SpaceView(space_view_id) => {
@@ -483,7 +486,7 @@ fn space_view_top_level_properties(
 
 fn container_top_level_properties(
     ui: &mut egui::Ui,
-    _ctx: &ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     viewport: &mut Viewport<'_, '_>,
     tile_id: &egui_tiles::TileId,
 ) {
@@ -567,13 +570,15 @@ fn container_top_level_properties(
                     ui.end_row();
                 }
 
-                //TODO: gate behind feature flag
-                if ui
-                    .button("Simplify hierarchy")
-                    .on_hover_text("Simplify this container and its children")
-                    .clicked()
-                {
-                    should_simplify_tree = true;
+                // this feature is only available with the new container blueprints feature
+                if ctx.app_options.experimental_container_blueprints {
+                    if ui
+                        .button("Simplify hierarchy")
+                        .on_hover_text("Simplify this container and its children")
+                        .clicked()
+                    {
+                        should_simplify_tree = true;
+                    }
                 }
             });
     }
