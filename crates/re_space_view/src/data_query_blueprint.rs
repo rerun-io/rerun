@@ -236,16 +236,13 @@ impl<'a> QueryExpressionEvaluator<'a> {
         tree: &EntityTree,
         data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
     ) -> Option<DataResultHandle> {
-        // If we hit a prefix that is not allowed, we terminate. This is
-        // a pruned branch of the tree.
-
-        // TODO(emilk): implement this optimization
-        // if self
-        //     .entity_path_filter
-        //     .is_everything_starting_with_excluded(&tree.path)
-        // {
-        //     return None;
-        // }
+        // Early-out optimization
+        if !self
+            .entity_path_filter
+            .is_anything_in_subtree_included(&tree.path)
+        {
+            return None;
+        }
 
         // TODO(jleibs): If this space is disconnected, we should terminate here
 

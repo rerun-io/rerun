@@ -208,6 +208,38 @@ impl EntityPathFilter {
             .iter()
             .any(|(rule, effect)| rule.path == *entity_path && effect == &RuleEffect::Exclude)
     }
+
+    /// Is anything under this path included (including self)?
+    pub fn is_anything_in_subtree_included(&self, path: &EntityPath) -> bool {
+        for (rule, effect) in &self.rules {
+            if effect == &RuleEffect::Include && rule.path.starts_with(path) {
+                return true; // something in this subtree is explicitly included
+            }
+        }
+
+        // We sort the rule by entity path, with recursive coming before non-recursive.
+        // This means the last matching rule is also the most specific one.
+        for (rule, effect) in self.rules.iter().rev() {
+            if rule.matches(path) {
+                match effect {
+                    RuleEffect::Include => {
+                        return true; // the entity (with or without subtree) is explicitly included
+                    }
+                    RuleEffect::Exclude => {
+                        if rule.include_subtree {
+                            // the subtree is explicitly excluded,
+                            // and we've already checked that nothing in the subtree was included.
+                            return false;
+                        } else {
+                            // the entity is excluded, but (maybe!) not thee entire subtree.
+                        }
+                    }
+                }
+            }
+        }
+
+        false // no mathcing rule and we are exclude-by-default.
+    }
 }
 
 impl EntityPathRule {
@@ -345,4 +377,39 @@ fn test_entity_path_filter() {
         EntityPathFilter::parse_forgiving("/**").formatted(),
         "+ /**"
     );
+}
+
+#[test]
+fn test_entity_path_filter_subtree() {
+    let filter = EntityPathFilter::parse_forgiving(
+        r#"
+        + /world/**
+        - /world/car/**
+        + /world/car/driver
+        - /world/car/driver/head/**
+        - /world/city
+        - /world/houses/**
+        "#,
+    );
+
+    for (path, expected) in [
+        ("/2d", false),
+        ("/2d/image", false),
+        ("/world", true),
+        ("/world/car", true),
+        ("/world/car/driver", true),
+        ("/world/car/driver/head", false),
+        ("/world/car/driver/head/ear", false),
+        ("/world/city", true),
+        ("/world/city/block", true),
+        ("/world/houses", false),
+        ("/world/houses/1", false),
+        ("/world/houses/1/roof", false),
+    ] {
+        assert_eq!(
+            filter.is_anything_in_subtree_included(&EntityPath::from(path)),
+            expected,
+            "path: {path:?}",
+        );
+    }
 }
