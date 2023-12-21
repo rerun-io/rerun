@@ -256,7 +256,11 @@ impl ContainerBlueprint {
                     container_kind: kind,
                     display_name: format!("{kind:?}"),
                     contents,
-                    primary_weights: linear.shares.into_iter().map(|(_, share)| *share).collect(),
+                    primary_weights: linear
+                        .children
+                        .iter()
+                        .map(|child| linear.shares[*child])
+                        .collect(),
                     secondary_weights: vec![],
                     active_tab: None,
                 }
