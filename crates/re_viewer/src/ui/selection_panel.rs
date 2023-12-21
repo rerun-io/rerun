@@ -738,7 +738,43 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         re_ui::markdownm_ui(ui, egui::Id::new("entity_path_filter_help_ui"), markdown);
     }
 
-    // TODO(emilk): syntax highlighting
+    fn syntax_highlight_entity_path_filter(
+        style: &egui::Style,
+        mut string: &str,
+    ) -> egui::text::LayoutJob {
+        let font_id = egui::TextStyle::Body.resolve(style);
+
+        let mut job = egui::text::LayoutJob::default();
+
+        while !string.is_empty() {
+            let newline = string.find('\n').unwrap_or(string.len() - 1);
+            let line = &string[..=newline];
+            string = &string[newline + 1..];
+            let is_exclusion = line.trim_start().starts_with('-');
+
+            let color = if is_exclusion {
+                egui::Color32::LIGHT_RED
+            } else {
+                egui::Color32::LIGHT_GREEN
+            };
+
+            let text_format = egui::TextFormat {
+                font_id: font_id.clone(),
+                color,
+                ..Default::default()
+            };
+
+            job.append(line, 0.0, text_format);
+        }
+
+        job
+    }
+
+    fn text_layouter(ui: &egui::Ui, string: &str, wrap_width: f32) -> std::sync::Arc<egui::Galley> {
+        let mut layout_job = syntax_highlight_entity_path_filter(ui.style(), string);
+        layout_job.wrap.max_width = wrap_width;
+        ui.fonts(|f| f.layout_job(layout_job))
+    }
 
     // We store the string we are temporarily editing in the `Ui`'s temporary data storage.
     // This is so it can contain invalid rules while the user edits it, and it's only normalized
@@ -754,7 +790,8 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         ui.label("Entity path filter");
         re_ui::help_hover_button(ui).on_hover_ui(entity_path_filter_help_ui);
     });
-    let response = ui.text_edit_multiline(&mut filter_string);
+    let response =
+        ui.add(egui::TextEdit::multiline(&mut filter_string).layouter(&mut text_layouter));
 
     if response.has_focus() {
         ui.data_mut(|data| data.insert_temp::<String>(filter_text_id, filter_string.clone()));
