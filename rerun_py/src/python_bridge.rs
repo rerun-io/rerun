@@ -902,6 +902,7 @@ fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
     recording=None,
 ))]
 fn log_arrow_msg(
+    py: Python<'_>,
     entity_path: &str,
     components: &PyDict,
     timeless: bool,
@@ -923,6 +924,8 @@ fn log_arrow_msg(
     )?;
 
     recording.record_row(row, !timeless);
+
+    py.allow_threads(flush_garbage_queue);
 
     Ok(())
 }
