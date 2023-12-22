@@ -33,13 +33,20 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 ///
 /// ## Registering custom loaders
 ///
-/// Checkout our [guide](https://www.rerun.io/docs/getting-started/opening-any-file?speculative-link).
+/// Checkout our [guide](https://www.rerun.io/docs/getting-started/open-any-file?speculative-link).
 ///
 /// ## Execution
 ///
-/// **All** registered [`DataLoader`]s get called when a user tries to open a file, unconditionally.
+/// **All** known [`DataLoader`]s get called when a user tries to open a file, unconditionally.
 /// This gives [`DataLoader`]s maximum flexibility to decide what files they are interested in, as
 /// opposed to e.g. only being able to look at files' extensions.
+///
+/// If a [`DataLoader`] has no interest in the given file, it should fail as soon as possible
+/// with a [`DataLoaderError::Incompatible`] error.
+///
+/// Iff all [`DataLoader`]s (including custom and external ones) return with a [`DataLoaderError::Incompatible`]
+/// error, the Viewer will show an error message to the user indicating that the file type is not
+/// supported.
 ///
 /// On native, [`DataLoader`]s are executed in parallel.
 ///
@@ -78,8 +85,8 @@ pub trait DataLoader: Send + Sync {
     /// possible (e.g. didn't even manage to open the file).
     /// Otherwise, they should log errors that happen in an asynchronous context.
     ///
-    /// If a [`DataLoader`] has no interest in the given file, it should successfully return
-    /// without pushing any data into `tx`.
+    /// If a [`DataLoader`] has no interest in the given file, it should fail as soon as possible
+    /// with a [`DataLoaderError::Incompatible`] error.
     #[cfg(not(target_arch = "wasm32"))]
     fn load_from_path(
         &self,
@@ -111,8 +118,8 @@ pub trait DataLoader: Send + Sync {
     /// possible (e.g. didn't even manage to open the file).
     /// Otherwise, they should log errors that happen in an asynchronous context.
     ///
-    /// If a [`DataLoader`] has no interest in the given file, it should successfully return
-    /// without pushing any data into `tx`.
+    /// If a [`DataLoader`] has no interest in the given file, it should fail as soon as possible
+    /// with a [`DataLoaderError::Incompatible`] error.
     fn load_from_file_contents(
         &self,
         store_id: re_log_types::StoreId,
