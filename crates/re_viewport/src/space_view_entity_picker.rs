@@ -6,7 +6,10 @@ use re_data_ui::item_ui;
 use re_log_types::{EntityPathFilter, EntityPathRule};
 use re_viewer_context::{DataQueryResult, SpaceViewId, ViewerContext};
 
-use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint, ViewportBlueprint};
+use crate::{
+    determine_visualizable_entities, space_info::SpaceInfoCollection,
+    space_view::SpaceViewBlueprint, ViewportBlueprint,
+};
 
 /// Window for adding/removing entities from a space view.
 ///
@@ -61,7 +64,8 @@ fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &Spac
     // TODO(jleibs): Avoid clone
     let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
     let entity_path_filter = space_view.entity_path_filter();
-    let entities_add_info = create_entity_add_info(tree, space_view, &query_result, &spaces_info);
+    let entities_add_info =
+        create_entity_add_info(ctx, tree, space_view, &query_result, &spaces_info);
 
     add_entities_tree_ui(
         ctx,
@@ -321,6 +325,7 @@ struct EntityAddInfo {
 }
 
 fn create_entity_add_info(
+    ctx: &ViewerContext<'_>,
     tree: &EntityTree,
     space_view: &SpaceViewBlueprint,
     query_result: &DataQueryResult,
@@ -328,10 +333,22 @@ fn create_entity_add_info(
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
+    // TODO(andreas): This should probably run a regular query to determine all necessary properties.
+    //                Checking for applicability is not enough, we're actually interested in visualizability!
+    let class = space_view.class(ctx.space_view_class_registry);
+    let visualizable_entities = determine_visualizable_entities(
+        ctx.applicable_entities_per_visualizer,
+        ctx.store_db,
+        &ctx.space_view_class_registry
+            .new_part_collection(class.identifier()),
+        class,
+        &space_view.space_origin,
+        &EntityPath::root(),
+    );
+
     tree.visit_children_recursively(&mut |entity_path| {
         let can_add: CanAddToSpaceView =
-            // TODO: filter for visibility
-            if true { //is_entity_processed_by_class(ctx, *space_view.class_identifier(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
+            if visualizable_entities.iter().any(|(_, entities)| entities.contains(entity_path)) {
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
                         already_added: query_result.contains_any(entity_path),
