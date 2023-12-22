@@ -2,7 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 
 use itertools::Itertools;
 use pyo3::{
@@ -11,8 +11,6 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-//use re_viewer_context::SpaceViewId;
-//use re_viewport::{SpaceViewBlueprint, VIEWPORT_PATH};
 use re_viewport::VIEWPORT_PATH;
 
 use re_log_types::{DataRow, EntityPathPart, StoreKind};
@@ -37,8 +35,7 @@ use re_ws_comms::RerunServerPort;
 
 // --- FFI ---
 
-use once_cell::sync::{Lazy, OnceCell};
-use parking_lot::Mutex;
+use once_cell::sync::Lazy;
 
 type GarbageChunk = arrow2::chunk::Chunk<Box<dyn arrow2::array::Array>>;
 type GarbageSender = crossbeam::channel::Sender<GarbageChunk>;
@@ -648,7 +645,6 @@ impl PyMemorySinkStorage {
 #[cfg(feature = "web_viewer")]
 #[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
 fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
-    use once_cell::sync::Lazy;
     static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
         Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
     TOKIO_RUNTIME.enter()
