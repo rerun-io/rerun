@@ -2,6 +2,14 @@
 // Rerun uses fairly strict warning settings.
 // Suppress the warnings by treating this as a system header.
 #pragma GCC system_header
+
+// Due to GCC bug any use of regex may cause `maybe-uninitialized` warnings when using address sanitizers.
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105562
+#pragma GCC diagnostic push
+#if defined __SANITIZE_ADDRESS__ && defined __OPTIMIZE__
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 #endif
 
 /*
@@ -2184,3 +2192,7 @@ namespace cxxopts {
 } // namespace cxxopts
 
 #endif //CXXOPTS_HPP_INCLUDED
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
