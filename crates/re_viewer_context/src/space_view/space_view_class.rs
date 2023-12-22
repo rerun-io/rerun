@@ -61,8 +61,10 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority;
 
-    // TODO: docs
-    // TODO: in the future this should not have store access directly, but instead subscribe.
+    /// Create context object that is passed to all of this classes visualizers
+    /// to determine whether they can be visualized
+    ///
+    /// See [`crate::ViewPartSystem::filter_visualizable_entities`].
     fn visualizable_filter_context(
         &self,
         _space_origin: &EntityPath,
