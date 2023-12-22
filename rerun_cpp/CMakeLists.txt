@@ -19,7 +19,8 @@ file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
 
 add_library(rerun_sdk ${rerun_sdk_SRC} ${rerun_sdk_PUBLIC_HEADER})
 
-# Make sure the compiler can find include files for rerun when other libraries or executables link to rerun:
+# Make sure the compiler can find include files for rerun when other libraries or executables link to rerun.
+# Mark include directories as system includes to suppress warnings from them.
 target_include_directories(rerun_sdk PUBLIC
     $<BUILD_INTERFACE:${RERUN_CPP_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>

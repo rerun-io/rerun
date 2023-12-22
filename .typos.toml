@@ -8,6 +8,7 @@ extend-exclude = [
   "crates/re_ui/data/design_tokens.json",
   "crates/re_ui/src/design_tokens.rs",
   "examples/assets",
+  "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
 ]
 
 

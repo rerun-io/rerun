@@ -54,6 +54,9 @@ cpp-build-doc-examples:
 cpp-test:
     pixi run cpp-test
 
+cpp-plot-dashboard *ARGS:
+    pixi run cpp-plot-dashboard {{ARGS}}
+
 
 ### Python
 
