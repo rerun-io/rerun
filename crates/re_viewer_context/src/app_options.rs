@@ -41,6 +41,9 @@ pub struct AppOptions {
     /// Includes the blueprint in the timeline view.
     pub show_blueprint_in_timeline: bool,
 
+    /// Includes the blueprint in the timeline view.
+    pub disable_blueprint_gc: bool,
+
     /// What time zone to display timestamps in.
     pub time_zone_for_timestamps: TimeZone,
 }
@@ -70,6 +73,8 @@ impl Default for AppOptions {
             show_picking_debug_overlay: false,
 
             show_blueprint_in_timeline: false,
+
+            disable_blueprint_gc: false,
 
             time_zone_for_timestamps: TimeZone::Utc,
         }
