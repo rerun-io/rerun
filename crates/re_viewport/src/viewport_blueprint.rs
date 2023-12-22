@@ -527,7 +527,7 @@ impl ViewportBlueprint {
         // by any tiles.
         for (container_id, container) in &self.containers {
             let tile_id = blueprint_id_to_tile_id(container_id);
-            if !contents_from_tile_id.contains_key(&tile_id) {
+            if tree.tiles.get(tile_id).is_none() {
                 container.clear(ctx);
             }
         }
