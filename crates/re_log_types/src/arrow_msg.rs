@@ -21,6 +21,7 @@ pub struct ArrowChunkReleaseCallback(Arc<dyn Fn(Chunk<Box<dyn Array>>) + Send + 
 impl std::ops::Deref for ArrowChunkReleaseCallback {
     type Target = dyn Fn(Chunk<Box<dyn Array>>) + Send + Sync;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &*self.0
     }

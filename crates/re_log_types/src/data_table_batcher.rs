@@ -65,7 +65,7 @@ pub struct DataTableBatcherConfig {
     /// Unbounded if left unspecified.
     pub max_tables_in_flight: Option<u64>,
 
-    /// Callback to be run when an Arrow [`Chunk`] goes out of scope.
+    /// Callback to be run when an Arrow Chunk` goes out of scope.
     ///
     /// See [`crate::ArrowChunkReleaseCallback`] for more information.
     pub on_release: Option<crate::ArrowChunkReleaseCallback>,

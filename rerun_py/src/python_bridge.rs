@@ -48,11 +48,11 @@ type GarbageReceiver = crossbeam::channel::Receiver<GarbageChunk>;
 ///
 /// This is an issue in this case because running that callback will likely try and grab the GIL,
 /// which is something that should only happen at very specific times, else we end up with deadlocks,
-/// segfaults, aborts...
+/// segfaults, aborts…
 ///
 /// ## The garbage queue
 ///
-/// When a [`LogMsg`] that was logged from Python gets dropped on the Rust side, it will end up
+/// When a [`re_log_types::LogMsg`] that was logged from Python gets dropped on the Rust side, it will end up
 /// in this queue.
 ///
 /// The mere fact that the data still exists in this queue prevents the underlying Arrow refcount
@@ -82,8 +82,10 @@ fn flush_garbage_queue() {
 #[cfg(feature = "web_viewer")]
 fn global_web_viewer_server(
 ) -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServerHandle>> {
-    static WEB_HANDLE: OnceCell<Mutex<Option<re_web_viewer_server::WebViewerServerHandle>>> =
-        OnceCell::new();
+    use once_cell::sync::OnceCell;
+    static WEB_HANDLE: OnceCell<
+        parking_lot::Mutex<Option<re_web_viewer_server::WebViewerServerHandle>>,
+    > = OnceCell::new();
     WEB_HANDLE.get_or_init(Default::default).lock()
 }
 
