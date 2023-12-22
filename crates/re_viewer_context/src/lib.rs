@@ -17,6 +17,7 @@ mod space_view;
 mod store_context;
 mod tensor;
 mod time_control;
+mod typed_entity_collections;
 mod utils;
 mod viewer_context;
 
@@ -41,18 +42,20 @@ pub use selection_state::{
     Selection, SelectionHighlight,
 };
 pub use space_view::{
-    AutoSpawnHeuristic, DataResult, DynSpaceViewClass, HeuristicFilterContext,
-    IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities, PropertyOverrides,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
-    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContextCollection, ViewContextSystem,
-    ViewPartCollection, ViewPartSystem, ViewQuery, ViewSystemIdentifier,
-    VisualizerAdditionalApplicabilityFilter,
+    AutoSpawnHeuristic, DataResult, DynSpaceViewClass, IdentifiedViewSystem, PerSystemDataResults,
+    PerSystemEntities, PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier,
+    SpaceViewClassLayoutPriority, SpaceViewClassRegistry, SpaceViewClassRegistryError,
+    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
+    ViewContextCollection, ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
+    ViewSystemIdentifier, VisualizerAdditionalApplicabilityFilter,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
+pub use typed_entity_collections::{
+    ApplicableEntities, IndicatorMatchingEntities, PerVisualizer, VisualizableEntities,
+};
 pub use utils::{auto_color, level_to_rich_text, DefaultColor};
 pub use viewer_context::{RecordingConfig, ViewerContext};
 
@@ -67,13 +70,6 @@ pub mod external {
 }
 
 // ---------------------------------------------------------------------------
-
-use nohash_hasher::{IntMap, IntSet};
-use re_log_types::EntityPath;
-
-pub type EntitiesPerSystem = IntMap<ViewSystemIdentifier, IntSet<EntityPath>>;
-
-pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassIdentifier, EntitiesPerSystem>;
 
 slotmap::new_key_type! {
     /// Identifier for a blueprint group.

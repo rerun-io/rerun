@@ -7,13 +7,8 @@ use re_log_types::{EntityPathFilter, EntityPathRule};
 use re_viewer_context::{DataQueryResult, SpaceViewId, ViewerContext};
 
 use crate::{
-    space_info::SpaceInfoCollection,
-    space_view::SpaceViewBlueprint,
-    space_view_heuristics::{
-        compute_heuristic_context_for_entities, is_entity_processed_by_class,
-        HeuristicFilterContextPerEntity,
-    },
-    ViewportBlueprint,
+    determine_visualizable_entities, space_info::SpaceInfoCollection,
+    space_view::SpaceViewBlueprint, ViewportBlueprint,
 };
 
 /// Window for adding/removing entities from a space view.
@@ -66,18 +61,11 @@ fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &Spac
 
     let spaces_info = SpaceInfoCollection::new(ctx.store_db);
     let tree = &ctx.store_db.tree();
-    let heuristic_context_per_entity = compute_heuristic_context_for_entities(ctx.store_db);
     // TODO(jleibs): Avoid clone
     let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
     let entity_path_filter = space_view.entity_path_filter();
-    let entities_add_info = create_entity_add_info(
-        ctx,
-        tree,
-        &heuristic_context_per_entity,
-        space_view,
-        &query_result,
-        &spaces_info,
-    );
+    let entities_add_info =
+        create_entity_add_info(ctx, tree, space_view, &query_result, &spaces_info);
 
     add_entities_tree_ui(
         ctx,
@@ -339,17 +327,28 @@ struct EntityAddInfo {
 fn create_entity_add_info(
     ctx: &ViewerContext<'_>,
     tree: &EntityTree,
-    heuristic_context_per_entity: &HeuristicFilterContextPerEntity,
     space_view: &SpaceViewBlueprint,
     query_result: &DataQueryResult,
     spaces_info: &SpaceInfoCollection,
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
+    // TODO(andreas): This should be state that is already available because it's part of the space view's state.
+    let class = space_view.class(ctx.space_view_class_registry);
+    let visualizable_entities = determine_visualizable_entities(
+        ctx.applicable_entities_per_visualizer,
+        ctx.store_db,
+        &ctx.space_view_class_registry
+            .new_part_collection(class.identifier()),
+        class,
+        &space_view.space_origin,
+    );
+
     tree.visit_children_recursively(&mut |entity_path| {
-        let heuristic_context_per_entity = heuristic_context_per_entity.get(entity_path).copied().unwrap_or_default();
         let can_add: CanAddToSpaceView =
-            if is_entity_processed_by_class(ctx, *space_view.class_identifier(), entity_path, heuristic_context_per_entity) {
+            if visualizable_entities.iter().any(|(_, entities)| entities.contains(entity_path)) {
+                // TODO(andreas): (topological) reachability should be part of visualizability.
+                //                Yes, this means that once an entity is no longer visualizable (due to pinhole etc.) it stays this way.
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
                         already_added: query_result.contains_any(entity_path),

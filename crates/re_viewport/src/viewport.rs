@@ -254,9 +254,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         if self.blueprint.auto_space_views {
             let mut new_space_views = vec![];
-            for space_view_candidate in
-                default_created_space_views(ctx, spaces_info, ctx.entities_per_system_per_class)
-            {
+            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
                 if self.should_auto_add_space_view(&new_space_views, &space_view_candidate) {
                     new_space_views.push(space_view_candidate);
                 }

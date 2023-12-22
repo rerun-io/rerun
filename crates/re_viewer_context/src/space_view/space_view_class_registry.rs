@@ -1,11 +1,10 @@
 use ahash::{HashMap, HashSet};
-use nohash_hasher::{IntMap, IntSet};
 use re_arrow_store::DataStore;
-use re_log_types::{EntityPath, EntityPathHash};
 
 use crate::{
-    DynSpaceViewClass, IdentifiedViewSystem, SpaceViewClassIdentifier, ViewContextCollection,
-    ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemIdentifier,
+    ApplicableEntities, DynSpaceViewClass, IdentifiedViewSystem, IndicatorMatchingEntities,
+    PerVisualizer, SpaceViewClassIdentifier, ViewContextCollection, ViewContextSystem,
+    ViewPartCollection, ViewPartSystem, ViewSystemIdentifier,
 };
 
 use super::{
@@ -278,46 +277,56 @@ impl SpaceViewClassRegistry {
         self.space_view_classes.values()
     }
 
-    /// Returns the set of entities that are applicable to the given visualizer.
+    /// For each visualizer, return the set of entities that is applicable to it.
     ///
-    /// The list is kept up to date by a store subscriber.
-    pub fn applicable_entities_for_visualizer_system(
+    /// The list is kept up to date by store subscribers.
+    pub fn applicable_entities_for_visualizer_systems(
         &self,
-        visualizer: ViewSystemIdentifier,
         store_id: &re_log_types::StoreId,
-    ) -> Option<IntSet<EntityPath>> {
-        self.visualizers.get(&visualizer).and_then(|entry| {
-            DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
-                entry.entity_subscriber_handle,
-                |subscriber| subscriber.applicable_entities(store_id).cloned(),
-            )
-            .flatten()
-        })
+    ) -> PerVisualizer<ApplicableEntities> {
+        re_tracing::profile_function!();
+
+        PerVisualizer::<ApplicableEntities>(
+            self.visualizers
+                .iter()
+                .map(|(id, entry)| {
+                    (
+                        *id,
+                        DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
+                            entry.entity_subscriber_handle,
+                            |subscriber| subscriber.applicable_entities(store_id).cloned(),
+                        )
+                        .flatten()
+                        .unwrap_or_default(),
+                    )
+                })
+                .collect(),
+        )
     }
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.
-    pub fn entities_with_matching_indicator_per_visualizer(
+    pub fn indicator_matching_entities_per_visualizer(
         &self,
         store_id: &re_log_types::StoreId,
-    ) -> IntMap<ViewSystemIdentifier, IntSet<EntityPathHash>> {
-        self.visualizers
-            .iter()
-            .map(|(id, entry)| {
-                (
-                    *id,
-                    DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
-                        entry.entity_subscriber_handle,
-                        |subscriber| {
-                            subscriber
-                                .entities_with_matching_indicator(store_id)
-                                .cloned()
-                        },
+    ) -> PerVisualizer<IndicatorMatchingEntities> {
+        re_tracing::profile_function!();
+
+        PerVisualizer::<IndicatorMatchingEntities>(
+            self.visualizers
+                .iter()
+                .map(|(id, entry)| {
+                    (
+                        *id,
+                        DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
+                            entry.entity_subscriber_handle,
+                            |subscriber| subscriber.indicator_matching_entities(store_id).cloned(),
+                        )
+                        .flatten()
+                        .unwrap_or_default(),
                     )
-                    .flatten()
-                    .unwrap_or_default(),
-                )
-            })
-            .collect()
+                })
+                .collect(),
+        )
     }
 
     pub fn new_context_collection(

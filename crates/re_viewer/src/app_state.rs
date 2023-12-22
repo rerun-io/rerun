@@ -9,7 +9,7 @@ use re_viewer_context::{
     RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{
-    identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportBlueprint,
+    determine_visualizable_entities, SpaceInfoCollection, Viewport, ViewportBlueprint,
     ViewportState,
 };
 
@@ -139,15 +139,10 @@ impl AppState {
         let rec_cfg =
             recording_config_entry(recording_configs, store_db.store_id().clone(), store_db);
 
-        // Gather all entities that have a matching indicator for a visualizer.
-        let entities_with_matching_indicator_per_visualizer = space_view_class_registry
-            .entities_with_matching_indicator_per_visualizer(store_db.store_id());
-
-        let entities_per_system_per_class = identify_entities_per_system_per_class(
-            &entities_with_matching_indicator_per_visualizer,
-            space_view_class_registry,
-            store_db,
-        );
+        let applicable_entities_per_visualizer = space_view_class_registry
+            .applicable_entities_for_visualizer_systems(store_db.store_id());
+        let indicator_matching_entities_per_visualizer = space_view_class_registry
+            .indicator_matching_entities_per_visualizer(store_db.store_id());
 
         // Execute the queries for every `SpaceView`
         let mut query_results = {
@@ -157,16 +152,32 @@ impl AppState {
                 .space_views
                 .values()
                 .flat_map(|space_view| {
-                    space_view.queries.iter().filter_map(|query| {
-                        entities_per_system_per_class
-                            .get(&query.space_view_class_identifier)
-                            .map(|entities_per_system| {
-                                (
-                                    query.id,
-                                    query.execute_query(store_context, entities_per_system),
-                                )
-                            })
-                    })
+                    // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
+                    // Note that right now we determine *all* visualizable entities, not just the queried ones.
+                    // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+                    let visualizable_entities = determine_visualizable_entities(
+                        &applicable_entities_per_visualizer,
+                        store_db,
+                        &space_view_class_registry
+                            .new_part_collection(*space_view.class_identifier()),
+                        space_view.class(space_view_class_registry),
+                        &space_view.space_origin,
+                    );
+
+                    space_view
+                        .queries
+                        .iter()
+                        .map(|query| {
+                            (
+                                query.id,
+                                query.execute_query(
+                                    store_context,
+                                    &visualizable_entities,
+                                    &indicator_matching_entities_per_visualizer,
+                                ),
+                            )
+                        })
+                        .collect::<Vec<_>>()
                 })
                 .collect::<_>()
         };
@@ -178,9 +189,8 @@ impl AppState {
             component_ui_registry,
             store_db,
             store_context,
-            entities_per_system_per_class: &entities_per_system_per_class,
-            entities_with_matching_indicator_per_visualizer:
-                &entities_with_matching_indicator_per_visualizer,
+            applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
+            indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
             re_ui,
@@ -197,6 +207,7 @@ impl AppState {
 
         {
             re_tracing::profile_scope!("updated_query_results");
+
             for space_view in viewport.blueprint.space_views.values() {
                 for query in &space_view.queries {
                     if let Some(query_result) = query_results.get_mut(&query.id) {
@@ -217,9 +228,8 @@ impl AppState {
             component_ui_registry,
             store_db,
             store_context,
-            entities_per_system_per_class: &entities_per_system_per_class,
-            entities_with_matching_indicator_per_visualizer:
-                &entities_with_matching_indicator_per_visualizer,
+            applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
+            indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
             re_ui,

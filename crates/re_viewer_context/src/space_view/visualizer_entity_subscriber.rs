@@ -1,13 +1,16 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
 use itertools::Itertools;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 
 use re_arrow_store::StoreSubscriber;
-use re_log_types::{EntityPath, EntityPathHash, StoreId};
+use re_log_types::{EntityPathHash, StoreId};
 use re_types::{ComponentName, ComponentNameSet};
 
-use crate::{IdentifiedViewSystem, ViewPartSystem, ViewSystemIdentifier};
+use crate::{
+    ApplicableEntities, IdentifiedViewSystem, IndicatorMatchingEntities, ViewPartSystem,
+    ViewSystemIdentifier,
+};
 
 /// A store subscriber that keep track which entities in a store can be
 /// processed by a single given visualizer type.
@@ -73,14 +76,10 @@ struct VisualizerEntityMapping {
     required_component_and_filter_bitmap_per_entity: IntMap<EntityPathHash, BitVec>,
 
     /// Which entities the visualizer can be applied to.
-    ///
-    /// Guaranteed to not have any duplicate entries.
-    /// Order is not defined.
-    // TODO(andreas): It would be nice if these were just `EntityPathHash`.
-    applicable_entities: IntSet<EntityPath>,
+    applicable_entities: ApplicableEntities,
 
     /// List of all entities in this store that at some point in time had any of the indicator components.
-    entities_with_matching_indicator: IntSet<EntityPathHash>,
+    indicator_matching_entities: IndicatorMatchingEntities,
 }
 
 impl VisualizerEntitySubscriber {
@@ -103,7 +102,7 @@ impl VisualizerEntitySubscriber {
 
     /// List of entities that are applicable to the visualizer.
     #[inline]
-    pub fn applicable_entities(&self, store: &StoreId) -> Option<&IntSet<EntityPath>> {
+    pub fn applicable_entities(&self, store: &StoreId) -> Option<&ApplicableEntities> {
         self.per_store_mapping
             .get(store)
             .map(|mapping| &mapping.applicable_entities)
@@ -113,13 +112,13 @@ impl VisualizerEntitySubscriber {
     ///
     /// Useful for quickly evaluating basic "should this visualizer apply by default"-heuristic.
     /// Does *not* imply that any of the given entities is also in the applicable-set!
-    pub fn entities_with_matching_indicator(
+    pub fn indicator_matching_entities(
         &self,
         store: &StoreId,
-    ) -> Option<&IntSet<EntityPathHash>> {
+    ) -> Option<&IndicatorMatchingEntities> {
         self.per_store_mapping
             .get(store)
-            .map(|mapping| &mapping.entities_with_matching_indicator)
+            .map(|mapping| &mapping.indicator_matching_entities)
     }
 }
 
@@ -165,7 +164,8 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
                 .any(|component_name| event.diff.cells.keys().contains(component_name))
             {
                 store_mapping
-                    .entities_with_matching_indicator
+                    .indicator_matching_entities
+                    .0
                     .insert(entity_path_hash);
             }
 
@@ -207,6 +207,7 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
 
                 store_mapping
                     .applicable_entities
+                    .0
                     .insert(entity_path.clone());
             }
         }
