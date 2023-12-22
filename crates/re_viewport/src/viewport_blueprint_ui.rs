@@ -66,7 +66,7 @@ impl Viewport<'_, '_> {
         tile_id: egui_tiles::TileId,
         container: &egui_tiles::Container,
     ) {
-        // TODO(#4285): this hack should be cleaned with "blueprintified" containers
+        // TODO(#4285): this will disappear once we walk the container blueprint tree instead of `egui_tiles::Tree`
         if let (egui_tiles::Container::Tabs(_), Some(child_id)) =
             (container, container.only_child())
         {

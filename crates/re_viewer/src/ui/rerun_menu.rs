@@ -371,6 +371,17 @@ impl App {
             )
             .on_hover_text("Load and save the container state using new container archetypes");
 
+        self.re_ui
+            .checkbox(
+                ui,
+                &mut self.state.app_options.experimental_additive_workflow,
+                "Use experimental container addition workflow",
+            )
+            .on_hover_text("This flag enables the following things:\n\n\
+                - Significantly reduce the simplification that automatically run on the container tree.\n\
+                - The 'Content' list in the selection panel when container are selected.\n\
+                - The related 'Add space view/container' modal");
+
         ui.menu_button("Crash", |ui| {
             #[allow(clippy::manual_assert)]
             if ui.button("panic!").clicked() {

@@ -134,7 +134,7 @@ impl SelectionPanel {
 
                         // the container children and related additive workflow is only available with the new container
                         // blueprints feature
-                        if ctx.app_options.experimental_container_blueprints {
+                        if ctx.app_options.experimental_additive_workflow {
                             ui.add_space(12.0);
                             self.container_children(ui, ctx, viewport, tile_id);
                         }
@@ -490,9 +490,6 @@ fn container_top_level_properties(
     viewport: &mut Viewport<'_, '_>,
     tile_id: &egui_tiles::TileId,
 ) {
-    // This action is deferred to the end of the function to please the borrow checker.
-    let mut should_simplify_tree = false;
-
     if let Some(Tile::Container(container)) = viewport.tree.tiles.get_mut(*tile_id) {
         egui::Grid::new("container_top_level_properties")
             .num_columns(2)
@@ -571,30 +568,26 @@ fn container_top_level_properties(
                 }
 
                 // this feature is only available with the new container blueprints feature
-                if ctx.app_options.experimental_container_blueprints {
+                if ctx.app_options.experimental_additive_workflow {
                     if ui
                         .button("Simplify hierarchy")
                         .on_hover_text("Simplify this container and its children")
                         .clicked()
                     {
-                        should_simplify_tree = true;
+                        viewport.blueprint.simplify_tree(
+                            *tile_id,
+                            egui_tiles::SimplificationOptions {
+                                prune_empty_tabs: true,
+                                prune_empty_containers: true,
+                                prune_single_child_tabs: false,
+                                prune_single_child_containers: false,
+                                all_panes_must_have_tabs: true,
+                                join_nested_linear_containers: true,
+                            },
+                        );
                     }
                 }
             });
-    }
-
-    if should_simplify_tree {
-        viewport.blueprint.simplify_tree(
-            *tile_id,
-            egui_tiles::SimplificationOptions {
-                prune_empty_tabs: true,
-                prune_empty_containers: true,
-                prune_single_child_tabs: false,
-                prune_single_child_containers: false,
-                all_panes_must_have_tabs: true,
-                join_nested_linear_containers: true,
-            },
-        );
     }
 }
 

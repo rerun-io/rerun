@@ -151,21 +151,7 @@ impl ViewportBlueprint {
         };
 
         if app_options.experimental_container_blueprints {
-            let mut tree = blueprint.build_tree_from_containers();
-
-            // TODO(abey79): Figure out if we want to simplify here or not.
-            if false {
-                let options = egui_tiles::SimplificationOptions {
-                    all_panes_must_have_tabs: true,
-                    ..Default::default()
-                };
-
-                tree.simplify(&options);
-            }
-
-            //re_log::trace!("shadow_tree: {shadow_tree:#?}");
-
-            blueprint.tree = tree;
+            blueprint.tree = blueprint.build_tree_from_containers();
         }
 
         blueprint

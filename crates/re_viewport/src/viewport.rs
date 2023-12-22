@@ -13,8 +13,8 @@ use re_data_ui::item_ui;
 
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId, SpaceViewState,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    AppOptions, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
+    SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -93,6 +93,27 @@ pub enum TreeAction {
 
     /// Simplify the specified subtree with the provided options
     SimplifyTree(egui_tiles::TileId, egui_tiles::SimplificationOptions),
+}
+
+fn tree_simplification_option_for_app_options(
+    app_options: &AppOptions,
+) -> egui_tiles::SimplificationOptions {
+    if app_options.experimental_additive_workflow {
+        // If the user is using the additive workflow, we don't want to aggressively simplify the tree.
+        egui_tiles::SimplificationOptions {
+            prune_empty_tabs: false,
+            all_panes_must_have_tabs: true,
+            prune_empty_containers: false,
+            prune_single_child_tabs: false,
+            prune_single_child_containers: false,
+            join_nested_linear_containers: true,
+        }
+    } else {
+        egui_tiles::SimplificationOptions {
+            all_panes_must_have_tabs: true,
+            ..Default::default()
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -416,19 +437,11 @@ impl<'a, 'b> Viewport<'a, 'b> {
         // This is a no-op if the tree hasn't changed.
         if ctx.app_options.experimental_container_blueprints {
             if self.edited {
-                // TODO(abey79): Decide what simplification to do here. Some of this
-                // might need to get rolled into the save logic instead.
-
-                if false {
-                    // Simplify before we save the tree. Normally additional simplification will
-                    // happen on the next render loop, but that's too late -- unsimplified
-                    // changes will be baked into the tree.
-                    let options = egui_tiles::SimplificationOptions {
-                        all_panes_must_have_tabs: true,
-                        ..Default::default()
-                    };
-                    self.tree.simplify(&options);
-                }
+                // Simplify before we save the tree. Normally additional simplification will
+                // happen on the next render loop, but that's too late -- unsimplified
+                // changes will be baked into the tree.
+                let options = tree_simplification_option_for_app_options(&ctx.app_options);
+                self.tree.simplify(&options);
 
                 self.blueprint.save_tree_as_containers(&self.tree, ctx);
             }
@@ -695,14 +708,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     ///
     /// These options are applied on every frame by `egui_tiles`.
     fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
-        egui_tiles::SimplificationOptions {
-            prune_empty_tabs: false,
-            all_panes_must_have_tabs: true,
-            prune_empty_containers: false,
-            prune_single_child_tabs: false,
-            prune_single_child_containers: false,
-            join_nested_linear_containers: true,
-        }
+        tree_simplification_option_for_app_options(&self.ctx.app_options)
     }
 
     // Callbacks:

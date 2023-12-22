@@ -17,8 +17,11 @@ pub struct AppOptions {
     /// Enable experimental dataframe space views.
     pub experimental_dataframe_space_view: bool,
 
-    /// Enable experimental support for new container blueprints
+    /// Enable experimental support for new container blueprints.
     pub experimental_container_blueprints: bool,
+
+    /// Enable the experimental support for the container addition workflow.
+    pub experimental_additive_workflow: bool,
 
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
@@ -44,6 +47,8 @@ impl Default for AppOptions {
             experimental_dataframe_space_view: false,
 
             experimental_container_blueprints: cfg!(debug_assertions),
+
+            experimental_additive_workflow: cfg!(debug_assertions),
 
             show_picking_debug_overlay: false,
 
