@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
 
     const auto num_plots = args["num-plots"].as<uint64_t>();
     const auto num_series_per_plot = args["num-series-per-plot"].as<uint64_t>();
-    const auto num_points_per_series = args["num-points-per-series"].as<int64_t>();
+    const auto num_points_per_series = args["num-points-per-series"].as<uint64_t>();
 
     std::vector<std::string> plot_paths;
     plot_paths.reserve(num_plots);
@@ -92,15 +92,15 @@ int main(int argc, char** argv) {
     const auto order = args["order"].as<std::string>();
 
     if (order == "forwards") {
-        for (int64_t i = 0; i < num_points_per_series; ++i) {
+        for (int64_t i = 0; i < static_cast<int64_t>(num_points_per_series); ++i) {
             sim_times.push_back(i);
         }
     } else if (order == "backwards") {
-        for (int64_t i = num_points_per_series; i > 0; --i) {
+        for (int64_t i = static_cast<int64_t>(num_points_per_series); i > 0; --i) {
             sim_times.push_back(i - 1);
         }
     } else if (order == "random") {
-        for (int64_t i = 0; i < num_points_per_series; ++i) {
+        for (int64_t i = 0; i < static_cast<int64_t>(num_points_per_series); ++i) {
             sim_times.push_back(i);
         }
         std::shuffle(sim_times.begin(), sim_times.end(), rng);
