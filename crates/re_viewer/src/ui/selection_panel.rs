@@ -444,7 +444,11 @@ fn container_top_level_properties(
                         );
                     });
 
-                container.set_kind(container_kind);
+                if container.kind() != container_kind {
+                    viewport
+                        .blueprint
+                        .set_container_kind(*tile_id, container_kind);
+                }
 
                 ui.end_row();
 
@@ -521,7 +525,7 @@ fn blueprint_ui(
                 {
                     if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                         let new_space_view = space_view.duplicate();
-                        viewport.blueprint.add_space_views(std::iter::once(new_space_view), ctx, &mut viewport.deferred_tree_actions);
+                        viewport.blueprint.add_space_views(std::iter::once(new_space_view), ctx, None, true);
                         viewport.blueprint.mark_user_interaction(ctx);
                     }
                 }
