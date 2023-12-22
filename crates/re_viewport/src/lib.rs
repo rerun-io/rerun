@@ -64,16 +64,20 @@ fn query_pinhole(
 }
 
 // TODO(andreas): Untangle this: Visibility set is needed on several places, therefore store as part of the space view state (?)
+/// Determines the set of visible entities for a given space view.
+///
+/// `filter_subtree` is a filter used to speed up the collection. Specify the root if no filter is needed.
 pub fn determine_visualizable_entities(
     applicable_entities_per_visualizer: &ApplicableEntitiesPerVisualizer,
     store_db: &StoreDb,
     visualizers: &re_viewer_context::ViewPartCollection,
     class: &dyn DynSpaceViewClass,
     space_origin: &EntityPath,
+    filter_subtree: &EntityPath,
 ) -> VisualizableEntitiesPerVisualizer {
     re_tracing::profile_function!();
 
-    let filter_ctx = class.visualizable_filter_context(space_origin, store_db);
+    let filter_ctx = class.visualizable_filter_context(space_origin, store_db, filter_subtree);
 
     VisualizableEntitiesPerVisualizer(
         visualizers
@@ -82,11 +86,19 @@ pub fn determine_visualizable_entities(
                 let entities = if let Some(applicable_entities) =
                     applicable_entities_per_visualizer.get(&visualizer_identifier)
                 {
+                    let mut entities = VisualizableEntities(
+                        applicable_entities
+                            .iter()
+                            .filter(|entity| entity.starts_with(filter_subtree))
+                            .cloned()
+                            .collect(),
+                    );
                     visualizer_system.filter_visualizable_entities(
-                        applicable_entities,
+                        &mut entities,
                         store_db.store(),
                         &filter_ctx,
-                    )
+                    );
+                    entities
                 } else {
                     VisualizableEntities::default()
                 };

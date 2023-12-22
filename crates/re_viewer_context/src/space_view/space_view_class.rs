@@ -67,6 +67,7 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
         &self,
         _space_origin: &EntityPath,
         _store_db: &re_data_store::StoreDb,
+        _filter_subtree: &EntityPath,
     ) -> Box<dyn std::any::Any> {
         Box::new(())
     }
@@ -188,8 +189,9 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         &self,
         space_origin: &EntityPath,
         store_db: &re_data_store::StoreDb,
+        filter_subtree: &EntityPath,
     ) -> Box<dyn std::any::Any> {
-        self.visualizable_filter_context(space_origin, store_db)
+        self.visualizable_filter_context(space_origin, store_db, filter_subtree)
     }
 
     #[inline]

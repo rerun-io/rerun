@@ -22,7 +22,6 @@ use re_viewer_context::{
     gpu_bridge, DefaultColor, IdentifiedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError,
     TensorDecodeCache, TensorStatsCache, ViewContextCollection, ViewPartSystem, ViewQuery,
     ViewerContext, VisualizableEntities, VisualizerAdditionalApplicabilityFilter,
-    VisualizerApplicableEntities,
 };
 
 use crate::{
@@ -693,12 +692,12 @@ impl ViewPartSystem for ImagesPart {
 
     fn filter_visualizable_entities(
         &self,
-        entities: &VisualizerApplicableEntities,
+        entities: &mut VisualizableEntities,
         _store: &re_arrow_store::DataStore,
         context: &dyn std::any::Any,
-    ) -> VisualizableEntities {
+    ) {
         re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
+        filter_visualizable_2d_entities(entities, context);
     }
 
     fn execute(

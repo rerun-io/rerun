@@ -59,13 +59,6 @@ pub fn all_possible_space_views(
     // For each candidate, create space views for all possible classes.
     candidate_space_view_paths(ctx, spaces_info)
         .flat_map(|candidate_space_path| {
-            let reachable_entities =
-                reachable_entities_from_root(candidate_space_path, spaces_info);
-            if reachable_entities.is_empty() {
-                return Vec::new();
-            }
-
-            // TODO: only running on applicable is too weak of a filter
             ctx.space_view_class_registry
                 .iter_registry()
                 .filter_map(|entry| {
@@ -98,6 +91,7 @@ pub fn all_possible_space_views(
                         &ctx.space_view_class_registry
                             .new_part_collection(class_identifier),
                         entry.class.as_ref(),
+                        candidate_space_path,
                         candidate_space_path,
                     );
 
@@ -412,32 +406,4 @@ pub fn default_created_space_views(
     }
 
     space_views.into_iter().map(|(s, _)| s).collect()
-}
-
-pub fn reachable_entities_from_root(
-    root: &EntityPath,
-    spaces_info: &SpaceInfoCollection,
-) -> Vec<EntityPath> {
-    re_tracing::profile_function!();
-
-    let mut entities = Vec::new();
-    let space_info = spaces_info.get_first_parent_with_info(root);
-
-    if &space_info.path == root {
-        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            entities.extend(space_info.descendants_without_transform.iter().cloned());
-        });
-    } else {
-        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            entities.extend(
-                space_info
-                    .descendants_without_transform
-                    .iter()
-                    .filter(|ent_path| ent_path.starts_with(root))
-                    .cloned(),
-            );
-        });
-    }
-
-    entities
 }

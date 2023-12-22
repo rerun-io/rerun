@@ -33,7 +33,6 @@ use re_types::Archetype;
 use re_viewer_context::{
     auto_color, Annotations, DefaultColor, ResolvedAnnotationInfos, SpaceViewClassRegistryError,
     SpaceViewSystemRegistrator, ViewPartCollection, ViewQuery, VisualizableEntities,
-    VisualizerApplicableEntities,
 };
 
 use crate::space_view_3d::VisualizableFilterContext3D;
@@ -344,19 +343,10 @@ pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
 }
 
 fn filter_visualizable_2d_entities(
-    entities: &VisualizerApplicableEntities,
+    entities: &mut VisualizableEntities,
     context: &dyn std::any::Any,
-) -> VisualizableEntities {
-    VisualizableEntities(
-        if let Some(context) = context.downcast_ref::<VisualizableFilterContext3D>() {
-            entities
-                .0
-                .iter()
-                .filter(|ent_path| context.entities_under_pinhole.contains(&ent_path.hash()))
-                .cloned()
-                .collect()
-        } else {
-            entities.0.clone()
-        },
-    )
+) {
+    if let Some(context) = context.downcast_ref::<VisualizableFilterContext3D>() {
+        entities.retain(|ent_path| context.entities_under_pinhole.contains(&ent_path.hash()));
+    }
 }

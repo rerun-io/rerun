@@ -95,6 +95,7 @@ pub trait DynSpaceViewClass: Send + Sync {
         &self,
         space_origin: &EntityPath,
         store_db: &re_data_store::StoreDb,
+        filter_subtree: &EntityPath,
     ) -> Box<dyn std::any::Any>;
 
     /// Heuristic used to determine which space view is the best fit for a set of paths.
