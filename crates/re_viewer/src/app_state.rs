@@ -7,7 +7,6 @@ use re_space_view::{DataQuery as _, PropertyResolver as _};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry, PlayState,
     RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
-    VisualizableEntities,
 };
 use re_viewport::{
     determine_visualizable_entities, SpaceInfoCollection, Viewport, ViewportBlueprint,
@@ -139,33 +138,6 @@ impl AppState {
         let indicator_matching_entities_per_visualizer = space_view_class_registry
             .indicator_matching_entities_per_visualizer(store_db.store_id());
 
-        // TODO(andreas): This shouldn't happen every frame and it shouldn't happen here. Instead we need to drive the visualizable set from a store subscriber.
-        let visualizable_entities_per_system_per_space_view: HashMap<
-            re_viewer_context::SpaceViewId,
-            re_viewer_context::PerVisualizer<VisualizableEntities>,
-        > = viewport
-            .blueprint
-            .space_views
-            .values()
-            .map(|space_view| {
-                // TODO(andreas): We could filter a subset by using knowledge of the query.(|space_view| {
-                let filter_path = re_log_types::EntityPath::root();
-
-                (
-                    space_view.id,
-                    determine_visualizable_entities(
-                        &applicable_entities_per_visualizer,
-                        store_db,
-                        &space_view_class_registry
-                            .new_part_collection(*space_view.class_identifier()),
-                        space_view.class(space_view_class_registry),
-                        &space_view.space_origin,
-                        &filter_path,
-                    ),
-                )
-            })
-            .collect();
-
         // Execute the queries for every `SpaceView`
         let mut query_results = {
             re_tracing::profile_scope!("query_results");
@@ -174,22 +146,32 @@ impl AppState {
                 .space_views
                 .values()
                 .flat_map(|space_view| {
-                    space_view.queries.iter().filter_map(|query| {
-                        let Some(visualizable_entities) =
-                            visualizable_entities_per_system_per_space_view.get(&space_view.id)
-                        else {
-                            return None;
-                        };
+                    // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
+                    // Note that right now we determine *all* visualizable entities, not just the queried ones.
+                    // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+                    let visualizable_entities = determine_visualizable_entities(
+                        &applicable_entities_per_visualizer,
+                        store_db,
+                        &space_view_class_registry
+                            .new_part_collection(*space_view.class_identifier()),
+                        space_view.class(space_view_class_registry),
+                        &space_view.space_origin,
+                    );
 
-                        Some((
-                            query.id,
-                            query.execute_query(
-                                store_context,
-                                visualizable_entities,
-                                &indicator_matching_entities_per_visualizer,
-                            ),
-                        ))
-                    })
+                    space_view
+                        .queries
+                        .iter()
+                        .map(|query| {
+                            (
+                                query.id,
+                                query.execute_query(
+                                    store_context,
+                                    &visualizable_entities,
+                                    &indicator_matching_entities_per_visualizer,
+                                ),
+                            )
+                        })
+                        .collect::<Vec<_>>()
                 })
                 .collect::<_>()
         };

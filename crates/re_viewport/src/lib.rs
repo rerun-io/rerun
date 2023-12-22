@@ -71,11 +71,10 @@ pub fn determine_visualizable_entities(
     visualizers: &re_viewer_context::ViewPartCollection,
     class: &dyn DynSpaceViewClass,
     space_origin: &EntityPath,
-    filter_subtree: &EntityPath,
 ) -> PerVisualizer<VisualizableEntities> {
     re_tracing::profile_function!();
 
-    let filter_ctx = class.visualizable_filter_context(space_origin, store_db, filter_subtree);
+    let filter_ctx = class.visualizable_filter_context(space_origin, store_db);
 
     PerVisualizer::<VisualizableEntities>(
         visualizers

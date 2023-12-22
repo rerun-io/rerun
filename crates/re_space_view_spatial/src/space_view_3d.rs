@@ -26,12 +26,6 @@ pub struct VisualizableFilterContext3D {
 #[derive(Default)]
 pub struct SpatialSpaceView3D;
 
-fn has_pinhole(tree: &EntityTree) -> bool {
-    tree.entity
-        .components
-        .contains_key(&PinholeProjection::name())
-}
-
 impl SpaceViewClass for SpatialSpaceView3D {
     type State = SpatialSpaceViewState;
 
@@ -68,9 +62,14 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         space_origin: &EntityPath,
         store_db: &re_data_store::StoreDb,
-        filter_subtree: &EntityPath,
     ) -> Box<dyn std::any::Any> {
         re_tracing::profile_function!();
+
+        // TODO(andreas): Potential optimization:
+        // We already know all the entities that have a pinhole camera - indirectly today through visualizers, but could also be directly.
+        // Meaning we don't need to walk until we find a pinhole camera!
+        // Obviously should skip the whole thing if there are no pinhole cameras under space_origin!
+        // TODO(jleibs): Component prefix tree on EntityTree would fix this problem nicely.
 
         let mut entities_under_pinhole = IntSet::default();
 
@@ -78,7 +77,11 @@ impl SpaceViewClass for SpatialSpaceView3D {
             tree: &EntityTree,
             entities_under_pinhole: &mut IntSet<EntityPathHash>,
         ) {
-            if has_pinhole(tree) {
+            if tree
+                .entity
+                .components
+                .contains_key(&PinholeProjection::name())
+            {
                 // This and all children under it are under a pinhole camera!
                 tree.visit_children_recursively(&mut |ent_path| {
                     entities_under_pinhole.insert(ent_path.hash());
@@ -92,52 +95,11 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         let entity_tree = &store_db.tree();
 
-        if filter_subtree.starts_with(space_origin) {
-            // If the filter specifies an entity that is at or under the origin, all we have to do
-            // is to run down from the filter_path.
-            let Some(current_tree) = entity_tree.subtree(filter_subtree) else {
-                return Box::new(());
-            };
-            visit_children_recursively(current_tree, &mut entities_under_pinhole);
-
-            return Box::new(VisualizableFilterContext3D {
-                entities_under_pinhole,
-            });
-        }
-
-        // Walk down the tree from the origin.
-        let Some(mut current_tree) = &entity_tree.subtree(space_origin) else {
+        // Walk down the tree from the space_origin.
+        let Some(current_tree) = &entity_tree.subtree(space_origin) else {
             return Box::new(());
         };
         visit_children_recursively(current_tree, &mut entities_under_pinhole);
-
-        // Walk up from the reference to the highest reachable parent.
-        // At each stop, add all child trees to the set.
-        while let Some(parent_path) = current_tree.path.parent() {
-            if !parent_path.starts_with(filter_subtree) {
-                break;
-            }
-
-            let Some(parent_tree) = entity_tree.subtree(&parent_path) else {
-                return Box::new(());
-            };
-
-            if has_pinhole(parent_tree) {
-                // What if we encounter a pinhole camera on the way up, i.e. an inverted pinhole?
-                // At this point we can just stop, because there's no valid transform to these entities anyways!
-                break;
-            }
-
-            for child in parent_tree.children.values() {
-                if child.path == current_tree.path {
-                    // Don't add the current tree again.
-                    continue;
-                }
-                visit_children_recursively(child, &mut entities_under_pinhole);
-            }
-
-            current_tree = parent_tree;
-        }
 
         Box::new(VisualizableFilterContext3D {
             entities_under_pinhole,

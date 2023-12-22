@@ -342,7 +342,6 @@ fn create_entity_add_info(
             .new_part_collection(class.identifier()),
         class,
         &space_view.space_origin,
-        &EntityPath::root(),
     );
 
     tree.visit_children_recursively(&mut |entity_path| {

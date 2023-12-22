@@ -290,18 +290,15 @@ impl SpaceViewClassRegistry {
             self.visualizers
                 .iter()
                 .map(|(id, entry)| {
-                    let mut entities = ApplicableEntities::default();
-                    DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
-                        entry.entity_subscriber_handle,
-                        |subscriber| {
-                            if let Some(applicable_entities) =
-                                subscriber.applicable_entities(store_id)
-                            {
-                                entities = applicable_entities.clone();
-                            }
-                        },
-                    );
-                    (*id, entities)
+                    (
+                        *id,
+                        DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
+                            entry.entity_subscriber_handle,
+                            |subscriber| subscriber.applicable_entities(store_id).cloned(),
+                        )
+                        .flatten()
+                        .unwrap_or_default(),
+                    )
                 })
                 .collect(),
         )
@@ -312,6 +309,8 @@ impl SpaceViewClassRegistry {
         &self,
         store_id: &re_log_types::StoreId,
     ) -> PerVisualizer<IndicatorMatchingEntities> {
+        re_tracing::profile_function!();
+
         PerVisualizer::<IndicatorMatchingEntities>(
             self.visualizers
                 .iter()

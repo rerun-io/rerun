@@ -92,7 +92,6 @@ pub fn all_possible_space_views(
                             .new_part_collection(class_identifier),
                         entry.class.as_ref(),
                         candidate_space_path,
-                        candidate_space_path,
                     );
 
                     let results = candidate_query.execute_query(
