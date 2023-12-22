@@ -16,6 +16,9 @@ impl Default for ViewSystemIdentifier {
     }
 }
 
+// TODO(andreas): This should likely be `PerVisualizer<SelectedEntities>` instead.
+//                Implying the missing concept of `SelectedEntities` which is a subset of `VisualizableEntities`
+//                as selected by the query.
 pub type PerSystemEntities = BTreeMap<ViewSystemIdentifier, BTreeSet<EntityPath>>;
 
 /// Trait for naming/identifying [`crate::ViewPartSystem`]s & [`crate::ViewContextSystem`]s.

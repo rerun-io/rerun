@@ -39,7 +39,7 @@ impl std::ops::Deref for IndicatorMatchingEntities {
 /// List of entities that can be visualized at some point in time on any timeline
 /// by a concrete visualizer in the context of a specific instantiated space view.
 ///
-/// This is a subset of [`VisualizerApplicableEntities`] and differs on a
+/// This is a subset of [`ApplicableEntities`] and differs on a
 /// per space view instance base.
 #[derive(Default)]
 pub struct VisualizableEntities(pub IntSet<EntityPath>);

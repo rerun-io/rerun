@@ -104,9 +104,6 @@ pub trait DynSpaceViewClass: Send + Sync {
     ) -> Box<dyn std::any::Any>;
 
     /// Heuristic used to determine which space view is the best fit for a set of paths.
-    ///
-    /// For each path in `ent_paths`, at least one of the registered [`crate::ViewPartSystem`] for this class
-    /// returned true when calling [`crate::ViewPartSystem::heuristic_filter`].
     fn auto_spawn_heuristic(
         &self,
         _ctx: &ViewerContext<'_>,
