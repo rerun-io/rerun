@@ -1,3 +1,9 @@
+#ifdef __GNUC__
+// Rerun uses fairly strict warning settings.
+// Suppress the warnings by treating this as a system header.
+#pragma GCC system_header
+#endif
+
 /*
 
 Copyright (c) 2014-2022 Jarryd Beck

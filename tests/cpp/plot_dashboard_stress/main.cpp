@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 
     const auto num_plots = args["num-plots"].as<uint64_t>();
     const auto num_series_per_plot = args["num-series-per-plot"].as<uint64_t>();
-    const auto num_points_per_series = args["num-points-per-series"].as<uint64_t>();
+    const auto num_points_per_series = args["num-points-per-series"].as<int64_t>();
 
     std::vector<std::string> plot_paths;
     plot_paths.reserve(num_plots);
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 
     const auto num_series = num_plots * num_series_per_plot;
     const auto time_per_tick = 1.0 / freq;
-    const auto expected_total_freq = freq * num_series;
+    const auto expected_total_freq = freq * static_cast<double>(num_series);
 
     std::random_device rd;
     std::mt19937 rng(rd());
@@ -91,15 +91,15 @@ int main(int argc, char** argv) {
     const auto order = args["order"].as<std::string>();
 
     if (order == "forwards") {
-        for (uint64_t i = 0; i < num_points_per_series; ++i) {
+        for (int64_t i = 0; i < num_points_per_series; ++i) {
             sim_times.push_back(i);
         }
     } else if (order == "backwards") {
-        for (uint64_t i = num_points_per_series; i > 0; --i) {
+        for (int64_t i = num_points_per_series; i > 0; --i) {
             sim_times.push_back(i - 1);
         }
     } else if (order == "random") {
-        for (uint64_t i = 0; i < num_points_per_series; ++i) {
+        for (int64_t i = 0; i < num_points_per_series; ++i) {
             sim_times.push_back(i);
         }
         std::shuffle(sim_times.begin(), sim_times.end(), rng);
@@ -131,12 +131,12 @@ int main(int argc, char** argv) {
             double total_elapsed_secs =
                 std::chrono::duration_cast<std::chrono::duration<double>>(total_elapsed).count();
             std::cout << "logged " << total_num_scalars << " scalars over " << total_elapsed_secs
-                      << "s (freq=" << total_num_scalars / total_elapsed_secs
+                      << "s (freq=" << static_cast<double>(total_num_scalars) / total_elapsed_secs
                       << "Hz, expected=" << expected_total_freq << "Hz, load=" << max_load * 100.0
                       << "%)" << std::endl;
 
             auto elapsed_debt = std::chrono::duration<double>(
-                total_elapsed_secs - static_cast<uint64_t>(total_elapsed_secs)
+                total_elapsed_secs - floor(total_elapsed_secs)
             ); // just keep the fractional part
             total_start_time = std::chrono::high_resolution_clock::now() -
                                std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed_debt);
@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
     double total_elapsed_secs =
         std::chrono::duration_cast<std::chrono::duration<double>>(total_elapsed).count();
     std::cout << "logged " << total_num_scalars << " scalars over " << total_elapsed_secs
-              << "s (freq=" << total_num_scalars / total_elapsed_secs
+              << "s (freq=" << static_cast<double>(total_num_scalars) / total_elapsed_secs
               << "Hz, expected=" << expected_total_freq << "Hz, load=" << max_load * 100.0 << "%)"
               << std::endl;
 }
