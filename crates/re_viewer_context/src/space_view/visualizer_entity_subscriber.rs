@@ -1,72 +1,16 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
 use itertools::Itertools;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 
 use re_arrow_store::StoreSubscriber;
-use re_log_types::{EntityPath, EntityPathHash, StoreId};
+use re_log_types::{EntityPathHash, StoreId};
 use re_types::{ComponentName, ComponentNameSet};
 
-use crate::{IdentifiedViewSystem, ViewPartSystem, ViewSystemIdentifier};
-
-/// List of entities that are *applicable* to a given visualizer.
-///
-/// An entity is applicable if it at any point in time on any timeline has all required components.
-#[derive(Default, Clone)]
-pub struct VisualizerApplicableEntities(pub IntSet<EntityPath>);
-
-impl std::ops::Deref for VisualizerApplicableEntities {
-    type Target = IntSet<EntityPath>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-/// TODO:
-#[derive(Default, Clone)]
-pub struct IndicatorMatchingEntities(pub IntSet<EntityPathHash>);
-
-impl std::ops::Deref for IndicatorMatchingEntities {
-    type Target = IntSet<EntityPathHash>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-// TODO:
-#[derive(Default)]
-pub struct IndicatorMatchingEntitiesPerVisualizer(
-    pub IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>,
-);
-
-impl std::ops::Deref for IndicatorMatchingEntitiesPerVisualizer {
-    type Target = IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-/// List of entities that are applicable to each visualizer.
-///
-/// See [`VisualizerApplicableEntities`].
-pub struct ApplicableEntitiesPerVisualizer(
-    pub IntMap<ViewSystemIdentifier, VisualizerApplicableEntities>,
-);
-
-impl std::ops::Deref for ApplicableEntitiesPerVisualizer {
-    type Target = IntMap<ViewSystemIdentifier, VisualizerApplicableEntities>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+use crate::{
+    IdentifiedViewSystem, IndicatorMatchingEntities, ViewPartSystem, ViewSystemIdentifier,
+    VisualizerApplicableEntities,
+};
 
 /// A store subscriber that keep track which entities in a store can be
 /// processed by a single given visualizer type.

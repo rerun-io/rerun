@@ -5,11 +5,12 @@ use crate::{
     ApplicableEntitiesPerVisualizer, DynSpaceViewClass, IdentifiedViewSystem,
     IndicatorMatchingEntitiesPerVisualizer, SpaceViewClassIdentifier, ViewContextCollection,
     ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemIdentifier,
+    VisualizerApplicableEntities,
 };
 
 use super::{
     space_view_class_placeholder::SpaceViewClassPlaceholder,
-    visualizer_entity_subscriber::VisualizerEntitySubscriber, VisualizerApplicableEntities,
+    visualizer_entity_subscriber::VisualizerEntitySubscriber,
 };
 
 #[derive(Debug, thiserror::Error)]

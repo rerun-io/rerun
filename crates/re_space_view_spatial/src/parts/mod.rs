@@ -347,6 +347,8 @@ fn filter_visualizable_2d_entities(
     context: &dyn std::any::Any,
 ) {
     if let Some(context) = context.downcast_ref::<VisualizableFilterContext3D>() {
-        entities.retain(|ent_path| context.entities_under_pinhole.contains(&ent_path.hash()));
+        entities
+            .0
+            .retain(|ent_path| context.entities_under_pinhole.contains(&ent_path.hash()));
     }
 }

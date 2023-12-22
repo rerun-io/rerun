@@ -1,48 +1,12 @@
 use ahash::HashMap;
 
-use nohash_hasher::{IntMap, IntSet};
-use re_log_types::EntityPath;
 use re_types::ComponentNameSet;
 
 use crate::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewSystemIdentifier, ViewerContext, VisualizerAdditionalApplicabilityFilter,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    VisualizerAdditionalApplicabilityFilter,
 };
-
-/// List of entities that can be visualized by a concrete visualizer.
-#[derive(Default)]
-pub struct VisualizableEntities(pub IntSet<EntityPath>);
-
-impl std::ops::Deref for VisualizableEntities {
-    type Target = IntSet<EntityPath>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for VisualizableEntities {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-/// List of entities that can be visualized per visualizer.
-#[derive(Default)]
-pub struct VisualizableEntitiesPerVisualizer(
-    pub IntMap<ViewSystemIdentifier, VisualizableEntities>,
-);
-
-impl std::ops::Deref for VisualizableEntitiesPerVisualizer {
-    type Target = IntMap<ViewSystemIdentifier, VisualizableEntities>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 /// Element of a scene derived from a single archetype query.
 ///
