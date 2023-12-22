@@ -196,33 +196,9 @@ impl App {
             }
         });
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            if self.re_ui
-                .checkbox(ui, &mut self.state.app_options.experimental_space_view_screenshots, "(experimental) Space View screenshots")
-                .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.")
-                .clicked()
-            {
-                ui.close_menu();
-            }
-        }
-
-        if self
-            .re_ui
-            .checkbox(
-                ui,
-                &mut self.state.app_options.experimental_dataframe_space_view,
-                "(experimental) Dataframe Space View",
-            )
-            .on_hover_text("Enable the experimental dataframe space view.")
-            .clicked()
-        {
-            self.command_sender
-                .send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
-                    self.state.app_options.experimental_dataframe_space_view,
-                ));
-            ui.close_menu();
-        }
+        ui.separator();
+        ui.label("Experimental:");
+        self.experimental_menu_options_ui(ui);
 
         #[cfg(debug_assertions)]
         {
@@ -331,6 +307,55 @@ impl App {
         }
     }
 
+    fn experimental_menu_options_ui(&mut self, ui: &mut egui::Ui) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if self.re_ui
+                .checkbox(ui, &mut self.state.app_options.experimental_space_view_screenshots, "Enable Space View screenshots")
+                .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.")
+                .clicked()
+            {
+                ui.close_menu();
+            }
+        }
+
+        if self
+            .re_ui
+            .checkbox(
+                ui,
+                &mut self.state.app_options.experimental_dataframe_space_view,
+                "Enable Dataframe Space View",
+            )
+            .on_hover_text("Enable the experimental dataframe space view.")
+            .clicked()
+        {
+            self.command_sender
+                .send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
+                    self.state.app_options.experimental_dataframe_space_view,
+                ));
+            ui.close_menu();
+        }
+
+        self.re_ui
+            .checkbox(
+                ui,
+                &mut self.state.app_options.experimental_container_blueprints,
+                "Use experimental container blueprints",
+            )
+            .on_hover_text("Load and save the container state using new container archetypes");
+
+        self.re_ui
+            .checkbox(
+                ui,
+                &mut self.state.app_options.experimental_additive_workflow,
+                "Use experimental container addition workflow",
+            )
+            .on_hover_text("This flag enables the following things:\n\n\
+                - Significantly reduce the simplification that automatically run on the container tree.\n\
+                - The 'Content' list in the selection panel when container are selected.\n\
+                - The related 'Add space view/container' modal");
+    }
+
     #[cfg(debug_assertions)]
     fn debug_menu_options_ui(&mut self, ui: &mut egui::Ui) {
         #[cfg(not(target_arch = "wasm32"))]
@@ -362,25 +387,6 @@ impl App {
                        "Show Blueprint in the Time Panel",
         )
             .on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
-
-        self.re_ui
-            .checkbox(
-                ui,
-                &mut self.state.app_options.experimental_container_blueprints,
-                "Use experimental container blueprints",
-            )
-            .on_hover_text("Load and save the container state using new container archetypes");
-
-        self.re_ui
-            .checkbox(
-                ui,
-                &mut self.state.app_options.experimental_additive_workflow,
-                "Use experimental container addition workflow",
-            )
-            .on_hover_text("This flag enables the following things:\n\n\
-                - Significantly reduce the simplification that automatically run on the container tree.\n\
-                - The 'Content' list in the selection panel when container are selected.\n\
-                - The related 'Add space view/container' modal");
 
         ui.menu_button("Crash", |ui| {
             #[allow(clippy::manual_assert)]

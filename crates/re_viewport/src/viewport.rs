@@ -440,7 +440,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 // Simplify before we save the tree. Normally additional simplification will
                 // happen on the next render loop, but that's too late -- unsimplified
                 // changes will be baked into the tree.
-                let options = tree_simplification_option_for_app_options(&ctx.app_options);
+                let options = tree_simplification_option_for_app_options(ctx.app_options);
                 self.tree.simplify(&options);
 
                 self.blueprint.save_tree_as_containers(&self.tree, ctx);
@@ -708,7 +708,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     ///
     /// These options are applied on every frame by `egui_tiles`.
     fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
-        tree_simplification_option_for_app_options(&self.ctx.app_options)
+        tree_simplification_option_for_app_options(self.ctx.app_options)
     }
 
     // Callbacks:

@@ -19,12 +19,7 @@ impl AddSpaceViewOrContainerModal {
         self.modal_handler.open();
     }
 
-    pub fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &ViewerContext<'_>,
-        viewport: &mut Viewport<'_, '_>,
-    ) {
+    pub fn ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, viewport: &Viewport<'_, '_>) {
         self.modal_handler.ui(
             ctx.re_ui,
             ui,
@@ -37,7 +32,7 @@ impl AddSpaceViewOrContainerModal {
 fn modal_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    viewport: &mut Viewport<'_, '_>,
+    viewport: &Viewport<'_, '_>,
     target_container: Option<egui_tiles::TileId>,
 ) {
     ui.spacing_mut().item_spacing = egui::vec2(14.0, 10.0);

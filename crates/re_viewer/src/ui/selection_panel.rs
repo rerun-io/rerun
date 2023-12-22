@@ -568,6 +568,7 @@ fn container_top_level_properties(
                 }
 
                 // this feature is only available with the new container blueprints feature
+                #[allow(clippy::collapsible_if)]
                 if ctx.app_options.experimental_additive_workflow {
                     if ui
                         .button("Simplify hierarchy")
@@ -602,14 +603,14 @@ fn show_list_item_for_container_child(
     child_tile_id: egui_tiles::TileId,
 ) -> bool {
     let Some(child_tile) = viewport.tree.tiles.get(child_tile_id) else {
-        //TODO: error mgmt
+        re_log::warn_once!("Could not find child tile with ID {child_tile_id:?}",);
         return false;
     };
 
     let (item, mut list_item) = match child_tile {
         Tile::Pane(space_view_id) => {
             let Some(space_view) = viewport.blueprint.space_views.get(space_view_id) else {
-                //TODO: error mgmt
+                re_log::warn_once!("Could not find space view with ID {space_view_id:?}",);
                 return false;
             };
 
