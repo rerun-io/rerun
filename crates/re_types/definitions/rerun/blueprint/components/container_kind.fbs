@@ -1,0 +1,38 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+
+// TODO(#3384)
+/*
+enum ContainerKind: byte {
+    Tabs = 1
+    Horizontal = 2,
+    Vertical = 3,
+    Grid = 4
+}
+*/
+
+// ---
+
+/// The kind of a blueprint container.
+table ContainerKind (
+    "attr.rerun.scope": "blueprint",
+    "attr.docs.unreleased",
+    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.override_crate": "re_viewport"
+) {
+    /// Which kind of container this is.
+    ///
+    /// Allowed values:
+    ///  - Tabs = 1
+    ///  - Horizontal = 2
+    ///  - Vertical = 3
+    ///  - Grid = 4
+    kind: ubyte (order: 100);
+}

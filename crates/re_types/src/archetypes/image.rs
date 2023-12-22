@@ -159,15 +159,11 @@ impl ::re_types_core::Archetype for Image {
                 .with_context("rerun.archetypes.Image#data")?
         };
         let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
-            Some({
-                <crate::components::DrawOrder>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Image#draw_order")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Image#draw_order")?
-            })
+            <crate::components::DrawOrder>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Image#draw_order")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };

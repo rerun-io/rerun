@@ -171,6 +171,10 @@ impl EntityPath {
     /// Is this equals to, or a descendant of, the given path.
     #[inline]
     pub fn starts_with(&self, prefix: &EntityPath) -> bool {
+        if self.hash == prefix.hash {
+            return true; // optimization!
+        }
+
         prefix.len() <= self.len() && self.iter().zip(prefix.iter()).all(|(a, b)| a == b)
     }
 

@@ -97,6 +97,7 @@ pub struct Viewport<'a, 'b> {
     /// to be mutable for things like drag-and-drop and is ultimately saved back to the store.
     /// at the end of the frame if edited.
     pub tree: egui_tiles::Tree<SpaceViewId>,
+    pub edited: bool,
 
     /// Actions to perform at the end of the frame.
     ///
@@ -114,8 +115,11 @@ impl<'a, 'b> Viewport<'a, 'b> {
     ) -> Self {
         re_tracing::profile_function!();
 
+        let mut edited = false;
+
         // If the blueprint tree is empty/missing we need to auto-layout.
         let tree = if blueprint.tree.is_empty() && !blueprint.space_views.is_empty() {
+            edited = true;
             super::auto_layout::tree_from_space_views(
                 space_view_class_registry,
                 &blueprint.space_views,
@@ -128,6 +132,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             blueprint,
             state,
             tree,
+            edited,
             deferred_tree_actions: Default::default(),
         }
     }
@@ -209,6 +214,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 blueprint.set_auto_layout(false, ctx);
             }
 
+            self.edited |= tab_viewer.edited;
+
             state.space_views_displayed_last_frame = tab_viewer.space_views_displayed_current_frame;
         });
 
@@ -284,7 +291,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
     }
 
     /// Process any deferred `TreeActions` and then sync to blueprint
-    pub fn update_and_sync_tile_tree_to_blueprint(&mut self, ctx: &ViewerContext<'_>) {
+    pub fn update_and_sync_tile_tree_to_blueprint(mut self, ctx: &ViewerContext<'_>) {
         // At the end of the Tree-UI, we can safely apply deferred actions.
 
         let mut reset = false;
@@ -319,14 +326,16 @@ impl<'a, 'b> Viewport<'a, 'b> {
             }
 
             focus_tab = Some(*space_view);
+            self.edited = true;
         }
 
         if let Some(focus_tab) = &focus_tab {
-            let found = self.tree.make_active(|tile| match tile {
+            let found = self.tree.make_active(|_, tile| match tile {
                 egui_tiles::Tile::Pane(space_view_id) => space_view_id == focus_tab,
                 egui_tiles::Tile::Container(_) => false,
             });
             re_log::trace!("Found tab {focus_tab}: {found}");
+            self.edited = true;
         }
 
         for tile_id in remove {
@@ -342,6 +351,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             if Some(tile_id) == self.tree.root {
                 self.tree.root = None;
             }
+            self.edited = true;
         }
 
         if reset {
@@ -349,11 +359,30 @@ impl<'a, 'b> Viewport<'a, 'b> {
             // written to the store yet.
             re_log::trace!("Clearing the blueprint tree to force reset on the next frame");
             self.tree = egui_tiles::Tree::empty("viewport_tree");
+            self.edited = true;
         }
 
         // Finally, save any edits to the blueprint tree
         // This is a no-op if the tree hasn't changed.
-        self.blueprint.set_tree(&self.tree, ctx);
+        if ctx.app_options.experimental_container_blueprints {
+            if self.edited {
+                // TODO(abey79): Decide what simplification to do here. Some of this
+                // might need to get rolled into the save logic instead.
+
+                // Simplify before we save the tree. Normally additional simplification will
+                // happen on the next render loop, but that's too late -- unsimplified
+                // changes will be baked into the tree.
+                let options = egui_tiles::SimplificationOptions {
+                    all_panes_must_have_tabs: true,
+                    ..Default::default()
+                };
+                self.tree.simplify(&options);
+
+                self.blueprint.save_tree_as_containers(&self.tree, ctx);
+            }
+        } else {
+            self.blueprint.set_tree(&self.tree, ctx);
+        }
     }
 
     /// If `false`, the item is referring to data that is not present in this blueprint.

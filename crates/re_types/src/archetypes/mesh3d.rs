@@ -184,15 +184,11 @@ impl ::re_types_core::Archetype for Mesh3D {
         };
         let mesh_properties =
             if let Some(array) = arrays_by_name.get("rerun.components.MeshProperties") {
-                Some({
-                    <crate::components::MeshProperties>::from_arrow_opt(&**array)
-                        .with_context("rerun.archetypes.Mesh3D#mesh_properties")?
-                        .into_iter()
-                        .next()
-                        .flatten()
-                        .ok_or_else(DeserializationError::missing_data)
-                        .with_context("rerun.archetypes.Mesh3D#mesh_properties")?
-                })
+                <crate::components::MeshProperties>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Mesh3D#mesh_properties")?
+                    .into_iter()
+                    .next()
+                    .flatten()
             } else {
                 None
             };
@@ -221,15 +217,11 @@ impl ::re_types_core::Archetype for Mesh3D {
             None
         };
         let mesh_material = if let Some(array) = arrays_by_name.get("rerun.components.Material") {
-            Some({
-                <crate::components::Material>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Mesh3D#mesh_material")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Mesh3D#mesh_material")?
-            })
+            <crate::components::Material>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Mesh3D#mesh_material")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };

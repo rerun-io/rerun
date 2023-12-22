@@ -105,7 +105,8 @@ impl AppState {
             viewport_state,
         } = self;
 
-        let viewport_blueprint = ViewportBlueprint::try_from_db(store_context.blueprint);
+        let viewport_blueprint =
+            ViewportBlueprint::try_from_db(store_context.blueprint, app_options);
         let mut viewport = Viewport::new(
             &viewport_blueprint,
             viewport_state,

@@ -9,5 +9,5 @@ publish = false
 [dependencies]
 rerun = { path = "../../../crates/rerun" }
 
-itertools = "0.11"
+itertools = "0.12"
 rand = "0.8"

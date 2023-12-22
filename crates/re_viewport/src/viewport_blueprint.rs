@@ -1,15 +1,21 @@
 use std::collections::BTreeMap;
 
+use ahash::HashMap;
+use egui_tiles::TileId;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::Timeline;
 use re_query::query_archetype;
-use re_viewer_context::{Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext,
+};
 
 use crate::{
     blueprint::components::{
-        AutoLayout, AutoSpaceViews, IncludedSpaceViews, SpaceViewMaximized, ViewportLayout,
+        AutoLayout, AutoSpaceViews, IncludedSpaceViews, RootContainer, SpaceViewMaximized,
+        ViewportLayout,
     },
+    container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
     space_view::SpaceViewBlueprint,
     viewport::TreeActions,
     VIEWPORT_PATH,
@@ -23,6 +29,12 @@ pub struct ViewportBlueprint {
     ///
     /// Not a hashmap in order to preserve the order of the space views.
     pub space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint>,
+
+    /// All the containers found in the viewport.
+    pub containers: BTreeMap<ContainerId, ContainerBlueprint>,
+
+    /// The root container.
+    pub root_container: Option<ContainerId>,
 
     /// The layouts of all the space views.
     pub tree: egui_tiles::Tree<SpaceViewId>,
@@ -40,7 +52,8 @@ pub struct ViewportBlueprint {
 }
 
 impl ViewportBlueprint {
-    pub fn try_from_db(blueprint_db: &re_data_store::StoreDb) -> Self {
+    /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
+    pub fn try_from_db(blueprint_db: &re_data_store::StoreDb, app_options: &AppOptions) -> Self {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
@@ -78,7 +91,27 @@ impl ViewportBlueprint {
             .map(|sv| (sv.id, sv))
             .collect();
 
+        let all_container_ids: Vec<ContainerId> = blueprint_db
+            .tree()
+            .children
+            .get(ContainerId::registry_part())
+            .map(|tree| {
+                tree.children
+                    .values()
+                    .map(|subtree| ContainerId::from_entity_path(&subtree.path))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let containers: BTreeMap<ContainerId, ContainerBlueprint> = all_container_ids
+            .into_iter()
+            .filter_map(|id| ContainerBlueprint::try_from_db(blueprint_db, id))
+            .map(|c| (c.id, c))
+            .collect();
+
         let auto_layout = arch.auto_layout.unwrap_or_default().0;
+
+        let root_container = arch.root_container.map(|id| id.0.into());
 
         let auto_space_views = arch.auto_space_views.map_or_else(
             || {
@@ -99,13 +132,35 @@ impl ViewportBlueprint {
             .unwrap_or_default()
             .0;
 
-        ViewportBlueprint {
+        let mut blueprint = ViewportBlueprint {
             space_views,
+            containers,
+            root_container,
             tree,
             maximized,
             auto_layout,
             auto_space_views,
+        };
+
+        if app_options.experimental_container_blueprints {
+            let mut tree = blueprint.build_tree_from_containers();
+
+            // TODO(abey79): Figure out if we want to simplify here or not.
+            if false {
+                let options = egui_tiles::SimplificationOptions {
+                    all_panes_must_have_tabs: true,
+                    ..Default::default()
+                };
+
+                tree.simplify(&options);
+            }
+
+            re_log::trace!("Loaded tree from blueprint: {tree:#?}");
+
+            blueprint.tree = tree;
         }
+
+        blueprint
 
         // TODO(jleibs): Need to figure out if we have to re-enable support for
         // auto-discovery of SpaceViews logged via the experimental blueprint APIs.
@@ -312,7 +367,7 @@ impl ViewportBlueprint {
 
     #[inline]
     pub fn set_auto_space_views(&self, value: bool, ctx: &ViewerContext<'_>) {
-        if self.auto_layout != value {
+        if self.auto_space_views != value {
             let component = AutoSpaceViews(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
@@ -333,5 +388,130 @@ impl ViewportBlueprint {
             let component = ViewportLayout(tree.clone());
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
+    }
+
+    /// Save the current state of the viewport to the blueprint store.
+    /// This should only be called if the tree was edited.
+    pub fn save_tree_as_containers(
+        &self,
+        tree: &egui_tiles::Tree<SpaceViewId>,
+        ctx: &ViewerContext<'_>,
+    ) {
+        re_tracing::profile_function!();
+        re_log::trace!("Saving tree: {tree:#?}");
+
+        // First, update the mapping for all the previously known containers.
+        // These were inserted with their ids, so we want to keep these
+        // constant if we find them again.
+        let mut contents_from_tile_id: HashMap<TileId, Contents> = self
+            .containers
+            .keys()
+            .map(|id| (blueprint_id_to_tile_id(id), Contents::Container(*id)))
+            .collect();
+
+        // Now, update the content mapping for all the new tiles in the tree.
+        for (tile_id, tile) in tree.tiles.iter() {
+            // If we already know about this tile, then we don't need
+            // to do anything.
+            if contents_from_tile_id.contains_key(tile_id) {
+                continue;
+            }
+            match tile {
+                egui_tiles::Tile::Pane(space_view_id) => {
+                    // If a container has a pointer to a space-view
+                    // we want it to point at the space-view in the blueprint.
+                    contents_from_tile_id.insert(*tile_id, Contents::SpaceView(*space_view_id));
+                }
+                egui_tiles::Tile::Container(container) => {
+                    if tree.root != Some(*tile_id)
+                        && container.kind() == egui_tiles::ContainerKind::Tabs
+                        && container.num_children() == 1
+                    {
+                        // If this is a tab-container with a single child, then it might be a
+                        // "Trivial Tab", which egui_tiles adds to all space-views during simplification
+                        // but doesn't need to be persisted back to the store.
+                        if let Some(egui_tiles::Tile::Pane(space_view_id)) = container
+                            .children()
+                            .next()
+                            .and_then(|child| tree.tiles.get(*child))
+                        {
+                            // This is a trivial tab -- this tile can point directly to
+                            // the SpaceView and not to a Container.
+                            contents_from_tile_id
+                                .insert(*tile_id, Contents::SpaceView(*space_view_id));
+                            continue;
+                        }
+                    }
+
+                    // If this wasn't a container we knew about and wasn't a trivial container
+                    // we will need to create a new container for it.
+                    let container_id = ContainerId::random();
+                    contents_from_tile_id.insert(*tile_id, Contents::Container(container_id));
+                }
+            }
+        }
+
+        // Clear any existing container blueprints that aren't referenced
+        // by any tiles.
+        for (container_id, container) in &self.containers {
+            let tile_id = blueprint_id_to_tile_id(container_id);
+            if !contents_from_tile_id.contains_key(&tile_id) {
+                container.clear(ctx);
+            }
+        }
+
+        // Now save any contents that are a container back to the blueprint
+        for (tile_id, contents) in &contents_from_tile_id {
+            if let Contents::Container(container_id) = contents {
+                if let Some(egui_tiles::Tile::Container(container)) = tree.tiles.get(*tile_id) {
+                    // TODO(jleibs): Make this only update the changed fields.
+                    let blueprint = ContainerBlueprint::from_egui_tiles_container(
+                        *container_id,
+                        container,
+                        &contents_from_tile_id,
+                    );
+
+                    blueprint.save_to_blueprint_store(ctx);
+                }
+            }
+        }
+
+        // Finally update the root
+        if let Some(root_container) = tree
+            .root()
+            .and_then(|root| contents_from_tile_id.get(&root))
+            .and_then(|contents| contents.as_container_id())
+            .map(|container_id| RootContainer((container_id).into()))
+        {
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), root_container);
+        } else {
+            ctx.save_empty_blueprint_component::<RootContainer>(&VIEWPORT_PATH.into());
+        }
+    }
+
+    pub fn build_tree_from_containers(&self) -> egui_tiles::Tree<SpaceViewId> {
+        re_tracing::profile_function!();
+        let mut tree = egui_tiles::Tree::empty("viewport_tree");
+
+        // First add all the space_views
+        for space_view in self.space_views.keys() {
+            let tile_id = blueprint_id_to_tile_id(space_view);
+            let pane = egui_tiles::Tile::Pane(*space_view);
+            tree.tiles.insert(tile_id, pane);
+        }
+
+        // Now add all the containers
+        for container in self.containers.values() {
+            let tile_id = blueprint_id_to_tile_id(&container.id);
+
+            tree.tiles.insert(tile_id, container.to_tile());
+        }
+
+        // And finally, set the root
+        if let Some(root_container) = self.root_container.map(|id| blueprint_id_to_tile_id(&id)) {
+            tree.root = Some(root_container);
+        }
+
+        tree
     }
 }

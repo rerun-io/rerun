@@ -144,7 +144,7 @@ indent = "0.1"
 indicatif = "0.17.7"                                               # Progress bar
 infer = "0.15"                                                     # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.23"
-itertools = "0.11"                                                 # updating itertools is blocked on the next egui_tiles update
+itertools = "0.12"                                                 # updating itertools is blocked on the next egui_tiles update
 js-sys = "0.3"
 # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 libc = "0.2"
@@ -279,3 +279,5 @@ debug = true
 # egui_extras = { path = "../../egui/crates/egui_extras" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
+
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "dcdcde10b493683f3e97db47d128683bec0e65b9" } # https://github.com/rerun-io/egui_tiles/pull/40

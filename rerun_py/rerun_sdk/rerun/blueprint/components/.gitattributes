@@ -2,15 +2,21 @@
 
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
+active_tab.py linguist-generated=true
 auto_layout.py linguist-generated=true
 auto_space_views.py linguist-generated=true
+container_kind.py linguist-generated=true
 entities_determined_by_user.py linguist-generated=true
 entity_properties_component.py linguist-generated=true
+included_contents.py linguist-generated=true
 included_queries.py linguist-generated=true
 included_space_views.py linguist-generated=true
 name.py linguist-generated=true
 panel_view.py linguist-generated=true
+primary_weights.py linguist-generated=true
 query_expressions.py linguist-generated=true
+root_container.py linguist-generated=true
+secondary_weights.py linguist-generated=true
 space_view_class.py linguist-generated=true
 space_view_maximized.py linguist-generated=true
 space_view_origin.py linguist-generated=true

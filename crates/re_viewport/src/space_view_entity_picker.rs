@@ -1,9 +1,9 @@
-use ahash::HashSet;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
+
 use re_data_store::{EntityPath, EntityTree, InstancePath};
 use re_data_ui::item_ui;
-use re_log_types::EntityPathExpr;
+use re_log_types::{EntityPathFilter, EntityPathRule};
 use re_viewer_context::{DataQueryResult, SpaceViewId, ViewerContext};
 
 use crate::{
@@ -62,13 +62,14 @@ impl SpaceViewEntityPicker {
 }
 
 fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &SpaceViewBlueprint) {
+    re_tracing::profile_function!();
+
     let spaces_info = SpaceInfoCollection::new(ctx.store_db);
     let tree = &ctx.store_db.tree();
     let heuristic_context_per_entity = compute_heuristic_context_for_entities(ctx.store_db);
     // TODO(jleibs): Avoid clone
     let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
-    let inclusions: HashSet<EntityPathExpr> = space_view.inclusions().collect();
-    let exclusions: HashSet<EntityPathExpr> = space_view.exclusions().collect();
+    let entity_path_filter = space_view.entity_path_filter();
     let entities_add_info = create_entity_add_info(
         ctx,
         tree,
@@ -85,8 +86,7 @@ fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &Spac
         tree,
         space_view,
         &query_result,
-        &inclusions,
-        &exclusions,
+        &entity_path_filter,
         &entities_add_info,
     );
 }
@@ -99,8 +99,7 @@ fn add_entities_tree_ui(
     tree: &EntityTree,
     space_view: &SpaceViewBlueprint,
     query_result: &DataQueryResult,
-    inclusions: &HashSet<EntityPathExpr>,
-    exclusions: &HashSet<EntityPathExpr>,
+    entity_path_filter: &EntityPathFilter,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
     if tree.is_leaf() {
@@ -111,8 +110,7 @@ fn add_entities_tree_ui(
             tree,
             space_view,
             query_result,
-            inclusions,
-            exclusions,
+            entity_path_filter,
             entities_add_info,
         );
     } else {
@@ -133,8 +131,7 @@ fn add_entities_tree_ui(
                 tree,
                 space_view,
                 query_result,
-                inclusions,
-                exclusions,
+                entity_path_filter,
                 entities_add_info,
             );
         })
@@ -151,8 +148,7 @@ fn add_entities_tree_ui(
                     child_tree,
                     space_view,
                     query_result,
-                    inclusions,
-                    exclusions,
+                    entity_path_filter,
                     entities_add_info,
                 );
             }
@@ -168,25 +164,22 @@ fn add_entities_line_ui(
     entity_tree: &EntityTree,
     space_view: &SpaceViewBlueprint,
     query_result: &DataQueryResult,
-    inclusions: &HashSet<EntityPathExpr>,
-    exclusions: &HashSet<EntityPathExpr>,
+    entity_path_filter: &EntityPathFilter,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
+    re_tracing::profile_function!();
+
     ui.horizontal(|ui| {
         let entity_path = &entity_tree.path;
 
         let add_info = entities_add_info.get(entity_path).unwrap();
 
-        let included = query_result.contains_any(entity_path);
-
-        // TODO(jleibs): Speed this up
-        let excluded = exclusions.iter().any(|expr| match expr {
-            EntityPathExpr::Exact(expr) => expr == entity_path,
-            EntityPathExpr::Recursive(expr) => entity_path.starts_with(expr),
-        });
+        let is_explicitly_excluded = entity_path_filter.is_explicitly_excluded(entity_path);
+        let is_explicitly_included = entity_path_filter.is_explicitly_included(entity_path);
+        let is_included = entity_path_filter.is_included(entity_path);
 
         ui.add_enabled_ui(add_info.can_add_self_or_descendant.is_compatible(), |ui| {
-            let widget_text = if excluded {
+            let widget_text = if is_explicitly_excluded {
                 // TODO(jleibs): Better design-language for excluded.
                 egui::RichText::new(name).italics()
             } else if entity_path == &space_view.space_origin {
@@ -207,39 +200,35 @@ fn add_entities_line_ui(
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Reset Remove Button
+            // TODO(emilk): Show at most one button.
+
+            // Reset-button
             {
                 let enabled = add_info.can_add_self_or_descendant.is_compatible()
-                    && (exclusions.contains(&EntityPathExpr::Recursive(entity_path.clone()))
-                        || inclusions.contains(&EntityPathExpr::Recursive(entity_path.clone())));
+                    && entity_path_filter.contains_rule_for_exactly(entity_path);
 
                 ui.add_enabled_ui(enabled, |ui| {
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
 
                     if response.clicked() {
-                        space_view.clear_entity_expression(
-                            ctx,
-                            &EntityPathExpr::Recursive(entity_tree.path.clone()),
-                        );
+                        space_view.remove_filter_rule_for(ctx, &entity_tree.path);
                     }
 
                     if enabled {
-                        if exclusions.contains(&EntityPathExpr::Recursive(entity_path.clone())) {
+                        if is_explicitly_excluded {
                             response.on_hover_text("Stop excluding this EntityPath.");
-                        } else if inclusions
-                            .contains(&EntityPathExpr::Recursive(entity_path.clone()))
-                        {
+                        } else if is_explicitly_included {
                             response.on_hover_text("Stop including this EntityPath.");
                         }
                     }
                 });
             }
 
-            // Remove Button
+            // Remove-button
             {
-                let enabled = query_result.contains_any(&entity_tree.path)
+                let enabled = is_included
                     && add_info.can_add_self_or_descendant.is_compatible()
-                    && !exclusions.contains(&EntityPathExpr::Recursive(entity_path.clone()));
+                    && query_result.contains_any(&entity_tree.path);
 
                 ui.add_enabled_ui(enabled, |ui| {
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
@@ -247,7 +236,7 @@ fn add_entities_line_ui(
                     if response.clicked() {
                         space_view.add_entity_exclusion(
                             ctx,
-                            EntityPathExpr::Recursive(entity_tree.path.clone()),
+                            EntityPathRule::including_subtree(entity_tree.path.clone()),
                         );
                     }
 
@@ -259,12 +248,9 @@ fn add_entities_line_ui(
                 });
             }
 
-            // Add Button
+            // Add-button
             {
-                let enabled = !included
-                    && !excluded
-                    && add_info.can_add_self_or_descendant.is_compatible()
-                    && !inclusions.contains(&EntityPathExpr::Recursive(entity_path.clone()));
+                let enabled = !is_included && add_info.can_add_self_or_descendant.is_compatible();
 
                 ui.add_enabled_ui(enabled, |ui| {
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
@@ -272,7 +258,7 @@ fn add_entities_line_ui(
                     if response.clicked() {
                         space_view.add_entity_inclusion(
                             ctx,
-                            EntityPathExpr::Recursive(entity_tree.path.clone()),
+                            EntityPathRule::including_subtree(entity_tree.path.clone()),
                         );
                     }
 

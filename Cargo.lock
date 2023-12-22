@@ -1567,7 +1567,7 @@ dependencies = [
 name = "dna"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "rand",
  "rerun",
 ]
@@ -1746,12 +1746,11 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b0d2e43a355b2d49f85e288c80ba28a94d581a47abb8cf3de13262a2500abf6"
+source = "git+https://github.com/rerun-io/egui_tiles?rev=dcdcde10b493683f3e97db47d128683bec0e65b9#dcdcde10b493683f3e97db47d128683bec0e65b9"
 dependencies = [
  "ahash 0.8.6",
  "egui",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "log",
  "serde",
 ]
@@ -2874,6 +2873,15 @@ name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
 dependencies = [
  "either",
 ]
@@ -4195,9 +4203,9 @@ dependencies = [
 
 [[package]]
 name = "profiling"
-version = "1.0.12"
+version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1de09527cd2ea2c2d59fb6c2f8c1ab8c71709ed9d1b6d60b0e1c9fbb6fdcb33c"
+checksum = "d135ede8821cf6376eb7a64148901e1690b788c11ae94dc297ae917dbc91dc0e"
 dependencies = [
  "profiling-procmacros",
  "puffin",
@@ -4205,9 +4213,9 @@ dependencies = [
 
 [[package]]
 name = "profiling-procmacros"
-version = "1.0.12"
+version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d8f36e3c621a72254893ed5cc57d1a069162adb3f98bfef610788661db6ad8d"
+checksum = "4b322d7d65c1ab449be3c890fcbd0db6e1092d0dd05d79dba2dd28032cebeb05"
 dependencies = [
  "quote",
  "syn 2.0.32",
@@ -4506,7 +4514,7 @@ dependencies = [
  "criterion",
  "document-features",
  "indent",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "mimalloc",
  "nohash-hasher",
  "once_cell",
@@ -4575,7 +4583,7 @@ name = "re_crash_handler"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
  "backtrace",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "libc",
  "parking_lot 0.12.1",
  "re_analytics",
@@ -4589,7 +4597,7 @@ dependencies = [
  "ahash 0.8.6",
  "anyhow",
  "image",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "once_cell",
  "parking_lot 0.12.1",
  "rayon",
@@ -4616,7 +4624,7 @@ dependencies = [
  "egui_plot",
  "emath",
  "getrandom",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "mimalloc",
  "nohash-hasher",
  "parking_lot 0.12.1",
@@ -4649,7 +4657,7 @@ dependencies = [
  "egui_extras",
  "egui_plot",
  "image",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "re_arrow_store",
  "re_data_store",
  "re_error",
@@ -4746,7 +4754,7 @@ dependencies = [
  "document-features",
  "fixed",
  "half 2.3.1",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "mimalloc",
  "natord",
  "nohash-hasher",
@@ -4776,7 +4784,7 @@ dependencies = [
  "ahash 0.8.6",
  "backtrace",
  "emath",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "memory-stats",
  "nohash-hasher",
  "once_cell",
@@ -4798,7 +4806,7 @@ dependencies = [
  "backtrace",
  "criterion",
  "document-features",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "mimalloc",
  "polars-core",
  "rand",
@@ -4832,7 +4840,7 @@ dependencies = [
  "glam",
  "gltf",
  "half 2.3.1",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "macaw",
  "never",
  "notify",
@@ -4868,7 +4876,7 @@ dependencies = [
  "console_error_panic_hook",
  "glam",
  "image",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "log",
  "macaw",
  "pollster",
@@ -4892,7 +4900,7 @@ dependencies = [
  "atty",
  "crossbeam",
  "document-features",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "ndarray",
  "ndarray-rand",
  "once_cell",
@@ -4945,7 +4953,7 @@ name = "re_space_view"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
  "egui",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "nohash-hasher",
  "once_cell",
  "re_data_store",
@@ -4982,7 +4990,7 @@ version = "0.12.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_extras",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "re_arrow_store",
  "re_data_store",
  "re_data_ui",
@@ -5006,7 +5014,7 @@ dependencies = [
  "criterion",
  "egui",
  "glam",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "macaw",
  "mimalloc",
  "nohash-hasher",
@@ -5062,7 +5070,7 @@ version = "0.12.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_commonmark",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "re_arrow_store",
  "re_log",
  "re_query",
@@ -5079,7 +5087,7 @@ version = "0.12.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_extras",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "re_arrow_store",
  "re_data_store",
  "re_data_ui",
@@ -5099,7 +5107,7 @@ version = "0.12.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_plot",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "re_arrow_store",
  "re_format",
  "re_log_types",
@@ -5128,7 +5136,7 @@ name = "re_time_panel"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
  "egui",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "re_arrow_store",
  "re_data_store",
  "re_data_ui",
@@ -5177,7 +5185,7 @@ dependencies = [
  "half 2.3.1",
  "image",
  "infer",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "linked-hash-map",
  "mime_guess2",
  "ndarray",
@@ -5210,7 +5218,7 @@ dependencies = [
  "convert_case",
  "flatbuffers",
  "indent",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "prettyplease",
  "proc-macro2",
  "quote",
@@ -5250,8 +5258,10 @@ version = "0.12.0-alpha.1+dev"
 dependencies = [
  "eframe",
  "egui",
+ "egui_commonmark",
  "egui_extras",
  "egui_tiles",
+ "parking_lot 0.12.1",
  "re_log",
  "serde",
  "serde_json",
@@ -5275,7 +5285,7 @@ dependencies = [
  "egui_tiles",
  "ehttp",
  "image",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "once_cell",
  "poll-promise",
  "re_analytics",
@@ -5334,7 +5344,7 @@ dependencies = [
  "egui_tiles",
  "glam",
  "half 2.3.1",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "macaw",
  "ndarray",
  "nohash-hasher",
@@ -5369,7 +5379,7 @@ dependencies = [
  "egui_tiles",
  "glam",
  "image",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "nohash-hasher",
  "once_cell",
  "rayon",
@@ -5505,7 +5515,7 @@ dependencies = [
  "clap",
  "document-features",
  "env_logger",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "log",
  "puffin",
  "rayon",
@@ -5574,7 +5584,7 @@ version = "0.12.0-alpha.1+dev"
 dependencies = [
  "arrow2",
  "document-features",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "mimalloc",
  "once_cell",
  "parking_lot 0.12.1",
@@ -6036,9 +6046,9 @@ dependencies = [
 
 [[package]]
 name = "serde_spanned"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12022b835073e5b11e90a14f86838ceb1c8fb0325b72416845c487ac0fa95e80"
+checksum = "eb3622f419d1296904700073ea6cc23ad690adbd66f13ea683df73298736f0c1"
 dependencies = [
  "serde",
 ]
@@ -6434,7 +6444,7 @@ dependencies = [
  "anyhow",
  "clap",
  "glam",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "ndarray",
  "ndarray-rand",
  "rand",
@@ -7750,9 +7760,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.5.28"
+version = "0.5.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c830786f7720c2fd27a1a0e27a709dbd3c4d009b56d098fc742d4f4eab91fe2"
+checksum = "9b5c3db89721d50d0e2a673f5043fc4722f76dcc352d7b1ab8b8288bed4ed2c5"
 dependencies = [
  "memchr",
 ]

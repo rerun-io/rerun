@@ -363,6 +363,14 @@ impl App {
         )
             .on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
 
+        self.re_ui
+            .checkbox(
+                ui,
+                &mut self.state.app_options.experimental_container_blueprints,
+                "Use experimental container blueprints",
+            )
+            .on_hover_text("Load and save the container state using new container archetypes");
+
         ui.menu_button("Crash", |ui| {
             #[allow(clippy::manual_assert)]
             if ui.button("panic!").clicked() {

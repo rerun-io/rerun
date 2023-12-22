@@ -193,29 +193,21 @@ impl ::re_types_core::Archetype for Pinhole {
                 .with_context("rerun.archetypes.Pinhole#image_from_camera")?
         };
         let resolution = if let Some(array) = arrays_by_name.get("rerun.components.Resolution") {
-            Some({
-                <crate::components::Resolution>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Pinhole#resolution")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Pinhole#resolution")?
-            })
+            <crate::components::Resolution>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Pinhole#resolution")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
         let camera_xyz = if let Some(array) = arrays_by_name.get("rerun.components.ViewCoordinates")
         {
-            Some({
-                <crate::components::ViewCoordinates>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Pinhole#camera_xyz")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context("rerun.archetypes.Pinhole#camera_xyz")?
-            })
+            <crate::components::ViewCoordinates>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Pinhole#camera_xyz")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };

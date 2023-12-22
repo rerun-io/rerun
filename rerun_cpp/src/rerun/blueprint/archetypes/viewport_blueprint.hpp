@@ -6,6 +6,7 @@
 #include "../../blueprint/components/auto_layout.hpp"
 #include "../../blueprint/components/auto_space_views.hpp"
 #include "../../blueprint/components/included_space_views.hpp"
+#include "../../blueprint/components/root_container.hpp"
 #include "../../blueprint/components/space_view_maximized.hpp"
 #include "../../blueprint/components/viewport_layout.hpp"
 #include "../../collection.hpp"
@@ -27,6 +28,9 @@ namespace rerun::blueprint::archetypes {
 
         /// The layout of the space-views
         std::optional<rerun::blueprint::components::ViewportLayout> layout;
+
+        /// The layout of the space-views
+        std::optional<rerun::blueprint::components::RootContainer> root_container;
 
         /// Show one tab as maximized?
         std::optional<rerun::blueprint::components::SpaceViewMaximized> maximized;
@@ -56,6 +60,15 @@ namespace rerun::blueprint::archetypes {
         /// The layout of the space-views
         ViewportBlueprint with_layout(rerun::blueprint::components::ViewportLayout _layout) && {
             layout = std::move(_layout);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The layout of the space-views
+        ViewportBlueprint with_root_container(
+            rerun::blueprint::components::RootContainer _root_container
+        ) && {
+            root_container = std::move(_root_container);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

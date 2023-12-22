@@ -1,0 +1,23 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+
+/// The active tab in a tabbed container.
+table ActiveTab (
+    "attr.docs.unreleased",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    /// Which tab is currently active.
+    ///
+    /// This should always correspond to a tab in the container.
+    tab: rerun.datatypes.EntityPath (order: 100);
+}

@@ -3,40 +3,66 @@
 
 #pragma once
 
-#include "../../blueprint/datatypes/query_expressions.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 
 namespace arrow {
     class Array;
     class DataType;
-    class StructBuilder;
+    class StringBuilder;
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: A set of expressions used for a `DataQueryBlueprint`.
+    /// **Component**: A way to filter a set of `EntityPath`s.
+    ///
+    /// This implements as simple set of include/exclude rules:
+    ///
+    /// ```diff
+    /// + /world/**           # add everything…
+    /// - /world/roads/**     # …but remove all roads…
+    /// + /world/roads/main   # …but show main road
+    /// ```
+    ///
+    /// If there is multiple matching rules, the most specific rule wins.
+    /// If there are multiple rules of the same specificity, the last one wins.
+    /// If no rules match, the path is excluded.
+    ///
+    /// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
+    /// (`/world/**` matches both `/world` and `/world/car/driver`).
+    /// Other uses of `*` are not (yet) supported.
+    ///
+    /// `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
+    /// This means the last matching rule is also the most specific one.
+    /// For instance:
+    ///
+    /// ```diff
+    /// + /world/**
+    /// - /world
+    /// - /world/car/**
+    /// + /world/car/driver
+    /// ```
+    ///
+    /// The last rule matching `/world/car/driver` is `+ /world/car/driver`, so it is included.
+    /// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
+    /// The last rule matching `/world` is `- /world`, so it is excluded.
+    /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct QueryExpressions {
-        rerun::blueprint::datatypes::QueryExpressions expressions;
+        std::string filter;
 
       public:
         QueryExpressions() = default;
 
-        QueryExpressions(rerun::blueprint::datatypes::QueryExpressions expressions_)
-            : expressions(std::move(expressions_)) {}
+        QueryExpressions(std::string filter_) : filter(std::move(filter_)) {}
 
-        QueryExpressions& operator=(rerun::blueprint::datatypes::QueryExpressions expressions_) {
-            expressions = std::move(expressions_);
+        QueryExpressions& operator=(std::string filter_) {
+            filter = std::move(filter_);
             return *this;
-        }
-
-        /// Cast to the underlying QueryExpressions datatype
-        operator rerun::blueprint::datatypes::QueryExpressions() const {
-            return expressions;
         }
     };
 } // namespace rerun::blueprint::components
@@ -55,7 +81,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const blueprint::components::QueryExpressions* elements,
+            arrow::StringBuilder* builder, const blueprint::components::QueryExpressions* elements,
             size_t num_elements
         );
 

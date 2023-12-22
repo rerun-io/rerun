@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .active_tab import ActiveTab, ActiveTabBatch, ActiveTabType
 from .auto_layout import AutoLayout, AutoLayoutArrayLike, AutoLayoutBatch, AutoLayoutLike, AutoLayoutType
 from .auto_space_views import (
     AutoSpaceViews,
@@ -9,6 +10,13 @@ from .auto_space_views import (
     AutoSpaceViewsBatch,
     AutoSpaceViewsLike,
     AutoSpaceViewsType,
+)
+from .container_kind import (
+    ContainerKind,
+    ContainerKindArrayLike,
+    ContainerKindBatch,
+    ContainerKindLike,
+    ContainerKindType,
 )
 from .entities_determined_by_user import (
     EntitiesDeterminedByUser,
@@ -23,6 +31,13 @@ from .entity_properties_component import (
     EntityPropertiesComponentBatch,
     EntityPropertiesComponentLike,
     EntityPropertiesComponentType,
+)
+from .included_contents import (
+    IncludedContents,
+    IncludedContentsArrayLike,
+    IncludedContentsBatch,
+    IncludedContentsLike,
+    IncludedContentsType,
 )
 from .included_queries import (
     IncludedQueries,
@@ -40,7 +55,28 @@ from .included_space_views import (
 )
 from .name import Name, NameArrayLike, NameBatch, NameLike, NameType
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
-from .query_expressions import QueryExpressions, QueryExpressionsBatch, QueryExpressionsType
+from .primary_weights import (
+    PrimaryWeights,
+    PrimaryWeightsArrayLike,
+    PrimaryWeightsBatch,
+    PrimaryWeightsLike,
+    PrimaryWeightsType,
+)
+from .query_expressions import (
+    QueryExpressions,
+    QueryExpressionsArrayLike,
+    QueryExpressionsBatch,
+    QueryExpressionsLike,
+    QueryExpressionsType,
+)
+from .root_container import RootContainer, RootContainerBatch, RootContainerType
+from .secondary_weights import (
+    SecondaryWeights,
+    SecondaryWeightsArrayLike,
+    SecondaryWeightsBatch,
+    SecondaryWeightsLike,
+    SecondaryWeightsType,
+)
 from .space_view_class import (
     SpaceViewClass,
     SpaceViewClassArrayLike,
@@ -59,6 +95,9 @@ from .viewport_layout import (
 )
 
 __all__ = [
+    "ActiveTab",
+    "ActiveTabBatch",
+    "ActiveTabType",
     "AutoLayout",
     "AutoLayoutArrayLike",
     "AutoLayoutBatch",
@@ -69,6 +108,11 @@ __all__ = [
     "AutoSpaceViewsBatch",
     "AutoSpaceViewsLike",
     "AutoSpaceViewsType",
+    "ContainerKind",
+    "ContainerKindArrayLike",
+    "ContainerKindBatch",
+    "ContainerKindLike",
+    "ContainerKindType",
     "EntitiesDeterminedByUser",
     "EntitiesDeterminedByUserArrayLike",
     "EntitiesDeterminedByUserBatch",
@@ -79,6 +123,11 @@ __all__ = [
     "EntityPropertiesComponentBatch",
     "EntityPropertiesComponentLike",
     "EntityPropertiesComponentType",
+    "IncludedContents",
+    "IncludedContentsArrayLike",
+    "IncludedContentsBatch",
+    "IncludedContentsLike",
+    "IncludedContentsType",
     "IncludedQueries",
     "IncludedQueriesArrayLike",
     "IncludedQueriesBatch",
@@ -99,9 +148,24 @@ __all__ = [
     "PanelViewBatch",
     "PanelViewLike",
     "PanelViewType",
+    "PrimaryWeights",
+    "PrimaryWeightsArrayLike",
+    "PrimaryWeightsBatch",
+    "PrimaryWeightsLike",
+    "PrimaryWeightsType",
     "QueryExpressions",
+    "QueryExpressionsArrayLike",
     "QueryExpressionsBatch",
+    "QueryExpressionsLike",
     "QueryExpressionsType",
+    "RootContainer",
+    "RootContainerBatch",
+    "RootContainerType",
+    "SecondaryWeights",
+    "SecondaryWeightsArrayLike",
+    "SecondaryWeightsBatch",
+    "SecondaryWeightsLike",
+    "SecondaryWeightsType",
     "SpaceViewClass",
     "SpaceViewClassArrayLike",
     "SpaceViewClassBatch",
