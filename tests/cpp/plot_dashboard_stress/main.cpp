@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <rerun.hpp>
+#include <rerun/demo_utils.hpp>
 #include <rerun/third_party/cxxopts.hpp>
 
 int main(int argc, char** argv) {
@@ -85,7 +86,7 @@ int main(int argc, char** argv) {
 
     std::random_device rd;
     std::mt19937 rng(rd());
-    std::uniform_real_distribution<double> uniform_pi(0.0, M_PI);
+    std::uniform_real_distribution<double> uniform_pi(0.0, rerun::demo::PI);
 
     std::vector<int64_t> sim_times;
     const auto order = args["order"].as<std::string>();
