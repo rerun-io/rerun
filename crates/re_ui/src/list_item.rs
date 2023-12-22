@@ -114,6 +114,8 @@ pub struct ListItem<'a> {
     active: bool,
     selected: bool,
     subdued: bool,
+    weak: bool,
+    italics: bool,
     force_hovered: bool,
     collapse_openness: Option<f32>,
     height: f32,
@@ -132,6 +134,8 @@ impl<'a> ListItem<'a> {
             active: true,
             selected: false,
             subdued: false,
+            weak: false,
+            italics: false,
             force_hovered: false,
             collapse_openness: None,
             height: ReUi::list_item_height(),
@@ -163,6 +167,22 @@ impl<'a> ListItem<'a> {
     #[inline]
     pub fn subdued(mut self, subdued: bool) -> Self {
         self.subdued = subdued;
+        self
+    }
+
+    /// Set the weak state of the item.
+    // TODO(ab): should use design token instead
+    #[inline]
+    pub fn weak(mut self, weak: bool) -> Self {
+        self.weak = weak;
+        self
+    }
+
+    /// Render text in italic.
+    // TODO(ab): should use design token instead
+    #[inline]
+    pub fn italics(mut self, italics: bool) -> Self {
+        self.italics = italics;
         self
     }
 
@@ -272,7 +292,7 @@ impl<'a> ListItem<'a> {
         }
     }
 
-    fn ui(self, ui: &mut Ui, id: Option<egui::Id>) -> ListItemResponse {
+    fn ui(mut self, ui: &mut Ui, id: Option<egui::Id>) -> ListItemResponse {
         let collapse_extra = if self.collapse_openness.is_some() {
             ReUi::collapsing_triangle_size().x + ReUi::text_to_icon_padding()
         } else {
@@ -283,6 +303,10 @@ impl<'a> ListItem<'a> {
         } else {
             0.0
         };
+
+        if self.italics {
+            self.text = self.text.italics();
+        }
 
         /// Compute the "ideal" desired width of the item, accounting for text and icon(s) (but not
         /// buttons).
@@ -342,8 +366,10 @@ impl<'a> ListItem<'a> {
                 ui.visuals().widgets.inactive
             };
 
-            if self.subdued {
-                //TODO(ab): hack, see ['ListItem::subdued']
+            // TODO(ab): use design tokens instead
+            if self.weak {
+                visuals.fg_stroke.color = ui.visuals().weak_text_color();
+            } else if self.subdued {
                 visuals.fg_stroke.color = visuals.fg_stroke.color.gamma_multiply(0.5);
             }
 
