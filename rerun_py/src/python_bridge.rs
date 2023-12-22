@@ -2,6 +2,7 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pufunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use itertools::Itertools;
@@ -35,7 +36,19 @@ use re_ws_comms::RerunServerPort;
 
 // --- FFI ---
 
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
+
+// The bridge needs to have complete control over the lifetimes of the individual recordings,
+// otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
+// data and joining a bunch of threads) can end up running at any time depending on what the
+// Python GC is doing, which obviously leads to very bad things :tm:.
+//
+// TODO(#2116): drop unused recordings
+fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<StoreId, RecordingStream>> {
+    static ALL_RECORDINGS: OnceCell<parking_lot::Mutex<HashMap<StoreId, RecordingStream>>> =
+        OnceCell::new();
+    ALL_RECORDINGS.get_or_init(Default::default).lock()
+}
 
 type GarbageChunk = arrow2::chunk::Chunk<Box<dyn arrow2::array::Array>>;
 type GarbageSender = crossbeam::channel::Sender<GarbageChunk>;
@@ -82,7 +95,6 @@ fn flush_garbage_queue() {
 #[cfg(feature = "web_viewer")]
 fn global_web_viewer_server(
 ) -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServerHandle>> {
-    use once_cell::sync::OnceCell;
     static WEB_HANDLE: OnceCell<
         parking_lot::Mutex<Option<re_web_viewer_server::WebViewerServerHandle>>,
     > = OnceCell::new();
@@ -263,6 +275,9 @@ fn new_recording(
         );
     }
 
+    // NOTE: The Rust-side of the bindings must be in control of the lifetimes of the recordings!
+    all_recordings().insert(recording_id, recording.clone());
+
     Ok(PyRecordingStream(recording))
 }
 
@@ -316,12 +331,22 @@ fn new_blueprint(
         );
     }
 
+    // NOTE: The Rust-side of the bindings must be in control of the lifetimes of the recordings!
+    all_recordings().insert(blueprint_id, blueprint.clone());
+
     Ok(PyRecordingStream(blueprint))
 }
 
 #[pyfunction]
-fn shutdown() {
+fn shutdown(py: Python<'_>) {
     re_log::debug!("Shutting down the Rerun SDK");
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.allow_threads(|| {
+        for (_, recording) in all_recordings().drain() {
+            recording.disconnect();
+        }
+        flush_garbage_queue();
+    });
 }
 
 // --- Recordings ---
@@ -388,6 +413,9 @@ fn set_global_data_recording(
     // to zero, which means dropping it, which means flushing it, which potentially means
     // deallocating python-owned data, which means grabbing the GIL, thus we need to release the
     // GIL first.
+    //
+    // NOTE: This cannot happen anymore with the new `ALL_RECORDINGS` thingy, but better safe than
+    // sorry.
     py.allow_threads(|| {
         let rec = RecordingStream::set_global(
             rerun::StoreKind::Recording,
@@ -417,6 +445,9 @@ fn set_thread_local_data_recording(
     // to zero, which means dropping it, which means flushing it, which potentially means
     // deallocating python-owned data, which means grabbing the GIL, thus we need to release the
     // GIL first.
+    //
+    // NOTE: This cannot happen anymore with the new `ALL_RECORDINGS` thingy, but better safe than
+    // sorry.
     py.allow_threads(|| {
         let rec = RecordingStream::set_thread_local(
             rerun::StoreKind::Recording,
@@ -457,6 +488,9 @@ fn set_global_blueprint_recording(
     // to zero, which means dropping it, which means flushing it, which potentially means
     // deallocating python-owned blueprint, which means grabbing the GIL, thus we need to release the
     // GIL first.
+    //
+    // NOTE: This cannot happen anymore with the new `ALL_RECORDINGS` thingy, but better safe than
+    // sorry.
     py.allow_threads(|| {
         let rec = RecordingStream::set_global(
             rerun::StoreKind::Blueprint,
@@ -486,6 +520,9 @@ fn set_thread_local_blueprint_recording(
     // to zero, which means dropping it, which means flushing it, which potentially means
     // deallocating python-owned blueprint, which means grabbing the GIL, thus we need to release the
     // GIL first.
+    //
+    // NOTE: This cannot happen anymore with the new `ALL_RECORDINGS` thingy, but better safe than
+    // sorry.
     py.allow_threads(|| {
         let rec = RecordingStream::set_thread_local(
             rerun::StoreKind::Blueprint,
