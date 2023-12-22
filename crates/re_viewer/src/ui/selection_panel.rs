@@ -584,8 +584,8 @@ fn container_top_level_properties(
     }
 
     if should_simplify_tree {
-        viewport.simplify_tree(
-            Some(*tile_id),
+        viewport.blueprint.simplify_tree(
+            *tile_id,
             egui_tiles::SimplificationOptions {
                 prune_empty_tabs: true,
                 prune_empty_containers: true,
@@ -650,7 +650,7 @@ fn show_list_item_for_container_child(
 
     let response = list_item.show(ui);
 
-    item_ui::select_hovered_on_click(ctx, &response, &[item]);
+    item_ui::select_hovered_on_click(ctx, &response, std::iter::once(item));
 
     true
 }

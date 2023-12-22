@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 
-use egui_tiles::{Behavior as _, Tile};
+use egui_tiles::Behavior as _;
 use once_cell::sync::Lazy;
 use re_data_store::EntityPropertyMap;
 use re_data_ui::item_ui;
@@ -267,21 +267,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
         }
     }
 
-    /// Simplify the tile tree.
-    ///
-    /// If a `tile_id` is provided, only that subtree will be simplified.
-    pub fn simplify_tree(
-        &mut self,
-        tile_id: Option<egui_tiles::TileId>,
-        simplification_options: egui_tiles::SimplificationOptions,
-    ) {
-        if let Some(tile_id) = tile_id.or(self.tree.root) {
-            self.deferred_tree_actions
-                .simplify
-                .push((tile_id, simplification_options));
-        }
-    }
-
     fn should_auto_add_space_view(
         &self,
         already_added: &[SpaceViewBlueprint],
@@ -417,12 +402,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     self.edited = true;
                 }
             }
-        }
-
-        for (tile_id, simplify_options) in simplify {
-            re_log::trace!("Simplifying tile {tile_id:?}");
-            self.tree.simplify_tile(tile_id, &simplify_options);
-            self.edited = true;
         }
 
         if reset {

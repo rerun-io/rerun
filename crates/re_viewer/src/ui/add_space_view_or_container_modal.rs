@@ -1,7 +1,8 @@
 //! Modal for adding a new space view of container to an existing target container.
 
 use itertools::Itertools;
-use re_log_types::EntityPath;
+
+use re_log_types::{EntityPath, EntityPathFilter};
 use re_space_view::DataQueryBlueprint;
 use re_viewer_context::ViewerContext;
 use re_viewport::{SpaceViewBlueprint, Viewport};
@@ -66,11 +67,7 @@ fn modal_ui(
 
     for (title, subtitle, kind) in container_data {
         if row_ui(ui, &re_ui::icons::CONTAINER, title, subtitle).clicked() {
-            viewport.blueprint.add_container(
-                kind,
-                &mut viewport.deferred_tree_actions,
-                target_container,
-            );
+            viewport.blueprint.add_container(kind, target_container);
             viewport.blueprint.mark_user_interaction(ctx);
         }
     }
@@ -87,7 +84,7 @@ fn modal_ui(
                 entry.class.identifier(),
                 &format!("empty {}", entry.class.display_name()),
                 &EntityPath::root(),
-                DataQueryBlueprint::new(entry.class.identifier(), std::iter::empty()),
+                DataQueryBlueprint::new(entry.class.identifier(), EntityPathFilter::default()),
             )
         })
     {
@@ -101,8 +98,8 @@ fn modal_ui(
             viewport.blueprint.add_space_views(
                 std::iter::once(space_view),
                 ctx,
-                &mut viewport.deferred_tree_actions,
                 target_container,
+                false,
             );
             viewport.blueprint.mark_user_interaction(ctx);
         }
