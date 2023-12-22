@@ -296,8 +296,10 @@ impl ViewportBlueprint {
     /// Add a set of space views to the viewport.
     ///
     /// The space view is added to the root container, or, if provided, to a given parent container.
-    /// If `focus_tab` is `true`, this ensures that the tab corresponding to the last provided space
-    /// views is focused.
+    /// The list of created space view IDs is returned.
+    ///
+    /// Note that this doesn't focus the corresponding tab. Use [`Self::focus_tab`] with the returned ID
+    /// if needed.
     ///
     /// NOTE: Calling this more than once per frame will result in lost data.
     /// Each call to `add_space_views` emits an updated list of [`IncludedSpaceViews`]
@@ -310,8 +312,7 @@ impl ViewportBlueprint {
         space_views: impl Iterator<Item = SpaceViewBlueprint>,
         ctx: &ViewerContext<'_>,
         parent_container: Option<egui_tiles::TileId>,
-        focus_tab: bool,
-    ) {
+    ) -> Vec<SpaceViewId> {
         let mut new_ids: Vec<_> = vec![];
 
         for mut space_view in space_views {
@@ -346,12 +347,6 @@ impl ViewportBlueprint {
                 self.send_tree_action(TreeAction::AddSpaceView(*id, parent_container));
             }
 
-            if focus_tab {
-                self.send_tree_action(TreeAction::FocusTab(
-                    *new_ids.last().expect("new_ids is not empty"),
-                ));
-            }
-
             let updated_ids: Vec<_> = self.space_views.keys().chain(new_ids.iter()).collect();
 
             let component =
@@ -359,6 +354,8 @@ impl ViewportBlueprint {
 
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
+
+        new_ids
     }
 
     /// Add a container of the provided kind.
@@ -390,6 +387,13 @@ impl ViewportBlueprint {
         container_id: egui_tiles::TileId,
         kind: egui_tiles::ContainerKind,
     ) {
+        // no-op check
+        if let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get(container_id) {
+            if container.kind() == kind {
+                return;
+            }
+        }
+
         self.send_tree_action(TreeAction::SetContainerKind(container_id, kind));
     }
 

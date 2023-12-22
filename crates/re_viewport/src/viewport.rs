@@ -263,7 +263,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             }
 
             self.blueprint
-                .add_space_views(new_space_views.into_iter(), ctx, None, false);
+                .add_space_views(new_space_views.into_iter(), ctx, None);
         }
     }
 

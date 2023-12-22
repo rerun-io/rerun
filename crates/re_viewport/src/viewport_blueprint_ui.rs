@@ -411,12 +411,14 @@ impl Viewport<'_, '_> {
                         ctx.selection_state()
                             .set_selection(Item::SpaceView(space_view.id));
 
-                        self.blueprint.add_space_views(
+                        let new_ids = self.blueprint.add_space_views(
                             std::iter::once(space_view),
                             ctx,
                             None, //TODO(ab): maybe add to the currently selected container instead?
-                            true,
                         );
+                        if let Some(new_id) = new_ids.first() {
+                            self.blueprint.focus_tab(*new_id);
+                        }
                     }
                 };
 
