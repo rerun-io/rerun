@@ -3,12 +3,67 @@
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
 //! the inner Arrow serialization of [`Schema`] and [`Chunk`].
 
+use std::sync::Arc;
+
 use crate::{TableId, TimePoint};
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 
+/// An arbitrary callback to be run when an [`ArrowMsg`], and more specifically the
+/// Arrow [`Chunk`] within it, goes out of scope.
+///
+/// If the [`ArrowMsg`] has been cloned in a bunch of places, the callback will run for each and
+/// every instance.
+/// It is up to the callback implementer to handle this, if needed.
+#[allow(clippy::type_complexity)]
+#[derive(Clone)]
+pub struct ArrowChunkReleaseCallback(Arc<dyn Fn(Chunk<Box<dyn Array>>) + Send + Sync>);
+
+impl std::ops::Deref for ArrowChunkReleaseCallback {
+    type Target = dyn Fn(Chunk<Box<dyn Array>>) + Send + Sync;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
+impl<F> From<F> for ArrowChunkReleaseCallback
+where
+    F: Fn(Chunk<Box<dyn Array>>) + Send + Sync + 'static,
+{
+    #[inline]
+    fn from(f: F) -> Self {
+        Self(Arc::new(f))
+    }
+}
+
+impl ArrowChunkReleaseCallback {
+    #[inline]
+    pub fn as_ptr(&self) -> *const () {
+        Arc::as_ptr(&self.0).cast::<()>()
+    }
+}
+
+impl PartialEq for ArrowChunkReleaseCallback {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.as_ptr(), other.as_ptr())
+    }
+}
+
+impl Eq for ArrowChunkReleaseCallback {}
+
+impl std::fmt::Debug for ArrowChunkReleaseCallback {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("ArrowChunkReleaseCallback")
+            .field(&format!("{:p}", self.as_ptr()))
+            .finish()
+    }
+}
+
 /// Message containing an Arrow payload
-#[must_use]
 #[derive(Clone, Debug, PartialEq)]
+#[must_use]
 pub struct ArrowMsg {
     /// Unique identifier for the [`crate::DataTable`] in this message.
     pub table_id: TableId,
@@ -24,6 +79,17 @@ pub struct ArrowMsg {
 
     /// Data for all control & data columns.
     pub chunk: Chunk<Box<dyn Array>>,
+
+    // pub on_release: Option<Arc<dyn FnOnce() + Send + Sync>>,
+    pub on_release: Option<ArrowChunkReleaseCallback>,
+}
+
+impl Drop for ArrowMsg {
+    fn drop(&mut self) {
+        if let Some(on_release) = self.on_release.take() {
+            (*on_release)(self.chunk.clone() /* shallow */);
+        }
+    }
 }
 
 #[cfg(feature = "serde")]
@@ -127,6 +193,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                         timepoint_max,
                         schema,
                         chunk,
+                        on_release: None,
                     })
                 } else {
                     Err(serde::de::Error::custom(
