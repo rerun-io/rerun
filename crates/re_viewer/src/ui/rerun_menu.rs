@@ -324,7 +324,7 @@ impl App {
             .checkbox(
                 ui,
                 &mut self.state.app_options.experimental_dataframe_space_view,
-                "Enable Dataframe Space View",
+                "Enable the Dataframe Space View",
             )
             .on_hover_text("Enable the experimental dataframe space view.")
             .clicked()
@@ -340,7 +340,7 @@ impl App {
             .checkbox(
                 ui,
                 &mut self.state.app_options.experimental_container_blueprints,
-                "Use experimental container blueprints",
+                "Use container blueprints",
             )
             .on_hover_text("Load and save the container state using new container archetypes");
 
@@ -348,12 +348,14 @@ impl App {
             .checkbox(
                 ui,
                 &mut self.state.app_options.experimental_additive_workflow,
-                "Use experimental container addition workflow",
+                "Enable the container addition workflow",
             )
-            .on_hover_text("This flag enables the following things:\n\n\
-                - Significantly reduce the simplification that automatically run on the container tree.\n\
-                - The 'Content' list in the selection panel when container are selected.\n\
-                - The related 'Add space view/container' modal");
+            .on_hover_text(
+                "This flag enables the experimental container addition workflow, including:\n\
+                - Remove the automatic simplification of the container tree.\n\
+                - Add a 'Content' list in the selection panel when a container is selected.\n\
+                - Add the 'Add space view/container' modal, accessible from the selection panel.",
+            );
     }
 
     #[cfg(debug_assertions)]
