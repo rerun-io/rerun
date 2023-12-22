@@ -776,7 +776,8 @@ fn blueprint_ui(
                     resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
                 }
 
-                let root_data_result = space_view.root_data_result(ctx.store_context);
+                let root_data_result =
+                    space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
                 let mut props = root_data_result
                     .individual_properties()
                     .cloned()

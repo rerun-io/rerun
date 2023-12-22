@@ -374,12 +374,14 @@ impl App {
                 store_hub.clear_blueprint();
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
-                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-                for row in updates {
-                    match blueprint_db.add_data_row(row) {
-                        Ok(()) => {}
-                        Err(err) => {
-                            re_log::warn_once!("Failed to store blueprint delta: {err}");
+                if !self.state.app_options.show_blueprint_in_timeline {
+                    let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                    for row in updates {
+                        match blueprint_db.add_data_row(row) {
+                            Ok(()) => {}
+                            Err(err) => {
+                                re_log::warn_once!("Failed to store blueprint delta: {err}");
+                            }
                         }
                     }
                 }
@@ -1164,7 +1166,11 @@ impl eframe::App for App {
 
         let store_context = store_hub.read_context();
 
-        let app_blueprint = AppBlueprint::new(store_context.as_ref(), egui_ctx);
+        let app_blueprint = AppBlueprint::new(
+            store_context.as_ref(),
+            &self.state.blueprint_query(),
+            egui_ctx,
+        );
 
         self.ui(
             egui_ctx,

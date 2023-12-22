@@ -1,6 +1,7 @@
 use ahash::HashMap;
 use parking_lot::RwLock;
 
+use re_data_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::EntityPath;
 
@@ -49,6 +50,9 @@ pub struct ViewerContext<'a> {
 
     /// UI config for the current blueprint.
     pub blueprint_cfg: &'a RecordingConfig,
+
+    /// The blueprint query used for resolving blueprint in this frame
+    pub blueprint_query: &'a LatestAtQuery,
 
     /// The look and feel of the UI.
     pub re_ui: &'a re_ui::ReUi,

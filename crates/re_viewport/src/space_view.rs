@@ -10,10 +10,10 @@ use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin, Visible};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-    blueprint_timeline, blueprint_timepoint, DataQueryId, DataResult, DynSpaceViewClass,
-    PerSystemDataResults, PerSystemEntities, PropertyOverrides, SpaceViewClass,
-    SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState, StoreContext,
-    SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
+    blueprint_timepoint, DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults,
+    PerSystemEntities, PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier,
+    SpaceViewHighlights, SpaceViewId, SpaceViewState, StoreContext, SystemCommand,
+    SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::system_execution::create_and_run_space_view_systems;
@@ -85,10 +85,12 @@ impl SpaceViewBlueprint {
     }
 
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
-    pub fn try_from_db(id: SpaceViewId, blueprint_db: &EntityDb) -> Option<Self> {
+    pub fn try_from_db(
+        id: SpaceViewId,
+        blueprint_db: &EntityDb,
+        query: &LatestAtQuery,
+    ) -> Option<Self> {
         re_tracing::profile_function!();
-
-        let query = LatestAtQuery::latest(blueprint_timeline());
 
         let re_types::blueprint::archetypes::SpaceViewBlueprint {
             display_name,
@@ -97,7 +99,7 @@ impl SpaceViewBlueprint {
             entities_determined_by_user,
             contents,
             visible,
-        } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
+        } = query_archetype(blueprint_db.store(), query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
                 if !matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
@@ -131,7 +133,9 @@ impl SpaceViewBlueprint {
             .0
             .into_iter()
             .map(DataQueryId::from)
-            .filter_map(|id| DataQueryBlueprint::try_from_db(id, blueprint_db, class_identifier))
+            .filter_map(|id| {
+                DataQueryBlueprint::try_from_db(id, blueprint_db, query, class_identifier)
+            })
             .collect();
 
         let entities_determined_by_user = entities_determined_by_user.unwrap_or_default().0;
@@ -400,7 +404,7 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
 
-        let root_data_result = self.root_data_result(ctx.store_context);
+        let root_data_result = self.root_data_result(ctx.store_context, ctx.blueprint_query);
         let props = root_data_result
             .individual_properties()
             .cloned()
@@ -424,15 +428,13 @@ impl SpaceViewBlueprint {
             .map_or(DataQueryId::invalid(), |q| q.id)
     }
 
-    pub fn root_data_result(&self, ctx: &StoreContext<'_>) -> DataResult {
+    pub fn root_data_result(&self, ctx: &StoreContext<'_>, query: &LatestAtQuery) -> DataResult {
         let entity_path = self.entity_path();
-
-        let query = LatestAtQuery::latest(blueprint_timeline());
 
         let individual_properties = ctx
             .blueprint
             .store()
-            .query_latest_component_quiet::<EntityPropertiesComponent>(&self.entity_path(), &query)
+            .query_latest_component_quiet::<EntityPropertiesComponent>(&self.entity_path(), query)
             .map(|result| result.value.0);
 
         let accumulated_properties = individual_properties.clone().unwrap_or_else(|| {
@@ -497,7 +499,8 @@ mod tests {
     use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
     use re_viewer_context::{
-        IndicatorMatchingEntities, PerVisualizer, StoreContext, VisualizableEntities,
+        blueprint_timeline, IndicatorMatchingEntities, PerVisualizer, StoreContext,
+        VisualizableEntities,
     };
 
     use super::*;
@@ -578,6 +581,7 @@ mod tests {
                 .collect(),
         );
 
+        let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
         let query = space_view.queries.first().unwrap();
 
         let resolver = query.build_resolver(space_view.id, &auto_properties);
@@ -595,7 +599,7 @@ mod tests {
                 &visualizable_entities,
                 &indicator_matching_entities_per_visualizer,
             );
-            resolver.update_overrides(&ctx, &mut query_result);
+            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
                 .tree
@@ -637,7 +641,7 @@ mod tests {
                 &visualizable_entities,
                 &indicator_matching_entities_per_visualizer,
             );
-            resolver.update_overrides(&ctx, &mut query_result);
+            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent_group = query_result
                 .tree
@@ -689,7 +693,7 @@ mod tests {
                 &visualizable_entities,
                 &indicator_matching_entities_per_visualizer,
             );
-            resolver.update_overrides(&ctx, &mut query_result);
+            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
                 .tree
@@ -711,11 +715,14 @@ mod tests {
 
         // Override visible range on root
         {
-            let root = space_view.root_data_result(&StoreContext {
-                blueprint: &blueprint,
-                recording: Some(&recording),
-                all_recordings: vec![],
-            });
+            let root = space_view.root_data_result(
+                &StoreContext {
+                    blueprint: &blueprint,
+                    recording: Some(&recording),
+                    all_recordings: vec![],
+                },
+                &blueprint_query,
+            );
             let mut overrides = root.individual_properties().cloned().unwrap_or_default();
             overrides.visible_history.enabled = true;
             overrides.visible_history.nanos = VisibleHistory::ALL;
@@ -730,13 +737,12 @@ mod tests {
                 recording: Some(&recording),
                 all_recordings: vec![],
             };
-
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
                 &indicator_matching_entities_per_visualizer,
             );
-            resolver.update_overrides(&ctx, &mut query_result);
+            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
                 .tree
@@ -778,7 +784,7 @@ mod tests {
                 &visualizable_entities,
                 &indicator_matching_entities_per_visualizer,
             );
-            resolver.update_overrides(&ctx, &mut query_result);
+            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
                 .tree

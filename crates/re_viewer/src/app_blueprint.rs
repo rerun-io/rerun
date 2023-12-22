@@ -3,8 +3,7 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
 use re_viewer_context::{
-    blueprint_timeline, blueprint_timepoint, CommandSender, StoreContext, SystemCommand,
-    SystemCommandSender,
+    blueprint_timepoint, CommandSender, StoreContext, SystemCommand, SystemCommandSender,
 };
 
 /// Blueprint for top-level application
@@ -17,7 +16,11 @@ pub struct AppBlueprint<'a> {
 }
 
 impl<'a> AppBlueprint<'a> {
-    pub fn new(store_ctx: Option<&'a StoreContext<'_>>, egui_ctx: &egui::Context) -> Self {
+    pub fn new(
+        store_ctx: Option<&'a StoreContext<'_>>,
+        query: &LatestAtQuery,
+        egui_ctx: &egui::Context,
+    ) -> Self {
         let blueprint_db = store_ctx.map(|ctx| ctx.blueprint);
         let screen_size = egui_ctx.screen_rect().size();
         let mut ret = Self {
@@ -30,17 +33,17 @@ impl<'a> AppBlueprint<'a> {
 
         if let Some(blueprint_db) = blueprint_db {
             if let Some(expanded) =
-                load_panel_state(&PanelView::BLUEPRINT_VIEW_PATH.into(), blueprint_db)
+                load_panel_state(&PanelView::BLUEPRINT_VIEW_PATH.into(), blueprint_db, query)
             {
                 ret.blueprint_panel_expanded = expanded;
             }
             if let Some(expanded) =
-                load_panel_state(&PanelView::SELECTION_VIEW_PATH.into(), blueprint_db)
+                load_panel_state(&PanelView::SELECTION_VIEW_PATH.into(), blueprint_db, query)
             {
                 ret.selection_panel_expanded = expanded;
             }
             if let Some(expanded) =
-                load_panel_state(&PanelView::TIMELINE_VIEW_PATH.into(), blueprint_db)
+                load_panel_state(&PanelView::TIMELINE_VIEW_PATH.into(), blueprint_db, query)
             {
                 ret.time_panel_expanded = expanded;
             }
@@ -129,11 +132,14 @@ impl<'a> AppBlueprint<'a> {
     }
 }
 
-fn load_panel_state(path: &EntityPath, blueprint_db: &re_entity_db::EntityDb) -> Option<bool> {
+fn load_panel_state(
+    path: &EntityPath,
+    blueprint_db: &re_entity_db::EntityDb,
+    query: &LatestAtQuery,
+) -> Option<bool> {
     re_tracing::profile_function!();
-    let query = LatestAtQuery::latest(blueprint_timeline());
     blueprint_db
         .store()
-        .query_latest_component_quiet::<PanelView>(path, &query)
+        .query_latest_component_quiet::<PanelView>(path, query)
         .map(|p| p.0)
 }

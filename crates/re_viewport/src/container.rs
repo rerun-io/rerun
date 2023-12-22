@@ -7,8 +7,8 @@ use re_log_types::{DataRow, EntityPath, RowId};
 use re_query::query_archetype;
 use re_types_core::{archetypes::Clear, ArrowBuffer};
 use re_viewer_context::{
-    blueprint_timeline, blueprint_timepoint, BlueprintId, BlueprintIdRegistry, ContainerId,
-    SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
+    blueprint_timepoint, BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId, SystemCommand,
+    SystemCommandSender as _, ViewerContext,
 };
 
 use crate::blueprint::components::GridColumns;
@@ -105,10 +105,12 @@ pub struct ContainerBlueprint {
 
 impl ContainerBlueprint {
     /// Attempt to load a [`ContainerBlueprint`] from the blueprint store.
-    pub fn try_from_db(blueprint_db: &EntityDb, id: ContainerId) -> Option<Self> {
+    pub fn try_from_db(
+        blueprint_db: &EntityDb,
+        query: &LatestAtQuery,
+        id: ContainerId,
+    ) -> Option<Self> {
         re_tracing::profile_function!();
-
-        let query = LatestAtQuery::latest(blueprint_timeline());
 
         let crate::blueprint::archetypes::ContainerBlueprint {
             container_kind,
@@ -119,7 +121,7 @@ impl ContainerBlueprint {
             active_tab,
             visible,
             grid_columns,
-        } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
+        } = query_archetype(blueprint_db.store(), query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
                 if !matches!(err, re_query::QueryError::PrimaryNotFound(_)) {

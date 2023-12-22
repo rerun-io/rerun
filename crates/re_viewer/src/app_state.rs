@@ -1,12 +1,14 @@
 use ahash::HashMap;
 
+use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
 use re_space_view::{DataQuery as _, PropertyResolver as _};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry, PlayState,
-    RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
+    blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
+    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
+    SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{
     determine_visualizable_entities, SpaceInfoCollection, Viewport, ViewportBlueprint,
@@ -104,6 +106,8 @@ impl AppState {
     ) {
         re_tracing::profile_function!();
 
+        let blueprint_query = self.blueprint_query();
+
         let Self {
             app_options,
             cache,
@@ -122,8 +126,12 @@ impl AppState {
         // this, which gives us interior mutability (only a shared reference of `ViewportBlueprint`
         // is available to the UI code) and, if needed in the future, concurrency.
         let (sender, receiver) = std::sync::mpsc::channel();
-        let viewport_blueprint =
-            ViewportBlueprint::try_from_db(store_context.blueprint, app_options, sender);
+        let viewport_blueprint = ViewportBlueprint::try_from_db(
+            store_context.blueprint,
+            &blueprint_query,
+            app_options,
+            sender,
+        );
         let mut viewport = Viewport::new(
             &viewport_blueprint,
             viewport_state,
@@ -206,6 +214,7 @@ impl AppState {
             query_results: &query_results,
             rec_cfg,
             blueprint_cfg,
+            blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
             command_sender,
@@ -227,7 +236,7 @@ impl AppState {
                     if let Some(query_result) = query_results.get_mut(&query.id) {
                         let props = viewport.state.space_view_props(space_view.id);
                         let resolver = query.build_resolver(space_view.id, props);
-                        resolver.update_overrides(store_context, query_result);
+                        resolver.update_overrides(store_context, &blueprint_query, query_result);
                     }
                 }
             }
@@ -247,6 +256,7 @@ impl AppState {
             query_results: &query_results,
             rec_cfg,
             blueprint_cfg,
+            blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
             command_sender,
@@ -382,6 +392,14 @@ impl AppState {
 
         self.recording_configs
             .retain(|store_id, _| store_hub.contains_recording(store_id));
+    }
+
+    pub fn blueprint_query(&self) -> LatestAtQuery {
+        if self.app_options.show_blueprint_in_timeline {
+            self.blueprint_cfg.time_ctrl.read().current_query().clone()
+        } else {
+            LatestAtQuery::latest(blueprint_timeline())
+        }
     }
 }
 
