@@ -72,13 +72,27 @@ impl ViewportState {
     }
 }
 
-// We delay any modifications to the tree until the end of the frame,
-// so that we don't iterate over something while modifying it.
-#[derive(Clone, Default)]
-pub struct TreeActions {
-    pub create: Vec<SpaceViewId>,
-    pub focus_tab: Option<SpaceViewId>,
-    pub remove: Vec<egui_tiles::TileId>,
+/// Mutation actions to perform on the tree at the end of the frame. These messages are sent by the mutation APIs from
+/// [`crate::ViewportBlueprint`].
+#[derive(Clone)]
+pub enum TreeAction {
+    /// Add a new space view to the provided container (or the root if `None`).
+    AddSpaceView(SpaceViewId, Option<egui_tiles::TileId>),
+
+    /// Add a new container of the provided kind to the provided container (or the root if `None`).
+    AddContainer(egui_tiles::ContainerKind, Option<egui_tiles::TileId>),
+
+    /// Change the kind of a container.
+    SetContainerKind(egui_tiles::TileId, egui_tiles::ContainerKind),
+
+    /// Ensure the tab for the provided space view is focused (see [`egui_tiles::Tree::make_active`]).
+    FocusTab(SpaceViewId),
+
+    /// Remove a tile and all its children.
+    Remove(egui_tiles::TileId),
+
+    /// Simplify the specified subtree with the provided options
+    SimplifyTree(egui_tiles::TileId, egui_tiles::SimplificationOptions),
 }
 
 // ----------------------------------------------------------------------------
@@ -102,9 +116,8 @@ pub struct Viewport<'a, 'b> {
     /// Actions to perform at the end of the frame.
     ///
     /// We delay any modifications to the tree until the end of the frame,
-    /// so that we don't mutate something while inspecitng it.
-    //TODO(jleibs): Can we use the SystemCommandSender for this, too?
-    pub deferred_tree_actions: TreeActions,
+    /// so that we don't mutate something while inspecting it.
+    tree_action_receiver: std::sync::mpsc::Receiver<TreeAction>,
 }
 
 impl<'a, 'b> Viewport<'a, 'b> {
@@ -112,6 +125,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         blueprint: &'a ViewportBlueprint,
         state: &'b mut ViewportState,
         space_view_class_registry: &SpaceViewClassRegistry,
+        tree_action_receiver: std::sync::mpsc::Receiver<TreeAction>,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -133,7 +147,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             state,
             tree,
             edited,
-            deferred_tree_actions: Default::default(),
+            tree_action_receiver,
         }
     }
 
@@ -248,11 +262,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 }
             }
 
-            self.blueprint.add_space_views(
-                new_space_views.into_iter(),
-                ctx,
-                &mut self.deferred_tree_actions,
-            );
+            self.blueprint
+                .add_space_views(new_space_views.into_iter(), ctx, None);
         }
     }
 
@@ -296,62 +307,101 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         let mut reset = false;
 
-        let TreeActions {
-            create,
-            mut focus_tab,
-            remove,
-        } = std::mem::take(&mut self.deferred_tree_actions);
+        for tree_action in self.tree_action_receiver.try_iter() {
+            match tree_action {
+                TreeAction::AddSpaceView(space_view_id, parent_container) => {
+                    if self.blueprint.auto_layout {
+                        // Re-run the auto-layout next frame:
+                        re_log::trace!(
+                            "Added a space view with no user edits yet - will re-run auto-layout"
+                        );
 
-        for space_view in &create {
-            if self.blueprint.auto_layout {
-                // Re-run the auto-layout next frame:
-                re_log::trace!(
-                    "Added a space view with no user edits yet - will re-run auto-layout"
-                );
+                        reset = true;
+                    } else if let Some(parent_id) = parent_container.or(self.tree.root) {
+                        let tile_id = self.tree.tiles.insert_pane(space_view_id);
+                        if let Some(egui_tiles::Tile::Container(container)) =
+                            self.tree.tiles.get_mut(parent_id)
+                        {
+                            re_log::trace!("Inserting new space view into root container");
+                            container.add_child(tile_id);
+                        } else {
+                            re_log::trace!("Root was not a container - will re-run auto-layout");
+                            reset = true;
+                        }
+                    } else {
+                        re_log::trace!("No root found - will re-run auto-layout");
+                    }
 
-                reset = true;
-            } else if let Some(root_id) = self.tree.root {
-                let tile_id = self.tree.tiles.insert_pane(*space_view);
-                if let Some(egui_tiles::Tile::Container(container)) =
-                    self.tree.tiles.get_mut(root_id)
-                {
-                    re_log::trace!("Inserting new space view into root container");
-                    container.add_child(tile_id);
-                } else {
-                    re_log::trace!("Root was not a container - will re-run auto-layout");
-                    reset = true;
+                    self.edited = true;
                 }
-            } else {
-                re_log::trace!("No root found - will re-run auto-layout");
-            }
+                TreeAction::AddContainer(container_kind, parent_container) => {
+                    if let Some(parent_id) = parent_container.or(self.tree.root) {
+                        let tile_id = self
+                            .tree
+                            .tiles
+                            .insert_container(egui_tiles::Container::new(container_kind, vec![]));
+                        if let Some(egui_tiles::Tile::Container(container)) =
+                            self.tree.tiles.get_mut(parent_id)
+                        {
+                            re_log::trace!("Inserting new space view into container {parent_id:?}");
+                            container.add_child(tile_id);
+                        } else {
+                            re_log::trace!(
+                                "Parent or root was not a container - will re-run auto-layout"
+                            );
+                            reset = true;
+                        }
+                    } else {
+                        re_log::trace!("No root found - will re-run auto-layout");
+                    }
 
-            focus_tab = Some(*space_view);
-            self.edited = true;
-        }
+                    self.edited = true;
+                }
+                TreeAction::SetContainerKind(container_id, container_kind) => {
+                    if let Some(egui_tiles::Tile::Container(container)) =
+                        self.tree.tiles.get_mut(container_id)
+                    {
+                        re_log::trace!("Mutating container {container_id:?} to {container_kind:?}");
+                        container.set_kind(container_kind);
+                    } else {
+                        re_log::trace!("No root found - will re-run auto-layout");
+                    }
 
-        if let Some(focus_tab) = &focus_tab {
-            let found = self.tree.make_active(|_, tile| match tile {
-                egui_tiles::Tile::Pane(space_view_id) => space_view_id == focus_tab,
-                egui_tiles::Tile::Container(_) => false,
-            });
-            re_log::trace!("Found tab {focus_tab}: {found}");
-            self.edited = true;
-        }
+                    self.edited = true;
+                }
+                TreeAction::FocusTab(space_view_id) => {
+                    let found = self.tree.make_active(|_, tile| match tile {
+                        egui_tiles::Tile::Pane(this_space_view_id) => {
+                            *this_space_view_id == space_view_id
+                        }
+                        egui_tiles::Tile::Container(_) => false,
+                    });
+                    re_log::trace!(
+                        "Found tab to focus on for space view ID {space_view_id}: {found}"
+                    );
+                    self.edited = true;
+                }
+                TreeAction::Remove(tile_id) => {
+                    for tile in self.tree.tiles.remove_recursively(tile_id) {
+                        re_log::trace!("Removing tile {tile_id:?}");
+                        if let egui_tiles::Tile::Pane(space_view_id) = tile {
+                            re_log::trace!("Removing space view {space_view_id}");
+                            self.tree.tiles.remove(tile_id);
+                            self.blueprint.remove_space_view(&space_view_id, ctx);
+                        }
+                    }
 
-        for tile_id in remove {
-            for tile in self.tree.tiles.remove_recursively(tile_id) {
-                re_log::trace!("Removing tile {tile_id:?}");
-                if let egui_tiles::Tile::Pane(space_view_id) = tile {
-                    re_log::trace!("Removing space-view {space_view_id}");
-                    self.tree.tiles.remove(tile_id);
-                    self.blueprint.remove_space_view(&space_view_id, ctx);
+                    if Some(tile_id) == self.tree.root {
+                        self.tree.root = None;
+                    }
+                    self.edited = true;
+                }
+                TreeAction::SimplifyTree(tile_id, options) => {
+                    re_log::trace!("Simplifying tree with options: {options:?}");
+                    self.tree.simplify_tile(tile_id, &options);
+                    self.edited = true;
                 }
             }
-
-            if Some(tile_id) == self.tree.root {
-                self.tree.root = None;
-            }
-            self.edited = true;
         }
 
         if reset {

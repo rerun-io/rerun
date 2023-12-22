@@ -106,7 +106,7 @@ impl Viewport<'_, '_> {
 
         if remove {
             self.blueprint.mark_user_interaction(ctx);
-            self.deferred_tree_actions.remove.push(tile_id);
+            self.blueprint.remove(tile_id);
         }
 
         if visibility_changed {
@@ -130,7 +130,7 @@ impl Viewport<'_, '_> {
     ) {
         let Some(space_view) = self.blueprint.space_views.get(space_view_id) else {
             re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
-            self.deferred_tree_actions.remove.push(tile_id);
+            self.blueprint.remove(tile_id);
             return;
         };
         debug_assert_eq!(space_view.id, *space_view_id);
@@ -165,7 +165,7 @@ impl Viewport<'_, '_> {
 
                 let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
                 if response.clicked() {
-                    self.deferred_tree_actions.remove.push(tile_id);
+                    self.blueprint.remove(tile_id);
                 }
 
                 response | vis_response
@@ -191,7 +191,7 @@ impl Viewport<'_, '_> {
             .on_hover_text("Space View");
 
         if response.clicked() {
-            self.deferred_tree_actions.focus_tab = Some(space_view.id);
+            self.blueprint.focus_tab(space_view.id);
         }
 
         item_ui::select_hovered_on_click(ctx, &response, item);
@@ -392,32 +392,35 @@ impl Viewport<'_, '_> {
             |ui| {
                 ui.style_mut().wrap = Some(false);
 
-                let mut add_space_view_item =
-                    |ui: &mut egui::Ui, space_view: SpaceViewBlueprint| {
-                        if ctx
-                            .re_ui
-                            .selectable_label_with_icon(
-                                ui,
-                                space_view.class(ctx.space_view_class_registry).icon(),
-                                if space_view.space_origin.is_root() {
-                                    space_view.display_name.clone()
-                                } else {
-                                    space_view.space_origin.to_string()
-                                },
-                                false,
-                            )
-                            .clicked()
-                        {
-                            ui.close_menu();
-                            ctx.selection_state()
-                                .set_selection(Item::SpaceView(space_view.id));
-                            self.blueprint.add_space_views(
-                                std::iter::once(space_view),
-                                ctx,
-                                &mut self.deferred_tree_actions,
-                            );
+                let add_space_view_item = |ui: &mut egui::Ui, space_view: SpaceViewBlueprint| {
+                    if ctx
+                        .re_ui
+                        .selectable_label_with_icon(
+                            ui,
+                            space_view.class(ctx.space_view_class_registry).icon(),
+                            if space_view.space_origin.is_root() {
+                                space_view.display_name.clone()
+                            } else {
+                                space_view.space_origin.to_string()
+                            },
+                            false,
+                        )
+                        .clicked()
+                    {
+                        ui.close_menu();
+                        ctx.selection_state()
+                            .set_selection(Item::SpaceView(space_view.id));
+
+                        let new_ids = self.blueprint.add_space_views(
+                            std::iter::once(space_view),
+                            ctx,
+                            None, //TODO(ab): maybe add to the currently selected container instead?
+                        );
+                        if let Some(new_id) = new_ids.first() {
+                            self.blueprint.focus_tab(*new_id);
                         }
-                    };
+                    }
+                };
 
                 // Space view options proposed by heuristics
                 let mut possible_space_views =

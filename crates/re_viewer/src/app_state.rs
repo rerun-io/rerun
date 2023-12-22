@@ -105,12 +105,18 @@ impl AppState {
             viewport_state,
         } = self;
 
+        // Some of the mutations APIs of `ViewportBlueprints` are recorded as `Viewport::TreeAction`
+        // and must be applied by `Viewport` at the end of the frame. We use a temporary channel for
+        // this, which gives us interior mutability (only a shared reference of `ViewportBlueprint`
+        // is available to the UI code) and, if needed in the future, concurrency.
+        let (sender, receiver) = std::sync::mpsc::channel();
         let viewport_blueprint =
-            ViewportBlueprint::try_from_db(store_context.blueprint, app_options);
+            ViewportBlueprint::try_from_db(store_context.blueprint, app_options, sender);
         let mut viewport = Viewport::new(
             &viewport_blueprint,
             viewport_state,
             space_view_class_registry,
+            receiver,
         );
 
         // If the blueprint is invalid, reset it.

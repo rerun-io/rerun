@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use egui_tiles::TileId;
+use egui_tiles::{SimplificationOptions, TileId};
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::Timeline;
@@ -17,7 +17,7 @@ use crate::{
     },
     container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
     space_view::SpaceViewBlueprint,
-    viewport::TreeActions,
+    viewport::TreeAction,
     VIEWPORT_PATH,
 };
 
@@ -49,11 +49,18 @@ pub struct ViewportBlueprint {
 
     /// Whether or not space views should be created automatically.
     pub auto_space_views: bool,
+
+    /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
+    tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 }
 
 impl ViewportBlueprint {
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
-    pub fn try_from_db(blueprint_db: &re_data_store::StoreDb, app_options: &AppOptions) -> Self {
+    pub fn try_from_db(
+        blueprint_db: &re_data_store::StoreDb,
+        app_options: &AppOptions,
+        tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
+    ) -> Self {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
@@ -140,6 +147,7 @@ impl ViewportBlueprint {
             maximized,
             auto_layout,
             auto_space_views,
+            tree_action_sender,
         };
 
         if app_options.experimental_container_blueprints {
@@ -270,6 +278,12 @@ impl ViewportBlueprint {
         }
     }
 
+    fn send_tree_action(&self, action: TreeAction) {
+        if self.tree_action_sender.send(action).is_err() {
+            re_log::warn_once!("Channel between ViewportBlueprint and Viewport is broken");
+        }
+    }
+
     pub fn mark_user_interaction(&self, ctx: &ViewerContext<'_>) {
         if self.auto_layout {
             re_log::trace!("User edits - will no longer auto-layout");
@@ -281,6 +295,12 @@ impl ViewportBlueprint {
 
     /// Add a set of space views to the viewport.
     ///
+    /// The space view is added to the root container, or, if provided, to a given parent container.
+    /// The list of created space view IDs is returned.
+    ///
+    /// Note that this doesn't focus the corresponding tab. Use [`Self::focus_tab`] with the returned ID
+    /// if needed.
+    ///
     /// NOTE: Calling this more than once per frame will result in lost data.
     /// Each call to `add_space_views` emits an updated list of [`IncludedSpaceViews`]
     /// Built by taking the list of [`IncludedSpaceViews`] from the current frame
@@ -291,8 +311,8 @@ impl ViewportBlueprint {
         &self,
         space_views: impl Iterator<Item = SpaceViewBlueprint>,
         ctx: &ViewerContext<'_>,
-        tree_actions: &mut TreeActions,
-    ) {
+        parent_container: Option<egui_tiles::TileId>,
+    ) -> Vec<SpaceViewId> {
         let mut new_ids: Vec<_> = vec![];
 
         for mut space_view in space_views {
@@ -323,7 +343,9 @@ impl ViewportBlueprint {
         }
 
         if !new_ids.is_empty() {
-            tree_actions.create.extend(new_ids.iter());
+            for id in &new_ids {
+                self.send_tree_action(TreeAction::AddSpaceView(*id, parent_container));
+            }
 
             let updated_ids: Vec<_> = self.space_views.keys().chain(new_ids.iter()).collect();
 
@@ -332,6 +354,56 @@ impl ViewportBlueprint {
 
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
+
+        new_ids
+    }
+
+    /// Add a container of the provided kind.
+    ///
+    /// The container is added to the root container or, if provided, to the given parent container.
+    pub fn add_container(
+        &self,
+        kind: egui_tiles::ContainerKind,
+        parent_container: Option<egui_tiles::TileId>,
+    ) {
+        self.send_tree_action(TreeAction::AddContainer(kind, parent_container));
+    }
+
+    /// Recursively remove a tile.
+    ///
+    /// All space views directly or indirectly contained by this tile are removed as well.
+    pub fn remove(&self, tile_id: egui_tiles::TileId) {
+        self.send_tree_action(TreeAction::Remove(tile_id));
+    }
+
+    /// Make sure the tab corresponding to this space view is focused.
+    pub fn focus_tab(&self, space_view_id: SpaceViewId) {
+        self.send_tree_action(TreeAction::FocusTab(space_view_id));
+    }
+
+    /// Set the kind of the provided container.
+    pub fn set_container_kind(
+        &self,
+        container_id: egui_tiles::TileId,
+        kind: egui_tiles::ContainerKind,
+    ) {
+        // no-op check
+        if let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get(container_id) {
+            if container.kind() == kind {
+                return;
+            }
+        }
+
+        self.send_tree_action(TreeAction::SetContainerKind(container_id, kind));
+    }
+
+    /// Simplify the container subtree with the provided options.
+    pub fn simplify_tree(
+        &self,
+        tile_id: egui_tiles::TileId,
+        simplification_options: SimplificationOptions,
+    ) {
+        self.send_tree_action(TreeAction::SimplifyTree(tile_id, simplification_options));
     }
 
     #[allow(clippy::unused_self)]
