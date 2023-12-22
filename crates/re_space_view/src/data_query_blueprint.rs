@@ -11,9 +11,9 @@ use re_log_types::{
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatorMatchingEntities, IndicatorMatchingEntitiesPerVisualizer, PropertyOverrides,
-    SpaceViewClassIdentifier, SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntitiesPerVisualizer,
+    IndicatorMatchingEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier,
+    SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _, ViewSystemIdentifier,
+    ViewerContext, VisualizableEntities,
 };
 
 use crate::{
@@ -178,8 +178,8 @@ impl DataQuery for DataQueryBlueprint {
     fn execute_query(
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
-        visualizable_entities_for_visualizer_systems: &VisualizableEntitiesPerVisualizer,
-        indicator_matching_entities_per_visualizer: &IndicatorMatchingEntitiesPerVisualizer,
+        visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
+        indicator_matching_entities_per_visualizer: &PerVisualizer<IndicatorMatchingEntities>,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
@@ -209,7 +209,7 @@ impl DataQuery for DataQueryBlueprint {
 /// used to efficiently determine if we should continue the walk or switch
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
-    visualizable_entities_for_visualizer_systems: &'a VisualizableEntitiesPerVisualizer,
+    visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
     indicator_matching_entities_per_visualizer:
         &'a IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>,
     entity_path_filter: EntityPathFilter,
@@ -218,7 +218,7 @@ struct QueryExpressionEvaluator<'a> {
 impl<'a> QueryExpressionEvaluator<'a> {
     fn new(
         blueprint: &'a DataQueryBlueprint,
-        visualizable_entities_for_visualizer_systems: &'a VisualizableEntitiesPerVisualizer,
+        visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
         indicator_matching_entities_per_visualizer: &'a IntMap<
             ViewSystemIdentifier,
             IndicatorMatchingEntities,
@@ -518,7 +518,7 @@ mod tests {
         }
 
         let mut visualizable_entities_for_visualizer_systems =
-            VisualizableEntitiesPerVisualizer::default();
+            PerVisualizer::<VisualizableEntities>::default();
 
         visualizable_entities_for_visualizer_systems
             .0
@@ -637,19 +637,20 @@ mod tests {
                 entity_path_filter: EntityPathFilter::parse_forgiving(filter),
             };
 
-            let indicator_matching_entities_per_visualizer = IndicatorMatchingEntitiesPerVisualizer(
-                visualizable_entities_for_visualizer_systems
-                    .iter()
-                    .map(|(id, entities)| {
-                        (
-                            *id,
-                            IndicatorMatchingEntities(
-                                entities.0.iter().map(|path| path.hash()).collect(),
-                            ),
-                        )
-                    })
-                    .collect(),
-            );
+            let indicator_matching_entities_per_visualizer =
+                PerVisualizer::<IndicatorMatchingEntities>(
+                    visualizable_entities_for_visualizer_systems
+                        .iter()
+                        .map(|(id, entities)| {
+                            (
+                                *id,
+                                IndicatorMatchingEntities(
+                                    entities.0.iter().map(|path| path.hash()).collect(),
+                                ),
+                            )
+                        })
+                        .collect(),
+                );
             let query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities_for_visualizer_systems,

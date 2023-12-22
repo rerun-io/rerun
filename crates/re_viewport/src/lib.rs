@@ -37,8 +37,7 @@ use re_log_types::EntityPath;
 use re_types::datatypes;
 
 use re_viewer_context::{
-    ApplicableEntitiesPerVisualizer, DynSpaceViewClass, VisualizableEntities,
-    VisualizableEntitiesPerVisualizer,
+    ApplicableEntities, DynSpaceViewClass, PerVisualizer, VisualizableEntities,
 };
 
 /// Utility for querying a pinhole archetype instance.
@@ -68,18 +67,18 @@ fn query_pinhole(
 ///
 /// `filter_subtree` is a filter used to speed up the collection. Specify the root if no filter is needed.
 pub fn determine_visualizable_entities(
-    applicable_entities_per_visualizer: &ApplicableEntitiesPerVisualizer,
+    applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
     store_db: &StoreDb,
     visualizers: &re_viewer_context::ViewPartCollection,
     class: &dyn DynSpaceViewClass,
     space_origin: &EntityPath,
     filter_subtree: &EntityPath,
-) -> VisualizableEntitiesPerVisualizer {
+) -> PerVisualizer<VisualizableEntities> {
     re_tracing::profile_function!();
 
     let filter_ctx = class.visualizable_filter_context(space_origin, store_db, filter_subtree);
 
-    VisualizableEntitiesPerVisualizer(
+    PerVisualizer::<VisualizableEntities>(
         visualizers
             .iter_with_identifiers()
             .map(|(visualizer_identifier, visualizer_system)| {

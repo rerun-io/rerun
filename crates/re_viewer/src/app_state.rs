@@ -7,6 +7,7 @@ use re_space_view::{DataQuery as _, PropertyResolver as _};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry, PlayState,
     RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
+    VisualizableEntities,
 };
 use re_viewport::{
     determine_visualizable_entities, SpaceInfoCollection, Viewport, ViewportBlueprint,
@@ -141,7 +142,7 @@ impl AppState {
         // TODO(andreas): This shouldn't happen every frame and it shouldn't happen here. Instead we need to drive the visualizable set from a store subscriber.
         let visualizable_entities_per_system_per_space_view: HashMap<
             re_viewer_context::SpaceViewId,
-            re_viewer_context::VisualizableEntitiesPerVisualizer,
+            re_viewer_context::PerVisualizer<VisualizableEntities>,
         > = viewport
             .blueprint
             .space_views

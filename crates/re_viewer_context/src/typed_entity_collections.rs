@@ -20,7 +20,23 @@ impl std::ops::Deref for ApplicableEntities {
     }
 }
 
-/// List of entities that can be visualized by a concrete visualizer.
+/// List of entities that match the indicator components of a visualizer.
+///
+/// In order to be a match the entity must have at some point in time on any timeline had any of
+/// the indicator components specified by the respective visualizer system.
+#[derive(Default, Clone)]
+pub struct IndicatorMatchingEntities(pub IntSet<EntityPathHash>);
+
+impl std::ops::Deref for IndicatorMatchingEntities {
+    type Target = IntSet<EntityPathHash>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// List of entities that can be visualized by a concrete visualizer in the context of a specific instantiated space view.
 ///
 /// This is a subset of [`VisualizerApplicableEntities`] and differs on a
 /// per space view instance base.
@@ -36,64 +52,14 @@ impl std::ops::Deref for VisualizableEntities {
     }
 }
 
-/// List of entities that match the indicator components of a visualizer.
-///
-/// In order to be a match the entity must have at some point in time on any timeline had any of the indicator components.
-#[derive(Default, Clone)]
-pub struct IndicatorMatchingEntities(pub IntSet<EntityPathHash>);
-
-impl std::ops::Deref for IndicatorMatchingEntities {
-    type Target = IntSet<EntityPathHash>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 // -----------
 
-/// List of entities that are applicable to each visualizer.
-///
-/// See [`IndicatorMatchingEntities`].
+/// Utility
 #[derive(Default)]
-pub struct IndicatorMatchingEntitiesPerVisualizer(
-    pub IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>,
-);
+pub struct PerVisualizer<T: Default>(pub IntMap<ViewSystemIdentifier, T>);
 
-impl std::ops::Deref for IndicatorMatchingEntitiesPerVisualizer {
-    type Target = IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-/// List of entities that are applicable to each visualizer.
-///
-/// See [`VisualizerApplicableEntities`].
-pub struct ApplicableEntitiesPerVisualizer(pub IntMap<ViewSystemIdentifier, ApplicableEntities>);
-
-impl std::ops::Deref for ApplicableEntitiesPerVisualizer {
-    type Target = IntMap<ViewSystemIdentifier, ApplicableEntities>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-/// List of entities that can be visualized per visualizer.
-///
-/// See [`VisualizableEntities`].
-#[derive(Default)]
-pub struct VisualizableEntitiesPerVisualizer(
-    pub IntMap<ViewSystemIdentifier, VisualizableEntities>,
-);
-
-impl std::ops::Deref for VisualizableEntitiesPerVisualizer {
-    type Target = IntMap<ViewSystemIdentifier, VisualizableEntities>;
+impl<T: Default> std::ops::Deref for PerVisualizer<T> {
+    type Target = IntMap<ViewSystemIdentifier, T>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {

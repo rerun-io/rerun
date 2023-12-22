@@ -466,8 +466,7 @@ mod tests {
     use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
     use re_viewer_context::{
-        IndicatorMatchingEntities, IndicatorMatchingEntitiesPerVisualizer, StoreContext,
-        VisualizableEntities, VisualizableEntitiesPerVisualizer,
+        IndicatorMatchingEntities, PerVisualizer, StoreContext, VisualizableEntities,
     };
 
     use super::*;
@@ -521,7 +520,7 @@ mod tests {
 
         let auto_properties = Default::default();
 
-        let mut visualizable_entities = VisualizableEntitiesPerVisualizer::default();
+        let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
         visualizable_entities
             .0
             .entry("Points3D".into())
@@ -535,7 +534,7 @@ mod tests {
                     .collect(),
                 )
             });
-        let indicator_matching_entities_per_visualizer = IndicatorMatchingEntitiesPerVisualizer(
+        let indicator_matching_entities_per_visualizer = PerVisualizer::<IndicatorMatchingEntities>(
             visualizable_entities
                 .0
                 .iter()
