@@ -440,12 +440,12 @@ pub fn is_entity_processed_by_class(
 
     let empty_entity_set = IntSet::default();
     for (id, visualizer) in parts.iter_with_identifiers() {
-        let entites_with_matching_indicator = ctx
+        let entities_with_matching_indicator = ctx
             .entities_with_matching_indicator_per_visualizer
             .get(&id)
             .unwrap_or(&empty_entity_set);
 
-        if visualizer.heuristic_filter(entites_with_matching_indicator, ent_path, heuristic_ctx) {
+        if visualizer.heuristic_filter(entities_with_matching_indicator, ent_path, heuristic_ctx) {
             return true;
         }
     }
