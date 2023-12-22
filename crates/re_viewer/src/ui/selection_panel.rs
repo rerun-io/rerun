@@ -172,11 +172,10 @@ impl SelectionPanel {
         &mut self,
         ui: &mut egui::Ui,
         ctx: &ViewerContext<'_>,
-        viewport: &mut Viewport<'_, '_>,
+        viewport: &Viewport<'_, '_>,
         tile_id: &egui_tiles::TileId,
     ) {
-        // Temporarily remove the tile so we don't get borrow-checker fights:
-        let Some(Tile::Container(container)) = viewport.tree.tiles.remove(*tile_id) else {
+        let Some(Tile::Container(container)) = viewport.tree.tiles.get(*tile_id) else {
             return;
         };
 
@@ -230,11 +229,6 @@ impl SelectionPanel {
 
             ui.set_clip_rect(clip_rect);
         });
-
-        viewport
-            .tree
-            .tiles
-            .insert(*tile_id, Tile::Container(container));
     }
 }
 
@@ -599,7 +593,7 @@ fn container_top_level_properties(
 fn show_list_item_for_container_child(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    viewport: &mut Viewport<'_, '_>,
+    viewport: &Viewport<'_, '_>,
     child_tile_id: egui_tiles::TileId,
 ) -> bool {
     let Some(child_tile) = viewport.tree.tiles.get(child_tile_id) else {
