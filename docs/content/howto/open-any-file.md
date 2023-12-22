@@ -42,7 +42,7 @@ In these instances of unsupported files, we expose two ways of implementing and 
 
 The easiest way to create your own `DataLoader` is by implementing what we call an "external loader": an executable -- written in any language that the Rerun SDK ships for -- that is available on your `$PATH`.
 
-This executable is just a vanilla Rerun logger.
+This executable takes a file path as input on `stdin` and outputs Rerun logs on `stdout`.
 It will be called by the Rerun Viewer when the user opens a file, and be passed the path to that file.
 From there, it can log data as usual, using the [`stdout` logging sink](../reference/sdk-operating-modes#standard-inputoutput?speculative-link).
 
