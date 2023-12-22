@@ -54,9 +54,9 @@ pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 pub use typed_entity_collections::{
-    ApplicableEntitiesPerVisualizer, IndicatorMatchingEntities,
+    ApplicableEntities, ApplicableEntitiesPerVisualizer, IndicatorMatchingEntities,
     IndicatorMatchingEntitiesPerVisualizer, VisualizableEntities,
-    VisualizableEntitiesPerVisualizer, VisualizerApplicableEntities,
+    VisualizableEntitiesPerVisualizer,
 };
 pub use utils::{auto_color, level_to_rich_text, DefaultColor};
 pub use viewer_context::{RecordingConfig, ViewerContext};

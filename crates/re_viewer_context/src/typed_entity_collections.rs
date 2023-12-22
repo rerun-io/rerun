@@ -9,9 +9,9 @@ use crate::ViewSystemIdentifier;
 ///
 /// An entity is applicable if it at any point in time on any timeline has all required components.
 #[derive(Default, Clone)]
-pub struct VisualizerApplicableEntities(pub IntSet<EntityPath>);
+pub struct ApplicableEntities(pub IntSet<EntityPath>);
 
-impl std::ops::Deref for VisualizerApplicableEntities {
+impl std::ops::Deref for ApplicableEntities {
     type Target = IntSet<EntityPath>;
 
     #[inline]
@@ -73,12 +73,10 @@ impl std::ops::Deref for IndicatorMatchingEntitiesPerVisualizer {
 /// List of entities that are applicable to each visualizer.
 ///
 /// See [`VisualizerApplicableEntities`].
-pub struct ApplicableEntitiesPerVisualizer(
-    pub IntMap<ViewSystemIdentifier, VisualizerApplicableEntities>,
-);
+pub struct ApplicableEntitiesPerVisualizer(pub IntMap<ViewSystemIdentifier, ApplicableEntities>);
 
 impl std::ops::Deref for ApplicableEntitiesPerVisualizer {
-    type Target = IntMap<ViewSystemIdentifier, VisualizerApplicableEntities>;
+    type Target = IntMap<ViewSystemIdentifier, ApplicableEntities>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {

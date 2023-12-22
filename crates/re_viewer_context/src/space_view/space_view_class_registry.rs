@@ -2,10 +2,9 @@ use ahash::{HashMap, HashSet};
 use re_arrow_store::DataStore;
 
 use crate::{
-    ApplicableEntitiesPerVisualizer, DynSpaceViewClass, IdentifiedViewSystem,
+    ApplicableEntities, ApplicableEntitiesPerVisualizer, DynSpaceViewClass, IdentifiedViewSystem,
     IndicatorMatchingEntitiesPerVisualizer, SpaceViewClassIdentifier, ViewContextCollection,
     ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemIdentifier,
-    VisualizerApplicableEntities,
 };
 
 use super::{
@@ -291,7 +290,7 @@ impl SpaceViewClassRegistry {
             self.visualizers
                 .iter()
                 .map(|(id, entry)| {
-                    let mut entities = VisualizerApplicableEntities::default();
+                    let mut entities = ApplicableEntities::default();
                     DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                         entry.entity_subscriber_handle,
                         |subscriber| {

@@ -8,8 +8,8 @@ use re_log_types::{EntityPathHash, StoreId};
 use re_types::{ComponentName, ComponentNameSet};
 
 use crate::{
-    IdentifiedViewSystem, IndicatorMatchingEntities, ViewPartSystem, ViewSystemIdentifier,
-    VisualizerApplicableEntities,
+    ApplicableEntities, IdentifiedViewSystem, IndicatorMatchingEntities, ViewPartSystem,
+    ViewSystemIdentifier,
 };
 
 /// A store subscriber that keep track which entities in a store can be
@@ -76,7 +76,7 @@ struct VisualizerEntityMapping {
     required_component_and_filter_bitmap_per_entity: IntMap<EntityPathHash, BitVec>,
 
     /// Which entities the visualizer can be applied to.
-    applicable_entities: VisualizerApplicableEntities,
+    applicable_entities: ApplicableEntities,
 
     /// List of all entities in this store that at some point in time had any of the indicator components.
     indicator_matching_entities: IndicatorMatchingEntities,
@@ -102,7 +102,7 @@ impl VisualizerEntitySubscriber {
 
     /// List of entities that are applicable to the visualizer.
     #[inline]
-    pub fn applicable_entities(&self, store: &StoreId) -> Option<&VisualizerApplicableEntities> {
+    pub fn applicable_entities(&self, store: &StoreId) -> Option<&ApplicableEntities> {
         self.per_store_mapping
             .get(store)
             .map(|mapping| &mapping.applicable_entities)
