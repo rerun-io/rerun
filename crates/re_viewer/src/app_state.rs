@@ -139,7 +139,7 @@ impl AppState {
             .indicator_matching_entities_per_visualizer(store_db.store_id());
 
         // TODO(andreas): This shouldn't happen every frame and it shouldn't happen here. Instead we need to drive the visualizable set from a store subscriber.
-        let visualizable_entities_per_system_per_space_vuiew: HashMap<
+        let visualizable_entities_per_system_per_space_view: HashMap<
             re_viewer_context::SpaceViewId,
             re_viewer_context::VisualizableEntitiesPerVisualizer,
         > = viewport
@@ -147,6 +147,9 @@ impl AppState {
             .space_views
             .values()
             .map(|space_view| {
+                // TODO(andreas): We could filter a subset by using knowledge of the query.(|space_view| {
+                let filter_path = re_log_types::EntityPath::root();
+
                 (
                     space_view.id,
                     determine_visualizable_entities(
@@ -156,6 +159,7 @@ impl AppState {
                             .new_part_collection(*space_view.class_identifier()),
                         space_view.class(space_view_class_registry),
                         &space_view.space_origin,
+                        &filter_path,
                     ),
                 )
             })
@@ -171,7 +175,7 @@ impl AppState {
                 .flat_map(|space_view| {
                     space_view.queries.iter().filter_map(|query| {
                         let Some(visualizable_entities) =
-                            visualizable_entities_per_system_per_space_vuiew.get(&space_view.id)
+                            visualizable_entities_per_system_per_space_view.get(&space_view.id)
                         else {
                             return None;
                         };

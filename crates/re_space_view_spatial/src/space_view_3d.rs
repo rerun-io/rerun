@@ -68,6 +68,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         space_origin: &EntityPath,
         store_db: &re_data_store::StoreDb,
+        filter_subtree: &EntityPath,
     ) -> Box<dyn std::any::Any> {
         re_tracing::profile_function!();
 
@@ -91,17 +92,32 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         let entity_tree = &store_db.tree();
 
-        // Find the entity path tree for the root.
+        if filter_subtree.starts_with(space_origin) {
+            // If the filter specifies an entity that is at or under the origin, all we have to do
+            // is to run down from the filter_path.
+            let Some(current_tree) = entity_tree.subtree(filter_subtree) else {
+                return Box::new(());
+            };
+            visit_children_recursively(current_tree, &mut entities_under_pinhole);
+
+            return Box::new(VisualizableFilterContext3D {
+                entities_under_pinhole,
+            });
+        }
+
+        // Walk down the tree from the origin.
         let Some(mut current_tree) = &entity_tree.subtree(space_origin) else {
             return Box::new(());
         };
-
-        // Walk down the tree from the origin.
         visit_children_recursively(current_tree, &mut entities_under_pinhole);
 
         // Walk up from the reference to the highest reachable parent.
         // At each stop, add all child trees to the set.
         while let Some(parent_path) = current_tree.path.parent() {
+            if !parent_path.starts_with(filter_subtree) {
+                break;
+            }
+
             let Some(parent_tree) = entity_tree.subtree(&parent_path) else {
                 return Box::new(());
             };
