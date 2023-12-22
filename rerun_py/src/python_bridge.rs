@@ -37,7 +37,7 @@ use re_ws_comms::RerunServerPort;
 
 // --- FFI ---
 
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use parking_lot::Mutex;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
@@ -50,6 +50,48 @@ fn all_recordings() -> parking_lot::MutexGuard<'static, HashMap<StoreId, Recordi
     static ALL_RECORDINGS: OnceCell<Mutex<HashMap<StoreId, RecordingStream>>> = OnceCell::new();
     ALL_RECORDINGS.get_or_init(Default::default).lock()
 }
+
+type GarbageChunk = arrow2::chunk::Chunk<Box<dyn arrow2::array::Array>>;
+type GarbageSender = crossbeam::channel::Sender<GarbageChunk>;
+type GarbageReceiver = crossbeam::channel::Receiver<GarbageChunk>;
+
+/// ## Release Callbacks
+///
+/// When Arrow data gets logged from Python to Rust across FFI, it carries with it a `release`
+/// callback (see Arrow spec) that will be run when the data gets dropped.
+///
+/// This is an issue in this case because running that callback will likely try and grab the GIL,
+/// which is something that should only happen at very specific times, else we end up with deadlocks,
+/// segfaults, aborts...
+///
+/// ## The garbage queue
+///
+/// When a [`LogMsg`] that was logged from Python gets dropped on the Rust side, it will end up
+/// in this queue.
+///
+/// The mere fact that the data still exists in this queue prevents the underlying Arrow refcount
+/// to go below one, which in turn prevents the associated FFI `release` callback to run, which
+/// avoids the issue mentioned above.
+///
+/// When the time is right, call [`flush_garbage_queue`] to flush the queue and deallocate all the
+/// accumulated data for real.
+//
+// NOTE: `crossbeam` rather than `std` because we need a `Send` & `Sync` receiver.
+static GARBAGE_QUEUE: Lazy<(GarbageSender, GarbageReceiver)> =
+    Lazy::new(crossbeam::channel::unbounded);
+
+/// Flushes the [`GARBAGE_QUEUE`], therefore running all the associated FFI `release` callbacks.
+///
+/// Any time you release the GIL (e.g. `py.allow_threads()`), try to slip in a call to this
+/// function so we don't accumulate too much garbage.
+fn flush_garbage_queue() {
+    while GARBAGE_QUEUE.1.try_recv().is_ok() {
+        // Implicitly dropping chunks, therefore triggering their `release` callbacks, therefore
+        // triggering the native Python GC.
+    }
+}
+
+// ---
 
 #[cfg(feature = "web_viewer")]
 fn global_web_viewer_server(
@@ -205,7 +247,14 @@ fn new_recording(
         default_store_id(py, StoreKind::Recording, &application_id)
     };
 
+    let mut batcher_config = re_log_types::DataTableBatcherConfig::from_env().unwrap_or_default();
+    let on_release = |chunk| {
+        GARBAGE_QUEUE.0.send(chunk).ok();
+    };
+    batcher_config.on_release = Some(on_release.into());
+
     let recording = RecordingStreamBuilder::new(application_id)
+        .batcher_config(batcher_config)
         .is_official_example(is_official_example)
         .store_id(recording_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
@@ -255,7 +304,14 @@ fn new_blueprint(
         default_store_id(py, StoreKind::Blueprint, &application_id)
     };
 
+    let mut batcher_config = re_log_types::DataTableBatcherConfig::from_env().unwrap_or_default();
+    let on_release = |chunk| {
+        GARBAGE_QUEUE.0.send(chunk).ok();
+    };
+    batcher_config.on_release = Some(on_release.into());
+
     let blueprint = RecordingStreamBuilder::new(application_id)
+        .batcher_config(batcher_config)
         .store_id(blueprint_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
@@ -282,13 +338,14 @@ fn new_blueprint(
 }
 
 #[pyfunction]
-fn shutdown(py: Python<'_>) {
+fn shutdown() {
     re_log::debug!("Shutting down the Rerun SDK");
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         for (_, recording) in all_recordings().drain() {
             recording.disconnect();
         }
+        flush_garbage_queue();
     });
 }
 
@@ -360,11 +417,13 @@ fn set_global_data_recording(
     // NOTE: This cannot happen anymore with the new `ALL_RECORDINGS` thingy, but better safe than
     // sorry.
     py.allow_threads(|| {
-        RecordingStream::set_global(
+        let rec = RecordingStream::set_global(
             rerun::StoreKind::Recording,
             recording.map(|rec| rec.0.clone()),
         )
-        .map(PyRecordingStream)
+        .map(PyRecordingStream);
+        flush_garbage_queue();
+        rec
     })
 }
 
@@ -390,11 +449,13 @@ fn set_thread_local_data_recording(
     // NOTE: This cannot happen anymore with the new `ALL_RECORDINGS` thingy, but better safe than
     // sorry.
     py.allow_threads(|| {
-        RecordingStream::set_thread_local(
+        let rec = RecordingStream::set_thread_local(
             rerun::StoreKind::Recording,
             recording.map(|rec| rec.0.clone()),
         )
-        .map(PyRecordingStream)
+        .map(PyRecordingStream);
+        flush_garbage_queue();
+        rec
     })
 }
 
@@ -431,11 +492,13 @@ fn set_global_blueprint_recording(
     // NOTE: This cannot happen anymore with the new `ALL_RECORDINGS` thingy, but better safe than
     // sorry.
     py.allow_threads(|| {
-        RecordingStream::set_global(
+        let rec = RecordingStream::set_global(
             rerun::StoreKind::Blueprint,
             recording.map(|rec| rec.0.clone()),
         )
-        .map(PyRecordingStream)
+        .map(PyRecordingStream);
+        flush_garbage_queue();
+        rec
     })
 }
 
@@ -461,11 +524,13 @@ fn set_thread_local_blueprint_recording(
     // NOTE: This cannot happen anymore with the new `ALL_RECORDINGS` thingy, but better safe than
     // sorry.
     py.allow_threads(|| {
-        RecordingStream::set_thread_local(
+        let rec = RecordingStream::set_thread_local(
             rerun::StoreKind::Blueprint,
             recording.map(|rec| rec.0.clone()),
         )
-        .map(PyRecordingStream)
+        .map(PyRecordingStream);
+        flush_garbage_queue();
+        rec
     })
 }
 
@@ -507,6 +572,7 @@ fn connect(
                 blueprint.connect_opts(addr, flush_timeout);
             };
         }
+        flush_garbage_queue();
     });
 
     Ok(())
@@ -522,9 +588,11 @@ fn save(path: &str, recording: Option<&PyRecordingStream>, py: Python<'_>) -> Py
     // The call to save may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        recording
+        let res = recording
             .save(path)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()));
+        flush_garbage_queue();
+        res
     })
 }
 
@@ -538,9 +606,11 @@ fn stdout(recording: Option<&PyRecordingStream>, py: Python<'_>) -> PyResult<()>
     // The call to stdout may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        recording
+        let res = recording
             .stdout()
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()));
+        flush_garbage_queue();
+        res
     })
 }
 
@@ -554,7 +624,11 @@ fn memory_recording(
     get_data_recording(recording).map(|rec| {
         // The call to memory may internally flush.
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
-        let inner = py.allow_threads(|| rec.memory());
+        let inner = py.allow_threads(|| {
+            let storage = rec.memory();
+            flush_garbage_queue();
+            storage
+        });
         PyMemorySinkStorage { rec: rec.0, inner }
     })
 }
@@ -579,6 +653,7 @@ impl PyMemorySinkStorage {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             self.rec.flush_blocking();
+            flush_garbage_queue();
         });
 
         MemorySinkStorage::concat_memory_sinks_as_bytes(
@@ -599,6 +674,7 @@ impl PyMemorySinkStorage {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             self.rec.flush_blocking();
+            flush_garbage_queue();
         });
 
         self.inner.num_msgs()
@@ -669,6 +745,7 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         recording.disconnect();
+        flush_garbage_queue();
     });
 }
 
@@ -685,6 +762,7 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
         } else {
             recording.flush_async();
         }
+        flush_garbage_queue();
     });
 }
 

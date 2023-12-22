@@ -53,6 +53,7 @@ re_viewer.workspace = true
 re_viewport.workspace = true
 
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
+crossbeam.workspace = true
 document-features.workspace = true
 itertools = { workspace = true }
 mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
