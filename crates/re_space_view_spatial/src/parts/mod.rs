@@ -342,10 +342,12 @@ pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
     re_types::components::ViewCoordinates::RDF
 }
 
+/// If 2d object is shown in a 3d space view, it is only then visualizable, if it is under a pinhole camera.
 fn filter_visualizable_2d_entities(
     entities: &mut VisualizableEntities,
     context: &dyn std::any::Any,
 ) {
+    // `VisualizableFilterContext3D` will only be available if we're in a 3D space view.
     if let Some(context) = context.downcast_ref::<VisualizableFilterContext3D>() {
         entities
             .0

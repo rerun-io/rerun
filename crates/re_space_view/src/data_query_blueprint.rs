@@ -266,6 +266,9 @@ impl<'a> QueryExpressionEvaluator<'a> {
                         // * Space view classes should be able to modify this check.
                         //   As of writing this hasn't been done yet in order to simplify things
                         // * querying the per-visualizer lists every time is silly
+                        //   -> at beginning of query squash all visualizers in `visualizable_entities_for_visualizer_systems`
+                        //      to a single `IntSet<EntityPathHash>`
+                        //   -> consider three steps of query: list entities, list their visualizers, list their properties
                         if self
                             .indicator_matching_entities_per_visualizer
                             .get(visualizer)

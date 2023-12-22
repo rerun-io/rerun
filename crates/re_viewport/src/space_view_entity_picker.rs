@@ -333,8 +333,7 @@ fn create_entity_add_info(
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
-    // TODO(andreas): This should probably run a regular query to determine all necessary properties.
-    //                Checking for applicability is not enough, we're actually interested in visualizability!
+    // TODO(andreas): This should be state that is already available because it's part of the space view's state.
     let class = space_view.class(ctx.space_view_class_registry);
     let visualizable_entities = determine_visualizable_entities(
         ctx.applicable_entities_per_visualizer,
@@ -349,6 +348,8 @@ fn create_entity_add_info(
     tree.visit_children_recursively(&mut |entity_path| {
         let can_add: CanAddToSpaceView =
             if visualizable_entities.iter().any(|(_, entities)| entities.contains(entity_path)) {
+                // TODO(andreas): (topological) reachability should be part of visualizability.
+                //                Yes, this means that once an entity is no longer visualizable (due to pinhole etc.) it stays this way.
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
                         already_added: query_result.contains_any(entity_path),

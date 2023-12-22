@@ -62,7 +62,7 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority;
 
     /// Create context object that is passed to all of this classes visualizers
-    /// to determine whether they can be visualized
+    /// to determine whether they can be visualized.
     ///
     /// See [`crate::ViewPartSystem::filter_visualizable_entities`].
     fn visualizable_filter_context(

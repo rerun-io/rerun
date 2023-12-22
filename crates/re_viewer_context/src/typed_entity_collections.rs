@@ -36,7 +36,8 @@ impl std::ops::Deref for IndicatorMatchingEntities {
     }
 }
 
-/// List of entities that can be visualized by a concrete visualizer in the context of a specific instantiated space view.
+/// List of entities that can be visualized at some point in time on any timeline
+/// by a concrete visualizer in the context of a specific instantiated space view.
 ///
 /// This is a subset of [`VisualizerApplicableEntities`] and differs on a
 /// per space view instance base.
@@ -52,9 +53,6 @@ impl std::ops::Deref for VisualizableEntities {
     }
 }
 
-// -----------
-
-/// Utility
 #[derive(Default)]
 pub struct PerVisualizer<T: Default>(pub IntMap<ViewSystemIdentifier, T>);
 
