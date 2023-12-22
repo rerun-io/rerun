@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use egui_tiles::TileId;
+use egui_tiles::{SimplificationOptions, TileId};
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_log_types::Timeline;
@@ -391,6 +391,15 @@ impl ViewportBlueprint {
         kind: egui_tiles::ContainerKind,
     ) {
         self.send_tree_action(TreeAction::SetContainerKind(container_id, kind));
+    }
+
+    /// Simplify the container subtree with the provided options.
+    pub fn simplify_tree(
+        &self,
+        tile_id: egui_tiles::TileId,
+        simplification_options: SimplificationOptions,
+    ) {
+        self.send_tree_action(TreeAction::SimplifyTree(tile_id, simplification_options));
     }
 
     #[allow(clippy::unused_self)]
