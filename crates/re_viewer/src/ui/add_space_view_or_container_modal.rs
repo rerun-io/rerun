@@ -90,12 +90,9 @@ fn modal_ui(
         let subtitle = format!("Create a new Space View to display {title} content.");
 
         if row_ui(ui, icon, title, &subtitle).clicked() {
-            viewport.blueprint.add_space_views(
-                std::iter::once(space_view),
-                ctx,
-                target_container,
-                false,
-            );
+            viewport
+                .blueprint
+                .add_space_views(std::iter::once(space_view), ctx, target_container);
             viewport.blueprint.mark_user_interaction(ctx);
         }
     }
