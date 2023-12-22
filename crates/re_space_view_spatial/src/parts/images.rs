@@ -4,7 +4,6 @@ use egui::NumExt;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::{EntityPathHash, RowId};
 use re_query::{ArchetypeView, QueryError};
@@ -20,7 +19,7 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, gpu_bridge, DefaultColor, HeuristicFilterContext, SpaceViewClass,
+    gpu_bridge, DefaultColor, HeuristicFilterContext, SpaceViewClass,
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery,
     ViewerContext, VisualizerAdditionalApplicabilityFilter,
 };
@@ -694,13 +693,11 @@ impl ViewPartSystem for ImagesPart {
 
     fn heuristic_filter(
         &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &EntityPath,
+        entities_with_matching_indicator: &IntSet<EntityPathHash>,
+        ent_path: &EntityPath,
         ctx: HeuristicFilterContext,
-        _query: &LatestAtQuery,
-        entity_components: &ComponentNameSet,
     ) -> bool {
-        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
+        if !entities_with_matching_indicator.contains(&ent_path.hash()) {
             return false;
         }
 

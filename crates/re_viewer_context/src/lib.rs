@@ -41,11 +41,11 @@ pub use selection_state::{
     Selection, SelectionHighlight,
 };
 pub use space_view::{
-    default_heuristic_filter, AutoSpawnHeuristic, DataResult, DynSpaceViewClass,
-    HeuristicFilterContext, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
-    PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority,
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewEntityHighlight,
-    SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
+    AutoSpawnHeuristic, DataResult, DynSpaceViewClass, HeuristicFilterContext,
+    IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities, PropertyOverrides,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContextCollection, ViewContextSystem,
     ViewPartCollection, ViewPartSystem, ViewQuery, ViewSystemIdentifier,
     VisualizerAdditionalApplicabilityFilter,

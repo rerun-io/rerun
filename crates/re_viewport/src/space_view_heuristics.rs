@@ -4,13 +4,12 @@ use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::{LatestAtQuery, Timeline};
 use re_data_store::{EntityPath, EntityTree};
-use re_log_types::{EntityPathFilter, TimeInt};
+use re_log_types::{EntityPathFilter, EntityPathHash, TimeInt};
 use re_space_view::{DataQuery as _, DataQueryBlueprint};
 use re_types::components::{DisconnectedSpace, TensorData};
-use re_types::ComponentNameSet;
 use re_viewer_context::{
     AutoSpawnHeuristic, DataQueryResult, EntitiesPerSystem, EntitiesPerSystemPerClass,
-    HeuristicFilterContext, PerSystemEntities, SpaceViewClassIdentifier, ViewPartCollection,
+    HeuristicFilterContext, PerSystemEntities, SpaceViewClassIdentifier, ViewSystemIdentifier,
     ViewerContext,
 };
 
@@ -438,34 +437,18 @@ pub fn is_entity_processed_by_class(
     class: SpaceViewClassIdentifier,
     ent_path: &EntityPath,
     heuristic_ctx: HeuristicFilterContext,
-    query: &LatestAtQuery,
 ) -> bool {
-    let parts = ctx.space_view_class_registry.new_part_collection(class);
-    is_entity_processed_by_part_collection(
-        ctx.store_db.store(),
-        &parts,
-        ent_path,
-        heuristic_ctx.with_class(class),
-        query,
-    )
-}
+    let parts = &ctx.space_view_class_registry.new_part_collection(class);
+    let heuristic_ctx = heuristic_ctx.with_class(class);
 
-/// Returns true if an entity is processed by any of the given [`re_viewer_context::ViewPartSystem`]s.
-fn is_entity_processed_by_part_collection(
-    store: &re_arrow_store::DataStore,
-    parts: &ViewPartCollection,
-    ent_path: &EntityPath,
-    ctx: HeuristicFilterContext,
-    query: &LatestAtQuery,
-) -> bool {
-    let timeline = Timeline::log_time();
-    let components = store
-        .all_components(&timeline, ent_path)
-        .unwrap_or_default()
-        .into_iter()
-        .collect();
-    for part in parts.iter() {
-        if part.heuristic_filter(store, ent_path, ctx, query, &components) {
+    let empty_entity_set = IntSet::default();
+    for (id, visualizer) in parts.iter_with_identifiers() {
+        let entities_with_matching_indicator = ctx
+            .entities_with_matching_indicator_per_visualizer
+            .get(&id)
+            .unwrap_or(&empty_entity_set);
+
+        if visualizer.heuristic_filter(entities_with_matching_indicator, ent_path, heuristic_ctx) {
             return true;
         }
     }
@@ -521,14 +504,19 @@ pub fn compute_heuristic_context_for_entities(
 }
 
 pub fn identify_entities_per_system_per_class(
+    entities_with_matching_indicator_per_visualizer: &IntMap<
+        ViewSystemIdentifier,
+        IntSet<EntityPathHash>,
+    >,
     space_view_class_registry: &re_viewer_context::SpaceViewClassRegistry,
     store_db: &re_data_store::store_db::StoreDb,
-    current_query: &re_arrow_store::LatestAtQuery,
 ) -> EntitiesPerSystemPerClass {
     re_tracing::profile_function!();
 
     let store = store_db.store().id();
     let heuristic_context = compute_heuristic_context_for_entities(store_db);
+
+    let empty_entity_set = IntSet::default();
 
     space_view_class_registry
         .iter_registry()
@@ -542,6 +530,11 @@ pub fn identify_entities_per_system_per_class(
                 .new_part_collection(class_id)
                 .systems
             {
+                let entities_with_matching_indicator =
+                    entities_with_matching_indicator_per_visualizer
+                        .get(&system_id)
+                        .unwrap_or(&empty_entity_set);
+
                 let entities: IntSet<EntityPath> = if let Some(entities) = space_view_class_registry
                     .applicable_entities_for_visualizer_system(system_id, store)
                 {
@@ -550,25 +543,14 @@ pub fn identify_entities_per_system_per_class(
                     entities
                         .into_iter()
                         .filter(|ent_path| {
-                            let Some(components) = store_db
-                                .store()
-                                .all_components(&re_log_types::Timeline::log_time(), ent_path)
-                            else {
-                                return false;
-                            };
-
-                            let all_components: ComponentNameSet = components.into_iter().collect();
-
                             system.heuristic_filter(
-                                store_db.store(),
+                                entities_with_matching_indicator,
                                 ent_path,
                                 heuristic_context
                                     .get(ent_path)
                                     .copied()
                                     .unwrap_or_default()
                                     .with_class(class_id),
-                                current_query,
-                                &all_components,
                             )
                         })
                         .collect()

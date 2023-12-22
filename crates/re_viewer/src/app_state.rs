@@ -133,10 +133,14 @@ impl AppState {
         let rec_cfg =
             recording_config_entry(recording_configs, store_db.store_id().clone(), store_db);
 
+        // Gather all entities that have a matching indicator for a visualizer.
+        let entities_with_matching_indicator_per_visualizer = space_view_class_registry
+            .entities_with_matching_indicator_per_visualizer(store_db.store_id());
+
         let entities_per_system_per_class = identify_entities_per_system_per_class(
+            &entities_with_matching_indicator_per_visualizer,
             space_view_class_registry,
             store_db,
-            &rec_cfg.time_ctrl.get_mut().current_query(),
         );
 
         // Execute the queries for every `SpaceView`
@@ -169,6 +173,8 @@ impl AppState {
             store_db,
             store_context,
             entities_per_system_per_class: &entities_per_system_per_class,
+            entities_with_matching_indicator_per_visualizer:
+                &entities_with_matching_indicator_per_visualizer,
             query_results: &query_results,
             rec_cfg,
             re_ui,
@@ -206,6 +212,8 @@ impl AppState {
             store_db,
             store_context,
             entities_per_system_per_class: &entities_per_system_per_class,
+            entities_with_matching_indicator_per_visualizer:
+                &entities_with_matching_indicator_per_visualizer,
             query_results: &query_results,
             rec_cfg,
             re_ui,

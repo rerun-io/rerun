@@ -1,5 +1,6 @@
-use re_arrow_store::LatestAtQuery;
+use nohash_hasher::IntSet;
 use re_data_store::{EntityPath, InstancePathHash};
+use re_log_types::EntityPathHash;
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::LineStrips2D,
@@ -7,9 +8,8 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, HeuristicFilterContext, IdentifiedViewSystem,
-    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    HeuristicFilterContext, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -176,13 +176,11 @@ impl ViewPartSystem for Lines2DPart {
 
     fn heuristic_filter(
         &self,
-        _store: &re_arrow_store::DataStore,
-        _ent_path: &EntityPath,
+        entities_with_matching_indicator: &IntSet<EntityPathHash>,
+        ent_path: &EntityPath,
         ctx: HeuristicFilterContext,
-        _query: &LatestAtQuery,
-        entity_components: &ComponentNameSet,
     ) -> bool {
-        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
+        if !entities_with_matching_indicator.contains(&ent_path.hash()) {
             return false;
         }
 
