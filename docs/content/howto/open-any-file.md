@@ -40,7 +40,7 @@ In these instances of unsupported files, we expose two ways of implementing and 
 
 ### External data-loaders
 
-The easiest way to create your own `DataLoader` is by implementing what we call an "external loader": a stand alone executable written in any language that the Rerun SDK ships for. Any executable on your `$PATH` with a name that starts with `rerun_loader` will be treated as a `DataLoader`.
+The easiest way to create your own `DataLoader` is by implementing what we call an "external loader": a stand alone executable written in any language that the Rerun SDK ships for. Any executable on your `$PATH` with a name that starts with `rerun-loader-` will be treated as a `DataLoader`.
 
 This executable takes a file path as input on `stdin` and outputs Rerun logs on `stdout`.
 It will be called by the Rerun Viewer when the user opens a file, and be passed the path to that file.

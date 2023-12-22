@@ -33,7 +33,7 @@ use re_log_types::{ArrowMsg, DataRow, LogMsg};
 ///
 /// ## Registering custom loaders
 ///
-/// Checkout our [guide](https://www.rerun.io/docs/getting-started/open-any-file?speculative-link).
+/// Checkout our [guide](https://www.rerun.io/docs/howto/open-any-file?speculative-link).
 ///
 /// ## Execution
 ///
