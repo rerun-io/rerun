@@ -19,9 +19,10 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    gpu_bridge, DefaultColor, IdentifiedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError,
-    TensorDecodeCache, TensorStatsCache, ViewContextCollection, ViewPartSystem, ViewQuery,
-    ViewerContext, VisualizableEntities, VisualizerAdditionalApplicabilityFilter,
+    gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
+    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContextCollection,
+    ViewPartSystem, ViewQuery, ViewerContext, VisualizableEntities,
+    VisualizerAdditionalApplicabilityFilter,
 };
 
 use crate::{
@@ -692,12 +693,11 @@ impl ViewPartSystem for ImagesPart {
 
     fn filter_visualizable_entities(
         &self,
-        entities: &mut VisualizableEntities,
-        _store: &re_arrow_store::DataStore,
+        entities: ApplicableEntities,
         context: &dyn std::any::Any,
-    ) {
+    ) -> VisualizableEntities {
         re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context);
+        filter_visualizable_2d_entities(entities, context)
     }
 
     fn execute(

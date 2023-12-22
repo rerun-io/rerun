@@ -6,8 +6,9 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext, VisualizableEntities,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    VisualizableEntities,
 };
 
 use crate::{
@@ -201,12 +202,11 @@ impl ViewPartSystem for Points2DPart {
 
     fn filter_visualizable_entities(
         &self,
-        entities: &mut VisualizableEntities,
-        _store: &re_arrow_store::DataStore,
+        entities: ApplicableEntities,
         context: &dyn std::any::Any,
-    ) {
+    ) -> VisualizableEntities {
         re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context);
+        filter_visualizable_2d_entities(entities, context)
     }
 
     fn execute(
