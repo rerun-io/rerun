@@ -5243,6 +5243,7 @@ dependencies = [
  "criterion",
  "document-features",
  "once_cell",
+ "paste",
  "re_error",
  "re_string_interner",
  "re_tracing",

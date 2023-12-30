@@ -3,6 +3,7 @@
 mod clear_is_recursive;
 mod instance_key;
 mod instance_key_ext;
+mod tuple;
 
 pub use self::clear_is_recursive::ClearIsRecursive;
 pub use self::instance_key::InstanceKey;
