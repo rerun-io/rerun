@@ -52,7 +52,7 @@ impl DataStore {
         re_tracing::profile_function!();
 
         let (row_id, cells) = self.latest_at(query, entity_path, C::name(), &[C::name()])?;
-        let cell = cells.get(0)?.as_ref()?;
+        let cell = cells.first()?.as_ref()?;
 
         cell.try_to_native_mono::<C>()
             .map_err(|err| {

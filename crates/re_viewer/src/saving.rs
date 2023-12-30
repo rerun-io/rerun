@@ -20,8 +20,6 @@ fn sanitize_app_id(app_id: &ApplicationId) -> String {
 /// This path should be deterministic and unique.
 // TODO(#2579): Implement equivalent for web
 pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::path::PathBuf> {
-    use std::hash::{BuildHasher, Hash as _, Hasher as _};
-
     use anyhow::Context;
 
     let Some(storage_dir) = eframe::storage_dir(crate::native::APP_ID) else {
@@ -58,11 +56,7 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
     if sanitized_app_id != app_id.0 {
         // Hash the original app-id.
 
-        let hash = {
-            let mut hasher = ahash::RandomState::with_seeds(1, 2, 3, 4).build_hasher();
-            app_id.0.hash(&mut hasher);
-            hasher.finish()
-        };
+        let hash = ahash::RandomState::with_seeds(1, 2, 3, 4).hash_one(&app_id.0);
 
         sanitized_app_id = format!("{sanitized_app_id}-{hash:x}");
     }

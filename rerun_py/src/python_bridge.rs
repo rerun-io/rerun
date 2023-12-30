@@ -21,15 +21,6 @@ use rerun::{
     RecordingStreamBuilder, StoreId,
 };
 
-pub use rerun::{
-    components::{
-        AnnotationContext, Blob, ClassId, Color, DisconnectedSpace, DrawOrder, InstanceKey,
-        KeypointId, LineStrip2D, LineStrip3D, OutOfTreeTransform3D, PinholeProjection, Position2D,
-        Position3D, Radius, Text, Transform3D, Vector3D, ViewCoordinates,
-    },
-    coordinates::{Axis3, Handedness, Sign, SignedAxis3},
-};
-
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "web_viewer")]
