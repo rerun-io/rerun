@@ -93,6 +93,7 @@ mod loggable_batch;
 mod result;
 mod size_bytes;
 mod tuid;
+mod tuple;
 
 pub use self::archetype::{
     Archetype, ArchetypeName, GenericIndicatorComponent, NamedIndicatorComponent,
