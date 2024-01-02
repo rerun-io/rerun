@@ -58,16 +58,6 @@ impl CamerasPart {
     ) {
         let instance_key = InstanceKey(0);
 
-        // The transform *at* this entity path already has the pinhole transformation we got passed in!
-        // This makes sense, since if there's an image logged here one would expect that the transform applies.
-        // We're however first interested in the rigid transform that led here, so query the parent transform.
-        let parent_path = ent_path
-            .parent()
-            .expect("root path can't be part of scene query");
-        let Some(mut world_from_camera) = transforms.reference_from_entity(&parent_path) else {
-            return;
-        };
-
         let frustum_length = *props.pinhole_image_plane_distance;
 
         // If the camera is our reference, there is nothing for us to display.
@@ -82,27 +72,41 @@ impl CamerasPart {
             return;
         }
 
-        // There's one wrinkle with using the parent transform though:
-        // The entity itself may have a 3D transform which (by convention!) we apply *before* the pinhole camera.
-        // Let's add that if it exists.
-        if let Some(transform_at_entity) = transform_at_entity.clone() {
-            world_from_camera =
-                world_from_camera * transform_at_entity.into_parent_from_child_transform();
-        }
+        // We need special handling to find the 3D transform for drawing the
+        // frustum itself. The transform that would otherwise be in the
+        // transform context includes the pinhole.  This makes sense, since if
+        // there's an image logged here one would expect that the transform
+        // applies. We're however first interested in the rigid transform at this
+        // entity path, excluding the pinhole portion.
+        let world_from_camera_rigid = {
+            // Start with the transform to the entity parent, if it exists
+            let world_from_parent = ent_path
+                .parent()
+                .and_then(|parent_path| transforms.reference_from_entity(&parent_path))
+                .unwrap_or(macaw::Affine3A::IDENTITY);
+
+            // Then combine it with the transform at the entity itself, if there is one.
+            if let Some(transform_at_entity) = transform_at_entity {
+                world_from_parent * transform_at_entity.into_parent_from_child_transform()
+            } else {
+                world_from_parent
+            }
+        };
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
+        let Some(world_from_camera_rigid_iso) =
+            macaw::IsoTransform::from_mat4(&world_from_camera_rigid.into())
         else {
             return;
         };
 
-        debug_assert!(world_from_camera_iso.is_finite());
+        debug_assert!(world_from_camera_rigid_iso.is_finite());
 
         self.space_cameras.push(SpaceCamera3D {
             ent_path: ent_path.clone(),
             pinhole_view_coordinates,
-            world_from_camera: world_from_camera_iso,
+            world_from_camera: world_from_camera_rigid_iso,
             pinhole: Some(pinhole.clone()),
             picture_plane_distance: frustum_length,
         });
@@ -157,7 +161,8 @@ impl CamerasPart {
             // The frustum is setup as a RDF frustum, but if the view coordinates are not RDF,
             // we need to reorient the displayed frustum so that we indicate the correct orientation in the 3D world space.
             .world_from_obj(
-                world_from_camera * glam::Affine3A::from_mat3(pinhole_view_coordinates.from_rdf()),
+                world_from_camera_rigid
+                    * glam::Affine3A::from_mat3(pinhole_view_coordinates.from_rdf()),
             )
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);
@@ -172,11 +177,10 @@ impl CamerasPart {
             lines.outline_mask_ids(*outline_mask_ids);
         }
 
+        // world_from_camera is the transform to the pinhole origin
         self.data.extend_bounding_box_with_points(
             std::iter::once(glam::Vec3::ZERO),
-            transform_at_entity
-                .unwrap_or(Transform3D::IDENTITY)
-                .into_parent_from_child_transform(),
+            world_from_camera_rigid,
         );
     }
 }
