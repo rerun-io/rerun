@@ -91,8 +91,8 @@ pub enum TreeAction {
     /// Remove a tile and all its children.
     Remove(egui_tiles::TileId),
 
-    /// Simplify the specified subtree with the provided options
-    SimplifyTree(egui_tiles::TileId, egui_tiles::SimplificationOptions),
+    /// Simplify the tree with the provided options
+    SimplifyTree(egui_tiles::SimplificationOptions),
 }
 
 // ----------------------------------------------------------------------------
@@ -394,9 +394,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     }
                     self.edited = true;
                 }
-                TreeAction::SimplifyTree(tile_id, options) => {
+                TreeAction::SimplifyTree(options) => {
                     re_log::trace!("Simplifying tree with options: {options:?}");
-                    self.tree.simplify_tile(tile_id, &options);
+                    self.tree.simplify(&options);
                     self.edited = true;
                 }
             }

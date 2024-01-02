@@ -390,13 +390,9 @@ impl ViewportBlueprint {
         self.send_tree_action(TreeAction::SetContainerKind(container_id, kind));
     }
 
-    /// Simplify the container subtree with the provided options.
-    pub fn simplify_tree(
-        &self,
-        tile_id: egui_tiles::TileId,
-        simplification_options: SimplificationOptions,
-    ) {
-        self.send_tree_action(TreeAction::SimplifyTree(tile_id, simplification_options));
+    /// Simplify the container tree with the provided options.
+    pub fn simplify_tree(&self, simplification_options: SimplificationOptions) {
+        self.send_tree_action(TreeAction::SimplifyTree(simplification_options));
     }
 
     #[allow(clippy::unused_self)]
