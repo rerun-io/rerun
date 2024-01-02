@@ -8,8 +8,7 @@ use re_space_view::DataQueryBlueprint;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
-    DataQueryResult, DataResultHandle, DataResultNode, HoverHighlight, Item, SpaceViewId,
-    ViewerContext,
+    DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
 use crate::{
@@ -146,9 +145,9 @@ impl Viewport<'_, '_> {
         let visible_child = visible;
         let item = Item::SpaceView(space_view.id);
 
-        let default_open = result_tree
-            .root_node()
-            .map_or(false, Self::default_open_for_data_result);
+        let root_node = result_tree.first_interesting_root();
+
+        let default_open = root_node.map_or(false, Self::default_open_for_data_result);
 
         let collapsing_header_id = ui.id().with(space_view.id);
         let is_item_hovered =
@@ -171,7 +170,7 @@ impl Viewport<'_, '_> {
                 response | vis_response
             })
             .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                if let Some(result_handle) = result_tree.root_handle() {
+                if let Some(result_node) = root_node {
                     // TODO(jleibs): handle the case where the only result
                     // in the tree is a single path (no groups). This should never
                     // happen for a SpaceViewContents.
@@ -179,7 +178,7 @@ impl Viewport<'_, '_> {
                         ctx,
                         ui,
                         &query_result,
-                        result_handle,
+                        result_node,
                         space_view,
                         visible_child,
                     );
@@ -212,15 +211,10 @@ impl Viewport<'_, '_> {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         query_result: &DataQueryResult,
-        result_handle: DataResultHandle,
+        top_node: &DataResultNode,
         space_view: &SpaceViewBlueprint,
         space_view_visible: bool,
     ) {
-        let Some(top_node) = query_result.tree.lookup_node(result_handle) else {
-            debug_assert!(false, "Invalid data result handle in data result tree");
-            return;
-        };
-
         let group_is_visible =
             top_node.data_result.accumulated_properties().visible && space_view_visible;
 
@@ -349,7 +343,7 @@ impl Viewport<'_, '_> {
                                 ctx,
                                 ui,
                                 query_result,
-                                *child,
+                                child_node,
                                 space_view,
                                 space_view_visible,
                             );

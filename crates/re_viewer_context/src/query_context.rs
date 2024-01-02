@@ -119,6 +119,30 @@ impl DataResultTree {
             .and_then(|handle| self.data_results.get(handle))
     }
 
+    pub fn first_interesting_root(&self) -> Option<&DataResultNode> {
+        let mut next_node = self.root_node();
+
+        while let Some(node) = next_node {
+            // If both this node is trivial we can skip it.
+            // A trivial node is a node which is a group, with a single child,
+            // where that child still has children.
+            if node.data_result.is_group && node.children.len() == 1 {
+                if let Some(child_handle) = node.children.first() {
+                    if let Some(child) = self.data_results.get(*child_handle) {
+                        if !child.children.is_empty() {
+                            next_node = Some(child);
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            break;
+        }
+
+        next_node
+    }
+
     /// Depth-first traversal of the tree, calling `visitor` on each result.
     pub fn visit(&self, visitor: &mut impl FnMut(DataResultHandle)) {
         if let Some(root_handle) = self.root_handle {
