@@ -28,15 +28,14 @@ re_types_core.workspace = true
 # External dependencies:
 ahash.workspace = true
 document-features.workspace = true
-itertools = { workspace = true }
+itertools.workspace = true
 thiserror.workspace = true
 
 
 [dev-dependencies]
 re_log_types = { workspace = true, features = ["testing"] }
 
-criterion = "0.5"
-itertools = { workspace = true }
+criterion.workspace = true
 mimalloc.workspace = true
 similar-asserts.workspace = true
 

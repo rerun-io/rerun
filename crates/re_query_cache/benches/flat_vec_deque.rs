@@ -4,8 +4,6 @@ use itertools::Itertools as _;
 
 use re_query_cache::FlatVecDeque;
 
-// TODO: all of this should be core_benchmarks
-
 // ---
 
 #[global_allocator]
@@ -15,8 +13,8 @@ criterion_group!(
     benches,
     range,
     insert,
-    insert_range,
-    insert_with,
+    insert_many,
+    insert_deque,
     remove,
     remove_range
 );
@@ -104,7 +102,7 @@ fn insert(c: &mut Criterion) {
         group.bench_function("insert/empty", |b| {
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
-                v.insert(0, added.clone().into_iter());
+                v.insert(0, added.clone());
                 v
             });
         });
@@ -115,7 +113,7 @@ fn insert(c: &mut Criterion) {
             let base = create_prefilled();
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = base.clone();
-                v.insert(0, added.clone().into_iter());
+                v.insert(0, added.clone());
                 v
             });
         });
@@ -123,7 +121,7 @@ fn insert(c: &mut Criterion) {
             let base = create_prefilled();
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = base.clone();
-                v.insert(INITIAL_NUM_ENTRIES / 2, added.clone().into_iter());
+                v.insert(INITIAL_NUM_ENTRIES / 2, added.clone());
                 v
             });
         });
@@ -131,14 +129,14 @@ fn insert(c: &mut Criterion) {
             let base = create_prefilled();
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = base.clone();
-                v.insert(INITIAL_NUM_ENTRIES, added.clone().into_iter());
+                v.insert(INITIAL_NUM_ENTRIES, added.clone());
                 v
             });
         });
     }
 }
 
-fn insert_range(c: &mut Criterion) {
+fn insert_many(c: &mut Criterion) {
     if std::env::var("CI").is_ok() {
         return;
     }
@@ -153,54 +151,51 @@ fn insert_range(c: &mut Criterion) {
     ));
 
     {
-        group.bench_function("insert_range/empty", |b| {
+        group.bench_function("insert_many/empty", |b| {
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
-                v.insert_range(0, added.clone());
+                v.insert_many(0, added.clone());
                 v
             });
         });
     }
 
     {
-        group.bench_function("insert_range/prefilled/front", |b| {
+        group.bench_function("insert_many/prefilled/front", |b| {
             let base = create_prefilled();
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = base.clone();
-                v.insert_range(0, added.clone());
+                v.insert_many(0, added.clone());
                 v
             });
         });
-        group.bench_function("insert_range/prefilled/middle", |b| {
+        group.bench_function("insert_many/prefilled/middle", |b| {
             let base = create_prefilled();
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = base.clone();
-                v.insert_range(INITIAL_NUM_ENTRIES / 2, added.clone());
+                v.insert_many(INITIAL_NUM_ENTRIES / 2, added.clone());
                 v
             });
         });
-        group.bench_function("insert_range/prefilled/back", |b| {
+        group.bench_function("insert_many/prefilled/back", |b| {
             let base = create_prefilled();
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = base.clone();
-                v.insert_range(INITIAL_NUM_ENTRIES, added.clone());
+                v.insert_many(INITIAL_NUM_ENTRIES, added.clone());
                 v
             });
         });
     }
 }
 
-fn insert_with(c: &mut Criterion) {
+fn insert_deque(c: &mut Criterion) {
     if std::env::var("CI").is_ok() {
         return;
     }
 
     let mut added: FlatVecDeque<i64> = FlatVecDeque::new();
     for i in 0..ADDED_NUM_ENTRIES {
-        added.insert(
-            i,
-            (0..ADDED_VALUES_PER_ENTRY as i64).collect_vec().into_iter(),
-        );
+        added.insert(i, (0..ADDED_VALUES_PER_ENTRY as i64).collect_vec());
     }
 
     let added = FlatVecDeque::from_vecs(
@@ -214,37 +209,37 @@ fn insert_with(c: &mut Criterion) {
     ));
 
     {
-        group.bench_function("insert_with/empty", |b| {
+        group.bench_function("insert_deque/empty", |b| {
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
-                v.insert_with(0, added.clone());
+                v.insert_deque(0, added.clone());
                 v
             });
         });
     }
 
     {
-        group.bench_function("insert_with/prefilled/front", |b| {
+        group.bench_function("insert_deque/prefilled/front", |b| {
             let base = create_prefilled();
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = base.clone();
-                v.insert_with(0, added.clone());
+                v.insert_deque(0, added.clone());
                 v
             });
         });
-        group.bench_function("insert_with/prefilled/middle", |b| {
+        group.bench_function("insert_deque/prefilled/middle", |b| {
             let base = create_prefilled();
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = base.clone();
-                v.insert_with(INITIAL_NUM_ENTRIES / 2, added.clone());
+                v.insert_deque(INITIAL_NUM_ENTRIES / 2, added.clone());
                 v
             });
         });
-        group.bench_function("insert_with/prefilled/back", |b| {
+        group.bench_function("insert_deque/prefilled/back", |b| {
             let base = create_prefilled();
             b.iter(|| {
                 let mut v: FlatVecDeque<i64> = base.clone();
-                v.insert_with(INITIAL_NUM_ENTRIES, added.clone());
+                v.insert_deque(INITIAL_NUM_ENTRIES, added.clone());
                 v
             });
         });

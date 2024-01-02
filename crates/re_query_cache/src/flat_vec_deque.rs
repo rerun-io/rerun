@@ -72,15 +72,33 @@ impl<T: 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
 /// A double-ended queue implemented with a pair of growable ring buffers, where every single
 /// entry is a flattened array of values.
 ///
-/// You can think of this as the native/deserialized version of an Arrow `ListArray`.
+/// Logically like a `VecDeque<Box<[T]>>`, but with a less fragmented memory layout (each `Box<[T]>`
+/// gets copied/inlined into the `FlatVecDeque`).
+/// `FlatVecDeque` therefore optimizes for reads (cache locality, specifically) while `VecDeque<Box<[T]>>`
+/// optimizes for writes.
 ///
-/// This is particularly when working with many small arrays of data (e.g. Rerun's `TimeSeriesScalar`s).
+/// You can think of this as the native/deserialized version of an Arrow `ListArray`.
+/// This is particularly useful when working with many small arrays of data (e.g. Rerun's
+/// `TimeSeriesScalar`s).
 //
 // TODO(cmc): We could even use a bitmap for T=Option<Something>, which would bring this that much
 // closer to a deserialized version of an Arrow array.
 #[derive(Debug, Clone)]
 pub struct FlatVecDeque<T> {
+    /// Stores every value in the `FlatVecDeque` in a flattened `VecDeque`.
+    ///
+    /// E.g.:
+    /// - `FlatVecDeque[]` -> values=`[]`.
+    /// - `FlatVecDeque[[], [], []]` -> values=`[]`.
+    /// - `FlatVecDeque[[], [0], [1, 2, 3], [4, 5]]` -> values=`[0, 1, 2, 3, 4, 5]`.
     values: VecDeque<T>,
+
+    /// Keeps track of each entry, i.e. logical slices of data.
+    ///
+    /// E.g.:
+    /// - `FlatVecDeque[]` -> offsets=`[]`.
+    /// - `FlatVecDeque[[], [], []]` -> offsets=`[0, 0, 0]`.
+    /// - `FlatVecDeque[[], [0], [1, 2, 3], [4, 5]]` -> offsets=`[0, 1, 4, 6]`.
     offsets: VecDeque<usize>,
 }
 
@@ -156,11 +174,6 @@ impl<T> FlatVecDeque<T> {
     }
 
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.num_entries() == 0
-    }
-
-    #[inline]
     fn value_offset(&self, entry_index: usize) -> usize {
         if entry_index == 0 {
             0
@@ -222,7 +235,7 @@ fn range() {
     assert_eq!(0, v.num_entries());
     assert_eq!(0, v.num_values());
 
-    v.insert_range(0, [vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]);
+    v.insert_many(0, [vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]);
     assert_deque_eq(&[&[1, 2, 3], &[4, 5, 6, 7], &[8, 9, 10]], &v);
 
     assert_iter_eq(&[&[1, 2, 3]], v.range(0..1));
@@ -246,7 +259,7 @@ impl<T> FlatVecDeque<T> {
     ///
     /// See [`Self::insert`] for more information.
     #[inline]
-    pub fn push_front(&mut self, values: impl ExactSizeIterator<Item = T>) {
+    pub fn push_front(&mut self, values: impl IntoIterator<Item = T>) {
         self.insert(0, values);
     }
 
@@ -256,7 +269,7 @@ impl<T> FlatVecDeque<T> {
     ///
     /// See [`Self::insert`] for more information.
     #[inline]
-    pub fn push_back(&mut self, values: impl ExactSizeIterator<Item = T>) {
+    pub fn push_back(&mut self, values: impl IntoIterator<Item = T>) {
         self.insert(self.num_entries(), values);
     }
 
@@ -269,35 +282,36 @@ impl<T> FlatVecDeque<T> {
     /// Panics if `entry_index` is out of bounds.
     /// Panics if `values` is empty.
     #[inline]
-    pub fn insert(&mut self, entry_index: usize, values: impl ExactSizeIterator<Item = T>) {
+    pub fn insert(&mut self, entry_index: usize, values: impl IntoIterator<Item = T>) {
+        let values: VecDeque<T> = values.into_iter().collect();
         let num_values = values.len();
         let deque = Self {
-            values: values.collect(),
+            values,
             offsets: std::iter::once(num_values).collect(),
         };
-        self.insert_with(entry_index, deque);
+        self.insert_deque(entry_index, deque);
     }
 
     /// Prepends multiple entries, each comprised of the multiple elements given in `entries`,
     /// to the deque.
     ///
-    /// This is the same as `self.insert_range(0, entries)`.
+    /// This is the same as `self.insert_many(0, entries)`.
     ///
-    /// See [`Self::insert_range`] for more information.
+    /// See [`Self::insert_many`] for more information.
     #[inline]
-    pub fn push_range_front(&mut self, entries: impl IntoIterator<Item = Vec<T>>) {
-        self.insert_range(0, entries);
+    pub fn push_many_front(&mut self, entries: impl IntoIterator<Item = Vec<T>>) {
+        self.insert_many(0, entries);
     }
 
     /// Appends multiple entries, each comprised of the multiple elements given in `entries`,
     /// to the deque.
     ///
-    /// This is the same as `self.insert_range(self.num_entries(), entries)`.
+    /// This is the same as `self.insert_many(self.num_entries(), entries)`.
     ///
-    /// See [`Self::insert_range`] for more information.
+    /// See [`Self::insert_many`] for more information.
     #[inline]
-    pub fn push_range_back(&mut self, entries: impl IntoIterator<Item = Vec<T>>) {
-        self.insert_range(self.num_entries(), entries);
+    pub fn push_many_back(&mut self, entries: impl IntoIterator<Item = Vec<T>>) {
+        self.insert_many(self.num_entries(), entries);
     }
 
     /// Inserts multiple entries, starting at `entry_index` onwards, each comprised of the multiple elements
@@ -310,29 +324,29 @@ impl<T> FlatVecDeque<T> {
     /// Panics if `entry_index` is out of bounds.
     /// Panics if any of the value arrays in `entries` is empty.
     #[inline]
-    pub fn insert_range(&mut self, entry_index: usize, entries: impl IntoIterator<Item = Vec<T>>) {
+    pub fn insert_many(&mut self, entry_index: usize, entries: impl IntoIterator<Item = Vec<T>>) {
         let deque = Self::from_vecs(entries);
-        self.insert_with(entry_index, deque);
+        self.insert_deque(entry_index, deque);
     }
 
     /// Prepends another full deque to the deque.
     ///
-    /// This is the same as `self.insert_with(0, rhs)`.
+    /// This is the same as `self.insert_deque(0, rhs)`.
     ///
-    /// See [`Self::insert_with`] for more information.
+    /// See [`Self::insert_deque`] for more information.
     #[inline]
-    pub fn push_front_with(&mut self, rhs: FlatVecDeque<T>) {
-        self.insert_with(0, rhs);
+    pub fn push_front_deque(&mut self, rhs: FlatVecDeque<T>) {
+        self.insert_deque(0, rhs);
     }
 
     /// Appends another full deque to the deque.
     ///
-    /// This is the same as `self.insert_with(0, rhs)`.
+    /// This is the same as `self.insert_deque(0, rhs)`.
     ///
-    /// See [`Self::insert_with`] for more information.
+    /// See [`Self::insert_deque`] for more information.
     #[inline]
-    pub fn push_back_with(&mut self, rhs: FlatVecDeque<T>) {
-        self.insert_with(self.num_entries(), rhs);
+    pub fn push_back_deque(&mut self, rhs: FlatVecDeque<T>) {
+        self.insert_deque(self.num_entries(), rhs);
     }
 
     /// Inserts another full deque, starting at `entry_index` and onwards.
@@ -343,7 +357,8 @@ impl<T> FlatVecDeque<T> {
     ///
     /// Panics if `entry_index` is out of bounds.
     /// Panics if any of the value arrays in `entries` is empty.
-    pub fn insert_with(&mut self, entry_index: usize, mut rhs: FlatVecDeque<T>) {
+    pub fn insert_deque(&mut self, entry_index: usize, mut rhs: FlatVecDeque<T>) {
+        // NOTE: We're inserting _beyond_ the last element.
         if entry_index == self.num_entries() {
             let max_value_offset = self.offsets.back().copied().unwrap_or_default();
             self.offsets
@@ -351,16 +366,16 @@ impl<T> FlatVecDeque<T> {
             self.values.extend(rhs.values);
             return;
         } else if entry_index == 0 {
-            rhs.push_back_with(std::mem::take(self));
+            rhs.push_back_deque(std::mem::take(self));
             *self = rhs;
             return;
         }
 
         let right = self.split_off(entry_index);
-        self.push_back_with(rhs);
-        self.push_back_with(right);
+        self.push_back_deque(rhs);
+        self.push_back_deque(right);
 
-        debug_assert!(!self.iter_offset_ranges().any(|or| or.start >= or.end));
+        debug_assert!(self.iter_offset_ranges().all(|r| r.start < r.end));
     }
 }
 
@@ -371,19 +386,19 @@ fn insert() {
     assert_eq!(0, v.num_entries());
     assert_eq!(0, v.num_values());
 
-    v.insert(0, [1, 2, 3].into_iter());
+    v.insert(0, [1, 2, 3]);
     assert_deque_eq(&[&[1, 2, 3]], &v);
 
-    v.insert(0, [4, 5, 6, 7].into_iter());
+    v.insert(0, [4, 5, 6, 7]);
     assert_deque_eq(&[&[4, 5, 6, 7], &[1, 2, 3]], &v);
 
-    v.insert(0, [8, 9].into_iter());
+    v.insert(0, [8, 9]);
     assert_deque_eq(&[&[8, 9], &[4, 5, 6, 7], &[1, 2, 3]], &v);
 
-    v.insert(2, [10, 11, 12, 13].into_iter());
+    v.insert(2, [10, 11, 12, 13]);
     assert_deque_eq(&[&[8, 9], &[4, 5, 6, 7], &[10, 11, 12, 13], &[1, 2, 3]], &v);
 
-    v.insert(v.num_entries(), [14, 15].into_iter());
+    v.insert(v.num_entries(), [14, 15]);
     assert_deque_eq(
         &[
             &[8, 9],
@@ -394,25 +409,52 @@ fn insert() {
         ],
         &v,
     );
+
+    v.insert(v.num_entries() - 1, [42]);
+    assert_deque_eq(
+        &[
+            &[8, 9],
+            &[4, 5, 6, 7],
+            &[10, 11, 12, 13],
+            &[1, 2, 3],
+            &[42],
+            &[14, 15],
+        ],
+        &v,
+    );
 }
 
 #[test]
-fn insert_range() {
+fn insert_empty() {
     let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
 
     assert_eq!(0, v.num_entries());
     assert_eq!(0, v.num_values());
 
-    v.insert_range(0, [vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]);
+    v.push_back([]);
+    v.push_back([]);
+    v.push_back([]);
+
+    assert_deque_eq(&[&[], &[], &[]], &v);
+}
+
+#[test]
+fn insert_many() {
+    let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
+
+    assert_eq!(0, v.num_entries());
+    assert_eq!(0, v.num_values());
+
+    v.insert_many(0, [vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]);
     assert_deque_eq(&[&[1, 2, 3], &[4, 5, 6, 7], &[8, 9, 10]], &v);
 
-    v.insert_range(0, [vec![20], vec![21], vec![22]]);
+    v.insert_many(0, [vec![20], vec![21], vec![22]]);
     assert_deque_eq(
         &[&[20], &[21], &[22], &[1, 2, 3], &[4, 5, 6, 7], &[8, 9, 10]],
         &v,
     );
 
-    v.insert_range(4, [vec![41, 42], vec![43]]);
+    v.insert_many(4, [vec![41, 42], vec![43]]);
     assert_deque_eq(
         &[
             &[20],
@@ -427,7 +469,7 @@ fn insert_range() {
         &v,
     );
 
-    v.insert_range(v.num_entries(), [vec![100], vec![200, 300, 400]]);
+    v.insert_many(v.num_entries(), [vec![100], vec![200, 300, 400]]);
     assert_deque_eq(
         &[
             &[20],
@@ -446,25 +488,25 @@ fn insert_range() {
 }
 
 #[test]
-fn insert_with() {
+fn insert_deque() {
     let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
 
     assert_eq!(0, v.num_entries());
     assert_eq!(0, v.num_values());
 
-    v.insert_with(
+    v.insert_deque(
         0,
         FlatVecDeque::from_vecs([vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]),
     );
     assert_deque_eq(&[&[1, 2, 3], &[4, 5, 6, 7], &[8, 9, 10]], &v);
 
-    v.insert_with(0, FlatVecDeque::from_vecs([vec![20], vec![21], vec![22]]));
+    v.insert_deque(0, FlatVecDeque::from_vecs([vec![20], vec![21], vec![22]]));
     assert_deque_eq(
         &[&[20], &[21], &[22], &[1, 2, 3], &[4, 5, 6, 7], &[8, 9, 10]],
         &v,
     );
 
-    v.insert_with(4, FlatVecDeque::from_vecs([vec![41, 42], vec![43]]));
+    v.insert_deque(4, FlatVecDeque::from_vecs([vec![41, 42], vec![43]]));
     assert_deque_eq(
         &[
             &[20],
@@ -479,7 +521,7 @@ fn insert_with() {
         &v,
     );
 
-    v.insert_with(
+    v.insert_deque(
         v.num_entries(),
         FlatVecDeque::from_vecs([vec![100], vec![200, 300, 400]]),
     );
@@ -533,8 +575,8 @@ impl<T> FlatVecDeque<T> {
     /// Panics if `entry_index` is out of bounds.
     #[inline]
     pub fn truncate(&mut self, entry_index: usize) {
-        self.offsets.truncate(entry_index);
         self.values.truncate(self.value_offset(entry_index));
+        self.offsets.truncate(entry_index);
     }
 
     /// Removes the entry at `entry_index` from the deque.
@@ -549,11 +591,11 @@ impl<T> FlatVecDeque<T> {
             self.value_offset(entry_index),
             self.value_offset(entry_index + 1),
         );
-        let offset_range = end_offset - start_offset;
+        let offset_count = end_offset - start_offset;
 
-        if entry_index == self.num_entries() {
+        if entry_index + 1 == self.num_entries() {
             self.offsets.truncate(self.num_entries() - 1);
-            self.values.truncate(self.values.len() - offset_range);
+            self.values.truncate(self.values.len() - offset_count);
             return;
         } else if entry_index == 0 {
             *self = self.split_off(entry_index + 1);
@@ -563,15 +605,15 @@ impl<T> FlatVecDeque<T> {
         // NOTE: elegant, but way too slow :)
         // let right = self.split_off(entry_index + 1);
         // _ = self.split_off(self.num_entries() - 1);
-        // self.push_back_with(right);
+        // self.push_back_deque(right);
 
         _ = self.offsets.remove(entry_index);
         for offset in self.offsets.range_mut(entry_index..) {
-            *offset -= offset_range;
+            *offset -= offset_count;
         }
 
         let right = self.values.split_off(end_offset);
-        self.values.truncate(self.values.len() - offset_range);
+        self.values.truncate(self.values.len() - offset_count);
         self.values.extend(right);
     }
 
@@ -580,21 +622,28 @@ impl<T> FlatVecDeque<T> {
     /// This is O(1) if `entry_range` either starts at the beginning of the deque, or ends at
     /// the end of the deque, or both.
     /// Otherwise, this requires splitting the deque into three pieces, dropping the superfluous
-    /// one, then stitching the two remaining pices back together.
+    /// one, then stitching the two remaining pieces back together.
     ///
-    /// Panics if `entry_range` is out of bounds.
+    /// Panics if `entry_range` is either out of bounds or isn't monotonically increasing.
     #[inline]
     pub fn remove_range(&mut self, entry_range: Range<usize>) {
+        assert!(entry_range.start <= entry_range.end);
+
+        if entry_range.start == entry_range.end {
+            return;
+        }
+
         let (start_offset, end_offset) = (
             self.value_offset(entry_range.start),
             self.value_offset(entry_range.end),
         );
-        let offset_range = end_offset - start_offset;
+        let offset_count = end_offset - start_offset;
 
+        // Reminder: `entry_range.end` is exclusive.
         if entry_range.end == self.num_entries() {
             self.offsets
                 .truncate(self.num_entries() - entry_range.len());
-            self.values.truncate(self.values.len() - offset_range);
+            self.values.truncate(self.values.len() - offset_count);
             return;
         } else if entry_range.start == 0 {
             *self = self.split_off(entry_range.end);
@@ -603,7 +652,7 @@ impl<T> FlatVecDeque<T> {
 
         let right = self.split_off(entry_range.end);
         _ = self.split_off(self.num_entries() - entry_range.len());
-        self.push_back_with(right);
+        self.push_back_deque(right);
     }
 }
 
@@ -614,7 +663,7 @@ fn truncate() {
     assert_eq!(0, v.num_entries());
     assert_eq!(0, v.num_values());
 
-    v.insert_range(0, [vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]);
+    v.insert_many(0, [vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]);
     assert_deque_eq(&[&[1, 2, 3], &[4, 5, 6, 7], &[8, 9, 10]], &v);
 
     {
@@ -649,7 +698,7 @@ fn split_off() {
     assert_eq!(0, v.num_entries());
     assert_eq!(0, v.num_values());
 
-    v.insert_range(0, [vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]);
+    v.insert_many(0, [vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]);
     assert_deque_eq(&[&[1, 2, 3], &[4, 5, 6, 7], &[8, 9, 10]], &v);
 
     {
@@ -692,31 +741,31 @@ fn remove() {
     assert_eq!(0, v.num_entries());
     assert_eq!(0, v.num_values());
 
-    v.insert(0, [1, 2, 3].into_iter());
+    v.insert(0, [1, 2, 3]);
     assert_deque_eq(&[&[1, 2, 3]], &v);
 
     v.remove(0);
     assert_deque_eq(&[], &v);
 
-    v.insert(0, [1, 2, 3].into_iter());
+    v.insert(0, [1, 2, 3]);
     assert_deque_eq(&[&[1, 2, 3]], &v);
 
-    v.insert(1, [4, 5, 6, 7].into_iter());
+    v.insert(1, [4, 5, 6, 7]);
     assert_deque_eq(&[&[1, 2, 3], &[4, 5, 6, 7]], &v);
 
-    v.insert(2, [8, 9].into_iter());
+    v.insert(2, [8, 9]);
     assert_deque_eq(&[&[1, 2, 3], &[4, 5, 6, 7], &[8, 9]], &v);
 
     v.remove(0);
     assert_deque_eq(&[&[4, 5, 6, 7], &[8, 9]], &v);
 
-    v.insert(0, [1, 2, 3].into_iter());
+    v.insert(0, [1, 2, 3]);
     assert_deque_eq(&[&[1, 2, 3], &[4, 5, 6, 7], &[8, 9]], &v);
 
     v.remove(1);
     assert_deque_eq(&[&[1, 2, 3], &[8, 9]], &v);
 
-    v.insert(1, [4, 5, 6, 7].into_iter());
+    v.insert(1, [4, 5, 6, 7]);
     assert_deque_eq(&[&[1, 2, 3], &[4, 5, 6, 7], &[8, 9]], &v);
 
     v.remove(2);
@@ -730,13 +779,41 @@ fn remove() {
 }
 
 #[test]
+#[should_panic(expected = "Out of bounds access")]
+fn remove_empty() {
+    let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
+
+    assert_eq!(0, v.num_entries());
+    assert_eq!(0, v.num_values());
+
+    v.remove(0);
+}
+
+#[test]
+#[should_panic(expected = "Out of bounds access")]
+fn remove_oob() {
+    let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
+
+    assert_eq!(0, v.num_entries());
+    assert_eq!(0, v.num_values());
+
+    v.insert(0, [1, 2, 3]);
+    assert_deque_eq(&[&[1, 2, 3]], &v);
+
+    assert_eq!(1, v.num_entries());
+    assert_eq!(3, v.num_values());
+
+    v.remove(1);
+}
+
+#[test]
 fn remove_range() {
     let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
 
     assert_eq!(0, v.num_entries());
     assert_eq!(0, v.num_values());
 
-    v.insert_range(0, [vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]);
+    v.insert_many(0, [vec![1, 2, 3], vec![4, 5, 6, 7], vec![8, 9, 10]]);
     assert_deque_eq(&[&[1, 2, 3], &[4, 5, 6, 7], &[8, 9, 10]], &v);
 
     {
