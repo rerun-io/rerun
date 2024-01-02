@@ -35,6 +35,8 @@ pub use re_log_types::{
     entity_path, ApplicationId, EntityPath, EntityPathPart, StoreId, StoreKind,
 };
 
+pub use re_memory::MemoryLimit;
+
 pub use global::cleanup_if_forked_child;
 
 #[cfg(not(target_arch = "wasm32"))]

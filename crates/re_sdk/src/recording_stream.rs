@@ -455,6 +455,15 @@ impl RecordingStreamBuilder {
     ///
     /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun-cli`).
     ///
+    /// ## Details
+    /// This method will spawn two servers: one HTTPS server serving the Rerun Web Viewer `.html` and `.wasm` files,
+    /// and then one WebSocket server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
+    ///
+    /// The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
+    /// You can limit the amount of data buffered by the WebSocket server with the `memory_limit` argument.
+    /// Once reached, the earliest logged data will be dropped.
+    /// Note that this means that timeless data may be dropped if logged early.
+    ///
     /// ## Example
     ///
     /// ```ignore
@@ -469,7 +478,11 @@ impl RecordingStreamBuilder {
     /// let _tokio_runtime_guard = tokio_runtime_handle.enter();
     ///
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .serve("0.0.0.0", Default::default(), Default::default(), true)?;
+    ///     .serve("0.0.0.0",
+    ///            Default::default(),
+    ///            Default::default(),
+    ///            re_sdk::MemoryLimit::from_fraction_of_total(0.25),
+    ///            true)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     #[cfg(feature = "web_viewer")]
@@ -478,11 +491,18 @@ impl RecordingStreamBuilder {
         bind_ip: &str,
         web_port: WebViewerServerPort,
         ws_port: RerunServerPort,
+        server_memory_limit: re_memory::MemoryLimit,
         open_browser: bool,
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
-            let sink = crate::web_viewer::new_sink(open_browser, bind_ip, web_port, ws_port)?;
+            let sink = crate::web_viewer::new_sink(
+                open_browser,
+                bind_ip,
+                web_port,
+                ws_port,
+                server_memory_limit,
+            )?;
             RecordingStream::new(store_info, batcher_config, sink)
         } else {
             re_log::debug!("Rerun disabled - call to serve() ignored");

@@ -68,6 +68,17 @@ struct Args {
     #[clap(long, default_value = "75%")]
     memory_limit: String,
 
+    /// An upper limit on how much memory the WebSocket server should use.
+    ///
+    /// The server buffers log messages for the benefit of late-arriving viewers.
+    ///
+    /// When this limit is reached, Rerun will drop the oldest data.
+    /// Example: `16GB` or `50%` (of system total).
+    ///
+    /// Defaults to `25%`.
+    #[clap(long, default_value = "25%")]
+    server_memory_limit: String,
+
     /// Whether the Rerun Viewer should persist the state of the viewer to disk.
     ///
     /// When persisted, the state will be stored at the following locations:
@@ -436,7 +447,7 @@ async fn run_impl(
         re_tracing::profile_scope!("StartupOptions");
         re_viewer::StartupOptions {
             memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
-                .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}")),
+                .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?,
             persist_state: args.persist_state,
             is_in_notebook: false,
             screenshot_to_path_then_quit: args.screenshot_to.clone(),
@@ -519,9 +530,16 @@ async fn run_impl(
                 );
             }
 
+            let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
+                .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+
             // This is the server which the web viewer will talk to:
-            let ws_server =
-                re_ws_comms::RerunServer::new(args.bind.clone(), args.ws_server_port).await?;
+            let ws_server = re_ws_comms::RerunServer::new(
+                args.bind.clone(),
+                args.ws_server_port,
+                server_memory_limit,
+            )
+            .await?;
             let ws_server_url = ws_server.server_url();
             let rx = ReceiveSet::new(rx);
             let ws_server_handle = tokio::spawn(ws_server.listen(rx));

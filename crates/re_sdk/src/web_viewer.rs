@@ -35,6 +35,7 @@ impl WebViewerSink {
         bind_ip: &str,
         web_port: WebViewerServerPort,
         ws_port: RerunServerPort,
+        server_memory_limit: re_memory::MemoryLimit,
     ) -> Result<Self, WebViewerSinkError> {
         // TODO(cmc): the sources here probably don't make much sense…
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(
@@ -46,6 +47,7 @@ impl WebViewerSink {
             re_smart_channel::ReceiveSet::new(vec![rerun_rx]),
             bind_ip.to_owned(),
             ws_port,
+            server_memory_limit,
         )?;
         let webviewer_server = WebViewerServerHandle::new(bind_ip, web_port)?;
 
@@ -126,11 +128,13 @@ pub fn new_sink(
     bind_ip: &str,
     web_port: WebViewerServerPort,
     ws_port: RerunServerPort,
+    server_memory_limit: re_memory::MemoryLimit,
 ) -> Result<Box<dyn crate::sink::LogSink>, WebViewerSinkError> {
     Ok(Box::new(WebViewerSink::new(
         open_browser,
         bind_ip,
         web_port,
         ws_port,
+        server_memory_limit,
     )?))
 }

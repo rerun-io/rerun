@@ -683,11 +683,12 @@ fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (open_browser, web_port, ws_port, recording = None))]
+#[pyo3(signature = (open_browser, web_port, ws_port, memory_limit, recording = None))]
 fn serve(
     open_browser: bool,
     web_port: Option<u16>,
     ws_port: Option<u16>,
+    memory_limit: String,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
@@ -698,12 +699,16 @@ fn serve(
 
         let _guard = enter_tokio_runtime();
 
+        let memory_limit = re_memory::MemoryLimit::parse(&memory_limit)
+            .map_err(|err| PyRuntimeError::new_err(format!("Bad memory_limit: {err}:")))?;
+
         recording.set_sink(
             rerun::web_viewer::new_sink(
                 open_browser,
                 "0.0.0.0",
                 web_port.map(WebViewerServerPort).unwrap_or_default(),
                 ws_port.map(RerunServerPort).unwrap_or_default(),
+                memory_limit,
             )
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
         );

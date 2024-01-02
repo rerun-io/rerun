@@ -6,7 +6,7 @@
 //! In the future thing will be changed to a protocol where the clients can query
 //! for specific data based on e.g. time.
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{collections::VecDeque, net::SocketAddr, sync::Arc};
 
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
@@ -14,12 +14,74 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{accept_async, tungstenite::Error};
 
 use re_log_types::LogMsg;
+use re_memory::MemoryLimit;
 use re_smart_channel::ReceiveSet;
 
 use crate::{server_url, RerunServerError, RerunServerPort};
 
+struct MessageQueue {
+    server_memory_limit: MemoryLimit,
+    messages: VecDeque<Arc<[u8]>>,
+}
+
+impl MessageQueue {
+    pub fn new(server_memory_limit: MemoryLimit) -> Self {
+        Self {
+            server_memory_limit,
+            messages: Default::default(),
+        }
+    }
+
+    pub fn push(&mut self, msg: Arc<[u8]>) {
+        self.gc_if_using_too_much_ram();
+        self.messages.push_back(msg);
+    }
+
+    fn gc_if_using_too_much_ram(&mut self) {
+        re_tracing::profile_function!();
+
+        if let Some(limit) = self.server_memory_limit.limit {
+            let limit = limit as u64;
+            let bytes_used = self.messages.iter().map(|m| m.len()).sum::<usize>() as u64;
+
+            if limit < bytes_used {
+                re_tracing::profile_scope!("Drop messages");
+                re_log::info_once!(
+                    "Memory limit ({}) exceeded. Dropping old log messages from the server. Clients connecting after this will not see the full history.",
+                    re_format::format_bytes(limit as _)
+                );
+
+                let bytes_to_free = bytes_used - limit;
+
+                let mut bytes_dropped = 0;
+                let mut messages_dropped = 0;
+
+                while bytes_dropped < bytes_to_free {
+                    if let Some(msg) = self.messages.pop_front() {
+                        bytes_dropped += msg.len() as u64;
+                        messages_dropped += 1;
+                    } else {
+                        break;
+                    }
+                }
+
+                re_log::trace!(
+                    "Dropped {} bytes in {messages_dropped} message(s)",
+                    re_format::format_bytes(bytes_dropped as _)
+                );
+            }
+        }
+    }
+
+    pub fn to_vec(&self) -> VecDeque<Arc<[u8]>> {
+        re_tracing::profile_function!();
+        self.messages.clone()
+    }
+}
+
 /// Websocket host for relaying [`LogMsg`]s to a web viewer.
 pub struct RerunServer {
+    server_memory_limit: MemoryLimit,
     listener: TcpListener,
     local_addr: std::net::SocketAddr,
 }
@@ -30,7 +92,11 @@ impl RerunServer {
     ///
     /// A `bind_ip` of `"0.0.0.0"` is a good default.
     /// A port of 0 will let the OS choose a free port.
-    pub async fn new(bind_ip: String, port: RerunServerPort) -> Result<Self, RerunServerError> {
+    pub async fn new(
+        bind_ip: String,
+        port: RerunServerPort,
+        server_memory_limit: MemoryLimit,
+    ) -> Result<Self, RerunServerError> {
         let bind_addr = format!("{bind_ip}:{port}");
 
         let listener = match TcpListener::bind(&bind_addr).await {
@@ -46,6 +112,7 @@ impl RerunServer {
         };
 
         let slf = Self {
+            server_memory_limit,
             local_addr: listener.local_addr()?,
             listener,
         };
@@ -70,7 +137,7 @@ impl RerunServer {
         rx: ReceiveSet<LogMsg>,
         mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
     ) -> Result<(), RerunServerError> {
-        let history = Arc::new(Mutex::new(Vec::new()));
+        let history = Arc::new(Mutex::new(MessageQueue::new(self.server_memory_limit)));
 
         let log_stream = to_broadcast_stream(rx, history.clone());
 
@@ -126,13 +193,14 @@ impl RerunServerHandle {
         rerun_rx: ReceiveSet<LogMsg>,
         bind_ip: String,
         requested_port: RerunServerPort,
+        server_memory_limit: MemoryLimit,
     ) -> Result<Self, RerunServerError> {
         let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
 
         let rt = tokio::runtime::Handle::current();
 
         let ws_server = rt.block_on(tokio::spawn(async move {
-            RerunServer::new(bind_ip, requested_port).await
+            RerunServer::new(bind_ip, requested_port, server_memory_limit).await
         }))??;
 
         let local_addr = ws_server.local_addr;
@@ -157,7 +225,7 @@ impl RerunServerHandle {
 
 fn to_broadcast_stream(
     log_rx: ReceiveSet<LogMsg>,
-    history: Arc<Mutex<Vec<Arc<[u8]>>>>,
+    history: Arc<Mutex<MessageQueue>>,
 ) -> tokio::sync::broadcast::Sender<Arc<[u8]>> {
     let (tx, _) = tokio::sync::broadcast::channel(1024 * 1024);
     let tx1 = tx.clone();
@@ -189,7 +257,7 @@ async fn accept_connection(
     log_stream: tokio::sync::broadcast::Sender<Arc<[u8]>>,
     _peer: SocketAddr,
     tcp_stream: TcpStream,
-    history: Arc<Mutex<Vec<Arc<[u8]>>>>,
+    history: Arc<Mutex<MessageQueue>>,
 ) {
     // let span = re_log::span!(
     //     re_log::Level::INFO,
@@ -211,7 +279,7 @@ async fn accept_connection(
 async fn handle_connection(
     log_stream: tokio::sync::broadcast::Sender<Arc<[u8]>>,
     tcp_stream: TcpStream,
-    history: Arc<Mutex<Vec<Arc<[u8]>>>>,
+    history: Arc<Mutex<MessageQueue>>,
 ) -> tungstenite::Result<()> {
     let ws_stream = accept_async(tcp_stream).await?;
     let (mut ws_sender, mut ws_receiver) = ws_stream.split();
