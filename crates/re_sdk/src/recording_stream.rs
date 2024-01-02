@@ -5,9 +5,10 @@ use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 
 use re_log_types::{
-    ApplicationId, DataCell, DataCellError, DataRow, DataTable, DataTableBatcher,
-    DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
-    StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    ApplicationId, ArrowChunkReleaseCallback, DataCell, DataCellError, DataRow, DataTable,
+    DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId,
+    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
+    TimelineName,
 };
 use re_types_core::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
 
@@ -610,6 +611,7 @@ impl RecordingStreamInner {
         batcher_config: DataTableBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
+        let on_release = batcher_config.on_release.clone();
         let batcher = DataTableBatcher::new(batcher_config)?;
 
         {
@@ -636,7 +638,7 @@ impl RecordingStreamInner {
                 .spawn({
                     let info = info.clone();
                     let batcher = batcher.clone();
-                    move || forwarding_thread(info, sink, cmds_rx, batcher.tables())
+                    move || forwarding_thread(info, sink, cmds_rx, batcher.tables(), on_release)
                 })
                 .map_err(|err| RecordingStreamError::SpawnThread { name: NAME, err })?
         };
@@ -956,6 +958,7 @@ fn forwarding_thread(
     mut sink: Box<dyn LogSink>,
     cmds_rx: Receiver<Command>,
     tables: Receiver<DataTable>,
+    on_release: Option<ArrowChunkReleaseCallback>,
 ) {
     /// Returns `true` to indicate that processing can continue; i.e. `false` means immediate
     /// shutdown.
@@ -1018,7 +1021,7 @@ fn forwarding_thread(
         // NOTE: Always pop tables first, this is what makes `Command::PopPendingTables` possible,
         // which in turns makes `RecordingStream::flush_blocking` well defined.
         while let Ok(table) = tables.try_recv() {
-            let table = match table.to_arrow_msg() {
+            let mut arrow_msg = match table.to_arrow_msg() {
                 Ok(table) => table,
                 Err(err) => {
                     re_log::error!(%err,
@@ -1026,7 +1029,8 @@ fn forwarding_thread(
                     continue;
                 }
             };
-            sink.send(LogMsg::ArrowMsg(info.store_id.clone(), table));
+            arrow_msg.on_release = on_release.clone();
+            sink.send(LogMsg::ArrowMsg(info.store_id.clone(), arrow_msg));
         }
 
         select! {
@@ -1037,7 +1041,7 @@ fn forwarding_thread(
                     re_log::trace!("Shutting down forwarding_thread: batcher is gone");
                     break;
                 };
-                let table = match table.to_arrow_msg() {
+                let mut arrow_msg = match table.to_arrow_msg() {
                     Ok(table) => table,
                     Err(err) => {
                         re_log::error!(%err,
@@ -1045,7 +1049,8 @@ fn forwarding_thread(
                         continue;
                     }
                 };
-                sink.send(LogMsg::ArrowMsg(info.store_id.clone(), table));
+                arrow_msg.on_release = on_release.clone();
+                sink.send(LogMsg::ArrowMsg(info.store_id.clone(), arrow_msg));
             }
             recv(cmds_rx) -> res => {
                 let Ok(cmd) = res else {
