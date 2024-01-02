@@ -1,21 +1,16 @@
-use std::collections::BTreeMap;
-
 use egui::NumExt;
 use nohash_hasher::IntMap;
 
 use re_log_types::EntityPathHash;
 use re_renderer::OutlineMaskPreference;
 use re_viewer_context::{
-    ApplicationSelectionState, HoverHighlight, Item, SelectionHighlight, SpaceViewEntityHighlight,
-    SpaceViewHighlights, SpaceViewId, SpaceViewOutlineMasks,
+    HoverHighlight, Item, SelectionHighlight, SpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewId, SpaceViewOutlineMasks,
 };
 
-use crate::SpaceViewBlueprint;
-
 pub fn highlights_for_space_view(
-    selection_state: &ApplicationSelectionState,
+    ctx: &re_viewer_context::ViewerContext<'_>,
     space_view_id: SpaceViewId,
-    _space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> SpaceViewHighlights {
     re_tracing::profile_function!();
 
@@ -36,36 +31,36 @@ pub fn highlights_for_space_view(
         OutlineMaskPreference::some(hover_mask_index, 0)
     };
 
-    for current_selection in selection_state.current().iter_items() {
+    for current_selection in ctx.selection_state().current().iter_items() {
         match current_selection {
             Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {}
 
-            Item::DataBlueprintGroup(_space_view_id, _query_id, _entity_path) => {
-                // TODO(#4377): Fix DataBlueprintGroup
-                /*
+            Item::DataBlueprintGroup(group_space_view_id, query_id, group_entity_path) => {
+                // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
+                // since they are truly local to a space view.
                 if *group_space_view_id == space_view_id {
-                    if let Some(space_view) = space_views.get(group_space_view_id) {
-                        // Everything in the same group should receive the same selection outline.
-                        // (Due to the way outline masks work in re_renderer, we can't leave the hover channel empty)
-                        let selection_mask = next_selection_mask();
+                    // Everything in the same group should receive the same selection outline.
+                    // (Due to the way outline masks work in re_renderer, we can't leave the hover channel empty)
+                    let selection_mask = next_selection_mask();
 
-                        space_view.contents.visit_group_entities_recursively(
-                            *group_handle,
-                            &mut |entity_path: &EntityPath| {
+                    let query_result = ctx.lookup_query_result(*query_id).clone();
+
+                    query_result
+                        .tree
+                        .visit_group(group_entity_path, &mut |handle| {
+                            if let Some(result) = query_result.tree.lookup_result(handle) {
                                 highlighted_entity_paths
-                                    .entry(entity_path.hash())
+                                    .entry(result.entity_path.hash())
                                     .or_default()
                                     .overall
                                     .selection = SelectionHighlight::SiblingSelection;
                                 let outline_mask_ids =
-                                    outlines_masks.entry(entity_path.hash()).or_default();
+                                    outlines_masks.entry(result.entity_path.hash()).or_default();
                                 outline_mask_ids.overall =
                                     selection_mask.with_fallback_to(outline_mask_ids.overall);
-                            },
-                        );
-                    }
+                            }
+                        });
                 }
-                */
             }
 
             Item::InstancePath(selected_space_view_context, selected_instance) => {
@@ -113,35 +108,34 @@ pub fn highlights_for_space_view(
         };
     }
 
-    for current_hover in selection_state.hovered().iter_items() {
+    for current_hover in ctx.selection_state().hovered().iter_items() {
         match current_hover {
             Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {}
 
-            Item::DataBlueprintGroup(_space_view_id, _query_id, _entity_path) => {
-                // TODO(#4377): Fix DataBlueprintGroup
-                /*
+            Item::DataBlueprintGroup(group_space_view_id, query_id, group_entity_path) => {
                 // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
                 // since they are truly local to a space view.
                 if *group_space_view_id == space_view_id {
-                    if let Some(space_view) = space_views.get(group_space_view_id) {
-                        // Everything in the same group should receive the same selection outline.
-                        let hover_mask = next_hover_mask();
+                    // Everything in the same group should receive the same hover outline.
+                    let hover_mask = next_hover_mask();
 
-                        space_view.contents.visit_group_entities_recursively(
-                            *group_handle,
-                            &mut |entity_path: &EntityPath| {
+                    let query_result = ctx.lookup_query_result(*query_id).clone();
+
+                    query_result
+                        .tree
+                        .visit_group(group_entity_path, &mut |handle| {
+                            if let Some(result) = query_result.tree.lookup_result(handle) {
                                 highlighted_entity_paths
-                                    .entry(entity_path.hash())
+                                    .entry(result.entity_path.hash())
                                     .or_default()
                                     .overall
                                     .hover = HoverHighlight::Hovered;
-                                let mask = outlines_masks.entry(entity_path.hash()).or_default();
+                                let mask =
+                                    outlines_masks.entry(result.entity_path.hash()).or_default();
                                 mask.overall = hover_mask.with_fallback_to(mask.overall);
-                            },
-                        );
-                    }
+                            }
+                        });
                 }
-                */
             }
 
             Item::InstancePath(_, selected_instance) => {
