@@ -224,6 +224,14 @@ impl App {
             ui.close_menu();
         }
 
+        self.re_ui
+            .checkbox(
+                ui,
+                &mut self.state.app_options.legacy_container_blueprint,
+                "Use the legacy container blueprint storage for the viewport",
+            )
+            .on_hover_text("The legacy container blueprint storage is deprecated, but may be helpful if unexpected regressions are found in the new container blueprints.");
+
         #[cfg(debug_assertions)]
         {
             ui.separator();
@@ -362,14 +370,6 @@ impl App {
                        "Show Blueprint in the Time Panel",
         )
             .on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
-
-        self.re_ui
-            .checkbox(
-                ui,
-                &mut self.state.app_options.experimental_container_blueprints,
-                "Use experimental container blueprints",
-            )
-            .on_hover_text("Load and save the container state using new container archetypes");
 
         ui.menu_button("Crash", |ui| {
             #[allow(clippy::manual_assert)]
