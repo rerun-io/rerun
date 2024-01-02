@@ -3,9 +3,7 @@ use std::sync::{
     Arc,
 };
 
-use crate::{
-    RecvError, RecvTimeoutError, SharedStats, SmartChannelSource, SmartMessage, TryRecvError,
-};
+use crate::{SharedStats, SmartChannelSource, SmartMessage, TryRecvError};
 
 pub struct Receiver<T: Send> {
     pub(crate) rx: crossbeam::channel::Receiver<SmartMessage<T>>,
@@ -37,12 +35,13 @@ impl<T: Send> Receiver<T> {
         self.connected.load(Relaxed)
     }
 
-    pub fn recv(&self) -> Result<SmartMessage<T>, RecvError> {
+    #[cfg(not(target_arch = "wasm32"))] // Cannot block on web
+    pub fn recv(&self) -> Result<SmartMessage<T>, crate::RecvError> {
         let msg = match self.rx.recv() {
             Ok(x) => x,
-            Err(RecvError) => {
+            Err(crate::RecvError) => {
                 self.connected.store(false, Relaxed);
-                return Err(RecvError);
+                return Err(crate::RecvError);
             }
         };
 
@@ -69,14 +68,15 @@ impl<T: Send> Receiver<T> {
         Ok(msg)
     }
 
+    #[cfg(not(target_arch = "wasm32"))] // Cannot block on web
     pub fn recv_timeout(
         &self,
         timeout: std::time::Duration,
-    ) -> Result<SmartMessage<T>, RecvTimeoutError> {
+    ) -> Result<SmartMessage<T>, crate::RecvTimeoutError> {
         let msg = match self.rx.recv_timeout(timeout) {
             Ok(x) => x,
             Err(err) => {
-                if err == RecvTimeoutError::Disconnected {
+                if err == crate::RecvTimeoutError::Disconnected {
                     self.connected.store(false, Relaxed);
                 }
                 return Err(err);
@@ -93,7 +93,8 @@ impl<T: Send> Receiver<T> {
     ///
     /// This is for use with [`crate::Sender::send_at`] when chaining to another channel
     /// created with [`Self::chained_channel`].
-    pub fn recv_with_send_time(&self) -> Result<SmartMessage<T>, RecvError> {
+    #[cfg(not(target_arch = "wasm32"))] // Cannot block on web
+    pub fn recv_with_send_time(&self) -> Result<SmartMessage<T>, crate::RecvError> {
         self.rx.recv()
     }
 
