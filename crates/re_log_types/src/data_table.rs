@@ -1048,6 +1048,7 @@ impl DataTable {
             timepoint_max: _,
             schema,
             chunk,
+            on_release: _,
         } = msg;
 
         Self::deserialize(*table_id, schema, chunk)
@@ -1066,6 +1067,7 @@ impl DataTable {
             timepoint_max,
             schema,
             chunk,
+            on_release: None,
         })
     }
 }

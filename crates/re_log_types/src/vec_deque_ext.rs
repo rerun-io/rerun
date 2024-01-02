@@ -180,7 +180,7 @@ impl<T: Clone> VecDequeRemovalExt<T> for VecDeque<T> {
         }
 
         if index == 0 {
-            let v = self.get(0).cloned();
+            let v = self.front().cloned();
             self.rotate_left(1);
             self.truncate(self.len() - 1);
             v

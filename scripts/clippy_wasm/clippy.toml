@@ -27,6 +27,18 @@ too-many-lines-threshold = 600 # TODO(emilk): decrease this
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
 disallowed-methods = [
+  { path = "crossbeam::channel::Receiver::into_iter", reason = "Cannot block on Web" },
+  { path = "crossbeam::channel::Receiver::iter", reason = "Cannot block on Web" },
+  { path = "crossbeam::channel::Receiver::recv_timeout", reason = "Cannot block on Web" },
+  { path = "crossbeam::channel::Receiver::recv", reason = "Cannot block on Web" },
+  { path = "poll_promise::Promise::block_and_take", reason = "Cannot block on Web" },
+  { path = "poll_promise::Promise::block_until_ready_mut", reason = "Cannot block on Web" },
+  { path = "poll_promise::Promise::block_until_ready", reason = "Cannot block on Web" },
+  { path = "rayon::spawn", reason = "Cannot spawn threads on wasm" },
+  { path = "std::sync::mpsc::Receiver::into_iter", reason = "Cannot block on Web" },
+  { path = "std::sync::mpsc::Receiver::iter", reason = "Cannot block on Web" },
+  { path = "std::sync::mpsc::Receiver::recv_timeout", reason = "Cannot block on Web" },
+  { path = "std::sync::mpsc::Receiver::recv", reason = "Cannot block on Web" },
   { path = "std::thread::spawn", reason = "Cannot spawn threads on wasm" },
   { path = "std::time::Duration::elapsed", reason = "use `web-time` crate instead for wasm/web compatibility" },
   { path = "std::time::Instant::now", reason = "use `web-time` crate instead for wasm/web compatibility" },

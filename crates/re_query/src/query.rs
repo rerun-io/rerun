@@ -124,10 +124,7 @@ pub fn query_archetype<A: Archetype>(
 
     let required_components: Vec<_> = A::required_components()
         .iter()
-        .map(|component| {
-            get_component_with_instances(store, query, ent_path, *component)
-                .map(|(row_id, component_result)| (row_id, component_result))
-        })
+        .map(|component| get_component_with_instances(store, query, ent_path, *component))
         .collect();
 
     // NOTE: It's important to use `PrimaryNotFound` here. Any other error will be

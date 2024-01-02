@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 use egui_tiles::{SimplificationOptions, TileId};
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
@@ -315,6 +315,12 @@ impl ViewportBlueprint {
     ) -> Vec<SpaceViewId> {
         let mut new_ids: Vec<_> = vec![];
 
+        let mut known_names: HashSet<_> = self
+            .space_views
+            .values()
+            .map(|sv| sv.display_name.clone())
+            .collect();
+
         for mut space_view in space_views {
             let space_view_id = space_view.id;
 
@@ -322,17 +328,16 @@ impl ViewportBlueprint {
             let mut candidate_name = space_view.display_name.clone();
             let mut append_count = 1;
             let unique_name = 'outer: loop {
-                for view in &self.space_views {
-                    if candidate_name == view.1.display_name {
-                        append_count += 1;
-                        candidate_name = format!("{} ({})", space_view.display_name, append_count);
+                if known_names.contains(&candidate_name) {
+                    append_count += 1;
+                    candidate_name = format!("{} ({})", space_view.display_name, append_count);
 
-                        continue 'outer;
-                    }
+                    continue 'outer;
                 }
                 break candidate_name;
             };
 
+            known_names.insert(unique_name.clone());
             space_view.display_name = unique_name;
 
             // Save the space view to the store

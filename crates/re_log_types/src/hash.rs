@@ -135,10 +135,6 @@ fn hash_with_seed(value: impl std::hash::Hash, seed: u128) -> u64 {
 /// Hash the given value.
 #[inline]
 fn hash(value: impl std::hash::Hash) -> u64 {
-    use std::hash::Hasher as _;
-
     // Don't use ahash::AHasher::default() since it uses a random number for seeding the hasher on every application start.
-    let mut hasher = HASH_RANDOM_STATE.build_hasher();
-    value.hash(&mut hasher);
-    hasher.finish()
+    HASH_RANDOM_STATE.hash_one(value)
 }

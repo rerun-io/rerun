@@ -37,7 +37,7 @@ mod data_table_batcher;
 
 use std::sync::Arc;
 
-pub use self::arrow_msg::ArrowMsg;
+pub use self::arrow_msg::{ArrowChunkReleaseCallback, ArrowMsg};
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
 pub use self::data_row::{
     DataCellRow, DataCellVec, DataReadError, DataReadResult, DataRow, DataRowError, DataRowResult,

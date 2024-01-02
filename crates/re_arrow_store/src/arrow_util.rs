@@ -228,7 +228,7 @@ fn test_clean_for_polars_nomodify() {
     use re_types::datagen::build_some_colors;
 
     // Colors don't need polars cleaning
-    let cell: DataCell = build_some_colors(5).try_into().unwrap();
+    let cell: DataCell = build_some_colors(5).into();
     let cleaned = cell.as_arrow_ref().clean_for_polars();
     assert_eq!(cell.as_arrow_ref(), &*cleaned);
 
