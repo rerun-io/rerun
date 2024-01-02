@@ -12,8 +12,6 @@ static std::vector<rerun::Color> create_colors() {
     return {};
 }
 
-// TODO(#3794): Once image logging is nicer, we should do that in this snippet as well!
-
 [[maybe_unused]] static void log() {
     /// [Logging]
     // Create a recording stream.

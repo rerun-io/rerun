@@ -12,7 +12,7 @@ use std::collections::HashMap;
 const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
 const CPP_CONNECT_MARKDOWN: &str = include_str!("../../../data/quick_start_guides/cpp_connect.md");
-const CPP_SPAWN_MARKDOWN: &str = include_str!("../../../data/quick_start_guides/cpp_connect.md"); // TODO(#3757)
+const CPP_SPAWN_MARKDOWN: &str = include_str!("../../../data/quick_start_guides/cpp_spawn.md");
 const PYTHON_CONNECT_MARKDOWN: &str =
     include_str!("../../../data/quick_start_guides/python_connect.md");
 const PYTHON_SPAWN_MARKDOWN: &str =
@@ -26,7 +26,7 @@ const HOW_DOES_IT_WORK_MARKDOWN: &str =
 const CPP_CONNECT_CODE_EXAMPLE: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.cpp");
 const CPP_SPAWN_CODE_EXAMPLE: &str =
-    include_str!("../../../data/quick_start_guides/quick_start_connect.cpp"); // TODO(#3757)
+    include_str!("../../../data/quick_start_guides/quick_start_spawn.cpp");
 const PYTHON_CONNECT_CODE_EXAMPLE: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.py");
 const PYTHON_SPAWN_CODE_EXAMPLE: &str =

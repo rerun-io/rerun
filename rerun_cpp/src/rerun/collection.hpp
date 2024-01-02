@@ -28,7 +28,6 @@ namespace rerun {
     /// * Borrowed: If data is borrowed it *must* outlive its source (in particular, the pointer to
     /// the source mustn't invalidate)
     /// * Owned: Owned data is copied into an internal std::vector
-    ///         TODO(#3794): don't do std::vector
     ///
     /// Collections are either filled explicitly using `Collection::borrow` &`Collection::take_ownership`
     /// or (most commonly in user code) implicitly using the `CollectionAdapter` trait
@@ -275,7 +274,7 @@ namespace rerun {
         /// Returns a raw pointer to the underlying data.
         ///
         /// Do not use this if the data is not continuous in memory!
-        /// TODO(#4225): So far it always is continuous, but in the future we want to support strides!
+        /// TODO(#4257): So far it always is continuous, but in the future we want to support strides!
         ///
         /// The pointer is only valid as long as backing storage is alive
         /// which is either until the collection is destroyed the borrowed source is destroyed/moved.
