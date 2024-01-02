@@ -97,7 +97,7 @@ def build_and_upload(bucket: Bucket, mode: BuildMode, gcs_dir: str, target: str,
 
     # Upload to GCS
     print("Uploading to GCS…")
-    bucket.blob(f"{gcs_dir}/wheels/{pkg}").upload_from_filename(f"{dist}/{pkg}")
+    bucket.blob(f"{gcs_dir}/{pkg}").upload_from_filename(f"{dist}/{pkg}")
 
 
 def main() -> None:
