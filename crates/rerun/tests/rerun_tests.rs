@@ -20,7 +20,10 @@ fn test_row_id_order() {
         .unwrap();
 
     for _ in 0..10 {
-        rec.log("foo", &rerun::Points2D::new([(1.0, 2.0), (3.0, 4.0)]))
-            .unwrap();
+        rec.log(
+            "foo",
+            &rerun::Points2D::new([(1.0, 2.0), (3.0, 4.0)]).with_radii([1.0]),
+        )
+        .unwrap();
     }
 }
