@@ -230,43 +230,32 @@ fn options_menu_ui(
     ui: &mut egui::Ui,
     app_options: &mut re_viewer_context::AppOptions,
 ) {
-    if re_ui
+    re_ui
         .checkbox(
             ui,
             &mut app_options.show_metrics,
             "Show performance metrics",
         )
-        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar")
-        .clicked()
-    {
-        ui.close_menu();
-    }
+        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
 
     ui.horizontal(|ui| {
-        if re_ui
+        ui.label("Timezone:");
+        re_ui
             .radio_value(
                 ui,
                 &mut app_options.time_zone_for_timestamps,
                 TimeZone::Utc,
                 "UTC",
             )
-            .on_hover_text("Display timestamps in UTC")
-            .clicked()
-        {
-            ui.close_menu();
-        }
-        if re_ui
+            .on_hover_text("Display timestamps in UTC");
+        re_ui
             .radio_value(
                 ui,
                 &mut app_options.time_zone_for_timestamps,
                 TimeZone::Local,
                 "Local",
             )
-            .on_hover_text("Display timestamps in the local timezone")
-            .clicked()
-        {
-            ui.close_menu();
-        }
+            .on_hover_text("Display timestamps in the local timezone");
     });
 
     {
@@ -283,15 +272,9 @@ fn experimental_feature_ui(
     app_options: &mut re_viewer_context::AppOptions,
 ) {
     #[cfg(not(target_arch = "wasm32"))]
-    {
-        if re_ui
-            .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space View screenshots")
-            .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.")
-            .clicked()
-        {
-            ui.close_menu();
-        }
-    }
+    re_ui
+        .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space View screenshots")
+        .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.");
 
     if re_ui
         .checkbox(
@@ -305,7 +288,6 @@ fn experimental_feature_ui(
         command_sender.send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
             app_options.experimental_dataframe_space_view,
         ));
-        ui.close_menu();
     }
 
     re_ui
