@@ -312,9 +312,17 @@ fn experimental_feature_ui(
         .checkbox(
             ui,
             &mut app_options.experimental_entity_filter_editor,
-            "Show entity filter DSL",
+            "Entity filter DSL",
         )
         .on_hover_text("Show an entity filter DSL when selecting a space-view.");
+
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_container_blueprints,
+            "Use experimental container blueprints",
+        )
+        .on_hover_text("Load and save the container state using new container archetypes");
 }
 
 #[cfg(debug_assertions)]
@@ -390,14 +398,6 @@ fn debug_menu_options_ui(
         &mut app_options.show_blueprint_in_timeline,
         "Show Blueprint in the Time Panel",
     ).on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
-
-    re_ui
-        .checkbox(
-            ui,
-            &mut app_options.experimental_container_blueprints,
-            "Use experimental container blueprints",
-        )
-        .on_hover_text("Load and save the container state using new container archetypes");
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]
