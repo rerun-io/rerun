@@ -71,6 +71,7 @@ impl Viewport<'_, '_> {
             // so if the child is made invisible, we should do the same for the parent.
             let child_is_visible = self.tree.is_visible(child_id);
             self.tree.set_visible(tile_id, child_is_visible);
+            self.edited = true;
             return self.tile_ui(ctx, ui, child_id);
         }
 
@@ -117,6 +118,7 @@ impl Viewport<'_, '_> {
             self.blueprint.set_auto_layout(false, ctx);
 
             self.tree.set_visible(tile_id, visible);
+            self.edited = true;
         }
     }
 
@@ -203,7 +205,11 @@ impl Viewport<'_, '_> {
             // Keep `auto_space_views` enabled.
             self.blueprint.set_auto_layout(false, ctx);
 
-            self.tree.set_visible(tile_id, visible);
+            if ctx.app_options.legacy_container_blueprint {
+                self.tree.set_visible(tile_id, visible);
+            } else {
+                space_view.set_visible(visible, ctx);
+            }
         }
     }
 

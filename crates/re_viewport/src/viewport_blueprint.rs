@@ -141,7 +141,7 @@ impl ViewportBlueprint {
                 .0
         } else {
             build_tree_from_space_views_and_containers(
-                space_views.keys(),
+                space_views.values(),
                 containers.values(),
                 root_container,
             )
@@ -532,10 +532,13 @@ impl ViewportBlueprint {
         for (tile_id, contents) in &contents_from_tile_id {
             if let Contents::Container(container_id) = contents {
                 if let Some(egui_tiles::Tile::Container(container)) = tree.tiles.get(*tile_id) {
+                    let visible = tree.is_visible(*tile_id);
+
                     // TODO(jleibs): Make this only update the changed fields.
                     let blueprint = ContainerBlueprint::from_egui_tiles_container(
                         *container_id,
                         container,
+                        visible,
                         &contents_from_tile_id,
                     );
 
@@ -559,7 +562,7 @@ impl ViewportBlueprint {
 }
 
 fn build_tree_from_space_views_and_containers<'a>(
-    space_views: impl Iterator<Item = &'a SpaceViewId>,
+    space_views: impl Iterator<Item = &'a SpaceViewBlueprint>,
     containers: impl Iterator<Item = &'a ContainerBlueprint>,
     root_container: Option<ContainerId>,
 ) -> egui_tiles::Tree<SpaceViewId> {
@@ -568,9 +571,10 @@ fn build_tree_from_space_views_and_containers<'a>(
 
     // First add all the space_views
     for space_view in space_views {
-        let tile_id = blueprint_id_to_tile_id(space_view);
-        let pane = egui_tiles::Tile::Pane(*space_view);
+        let tile_id = blueprint_id_to_tile_id(&space_view.id);
+        let pane = egui_tiles::Tile::Pane(space_view.id);
         tree.tiles.insert(tile_id, pane);
+        tree.set_visible(tile_id, space_view.visible);
     }
 
     // Now add all the containers
@@ -578,6 +582,7 @@ fn build_tree_from_space_views_and_containers<'a>(
         let tile_id = blueprint_id_to_tile_id(&container.id);
 
         tree.tiles.insert(tile_id, container.to_tile());
+        tree.set_visible(tile_id, container.visible);
     }
 
     // And finally, set the root

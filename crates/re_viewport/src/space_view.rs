@@ -7,7 +7,7 @@ use re_query::query_archetype;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQueryBlueprint, ScreenshotMode};
 use re_space_view_time_series::TimeSeriesSpaceView;
-use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin};
+use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin, Visible};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
@@ -44,6 +44,9 @@ pub struct SpaceViewBlueprint {
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
+
+    /// True if this space view is visible in the UI.
+    pub visible: bool,
 }
 
 impl SpaceViewBlueprint {
@@ -77,6 +80,7 @@ impl SpaceViewBlueprint {
             space_origin: space_path.clone(),
             queries: vec![query],
             entities_determined_by_user: false,
+            visible: true,
         }
     }
 
@@ -92,6 +96,7 @@ impl SpaceViewBlueprint {
             space_origin,
             entities_determined_by_user,
             contents,
+            visible,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
@@ -131,6 +136,8 @@ impl SpaceViewBlueprint {
 
         let entities_determined_by_user = entities_determined_by_user.unwrap_or_default().0;
 
+        let visible = visible.map_or(true, |v| v.0);
+
         Some(Self {
             id,
             display_name,
@@ -138,6 +145,7 @@ impl SpaceViewBlueprint {
             space_origin,
             queries,
             entities_determined_by_user,
+            visible,
         })
     }
 
@@ -150,18 +158,28 @@ impl SpaceViewBlueprint {
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         let timepoint = TimePoint::timeless();
 
-        let arch = re_types::blueprint::archetypes::SpaceViewBlueprint::new(
-            self.class_identifier().as_str(),
-        )
-        .with_display_name(self.display_name.clone())
-        .with_space_origin(&self.space_origin)
-        .with_entities_determined_by_user(self.entities_determined_by_user)
-        .with_contents(self.queries.iter().map(|q| q.id));
+        let Self {
+            id,
+            display_name,
+            class_identifier,
+            space_origin,
+            queries,
+            entities_determined_by_user,
+            visible,
+        } = self;
+
+        let arch =
+            re_types::blueprint::archetypes::SpaceViewBlueprint::new(class_identifier.as_str())
+                .with_display_name(display_name.clone())
+                .with_space_origin(space_origin)
+                .with_entities_determined_by_user(*entities_determined_by_user)
+                .with_contents(queries.iter().map(|q| q.id))
+                .with_visible(*visible);
 
         let mut deltas = vec![];
 
         if let Ok(row) =
-            DataRow::from_archetype(RowId::new(), timepoint.clone(), self.entity_path(), &arch)
+            DataRow::from_archetype(RowId::new(), timepoint.clone(), id.as_entity_path(), &arch)
         {
             deltas.push(row);
         }
@@ -188,6 +206,7 @@ impl SpaceViewBlueprint {
             space_origin: self.space_origin.clone(),
             queries: self.queries.iter().map(|q| q.duplicate()).collect(),
             entities_determined_by_user: self.entities_determined_by_user,
+            visible: self.visible,
         }
     }
 
@@ -220,6 +239,14 @@ impl SpaceViewBlueprint {
     pub fn set_origin(&self, origin: &EntityPath, ctx: &ViewerContext<'_>) {
         if origin != &self.space_origin {
             let component = SpaceViewOrigin(origin.into());
+            ctx.save_blueprint_component(&self.entity_path(), component);
+        }
+    }
+
+    #[inline]
+    pub fn set_visible(&self, visible: bool, ctx: &ViewerContext<'_>) {
+        if visible != self.visible {
+            let component = Visible(visible);
             ctx.save_blueprint_component(&self.entity_path(), component);
         }
     }
