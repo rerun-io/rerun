@@ -912,25 +912,29 @@ impl RecordingStream {
         // internal clock.
         let timepoint = TimePoint::timeless();
 
-        let instanced = if instanced.is_empty() {
-            None
-        } else {
-            Some(DataRow::from_cells(
-                row_id.incremented_by(1), // we need a unique RowId from what is used for the splatted data
-                timepoint.clone(),
-                ent_path.clone(),
-                num_instances as _,
-                instanced,
-            )?)
-        };
-
         // TODO(#1893): unsplit splats once new data cells are in
         let splatted = if splatted.is_empty() {
             None
         } else {
             splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
             Some(DataRow::from_cells(
-                row_id, timepoint, ent_path, 1, splatted,
+                row_id,
+                timepoint.clone(),
+                ent_path.clone(),
+                1,
+                splatted,
+            )?)
+        };
+
+        let instanced = if instanced.is_empty() {
+            None
+        } else {
+            Some(DataRow::from_cells(
+                row_id.incremented_by(1), // we need a unique RowId from what is used for the splatted data
+                timepoint,
+                ent_path,
+                num_instances as _,
+                instanced,
             )?)
         };
 
