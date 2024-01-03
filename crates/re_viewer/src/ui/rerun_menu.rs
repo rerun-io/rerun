@@ -8,6 +8,8 @@ use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender};
 
 use crate::App;
 
+const SPACING: f32 = 12.0;
+
 impl App {
     pub fn rerun_menu_button_ui(
         &mut self,
@@ -23,15 +25,14 @@ impl App {
             .max_height(desired_icon_height);
         ui.menu_image_button(image, |ui| {
             ui.set_min_width(220.0);
-            let spacing = 12.0;
 
             ui.menu_button("About", |ui| self.about_rerun_ui(ui));
 
-            ui.add_space(spacing);
+            ui.add_space(SPACING);
 
             UICommand::ToggleCommandPalette.menu_button_ui(ui, &self.command_sender);
 
-            ui.add_space(spacing);
+            ui.add_space(SPACING);
 
             UICommand::Open.menu_button_ui(ui, &self.command_sender);
 
@@ -41,7 +42,7 @@ impl App {
 
                 UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
 
-                ui.add_space(spacing);
+                ui.add_space(SPACING);
 
                 // On the web the browser controls the zoom
                 let zoom_factor = ui.ctx().zoom_factor();
@@ -57,7 +58,7 @@ impl App {
 
                 UICommand::ToggleFullscreen.menu_button_ui(ui, &self.command_sender);
 
-                ui.add_space(spacing);
+                ui.add_space(SPACING);
             }
 
             {
@@ -72,13 +73,28 @@ impl App {
                 UICommand::ToggleStylePanel.menu_button_ui(ui, &self.command_sender);
             }
 
-            ui.add_space(spacing);
+            ui.add_space(SPACING);
 
             ui.menu_button("Options", |ui| {
-                self.options_menu_ui(ui);
+                ui.style_mut().wrap = Some(false);
+                options_menu_ui(
+                    &self.command_sender,
+                    &self.re_ui,
+                    ui,
+                    &mut self.state.app_options,
+                );
             });
 
-            ui.add_space(spacing);
+            #[cfg(debug_assertions)]
+            ui.menu_button("Debug", |ui| {
+                ui.style_mut().wrap = Some(false);
+                debug_menu_options_ui(&self.re_ui, ui, &mut self.state.app_options);
+
+                ui.label("egui debug options:");
+                egui_debug_options_ui(&self.re_ui, ui);
+            });
+
+            ui.add_space(SPACING);
 
             // dont use `hyperlink_to` for styling reasons
             const HELP_URL: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
@@ -102,9 +118,30 @@ impl App {
                 });
             }
 
+            if egui::Button::image_and_text(
+                re_ui::icons::DISCORD
+                    .as_image()
+                    .fit_to_exact_size(ReUi::small_icon_size()),
+                "Rerun Discord",
+            )
+            .ui(ui)
+            .on_hover_cursor(egui::CursorIcon::PointingHand)
+            .on_hover_text(
+                "Join the ReRun Discord server, where you can ask questions and get help.",
+            )
+            .clicked()
+            {
+                ui.ctx().output_mut(|o| {
+                    o.open_url = Some(egui::output::OpenUrl {
+                        url: "https://discord.gg/PXtCgFBSmH".to_owned(),
+                        new_tab: true,
+                    });
+                });
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             {
-                ui.add_space(spacing);
+                ui.add_space(SPACING);
                 UICommand::Quit.menu_button_ui(ui, &self.command_sender);
             }
         });
@@ -149,112 +186,6 @@ impl App {
         }
 
         ui.label(label);
-    }
-
-    fn options_menu_ui(&mut self, ui: &mut egui::Ui) {
-        ui.style_mut().wrap = Some(false);
-
-        if self
-            .re_ui
-            .checkbox(
-                ui,
-                &mut self.state.app_options.show_metrics,
-                "Show performance metrics",
-            )
-            .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar")
-            .clicked()
-        {
-            ui.close_menu();
-        }
-
-        ui.horizontal(|ui| {
-            if self
-                .re_ui
-                .radio_value(
-                    ui,
-                    &mut self.state.app_options.time_zone_for_timestamps,
-                    TimeZone::Utc,
-                    "UTC",
-                )
-                .on_hover_text("Display timestamps in UTC")
-                .clicked()
-            {
-                ui.close_menu();
-            }
-            if self
-                .re_ui
-                .radio_value(
-                    ui,
-                    &mut self.state.app_options.time_zone_for_timestamps,
-                    TimeZone::Local,
-                    "Local",
-                )
-                .on_hover_text("Display timestamps in the local timezone")
-                .clicked()
-            {
-                ui.close_menu();
-            }
-        });
-
-        {
-            ui.separator();
-            ui.label("Experimental features:");
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                if self.re_ui
-                    .checkbox(ui, &mut self.state.app_options.experimental_space_view_screenshots, "Space View screenshots")
-                    .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.")
-                    .clicked()
-                {
-                    ui.close_menu();
-                }
-            }
-
-            if self
-                .re_ui
-                .checkbox(
-                    ui,
-                    &mut self.state.app_options.experimental_dataframe_space_view,
-                    "Dataframe Space View",
-                )
-                .on_hover_text("Enable the experimental dataframe space view.")
-                .clicked()
-            {
-                self.command_sender.send_system(
-                    SystemCommand::EnableExperimentalDataframeSpaceView(
-                        self.state.app_options.experimental_dataframe_space_view,
-                    ),
-                );
-                ui.close_menu();
-            }
-
-            self.re_ui
-                .checkbox(
-                    ui,
-                    &mut self.state.app_options.experimental_entity_filter_editor,
-                    "Show entity filter DSL",
-                )
-                .on_hover_text("Show an entity filter DSL when selecting a space-view.");
-        }
-
-        self.re_ui
-            .checkbox(
-                ui,
-                &mut self.state.app_options.legacy_container_blueprint,
-                "Use the legacy container blueprint storage for the viewport",
-            )
-            .on_hover_text("The legacy container blueprint storage is deprecated, but may be helpful if unexpected regressions are found in the new container blueprints.");
-
-        #[cfg(debug_assertions)]
-        {
-            ui.separator();
-            ui.label("Debug:");
-
-            self.egui_debug_options_ui(ui);
-            ui.separator();
-            self.debug_menu_options_ui(ui);
-        }
     }
 
     // TODO(emilk): support saving data on web
@@ -311,137 +242,221 @@ impl App {
             });
         }
     }
+}
 
-    #[cfg(debug_assertions)]
-    fn egui_debug_options_ui(&self, ui: &mut egui::Ui) {
-        let mut debug = ui.style().debug;
-        let mut any_clicked = false;
+fn options_menu_ui(
+    command_sender: &re_viewer_context::CommandSender,
+    re_ui: &ReUi,
+    ui: &mut egui::Ui,
+    app_options: &mut re_viewer_context::AppOptions,
+) {
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.show_metrics,
+            "Show performance metrics",
+        )
+        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
 
-        let re_ui = self.re_ui();
-        any_clicked |= re_ui
-            .checkbox(ui, &mut debug.debug_on_hover, "Ui debug on hover")
-            .on_hover_text("However over widgets to see their rectangles")
-            .changed();
-        any_clicked |= re_ui
-            .checkbox(ui, &mut debug.show_expand_width, "Show expand width")
-            .on_hover_text("Show which widgets make their parent wider")
-            .changed();
-        any_clicked |= re_ui
-            .checkbox(ui, &mut debug.show_expand_height, "Show expand height")
-            .on_hover_text("Show which widgets make their parent higher")
-            .changed();
-        any_clicked |= re_ui
-            .checkbox(ui, &mut debug.show_resize, "Show resize")
-            .changed();
-        any_clicked |= re_ui
-            .checkbox(
+    ui.horizontal(|ui| {
+        ui.label("Timezone:");
+        re_ui
+            .radio_value(
                 ui,
-                &mut debug.show_interactive_widgets,
-                "Show interactive widgets",
+                &mut app_options.time_zone_for_timestamps,
+                TimeZone::Utc,
+                "UTC",
             )
-            .on_hover_text("Show an overlay on all interactive widgets")
-            .changed();
-        any_clicked |= re_ui
-            .checkbox(ui, &mut debug.show_blocking_widget, "Show blocking widgets")
-            .on_hover_text("Show what widget blocks the interaction of another widget")
-            .changed();
+            .on_hover_text("Display timestamps in UTC");
+        re_ui
+            .radio_value(
+                ui,
+                &mut app_options.time_zone_for_timestamps,
+                TimeZone::Local,
+                "Local",
+            )
+            .on_hover_text("Display timestamps in the local timezone");
+    });
 
-        if any_clicked {
-            let mut style = (*ui.ctx().style()).clone();
-            style.debug = debug;
-            ui.ctx().set_style(style);
-        }
-    }
-
-    #[cfg(debug_assertions)]
-    fn debug_menu_options_ui(&mut self, ui: &mut egui::Ui) {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            if ui.button("Mobile size").clicked() {
-                // let size = egui::vec2(375.0, 812.0); // iPhone 12 mini
-                let size = egui::vec2(375.0, 667.0); //  iPhone SE 2nd gen
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
-                ui.close_menu();
-            }
-            ui.separator();
-        }
-
-        if ui.button("Log info").clicked() {
-            re_log::info!("Logging some info");
-        }
-
-        self.re_ui.checkbox(ui,
-            &mut self.state.app_options.show_picking_debug_overlay,
-            "Picking Debug Overlay",
-        ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
-
-        self.re_ui.checkbox(ui,
-            &mut self.state.app_options.show_blueprint_in_timeline,
-            "Show Blueprint in the Time Panel",
-        ).on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
-
-        ui.menu_button("Crash", |ui| {
-            #[allow(clippy::manual_assert)]
-            if ui.button("panic!").clicked() {
-                panic!("Intentional panic");
-            }
-
-            if ui.button("panic! during unwind").clicked() {
-                struct PanicOnDrop {}
-
-                impl Drop for PanicOnDrop {
-                    fn drop(&mut self) {
-                        panic!("Second intentional panic in Drop::drop");
-                    }
-                }
-
-                let _this_will_panic_when_dropped = PanicOnDrop {};
-                panic!("First intentional panic");
-            }
-
-            if ui.button("SEGFAULT").clicked() {
-                // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
-
-                /// This is the fixed address used to generate a segfault. It's possible that
-                /// this address can be mapped and writable by the your process in which case a
-                /// crash may not occur
-                #[cfg(target_pointer_width = "64")]
-                pub const SEGFAULT_ADDRESS: u64 = u32::MAX as u64 + 0x42;
-                #[cfg(target_pointer_width = "32")]
-                pub const SEGFAULT_ADDRESS: u32 = 0x42;
-
-                let bad_ptr: *mut u8 = SEGFAULT_ADDRESS as _;
-                #[allow(unsafe_code)]
-                // SAFETY: this is not safe. We are _trying_ to crash.
-                unsafe {
-                    std::ptr::write_volatile(bad_ptr, 1);
-                }
-            }
-
-            if ui.button("Stack overflow").clicked() {
-                // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
-                fn recurse(data: u64) -> u64 {
-                    let mut buff = [0u8; 256];
-                    buff[..9].copy_from_slice(b"junk data");
-
-                    let mut result = data;
-                    for c in buff {
-                        result += c as u64;
-                    }
-
-                    if result == 0 {
-                        result
-                    } else {
-                        recurse(result) + 1
-                    }
-                }
-
-                recurse(42);
-            }
-        });
+    {
+        ui.add_space(SPACING);
+        ui.label("Experimental features:");
+        experimental_feature_ui(command_sender, re_ui, ui, app_options);
     }
 }
-// ---
+
+fn experimental_feature_ui(
+    command_sender: &re_viewer_context::CommandSender,
+    re_ui: &ReUi,
+    ui: &mut egui::Ui,
+    app_options: &mut re_viewer_context::AppOptions,
+) {
+    #[cfg(not(target_arch = "wasm32"))]
+    re_ui
+        .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space View screenshots")
+        .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.");
+
+    if re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_dataframe_space_view,
+            "Dataframe Space View",
+        )
+        .on_hover_text("Enable the experimental dataframe space view.")
+        .clicked()
+    {
+        command_sender.send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
+            app_options.experimental_dataframe_space_view,
+        ));
+    }
+
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_entity_filter_editor,
+            "Entity filter DSL",
+        )
+        .on_hover_text("Show an entity filter DSL when selecting a space-view.");
+
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.legacy_container_blueprint,
+            "Use the legacy container blueprint storage for the viewport",
+        )
+        .on_hover_text("The legacy container blueprint storage is deprecated, but may be helpful if unexpected regressions are found in the new container blueprints.");
+}
+
+#[cfg(debug_assertions)]
+fn egui_debug_options_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
+    let mut debug = ui.style().debug;
+    let mut any_clicked = false;
+
+    any_clicked |= re_ui
+        .checkbox(ui, &mut debug.debug_on_hover, "Ui debug on hover")
+        .on_hover_text("However over widgets to see their rectangles")
+        .changed();
+    any_clicked |= re_ui
+        .checkbox(ui, &mut debug.show_expand_width, "Show expand width")
+        .on_hover_text("Show which widgets make their parent wider")
+        .changed();
+    any_clicked |= re_ui
+        .checkbox(ui, &mut debug.show_expand_height, "Show expand height")
+        .on_hover_text("Show which widgets make their parent higher")
+        .changed();
+    any_clicked |= re_ui
+        .checkbox(ui, &mut debug.show_resize, "Show resize")
+        .changed();
+    any_clicked |= re_ui
+        .checkbox(
+            ui,
+            &mut debug.show_interactive_widgets,
+            "Show interactive widgets",
+        )
+        .on_hover_text("Show an overlay on all interactive widgets")
+        .changed();
+    any_clicked |= re_ui
+        .checkbox(ui, &mut debug.show_blocking_widget, "Show blocking widgets")
+        .on_hover_text("Show what widget blocks the interaction of another widget")
+        .changed();
+
+    if any_clicked {
+        let mut style = (*ui.ctx().style()).clone();
+        style.debug = debug;
+        ui.ctx().set_style(style);
+    }
+}
+
+#[cfg(debug_assertions)]
+fn debug_menu_options_ui(
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    app_options: &mut re_viewer_context::AppOptions,
+) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if ui.button("Mobile size").clicked() {
+            // let size = egui::vec2(375.0, 812.0); // iPhone 12 mini
+            let size = egui::vec2(375.0, 667.0); //  iPhone SE 2nd gen
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
+            ui.close_menu();
+        }
+    }
+
+    if ui.button("Log something at INFO level").clicked() {
+        re_log::info!("Logging some info");
+    }
+
+    re_ui.checkbox(ui,
+        &mut app_options.show_picking_debug_overlay,
+        "Picking Debug Overlay",
+    ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
+
+    re_ui.checkbox(ui,
+        &mut app_options.show_blueprint_in_timeline,
+        "Show Blueprint in the Time Panel",
+    ).on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
+
+    ui.menu_button("Crash", |ui| {
+        #[allow(clippy::manual_assert)]
+        if ui.button("panic!").clicked() {
+            panic!("Intentional panic");
+        }
+
+        if ui.button("panic! during unwind").clicked() {
+            struct PanicOnDrop {}
+
+            impl Drop for PanicOnDrop {
+                fn drop(&mut self) {
+                    panic!("Second intentional panic in Drop::drop");
+                }
+            }
+
+            let _this_will_panic_when_dropped = PanicOnDrop {};
+            panic!("First intentional panic");
+        }
+
+        if ui.button("SEGFAULT").clicked() {
+            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
+
+            /// This is the fixed address used to generate a segfault. It's possible that
+            /// this address can be mapped and writable by the your process in which case a
+            /// crash may not occur
+            #[cfg(target_pointer_width = "64")]
+            pub const SEGFAULT_ADDRESS: u64 = u32::MAX as u64 + 0x42;
+            #[cfg(target_pointer_width = "32")]
+            pub const SEGFAULT_ADDRESS: u32 = 0x42;
+
+            let bad_ptr: *mut u8 = SEGFAULT_ADDRESS as _;
+            #[allow(unsafe_code)]
+            // SAFETY: this is not safe. We are _trying_ to crash.
+            unsafe {
+                std::ptr::write_volatile(bad_ptr, 1);
+            }
+        }
+
+        if ui.button("Stack overflow").clicked() {
+            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
+            fn recurse(data: u64) -> u64 {
+                let mut buff = [0u8; 256];
+                buff[..9].copy_from_slice(b"junk data");
+
+                let mut result = data;
+                for c in buff {
+                    result += c as u64;
+                }
+
+                if result == 0 {
+                    result
+                } else {
+                    recurse(result) + 1
+                }
+            }
+
+            recurse(42);
+        }
+    });
+}
