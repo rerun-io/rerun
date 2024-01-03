@@ -32,12 +32,67 @@ pub enum DataTableBatcherError {
 
 pub type DataTableBatcherResult<T> = Result<T, DataTableBatcherError>;
 
+/// Callbacks you can install on the [`DataTableBatcher`].
+#[derive(Clone, Default)]
+pub struct BatcherHooks {
+    /// Called when a new row arrives.
+    ///
+    /// The callback is given the slice of all rows not yet batched,
+    /// including the new one.
+    ///
+    /// Used for testing.
+    #[allow(clippy::type_complexity)]
+    pub on_insert: Option<Arc<dyn Fn(&[DataRow]) + Send + Sync>>,
+
+    /// Callback to be run when an Arrow Chunk` goes out of scope.
+    ///
+    /// See [`crate::ArrowChunkReleaseCallback`] for more information.
+    pub on_release: Option<crate::ArrowChunkReleaseCallback>,
+}
+
+impl BatcherHooks {
+    pub const NONE: Self = Self {
+        on_insert: None,
+        on_release: None,
+    };
+}
+
+impl PartialEq for BatcherHooks {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            on_insert,
+            on_release,
+        } = self;
+
+        let on_insert_eq = match (on_insert, &other.on_insert) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        };
+
+        on_insert_eq && on_release == &other.on_release
+    }
+}
+
+impl std::fmt::Debug for BatcherHooks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            on_insert,
+            on_release,
+        } = self;
+        f.debug_struct("BatcherHooks")
+            .field("on_insert", &on_insert.as_ref().map(|_| "…"))
+            .field("on_release", &on_release)
+            .finish()
+    }
+}
+
 // ---
 
 /// Defines the different thresholds of the associated [`DataTableBatcher`].
 ///
 /// See [`Self::default`] and [`Self::from_env`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DataTableBatcherConfig {
     /// Duration of the periodic tick.
     //
@@ -65,10 +120,8 @@ pub struct DataTableBatcherConfig {
     /// Unbounded if left unspecified.
     pub max_tables_in_flight: Option<u64>,
 
-    /// Callback to be run when an Arrow Chunk` goes out of scope.
-    ///
-    /// See [`crate::ArrowChunkReleaseCallback`] for more information.
-    pub on_release: Option<crate::ArrowChunkReleaseCallback>,
+    /// Callbacks you can install on the [`DataTableBatcher`].
+    pub hooks: BatcherHooks,
 }
 
 impl Default for DataTableBatcherConfig {
@@ -85,7 +138,7 @@ impl DataTableBatcherConfig {
         flush_num_rows: u64::MAX,
         max_commands_in_flight: None,
         max_tables_in_flight: None,
-        on_release: None,
+        hooks: BatcherHooks::NONE,
     };
 
     /// Always flushes ASAP.
@@ -95,7 +148,7 @@ impl DataTableBatcherConfig {
         flush_num_rows: 0,
         max_commands_in_flight: None,
         max_tables_in_flight: None,
-        on_release: None,
+        hooks: BatcherHooks::NONE,
     };
 
     /// Never flushes unless manually told to.
@@ -105,7 +158,7 @@ impl DataTableBatcherConfig {
         flush_num_rows: u64::MAX,
         max_commands_in_flight: None,
         max_tables_in_flight: None,
-        on_release: None,
+        hooks: BatcherHooks::NONE,
     };
 
     /// Environment variable to configure [`Self::flush_tick`].
@@ -447,6 +500,11 @@ fn batching_thread(
             match cmd {
                 Command::AppendRow(row) => {
                     do_push_row(&mut acc, row);
+
+                    if let Some(config) = config.hooks.on_insert.as_ref() {
+                        config(&acc.pending_rows);
+                    }
+
                     if acc.pending_num_rows >= config.flush_num_rows {
                         do_flush_all(&mut acc, &tx_table, "rows");
                     } else if acc.pending_num_bytes >= config.flush_num_bytes {
