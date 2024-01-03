@@ -20,6 +20,8 @@ pub struct AppOptions {
     /// Enable experimental support for new container blueprints
     pub experimental_container_blueprints: bool,
 
+    pub experimental_entity_filter_editor: bool,
+
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -44,6 +46,8 @@ impl Default for AppOptions {
             experimental_dataframe_space_view: false,
 
             experimental_container_blueprints: cfg!(debug_assertions),
+
+            experimental_entity_filter_editor: false,
 
             show_picking_debug_overlay: false,
 
