@@ -74,10 +74,11 @@ impl CamerasPart {
 
         // We need special handling to find the 3D transform for drawing the
         // frustum itself. The transform that would otherwise be in the
-        // transform context includes the pinhole.  This makes sense, since if
-        // there's an image logged here one would expect that the transform
-        // applies. We're however first interested in the rigid transform at this
-        // entity path, excluding the pinhole portion.
+        // transform context might include both a rigid transform and a pinhole. This
+        // makes sense, since if there's an image logged here one would expect
+        // both the rigid and the pinhole to apply, but here we're only interested
+        // in the rigid transform at this entity path, excluding the pinhole
+        // portion (we handle the pinhole separately later).
         let world_from_camera_rigid = {
             // Start with the transform to the entity parent, if it exists
             let world_from_parent = ent_path
