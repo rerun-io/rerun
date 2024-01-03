@@ -208,6 +208,10 @@ impl Viewport<'_, '_> {
             if ctx.app_options.legacy_container_blueprint {
                 self.tree.set_visible(tile_id, visible);
             } else {
+                // Note: we set visibility directly on the space view so it gets saved
+                // to the blueprint directly. If we set it on the tree there are some
+                // edge-cases where visibility can get lost when we simplify out trivial
+                // tab-containers.
                 space_view.set_visible(visible, ctx);
             }
         }
