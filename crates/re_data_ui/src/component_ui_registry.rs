@@ -43,7 +43,7 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
                 Ok(component) => {
                     component.entity_data_ui(ctx, ui, verbosity, entity_path, query);
                 }
-                Err(re_query::QueryError::ComponentNotFound) => {
+                Err(re_query::QueryError::ComponentNotFound(_)) => {
                     ui.weak("(not found)");
                 }
                 Err(err) => {
