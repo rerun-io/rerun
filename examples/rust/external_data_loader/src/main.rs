@@ -13,10 +13,16 @@ use rerun::{
 // that file, otherwise you can just create a dedicated recording for it. Or both.
 
 /// This is an example executable data-loader plugin for the Rerun Viewer.
+/// Any executable on your `$PATH` with a name that starts with [`rerun-loader-`] will be
+/// treated as an external data-loader.
 ///
-/// It will log Rust source code files as markdown documents.
-/// To try it out, install it in your $PATH (`cargo install --path . -f`), then open
+/// This particular one will log Rust source code files as markdown documents, and return a
+/// special exit code to indicate that it doesn't support anything else.
+///
+/// To try it out, install it in your $PATH (`cargo install --path . -f`), then open a
 /// Rust source file with Rerun (`rerun file.rs`).
+///
+/// [`rerun-loader-`]: `rerun::EXTERNAL_DATA_LOADER_PREFIX`
 #[derive(argh::FromArgs)]
 struct Args {
     #[argh(positional)]

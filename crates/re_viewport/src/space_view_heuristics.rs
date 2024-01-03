@@ -1,19 +1,19 @@
 use ahash::HashMap;
 use itertools::Itertools;
-use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::{LatestAtQuery, Timeline};
-use re_data_store::{EntityPath, EntityTree};
-use re_log_types::{EntityPathFilter, EntityPathHash, TimeInt};
+use re_data_store::EntityPath;
+use re_log_types::EntityPathFilter;
 use re_space_view::{DataQuery as _, DataQueryBlueprint};
 use re_types::components::{DisconnectedSpace, TensorData};
 use re_viewer_context::{
-    AutoSpawnHeuristic, DataQueryResult, EntitiesPerSystem, EntitiesPerSystemPerClass,
-    HeuristicFilterContext, PerSystemEntities, SpaceViewClassIdentifier, ViewSystemIdentifier,
-    ViewerContext,
+    AutoSpawnHeuristic, DataQueryResult, PerSystemEntities, SpaceViewClassIdentifier, ViewerContext,
 };
 
-use crate::{query_pinhole, space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
+use crate::{
+    determine_visualizable_entities, query_pinhole, space_info::SpaceInfoCollection,
+    space_view::SpaceViewBlueprint,
+};
 
 // ---------------------------------------------------------------------------
 // TODO(#3079): Knowledge of specific space view classes should not leak here.
@@ -53,30 +53,29 @@ fn candidate_space_view_paths<'a>(
 pub fn all_possible_space_views(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
-    entities_per_system_per_class: &EntitiesPerSystemPerClass,
 ) -> Vec<(SpaceViewBlueprint, DataQueryResult)> {
     re_tracing::profile_function!();
 
     // For each candidate, create space views for all possible classes.
     candidate_space_view_paths(ctx, spaces_info)
         .flat_map(|candidate_space_path| {
-            let reachable_entities =
-                reachable_entities_from_root(candidate_space_path, spaces_info);
-            if reachable_entities.is_empty() {
-                return Vec::new();
-            }
-
-            entities_per_system_per_class
-                .iter()
-                .filter_map(|(class_identifier, entities_per_system)| {
-                    // We only want to run the query if at least one entity is reachable from the candidate.
-                    if entities_per_system.values().all(|entities| {
-                        !entities
+            ctx.space_view_class_registry
+                .iter_registry()
+                .filter_map(|entry| {
+                    // We only want to run the query if there's at least one applicable entity under `candidate_space_path`.
+                    if !entry.visualizer_system_ids.iter().any(|visualizer| {
+                        let Some(entities) = ctx.applicable_entities_per_visualizer.get(visualizer)
+                        else {
+                            return false;
+                        };
+                        entities
                             .iter()
                             .any(|entity| entity.starts_with(candidate_space_path))
                     }) {
                         return None;
                     }
+
+                    let class_identifier = entry.class.identifier();
 
                     let mut entity_path_filter = EntityPathFilter::default();
                     entity_path_filter.add_subtree(candidate_space_path.clone());
@@ -84,16 +83,29 @@ pub fn all_possible_space_views(
                     // TODO(#4377): The need to run a query-per-candidate for all possible candidates
                     // is way too expensive. This needs to be optimized significantly.
                     let candidate_query =
-                        DataQueryBlueprint::new(*class_identifier, entity_path_filter);
+                        DataQueryBlueprint::new(class_identifier, entity_path_filter);
 
-                    let results =
-                        candidate_query.execute_query(ctx.store_context, entities_per_system);
+                    let visualizable_entities = determine_visualizable_entities(
+                        ctx.applicable_entities_per_visualizer,
+                        ctx.store_db,
+                        &ctx.space_view_class_registry
+                            .new_part_collection(class_identifier),
+                        entry.class.as_ref(),
+                        candidate_space_path,
+                    );
+
+                    let results = candidate_query.execute_query(
+                        ctx.store_context,
+                        &visualizable_entities,
+                        ctx.indicator_matching_entities_per_visualizer,
+                    );
 
                     if !results.is_empty() {
                         Some((
                             SpaceViewBlueprint::new(
-                                *class_identifier,
-                                ctx.space_view_class_registry.display_name(class_identifier),
+                                entry.class.identifier(),
+                                ctx.space_view_class_registry
+                                    .display_name(&class_identifier),
                                 candidate_space_path,
                                 candidate_query,
                             ),
@@ -181,12 +193,11 @@ fn is_interesting_space_view_not_at_root(
 pub fn default_created_space_views(
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
-    entities_per_system_per_class: &EntitiesPerSystemPerClass,
 ) -> Vec<SpaceViewBlueprint> {
     re_tracing::profile_function!();
 
     let store = ctx.store_db.store();
-    let candidates = all_possible_space_views(ctx, spaces_info, entities_per_system_per_class);
+    let candidates = all_possible_space_views(ctx, spaces_info);
 
     // All queries are "right most" on the log timeline.
     let query = LatestAtQuery::latest(Timeline::log_time());
@@ -206,13 +217,6 @@ pub fn default_created_space_views(
     // Main pass through all candidates.
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
     for (candidate, query_result) in candidates {
-        let Some(_entities_per_system_for_class) =
-            entities_per_system_per_class.get(candidate.class_identifier())
-        else {
-            // Should never reach this, but if we would there would be no entities in this candidate so skipping makes sense.
-            continue;
-        };
-
         // TODO(#4377): Can spawn heuristics consume the query_result directly?
         let mut per_system_entities = PerSystemEntities::default();
         {
@@ -401,169 +405,4 @@ pub fn default_created_space_views(
     }
 
     space_views.into_iter().map(|(s, _)| s).collect()
-}
-
-pub fn reachable_entities_from_root(
-    root: &EntityPath,
-    spaces_info: &SpaceInfoCollection,
-) -> Vec<EntityPath> {
-    re_tracing::profile_function!();
-
-    let mut entities = Vec::new();
-    let space_info = spaces_info.get_first_parent_with_info(root);
-
-    if &space_info.path == root {
-        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            entities.extend(space_info.descendants_without_transform.iter().cloned());
-        });
-    } else {
-        space_info.visit_descendants_with_reachable_transform(spaces_info, &mut |space_info| {
-            entities.extend(
-                space_info
-                    .descendants_without_transform
-                    .iter()
-                    .filter(|ent_path| ent_path.starts_with(root))
-                    .cloned(),
-            );
-        });
-    }
-
-    entities
-}
-
-// TODO(andreas): Still used in a bunch of places. Should instead use the global `EntitiesPerSystemPerClass` list.
-pub fn is_entity_processed_by_class(
-    ctx: &ViewerContext<'_>,
-    class: SpaceViewClassIdentifier,
-    ent_path: &EntityPath,
-    heuristic_ctx: HeuristicFilterContext,
-) -> bool {
-    let parts = &ctx.space_view_class_registry.new_part_collection(class);
-    let heuristic_ctx = heuristic_ctx.with_class(class);
-
-    let empty_entity_set = IntSet::default();
-    for (id, visualizer) in parts.iter_with_identifiers() {
-        let entities_with_matching_indicator = ctx
-            .entities_with_matching_indicator_per_visualizer
-            .get(&id)
-            .unwrap_or(&empty_entity_set);
-
-        if visualizer.heuristic_filter(entities_with_matching_indicator, ent_path, heuristic_ctx) {
-            return true;
-        }
-    }
-
-    false
-}
-
-pub type HeuristicFilterContextPerEntity = IntMap<EntityPath, HeuristicFilterContext>;
-
-pub fn compute_heuristic_context_for_entities(
-    store_db: &re_data_store::store_db::StoreDb,
-) -> HeuristicFilterContextPerEntity {
-    let mut heuristic_context = IntMap::default();
-
-    // Use "right most"/latest available data.
-    let timeline = Timeline::log_time();
-    let query_time = TimeInt::MAX;
-    let query = LatestAtQuery::new(timeline, query_time);
-
-    let tree = &store_db.tree();
-
-    fn visit_children_recursively(
-        has_parent_pinhole: bool,
-        tree: &EntityTree,
-        store: &re_arrow_store::DataStore,
-        query: &LatestAtQuery,
-        heuristic_context: &mut HeuristicFilterContextPerEntity,
-    ) {
-        let has_parent_pinhole =
-            has_parent_pinhole || query_pinhole(store, query, &tree.path).is_some();
-
-        heuristic_context.insert(
-            tree.path.clone(),
-            HeuristicFilterContext {
-                class: SpaceViewClassIdentifier::invalid(),
-                has_ancestor_pinhole: has_parent_pinhole,
-            },
-        );
-
-        for child in tree.children.values() {
-            visit_children_recursively(has_parent_pinhole, child, store, query, heuristic_context);
-        }
-    }
-
-    visit_children_recursively(
-        false,
-        tree,
-        store_db.data_store(),
-        &query,
-        &mut heuristic_context,
-    );
-    heuristic_context
-}
-
-pub fn identify_entities_per_system_per_class(
-    entities_with_matching_indicator_per_visualizer: &IntMap<
-        ViewSystemIdentifier,
-        IntSet<EntityPathHash>,
-    >,
-    space_view_class_registry: &re_viewer_context::SpaceViewClassRegistry,
-    store_db: &re_data_store::store_db::StoreDb,
-) -> EntitiesPerSystemPerClass {
-    re_tracing::profile_function!();
-
-    let store = store_db.store().id();
-    let heuristic_context = compute_heuristic_context_for_entities(store_db);
-
-    let empty_entity_set = IntSet::default();
-
-    space_view_class_registry
-        .iter_registry()
-        .map(|entry| {
-            let mut entities_per_system = EntitiesPerSystem::default();
-            let class_id = entry.class.identifier();
-
-            // TODO(andreas): Once `heuristic_filter` is no longer applied, we don't need to instantiate the systems anymore.
-            //for system_id in &entry.visualizer_system_ids {
-            for (system_id, system) in space_view_class_registry
-                .new_part_collection(class_id)
-                .systems
-            {
-                let entities_with_matching_indicator =
-                    entities_with_matching_indicator_per_visualizer
-                        .get(&system_id)
-                        .unwrap_or(&empty_entity_set);
-
-                let entities: IntSet<EntityPath> = if let Some(entities) = space_view_class_registry
-                    .applicable_entities_for_visualizer_system(system_id, store)
-                {
-                    // TODO(andreas): Don't apply heuristic_filter here, this should be part of the query!
-                    // Note that once this is done, `EntitiesPerSystemPerClass` becomes just `EntitiesPerSystem` since there's never a need to distinguish per class!
-                    entities
-                        .into_iter()
-                        .filter(|ent_path| {
-                            system.heuristic_filter(
-                                entities_with_matching_indicator,
-                                ent_path,
-                                heuristic_context
-                                    .get(ent_path)
-                                    .copied()
-                                    .unwrap_or_default()
-                                    .with_class(class_id),
-                            )
-                        })
-                        .collect()
-                } else {
-                    Default::default()
-                };
-
-                entities_per_system.insert(system_id, entities);
-            }
-
-            // TODO(#4377): Handle context systems but keep them parallel
-
-            (class_id, entities_per_system)
-        })
-        .collect()
 }

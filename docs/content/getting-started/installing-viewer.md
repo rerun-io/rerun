@@ -1,6 +1,6 @@
 ---
 title: Installing the Rerun Viewer
-order: 0
+order: -1
 ---
 
 The [Rerun Viewer](../reference/viewer/overview.md) can be installed independent of the SDK language you're using.
@@ -20,6 +20,7 @@ In any case you should be able to run `rerun` afterwards to start the Viewer.
 You'll be welcomed by an overview page that allows you to jump into some examples.
 If you're facing any difficulties, don't hesitate to [open an issue](https://github.com/rerun-io/rerun/issues/new/choose) or [join the Discord server](https://discord.gg/PXtCgFBSmH).
 
+The Rerun Viewer has built-in support for opening many kinds of files, and can be [extended to open any other file type](../howto/open-any-file.md) without needing to modify the Rerun codebase itself.
 
 To start getting your own data logged & visualized in the viewer check one of the respective getting started guides:
 * [Python](python.md)

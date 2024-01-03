@@ -42,6 +42,20 @@ pub trait LogSink: Send + Sync + 'static {
 #[derive(Default)]
 pub struct BufferedSink(parking_lot::Mutex<Vec<LogMsg>>);
 
+impl Drop for BufferedSink {
+    fn drop(&mut self) {
+        for msg in self.0.lock().iter() {
+            // Sinks intentionally end up with pending SetStoreInfo messages
+            // these are fine to drop safely. Anything else should produce a
+            // warning.
+            if !matches!(msg, LogMsg::SetStoreInfo(_)) {
+                re_log::warn!("Dropping data in BufferedSink");
+                return;
+            }
+        }
+    }
+}
+
 impl BufferedSink {
     /// An empty buffer.
     #[inline]

@@ -61,10 +61,19 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority;
 
-    /// Heuristic used to determine which space view is the best fit for a set of paths.
+    /// Create context object that is passed to all of this classes visualizers
+    /// to determine whether they can be visualized.
     ///
-    /// For each path in `ent_paths`, at least one of the registered [`crate::ViewPartSystem`] for this class
-    /// returned true when calling [`crate::ViewPartSystem::heuristic_filter`].
+    /// See [`crate::ViewPartSystem::filter_visualizable_entities`].
+    fn visualizable_filter_context(
+        &self,
+        _space_origin: &EntityPath,
+        _store_db: &re_data_store::StoreDb,
+    ) -> Box<dyn std::any::Any> {
+        Box::new(())
+    }
+
+    /// Heuristic used to determine which space view is the best fit for a set of paths.
     fn auto_spawn_heuristic(
         &self,
         _ctx: &ViewerContext<'_>,
@@ -171,6 +180,15 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
         self.layout_priority()
+    }
+
+    #[inline]
+    fn visualizable_filter_context(
+        &self,
+        space_origin: &EntityPath,
+        store_db: &re_data_store::StoreDb,
+    ) -> Box<dyn std::any::Any> {
+        self.visualizable_filter_context(space_origin, store_db)
     }
 
     #[inline]

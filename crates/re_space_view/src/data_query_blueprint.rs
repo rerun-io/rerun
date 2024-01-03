@@ -1,3 +1,4 @@
+use nohash_hasher::IntMap;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -10,8 +11,9 @@ use re_log_types::{
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    EntitiesPerSystem, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, StoreContext,
-    SystemCommand, SystemCommandSender as _, ViewerContext,
+    IndicatorMatchingEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier,
+    SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _, ViewSystemIdentifier,
+    ViewerContext, VisualizableEntities,
 };
 
 use crate::{
@@ -176,13 +178,18 @@ impl DataQuery for DataQueryBlueprint {
     fn execute_query(
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
-        entities_per_system: &EntitiesPerSystem,
+        visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
+        indicator_matching_entities_per_visualizer: &PerVisualizer<IndicatorMatchingEntities>,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
-        let executor = QueryExpressionEvaluator::new(self, entities_per_system);
+        let executor = QueryExpressionEvaluator::new(
+            self,
+            visualizable_entities_for_visualizer_systems,
+            indicator_matching_entities_per_visualizer,
+        );
 
         let root_handle = ctx.recording.and_then(|store| {
             re_tracing::profile_scope!("add_entity_tree_to_data_results_recursive");
@@ -202,19 +209,26 @@ impl DataQuery for DataQueryBlueprint {
 /// used to efficiently determine if we should continue the walk or switch
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
-    per_system_entity_list: &'a EntitiesPerSystem,
+    visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
+    indicator_matching_entities_per_visualizer:
+        &'a IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>,
     entity_path_filter: EntityPathFilter,
 }
 
 impl<'a> QueryExpressionEvaluator<'a> {
     fn new(
         blueprint: &'a DataQueryBlueprint,
-        per_system_entity_list: &'a EntitiesPerSystem,
+        visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
+        indicator_matching_entities_per_visualizer: &'a IntMap<
+            ViewSystemIdentifier,
+            IndicatorMatchingEntities,
+        >,
     ) -> Self {
         re_tracing::profile_function!();
 
         Self {
-            per_system_entity_list,
+            visualizable_entities_for_visualizer_systems,
+            indicator_matching_entities_per_visualizer,
             entity_path_filter: blueprint.entity_path_filter.clone(),
         }
     }
@@ -242,11 +256,30 @@ impl<'a> QueryExpressionEvaluator<'a> {
         // Only populate view_parts if this is a match
         // Note that allowed prefixes that aren't matches can still create groups
         let view_parts: SmallVec<_> = if any_match {
-            self.per_system_entity_list
+            self.visualizable_entities_for_visualizer_systems
                 .iter()
-                .filter_map(|(part, ents)| {
+                .filter_map(|(visualizer, ents)| {
                     if ents.contains(entity_path) {
-                        Some(*part)
+                        // TODO(andreas):
+                        // * not all queries do just heuristic filtering of visualizers,
+                        //   some set the visualizer upfront, others should skip this check and visualize all
+                        // * Space view classes should be able to modify this check.
+                        //   As of writing this hasn't been done yet in order to simplify things
+                        // * querying the per-visualizer lists every time is silly
+                        //   -> at beginning of query squash all visualizers in `visualizable_entities_for_visualizer_systems`
+                        //      to a single `IntSet<EntityPathHash>`
+                        //   -> consider three steps of query: list entities, list their visualizers, list their properties
+                        if self
+                            .indicator_matching_entities_per_visualizer
+                            .get(visualizer)
+                            .map_or(false, |matching_list| {
+                                matching_list.contains(&entity_path.hash())
+                            })
+                        {
+                            Some(*visualizer)
+                        } else {
+                            None
+                        }
                     } else {
                         None
                     }
@@ -460,7 +493,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
 mod tests {
     use re_data_store::StoreDb;
     use re_log_types::{example_components::MyPoint, DataRow, RowId, StoreId, TimePoint, Timeline};
-    use re_viewer_context::StoreContext;
+    use re_viewer_context::{StoreContext, VisualizableEntities};
 
     use super::*;
 
@@ -487,17 +520,21 @@ mod tests {
             recording.add_data_row(row).unwrap();
         }
 
-        let mut entities_per_system = EntitiesPerSystem::default();
+        let mut visualizable_entities_for_visualizer_systems =
+            PerVisualizer::<VisualizableEntities>::default();
 
-        entities_per_system
+        visualizable_entities_for_visualizer_systems
+            .0
             .entry("Points3D".into())
             .or_insert_with(|| {
-                [
-                    EntityPath::from("parent"),
-                    EntityPath::from("parent/skipped/child1"),
-                ]
-                .into_iter()
-                .collect()
+                VisualizableEntities(
+                    [
+                        EntityPath::from("parent"),
+                        EntityPath::from("parent/skipped/child1"),
+                    ]
+                    .into_iter()
+                    .collect(),
+                )
             });
 
         let ctx = StoreContext {
@@ -603,7 +640,25 @@ mod tests {
                 entity_path_filter: EntityPathFilter::parse_forgiving(filter),
             };
 
-            let query_result = query.execute_query(&ctx, &entities_per_system);
+            let indicator_matching_entities_per_visualizer =
+                PerVisualizer::<IndicatorMatchingEntities>(
+                    visualizable_entities_for_visualizer_systems
+                        .iter()
+                        .map(|(id, entities)| {
+                            (
+                                *id,
+                                IndicatorMatchingEntities(
+                                    entities.0.iter().map(|path| path.hash()).collect(),
+                                ),
+                            )
+                        })
+                        .collect(),
+                );
+            let query_result = query.execute_query(
+                &ctx,
+                &visualizable_entities_for_visualizer_systems,
+                &indicator_matching_entities_per_visualizer,
+            );
 
             let mut visited = vec![];
             query_result.tree.visit(&mut |handle| {

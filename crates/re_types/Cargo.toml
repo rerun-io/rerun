@@ -102,6 +102,8 @@ re_types_builder.workspace = true
 rayon.workspace = true
 
 # `machete` is not a fan of `build-dependencies`.
+
+
 [package.metadata.cargo-machete]
 ignored = ["rayon", "re_build_tools", "re_types_builder"]
 

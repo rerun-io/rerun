@@ -56,13 +56,13 @@ disallowed-names = []
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
-  # Use the faster & simpler non-poisonable primitives in `parking_lot` instead
-  "std::sync::Mutex",
-  "std::sync::RwLock",
-  "std::sync::Condvar",
-  # "std::sync::Once",  # enabled for now as the `log_once` macro uses it internally
+  { path = "ring::digest::SHA1_FOR_LEGACY_USE_ONLY", reason = "SHA1 is cryptographically broken" },
 
-  "ring::digest::SHA1_FOR_LEGACY_USE_ONLY", # SHA1 is cryptographically broken
+  { path = "std::sync::Condvar", reason = "Use parking_lot instead" },
+  { path = "std::sync::Mutex", reason = "Use parking_lot instead" },
+  { path = "std::sync::RwLock", reason = "Use parking_lot instead" },
+
+  # "std::sync::Once",  # enabled for now as the `log_once` macro uses it internally
 ]
 
 # Allow-list of words for markdown in dosctrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown

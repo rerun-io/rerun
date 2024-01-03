@@ -336,7 +336,7 @@ pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
             let filepath = Utf8PathBuf::try_from(entry.path()).unwrap();
 
             if let Some(stem) = filepath.as_str().strip_suffix("_ext.rs") {
-                let generated_path = Utf8PathBuf::try_from(format!("{stem}.rs")).unwrap();
+                let generated_path = Utf8PathBuf::from(format!("{stem}.rs"));
                 if !generated_path.exists() {
                     reporter.error(
                         filepath.as_str(),
@@ -348,7 +348,7 @@ pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
             }
 
             if let Some(stem) = filepath.as_str().strip_suffix("_ext.py") {
-                let generated_path = Utf8PathBuf::try_from(format!("{stem}.py")).unwrap();
+                let generated_path = Utf8PathBuf::from(format!("{stem}.py"));
                 if !generated_path.exists() {
                     reporter.error(
                         filepath.as_str(),
@@ -360,7 +360,7 @@ pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
             }
 
             if let Some(stem) = filepath.as_str().strip_suffix("_ext.cpp") {
-                let generated_hpp_path = Utf8PathBuf::try_from(format!("{stem}.hpp")).unwrap();
+                let generated_hpp_path = Utf8PathBuf::from(format!("{stem}.hpp"));
                 if !generated_hpp_path.exists() {
                     reporter.error(
                         filepath.as_str(),

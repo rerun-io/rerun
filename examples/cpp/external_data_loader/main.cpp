@@ -7,9 +7,14 @@
 
 static const char* USAGE = R"(
 This is an example executable data-loader plugin for the Rerun Viewer.
+Any executable on your `$PATH` with a name that starts with `rerun-loader-` will be treated as an
+external data-loader.
 
-It will log C++ source code files as markdown documents.
-To try it out, compile it and place it in your $PATH, then open a C++ source file with Rerun (`rerun file.cpp`).
+This particular one will log C++ source code files as markdown documents, and return a
+special exit code to indicate that it doesn't support anything else.
+
+To try it out, compile it and place it in your $PATH as `rerun-loader-cpp-file`, then open a C++ source
+file with Rerun (`rerun file.cpp`).
 
 USAGE:
   rerun-loader-cpp-file [OPTIONS] FILEPATH

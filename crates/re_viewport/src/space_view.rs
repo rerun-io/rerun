@@ -465,7 +465,9 @@ mod tests {
     use re_log_types::{DataCell, DataRow, EntityPathFilter, RowId, StoreId, TimePoint};
     use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
-    use re_viewer_context::{EntitiesPerSystem, StoreContext};
+    use re_viewer_context::{
+        IndicatorMatchingEntities, PerVisualizer, StoreContext, VisualizableEntities,
+    };
 
     use super::*;
 
@@ -518,17 +520,32 @@ mod tests {
 
         let auto_properties = Default::default();
 
-        let mut entities_per_system = EntitiesPerSystem::default();
-        entities_per_system
+        let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
+        visualizable_entities
+            .0
             .entry("Points3D".into())
             .or_insert_with(|| {
-                [
-                    EntityPath::from("parent"),
-                    EntityPath::from("parent/skipped/child1"),
-                ]
-                .into_iter()
-                .collect()
+                VisualizableEntities(
+                    [
+                        EntityPath::from("parent"),
+                        EntityPath::from("parent/skipped/child1"),
+                    ]
+                    .into_iter()
+                    .collect(),
+                )
             });
+        let indicator_matching_entities_per_visualizer = PerVisualizer::<IndicatorMatchingEntities>(
+            visualizable_entities
+                .0
+                .iter()
+                .map(|(id, entities)| {
+                    (
+                        *id,
+                        IndicatorMatchingEntities(entities.iter().map(|e| e.hash()).collect()),
+                    )
+                })
+                .collect(),
+        );
 
         let query = space_view.queries.first().unwrap();
 
@@ -542,7 +559,11 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            let mut query_result = query.execute_query(
+                &ctx,
+                &visualizable_entities,
+                &indicator_matching_entities_per_visualizer,
+            );
             resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
@@ -580,7 +601,11 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            let mut query_result = query.execute_query(
+                &ctx,
+                &visualizable_entities,
+                &indicator_matching_entities_per_visualizer,
+            );
             resolver.update_overrides(&ctx, &mut query_result);
 
             let parent_group = query_result
@@ -628,7 +653,11 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            let mut query_result = query.execute_query(
+                &ctx,
+                &visualizable_entities,
+                &indicator_matching_entities_per_visualizer,
+            );
             resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
@@ -671,7 +700,11 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            let mut query_result = query.execute_query(
+                &ctx,
+                &visualizable_entities,
+                &indicator_matching_entities_per_visualizer,
+            );
             resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result
@@ -709,7 +742,11 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(&ctx, &entities_per_system);
+            let mut query_result = query.execute_query(
+                &ctx,
+                &visualizable_entities,
+                &indicator_matching_entities_per_visualizer,
+            );
             resolver.update_overrides(&ctx, &mut query_result);
 
             let parent = query_result

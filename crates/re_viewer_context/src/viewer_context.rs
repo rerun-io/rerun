@@ -1,14 +1,12 @@
 use ahash::HashMap;
-use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
 
 use re_data_store::{store_db::StoreDb, EntityTree, TimeHistogramPerTimeline};
-use re_log_types::EntityPathHash;
 
 use crate::{
-    query_context::DataQueryResult, AppOptions, ApplicationSelectionState, Caches, CommandSender,
-    ComponentUiRegistry, DataQueryId, EntitiesPerSystemPerClass, Selection, SpaceViewClassRegistry,
-    StoreContext, TimeControl, ViewSystemIdentifier,
+    query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
+    Caches, CommandSender, ComponentUiRegistry, DataQueryId, IndicatorMatchingEntities,
+    PerVisualizer, Selection, SpaceViewClassRegistry, StoreContext, TimeControl,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -35,11 +33,12 @@ pub struct ViewerContext<'a> {
     pub store_context: &'a StoreContext<'a>,
 
     /// Mapping from class and system to entities for the store
-    pub entities_per_system_per_class: &'a EntitiesPerSystemPerClass,
+    ///
+    /// TODO(andreas): This should have a generation id, allowing to update heuristics(?)/visualizable_entities etc.
+    pub applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.
-    pub entities_with_matching_indicator_per_visualizer:
-        &'a IntMap<ViewSystemIdentifier, IntSet<EntityPathHash>>,
+    pub indicator_matching_entities_per_visualizer: &'a PerVisualizer<IndicatorMatchingEntities>,
 
     /// All the query results for this frame
     pub query_results: &'a HashMap<DataQueryId, DataQueryResult>,

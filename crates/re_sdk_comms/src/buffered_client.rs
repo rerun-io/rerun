@@ -43,10 +43,8 @@ pub struct Client {
     flushed_rx: Receiver<FlushedMsg>,
     encode_quit_tx: Sender<QuitMsg>,
     send_quit_tx: Sender<InterruptMsg>,
-    drop_quit_tx: Sender<QuitMsg>,
     encode_join: Option<JoinHandle<()>>,
     send_join: Option<JoinHandle<()>>,
-    drop_join: Option<JoinHandle<()>>,
 
     /// Only used for diagnostics, not for communication after `new()`.
     addr: SocketAddr,
@@ -65,12 +63,10 @@ impl Client {
         // TODO(emilk): keep track of how much memory is in each pipe
         // and apply back-pressure to not use too much RAM.
         let (msg_tx, msg_rx) = crossbeam::channel::unbounded();
-        let (msg_drop_tx, msg_drop_rx) = crossbeam::channel::unbounded();
         let (packet_tx, packet_rx) = crossbeam::channel::unbounded();
         let (flushed_tx, flushed_rx) = crossbeam::channel::unbounded();
         let (encode_quit_tx, encode_quit_rx) = crossbeam::channel::unbounded();
         let (send_quit_tx, send_quit_rx) = crossbeam::channel::unbounded();
-        let (drop_quit_tx, drop_quit_rx) = crossbeam::channel::unbounded();
 
         // We don't compress the stream because we assume the SDK
         // and server are on the same machine and compression
@@ -80,13 +76,7 @@ impl Client {
         let encode_join = std::thread::Builder::new()
             .name("msg_encoder".into())
             .spawn(move || {
-                msg_encode(
-                    encoding_options,
-                    &msg_rx,
-                    &msg_drop_tx,
-                    &encode_quit_rx,
-                    &packet_tx,
-                );
+                msg_encode(encoding_options, &msg_rx, &encode_quit_rx, &packet_tx);
             })
             .expect("Failed to spawn thread");
 
@@ -97,22 +87,13 @@ impl Client {
             })
             .expect("Failed to spawn thread");
 
-        let drop_join = std::thread::Builder::new()
-            .name("msg_dropper".into())
-            .spawn(move || {
-                msg_drop(&msg_drop_rx, &drop_quit_rx);
-            })
-            .expect("Failed to spawn thread");
-
         Self {
             msg_tx,
             flushed_rx,
             encode_quit_tx,
             send_quit_tx,
-            drop_quit_tx,
             encode_join: Some(encode_join),
             send_join: Some(send_join),
-            drop_join: Some(drop_join),
             addr,
         }
     }
@@ -166,9 +147,7 @@ impl Drop for Client {
         self.encode_join.take().map(|j| j.join().ok());
         // Then the other threads:
         self.send_quit_tx.send(InterruptMsg::Quit).ok();
-        self.drop_quit_tx.send(QuitMsg).ok();
         self.send_join.take().map(|j| j.join().ok());
-        self.drop_join.take().map(|j| j.join().ok());
         re_log::debug!("TCP client has shut down.");
     }
 }
@@ -182,31 +161,9 @@ impl fmt::Debug for Client {
     }
 }
 
-// We drop messages in a separate thread because the PyO3 + Arrow memory model
-// means in some cases these messages actually store pointers back to
-// python-managed memory. We don't want to block our send-thread waiting for the
-// GIL.
-fn msg_drop(msg_drop_rx: &Receiver<MsgMsg>, quit_rx: &Receiver<QuitMsg>) {
-    loop {
-        select! {
-            recv(msg_drop_rx) -> msg_msg => {
-                if msg_msg.is_err() {
-                    re_log::trace!("Shutting down msg dropper thread: channel has closed");
-                    return;
-                }
-            }
-            recv(quit_rx) -> _quit_msg => {
-                re_log::trace!("Shutting down msg dropper thread: quit message received");
-                return;
-            }
-        }
-    }
-}
-
 fn msg_encode(
     encoding_options: re_log_encoding::EncodingOptions,
     msg_rx: &Receiver<MsgMsg>,
-    msg_drop_tx: &Sender<MsgMsg>,
     quit_rx: &Receiver<QuitMsg>,
     packet_tx: &Sender<PacketMsg>,
 ) {
@@ -239,10 +196,6 @@ fn msg_encode(
                         re_log::error!("Failed to send message to tcp_sender thread. Likely a shutdown race-condition.");
                         return;
                     }
-                }
-                if msg_drop_tx.send(msg_msg).is_err() {
-                    re_log::error!("Failed to send message to msg_drop thread. Likely a shutdown race-condition");
-                    return;
                 }
             }
             recv(quit_rx) -> _quit_msg => {

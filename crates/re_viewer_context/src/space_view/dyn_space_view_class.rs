@@ -41,6 +41,9 @@ pub enum SpaceViewClassLayoutPriority {
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
+///
+/// TODO(andreas): Consider formulating a space view instance context object that is passed to all
+/// methods that operate on concrete space views as opposed to be about general information on the class.
 pub trait DynSpaceViewClass: Send + Sync {
     /// Identifier of this space view class.
     ///
@@ -90,10 +93,17 @@ pub trait DynSpaceViewClass: Send + Sync {
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
 
-    /// Heuristic used to determine which space view is the best fit for a set of paths.
+    /// Create context object that is passed to all of this classes visualizers
+    /// to determine whether they can be visualized
     ///
-    /// For each path in `ent_paths`, at least one of the registered [`crate::ViewPartSystem`] for this class
-    /// returned true when calling [`crate::ViewPartSystem::heuristic_filter`].
+    /// See [`crate::ViewPartSystem::filter_visualizable_entities`].
+    fn visualizable_filter_context(
+        &self,
+        space_origin: &EntityPath,
+        store_db: &re_data_store::StoreDb,
+    ) -> Box<dyn std::any::Any>;
+
+    /// Heuristic used to determine which space view is the best fit for a set of paths.
     fn auto_spawn_heuristic(
         &self,
         _ctx: &ViewerContext<'_>,

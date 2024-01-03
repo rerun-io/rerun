@@ -17,9 +17,14 @@ import rerun as rr  # pip install rerun-sdk
 parser = argparse.ArgumentParser(
     description="""
 This is an example executable data-loader plugin for the Rerun Viewer.
+Any executable on your `$PATH` with a name that starts with `rerun-loader-` will be
+treated as an external data-loader.
 
-It will log Python source code files as markdown documents.
-To try it out, copy it in your $PATH as `rerun-loader-python-file`, then open a Python source file with Rerun (`rerun file.py`).
+This particular one will log Python source code files as markdown documents, and return a
+special exit code to indicate that it doesn't support anything else.
+
+To try it out, copy it in your $PATH as `rerun-loader-python-file`, then open a Python source
+file with Rerun (`rerun file.py`).
 """
 )
 parser.add_argument("filepath", type=str)
