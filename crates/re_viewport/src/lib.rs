@@ -95,7 +95,7 @@ pub fn determine_visualizable_entities(
     )
 }
 
-///Determines the icon to use for a given container kind.
+/// Determines the icon to use for a given container kind.
 pub fn icon_for_container_kind(kind: &egui_tiles::ContainerKind) -> &'static re_ui::Icon {
     match kind {
         egui_tiles::ContainerKind::Tabs => &re_ui::icons::CONTAINER_TABS,
