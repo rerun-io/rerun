@@ -322,10 +322,10 @@ fn experimental_feature_ui(
     re_ui
         .checkbox(
             ui,
-            &mut app_options.experimental_container_blueprints,
-            "Use experimental container blueprints",
+            &mut app_options.legacy_container_blueprint,
+            "Use the legacy container blueprint storage for the viewport",
         )
-        .on_hover_text("Load and save the container state using new container archetypes");
+        .on_hover_text("The legacy container blueprint storage is deprecated, but may be helpful if unexpected regressions are found in the new container blueprints.");
 }
 
 #[cfg(debug_assertions)]
