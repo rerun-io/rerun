@@ -460,7 +460,7 @@ impl RecordingStreamBuilder {
     /// and then one WebSocket server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
     ///
     /// The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the WebSocket server with the `memory_limit` argument.
+    /// You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
     /// Once reached, the earliest logged data will be dropped.
     /// Note that this means that timeless data may be dropped if logged early.
     ///
