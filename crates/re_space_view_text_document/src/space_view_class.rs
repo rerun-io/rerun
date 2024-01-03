@@ -52,7 +52,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
     const DISPLAY_NAME: &'static str = "Text Document";
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_TEXTBOX
+        &re_ui::icons::SPACE_VIEW_TEXT
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {

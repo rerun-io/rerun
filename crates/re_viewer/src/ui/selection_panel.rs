@@ -201,7 +201,7 @@ fn what_is_selected_ui(
                     ctx.re_ui,
                     ui,
                     &format!("{:?}", container.kind()),
-                    None,
+                    Some(re_viewport::icon_for_container_kind(&container.kind())),
                     &format!("{:?} container", container.kind()),
                 );
             }

@@ -83,8 +83,8 @@ impl Viewport<'_, '_> {
         let default_open = true;
 
         let response = ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
-            .subdued(true)
             .selected(ctx.selection().contains_item(&item))
+            .with_icon(crate::icon_for_container_kind(&container.kind()))
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
                 visibility_changed = vis_response.changed();

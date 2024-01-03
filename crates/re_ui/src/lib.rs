@@ -225,7 +225,7 @@ impl ReUi {
     }
 
     pub fn small_icon_size() -> egui::Vec2 {
-        egui::Vec2::splat(12.0)
+        egui::Vec2::splat(14.0)
     }
 
     pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
@@ -379,7 +379,7 @@ impl ReUi {
         }
 
         let button_size = Vec2::splat(28.0);
-        let icon_size = Vec2::splat(12.0); // centered inside the button
+        let icon_size = ReUi::small_icon_size(); // centered inside the button
         let rounding = 6.0;
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());

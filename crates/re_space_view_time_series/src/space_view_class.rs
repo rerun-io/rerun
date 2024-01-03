@@ -46,7 +46,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     const DISPLAY_NAME: &'static str = "Time Series";
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_CHART
+        &re_ui::icons::SPACE_VIEW_TIMESERIES
     }
 
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {

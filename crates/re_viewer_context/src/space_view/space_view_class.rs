@@ -40,7 +40,9 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     }
 
     /// Icon used to identify this space view class.
-    fn icon(&self) -> &'static re_ui::Icon;
+    fn icon(&self) -> &'static re_ui::Icon {
+        &re_ui::icons::SPACE_VIEW_GENERIC
+    }
 
     /// Help text describing how to interact with this space view in the ui.
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
