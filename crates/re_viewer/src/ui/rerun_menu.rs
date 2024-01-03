@@ -75,7 +75,12 @@ impl App {
             ui.add_space(spacing);
 
             ui.menu_button("Options", |ui| {
-                self.options_menu_ui(ui);
+                options_menu_ui(
+                    &self.command_sender,
+                    &self.re_ui,
+                    ui,
+                    &mut self.state.app_options,
+                );
             });
 
             ui.add_space(spacing);
@@ -151,104 +156,6 @@ impl App {
         ui.label(label);
     }
 
-    fn options_menu_ui(&mut self, ui: &mut egui::Ui) {
-        ui.style_mut().wrap = Some(false);
-
-        if self
-            .re_ui
-            .checkbox(
-                ui,
-                &mut self.state.app_options.show_metrics,
-                "Show performance metrics",
-            )
-            .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar")
-            .clicked()
-        {
-            ui.close_menu();
-        }
-
-        ui.horizontal(|ui| {
-            if self
-                .re_ui
-                .radio_value(
-                    ui,
-                    &mut self.state.app_options.time_zone_for_timestamps,
-                    TimeZone::Utc,
-                    "UTC",
-                )
-                .on_hover_text("Display timestamps in UTC")
-                .clicked()
-            {
-                ui.close_menu();
-            }
-            if self
-                .re_ui
-                .radio_value(
-                    ui,
-                    &mut self.state.app_options.time_zone_for_timestamps,
-                    TimeZone::Local,
-                    "Local",
-                )
-                .on_hover_text("Display timestamps in the local timezone")
-                .clicked()
-            {
-                ui.close_menu();
-            }
-        });
-
-        {
-            ui.separator();
-            ui.label("Experimental features:");
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                if self.re_ui
-                    .checkbox(ui, &mut self.state.app_options.experimental_space_view_screenshots, "Space View screenshots")
-                    .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.")
-                    .clicked()
-                {
-                    ui.close_menu();
-                }
-            }
-
-            if self
-                .re_ui
-                .checkbox(
-                    ui,
-                    &mut self.state.app_options.experimental_dataframe_space_view,
-                    "Dataframe Space View",
-                )
-                .on_hover_text("Enable the experimental dataframe space view.")
-                .clicked()
-            {
-                self.command_sender.send_system(
-                    SystemCommand::EnableExperimentalDataframeSpaceView(
-                        self.state.app_options.experimental_dataframe_space_view,
-                    ),
-                );
-                ui.close_menu();
-            }
-
-            self.re_ui
-                .checkbox(
-                    ui,
-                    &mut self.state.app_options.experimental_entity_filter_editor,
-                    "Show entity filter DSL",
-                )
-                .on_hover_text("Show an entity filter DSL when selecting a space-view.");
-        }
-
-        #[cfg(debug_assertions)]
-        {
-            ui.separator();
-            ui.label("Debug:");
-
-            egui_debug_options_ui(&self.re_ui, ui);
-            ui.separator();
-            debug_menu_options_ui(&self.re_ui, ui, &mut self.state.app_options);
-        }
-    }
-
     // TODO(emilk): support saving data on web
     #[cfg(not(target_arch = "wasm32"))]
     fn save_buttons_ui(&mut self, ui: &mut egui::Ui, store_view: Option<&StoreContext<'_>>) {
@@ -302,6 +209,103 @@ impl App {
                 }
             });
         }
+    }
+}
+
+fn options_menu_ui(
+    command_sender: &re_viewer_context::CommandSender,
+    re_ui: &ReUi,
+    ui: &mut egui::Ui,
+    app_options: &mut re_viewer_context::AppOptions,
+) {
+    ui.style_mut().wrap = Some(false);
+
+    if re_ui
+        .checkbox(
+            ui,
+            &mut app_options.show_metrics,
+            "Show performance metrics",
+        )
+        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar")
+        .clicked()
+    {
+        ui.close_menu();
+    }
+
+    ui.horizontal(|ui| {
+        if re_ui
+            .radio_value(
+                ui,
+                &mut app_options.time_zone_for_timestamps,
+                TimeZone::Utc,
+                "UTC",
+            )
+            .on_hover_text("Display timestamps in UTC")
+            .clicked()
+        {
+            ui.close_menu();
+        }
+        if re_ui
+            .radio_value(
+                ui,
+                &mut app_options.time_zone_for_timestamps,
+                TimeZone::Local,
+                "Local",
+            )
+            .on_hover_text("Display timestamps in the local timezone")
+            .clicked()
+        {
+            ui.close_menu();
+        }
+    });
+
+    {
+        ui.separator();
+        ui.label("Experimental features:");
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if re_ui
+                .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space View screenshots")
+                .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.")
+                .clicked()
+            {
+                ui.close_menu();
+            }
+        }
+
+        if re_ui
+            .checkbox(
+                ui,
+                &mut app_options.experimental_dataframe_space_view,
+                "Dataframe Space View",
+            )
+            .on_hover_text("Enable the experimental dataframe space view.")
+            .clicked()
+        {
+            command_sender.send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
+                app_options.experimental_dataframe_space_view,
+            ));
+            ui.close_menu();
+        }
+
+        re_ui
+            .checkbox(
+                ui,
+                &mut app_options.experimental_entity_filter_editor,
+                "Show entity filter DSL",
+            )
+            .on_hover_text("Show an entity filter DSL when selecting a space-view.");
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        ui.separator();
+        ui.label("Debug:");
+
+        egui_debug_options_ui(re_ui, ui);
+        ui.separator();
+        debug_menu_options_ui(re_ui, ui, app_options);
     }
 }
 
