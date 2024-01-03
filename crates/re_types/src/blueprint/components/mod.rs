@@ -11,6 +11,7 @@ mod secondary_weights;
 mod space_view_class;
 mod space_view_class_ext;
 mod space_view_origin;
+mod visible;
 
 pub use self::active_tab::ActiveTab;
 pub use self::entities_determined_by_user::EntitiesDeterminedByUser;
@@ -21,3 +22,4 @@ pub use self::primary_weights::PrimaryWeights;
 pub use self::secondary_weights::SecondaryWeights;
 pub use self::space_view_class::SpaceViewClass;
 pub use self::space_view_origin::SpaceViewOrigin;
+pub use self::visible::Visible;

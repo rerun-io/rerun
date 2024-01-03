@@ -93,6 +93,7 @@ from .viewport_layout import (
     ViewportLayoutLike,
     ViewportLayoutType,
 )
+from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
 
 __all__ = [
     "ActiveTab",
@@ -182,4 +183,9 @@ __all__ = [
     "ViewportLayoutBatch",
     "ViewportLayoutLike",
     "ViewportLayoutType",
+    "Visible",
+    "VisibleArrayLike",
+    "VisibleBatch",
+    "VisibleLike",
+    "VisibleType",
 ]
