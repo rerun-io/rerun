@@ -722,7 +722,7 @@ fn serve(
         _ = web_port;
         _ = ws_port;
         _ = open_browser;
-        _ = memory_limit;
+        _ = server_memory_limit;
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))
