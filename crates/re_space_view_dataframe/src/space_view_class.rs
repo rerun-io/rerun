@@ -26,7 +26,7 @@ impl SpaceViewClass for DataframeSpaceView {
 
     fn icon(&self) -> &'static re_ui::Icon {
         //TODO(ab): fix that icon
-        &re_ui::icons::SPACE_VIEW_TEXTBOX
+        &re_ui::icons::SPACE_VIEW_DATAFRAME
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
