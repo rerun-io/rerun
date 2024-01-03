@@ -242,7 +242,7 @@ fn new_recording(
     let on_release = |chunk| {
         GARBAGE_QUEUE.0.send(chunk).ok();
     };
-    batcher_config.on_release = Some(on_release.into());
+    batcher_config.hooks.on_release = Some(on_release.into());
 
     let recording = RecordingStreamBuilder::new(application_id)
         .batcher_config(batcher_config)
@@ -299,7 +299,7 @@ fn new_blueprint(
     let on_release = |chunk| {
         GARBAGE_QUEUE.0.send(chunk).ok();
     };
-    batcher_config.on_release = Some(on_release.into());
+    batcher_config.hooks.on_release = Some(on_release.into());
 
     let blueprint = RecordingStreamBuilder::new(application_id)
         .batcher_config(batcher_config)
