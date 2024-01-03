@@ -418,10 +418,11 @@ pub fn screenshot_context_menu(
         if _ctx.app_options.experimental_space_view_screenshots {
             let mut take_screenshot = None;
             let response = response.context_menu(|ui| {
-                if ui.button("Screenshot (save to disk)").clicked() {
+                ui.style_mut().wrap = Some(false);
+                if ui.button("Save screenshot to disk").clicked() {
                     take_screenshot = Some(ScreenshotMode::SaveAndCopyToClipboard);
                     ui.close_menu();
-                } else if ui.button("Screenshot (clipboard only)").clicked() {
+                } else if ui.button("Copy screenshot to clipboard").clicked() {
                     take_screenshot = Some(ScreenshotMode::CopyToClipboard);
                     ui.close_menu();
                 }
