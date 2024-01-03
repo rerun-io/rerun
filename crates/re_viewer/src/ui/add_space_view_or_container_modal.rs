@@ -99,14 +99,17 @@ fn modal_ui(
 }
 
 fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) -> egui::Response {
+    let top_left_corner = ui.cursor().min;
+
     ui.horizontal(|ui| {
         //TODO(ab): move this to re_ui
         //TODO(ab): use design token
+        let row_height = 42.0;
         let icon_size = egui::vec2(18.0, 18.0);
         egui::Frame {
             inner_margin: egui::Margin::symmetric(
                 (62. - icon_size.x) / 2.0,
-                (42. - icon_size.y) / 2.0,
+                (row_height - icon_size.y) / 2.0,
             ), // should be 62x42 when combined with icon size
             rounding: egui::Rounding::same(6.0),
             fill: egui::Color32::from_gray(50),
@@ -119,6 +122,12 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
                 .paint_at(ui, rect);
         });
 
+        // interact with the entire row
+        let interact_rect = egui::Rect::from_min_size(
+            top_left_corner,
+            egui::vec2(ui.available_width(), row_height),
+        );
+
         ui.vertical(|ui| {
             ui.strong(title);
             ui.add_space(-5.0);
@@ -126,17 +135,23 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
             ui.add(egui::Label::new(subtitle).wrap(false));
         });
 
+        let response = ui.interact(interact_rect, title.to_owned().into(), egui::Sense::click());
+        let tint = if response.hovered() {
+            ui.visuals().widgets.active.fg_stroke.color
+        } else {
+            ui.visuals().widgets.inactive.fg_stroke.color
+        };
+
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.add(
-                egui::ImageButton::new(
-                    re_ui::icons::ADD_BIG
-                        .as_image()
-                        .fit_to_exact_size(egui::vec2(24.0, 24.0)),
-                )
-                .tint(ui.visuals().widgets.inactive.fg_stroke.color),
+                re_ui::icons::ADD_BIG
+                    .as_image()
+                    .fit_to_exact_size(egui::vec2(24.0, 24.0))
+                    .tint(tint),
             )
-        })
-        .inner
+        });
+
+        response
     })
     .inner
 }
