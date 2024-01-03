@@ -611,7 +611,7 @@ impl RecordingStreamInner {
         batcher_config: DataTableBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
-        let on_release = batcher_config.on_release.clone();
+        let on_release = batcher_config.hooks.on_release.clone();
         let batcher = DataTableBatcher::new(batcher_config)?;
 
         {
