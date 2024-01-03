@@ -146,7 +146,7 @@ def serve(
     web_port: int | None = None,
     ws_port: int | None = None,
     recording: RecordingStream | None = None,
-    memory_limit: str = "25%",
+    server_memory_limit: str = "25%",
 ) -> None:
     """
     Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
