@@ -71,7 +71,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     const DISPLAY_NAME: &'static str = "Color Coordinates";
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_SCATTERPLOT
+        &re_ui::icons::SPACE_VIEW_GENERIC
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
