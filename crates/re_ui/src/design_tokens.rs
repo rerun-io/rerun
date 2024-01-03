@@ -98,7 +98,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
     // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-    let floating_color = Color32::from_gray(38); // TODO(emilk): change the content of the design_tokens.json origin instead
+    let floating_color = Color32::from_gray(35); // TODO(emilk): change the content of the design_tokens.json origin instead
 
     // Used as the background of text edits, scroll bars and others things
     // that needs to look different from other interactive stuff.
@@ -110,8 +110,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     egui_style.visuals.button_frame = true;
     egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
-    egui_style.visuals.widgets.inactive.bg_fill = Color32::from_gray(40);
-    // get_aliased_color(&json, "{Alias.Color.Action.Default.value}"); // too dark to see, especially for scroll bars
+    egui_style.visuals.widgets.inactive.bg_fill = Color32::from_gray(50); // Fill of unchecked radio buttons, checkboxes, etc. Must be brigher than the background floating_color.
 
     {
         // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:

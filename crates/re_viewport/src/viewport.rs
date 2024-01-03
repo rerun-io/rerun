@@ -91,8 +91,8 @@ pub enum TreeAction {
     /// Remove a tile and all its children.
     Remove(egui_tiles::TileId),
 
-    /// Simplify the specified subtree with the provided options
-    SimplifyTree(egui_tiles::TileId, egui_tiles::SimplificationOptions),
+    /// Simplify the container with the provided options
+    SimplifyContainer(egui_tiles::TileId, egui_tiles::SimplificationOptions),
 }
 
 fn tree_simplification_option_for_app_options(
@@ -401,7 +401,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     self.edited = true;
                 }
                 TreeAction::Remove(tile_id) => {
-                    for tile in self.tree.tiles.remove_recursively(tile_id) {
+                    for tile in self.tree.remove_recursively(tile_id) {
                         re_log::trace!("Removing tile {tile_id:?}");
                         if let egui_tiles::Tile::Pane(space_view_id) = tile {
                             re_log::trace!("Removing space view {space_view_id}");
@@ -415,9 +415,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     }
                     self.edited = true;
                 }
-                TreeAction::SimplifyTree(tile_id, options) => {
+                TreeAction::SimplifyContainer(tile_id, options) => {
                     re_log::trace!("Simplifying tree with options: {options:?}");
-                    self.tree.simplify_tile(tile_id, &options);
+                    self.tree.simplify_children_of_tile(tile_id, &options);
                     self.edited = true;
                 }
             }
@@ -433,18 +433,16 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         // Finally, save any edits to the blueprint tree
         // This is a no-op if the tree hasn't changed.
-        if ctx.app_options.experimental_container_blueprints {
-            if self.edited {
-                // Simplify before we save the tree. Normally additional simplification will
-                // happen on the next render loop, but that's too late -- unsimplified
-                // changes will be baked into the tree.
-                let options = tree_simplification_option_for_app_options(ctx.app_options);
-                self.tree.simplify(&options);
-
-                self.blueprint.save_tree_as_containers(&self.tree, ctx);
-            }
-        } else {
+        if ctx.app_options.legacy_container_blueprint {
             self.blueprint.set_tree(&self.tree, ctx);
+        } else if self.edited {
+            // Simplify before we save the tree. Normally additional simplification will
+            // happen on the next render loop, but that's too late -- unsimplified
+            // changes will be baked into the tree.
+            let options = tree_simplification_option_for_app_options(ctx.app_options);
+            self.tree.simplify(&options);
+
+            self.blueprint.save_tree_as_containers(&self.tree, ctx);
         }
     }
 
@@ -510,11 +508,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             if let Some(result) = self.executed_systems_per_space_view.remove(space_view_id) {
                 result
             } else {
-                let highlights = highlights_for_space_view(
-                    self.ctx.selection_state(),
-                    *space_view_id,
-                    self.space_views,
-                );
+                let highlights = highlights_for_space_view(self.ctx, *space_view_id);
                 space_view_blueprint.execute_systems(self.ctx, latest_at, highlights)
             };
 

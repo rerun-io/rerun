@@ -48,6 +48,14 @@ From there, it can log data as usual, using the [`stdout` logging sink](../refer
 
 The Rerun Viewer will then automatically load the data streamed to the external loader's standard output.
 
+<picture>
+  <img src="https://static.rerun.io/external_data_loader/bb98877088a9169ee15fd862ad022f9d9fbd5e6f/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/external_data_loader/bb98877088a9169ee15fd862ad022f9d9fbd5e6f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/external_data_loader/bb98877088a9169ee15fd862ad022f9d9fbd5e6f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/external_data_loader/bb98877088a9169ee15fd862ad022f9d9fbd5e6f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/external_data_loader/bb98877088a9169ee15fd862ad022f9d9fbd5e6f/1200w.png">
+</picture>
+
 Like any other `DataLoader`, an external loader will be notified of all file openings, unconditionally.
 To indicate that it does not support a given file, the loader has to exit with a [dedicated status code](https://docs.rs/rerun/latest/rerun/constant.EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE.html?speculative-link).
 

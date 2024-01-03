@@ -73,6 +73,7 @@ pub const EXTERNAL_LINK: Icon = Icon::new(
     "external_link",
     include_bytes!("../data/icons/external_link.png"),
 );
+pub const DISCORD: Icon = Icon::new("discord", include_bytes!("../data/icons/discord.png"));
 
 pub const SPACE_VIEW_TEXT: Icon = Icon::new(
     "spaceview_text",

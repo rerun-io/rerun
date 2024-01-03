@@ -132,14 +132,22 @@ impl ViewportBlueprint {
 
         let maximized = arch.maximized.and_then(|id| id.0.map(|id| id.into()));
 
-        let tree = blueprint_db
-            .store()
-            .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
-            .map(|space_view| space_view.value)
-            .unwrap_or_default()
-            .0;
+        let tree = if app_options.legacy_container_blueprint {
+            blueprint_db
+                .store()
+                .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
+                .map(|space_view| space_view.value)
+                .unwrap_or_default()
+                .0
+        } else {
+            build_tree_from_space_views_and_containers(
+                space_views.keys(),
+                containers.values(),
+                root_container,
+            )
+        };
 
-        let mut blueprint = ViewportBlueprint {
+        ViewportBlueprint {
             space_views,
             containers,
             root_container,
@@ -148,13 +156,7 @@ impl ViewportBlueprint {
             auto_layout,
             auto_space_views,
             tree_action_sender,
-        };
-
-        if app_options.experimental_container_blueprints {
-            blueprint.tree = blueprint.build_tree_from_containers();
         }
-
-        blueprint
 
         // TODO(jleibs): Need to figure out if we have to re-enable support for
         // auto-discovery of SpaceViews logged via the experimental blueprint APIs.
@@ -388,13 +390,16 @@ impl ViewportBlueprint {
         self.send_tree_action(TreeAction::SetContainerKind(container_id, kind));
     }
 
-    /// Simplify the container subtree with the provided options.
-    pub fn simplify_tree(
+    /// Simplify the container tree with the provided options.
+    pub fn simplify_container(
         &self,
         tile_id: egui_tiles::TileId,
         simplification_options: SimplificationOptions,
     ) {
-        self.send_tree_action(TreeAction::SimplifyTree(tile_id, simplification_options));
+        self.send_tree_action(TreeAction::SimplifyContainer(
+            tile_id,
+            simplification_options,
+        ));
     }
 
     #[allow(clippy::unused_self)]
@@ -551,30 +556,34 @@ impl ViewportBlueprint {
             ctx.save_empty_blueprint_component::<RootContainer>(&VIEWPORT_PATH.into());
         }
     }
+}
 
-    pub fn build_tree_from_containers(&self) -> egui_tiles::Tree<SpaceViewId> {
-        re_tracing::profile_function!();
-        let mut tree = egui_tiles::Tree::empty("viewport_tree");
+fn build_tree_from_space_views_and_containers<'a>(
+    space_views: impl Iterator<Item = &'a SpaceViewId>,
+    containers: impl Iterator<Item = &'a ContainerBlueprint>,
+    root_container: Option<ContainerId>,
+) -> egui_tiles::Tree<SpaceViewId> {
+    re_tracing::profile_function!();
+    let mut tree = egui_tiles::Tree::empty("viewport_tree");
 
-        // First add all the space_views
-        for space_view in self.space_views.keys() {
-            let tile_id = blueprint_id_to_tile_id(space_view);
-            let pane = egui_tiles::Tile::Pane(*space_view);
-            tree.tiles.insert(tile_id, pane);
-        }
-
-        // Now add all the containers
-        for container in self.containers.values() {
-            let tile_id = blueprint_id_to_tile_id(&container.id);
-
-            tree.tiles.insert(tile_id, container.to_tile());
-        }
-
-        // And finally, set the root
-        if let Some(root_container) = self.root_container.map(|id| blueprint_id_to_tile_id(&id)) {
-            tree.root = Some(root_container);
-        }
-
-        tree
+    // First add all the space_views
+    for space_view in space_views {
+        let tile_id = blueprint_id_to_tile_id(space_view);
+        let pane = egui_tiles::Tile::Pane(*space_view);
+        tree.tiles.insert(tile_id, pane);
     }
+
+    // Now add all the containers
+    for container in containers {
+        let tile_id = blueprint_id_to_tile_id(&container.id);
+
+        tree.tiles.insert(tile_id, container.to_tile());
+    }
+
+    // And finally, set the root
+    if let Some(root_container) = root_container.map(|id| blueprint_id_to_tile_id(&id)) {
+        tree.root = Some(root_container);
+    }
+
+    tree
 }

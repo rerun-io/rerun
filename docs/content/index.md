@@ -24,11 +24,11 @@ For a list of built-in data types, see the [Types](reference/types.md) section.
 
 ## How do you use it?
 <picture>
-  <img src="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/how-to-use-rerun/9de74809cf7b27be995af8cba614809257cd544f/1200w.png">
+  <img src="https://static.rerun.io/how-to-use-rerun/225d92a2aa2fba442a15310420f45343f6da4ae1/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/how-to-use-rerun/225d92a2aa2fba442a15310420f45343f6da4ae1/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/how-to-use-rerun/225d92a2aa2fba442a15310420f45343f6da4ae1/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/how-to-use-rerun/225d92a2aa2fba442a15310420f45343f6da4ae1/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/how-to-use-rerun/225d92a2aa2fba442a15310420f45343f6da4ae1/1200w.png">
 </picture>
 
 1. Stream multimodal data from your code by logging it with the Rerun SDK

@@ -150,6 +150,17 @@ impl DataResultTree {
         }
     }
 
+    /// Depth-first traversal of a subtree, starting with the given group entity-path, calling `visitor` on each result.
+    pub fn visit_group(
+        &self,
+        entity_path: &EntityPath,
+        visitor: &mut impl FnMut(DataResultHandle),
+    ) {
+        if let Some(subtree_handle) = self.data_results_by_path.get(&(entity_path.clone(), true)) {
+            self.visit_recursive(*subtree_handle, visitor);
+        }
+    }
+
     /// Look up a [`DataResult`] in the tree based on its handle.
     pub fn lookup_result(&self, handle: DataResultHandle) -> Option<&DataResult> {
         self.data_results.get(handle).map(|node| &node.data_result)
