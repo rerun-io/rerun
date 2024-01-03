@@ -92,7 +92,7 @@ fn create_app(
     let startup_options = crate::StartupOptions {
         memory_limit: re_memory::MemoryLimit {
             // On wasm32 we only have 4GB of memory to play around with.
-            limit: Some(2_500_000_000),
+            max_bytes: Some(2_500_000_000),
         },
         location: Some(cc.integration_info.web_info.location.clone()),
         persist_state: get_persist_state(&cc.integration_info),
