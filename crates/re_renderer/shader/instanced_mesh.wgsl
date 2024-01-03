@@ -73,10 +73,15 @@ fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
         // no normal, no shading
         return vec4f(albedo, 1.0);
     } else {
-        // Hardcoded lambert lighting. TODO(andreas): Some microfacet model.
-        let light_dir = normalize(vec3f(1.0, 2.0, 0.0)); // TODO(andreas): proper lighting
         let normal = normalize(in.normal_world_space);
-        let shading = clamp(dot(normal, light_dir), 0.0, 1.0) + 0.2;
+
+        var shading = 0.2;
+
+        // We use two lights so we get shading on all sides
+        shading += 1.0 * clamp(dot(normalize(vec3f(1.0, 2.0, 3.0)), normal), 0.0, 1.0);
+        shading += 0.5 * clamp(dot(normalize(vec3f(-1.0, -3.0, -5.0)), normal), 0.0, 1.0);
+
+        shading = clamp(shading, 0.0, 1.0);
 
         let radiance = albedo * shading;
 
