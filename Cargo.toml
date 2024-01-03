@@ -90,7 +90,7 @@ egui = { version = "0.24.1", features = [
 ] }
 egui_commonmark = { version = "0.10", default-features = false }
 egui_extras = { version = "0.24.1", features = ["http", "image", "puffin"] }
-egui_plot = "0.24.1"
+egui_plot = "0.24.2"
 egui_tiles = "0.4"
 egui-wgpu = "0.24.1"
 emath = "0.24.1"

@@ -493,11 +493,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             if let Some(result) = self.executed_systems_per_space_view.remove(space_view_id) {
                 result
             } else {
-                let highlights = highlights_for_space_view(
-                    self.ctx.selection_state(),
-                    *space_view_id,
-                    self.space_views,
-                );
+                let highlights = highlights_for_space_view(self.ctx, *space_view_id);
                 space_view_blueprint.execute_systems(self.ctx, latest_at, highlights)
             };
 

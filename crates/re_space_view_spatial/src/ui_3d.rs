@@ -380,6 +380,9 @@ pub fn view_3d(
             axis_length,
             re_renderer::OutlineMaskPreference::NONE,
         );
+
+        // If we are showing the axes for the space, then add the space origin to the bounding box.
+        state.scene_bbox.extend(glam::Vec3::ZERO);
     }
 
     // Determine view port resolution and position.
