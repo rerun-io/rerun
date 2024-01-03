@@ -34,8 +34,8 @@ pub enum QueryError {
     #[error("Could not find required component: {0}")]
     RequiredComponentNotFound(re_types_core::ComponentName),
 
-    #[error("Could not find component")]
-    ComponentNotFound,
+    #[error("Could not find component: {0}")]
+    ComponentNotFound(re_types_core::ComponentName),
 
     #[error("Tried to access component of type '{actual:?}' using component '{requested:?}'")]
     TypeMismatch {
