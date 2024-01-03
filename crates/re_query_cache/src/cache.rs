@@ -56,7 +56,7 @@ impl Caches {
         latest_at.write().clear();
     }
 
-    /// Gives write access to the appropriate [`LatestAtCache`] according to the specified
+    /// Gives write access to the appropriate `LatestAtCache` according to the specified
     /// query parameters.
     #[inline]
     pub fn with_latest_at<A, F, R>(
