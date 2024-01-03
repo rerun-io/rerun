@@ -62,6 +62,12 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     PrintDatastore,
 
+    // Primary cache:
+    PrimaryCacheToggle,
+    PrimaryCacheClear,
+    #[cfg(not(target_arch = "wasm32"))]
+    PrimaryCachePrintStats,
+
     #[cfg(target_arch = "wasm32")]
     CopyDirectLink,
 }
@@ -165,6 +171,20 @@ impl UICommand {
                 "Prints the entire data store to the console. WARNING: this may be A LOT of text.",
             ),
 
+            UICommand::PrimaryCacheToggle => (
+                "Toggle primary caching",
+                "Toggles primary caching (time series, text logs, 2D & 3D point clouds)",
+            ),
+            UICommand::PrimaryCacheClear => (
+                "Clear primary cache",
+                "Clears the primary cache (time series, text logs, 2D & 3D point clouds)",
+            ),
+    #[cfg(not(target_arch = "wasm32"))]
+            UICommand::PrimaryCachePrintStats => (
+                "Print primary cache stats",
+                "Print detailed statistics for the primary cache (time series, text logs, 2D & 3D point clouds)",
+            ),
+
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => (
                 "Copy direct link",
@@ -240,6 +260,11 @@ impl UICommand {
             UICommand::ScreenshotWholeApp => None,
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintDatastore => None,
+
+            UICommand::PrimaryCacheToggle => None,
+            UICommand::PrimaryCacheClear => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::PrimaryCachePrintStats => None,
 
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => None,

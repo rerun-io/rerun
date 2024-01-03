@@ -565,6 +565,18 @@ impl App {
                     }
                 }
             }
+
+            UICommand::PrimaryCacheToggle => {
+                re_query_cache::Caches::toggle(); // TODO: no
+            }
+            UICommand::PrimaryCacheClear => {
+                re_query_cache::Caches::clear();
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::PrimaryCachePrintStats => {
+                todo!()
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);

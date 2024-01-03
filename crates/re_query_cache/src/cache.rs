@@ -1,12 +1,12 @@
 use std::{
     collections::{BTreeMap, VecDeque},
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use ahash::HashMap;
 use itertools::Either;
 use once_cell::sync::Lazy;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use paste::paste;
 use seq_macro::seq;
 
@@ -43,16 +43,28 @@ static CACHES: Lazy<Caches> = Lazy::new(Caches::default);
 // TODO(cmc): timeless caching support
 #[derive(Default)]
 pub struct Caches {
+    enabled: Mutex<bool>,
     latest_at: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
 }
 
 impl Caches {
+    /// Toggles primary caching.
+    ///
+    /// Returns the new state (i.e. returns `true` if caching is now enabled).
+    #[inline]
+    pub fn toggle() -> bool {
+        let mut enabled = CACHES.enabled.lock();
+        *enabled ^= true;
+        *enabled
+    }
+
     /// Clears all caches.
-    //
-    // TODO(cmc): expose palette command.
     #[inline]
     pub fn clear() {
-        let Caches { latest_at } = &*CACHES;
+        let Caches {
+            enabled: _,
+            latest_at,
+        } = &*CACHES;
         latest_at.write().clear();
     }
 
@@ -80,6 +92,56 @@ impl Caches {
 
         let mut cache = cache.write();
         f(&mut cache)
+    }
+}
+
+impl std::fmt::Debug for Caches {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            enabled: _,
+            latest_at,
+        } = self;
+
+        {
+            let latest_at = latest_at.read();
+            if !latest_at.is_empty() {
+                f.write_str("LatestAt cache\n")?;
+                f.write_str("--------------\n")?;
+                for (key, bucket) in latest_at.iter() {
+                    let CacheKey {
+                        store_id,
+                        entity_path,
+                        timeline,
+                        archetype_name,
+                    } = key;
+
+                    f.write_fmt(format_args!(
+                        "{entity_path:?} in {store_id} on {} for {archetype_name:?}:\n",
+                        timeline.name(),
+                    ))?;
+
+                    let latest_at_cache = bucket.read();
+                    for (query_time, bucket) in latest_at_cache.iter() {
+                        f.write_fmt(format_args!(
+                            "at query time: {}\n",
+                            timeline.format_time_utc(*query_time)
+                        ))?;
+                        for ((pov_time, _), pov_instance_keys) in itertools::izip!(
+                            bucket.pov_times.iter(),
+                            bucket.pov_instance_keys.iter(),
+                        ) {
+                            f.write_fmt(format_args!(
+                                " -> One entry at data time {} with {} instances\n",
+                                timeline.format_time_utc(*pov_time),
+                                pov_instance_keys.len(),
+                            ))?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
