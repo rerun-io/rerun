@@ -39,4 +39,9 @@ table ContainerBlueprint (
     ///
     /// Only applies to `Tabs` containers.
     active_tab: rerun.blueprint.components.ActiveTab ("attr.rerun.component_optional", nullable, order: 600);
+
+    /// Whether this container is visible.
+    ///
+    /// Defaults to true if not specified.
+    visible: rerun.blueprint.components.Visible ("attr.rerun.component_optional", nullable, order: 700);
 }
