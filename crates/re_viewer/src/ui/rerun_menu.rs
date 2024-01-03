@@ -364,7 +364,6 @@ fn debug_menu_options_ui(
                 .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
             ui.close_menu();
         }
-        ui.separator();
     }
 
     if ui.button("Log something at INFO level").clicked() {
