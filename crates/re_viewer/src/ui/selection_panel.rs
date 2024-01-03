@@ -569,7 +569,7 @@ fn container_top_level_properties(
                         .on_hover_text("Simplify this container and its children")
                         .clicked()
                     {
-                        viewport.blueprint.simplify_tree(
+                        viewport.blueprint.simplify_container(
                             *tile_id,
                             egui_tiles::SimplificationOptions {
                                 prune_empty_tabs: true,
