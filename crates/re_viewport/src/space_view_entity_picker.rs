@@ -205,27 +205,18 @@ fn add_entities_line_ui(
             } else if is_included {
                 // Remove-button
                 // Shows when an entity is already included (but not explicitly)
-                // Only enabled if the entity is compatible.
-                let enabled = add_info.can_add_self_or_descendant.is_compatible();
+                let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
 
-                ui.add_enabled_ui(enabled, |ui| {
-                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
+                if response.clicked() {
+                    space_view.add_entity_exclusion(
+                        ctx,
+                        EntityPathRule::including_subtree(entity_tree.path.clone()),
+                    );
+                }
 
-                    if response.clicked() {
-                        space_view.add_entity_exclusion(
-                            ctx,
-                            EntityPathRule::including_subtree(entity_tree.path.clone()),
-                        );
-                    }
-
-                    if enabled {
-                        response.on_hover_text(
-                            "Exclude this Entity and all its descendants from the Space View",
-                        );
-                    } else if let CanAddToSpaceView::No { reason } = &add_info.can_add {
-                        response.on_disabled_hover_text(reason);
-                    }
-                });
+                response.on_hover_text(
+                    "Exclude this Entity and all its descendants from the Space View",
+                );
             } else {
                 // Add-button:
                 // Shows when an entity is not included
