@@ -75,12 +75,24 @@ impl App {
             ui.add_space(spacing);
 
             ui.menu_button("Options", |ui| {
+                ui.style_mut().wrap = Some(false);
                 options_menu_ui(
                     &self.command_sender,
                     &self.re_ui,
                     ui,
                     &mut self.state.app_options,
                 );
+            });
+
+            #[cfg(debug_assertions)]
+            ui.menu_button("Debug", |ui| {
+                ui.style_mut().wrap = Some(false);
+                debug_menu_options_ui(&self.re_ui, ui, &mut self.state.app_options);
+
+                ui.separator();
+
+                ui.label("egui debug options:");
+                egui_debug_options_ui(&self.re_ui, ui);
             });
 
             ui.add_space(spacing);
@@ -218,8 +230,6 @@ fn options_menu_ui(
     ui: &mut egui::Ui,
     app_options: &mut re_viewer_context::AppOptions,
 ) {
-    ui.style_mut().wrap = Some(false);
-
     if re_ui
         .checkbox(
             ui,
@@ -262,51 +272,49 @@ fn options_menu_ui(
     {
         ui.separator();
         ui.label("Experimental features:");
+        experimental_feature_ui(command_sender, re_ui, ui, app_options);
+    }
+}
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            if re_ui
-                .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space View screenshots")
-                .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.")
-                .clicked()
-            {
-                ui.close_menu();
-            }
-        }
-
+fn experimental_feature_ui(
+    command_sender: &re_viewer_context::CommandSender,
+    re_ui: &ReUi,
+    ui: &mut egui::Ui,
+    app_options: &mut re_viewer_context::AppOptions,
+) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
         if re_ui
-            .checkbox(
-                ui,
-                &mut app_options.experimental_dataframe_space_view,
-                "Dataframe Space View",
-            )
-            .on_hover_text("Enable the experimental dataframe space view.")
+            .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space View screenshots")
+            .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.")
             .clicked()
         {
-            command_sender.send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
-                app_options.experimental_dataframe_space_view,
-            ));
             ui.close_menu();
         }
-
-        re_ui
-            .checkbox(
-                ui,
-                &mut app_options.experimental_entity_filter_editor,
-                "Show entity filter DSL",
-            )
-            .on_hover_text("Show an entity filter DSL when selecting a space-view.");
     }
 
-    #[cfg(debug_assertions)]
+    if re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_dataframe_space_view,
+            "Dataframe Space View",
+        )
+        .on_hover_text("Enable the experimental dataframe space view.")
+        .clicked()
     {
-        ui.separator();
-        ui.label("Debug:");
-
-        egui_debug_options_ui(re_ui, ui);
-        ui.separator();
-        debug_menu_options_ui(re_ui, ui, app_options);
+        command_sender.send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
+            app_options.experimental_dataframe_space_view,
+        ));
+        ui.close_menu();
     }
+
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_entity_filter_editor,
+            "Show entity filter DSL",
+        )
+        .on_hover_text("Show an entity filter DSL when selecting a space-view.");
 }
 
 #[cfg(debug_assertions)]
@@ -369,7 +377,7 @@ fn debug_menu_options_ui(
         ui.separator();
     }
 
-    if ui.button("Log info").clicked() {
+    if ui.button("Log something at INFO level").clicked() {
         re_log::info!("Logging some info");
     }
 
