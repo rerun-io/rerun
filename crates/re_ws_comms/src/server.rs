@@ -40,18 +40,18 @@ impl MessageQueue {
     fn gc_if_using_too_much_ram(&mut self) {
         re_tracing::profile_function!();
 
-        if let Some(limit) = self.server_memory_limit.limit {
-            let limit = limit as u64;
-            let bytes_used = self.messages.iter().map(|m| m.len()).sum::<usize>() as u64;
+        if let Some(max_bytes) = self.server_memory_limit.max_bytes {
+            let max_bytes = max_bytes as u64;
+            let bytes_used = self.messages.iter().map(|m| m.len() as u64).sum::<u64>();
 
-            if limit < bytes_used {
+            if max_bytes < bytes_used {
                 re_tracing::profile_scope!("Drop messages");
                 re_log::info_once!(
                     "Memory limit ({}) exceeded. Dropping old log messages from the server. Clients connecting after this will not see the full history.",
-                    re_format::format_bytes(limit as _)
+                    re_format::format_bytes(max_bytes as _)
                 );
 
-                let bytes_to_free = bytes_used - limit;
+                let bytes_to_free = bytes_used - max_bytes;
 
                 let mut bytes_dropped = 0;
                 let mut messages_dropped = 0;

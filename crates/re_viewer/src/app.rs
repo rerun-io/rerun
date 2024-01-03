@@ -878,12 +878,12 @@ impl App {
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
             re_log::info_once!(
                 "Reached memory limit of {}, dropping oldest data.",
-                format_limit(limit.limit)
+                format_limit(limit.max_bytes)
             );
 
             let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
-            re_log::trace!("RAM limit: {}", format_limit(limit.limit));
+            re_log::trace!("RAM limit: {}", format_limit(limit.max_bytes));
             if let Some(resident) = mem_use_before.resident {
                 re_log::trace!("Resident: {}", format_bytes(resident as _),);
             }
@@ -1067,7 +1067,7 @@ impl eframe::App for App {
             return;
         }
 
-        if self.startup_options.memory_limit.limit.is_none() {
+        if self.startup_options.memory_limit.is_unlimited() {
             // we only warn about high memory usage if the user hasn't specified a limit
             self.ram_limit_warner.update();
         }

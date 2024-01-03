@@ -154,7 +154,7 @@ def serve(
     You can also connect to this server with the native viewer using `rerun localhost:9090`.
 
     The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
-    You can limit the amount of data buffered by the WebSocket server with the `memory_limit` argument.
+    You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
     Once reached, the earliest logged data will be dropped.
     Note that this means that timeless data may be dropped if logged early.
 
@@ -172,13 +172,13 @@ def serve(
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-    memory_limit:
+    server_memory_limit:
         Maximum amount of memory to use for buffering log data for clients that connect late.
         This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
     """
 
     recording = RecordingStream.to_native(recording)
-    bindings.serve(open_browser, web_port, ws_port, memory_limit=memory_limit, recording=recording)
+    bindings.serve(open_browser, web_port, ws_port, server_memory_limit=server_memory_limit, recording=recording)
 
 
 # TODO(#4019): application-level handshake
