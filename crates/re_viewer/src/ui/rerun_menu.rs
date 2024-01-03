@@ -8,6 +8,8 @@ use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender};
 
 use crate::App;
 
+const SPACING: f32 = 12.0;
+
 impl App {
     pub fn rerun_menu_button_ui(
         &mut self,
@@ -23,15 +25,14 @@ impl App {
             .max_height(desired_icon_height);
         ui.menu_image_button(image, |ui| {
             ui.set_min_width(220.0);
-            let spacing = 12.0;
 
             ui.menu_button("About", |ui| self.about_rerun_ui(ui));
 
-            ui.add_space(spacing);
+            ui.add_space(SPACING);
 
             UICommand::ToggleCommandPalette.menu_button_ui(ui, &self.command_sender);
 
-            ui.add_space(spacing);
+            ui.add_space(SPACING);
 
             UICommand::Open.menu_button_ui(ui, &self.command_sender);
 
@@ -41,7 +42,7 @@ impl App {
 
                 UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
 
-                ui.add_space(spacing);
+                ui.add_space(SPACING);
 
                 // On the web the browser controls the zoom
                 let zoom_factor = ui.ctx().zoom_factor();
@@ -57,7 +58,7 @@ impl App {
 
                 UICommand::ToggleFullscreen.menu_button_ui(ui, &self.command_sender);
 
-                ui.add_space(spacing);
+                ui.add_space(SPACING);
             }
 
             {
@@ -72,7 +73,7 @@ impl App {
                 UICommand::ToggleStylePanel.menu_button_ui(ui, &self.command_sender);
             }
 
-            ui.add_space(spacing);
+            ui.add_space(SPACING);
 
             ui.menu_button("Options", |ui| {
                 ui.style_mut().wrap = Some(false);
@@ -89,13 +90,11 @@ impl App {
                 ui.style_mut().wrap = Some(false);
                 debug_menu_options_ui(&self.re_ui, ui, &mut self.state.app_options);
 
-                ui.separator();
-
                 ui.label("egui debug options:");
                 egui_debug_options_ui(&self.re_ui, ui);
             });
 
-            ui.add_space(spacing);
+            ui.add_space(SPACING);
 
             // dont use `hyperlink_to` for styling reasons
             const HELP_URL: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
@@ -142,7 +141,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                ui.add_space(spacing);
+                ui.add_space(SPACING);
                 UICommand::Quit.menu_button_ui(ui, &self.command_sender);
             }
         });
@@ -280,7 +279,7 @@ fn options_menu_ui(
     });
 
     {
-        ui.separator();
+        ui.add_space(SPACING);
         ui.label("Experimental features:");
         experimental_feature_ui(command_sender, re_ui, ui, app_options);
     }
