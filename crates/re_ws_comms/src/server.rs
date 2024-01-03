@@ -19,6 +19,7 @@ use re_smart_channel::ReceiveSet;
 
 use crate::{server_url, RerunServerError, RerunServerPort};
 
+#[derive(Clone)]
 struct MessageQueue {
     server_memory_limit: MemoryLimit,
     messages: VecDeque<Arc<[u8]>>,
@@ -71,11 +72,6 @@ impl MessageQueue {
                 );
             }
         }
-    }
-
-    pub fn to_vec(&self) -> VecDeque<Arc<[u8]>> {
-        re_tracing::profile_function!();
-        self.messages.clone()
     }
 }
 
@@ -284,13 +280,15 @@ async fn handle_connection(
     let ws_stream = accept_async(tcp_stream).await?;
     let (mut ws_sender, mut ws_receiver) = ws_stream.split();
 
-    // Re-sending packet history - this is not water tight, but better than nothing.
-    // TODO(emilk): water-proof resending of history + streaming of new stuff, without anything missed.
-    let history = history.lock().to_vec();
-    for packet in history {
-        ws_sender
-            .send(tungstenite::Message::Binary(packet.to_vec()))
-            .await?;
+    {
+        // Re-sending packet history - this is not water tight, but better than nothing.
+        // TODO(emilk): water-proof resending of history + streaming of new stuff, without anything missed.
+        let history: MessageQueue = history.lock().clone();
+        for packet in history.messages {
+            ws_sender
+                .send(tungstenite::Message::Binary(packet.to_vec()))
+                .await?;
+        }
     }
 
     let mut log_rx = log_stream.subscribe();
