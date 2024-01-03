@@ -1,10 +1,9 @@
----
-title: LLM Embedding-Based Named Entity Recognition
-python: https://github.com/rerun-io/rerun/tree/latest/examples/python/controlnet/main.py
-tags: [LLM, embeddings, classification, huggingface, text]
-thumbnail: https://static.rerun.io/llm_embedding_ner/d98c09dd6bfa20ceea3e431c37dc295a4009fa1b/480w.png
-thumbnail_dimensions: [480, 279]
----
+<!--[metadata]
+title = "LLM Embedding-Based Named Entity Recognition"
+tags = ["LLM", "embeddings", "classification", "huggingface", "text"]
+thumbnail = "https://static.rerun.io/llm_embedding_ner/d98c09dd6bfa20ceea3e431c37dc295a4009fa1b/480w.png"
+thumbnail_dimensions = [480, 279]
+-->
 
 <picture>
   <img src="https://static.rerun.io/llm_embedding_ner/d98c09dd6bfa20ceea3e431c37dc295a4009fa1b/full.png" alt="">
