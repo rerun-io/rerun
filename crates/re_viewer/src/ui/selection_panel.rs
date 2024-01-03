@@ -19,7 +19,8 @@ use re_viewer_context::{
     ViewerContext,
 };
 use re_viewport::{
-    external::re_space_view::blueprint::components::QueryExpressions, Viewport, ViewportBlueprint,
+    external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
+    Viewport, ViewportBlueprint,
 };
 
 use crate::ui::add_space_view_or_container_modal::AddSpaceViewOrContainerModal;
@@ -624,7 +625,8 @@ fn show_list_item_for_container_child(
 
             (
                 Item::Container(child_tile_id),
-                ListItem::new(ctx.re_ui, format!("{:?}", container.kind())).subdued(true),
+                ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
+                    .with_icon(icon_for_container_kind(&container.kind())),
             )
         }
     };

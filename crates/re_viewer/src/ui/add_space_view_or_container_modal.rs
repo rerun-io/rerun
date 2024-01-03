@@ -5,7 +5,7 @@ use itertools::Itertools;
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_space_view::DataQueryBlueprint;
 use re_viewer_context::ViewerContext;
-use re_viewport::{SpaceViewBlueprint, Viewport};
+use re_viewport::{icon_for_container_kind, SpaceViewBlueprint, Viewport};
 
 #[derive(Default)]
 pub struct AddSpaceViewOrContainerModal {
@@ -61,7 +61,7 @@ fn modal_ui(
     ];
 
     for (title, subtitle, kind) in container_data {
-        if row_ui(ui, &re_ui::icons::CONTAINER, title, subtitle).clicked() {
+        if row_ui(ui, icon_for_container_kind(&kind), title, subtitle).clicked() {
             viewport.blueprint.add_container(kind, target_container);
             viewport.blueprint.mark_user_interaction(ctx);
         }
