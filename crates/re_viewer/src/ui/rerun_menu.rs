@@ -119,6 +119,27 @@ impl App {
                 });
             }
 
+            if egui::Button::image_and_text(
+                re_ui::icons::DISCORD
+                    .as_image()
+                    .fit_to_exact_size(ReUi::small_icon_size()),
+                "Rerun Discord",
+            )
+            .ui(ui)
+            .on_hover_cursor(egui::CursorIcon::PointingHand)
+            .on_hover_text(
+                "Join the ReRun Discord server, where you can ask questions and get help.",
+            )
+            .clicked()
+            {
+                ui.ctx().output_mut(|o| {
+                    o.open_url = Some(egui::output::OpenUrl {
+                        url: "https://discord.gg/PXtCgFBSmH".to_owned(),
+                        new_tab: true,
+                    });
+                });
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             {
                 ui.add_space(spacing);
