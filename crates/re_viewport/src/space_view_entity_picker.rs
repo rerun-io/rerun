@@ -188,57 +188,40 @@ fn add_entities_line_ui(
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // TODO(emilk): Show at most one button.
+            if entity_path_filter.contains_rule_for_exactly(entity_path) {
+                // Reset-button
+                // Shows when an entity is explicitly excluded or included
+                let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
 
-            // Reset-button
-            {
-                let enabled = add_info.can_add_self_or_descendant.is_compatible()
-                    && entity_path_filter.contains_rule_for_exactly(entity_path);
+                if response.clicked() {
+                    space_view.remove_filter_rule_for(ctx, &entity_tree.path);
+                }
 
-                ui.add_enabled_ui(enabled, |ui| {
-                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
+                if is_explicitly_excluded {
+                    response.on_hover_text("Stop excluding this EntityPath.");
+                } else if is_explicitly_included {
+                    response.on_hover_text("Stop including this EntityPath.");
+                }
+            } else if is_included {
+                // Remove-button
+                // Shows when an entity is already included (but not explicitly)
+                let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
 
-                    if response.clicked() {
-                        space_view.remove_filter_rule_for(ctx, &entity_tree.path);
-                    }
+                if response.clicked() {
+                    space_view.add_entity_exclusion(
+                        ctx,
+                        EntityPathRule::including_subtree(entity_tree.path.clone()),
+                    );
+                }
 
-                    if enabled {
-                        if is_explicitly_excluded {
-                            response.on_hover_text("Stop excluding this EntityPath.");
-                        } else if is_explicitly_included {
-                            response.on_hover_text("Stop including this EntityPath.");
-                        }
-                    }
-                });
-            }
-
-            // Remove-button
-            {
-                let enabled = is_included
-                    && add_info.can_add_self_or_descendant.is_compatible()
-                    && query_result.contains_any(&entity_tree.path);
-
-                ui.add_enabled_ui(enabled, |ui| {
-                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
-
-                    if response.clicked() {
-                        space_view.add_entity_exclusion(
-                            ctx,
-                            EntityPathRule::including_subtree(entity_tree.path.clone()),
-                        );
-                    }
-
-                    if enabled {
-                        response.on_hover_text(
-                            "Exclude this Entity and all its descendants from the Space View",
-                        );
-                    }
-                });
-            }
-
-            // Add-button
-            {
-                let enabled = !is_included && add_info.can_add_self_or_descendant.is_compatible();
+                response.on_hover_text(
+                    "Exclude this Entity and all its descendants from the Space View",
+                );
+            } else {
+                // Add-button:
+                // Shows when an entity is not included
+                // Only enabled if the entity is compatible.
+                let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
                 ui.add_enabled_ui(enabled, |ui| {
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
