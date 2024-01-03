@@ -80,8 +80,6 @@ pub fn all_possible_space_views(
                     let mut entity_path_filter = EntityPathFilter::default();
                     entity_path_filter.add_subtree(candidate_space_path.clone());
 
-                    // TODO(#4377): The need to run a query-per-candidate for all possible candidates
-                    // is way too expensive. This needs to be optimized significantly.
                     let candidate_query =
                         DataQueryBlueprint::new(class_identifier, entity_path_filter);
 
@@ -217,7 +215,6 @@ pub fn default_created_space_views(
     // Main pass through all candidates.
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
     for (candidate, query_result) in candidates {
-        // TODO(#4377): Can spawn heuristics consume the query_result directly?
         let mut per_system_entities = PerSystemEntities::default();
         {
             re_tracing::profile_scope!("per_system_data_results");
