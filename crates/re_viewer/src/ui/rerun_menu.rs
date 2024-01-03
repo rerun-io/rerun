@@ -196,32 +196,46 @@ impl App {
             }
         });
 
-        #[cfg(not(target_arch = "wasm32"))]
         {
-            if self.re_ui
-                .checkbox(ui, &mut self.state.app_options.experimental_space_view_screenshots, "(experimental) Space View screenshots")
-                .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.")
+            ui.separator();
+            ui.label("Experimental features:");
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                if self.re_ui
+                    .checkbox(ui, &mut self.state.app_options.experimental_space_view_screenshots, "Space View screenshots")
+                    .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.")
+                    .clicked()
+                {
+                    ui.close_menu();
+                }
+            }
+
+            if self
+                .re_ui
+                .checkbox(
+                    ui,
+                    &mut self.state.app_options.experimental_dataframe_space_view,
+                    "Dataframe Space View",
+                )
+                .on_hover_text("Enable the experimental dataframe space view.")
                 .clicked()
             {
+                self.command_sender.send_system(
+                    SystemCommand::EnableExperimentalDataframeSpaceView(
+                        self.state.app_options.experimental_dataframe_space_view,
+                    ),
+                );
                 ui.close_menu();
             }
-        }
 
-        if self
-            .re_ui
-            .checkbox(
-                ui,
-                &mut self.state.app_options.experimental_dataframe_space_view,
-                "(experimental) Dataframe Space View",
-            )
-            .on_hover_text("Enable the experimental dataframe space view.")
-            .clicked()
-        {
-            self.command_sender
-                .send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
-                    self.state.app_options.experimental_dataframe_space_view,
-                ));
-            ui.close_menu();
+            self.re_ui
+                .checkbox(
+                    ui,
+                    &mut self.state.app_options.experimental_entity_filter_editor,
+                    "Show entity filter DSL",
+                )
+                .on_hover_text("Show an entity filter DSL when selecting a space-view.");
         }
 
         #[cfg(debug_assertions)]
@@ -352,16 +366,14 @@ impl App {
         }
 
         self.re_ui.checkbox(ui,
-                       &mut self.state.app_options.show_picking_debug_overlay,
-                       "Picking Debug Overlay",
-        )
-            .on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
+            &mut self.state.app_options.show_picking_debug_overlay,
+            "Picking Debug Overlay",
+        ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
 
         self.re_ui.checkbox(ui,
-                       &mut self.state.app_options.show_blueprint_in_timeline,
-                       "Show Blueprint in the Time Panel",
-        )
-            .on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
+            &mut self.state.app_options.show_blueprint_in_timeline,
+            "Show Blueprint in the Time Panel",
+        ).on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
 
         self.re_ui
             .checkbox(
