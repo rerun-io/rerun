@@ -243,9 +243,9 @@ impl App {
             ui.separator();
             ui.label("Debug:");
 
-            self.egui_debug_options_ui(ui);
+            egui_debug_options_ui(&self.re_ui, ui);
             ui.separator();
-            self.debug_menu_options_ui(ui);
+            debug_menu_options_ui(&self.re_ui, ui, &mut self.state.app_options);
         }
     }
 
@@ -303,145 +303,147 @@ impl App {
             });
         }
     }
+}
 
-    #[cfg(debug_assertions)]
-    fn egui_debug_options_ui(&self, ui: &mut egui::Ui) {
-        let mut debug = ui.style().debug;
-        let mut any_clicked = false;
+#[cfg(debug_assertions)]
+fn egui_debug_options_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
+    let mut debug = ui.style().debug;
+    let mut any_clicked = false;
 
-        let re_ui = self.re_ui();
-        any_clicked |= re_ui
-            .checkbox(ui, &mut debug.debug_on_hover, "Ui debug on hover")
-            .on_hover_text("However over widgets to see their rectangles")
-            .changed();
-        any_clicked |= re_ui
-            .checkbox(ui, &mut debug.show_expand_width, "Show expand width")
-            .on_hover_text("Show which widgets make their parent wider")
-            .changed();
-        any_clicked |= re_ui
-            .checkbox(ui, &mut debug.show_expand_height, "Show expand height")
-            .on_hover_text("Show which widgets make their parent higher")
-            .changed();
-        any_clicked |= re_ui
-            .checkbox(ui, &mut debug.show_resize, "Show resize")
-            .changed();
-        any_clicked |= re_ui
-            .checkbox(
-                ui,
-                &mut debug.show_interactive_widgets,
-                "Show interactive widgets",
-            )
-            .on_hover_text("Show an overlay on all interactive widgets")
-            .changed();
-        any_clicked |= re_ui
-            .checkbox(ui, &mut debug.show_blocking_widget, "Show blocking widgets")
-            .on_hover_text("Show what widget blocks the interaction of another widget")
-            .changed();
+    any_clicked |= re_ui
+        .checkbox(ui, &mut debug.debug_on_hover, "Ui debug on hover")
+        .on_hover_text("However over widgets to see their rectangles")
+        .changed();
+    any_clicked |= re_ui
+        .checkbox(ui, &mut debug.show_expand_width, "Show expand width")
+        .on_hover_text("Show which widgets make their parent wider")
+        .changed();
+    any_clicked |= re_ui
+        .checkbox(ui, &mut debug.show_expand_height, "Show expand height")
+        .on_hover_text("Show which widgets make their parent higher")
+        .changed();
+    any_clicked |= re_ui
+        .checkbox(ui, &mut debug.show_resize, "Show resize")
+        .changed();
+    any_clicked |= re_ui
+        .checkbox(
+            ui,
+            &mut debug.show_interactive_widgets,
+            "Show interactive widgets",
+        )
+        .on_hover_text("Show an overlay on all interactive widgets")
+        .changed();
+    any_clicked |= re_ui
+        .checkbox(ui, &mut debug.show_blocking_widget, "Show blocking widgets")
+        .on_hover_text("Show what widget blocks the interaction of another widget")
+        .changed();
 
-        if any_clicked {
-            let mut style = (*ui.ctx().style()).clone();
-            style.debug = debug;
-            ui.ctx().set_style(style);
-        }
-    }
-
-    #[cfg(debug_assertions)]
-    fn debug_menu_options_ui(&mut self, ui: &mut egui::Ui) {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            if ui.button("Mobile size").clicked() {
-                // let size = egui::vec2(375.0, 812.0); // iPhone 12 mini
-                let size = egui::vec2(375.0, 667.0); //  iPhone SE 2nd gen
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
-                ui.ctx()
-                    .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
-                ui.close_menu();
-            }
-            ui.separator();
-        }
-
-        if ui.button("Log info").clicked() {
-            re_log::info!("Logging some info");
-        }
-
-        self.re_ui.checkbox(ui,
-            &mut self.state.app_options.show_picking_debug_overlay,
-            "Picking Debug Overlay",
-        ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
-
-        self.re_ui.checkbox(ui,
-            &mut self.state.app_options.show_blueprint_in_timeline,
-            "Show Blueprint in the Time Panel",
-        ).on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
-
-        self.re_ui
-            .checkbox(
-                ui,
-                &mut self.state.app_options.experimental_container_blueprints,
-                "Use experimental container blueprints",
-            )
-            .on_hover_text("Load and save the container state using new container archetypes");
-
-        ui.menu_button("Crash", |ui| {
-            #[allow(clippy::manual_assert)]
-            if ui.button("panic!").clicked() {
-                panic!("Intentional panic");
-            }
-
-            if ui.button("panic! during unwind").clicked() {
-                struct PanicOnDrop {}
-
-                impl Drop for PanicOnDrop {
-                    fn drop(&mut self) {
-                        panic!("Second intentional panic in Drop::drop");
-                    }
-                }
-
-                let _this_will_panic_when_dropped = PanicOnDrop {};
-                panic!("First intentional panic");
-            }
-
-            if ui.button("SEGFAULT").clicked() {
-                // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
-
-                /// This is the fixed address used to generate a segfault. It's possible that
-                /// this address can be mapped and writable by the your process in which case a
-                /// crash may not occur
-                #[cfg(target_pointer_width = "64")]
-                pub const SEGFAULT_ADDRESS: u64 = u32::MAX as u64 + 0x42;
-                #[cfg(target_pointer_width = "32")]
-                pub const SEGFAULT_ADDRESS: u32 = 0x42;
-
-                let bad_ptr: *mut u8 = SEGFAULT_ADDRESS as _;
-                #[allow(unsafe_code)]
-                // SAFETY: this is not safe. We are _trying_ to crash.
-                unsafe {
-                    std::ptr::write_volatile(bad_ptr, 1);
-                }
-            }
-
-            if ui.button("Stack overflow").clicked() {
-                // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
-                fn recurse(data: u64) -> u64 {
-                    let mut buff = [0u8; 256];
-                    buff[..9].copy_from_slice(b"junk data");
-
-                    let mut result = data;
-                    for c in buff {
-                        result += c as u64;
-                    }
-
-                    if result == 0 {
-                        result
-                    } else {
-                        recurse(result) + 1
-                    }
-                }
-
-                recurse(42);
-            }
-        });
+    if any_clicked {
+        let mut style = (*ui.ctx().style()).clone();
+        style.debug = debug;
+        ui.ctx().set_style(style);
     }
 }
-// ---
+
+#[cfg(debug_assertions)]
+fn debug_menu_options_ui(
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    app_options: &mut re_viewer_context::AppOptions,
+) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if ui.button("Mobile size").clicked() {
+            // let size = egui::vec2(375.0, 812.0); // iPhone 12 mini
+            let size = egui::vec2(375.0, 667.0); //  iPhone SE 2nd gen
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
+            ui.ctx()
+                .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
+            ui.close_menu();
+        }
+        ui.separator();
+    }
+
+    if ui.button("Log info").clicked() {
+        re_log::info!("Logging some info");
+    }
+
+    re_ui.checkbox(ui,
+        &mut app_options.show_picking_debug_overlay,
+        "Picking Debug Overlay",
+    ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
+
+    re_ui.checkbox(ui,
+        &mut app_options.show_blueprint_in_timeline,
+        "Show Blueprint in the Time Panel",
+    ).on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
+
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_container_blueprints,
+            "Use experimental container blueprints",
+        )
+        .on_hover_text("Load and save the container state using new container archetypes");
+
+    ui.menu_button("Crash", |ui| {
+        #[allow(clippy::manual_assert)]
+        if ui.button("panic!").clicked() {
+            panic!("Intentional panic");
+        }
+
+        if ui.button("panic! during unwind").clicked() {
+            struct PanicOnDrop {}
+
+            impl Drop for PanicOnDrop {
+                fn drop(&mut self) {
+                    panic!("Second intentional panic in Drop::drop");
+                }
+            }
+
+            let _this_will_panic_when_dropped = PanicOnDrop {};
+            panic!("First intentional panic");
+        }
+
+        if ui.button("SEGFAULT").clicked() {
+            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
+
+            /// This is the fixed address used to generate a segfault. It's possible that
+            /// this address can be mapped and writable by the your process in which case a
+            /// crash may not occur
+            #[cfg(target_pointer_width = "64")]
+            pub const SEGFAULT_ADDRESS: u64 = u32::MAX as u64 + 0x42;
+            #[cfg(target_pointer_width = "32")]
+            pub const SEGFAULT_ADDRESS: u32 = 0x42;
+
+            let bad_ptr: *mut u8 = SEGFAULT_ADDRESS as _;
+            #[allow(unsafe_code)]
+            // SAFETY: this is not safe. We are _trying_ to crash.
+            unsafe {
+                std::ptr::write_volatile(bad_ptr, 1);
+            }
+        }
+
+        if ui.button("Stack overflow").clicked() {
+            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
+            fn recurse(data: u64) -> u64 {
+                let mut buff = [0u8; 256];
+                buff[..9].copy_from_slice(b"junk data");
+
+                let mut result = data;
+                for c in buff {
+                    result += c as u64;
+                }
+
+                if result == 0 {
+                    result
+                } else {
+                    recurse(result) + 1
+                }
+            }
+
+            recurse(42);
+        }
+    });
+}
