@@ -688,7 +688,7 @@ fn serve(
     open_browser: bool,
     web_port: Option<u16>,
     ws_port: Option<u16>,
-    memory_limit: String,
+    server_memory_limit: String,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
