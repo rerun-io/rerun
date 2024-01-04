@@ -32,7 +32,9 @@ table ContainerBlueprint (
     /// For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
     primary_weights: rerun.blueprint.components.PrimaryWeights ("attr.rerun.component_optional", nullable, order: 400);
 
-    /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
+    /// The weights of the secondary axis. For `Grid` this is the row weights.
+    ///
+    /// Ignored for `Horizontal`/`Vertical` containers.
     secondary_weights: rerun.blueprint.components.SecondaryWeights ("attr.rerun.component_optional", nullable, order: 500);
 
     /// Which tab is active.
@@ -44,4 +46,11 @@ table ContainerBlueprint (
     ///
     /// Defaults to true if not specified.
     visible: rerun.blueprint.components.Visible ("attr.rerun.component_optional", nullable, order: 700);
+
+    /// How many columns this grid should have.
+    ///
+    /// If unset, the grid layout will be auto.
+    ///
+    /// Ignored for `Horizontal`/`Vertical` containers.
+    grid_columns: rerun.blueprint.components.GridColumns ("attr.rerun.component_optional", nullable, order: 800);
 }

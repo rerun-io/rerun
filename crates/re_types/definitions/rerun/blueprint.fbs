@@ -4,6 +4,7 @@ include "./blueprint/components/auto_space_views.fbs";
 include "./blueprint/components/container_kind.fbs";
 include "./blueprint/components/entities_determined_by_user.fbs";
 include "./blueprint/components/entity_properties_component.fbs";
+include "./blueprint/components/grid_columns.fbs";
 include "./blueprint/components/included_contents.fbs";
 include "./blueprint/components/included_queries.fbs";
 include "./blueprint/components/included_space_views.fbs";
