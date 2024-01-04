@@ -449,7 +449,7 @@ pub fn picking(
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialSpaceViewState,
     view_ctx: &ViewContextCollection,
-    parts: &VisualizerCollection,
+    visualizers: &VisualizerCollection,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
     spatial_kind: SpatialSpaceViewKind,
@@ -491,7 +491,7 @@ pub fn picking(
 
     let non_interactive = view_ctx.get::<NonInteractiveEntities>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-    let images = parts.get::<ImagesPart>()?;
+    let images = visualizers.get::<ImagesPart>()?;
 
     let picking_result = picking_context.pick(
         ctx.render_ctx,
@@ -647,7 +647,7 @@ pub fn picking(
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
                     tracked_space_camera: state.state_3d.tracked_camera.clone(),
-                    point_in_space_cameras: parts
+                    point_in_space_cameras: visualizers
                         .get::<CamerasPart>()?
                         .space_cameras
                         .iter()

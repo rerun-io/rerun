@@ -84,11 +84,11 @@ pub fn register_3d_spatial_parts(
 }
 
 pub fn calculate_bounding_box(
-    parts: &VisualizerCollection,
+    visualizers: &VisualizerCollection,
     bounding_box_accum: &mut macaw::BoundingBox,
 ) -> macaw::BoundingBox {
     let mut bounding_box = macaw::BoundingBox::nothing();
-    for part in parts.iter() {
+    for part in visualizers.iter() {
         if let Some(data) = part
             .data()
             .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
@@ -106,9 +106,9 @@ pub fn calculate_bounding_box(
     bounding_box
 }
 
-pub fn collect_ui_labels(parts: &VisualizerCollection) -> Vec<UiLabel> {
+pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
     let mut ui_labels = Vec::new();
-    for part in parts.iter() {
+    for part in visualizers.iter() {
         if let Some(data) = part
             .data()
             .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())

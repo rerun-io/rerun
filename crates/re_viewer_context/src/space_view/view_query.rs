@@ -42,7 +42,7 @@ pub struct DataResult {
     pub entity_path: EntityPath,
 
     /// Which `ViewSystems`s to pass the `DataResult` to.
-    pub view_parts: SmallVec<[ViewSystemIdentifier; 4]>,
+    pub visualizers: SmallVec<[ViewSystemIdentifier; 4]>,
 
     /// This DataResult represents a group
     // TODO(jleibs): Maybe make this an enum instead?

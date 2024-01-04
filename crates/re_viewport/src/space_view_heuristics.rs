@@ -129,7 +129,7 @@ fn is_interesting_space_view_at_root(
             query_results
                 .tree
                 .lookup_node(*child)
-                .map_or(true, |child| child.data_result.view_parts.is_empty())
+                .map_or(true, |child| child.data_result.visualizers.is_empty())
         }) {
             return false;
         }
@@ -143,7 +143,7 @@ fn is_interesting_space_view_at_root(
                 .tree
                 .lookup_node(*child)
                 .map_or(false, |child| {
-                    child.data_result.view_parts.contains(&"Images".into()) // TODO(jleibs): Refer to `ImagesPart`
+                    child.data_result.visualizers.contains(&"Images".into()) // TODO(jleibs): Refer to `ImagesPart`
                 })
         }) {
             return false;
@@ -221,7 +221,7 @@ pub fn default_created_space_views(
 
             query_result.tree.visit(&mut |handle| {
                 if let Some(result) = query_result.tree.lookup_result(handle) {
-                    for system in &result.view_parts {
+                    for system in &result.visualizers {
                         per_system_entities
                             .entry(*system)
                             .or_default()
@@ -256,7 +256,7 @@ pub fn default_created_space_views(
         if spawn_one_space_view_per_entity(candidate.class_identifier()) {
             query_result.tree.visit(&mut |handle| {
                 if let Some(result) = query_result.tree.lookup_result(handle) {
-                    if !result.view_parts.is_empty() {
+                    if !result.visualizers.is_empty() {
                         let mut entity_path_filter = EntityPathFilter::default();
                         entity_path_filter.add_exact(result.entity_path.clone());
                         let query = DataQueryBlueprint::new(
@@ -333,7 +333,7 @@ pub fn default_created_space_views(
                         // For this we're only interested in the direct children.
                         for child in &root.children {
                             if let Some(node) = query_result.tree.lookup_node(*child) {
-                                if !node.data_result.view_parts.is_empty() {
+                                if !node.data_result.visualizers.is_empty() {
                                     let entity_path = &node.data_result.entity_path;
                                     if let Some(tensor) = store
                                         .query_latest_component::<TensorData>(entity_path, &query)
