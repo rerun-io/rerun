@@ -92,7 +92,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         if space_origin.is_root() {
             let parts = ctx
                 .space_view_class_registry
-                .new_part_collection(self.identifier());
+                .new_visualizer_collection(self.identifier());
 
             for part in per_system_entities.keys() {
                 if let Ok(part) = parts.get_by_identifier(*part) {

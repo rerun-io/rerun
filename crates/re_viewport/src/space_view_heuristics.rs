@@ -87,7 +87,7 @@ pub fn all_possible_space_views(
                         ctx.applicable_entities_per_visualizer,
                         ctx.store_db,
                         &ctx.space_view_class_registry
-                            .new_part_collection(class_identifier),
+                            .new_visualizer_collection(class_identifier),
                         entry.class.as_ref(),
                         candidate_space_path,
                     );

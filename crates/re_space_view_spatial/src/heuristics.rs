@@ -31,7 +31,9 @@ pub fn auto_spawn_heuristic(
 
     let mut score = 0.0;
 
-    let parts = ctx.space_view_class_registry.new_part_collection(class);
+    let parts = ctx
+        .space_view_class_registry
+        .new_visualizer_collection(class);
 
     // Gather all systems that advertise a "preferred view kind" matching the passed in kind.
     let system_names_with_matching_view_kind = parts

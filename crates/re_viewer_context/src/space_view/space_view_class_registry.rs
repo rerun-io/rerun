@@ -21,7 +21,7 @@ pub enum SpaceViewClassRegistryError {
     #[error("A Context System with identifier {0:?} was already registered.")]
     IdentifierAlreadyInUseForContextSystem(&'static str),
 
-    #[error("A View Part System with identifier {0:?} was already registered.")]
+    #[error("A Visualizer System with identifier {0:?} was already registered.")]
     IdentifierAlreadyInUseForVisualizer(&'static str),
 
     #[error("Space View with class identifier {0:?} was not registered.")]
@@ -348,8 +348,8 @@ impl SpaceViewClassRegistry {
                 .iter()
                 .filter_map(|name| {
                     self.context_systems.get(name).map(|entry| {
-                        let part = (entry.factory_method)();
-                        (*name, part)
+                        let system = (entry.factory_method)();
+                        (*name, system)
                     })
                 })
                 .collect(),
@@ -357,7 +357,7 @@ impl SpaceViewClassRegistry {
         }
     }
 
-    pub fn new_part_collection(
+    pub fn new_visualizer_collection(
         &self,
         space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> VisualizerCollection {
@@ -375,8 +375,8 @@ impl SpaceViewClassRegistry {
                 .iter()
                 .filter_map(|name| {
                     self.visualizers.get(name).map(|entry| {
-                        let part = (entry.factory_method)();
-                        (*name, part)
+                        let system = (entry.factory_method)();
+                        (*name, system)
                     })
                 })
                 .collect(),

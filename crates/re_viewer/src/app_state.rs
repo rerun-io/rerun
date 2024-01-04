@@ -159,7 +159,7 @@ impl AppState {
                         &applicable_entities_per_visualizer,
                         store_db,
                         &space_view_class_registry
-                            .new_part_collection(*space_view.class_identifier()),
+                            .new_visualizer_collection(*space_view.class_identifier()),
                         space_view.class(space_view_class_registry),
                         &space_view.space_origin,
                     );
