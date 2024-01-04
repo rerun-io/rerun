@@ -39,6 +39,7 @@ arrow2 = { workspace = true, features = [
   "compute_concatenate",
 ] }
 backtrace.workspace = true
+bytemuck.workspace = true
 document-features.workspace = true
 once_cell.workspace = true
 smallvec.workspace = true

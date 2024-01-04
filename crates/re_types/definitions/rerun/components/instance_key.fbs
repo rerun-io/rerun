@@ -15,7 +15,8 @@ struct InstanceKey (
   "attr.python.array_aliases": "int, npt.NDArray[np.uint64]",
   "attr.rust.custom_clause":
     'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))',
-  "attr.rust.derive": "Copy, Hash, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.derive": "Copy, Hash, PartialEq, Eq, PartialOrd, Ord, ::bytemuck::Pod, ::bytemuck::Zeroable",
+  "attr.rust.repr": "transparent",
   "attr.rust.override_crate": "re_types_core"
 ) {
   value: uint64 (order: 100);
