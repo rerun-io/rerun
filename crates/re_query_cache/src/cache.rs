@@ -21,13 +21,13 @@ use crate::{ErasedFlatVecDeque, FlatVecDeque};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnyQuery {
-    LatestAtQuery(LatestAtQuery),
+    LatestAt(LatestAtQuery),
     // TODO(cmc): range queries support.
 }
 
 impl From<LatestAtQuery> for AnyQuery {
     fn from(query: LatestAtQuery) -> Self {
-        Self::LatestAtQuery(query)
+        Self::LatestAt(query)
     }
 }
 
@@ -236,7 +236,7 @@ macro_rules! impl_insert {
             $($comp: Component + Send + Sync + 'static,)*
         {
             // NOTE: not `profile_function!` because we want them merged together.
-            re_tracing::profile_scope!("CacheBucket::insert_povN_compM", format!("arch={} pov={} comp={}", A::name(), $N, $M));
+            re_tracing::profile_scope!("CacheBucket::insert", format!("arch={} pov={} comp={}", A::name(), $N, $M));
 
             let Self {
                 pov_times,

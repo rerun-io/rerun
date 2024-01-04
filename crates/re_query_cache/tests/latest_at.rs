@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 
 use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId};
-use re_query_cache::query_cached_archetype_pov1_comp1;
+use re_query_cache::query_archetype_pov1_comp1;
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D},
@@ -217,17 +217,14 @@ fn query_and_compare(store: &DataStore, query: &LatestAtQuery, ent_path: &Entity
         let mut got_positions = Vec::new();
         let mut got_colors = Vec::new();
 
-        query_cached_archetype_pov1_comp1::<Points2D, Position2D, Color, _>(
+        query_archetype_pov1_comp1::<Points2D, Position2D, Color, _>(
             store,
             &query.clone().into(),
             ent_path,
-            |it| {
-                let (_, instance_keys, positions, colors) = it.next().unwrap();
-                assert!(it.next().is_none());
-
-                got_instance_keys = instance_keys.to_vec();
-                got_positions = positions.to_vec();
-                got_colors = colors.to_vec();
+            |(_, instance_keys, positions, colors)| {
+                got_instance_keys.extend(instance_keys.iter().copied());
+                got_positions.extend(positions.iter().copied());
+                got_colors.extend(colors.iter().copied());
             },
         )
         .unwrap();
