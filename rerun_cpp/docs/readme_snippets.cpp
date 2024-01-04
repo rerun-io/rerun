@@ -12,6 +12,10 @@ static std::vector<rerun::Color> create_colors() {
     return {};
 }
 
+static std::vector<uint8_t> create_image() {
+    return {};
+}
+
 [[maybe_unused]] static void log() {
     /// [Logging]
     // Create a recording stream.
@@ -21,9 +25,13 @@ static std::vector<rerun::Color> create_colors() {
 
     std::vector<rerun::Position3D> points = create_positions();
     std::vector<rerun::Color> colors = create_colors();
+    std::vector<uint8_t> image_data = create_image();
 
     // Log a batch of points.
     rec.log("path/to/points", rerun::Points3D(points).with_colors(colors));
+
+    // Log an image.
+    rec.log("path/to/image", rerun::Image({786, 1024, 3}, image_data));
     /// [Logging]
 }
 
