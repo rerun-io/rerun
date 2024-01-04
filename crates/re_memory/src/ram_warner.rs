@@ -3,9 +3,9 @@
 pub fn total_ram_in_bytes() -> u64 {
     re_tracing::profile_function!();
 
-    use sysinfo::{RefreshKind, SystemExt as _};
-
-    let mut sys = sysinfo::System::new_with_specifics(RefreshKind::new().with_memory());
+    let mut sys = sysinfo::System::new_with_specifics(
+        sysinfo::RefreshKind::new().with_memory(sysinfo::MemoryRefreshKind::new().with_ram()),
+    );
 
     {
         re_tracing::profile_scope!("refresh_memory");
