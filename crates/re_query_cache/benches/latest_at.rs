@@ -6,7 +6,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{entity_path, DataRow, EntityPath, RowId, TimeInt, TimeType, Timeline};
-use re_query_cache::query_cached_archetype_pov1_comp1;
+use re_query_cache::query_archetype_pov1_comp1;
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D, Text},
@@ -278,15 +278,12 @@ fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePo
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths {
-        query_cached_archetype_pov1_comp1::<Points2D, Position2D, Color, _>(
+        query_archetype_pov1_comp1::<Points2D, Position2D, Color, _>(
             store,
             &query.clone().into(),
             path,
-            |it| {
-                let (_, _, positions, colors) = it.next().unwrap();
-                assert!(it.next().is_none());
-
-                itertools::izip!(positions, colors).for_each(|(pos, color)| {
+            |(_, _, positions, colors)| {
+                itertools::izip!(positions.iter(), colors.iter()).for_each(|(pos, color)| {
                     points.push(SavePoint {
                         _pos: *pos,
                         _color: *color,
@@ -311,15 +308,12 @@ fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveS
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);
 
     for path in paths {
-        query_cached_archetype_pov1_comp1::<Points2D, Position2D, Text, _>(
+        query_archetype_pov1_comp1::<Points2D, Position2D, Text, _>(
             store,
             &query.clone().into(),
             path,
-            |it| {
-                let (_, _, _, labels) = it.next().unwrap();
-                assert!(it.next().is_none());
-
-                for label in labels {
+            |(_, _, _, labels)| {
+                for label in labels.iter() {
                     strings.push(SaveString {
                         _label: label.clone(),
                     });
