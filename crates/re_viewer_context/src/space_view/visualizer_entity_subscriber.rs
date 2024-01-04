@@ -28,7 +28,7 @@ pub struct VisualizerEntitySubscriber {
     /// Visualizer type this subscriber is associated with.
     visualizer: ViewSystemIdentifier,
 
-    /// See [`ViewPartSystem::indicator_components`]
+    /// See [`VisualizerSystem::indicator_components`]
     indicator_components: ComponentNameSet,
 
     /// Assigns each required component an index.

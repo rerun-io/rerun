@@ -31,7 +31,7 @@ pub fn create_and_run_space_view_systems(
         context_systems
     };
 
-    re_tracing::profile_wait!("ViewPartSystem::execute");
+    re_tracing::profile_wait!("VisualizerSystem::execute");
     let mut view_systems = ctx
         .space_view_class_registry
         .new_part_collection(space_view_class);
@@ -39,11 +39,11 @@ pub fn create_and_run_space_view_systems(
         .systems
         .par_iter_mut()
         .map(|(name, part)| {
-            re_tracing::profile_scope!("ViewPartSystem::execute", name.as_str());
+            re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
             match part.execute(ctx, query, &context_systems) {
                 Ok(part_draw_data) => part_draw_data,
                 Err(err) => {
-                    re_log::error_once!("Error executing view part system {name:?}: {err}");
+                    re_log::error_once!("Error executing visualizer {name:?}: {err}");
                     Vec::new()
                 }
             }

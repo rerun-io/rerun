@@ -29,7 +29,7 @@ fn is_spatial_2d_class(class: &SpaceViewClassIdentifier) -> bool {
 
 fn spawn_one_space_view_per_entity(class: &SpaceViewClassIdentifier) -> bool {
     // For tensors create one space view for each tensor (even though we're able to stack them in one view)
-    // TODO(emilk): query the actual [`ViewPartSystem`] instead.
+    // TODO(emilk): query the actual [`VisualizerSystem`] instead.
     class == "Tensor" || class == "Text Document"
 }
 

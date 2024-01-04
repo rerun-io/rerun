@@ -76,10 +76,10 @@ impl SpaceViewSystemRegistrator<'_> {
         }
     }
 
-    /// Registers a new [`ViewPartSystem`] type for a space view class that will be created and executed every frame.
+    /// Registers a new [`VisualizerSystem`] type for a space view class that will be created and executed every frame.
     ///
     /// It is not allowed to register a given type more than once within the same space view class.
-    /// Different space view classes may however share the same [`ViewPartSystem`] type.
+    /// Different space view classes may however share the same [`VisualizerSystem`] type.
     pub fn register_visualizer<T: VisualizerSystem + IdentifiedViewSystem + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {

@@ -556,7 +556,7 @@ mod tests {
                     "/parent/**",
                     "/parent",
                     "/parent/skipped/**", // Not an exact match and not found in tree
-                    "/parent/skipped/child1", // Only child 1 has ViewParts
+                    "/parent/skipped/child1", // Only child 1 has visualizers
                 ],
             },
             Scenario {
@@ -565,7 +565,7 @@ mod tests {
                     "/**",
                     "/parent/**",             // Only included because is a prefix
                     "/parent/skipped/**",     // Not an exact match and not found in tree
-                    "/parent/skipped/child1", // Only child 1 has ViewParts
+                    "/parent/skipped/child1", // Only child 1 has visualizers
                 ],
             },
             Scenario {

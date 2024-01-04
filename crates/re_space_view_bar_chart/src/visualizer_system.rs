@@ -16,11 +16,11 @@ use re_viewer_context::{
 
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
-pub struct BarChartViewPartSystem {
+pub struct BarChartVisualizerSystem {
     pub charts: BTreeMap<EntityPath, (TensorData, Option<Color>)>,
 }
 
-impl IdentifiedViewSystem for BarChartViewPartSystem {
+impl IdentifiedViewSystem for BarChartVisualizerSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "BarChartView".into()
     }
@@ -36,7 +36,7 @@ impl VisualizerAdditionalApplicabilityFilter for BarChartVisualizerEntityFilter 
     }
 }
 
-impl VisualizerSystem for BarChartViewPartSystem {
+impl VisualizerSystem for BarChartVisualizerSystem {
     fn required_components(&self) -> ComponentNameSet {
         BarChart::required_components()
             .iter()

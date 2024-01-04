@@ -8,7 +8,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
-use super::visualizer_system::BarChartViewPartSystem;
+use super::visualizer_system::BarChartVisualizerSystem;
 
 #[derive(Default)]
 pub struct BarChartSpaceView;
@@ -52,7 +52,7 @@ impl SpaceViewClass for BarChartSpaceView {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<BarChartViewPartSystem>()
+        system_registry.register_visualizer::<BarChartVisualizerSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
@@ -135,7 +135,7 @@ impl SpaceViewClass for BarChartSpaceView {
 
         let charts = &system_output
             .view_systems
-            .get::<BarChartViewPartSystem>()?
+            .get::<BarChartVisualizerSystem>()?
             .charts;
 
         let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
