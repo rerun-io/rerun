@@ -22,6 +22,9 @@ pub struct AppOptions {
 
     pub experimental_entity_filter_editor: bool,
 
+    /// Enable the experimental support for the container addition workflow.
+    pub experimental_additive_workflow: bool,
+
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -48,6 +51,8 @@ impl Default for AppOptions {
             legacy_container_blueprint: false,
 
             experimental_entity_filter_editor: false,
+
+            experimental_additive_workflow: cfg!(debug_assertions),
 
             show_picking_debug_overlay: false,
 

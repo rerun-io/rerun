@@ -65,7 +65,10 @@ impl Viewport<'_, '_> {
         tile_id: egui_tiles::TileId,
         container: &egui_tiles::Container,
     ) {
-        if let Some(child_id) = container.only_child() {
+        // TODO(#4285): this will disappear once we walk the container blueprint tree instead of `egui_tiles::Tree`
+        if let (egui_tiles::Container::Tabs(_), Some(child_id)) =
+            (container, container.only_child())
+        {
             // Maybe a tab container with only one child - collapse it in the tree view to make it more easily understood.
             // This means we won't be showing the visibility button of the parent container,
             // so if the child is made invisible, we should do the same for the parent.

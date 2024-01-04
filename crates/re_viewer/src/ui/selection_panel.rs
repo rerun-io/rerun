@@ -14,13 +14,16 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClass, SpaceViewClassIdentifier,
-    SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, HoverHighlight, Item, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity,
+    ViewerContext,
 };
 use re_viewport::{
-    external::re_space_view::blueprint::components::QueryExpressions, Viewport, ViewportBlueprint,
+    external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
+    Viewport, ViewportBlueprint,
 };
 
+use crate::ui::add_space_view_or_container_modal::AddSpaceViewOrContainerModal;
 use crate::ui::visible_history::visible_history_ui;
 
 use super::selection_history_ui::SelectionHistoryUi;
@@ -32,6 +35,9 @@ use super::selection_history_ui::SelectionHistoryUi;
 #[serde(default)]
 pub(crate) struct SelectionPanel {
     selection_state_ui: SelectionHistoryUi,
+
+    #[serde(skip)]
+    add_space_view_or_container_modal: AddSpaceViewOrContainerModal,
 }
 
 impl SelectionPanel {
@@ -126,6 +132,13 @@ impl SelectionPanel {
                 match item {
                     Item::Container(tile_id) => {
                         container_top_level_properties(ui, ctx, viewport, tile_id);
+
+                        // the container children and related additive workflow is only available with the new container
+                        // blueprints feature
+                        if ctx.app_options.experimental_additive_workflow {
+                            ui.add_space(12.0);
+                            self.container_children(ui, ctx, viewport, tile_id);
+                        }
                     }
 
                     Item::SpaceView(space_view_id) => {
@@ -154,6 +167,69 @@ impl SelectionPanel {
                 }
             });
         }
+    }
+
+    fn container_children(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &ViewerContext<'_>,
+        viewport: &Viewport<'_, '_>,
+        tile_id: &egui_tiles::TileId,
+    ) {
+        let Some(Tile::Container(container)) = viewport.tree.tiles.get(*tile_id) else {
+            return;
+        };
+
+        ui.horizontal(|ui| {
+            ui.strong("Contents");
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ctx
+                    .re_ui
+                    .small_icon_button(ui, &re_ui::icons::ADD)
+                    .clicked()
+                {
+                    self.add_space_view_or_container_modal.open(*tile_id);
+                }
+            });
+        });
+
+        self.add_space_view_or_container_modal.ui(ui, ctx, viewport);
+
+        let show_content = |ui: &mut egui::Ui| {
+            let mut has_child = false;
+            for &child_tile_id in container.children() {
+                has_child |= show_list_item_for_container_child(ui, ctx, viewport, child_tile_id);
+            }
+
+            if !has_child {
+                ListItem::new(ctx.re_ui, "empty — use the + button to add content")
+                    .weak(true)
+                    .italics(true)
+                    .active(false)
+                    .show(ui);
+            }
+        };
+
+        egui::Frame {
+            outer_margin: egui::Margin::ZERO,
+            inner_margin: egui::Margin::ZERO,
+            stroke: ui.visuals().widgets.noninteractive.bg_stroke,
+            ..Default::default()
+        }
+        .show(ui, |ui| {
+            let clip_rect = ui.clip_rect();
+            ui.set_clip_rect(ui.max_rect());
+            ui.spacing_mut().item_spacing.y = 0.0;
+
+            egui::Frame {
+                inner_margin: egui::Margin::symmetric(4.0, 0.0),
+                ..Default::default()
+            }
+            .show(ui, show_content);
+
+            ui.set_clip_rect(clip_rect);
+        });
     }
 }
 
@@ -405,7 +481,7 @@ fn space_view_top_level_properties(
 
 fn container_top_level_properties(
     ui: &mut egui::Ui,
-    _ctx: &ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     viewport: &mut Viewport<'_, '_>,
     tile_id: &egui_tiles::TileId,
 ) {
@@ -485,8 +561,88 @@ fn container_top_level_properties(
 
                     ui.end_row();
                 }
+
+                // this feature is only available with the new container blueprints feature
+                #[allow(clippy::collapsible_if)]
+                if ctx.app_options.experimental_additive_workflow {
+                    if ui
+                        .button("Simplify hierarchy")
+                        .on_hover_text("Simplify this container and its children")
+                        .clicked()
+                    {
+                        viewport.blueprint.simplify_container(
+                            *tile_id,
+                            egui_tiles::SimplificationOptions {
+                                prune_empty_tabs: true,
+                                prune_empty_containers: true,
+                                prune_single_child_tabs: false,
+                                prune_single_child_containers: false,
+                                all_panes_must_have_tabs: true,
+                                join_nested_linear_containers: true,
+                            },
+                        );
+                    }
+                }
             });
     }
+}
+
+// TODO(#4560): this code should be generic and part of re_data_ui
+/// Show a list item for a single container child.
+///
+/// Return true if successful.
+fn show_list_item_for_container_child(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    viewport: &Viewport<'_, '_>,
+    child_tile_id: egui_tiles::TileId,
+) -> bool {
+    let Some(child_tile) = viewport.tree.tiles.get(child_tile_id) else {
+        re_log::warn_once!("Could not find child tile with ID {child_tile_id:?}",);
+        return false;
+    };
+
+    let (item, mut list_item) = match child_tile {
+        Tile::Pane(space_view_id) => {
+            let Some(space_view) = viewport.blueprint.space_views.get(space_view_id) else {
+                re_log::warn_once!("Could not find space view with ID {space_view_id:?}",);
+                return false;
+            };
+
+            (
+                Item::SpaceView(*space_view_id),
+                ListItem::new(ctx.re_ui, space_view.display_name.clone())
+                    .with_icon(space_view.class(ctx.space_view_class_registry).icon()),
+            )
+        }
+        Tile::Container(container) => {
+            // TODO(#4285): this hack should be cleaned with "blueprintified" containers
+            if let (egui_tiles::Container::Tabs(_), Some(child_id)) =
+                (container, container.only_child())
+            {
+                return show_list_item_for_container_child(ui, ctx, viewport, child_id);
+            }
+
+            (
+                Item::Container(child_tile_id),
+                ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
+                    .with_icon(icon_for_container_kind(&container.kind())),
+            )
+        }
+    };
+
+    let is_item_hovered =
+        ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
+
+    if is_item_hovered {
+        list_item = list_item.force_hovered(true);
+    }
+
+    let response = list_item.show(ui);
+
+    item_ui::select_hovered_on_click(ctx, &response, std::iter::once(item));
+
+    true
 }
 
 fn has_blueprint_section(item: &Item) -> bool {
