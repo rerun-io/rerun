@@ -21,7 +21,7 @@ use crate::{
     contexts::{AnnotationSceneContext, NonInteractiveEntities},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
-    visualizers::{CamerasPart, ImagesPart, UiLabel, UiLabelTarget},
+    visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
 };
 
 /// Default auto point radius in UI points.
@@ -491,7 +491,7 @@ pub fn picking(
 
     let non_interactive = view_ctx.get::<NonInteractiveEntities>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-    let images = visualizers.get::<ImagesPart>()?;
+    let images = visualizers.get::<ImageVisualizer>()?;
 
     let picking_result = picking_context.pick(
         ctx.render_ctx,
@@ -648,7 +648,7 @@ pub fn picking(
                     pos: hovered_point,
                     tracked_space_camera: state.state_3d.tracked_camera.clone(),
                     point_in_space_cameras: visualizers
-                        .get::<CamerasPart>()?
+                        .get::<CamerasVisualizer>()?
                         .space_cameras
                         .iter()
                         .map(|cam| {

@@ -23,13 +23,13 @@ use crate::{
 
 use super::{picking_id_from_instance_key, Keypoints, SpatialViewVisualizerData};
 
-pub struct Points3DPart {
+pub struct Points3DVisualizer {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
     pub data: SpatialViewVisualizerData,
 }
 
-impl Default for Points3DPart {
+impl Default for Points3DVisualizer {
     fn default() -> Self {
         Self {
             max_labels: 10,
@@ -38,7 +38,7 @@ impl Default for Points3DPart {
     }
 }
 
-impl Points3DPart {
+impl Points3DVisualizer {
     fn process_labels<'a>(
         arch_view: &'a ArchetypeView<Points3D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -163,13 +163,13 @@ impl Points3DPart {
     }
 }
 
-impl IdentifiedViewSystem for Points3DPart {
+impl IdentifiedViewSystem for Points3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Points3D".into()
     }
 }
 
-impl VisualizerSystem for Points3DPart {
+impl VisualizerSystem for Points3DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         Points3D::required_components()
             .iter()
@@ -187,7 +187,7 @@ impl VisualizerSystem for Points3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Points3DPart, Points3D, { Points3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Points3DVisualizer, Points3D, { Points3D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

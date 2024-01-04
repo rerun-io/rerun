@@ -10,7 +10,9 @@ use crate::{
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{calculate_bounding_box, register_2d_spatial_parts, SpatialViewVisualizerData},
+    visualizers::{
+        calculate_bounding_box, register_2d_spatial_visualizers, SpatialViewVisualizerData,
+    },
 };
 
 #[derive(Default)]
@@ -35,7 +37,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         register_spatial_contexts(system_registry)?;
-        register_2d_spatial_parts(system_registry)?;
+        register_2d_spatial_visualizers(system_registry)?;
 
         Ok(())
     }

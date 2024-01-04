@@ -23,7 +23,7 @@ use crate::{
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
-        collect_ui_labels, image_view_coordinates, CamerasPart,
+        collect_ui_labels, image_view_coordinates, CamerasVisualizer,
         SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
     },
 };
@@ -323,7 +323,7 @@ pub fn view_3d(
     } = system_output;
 
     let highlights = &query.highlights;
-    let space_cameras = &parts.get::<CamerasPart>()?.space_cameras;
+    let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
     let view_coordinates = ctx
         .store_db
         .store()

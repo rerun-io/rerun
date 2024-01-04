@@ -21,9 +21,9 @@ use super::{
     process_colors, process_labels, process_radii, SpatialViewVisualizerData,
 };
 
-pub struct Boxes3DPart(SpatialViewVisualizerData);
+pub struct Boxes3DVisualizer(SpatialViewVisualizerData);
 
-impl Default for Boxes3DPart {
+impl Default for Boxes3DVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
             SpatialSpaceViewKind::ThreeD,
@@ -31,7 +31,7 @@ impl Default for Boxes3DPart {
     }
 }
 
-impl Boxes3DPart {
+impl Boxes3DVisualizer {
     fn process_arch_view(
         &mut self,
         query: &ViewQuery<'_>,
@@ -119,13 +119,13 @@ impl Boxes3DPart {
     }
 }
 
-impl IdentifiedViewSystem for Boxes3DPart {
+impl IdentifiedViewSystem for Boxes3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Boxes3D".into()
     }
 }
 
-impl VisualizerSystem for Boxes3DPart {
+impl VisualizerSystem for Boxes3DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         Boxes3D::required_components()
             .iter()
@@ -143,7 +143,7 @@ impl VisualizerSystem for Boxes3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Boxes3DPart, Boxes3D, { Boxes3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Boxes3DVisualizer, Boxes3D, { Boxes3D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

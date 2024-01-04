@@ -135,13 +135,13 @@ struct ImageGrouping {
     draw_order: DrawOrder,
 }
 
-pub struct ImagesPart {
+pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
     pub images: Vec<ViewerImage>,
     pub depth_cloud_entities: IntSet<EntityPathHash>,
 }
 
-impl Default for ImagesPart {
+impl Default for ImageVisualizer {
     fn default() -> Self {
         Self {
             data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
@@ -151,7 +151,7 @@ impl Default for ImagesPart {
     }
 }
 
-impl ImagesPart {
+impl ImageVisualizer {
     fn handle_image_layering(&mut self) {
         re_tracing::profile_function!();
 
@@ -637,7 +637,7 @@ impl ImagesPart {
     }
 }
 
-impl IdentifiedViewSystem for ImagesPart {
+impl IdentifiedViewSystem for ImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Images".into()
     }
@@ -653,7 +653,7 @@ impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
     }
 }
 
-impl VisualizerSystem for ImagesPart {
+impl VisualizerSystem for ImageVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         let image: ComponentNameSet = Image::required_components()
             .iter()
@@ -710,7 +710,7 @@ impl VisualizerSystem for ImagesPart {
 
         let transforms = view_ctx.get::<TransformContext>()?;
 
-        process_archetype_views::<ImagesPart, Image, { Image::NUM_COMPONENTS }, _>(
+        process_archetype_views::<ImageVisualizer, Image, { Image::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,
@@ -728,7 +728,7 @@ impl VisualizerSystem for ImagesPart {
         )?;
 
         process_archetype_views::<
-            ImagesPart,
+            ImageVisualizer,
             SegmentationImage,
             { SegmentationImage::NUM_COMPONENTS },
             _,
@@ -749,7 +749,7 @@ impl VisualizerSystem for ImagesPart {
             },
         )?;
 
-        process_archetype_views::<ImagesPart, DepthImage, { DepthImage::NUM_COMPONENTS }, _>(
+        process_archetype_views::<ImageVisualizer, DepthImage, { DepthImage::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

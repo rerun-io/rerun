@@ -24,13 +24,13 @@ use super::{
     filter_visualizable_2d_entities, picking_id_from_instance_key, SpatialViewVisualizerData,
 };
 
-pub struct Points2DPart {
+pub struct Points2DVisualizer {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
     pub data: SpatialViewVisualizerData,
 }
 
-impl Default for Points2DPart {
+impl Default for Points2DVisualizer {
     fn default() -> Self {
         Self {
             max_labels: 10,
@@ -39,7 +39,7 @@ impl Default for Points2DPart {
     }
 }
 
-impl Points2DPart {
+impl Points2DVisualizer {
     fn process_labels<'a>(
         arch_view: &'a ArchetypeView<Points2D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -184,13 +184,13 @@ impl Points2DPart {
     }
 }
 
-impl IdentifiedViewSystem for Points2DPart {
+impl IdentifiedViewSystem for Points2DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Points2D".into()
     }
 }
 
-impl VisualizerSystem for Points2DPart {
+impl VisualizerSystem for Points2DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         Points2D::required_components()
             .iter()
@@ -217,7 +217,7 @@ impl VisualizerSystem for Points2DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Points2DPart, Points2D, { Points2D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Points2DVisualizer, Points2D, { Points2D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

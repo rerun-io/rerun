@@ -17,9 +17,9 @@ use crate::{
 
 use super::SpatialViewVisualizerData;
 
-pub struct Transform3DArrowsPart(SpatialViewVisualizerData);
+pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 
-impl Default for Transform3DArrowsPart {
+impl Default for Transform3DArrowsVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
             SpatialSpaceViewKind::ThreeD,
@@ -27,13 +27,13 @@ impl Default for Transform3DArrowsPart {
     }
 }
 
-impl IdentifiedViewSystem for Transform3DArrowsPart {
+impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Transform3DArrows".into()
     }
 }
 
-impl VisualizerSystem for Transform3DArrowsPart {
+impl VisualizerSystem for Transform3DArrowsVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         re_types::archetypes::Transform3D::required_components()
             .iter()

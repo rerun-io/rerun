@@ -21,12 +21,12 @@ use crate::{
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
-pub struct CamerasPart {
+pub struct CamerasVisualizer {
     pub data: SpatialViewVisualizerData,
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
-impl Default for CamerasPart {
+impl Default for CamerasVisualizer {
     fn default() -> Self {
         Self {
             // Cameras themselves aren't inherently 2D or 3D since they represent intrinsics.
@@ -37,13 +37,13 @@ impl Default for CamerasPart {
     }
 }
 
-impl IdentifiedViewSystem for CamerasPart {
+impl IdentifiedViewSystem for CamerasVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Cameras".into()
     }
 }
 
-impl CamerasPart {
+impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
@@ -186,7 +186,7 @@ impl CamerasPart {
     }
 }
 
-impl VisualizerSystem for CamerasPart {
+impl VisualizerSystem for CamerasVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         re_types::archetypes::Pinhole::required_components()
             .iter()

@@ -19,9 +19,9 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
 };
 
-pub struct Asset3DPart(SpatialViewVisualizerData);
+pub struct Asset3DVisualizer(SpatialViewVisualizerData);
 
-impl Default for Asset3DPart {
+impl Default for Asset3DVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
             SpatialSpaceViewKind::ThreeD,
@@ -29,7 +29,7 @@ impl Default for Asset3DPart {
     }
 }
 
-impl Asset3DPart {
+impl Asset3DVisualizer {
     fn process_arch_view(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -95,13 +95,13 @@ impl Asset3DPart {
     }
 }
 
-impl IdentifiedViewSystem for Asset3DPart {
+impl IdentifiedViewSystem for Asset3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Asset3D".into()
     }
 }
 
-impl VisualizerSystem for Asset3DPart {
+impl VisualizerSystem for Asset3DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         Asset3D::required_components()
             .iter()
@@ -121,7 +121,7 @@ impl VisualizerSystem for Asset3DPart {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let mut instances = Vec::new();
 
-        process_archetype_views::<Asset3DPart, Asset3D, { Asset3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Asset3DVisualizer, Asset3D, { Asset3D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

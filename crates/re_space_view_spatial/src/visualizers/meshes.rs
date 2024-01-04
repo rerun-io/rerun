@@ -19,9 +19,9 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
 };
 
-pub struct Mesh3DPart(SpatialViewVisualizerData);
+pub struct Mesh3DVisualizer(SpatialViewVisualizerData);
 
-impl Default for Mesh3DPart {
+impl Default for Mesh3DVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
             SpatialSpaceViewKind::ThreeD,
@@ -29,7 +29,7 @@ impl Default for Mesh3DPart {
     }
 }
 
-impl Mesh3DPart {
+impl Mesh3DVisualizer {
     fn process_arch_view(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -127,13 +127,13 @@ impl Mesh3DPart {
     }
 }
 
-impl IdentifiedViewSystem for Mesh3DPart {
+impl IdentifiedViewSystem for Mesh3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Mesh3D".into()
     }
 }
 
-impl VisualizerSystem for Mesh3DPart {
+impl VisualizerSystem for Mesh3DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         Mesh3D::required_components()
             .iter()
@@ -153,7 +153,7 @@ impl VisualizerSystem for Mesh3DPart {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let mut instances = Vec::new();
 
-        process_archetype_views::<Mesh3DPart, Mesh3D, { Mesh3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Mesh3DVisualizer, Mesh3D, { Mesh3D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

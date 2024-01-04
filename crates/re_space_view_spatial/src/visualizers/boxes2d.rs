@@ -23,13 +23,13 @@ use super::{
     SpatialViewVisualizerData,
 };
 
-pub struct Boxes2DPart {
+pub struct Boxes2DVisualizer {
     /// If the number of points in the batch is > max_labels, don't render box labels.
     pub max_labels: usize,
     pub data: SpatialViewVisualizerData,
 }
 
-impl Default for Boxes2DPart {
+impl Default for Boxes2DVisualizer {
     fn default() -> Self {
         Self {
             max_labels: 20,
@@ -38,7 +38,7 @@ impl Default for Boxes2DPart {
     }
 }
 
-impl Boxes2DPart {
+impl Boxes2DVisualizer {
     fn process_labels<'a>(
         arch_view: &'a ArchetypeView<Boxes2D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -161,13 +161,13 @@ impl Boxes2DPart {
     }
 }
 
-impl IdentifiedViewSystem for Boxes2DPart {
+impl IdentifiedViewSystem for Boxes2DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Boxes2D".into()
     }
 }
 
-impl VisualizerSystem for Boxes2DPart {
+impl VisualizerSystem for Boxes2DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         Boxes2D::required_components()
             .iter()
@@ -194,7 +194,7 @@ impl VisualizerSystem for Boxes2DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Boxes2DPart, Boxes2D, { Boxes2D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Boxes2DVisualizer, Boxes2D, { Boxes2D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

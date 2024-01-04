@@ -15,12 +15,12 @@ mod points3d;
 mod spatial_view_visualizer;
 mod transform3d_arrows;
 
-pub use cameras::CamerasPart;
-pub use images::ImagesPart;
+pub use cameras::CamerasVisualizer;
+pub use images::ImageVisualizer;
 pub use images::ViewerImage;
 use re_viewer_context::ApplicableEntities;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
-pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
+pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer};
 
 #[doc(hidden)] // Public for benchmarks
 pub use points3d::LoadedPoints;
@@ -46,40 +46,40 @@ pub type Keypoints = HashMap<(re_types::components::ClassId, i64), HashMap<Keypo
 pub const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
 pub const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
-pub fn register_2d_spatial_parts(
+pub fn register_2d_spatial_visualizers(
     system_registry: &mut SpaceViewSystemRegistrator<'_>,
 ) -> Result<(), SpaceViewClassRegistryError> {
     // Note: 2D spatial systems don't include cameras as this
-    // part only shows a 2D projection WITHIN a 3D view.
-    system_registry.register_visualizer::<arrows3d::Arrows3DPart>()?;
-    system_registry.register_visualizer::<assets3d::Asset3DPart>()?;
-    system_registry.register_visualizer::<boxes2d::Boxes2DPart>()?;
-    system_registry.register_visualizer::<boxes3d::Boxes3DPart>()?;
-    system_registry.register_visualizer::<images::ImagesPart>()?;
-    system_registry.register_visualizer::<lines2d::Lines2DPart>()?;
-    system_registry.register_visualizer::<lines3d::Lines3DPart>()?;
-    system_registry.register_visualizer::<meshes::Mesh3DPart>()?;
-    system_registry.register_visualizer::<points2d::Points2DPart>()?;
-    system_registry.register_visualizer::<points3d::Points3DPart>()?;
-    system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsPart>()?;
+    // visualizer only shows a 2D projection WITHIN a 3D view.
+    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
+    system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
+    system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
+    system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
+    system_registry.register_visualizer::<images::ImageVisualizer>()?;
+    system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
+    system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
+    system_registry.register_visualizer::<meshes::Mesh3DVisualizer>()?;
+    system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
+    system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
+    system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     Ok(())
 }
 
-pub fn register_3d_spatial_parts(
+pub fn register_3d_spatial_visualizers(
     system_registry: &mut SpaceViewSystemRegistrator<'_>,
 ) -> Result<(), SpaceViewClassRegistryError> {
-    system_registry.register_visualizer::<arrows3d::Arrows3DPart>()?;
-    system_registry.register_visualizer::<assets3d::Asset3DPart>()?;
-    system_registry.register_visualizer::<boxes2d::Boxes2DPart>()?;
-    system_registry.register_visualizer::<boxes3d::Boxes3DPart>()?;
-    system_registry.register_visualizer::<cameras::CamerasPart>()?;
-    system_registry.register_visualizer::<images::ImagesPart>()?;
-    system_registry.register_visualizer::<lines2d::Lines2DPart>()?;
-    system_registry.register_visualizer::<lines3d::Lines3DPart>()?;
-    system_registry.register_visualizer::<meshes::Mesh3DPart>()?;
-    system_registry.register_visualizer::<points2d::Points2DPart>()?;
-    system_registry.register_visualizer::<points3d::Points3DPart>()?;
-    system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsPart>()?;
+    system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
+    system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
+    system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
+    system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
+    system_registry.register_visualizer::<cameras::CamerasVisualizer>()?;
+    system_registry.register_visualizer::<images::ImageVisualizer>()?;
+    system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
+    system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
+    system_registry.register_visualizer::<meshes::Mesh3DVisualizer>()?;
+    system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
+    system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
+    system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
     Ok(())
 }
 
@@ -88,8 +88,8 @@ pub fn calculate_bounding_box(
     bounding_box_accum: &mut macaw::BoundingBox,
 ) -> macaw::BoundingBox {
     let mut bounding_box = macaw::BoundingBox::nothing();
-    for part in visualizers.iter() {
-        if let Some(data) = part
+    for visualizer in visualizers.iter() {
+        if let Some(data) = visualizer
             .data()
             .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
         {
@@ -108,8 +108,8 @@ pub fn calculate_bounding_box(
 
 pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
     let mut ui_labels = Vec::new();
-    for part in visualizers.iter() {
-        if let Some(data) = part
+    for visualizer in visualizers.iter() {
+        if let Some(data) = visualizer
             .data()
             .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
         {

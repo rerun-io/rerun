@@ -21,13 +21,13 @@ use crate::{
 
 use super::{picking_id_from_instance_key, SpatialViewVisualizerData};
 
-pub struct Lines3DPart {
+pub struct Lines3DVisualizer {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
     pub data: SpatialViewVisualizerData,
 }
 
-impl Default for Lines3DPart {
+impl Default for Lines3DVisualizer {
     fn default() -> Self {
         Self {
             max_labels: 10,
@@ -36,7 +36,7 @@ impl Default for Lines3DPart {
     }
 }
 
-impl Lines3DPart {
+impl Lines3DVisualizer {
     fn process_labels<'a>(
         arch_view: &'a ArchetypeView<LineStrips3D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -162,13 +162,13 @@ impl Lines3DPart {
     }
 }
 
-impl IdentifiedViewSystem for Lines3DPart {
+impl IdentifiedViewSystem for Lines3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Lines3D".into()
     }
 }
 
-impl VisualizerSystem for Lines3DPart {
+impl VisualizerSystem for Lines3DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         LineStrips3D::required_components()
             .iter()
@@ -186,7 +186,12 @@ impl VisualizerSystem for Lines3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Lines3DPart, LineStrips3D, { LineStrips3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<
+            Lines3DVisualizer,
+            LineStrips3D,
+            { LineStrips3D::NUM_COMPONENTS },
+            _,
+        >(
             ctx,
             query,
             view_ctx,

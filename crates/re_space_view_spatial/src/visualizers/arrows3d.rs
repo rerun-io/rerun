@@ -21,13 +21,13 @@ use crate::{
     },
 };
 
-pub struct Arrows3DPart {
+pub struct Arrows3DVisualizer {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
     pub data: SpatialViewVisualizerData,
 }
 
-impl Default for Arrows3DPart {
+impl Default for Arrows3DVisualizer {
     fn default() -> Self {
         Self {
             max_labels: 10,
@@ -36,7 +36,7 @@ impl Default for Arrows3DPart {
     }
 }
 
-impl Arrows3DPart {
+impl Arrows3DVisualizer {
     fn process_labels<'a>(
         arch_view: &'a ArchetypeView<Arrows3D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -162,13 +162,13 @@ impl Arrows3DPart {
     }
 }
 
-impl IdentifiedViewSystem for Arrows3DPart {
+impl IdentifiedViewSystem for Arrows3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Arrows3D".into()
     }
 }
 
-impl VisualizerSystem for Arrows3DPart {
+impl VisualizerSystem for Arrows3DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         Arrows3D::required_components()
             .iter()
@@ -186,7 +186,7 @@ impl VisualizerSystem for Arrows3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Arrows3DPart, Arrows3D, { Arrows3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Arrows3DVisualizer, Arrows3D, { Arrows3D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

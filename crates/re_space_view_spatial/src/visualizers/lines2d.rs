@@ -25,13 +25,13 @@ use super::{
     SpatialViewVisualizerData,
 };
 
-pub struct Lines2DPart {
+pub struct Lines2DVisualizer {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
     pub data: SpatialViewVisualizerData,
 }
 
-impl Default for Lines2DPart {
+impl Default for Lines2DVisualizer {
     fn default() -> Self {
         Self {
             max_labels: 10,
@@ -40,7 +40,7 @@ impl Default for Lines2DPart {
     }
 }
 
-impl Lines2DPart {
+impl Lines2DVisualizer {
     fn process_labels<'a>(
         arch_view: &'a ArchetypeView<LineStrips2D>,
         instance_path_hashes: &'a [InstancePathHash],
@@ -158,13 +158,13 @@ impl Lines2DPart {
     }
 }
 
-impl IdentifiedViewSystem for Lines2DPart {
+impl IdentifiedViewSystem for Lines2DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Lines2D".into()
     }
 }
 
-impl VisualizerSystem for Lines2DPart {
+impl VisualizerSystem for Lines2DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         LineStrips2D::required_components()
             .iter()
@@ -191,7 +191,12 @@ impl VisualizerSystem for Lines2DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Lines2DPart, LineStrips2D, { LineStrips2D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<
+            Lines2DVisualizer,
+            LineStrips2D,
+            { LineStrips2D::NUM_COMPONENTS },
+            _,
+        >(
             ctx,
             query,
             view_ctx,
