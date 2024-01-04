@@ -1,3 +1,4 @@
+use egui::Widget;
 use re_entity_db::EntityProperties;
 use std::collections::BTreeMap;
 
@@ -24,6 +25,8 @@ pub struct TextSpaceViewState {
     pub filters: ViewTextFilters,
 
     monospace: bool,
+
+    selectable: bool,
 }
 
 impl SpaceViewState for TextSpaceViewState {
@@ -125,6 +128,7 @@ impl SpaceViewClass for TextSpaceView {
                     .radio_value(ui, &mut state.monospace, false, "Proportional");
                 ctx.re_ui
                     .radio_value(ui, &mut state.monospace, true, "Monospace");
+                ctx.re_ui.checkbox(ui, &mut state.selectable, "Selectable");
             });
             ui.end_row();
         });
@@ -402,16 +406,60 @@ fn table_ui(
 
                 // body
                 row.col(|ui| {
-                    let mut text = egui::RichText::new(entry.body.as_str());
+                    if state.selectable {
+                        // Use a &str with TextEdit so body is selectable but immutable.
+                        let entry_text_rows = entry.num_body_lines;
+                        let mut binding = entry.body.as_str();
+                        let mut text = egui::TextEdit::multiline(&mut binding)
+                            .min_size([0.0, 0.0].into())
+                            .desired_rows(entry_text_rows)
+                            .desired_width(f32::INFINITY);
+                        // Font information for LayoutJob, based on default_layouter in `egui::TextEdit::show_contents`
+                        let font_id = if state.monospace {
+                            egui::TextStyle::Monospace.into()
+                        } else {
+                            egui::FontSelection::default()
+                        }
+                        .resolve(ui.style());
+                        let text_color = if let Some(color) = entry.color {
+                            color.into()
+                        } else {
+                            // TODO(lupickup): Understand why TextEdit text color is white instead of grey like the RichText version.
+                            ui.visuals()
+                                .override_text_color
+                                .unwrap_or_else(|| ui.visuals().widgets.inactive.text_color())
+                        };
+                        let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
+                            let mut layout_job = egui::text::LayoutJob::simple(
+                                string.to_owned(),
+                                font_id.clone(),
+                                text_color,
+                                wrap_width,
+                            );
+                            layout_job.wrap.max_rows = entry_text_rows;
+                            // Fill to end of body column instead of choosing a full "word" to ellide
+                            layout_job.wrap.break_anywhere = true;
+                            ui.fonts(|f| f.layout_job(layout_job))
+                        };
+                        text = text.layouter(&mut layouter);
 
-                    if state.monospace {
-                        text = text.monospace();
-                    }
-                    if let Some(color) = entry.color {
-                        text = text.color(color);
-                    }
+                        let mut response = text.ui(ui);
+                        if response.hovered() {
+                            response = response.on_hover_text(entry.body.as_str());
+                        }
+                    } else {
+                        let mut text = egui::RichText::new(entry.body.as_str());
 
-                    ui.label(text);
+                        if state.monospace {
+                            text = text.monospace();
+                        }
+
+                        if let Some(color) = entry.color {
+                            text = text.color(color);
+                        }
+
+                        ui.label(text);
+                    }
                 });
             });
         });
@@ -428,8 +476,5 @@ fn table_ui(
 }
 
 fn calc_row_height(entry: &Entry) -> f32 {
-    // Simple, fast, ugly, and functional
-    let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
-    let num_rows = 1 + num_newlines;
-    num_rows as f32 * re_ui::ReUi::table_line_height()
+    entry.num_body_lines as f32 * re_ui::ReUi::table_line_height()
 }

@@ -26,6 +26,8 @@ pub struct Entry {
 
     pub body: Text,
 
+    pub num_body_lines: usize,
+
     pub level: Option<TextLogLevel>,
 }
 
@@ -78,12 +80,15 @@ impl VisualizerSystem for TextLogSystem {
                 let colors = arch_view.iter_optional_component::<Color>()?;
 
                 for (body, level, color) in itertools::izip!(bodies, levels, colors) {
+                    // Simple, fast, ugly, and functional
+                    let num_body_lines = body.bytes().filter(|&c| c == b'\n').count() + 1;
                     self.entries.push(Entry {
                         row_id: arch_view.primary_row_id(),
                         entity_path: data_result.entity_path.clone(),
                         time: time.map(|time| time.as_i64()),
                         color,
                         body,
+                        num_body_lines,
                         level,
                     });
                 }
