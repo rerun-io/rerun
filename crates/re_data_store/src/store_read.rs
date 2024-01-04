@@ -52,7 +52,7 @@ impl LatestAtQuery {
 /// interval.
 ///
 /// Motivation: all data is considered alive until the next logging to the same component path.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct RangeQuery {
     pub timeline: Timeline,
     pub range: TimeRange,
