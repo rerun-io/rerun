@@ -11,6 +11,8 @@ use re_viewer_context::{
     SystemCommandSender as _, ViewerContext,
 };
 
+use crate::blueprint::components::GridColumns;
+
 #[derive(Clone, Debug)]
 pub enum Contents {
     Container(ContainerId),
@@ -98,6 +100,7 @@ pub struct ContainerBlueprint {
     pub secondary_weights: Vec<f32>,
     pub active_tab: Option<Contents>,
     pub visible: bool,
+    pub grid_columns: Option<u32>,
 }
 
 impl ContainerBlueprint {
@@ -115,6 +118,7 @@ impl ContainerBlueprint {
             secondary_weights,
             active_tab,
             visible,
+            grid_columns,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
@@ -159,6 +163,8 @@ impl ContainerBlueprint {
 
         let visible = visible.map_or(true, |v| v.0);
 
+        let grid_columns = grid_columns.map(|v| v.0);
+
         Some(Self {
             id,
             container_kind,
@@ -168,6 +174,7 @@ impl ContainerBlueprint {
             secondary_weights,
             active_tab,
             visible,
+            grid_columns,
         })
     }
 
@@ -193,6 +200,7 @@ impl ContainerBlueprint {
             secondary_weights,
             active_tab,
             visible,
+            grid_columns,
         } = self;
 
         let contents: Vec<_> = contents.iter().map(|item| item.to_entity_path()).collect();
@@ -211,6 +219,13 @@ impl ContainerBlueprint {
         // a version of this that can take an Option.
         if let Some(active_tab) = &active_tab {
             arch = arch.with_active_tab(&active_tab.to_entity_path());
+        }
+
+        if let Some(cols) = grid_columns {
+            arch = arch.with_grid_columns(*cols);
+        } else {
+            // TODO(#3381): Archetypes should provide a convenience API for this
+            ctx.save_empty_blueprint_component::<GridColumns>(&id.as_entity_path());
         }
 
         let mut deltas = vec![];
@@ -262,6 +277,7 @@ impl ContainerBlueprint {
                     secondary_weights: vec![],
                     active_tab,
                     visible,
+                    grid_columns: None,
                 }
             }
             egui_tiles::Container::Linear(linear) => {
@@ -283,6 +299,7 @@ impl ContainerBlueprint {
                     secondary_weights: vec![],
                     active_tab: None,
                     visible,
+                    grid_columns: None,
                 }
             }
             egui_tiles::Container::Grid(grid) => Self {
@@ -294,6 +311,10 @@ impl ContainerBlueprint {
                 secondary_weights: grid.row_shares.clone(),
                 active_tab: None,
                 visible,
+                grid_columns: match grid.layout {
+                    egui_tiles::GridLayout::Columns(cols) => Some(cols as u32),
+                    egui_tiles::GridLayout::Auto => None,
+                },
             },
         }
     }
@@ -341,6 +362,9 @@ impl ContainerBlueprint {
 
                 grid.col_shares = self.primary_weights.clone();
                 grid.row_shares = self.secondary_weights.clone();
+                if let Some(cols) = self.grid_columns {
+                    grid.layout = egui_tiles::GridLayout::Columns(cols as usize);
+                }
 
                 egui_tiles::Container::Grid(grid)
             }
