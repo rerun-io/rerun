@@ -10,7 +10,7 @@ use parking_lot::RwLock;
 use paste::paste;
 use seq_macro::seq;
 
-use re_arrow_store::LatestAtQuery;
+use re_data_store::LatestAtQuery;
 use re_log_types::{EntityPath, RowId, StoreId, TimeInt, Timeline};
 use re_query::ArchetypeView;
 use re_types_core::{components::InstanceKey, Archetype, ArchetypeName, Component, ComponentName};
@@ -86,7 +86,7 @@ impl Caches {
 /// Uniquely identifies cached query results in the [`Caches`].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CacheKey {
-    /// Which [`re_arrow_store::DataStore`] is the query targeting?
+    /// Which [`re_data_store::DataStore`] is the query targeting?
     pub store_id: StoreId,
 
     /// Which [`EntityPath`] is the query targeting?

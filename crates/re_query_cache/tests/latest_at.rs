@@ -4,7 +4,7 @@
 
 use itertools::Itertools as _;
 
-use re_arrow_store::{DataStore, LatestAtQuery};
+use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId};
 use re_query_cache::query_cached_archetype_pov1_comp1;
 use re_types::{
@@ -45,7 +45,7 @@ fn simple_query() {
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
-    let query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
     query_and_compare(&store, &query, &ent_path.into());
 }
 
@@ -73,7 +73,7 @@ fn timeless_query() {
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
-    let query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
     query_and_compare(&store, &query, &ent_path.into());
 }
 
@@ -99,7 +99,7 @@ fn no_instance_join_query() {
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
-    let query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
     query_and_compare(&store, &query, &ent_path.into());
 }
 
@@ -120,7 +120,7 @@ fn missing_column_join_query() {
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
-    let query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
     query_and_compare(&store, &query, &ent_path.into());
 }
 
@@ -154,7 +154,7 @@ fn splatted_query() {
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
-    let query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
     query_and_compare(&store, &query, &ent_path.into());
 }
 
@@ -189,7 +189,7 @@ fn invalidation() {
     .unwrap();
     store.insert_row(&row).unwrap();
 
-    let query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
     query_and_compare(&store, &query, &ent_path.into());
 
     // Invalidate the PoV component
@@ -197,7 +197,7 @@ fn invalidation() {
     let row = DataRow::from_cells1_sized(RowId::new(), ent_path, timepoint, 2, positions).unwrap();
     store.insert_row(&row).unwrap();
 
-    let query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
     query_and_compare(&store, &query, &ent_path.into());
 
     // Invalidate the optional component
@@ -205,7 +205,7 @@ fn invalidation() {
     let row = DataRow::from_cells1_sized(RowId::new(), ent_path, timepoint, 2, colors).unwrap();
     store.insert_row(&row).unwrap();
 
-    let query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
     query_and_compare(&store, &query, &ent_path.into());
 }
 

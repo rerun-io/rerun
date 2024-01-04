@@ -4,7 +4,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use itertools::Itertools;
-use re_arrow_store::{DataStore, LatestAtQuery};
+use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{entity_path, DataRow, EntityPath, RowId, TimeInt, TimeType, Timeline};
 use re_query_cache::query_cached_archetype_pov1_comp1;
 use re_types::{
