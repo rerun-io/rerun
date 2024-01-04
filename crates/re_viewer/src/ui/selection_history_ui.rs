@@ -183,12 +183,9 @@ fn selection_to_string(blueprint: &ViewportBlueprint, selection: &Selection) -> 
 fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
     match item {
         Item::SpaceView(sid) => {
-            //TODO: adjust formatting for default name
+            // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
             if let Some(space_view) = blueprint.space_view(sid) {
-                space_view
-                    .display_name
-                    .clone()
-                    .unwrap_or(space_view.missing_name_placeholder())
+                space_view.display_name_or_default().0
             } else {
                 "<removed Space View>".to_owned()
             }

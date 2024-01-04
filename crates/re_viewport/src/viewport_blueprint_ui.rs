@@ -158,48 +158,44 @@ impl Viewport<'_, '_> {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        //TODO: format text better when placeholder
-        let response = ListItem::new(
-            ctx.re_ui,
-            space_view
-                .display_name
-                .clone()
-                .unwrap_or(space_view.missing_name_placeholder()),
-        )
-        .selected(ctx.selection().contains_item(&item))
-        .subdued(!visible)
-        .force_hovered(is_item_hovered)
-        .with_icon(space_view.class(ctx.space_view_class_registry).icon())
-        .with_buttons(|re_ui, ui| {
-            let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
-            visibility_changed = vis_response.changed();
+        let (label, named) = space_view.display_name_or_default();
 
-            let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
-            if response.clicked() {
-                self.blueprint.remove(tile_id);
-            }
+        let response = ListItem::new(ctx.re_ui, label)
+            .unnamed_style(!named)
+            .with_icon(space_view.class(ctx.space_view_class_registry).icon())
+            .selected(ctx.selection().contains_item(&item))
+            .subdued(!visible)
+            .force_hovered(is_item_hovered)
+            .with_buttons(|re_ui, ui| {
+                let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
+                visibility_changed = vis_response.changed();
 
-            response | vis_response
-        })
-        .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-            if let Some(result_node) = root_node {
-                // TODO(jleibs): handle the case where the only result
-                // in the tree is a single path (no groups). This should never
-                // happen for a SpaceViewContents.
-                Self::space_view_blueprint_ui(
-                    ctx,
-                    ui,
-                    &query_result,
-                    result_node,
-                    space_view,
-                    visible_child,
-                );
-            } else {
-                ui.label("No results");
-            }
-        })
-        .item_response
-        .on_hover_text("Space View");
+                let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
+                if response.clicked() {
+                    self.blueprint.remove(tile_id);
+                }
+
+                response | vis_response
+            })
+            .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
+                if let Some(result_node) = root_node {
+                    // TODO(jleibs): handle the case where the only result
+                    // in the tree is a single path (no groups). This should never
+                    // happen for a SpaceViewContents.
+                    Self::space_view_blueprint_ui(
+                        ctx,
+                        ui,
+                        &query_result,
+                        result_node,
+                        space_view,
+                        visible_child,
+                    );
+                } else {
+                    ui.label("No results");
+                }
+            })
+            .item_response
+            .on_hover_text("Space View");
 
         if response.clicked() {
             self.blueprint.focus_tab(space_view.id);
@@ -421,7 +417,7 @@ impl Viewport<'_, '_> {
                                 space_view
                                     .class(ctx.space_view_class_registry)
                                     .display_name(),
-                                space_view.space_origin.to_string()
+                                space_view.space_origin
                             )
                         };
 
@@ -431,6 +427,7 @@ impl Viewport<'_, '_> {
                                 ui,
                                 space_view.class(ctx.space_view_class_registry).icon(),
                                 label,
+                                false,
                                 false,
                             )
                             .clicked()

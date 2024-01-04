@@ -877,14 +877,19 @@ impl ReUi {
         icon: &Icon,
         text: impl Into<egui::WidgetText>,
         selected: bool,
+        unnamed_style: bool,
     ) -> egui::Response {
         let button_padding = ui.spacing().button_padding;
         let total_extra = button_padding + button_padding;
 
         let wrap_width = ui.available_width() - total_extra.x;
-        let text = text
-            .into()
-            .into_galley(ui, None, wrap_width, egui::TextStyle::Button);
+
+        let mut text: egui::WidgetText = text.into();
+        if unnamed_style {
+            // TODO(ab): use design tokens
+            text = text.italics();
+        }
+        let text = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
         let icon_width_plus_padding = Self::small_icon_size().x + ReUi::text_to_icon_padding();
 
@@ -934,7 +939,13 @@ impl ReUi {
                 .layout()
                 .align_size_within_rect(text.size(), text_rect)
                 .min;
-            text.paint_with_visuals(ui.painter(), text_pos, &visuals);
+
+            let mut text_color = visuals.text_color();
+            if unnamed_style {
+                // TODO(ab): use design tokens
+                text_color = text_color.gamma_multiply(0.5);
+            }
+            text.paint_with_color_override(ui.painter(), text_pos, text_color);
         }
 
         response

@@ -537,12 +537,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
     fn tab_title_for_pane(&mut self, space_view_id: &SpaceViewId) -> egui::WidgetText {
         if let Some(space_view) = self.space_views.get(space_view_id) {
-            //TODO: highlight if placeholder?
-            space_view
-                .display_name
-                .clone()
-                .unwrap_or(space_view.missing_name_placeholder())
-                .into()
+            // Note: the formatting for unnamed space views is handled by `TabWidget::new()`
+            space_view.display_name_or_default().0.into()
         } else {
             // All panes are space views, so this shouldn't happen unless we have a bug
             re_log::warn_once!("SpaceViewId missing during egui_tiles");
@@ -729,6 +725,7 @@ struct TabWidget {
     icon_rect: egui::Rect,
     bg_color: egui::Color32,
     text_color: egui::Color32,
+    unnamed_style: bool,
 }
 
 impl TabWidget {
@@ -752,6 +749,7 @@ impl TabWidget {
                 .selection()
                 .contains_item(&Item::SpaceView(space_view.id))
         });
+        let named = space_view.map_or(false, |space_view| space_view.display_name.is_some());
 
         let hovered = space_view.map_or(false, |space_view| {
             tab_viewer
@@ -770,7 +768,11 @@ impl TabWidget {
         });
 
         // tab title
-        let text = tab_viewer.tab_title_for_tile(tiles, tile_id);
+        let mut text = tab_viewer.tab_title_for_tile(tiles, tile_id);
+        if !named {
+            //TODO(ab): use design tokens
+            text = text.italics();
+        }
         let font_id = egui::TextStyle::Button.resolve(ui.style());
         let galley = text.into_galley(ui, Some(false), f32::INFINITY, font_id);
 
@@ -809,6 +811,7 @@ impl TabWidget {
             icon_rect,
             bg_color,
             text_color,
+            unnamed_style: !named,
         }
     }
 
@@ -823,12 +826,19 @@ impl TabWidget {
             .tint(self.text_color);
         icon_image.paint_at(ui, self.icon_rect);
 
+        //TODO(ab): use design tokens
+        let label_color = if self.unnamed_style {
+            self.text_color.gamma_multiply(0.5)
+        } else {
+            self.text_color
+        };
+
         ui.painter().galley_with_color(
             egui::Align2::CENTER_CENTER
                 .align_size_within_rect(self.galley.size(), self.galley_rect)
                 .min,
             self.galley.galley,
-            self.text_color,
+            label_color,
         );
     }
 }

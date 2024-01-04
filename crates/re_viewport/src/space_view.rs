@@ -72,9 +72,21 @@ impl SpaceViewBlueprint {
         }
     }
 
+    #[allow(clippy::unused_self)]
     pub fn missing_name_placeholder(&self) -> String {
-        //TODO: make that more intelligent
-        "Unnamed Space View".into()
+        "<unnamed space view>".to_owned()
+    }
+
+    /// Returns this space view's display name, along with a flag indicating whether it has actually been set by the
+    /// user or not.
+    ///
+    /// When the flag is `false`, the UI should display the resulting name in italics and with a gamma of 0.5 over the
+    /// text color.
+    pub fn display_name_or_default(&self) -> (String, bool) {
+        self.display_name.clone().map_or_else(
+            || (self.missing_name_placeholder(), false),
+            |name| (name, true),
+        )
     }
 
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
@@ -159,7 +171,7 @@ impl SpaceViewBlueprint {
                 .with_visible(*visible);
 
         if let Some(display_name) = display_name {
-            arch = arch.with_display_name(display_name.clone())
+            arch = arch.with_display_name(display_name.clone());
         }
 
         let mut deltas = vec![];
@@ -222,8 +234,7 @@ impl SpaceViewBlueprint {
                     ctx.save_blueprint_component(&self.entity_path(), component);
                 }
                 None => {
-                    //TODO: how is that done??
-                    //ctx.delete_blueprint_component::<Name>(&self.entity_path());
+                    ctx.save_empty_blueprint_component::<Name>(&self.entity_path());
                 }
             }
         }
@@ -308,9 +319,8 @@ impl SpaceViewBlueprint {
 
         // Get next available file name.
         let safe_display_name = self
-            .display_name
-            .clone()
-            .unwrap_or(self.missing_name_placeholder())
+            .display_name_or_default()
+            .0
             .replace(|c: char| !c.is_alphanumeric() && c != ' ', "");
         let mut i = 1;
         let filename = loop {
