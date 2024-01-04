@@ -22,8 +22,6 @@ pub use images::ViewerImage;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer};
 
-use re_viewer_context::ApplicableEntities;
-
 #[doc(hidden)] // Public for benchmarks
 pub use points3d::{LoadedPoints, Points3DComponentData};
 
@@ -194,7 +192,7 @@ pub fn process_radii<'a, A: Archetype>(
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
 pub fn process_radius_slice<'a>(
-    radii: &'a [Option<Radius>],
+    radii: &'a [Option<re_types::components::Radius>],
     ent_path: &EntityPath,
 ) -> impl Iterator<Item = re_renderer::Size> + 'a {
     re_tracing::profile_function!();
@@ -204,7 +202,10 @@ pub fn process_radius_slice<'a>(
         .map(move |radius| process_radius(&ent_path, radius))
 }
 
-fn process_radius(entity_path: &EntityPath, radius: &Option<Radius>) -> re_renderer::Size {
+fn process_radius(
+    entity_path: &EntityPath,
+    radius: &Option<re_types::components::Radius>,
+) -> re_renderer::Size {
     radius.map_or(re_renderer::Size::AUTO, |r| {
         if 0.0 <= r.0 && r.0.is_finite() {
             re_renderer::Size::new_scene(r.0)
