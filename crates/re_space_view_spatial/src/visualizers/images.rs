@@ -646,7 +646,7 @@ impl IdentifiedViewSystem for ImageVisualizer {
 struct ImageVisualizerEntityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &re_arrow_store::StoreEvent) -> bool {
+    fn update_applicability(&mut self, event: &re_data_store::StoreEvent) -> bool {
         diff_component_filter(event, |tensor: &re_types::components::TensorData| {
             tensor.is_shaped_like_an_image()
         })

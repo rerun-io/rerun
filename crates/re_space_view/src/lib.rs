@@ -16,12 +16,12 @@ pub use unreachable_transform_reason::UnreachableTransformReason;
 
 // -----------
 
-use re_entity_db::external::re_arrow_store;
+use re_entity_db::external::re_data_store;
 
 /// Utility for implementing [`re_viewer_context::VisualizerAdditionalApplicabilityFilter`] using on the properties of a concrete component.
 #[inline]
 pub fn diff_component_filter<T: re_types_core::Component>(
-    event: &re_arrow_store::StoreEvent,
+    event: &re_data_store::StoreEvent,
     filter: impl Fn(&T) -> bool,
 ) -> bool {
     let filter = &filter;

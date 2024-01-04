@@ -1,6 +1,6 @@
 use egui_plot::{Legend, Line, Plot, Points};
 
-use re_arrow_store::TimeType;
+use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
 use re_space_view::controls;

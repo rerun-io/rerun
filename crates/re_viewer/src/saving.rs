@@ -75,7 +75,7 @@ pub fn save_database_to_file(
     path: std::path::PathBuf,
     time_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
 ) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
-    use re_arrow_store::TimeRange;
+    use re_data_store::TimeRange;
 
     re_tracing::profile_function!();
 

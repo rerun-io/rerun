@@ -1,11 +1,11 @@
-//! Demonstrates usage of [`re_arrow_store::polars_util::range_components`].
+//! Demonstrates usage of [`re_data_store::polars_util::range_components`].
 //!
 //! ```text
-//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_arrow_store --example range_components
+//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_data_store --example range_components
 //! ```
 
 use polars_core::prelude::JoinType;
-use re_arrow_store::{polars_util, test_row, DataStore, RangeQuery, TimeRange};
+use re_data_store::{polars_util, test_row, DataStore, RangeQuery, TimeRange};
 use re_log_types::{build_frame_nr, EntityPath, TimeType, Timeline};
 use re_types::datagen::build_some_positions2d;
 use re_types::{

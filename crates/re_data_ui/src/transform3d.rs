@@ -10,7 +10,7 @@ impl DataUi for re_types::components::Transform3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small => {
@@ -50,7 +50,7 @@ impl DataUi for re_types::components::OutOfTreeTransform3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         re_types::components::Transform3D(self.0).data_ui(ctx, ui, verbosity, query);
     }
@@ -63,7 +63,7 @@ impl DataUi for Transform3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small => {
@@ -90,7 +90,7 @@ impl DataUi for TranslationRotationScale3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         let TranslationRotationScale3D {
             translation,
@@ -131,7 +131,7 @@ impl DataUi for Scale3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         match self {
             Scale3D::Uniform(scale) => {
@@ -150,7 +150,7 @@ impl DataUi for TranslationAndMat3x3 {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         let TranslationAndMat3x3 {
             translation,

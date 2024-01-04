@@ -36,7 +36,7 @@ pub use blueprint::components::EntityPropertiesComponent;
 pub use editable_auto_value::EditableAutoValue;
 
 pub mod external {
-    pub use re_arrow_store;
+    pub use re_data_store;
 }
 
 // ----------------------------------------------------------------------------
@@ -54,7 +54,7 @@ pub enum Error {
     DataTable(#[from] DataTableError),
 
     #[error(transparent)]
-    Write(#[from] re_arrow_store::WriteError),
+    Write(#[from] re_data_store::WriteError),
 
     #[error(transparent)]
     DataRow(#[from] re_log_types::DataRowError),

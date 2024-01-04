@@ -116,8 +116,8 @@ impl Item {
 
 /// If the given item refers to the first element of an instance with a single element, resolve to a splatted entity path.
 pub fn resolve_mono_instance_path_item(
-    query: &re_arrow_store::LatestAtQuery,
-    store: &re_arrow_store::DataStore,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
     item: &Item,
 ) -> Item {
     // Resolve to entity path if there's only a single instance.
@@ -135,8 +135,8 @@ pub fn resolve_mono_instance_path_item(
 
 /// If the given path refers to the first element of an instance with a single element, resolve to a splatted entity path.
 pub fn resolve_mono_instance_path(
-    query: &re_arrow_store::LatestAtQuery,
-    store: &re_arrow_store::DataStore,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
     instance: &re_entity_db::InstancePath,
 ) -> re_entity_db::InstancePath {
     re_tracing::profile_function!();

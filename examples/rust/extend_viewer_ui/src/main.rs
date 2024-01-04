@@ -1,7 +1,7 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
 use re_viewer::external::{
-    arrow2, eframe, egui, re_arrow_store, re_entity_db, re_log, re_log_types, re_memory, re_query,
+    arrow2, eframe, egui, re_data_store, re_entity_db, re_log, re_log_types, re_memory, re_query,
     re_types,
 };
 
@@ -152,7 +152,7 @@ fn component_ui(
 ) {
     // You can query the data for any time point, but for now
     // just show the last value logged for each component:
-    let query = re_arrow_store::LatestAtQuery::latest(timeline);
+    let query = re_data_store::LatestAtQuery::latest(timeline);
 
     if let Some((_, component)) = re_query::get_component_with_instances(
         entity_db.store(),

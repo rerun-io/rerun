@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools;
 use once_cell::sync::Lazy;
-use re_arrow_store::LatestAtQuery;
+use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
 use re_log_types::{DataCell, DataRow, RowId, TimePoint};
 use re_types::Loggable;

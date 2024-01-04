@@ -133,7 +133,7 @@ pub use run::{run, CallSource};
 pub use sdk::*;
 
 /// Everything needed to build custom `StoreSubscriber`s.
-pub use re_entity_db::external::re_arrow_store::{
+pub use re_entity_db::external::re_data_store::{
     DataStore, StoreDiff, StoreDiffKind, StoreEvent, StoreGeneration, StoreSubscriber,
 };
 

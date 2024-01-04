@@ -1,4 +1,4 @@
-use re_arrow_store::{LatestAtQuery, VersionedComponent};
+use re_data_store::{LatestAtQuery, VersionedComponent};
 use re_entity_db::EntityPath;
 use re_log_types::RowId;
 use re_space_view::diff_component_filter;
@@ -25,7 +25,7 @@ impl IdentifiedViewSystem for TensorSystem {
 struct TensorVisualizerEntityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for TensorVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &re_arrow_store::StoreEvent) -> bool {
+    fn update_applicability(&mut self, event: &re_data_store::StoreEvent) -> bool {
         diff_component_filter(event, |tensor: &re_types::components::TensorData| {
             !tensor.is_vector()
         })

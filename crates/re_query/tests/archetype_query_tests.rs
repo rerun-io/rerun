@@ -1,6 +1,6 @@
 mod common;
 
-use re_arrow_store::DataStore;
+use re_data_store::DataStore;
 use re_log_types::{build_frame_nr, DataRow, RowId};
 use re_query::query_archetype;
 use re_types::{
@@ -39,7 +39,7 @@ fn simple_query() {
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
-    let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let timeline_query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
     let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 
@@ -103,7 +103,7 @@ fn timeless_query() {
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
-    let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let timeline_query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
     let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 
@@ -165,7 +165,7 @@ fn no_instance_join_query() {
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
-    let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let timeline_query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
     let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 
@@ -225,7 +225,7 @@ fn missing_column_join_query() {
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
-    let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let timeline_query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
     let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 
@@ -294,7 +294,7 @@ fn splatted_query() {
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
-    let timeline_query = re_arrow_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
+    let timeline_query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
     let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 

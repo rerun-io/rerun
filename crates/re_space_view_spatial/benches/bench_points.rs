@@ -1,6 +1,6 @@
 //! High-level benchmark of the CPU-side of our `Points3D` rendering.
 
-use re_arrow_store::{DataStore, LatestAtQuery};
+use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataRow, EntityPath, RowId, TimeInt, TimePoint, Timeline};
 use re_space_view_spatial::LoadedPoints;
 use re_types::{

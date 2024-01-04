@@ -1,4 +1,4 @@
-use re_arrow_store::LatestAtQuery;
+use re_data_store::LatestAtQuery;
 use re_query::{query_archetype, QueryError};
 use re_types::{
     archetypes::{self, TextDocument},

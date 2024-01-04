@@ -1,4 +1,4 @@
-//! Provide query-centric access to the [`re_arrow_store`].
+//! Provide query-centric access to the [`re_data_store`].
 //!
 //! ## Feature flags
 #![doc = document_features::document_features!()]

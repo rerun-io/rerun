@@ -1,4 +1,4 @@
-use re_arrow_store::{DataStore, LatestAtQuery};
+use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{EntityPath, RowId};
 use re_types_core::{components::InstanceKey, Archetype, ComponentName, Loggable};
 
@@ -12,7 +12,7 @@ use crate::{ArchetypeView, ComponentWithInstances, QueryError};
     feature = "testing",
     doc = r##"
 /// ```
-/// # use re_arrow_store::LatestAtQuery;
+/// # use re_data_store::LatestAtQuery;
 /// # use re_log_types::{Timeline, example_components::{MyColor, MyPoint}};
 /// # use re_types_core::Loggable as _;
 /// # let store = re_query::__populate_example_store();
@@ -81,7 +81,7 @@ pub fn get_component_with_instances(
     feature = "testing",
     doc = r##"
 /// ```
-/// # use re_arrow_store::LatestAtQuery;
+/// # use re_data_store::LatestAtQuery;
 /// # use re_log_types::{Timeline, example_components::{MyColor, MyPoint, MyPoints}};
 /// # use re_types_core::Component;
 /// # let store = re_query::__populate_example_store();
@@ -209,7 +209,7 @@ pub fn __populate_example_store() -> DataStore {
 #[cfg(test)]
 #[cfg(feature = "testing")]
 fn simple_get_component() {
-    use re_arrow_store::LatestAtQuery;
+    use re_data_store::LatestAtQuery;
     use re_log_types::example_components::MyPoint;
     use re_log_types::Timeline;
 
@@ -244,7 +244,7 @@ fn simple_get_component() {
 #[cfg(test)]
 #[cfg(feature = "testing")]
 fn simple_query_archetype() {
-    use re_arrow_store::LatestAtQuery;
+    use re_data_store::LatestAtQuery;
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
     use re_log_types::Timeline;
 

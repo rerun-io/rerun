@@ -84,7 +84,7 @@ pub trait DataUi {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     );
 }
 
@@ -99,7 +99,7 @@ pub trait EntityDataUi {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         entity_path: &EntityPath,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     );
 }
 
@@ -113,7 +113,7 @@ where
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         entity: &EntityPath,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         // This ensures that UI state is maintained per entity. For example, the collapsed state for
         // `AnnotationContext` component is not saved by all instances of the component.
@@ -131,7 +131,7 @@ impl DataUi for TimePoint {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        _query: &re_data_store::LatestAtQuery,
     ) {
         ui.vertical(|ui| {
             egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
@@ -152,7 +152,7 @@ impl DataUi for [DataCell] {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        _query: &re_data_store::LatestAtQuery,
     ) {
         let mut sorted = self.to_vec();
         sorted.sort_by_key(|cb| cb.component_name());
@@ -186,7 +186,7 @@ fn format_cell(cell: &DataCell) -> String {
 
 pub fn annotations(
     ctx: &ViewerContext<'_>,
-    query: &re_arrow_store::LatestAtQuery,
+    query: &re_data_store::LatestAtQuery,
     entity_path: &re_entity_db::EntityPath,
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
     re_tracing::profile_function!();

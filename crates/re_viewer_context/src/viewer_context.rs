@@ -72,7 +72,7 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// The current time query, based on the current time control.
-    pub fn current_query(&self) -> re_arrow_store::LatestAtQuery {
+    pub fn current_query(&self) -> re_data_store::LatestAtQuery {
         self.rec_cfg.time_ctrl.read().current_query()
     }
 

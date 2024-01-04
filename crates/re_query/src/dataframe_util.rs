@@ -3,7 +3,7 @@ use arrow2::{
     datatypes::PhysicalType,
 };
 use polars_core::prelude::*;
-use re_arrow_store::ArrayExt;
+use re_data_store::ArrayExt;
 use re_types_core::{components::InstanceKey, Archetype, Component, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};

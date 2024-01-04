@@ -225,7 +225,7 @@ impl DataStore {
     /// # use polars_core::{prelude::*, series::Series};
     /// # use re_log_types::{EntityPath, RowId, TimeInt};
     /// # use re_types_core::{ComponentName};
-    /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
+    /// # use re_data_store::{DataStore, LatestAtQuery, RangeQuery};
     /// #
     /// pub fn latest_component(
     ///     store: &DataStore,
@@ -392,7 +392,7 @@ impl DataStore {
     /// # use arrow2::array::Array;
     /// # use polars_core::{prelude::*, series::Series};
     /// # use re_log_types::{DataCell, EntityPath, RowId, TimeInt};
-    /// # use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery};
+    /// # use re_data_store::{DataStore, LatestAtQuery, RangeQuery};
     /// # use re_types_core::ComponentName;
     /// #
     /// # pub fn dataframe_from_cells<const N: usize>(

@@ -345,7 +345,7 @@ impl DataStore {
 ///
 /// Run with:
 /// ```text
-/// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
+/// cargo test -p re_data_store -- --nocapture datastore_internal_repr
 /// ```
 #[test]
 #[cfg(test)]
@@ -389,7 +389,7 @@ fn datastore_internal_repr() {
 /// Run the following command to display a visualization of the store's internal datastructures and
 /// better understand how everything fits together:
 /// ```text
-/// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
+/// cargo test -p re_data_store -- --nocapture datastore_internal_repr
 /// ```
 #[derive(Debug, Clone)]
 pub struct IndexedTable {
@@ -593,7 +593,7 @@ impl Default for IndexedBucketInner {
 /// Run the following command to display a visualization of the store's internal datastructures and
 /// better understand how everything fits together:
 /// ```text
-/// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
+/// cargo test -p re_data_store -- --nocapture datastore_internal_repr
 /// ```
 #[derive(Debug)]
 pub struct PersistentIndexedTable {

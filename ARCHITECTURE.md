@@ -39,7 +39,7 @@ NOTE: `.rrd` files do not yet guarantee any backwards or forwards compatibility.
 
 ## Technologies we use
 ### Apache Arrow
-[Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_arrow_store`](crates/re_arrow_store/README.md).
+[Apache Arrow](https://arrow.apache.org/) is a language-independent columnar memory format for arbitrary data. We use it to encode the log data when transmitting it over the network or storing it in an `.rrd` file. We also use it in our in-RAM data store, [`re_data_store`](crates/re_data_store/README.md).
 
 In rust, we use the [`arrow2` crate](https://crates.io/crates/arrow2).
 
@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/1a5eff8b1577097cab249a751b658ba79c34396c/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/1a5eff8b1577097cab249a751b658ba79c34396c/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/1a5eff8b1577097cab249a751b658ba79c34396c/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/1a5eff8b1577097cab249a751b658ba79c34396c/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/1a5eff8b1577097cab249a751b658ba79c34396c/1200w.png">
+  <img src="https://static.rerun.io/crates/4352fe16466a95828cd9724e094acee909480f96/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/4352fe16466a95828cd9724e094acee909480f96/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/4352fe16466a95828cd9724e094acee909480f96/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/4352fe16466a95828cd9724e094acee909480f96/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/4352fe16466a95828cd9724e094acee909480f96/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -148,7 +148,7 @@ Update instructions:
 | Crate           | Description                                                     |
 |-----------------|-----------------------------------------------------------------|
 | re_entity_db    | In-memory storage of Rerun entities                             |
-| re_query        | Querying data in the re_arrow_store                             |
+| re_query        | Querying data in the re_data_store                             |
 | re_query_cache  | Caching datastructures for re_query                             |
 | re_types        | The built-in Rerun data types, component types, and archetypes. |
 | re_log_encoding | Helpers for encoding and transporting Rerun log messages        |
@@ -158,7 +158,7 @@ Update instructions:
 
 | Crate          | Description                                                                 |
 |----------------|-----------------------------------------------------------------------------|
-| re_arrow_store | An in-memory time series database for Rerun log data, based on Apache Arrow |
+| re_data_store  | An in-memory time series database for Rerun log data, based on Apache Arrow |
 | re_log_types   | The basic building blocks of the Rerun data types and tables.               |
 | re_types_core  | The core traits and types that power Rerun's data model.                    |
 

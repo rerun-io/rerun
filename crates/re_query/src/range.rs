@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
+use re_data_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{Archetype, ComponentName};
 

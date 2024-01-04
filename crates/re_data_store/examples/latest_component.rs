@@ -1,13 +1,11 @@
-//! Demonstrates usage of [`re_arrow_store::polars_util::latest_components`].
+//! Demonstrates usage of [`re_data_store::polars_util::latest_component`].
 //!
 //! ```text
-//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_arrow_store --example latest_components
+//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_data_store --example latest_component
 //! ```
 
-use polars_core::prelude::*;
-
-use re_arrow_store::polars_util::latest_components;
-use re_arrow_store::{test_row, DataStore, LatestAtQuery, TimeType, Timeline};
+use re_data_store::polars_util::latest_component;
+use re_data_store::{test_row, DataStore, LatestAtQuery, TimeType, Timeline};
 use re_log_types::{build_frame_nr, EntityPath};
 use re_types::datagen::build_some_positions2d;
 use re_types::{
@@ -32,15 +30,28 @@ fn main() {
     store.insert_row(&row).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let df = latest_components(
+
+    println!("Store contents:\n{}", store.to_dataframe());
+
+    println!("\n-----\n");
+
+    let df = latest_component(
         &store,
         &LatestAtQuery::new(timeline_frame_nr, 10.into()),
         &ent_path,
-        &[Position2D::name(), LargeStruct::name()],
-        &JoinType::Outer,
+        LargeStruct::name(),
     )
     .unwrap();
+    println!("Query results from {:?}'s PoV:\n{df}", LargeStruct::name());
 
-    println!("Store contents:\n{}", store.to_dataframe());
-    println!("Query results:\n{df}");
+    println!("\n-----\n");
+
+    let df = latest_component(
+        &store,
+        &LatestAtQuery::new(timeline_frame_nr, 10.into()),
+        &ent_path,
+        Position2D::name(),
+    )
+    .unwrap();
+    println!("Query results from {:?}'s PoV:\n{df}", Position2D::name());
 }
