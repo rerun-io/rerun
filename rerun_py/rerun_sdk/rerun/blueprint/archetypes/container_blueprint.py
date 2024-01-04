@@ -30,6 +30,7 @@ class ContainerBlueprint(Archetype):
         primary_weights: components.PrimaryWeightsLike | None = None,
         secondary_weights: components.SecondaryWeightsLike | None = None,
         active_tab: datatypes.EntityPathLike | None = None,
+        visible: components.VisibleLike | None = None,
     ):
         """
         Create a new instance of the ContainerBlueprint archetype.
@@ -52,6 +53,10 @@ class ContainerBlueprint(Archetype):
             Which tab is active.
 
             Only applies to `Tabs` containers.
+        visible:
+            Whether this container is visible.
+
+            Defaults to true if not specified.
         """
 
         # You can define your own __init__ function as a member of ContainerBlueprintExt in container_blueprint_ext.py
@@ -63,6 +68,7 @@ class ContainerBlueprint(Archetype):
                 primary_weights=primary_weights,
                 secondary_weights=secondary_weights,
                 active_tab=active_tab,
+                visible=visible,
             )
             return
         self.__attrs_clear__()
@@ -76,6 +82,7 @@ class ContainerBlueprint(Archetype):
             primary_weights=None,  # type: ignore[arg-type]
             secondary_weights=None,  # type: ignore[arg-type]
             active_tab=None,  # type: ignore[arg-type]
+            visible=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -139,6 +146,17 @@ class ContainerBlueprint(Archetype):
     # Which tab is active.
     #
     # Only applies to `Tabs` containers.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    visible: components.VisibleBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.VisibleBatch._optional,  # type: ignore[misc]
+    )
+    # Whether this container is visible.
+    #
+    # Defaults to true if not specified.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

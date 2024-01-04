@@ -37,4 +37,9 @@ table SpaceViewBlueprint (
     ///
     /// It determines which entities are part of the spaceview.
     contents: rerun.blueprint.components.IncludedQueries ("attr.rerun.component_optional", nullable, order: 500);
+
+    /// Whether this space view is visible.
+    ///
+    /// Defaults to true if not specified.
+    visible: rerun.blueprint.components.Visible ("attr.rerun.component_optional", nullable, order: 600);
 }

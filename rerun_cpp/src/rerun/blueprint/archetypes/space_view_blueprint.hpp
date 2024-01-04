@@ -8,6 +8,7 @@
 #include "../../blueprint/components/name.hpp"
 #include "../../blueprint/components/space_view_class.hpp"
 #include "../../blueprint/components/space_view_origin.hpp"
+#include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../data_cell.hpp"
@@ -43,6 +44,11 @@ namespace rerun::blueprint::archetypes {
         ///
         /// It determines which entities are part of the spaceview.
         std::optional<rerun::blueprint::components::IncludedQueries> contents;
+
+        /// Whether this space view is visible.
+        ///
+        /// Defaults to true if not specified.
+        std::optional<rerun::blueprint::components::Visible> visible;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -93,6 +99,15 @@ namespace rerun::blueprint::archetypes {
         SpaceViewBlueprint with_contents(rerun::blueprint::components::IncludedQueries _contents
         ) && {
             contents = std::move(_contents);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Whether this space view is visible.
+        ///
+        /// Defaults to true if not specified.
+        SpaceViewBlueprint with_visible(rerun::blueprint::components::Visible _visible) && {
+            visible = std::move(_visible);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

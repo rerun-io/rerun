@@ -29,6 +29,7 @@ class SpaceViewBlueprint(Archetype):
         space_origin: datatypes.EntityPathLike | None = None,
         entities_determined_by_user: components.EntitiesDeterminedByUserLike | None = None,
         contents: components.IncludedQueriesLike | None = None,
+        visible: components.VisibleLike | None = None,
     ):
         """
         Create a new instance of the SpaceViewBlueprint archetype.
@@ -51,6 +52,10 @@ class SpaceViewBlueprint(Archetype):
             `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
 
             It determines which entities are part of the spaceview.
+        visible:
+            Whether this space view is visible.
+
+            Defaults to true if not specified.
         """
 
         # You can define your own __init__ function as a member of SpaceViewBlueprintExt in space_view_blueprint_ext.py
@@ -61,6 +66,7 @@ class SpaceViewBlueprint(Archetype):
                 space_origin=space_origin,
                 entities_determined_by_user=entities_determined_by_user,
                 contents=contents,
+                visible=visible,
             )
             return
         self.__attrs_clear__()
@@ -73,6 +79,7 @@ class SpaceViewBlueprint(Archetype):
             space_origin=None,  # type: ignore[arg-type]
             entities_determined_by_user=None,  # type: ignore[arg-type]
             contents=None,  # type: ignore[arg-type]
+            visible=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -129,6 +136,17 @@ class SpaceViewBlueprint(Archetype):
     # `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
     #
     # It determines which entities are part of the spaceview.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    visible: components.VisibleBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.VisibleBatch._optional,  # type: ignore[misc]
+    )
+    # Whether this space view is visible.
+    #
+    # Defaults to true if not specified.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

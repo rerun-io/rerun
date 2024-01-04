@@ -1,0 +1,22 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+/// Whether the container or space view is currently visible.
+struct Visible (
+  "attr.arrow.transparent",
+  "attr.docs.unreleased",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  visible: bool (order: 100);
+}

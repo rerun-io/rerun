@@ -9,6 +9,7 @@
 #include "../../blueprint/components/name.hpp"
 #include "../../blueprint/components/primary_weights.hpp"
 #include "../../blueprint/components/secondary_weights.hpp"
+#include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../data_cell.hpp"
@@ -44,6 +45,11 @@ namespace rerun::blueprint::archetypes {
         ///
         /// Only applies to `Tabs` containers.
         std::optional<rerun::blueprint::components::ActiveTab> active_tab;
+
+        /// Whether this container is visible.
+        ///
+        /// Defaults to true if not specified.
+        std::optional<rerun::blueprint::components::Visible> visible;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -99,6 +105,15 @@ namespace rerun::blueprint::archetypes {
         /// Only applies to `Tabs` containers.
         ContainerBlueprint with_active_tab(rerun::blueprint::components::ActiveTab _active_tab) && {
             active_tab = std::move(_active_tab);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Whether this container is visible.
+        ///
+        /// Defaults to true if not specified.
+        ContainerBlueprint with_visible(rerun::blueprint::components::Visible _visible) && {
+            visible = std::move(_visible);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
