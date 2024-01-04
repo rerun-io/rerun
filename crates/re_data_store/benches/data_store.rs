@@ -98,7 +98,13 @@ fn insert_same_time_point(c: &mut Criterion) {
     // Benchmark a corner-case where all rows have the same time point, and arrive out-of-order.
     // See https://github.com/rerun-io/rerun/issues/4415
 
-    for num_rows in [1000, 10_000, 100_000] {
+    // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
+    #[cfg(debug_assertions)]
+    let num_rows_list = [100];
+    #[cfg(not(debug_assertions))]
+    let num_rows_list = [1000, 10_000, 100_000];
+
+    for num_rows in num_rows_list {
         for shuffled in [false, true] {
             let num_instances = 1;
             let packed = false;
