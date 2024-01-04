@@ -9,7 +9,7 @@ use parking_lot::RwLock;
 use paste::paste;
 use seq_macro::seq;
 
-use re_data_store::LatestAtQuery;
+use re_data_store::{LatestAtQuery, RangeQuery};
 use re_log_types::{EntityPath, RowId, StoreId, TimeInt, Timeline};
 use re_query::ArchetypeView;
 use re_types_core::{components::InstanceKey, Archetype, ArchetypeName, Component, ComponentName};
@@ -21,12 +21,20 @@ use crate::{ErasedFlatVecDeque, FlatVecDeque};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnyQuery {
     LatestAt(LatestAtQuery),
-    // TODO(cmc): range queries support.
+    Range(RangeQuery),
 }
 
 impl From<LatestAtQuery> for AnyQuery {
+    #[inline]
     fn from(query: LatestAtQuery) -> Self {
         Self::LatestAt(query)
+    }
+}
+
+impl From<RangeQuery> for AnyQuery {
+    #[inline]
+    fn from(query: RangeQuery) -> Self {
+        Self::Range(query)
     }
 }
 
