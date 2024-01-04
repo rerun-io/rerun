@@ -173,17 +173,6 @@ pub struct OrbitEye {
 impl OrbitEye {
     const MAX_PITCH: f32 = 0.999 * 0.25 * std::f32::consts::TAU;
 
-    /// Scroll wheels delta are capped out at this value per second. Anything above is smoothed out over several frames.
-    ///
-    /// We generally only want this to only kick in when the user scrolls fast while we maintain very high framerate,
-    /// so don't go too low!
-    ///
-    /// To give a sense of ballpark:
-    /// * measured 14.0 as the value of a single notch on a logitech mouse wheel connected to a Macbook returns in a single frame (!)
-    ///   (so scrolling 10 notches in a tenth of a second gives a per second scroll delta of 1400)
-    /// * macbook trackpad is typically at max 1.0 in every given frame
-    const MAX_SCROLL_DELTA_PER_SECOND: f32 = 1000.0;
-
     pub fn new(orbit_center: Vec3, orbit_radius: f32, world_from_view_rot: Quat, up: Vec3) -> Self {
         OrbitEye {
             orbit_center,
@@ -322,18 +311,20 @@ impl OrbitEye {
             did_interact = true;
         }
 
-        // Mouse wheels often go very large steps!
-        // This makes the zoom speed feel clunky, so we smooth it out over several frames.
-        let frame_delta = response.ctx.input(|i| i.stable_dt).at_most(0.1);
-        let accumulated_scroll_delta = raw_scroll_delta + self.unprocessed_scroll_delta;
-        let unsmoothed_scroll_per_second = accumulated_scroll_delta / frame_delta;
-        let scroll_dir = unsmoothed_scroll_per_second.signum();
-        let scroll_delta = scroll_dir
-            * unsmoothed_scroll_per_second
-                .abs()
-                .at_most(Self::MAX_SCROLL_DELTA_PER_SECOND)
-            * frame_delta;
-        self.unprocessed_scroll_delta = accumulated_scroll_delta - scroll_delta;
+        let scroll_delta;
+        {
+            // Mouse wheels often go very large steps.
+            // A single notch on a logitech mouse wheel connected to a Macbook returns 14.0 raw_scroll_delta.
+            // This makes the zoom speed feel clunky, so we smooth it out over several frames.
+
+            self.unprocessed_scroll_delta += raw_scroll_delta;
+
+            let dt = response.ctx.input(|i| i.stable_dt).at_most(0.1);
+            let t = egui::emath::exponential_smooth_factor(0.90, 0.1, dt); // reach _% in _ seconds
+
+            scroll_delta = t * self.unprocessed_scroll_delta;
+            self.unprocessed_scroll_delta -= scroll_delta;
+        }
 
         if self.unprocessed_scroll_delta.abs() > 0.1 {
             // We have a lot of unprocessed scroll delta, so we need to keep calling this function.
