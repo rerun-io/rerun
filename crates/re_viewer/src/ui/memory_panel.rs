@@ -432,7 +432,7 @@ fn summarize_callstack(callstack: &str) -> String {
         ("App::receive_messages", "App::receive_messages"),
         ("w_store::store::ComponentBucket>::archive", "archive"),
         ("DataStore>::insert", "DataStore"),
-        ("StoreDb", "StoreDb"),
+        ("EntityDb", "EntityDb"),
         ("EntityDb", "EntityDb"),
         ("EntityTree", "EntityTree"),
         ("::LogMsg>::deserialize", "LogMsg"),

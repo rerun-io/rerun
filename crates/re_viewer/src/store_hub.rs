@@ -17,7 +17,7 @@ use crate::{
 
 /// Interface for accessing all blueprints and recordings
 ///
-/// The [`StoreHub`] provides access to the [`StoreDb`] instances that are used
+/// The [`StoreHub`] provides access to the [`EntityDb`] instances that are used
 /// to store both blueprints and recordings.
 ///
 /// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
@@ -32,7 +32,7 @@ pub struct StoreHub {
     /// Was a recording ever activated? Used by the heuristic controlling the welcome screen.
     was_recording_active: bool,
 
-    // The [`StoreGeneration`] from when the [`StoreDb`] was last saved
+    // The [`StoreGeneration`] from when the [`EntityDb`] was last saved
     blueprint_last_save: HashMap<StoreId, StoreGeneration>,
 }
 
@@ -200,17 +200,17 @@ impl StoreHub {
         self.store_bundle.insert_recording(entity_db);
     }
 
-    /// Mutable access to a [`StoreDb`] by id
+    /// Mutable access to a [`EntityDb`] by id
     pub fn entity_db_mut(&mut self, store_id: &StoreId) -> &mut EntityDb {
         self.store_bundle.entity_db_entry(store_id)
     }
 
-    /// Remove any empty [`StoreDb`]s from the hub
+    /// Remove any empty [`EntityDb`]s from the hub
     pub fn purge_empty(&mut self) {
         self.store_bundle.purge_empty();
     }
 
-    /// Call [`StoreDb::purge_fraction_of_ram`] on every recording
+    /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
     //
     // NOTE: If you touch any of this, make sure to play around with our GC stress test scripts
     // available under `$WORKSPACE_ROOT/tests/python/gc_stress`.
@@ -263,7 +263,7 @@ impl StoreHub {
         // we can get an accurate reading of the current memory used and decide if we should go on.
     }
 
-    /// Directly access the [`StoreDb`] for the selected recording
+    /// Directly access the [`EntityDb`] for the selected recording
     pub fn current_recording(&self) -> Option<&EntityDb> {
         self.selected_rec_id
             .as_ref()
@@ -408,7 +408,7 @@ pub enum StoreLoadError {
     DataStore(#[from] re_entity_db::Error),
 }
 
-/// Stores many [`StoreDb`]s of recordings and blueprints.
+/// Stores many [`EntityDb`]s of recordings and blueprints.
 #[derive(Default)]
 pub struct StoreBundle {
     // TODO(emilk): two separate maps per [`StoreKind`].
@@ -435,7 +435,7 @@ impl StoreBundle {
         Ok(slf)
     }
 
-    /// Returns either a recording or blueprint [`StoreDb`].
+    /// Returns either a recording or blueprint [`EntityDb`].
     /// One is created if it doesn't already exist.
     pub fn entity_db_entry(&mut self, id: &StoreId) -> &mut EntityDb {
         self.entity_dbs
@@ -443,12 +443,12 @@ impl StoreBundle {
             .or_insert_with(|| EntityDb::new(id.clone()))
     }
 
-    /// All loaded [`StoreDb`], both recordings and blueprints, in arbitrary order.
+    /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
     pub fn entity_dbs(&self) -> impl Iterator<Item = &EntityDb> {
         self.entity_dbs.values()
     }
 
-    /// All loaded [`StoreDb`], both recordings and blueprints, in arbitrary order.
+    /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
     pub fn entity_dbs_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
         self.entity_dbs.values_mut()
     }
@@ -487,7 +487,7 @@ impl StoreBundle {
         }
     }
 
-    /// Returns the [`StoreId`] of the oldest modified recording, according to [`StoreDb::last_modified_at`].
+    /// Returns the [`StoreId`] of the oldest modified recording, according to [`EntityDb::last_modified_at`].
     pub fn find_oldest_modified_recording(&self) -> Option<&StoreId> {
         let mut entity_dbs = self
             .entity_dbs

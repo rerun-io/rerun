@@ -612,7 +612,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 fn assert_receive_into_entity_db(
     rx: &ReceiveSet<LogMsg>,
 ) -> anyhow::Result<re_entity_db::EntityDb> {
-    re_log::info!("Receiving messages into a StoreDb…");
+    re_log::info!("Receiving messages into a EntityDb…");
 
     let mut db: Option<re_entity_db::EntityDb> = None;
 
@@ -647,7 +647,7 @@ fn assert_receive_into_entity_db(
                             re_log::info!("Successfully ingested {num_messages} messages.");
                             return Ok(db);
                         } else {
-                            anyhow::bail!("StoreDb never initialized");
+                            anyhow::bail!("EntityDb never initialized");
                         }
                     }
                 }

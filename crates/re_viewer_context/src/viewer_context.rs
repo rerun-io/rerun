@@ -43,7 +43,7 @@ pub struct ViewerContext<'a> {
     /// All the query results for this frame
     pub query_results: &'a HashMap<DataQueryId, DataQueryResult>,
 
-    /// UI config for the current recording (found in [`StoreDb`]).
+    /// UI config for the current recording (found in [`EntityDb`]).
     pub rec_cfg: &'a RecordingConfig,
 
     /// The look and feel of the UI.
@@ -96,7 +96,7 @@ impl<'a> ViewerContext<'a> {
 
 // ----------------------------------------------------------------------------
 
-/// UI config for the current recording (found in [`StoreDb`]).
+/// UI config for the current recording (found in [`EntityDb`]).
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct RecordingConfig {

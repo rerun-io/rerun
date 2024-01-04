@@ -28,7 +28,7 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) cache: Caches,
 
-    /// Configuration for the current recording (found in [`StoreDb`]).
+    /// Configuration for the current recording (found in [`EntityDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
 
     selection_panel: crate::selection_panel::SelectionPanel,
@@ -127,7 +127,7 @@ impl AppState {
             // The blueprint isn't valid so nothing past this is going to work properly.
             // we might as well return and it will get fixed on the next frame.
 
-            // TODO(jleibs): If we move viewport loading up to a context where the StoreDb is mutable
+            // TODO(jleibs): If we move viewport loading up to a context where the EntityDb is mutable
             // we can run the clear and re-load.
             return;
         }

@@ -84,7 +84,7 @@ pub struct EntityDb {
     /// The [`StoreId`] for this log.
     store_id: StoreId,
 
-    /// Set by whomever created this [`StoreDb`].
+    /// Set by whomever created this [`EntityDb`].
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
