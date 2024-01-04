@@ -9,7 +9,7 @@ use re_types::{
 };
 use re_viewer_context::{
     Annotations, IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerSystem,
 };
 
 use crate::{
@@ -169,7 +169,7 @@ impl IdentifiedViewSystem for Points3DPart {
     }
 }
 
-impl ViewPartSystem for Points3DPart {
+impl VisualizerSystem for Points3DPart {
     fn required_components(&self) -> ComponentNameSet {
         Points3D::required_components()
             .iter()

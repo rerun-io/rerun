@@ -8,8 +8,8 @@ use re_log_types::{EntityPathHash, StoreId};
 use re_types::{ComponentName, ComponentNameSet};
 
 use crate::{
-    ApplicableEntities, IdentifiedViewSystem, IndicatorMatchingEntities, ViewPartSystem,
-    ViewSystemIdentifier,
+    ApplicableEntities, IdentifiedViewSystem, IndicatorMatchingEntities, ViewSystemIdentifier,
+    VisualizerSystem,
 };
 
 /// A store subscriber that keep track which entities in a store can be
@@ -83,7 +83,7 @@ struct VisualizerEntityMapping {
 }
 
 impl VisualizerEntitySubscriber {
-    pub fn new<T: IdentifiedViewSystem + ViewPartSystem>(visualizer: &T) -> Self {
+    pub fn new<T: IdentifiedViewSystem + VisualizerSystem>(visualizer: &T) -> Self {
         Self {
             visualizer: T::identifier(),
             indicator_components: visualizer.indicator_components(),

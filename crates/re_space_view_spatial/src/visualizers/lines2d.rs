@@ -7,8 +7,8 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
-    VisualizableEntities,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    VisualizableEntities, VisualizerSystem,
 };
 
 use crate::{
@@ -164,7 +164,7 @@ impl IdentifiedViewSystem for Lines2DPart {
     }
 }
 
-impl ViewPartSystem for Lines2DPart {
+impl VisualizerSystem for Lines2DPart {
     fn required_components(&self) -> ComponentNameSet {
         LineStrips2D::required_components()
             .iter()

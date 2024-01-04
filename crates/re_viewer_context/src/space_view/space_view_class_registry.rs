@@ -4,7 +4,7 @@ use re_arrow_store::DataStore;
 use crate::{
     ApplicableEntities, DynSpaceViewClass, IdentifiedViewSystem, IndicatorMatchingEntities,
     PerVisualizer, SpaceViewClassIdentifier, ViewContextCollection, ViewContextSystem,
-    ViewPartCollection, ViewPartSystem, ViewSystemIdentifier,
+    ViewPartCollection, ViewSystemIdentifier, VisualizerSystem,
 };
 
 use super::{
@@ -80,7 +80,7 @@ impl SpaceViewSystemRegistrator<'_> {
     ///
     /// It is not allowed to register a given type more than once within the same space view class.
     /// Different space view classes may however share the same [`ViewPartSystem`] type.
-    pub fn register_visualizer<T: ViewPartSystem + IdentifiedViewSystem + Default + 'static>(
+    pub fn register_visualizer<T: VisualizerSystem + IdentifiedViewSystem + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         // Name should not overlap with context systems.
@@ -147,7 +147,7 @@ struct ContextSystemTypeRegistryEntry {
 
 /// Visualizer entry in [`SpaceViewClassRegistry`].
 struct VisualizerTypeRegistryEntry {
-    factory_method: Box<dyn Fn() -> Box<dyn ViewPartSystem> + Send + Sync>,
+    factory_method: Box<dyn Fn() -> Box<dyn VisualizerSystem> + Send + Sync>,
     used_by: HashSet<SpaceViewClassIdentifier>,
 
     /// Handle to subscription of [`VisualizerEntitySubscriber`] for this visualizer.

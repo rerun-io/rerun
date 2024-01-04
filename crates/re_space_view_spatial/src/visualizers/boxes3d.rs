@@ -6,8 +6,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext, VisualizerSystem,
 };
 
 use crate::{
@@ -125,7 +125,7 @@ impl IdentifiedViewSystem for Boxes3DPart {
     }
 }
 
-impl ViewPartSystem for Boxes3DPart {
+impl VisualizerSystem for Boxes3DPart {
     fn required_components(&self) -> ComponentNameSet {
         Boxes3D::required_components()
             .iter()

@@ -13,9 +13,9 @@ mod space_view_class_placeholder;
 mod space_view_class_registry;
 mod system_execution_output;
 mod view_context_system;
-mod view_part_system;
 mod view_query;
 mod visualizer_entity_subscriber;
+mod visualizer_system;
 
 pub use auto_spawn_heuristic::AutoSpawnHeuristic;
 pub use dyn_space_view_class::{
@@ -29,9 +29,9 @@ pub use space_view_class_registry::{
 };
 pub use system_execution_output::SystemExecutionOutput;
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
-pub use view_part_system::{ViewPartCollection, ViewPartSystem};
 pub use view_query::{DataResult, PerSystemDataResults, PropertyOverrides, ViewQuery};
 pub use visualizer_entity_subscriber::VisualizerAdditionalApplicabilityFilter;
+pub use visualizer_system::{ViewPartCollection, VisualizerSystem};
 
 // ---------------------------------------------------------------------------
 

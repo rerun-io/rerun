@@ -8,7 +8,7 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerSystem,
 };
 
 use super::{picking_id_from_instance_key, process_annotations, SpatialViewVisualizerData};
@@ -168,7 +168,7 @@ impl IdentifiedViewSystem for Arrows3DPart {
     }
 }
 
-impl ViewPartSystem for Arrows3DPart {
+impl VisualizerSystem for Arrows3DPart {
     fn required_components(&self) -> ComponentNameSet {
         Arrows3D::required_components()
             .iter()

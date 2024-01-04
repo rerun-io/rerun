@@ -7,8 +7,8 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
-    VisualizableEntities,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    VisualizableEntities, VisualizerSystem,
 };
 
 use crate::{
@@ -167,7 +167,7 @@ impl IdentifiedViewSystem for Boxes2DPart {
     }
 }
 
-impl ViewPartSystem for Boxes2DPart {
+impl VisualizerSystem for Boxes2DPart {
     fn required_components(&self) -> ComponentNameSet {
         Boxes2D::required_components()
             .iter()

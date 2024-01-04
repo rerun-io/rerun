@@ -21,8 +21,8 @@ use re_types::{
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizerAdditionalApplicabilityFilter,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizerAdditionalApplicabilityFilter,
+    VisualizerSystem,
 };
 
 use crate::{
@@ -653,7 +653,7 @@ impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
     }
 }
 
-impl ViewPartSystem for ImagesPart {
+impl VisualizerSystem for ImagesPart {
     fn required_components(&self) -> ComponentNameSet {
         let image: ComponentNameSet = Image::required_components()
             .iter()

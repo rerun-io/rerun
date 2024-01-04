@@ -6,8 +6,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, IdentifiedViewSystem, SpaceViewSystemExecutionError,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    AnnotationMap, DefaultColor, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery,
+    ViewerContext, VisualizerSystem,
 };
 
 #[derive(Clone, Debug)]
@@ -73,7 +73,7 @@ impl IdentifiedViewSystem for TimeSeriesSystem {
     }
 }
 
-impl ViewPartSystem for TimeSeriesSystem {
+impl VisualizerSystem for TimeSeriesSystem {
     fn required_components(&self) -> ComponentNameSet {
         TimeSeriesScalar::required_components()
             .iter()

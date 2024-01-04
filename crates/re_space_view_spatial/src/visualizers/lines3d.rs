@@ -7,7 +7,7 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerSystem,
 };
 
 use crate::{
@@ -168,7 +168,7 @@ impl IdentifiedViewSystem for Lines3DPart {
     }
 }
 
-impl ViewPartSystem for Lines3DPart {
+impl VisualizerSystem for Lines3DPart {
     fn required_components(&self) -> ComponentNameSet {
         LineStrips3D::required_components()
             .iter()

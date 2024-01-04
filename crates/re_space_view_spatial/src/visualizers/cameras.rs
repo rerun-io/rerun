@@ -8,7 +8,7 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerSystem,
 };
 
 use super::SpatialViewVisualizerData;
@@ -186,7 +186,7 @@ impl CamerasPart {
     }
 }
 
-impl ViewPartSystem for CamerasPart {
+impl VisualizerSystem for CamerasPart {
     fn required_components(&self) -> ComponentNameSet {
         re_types::archetypes::Pinhole::required_components()
             .iter()

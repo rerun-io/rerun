@@ -1,7 +1,7 @@
 use re_types::ComponentNameSet;
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext, VisualizerSystem,
 };
 
 /// An empty system to accept all entities in the space view
@@ -14,7 +14,7 @@ impl IdentifiedViewSystem for EmptySystem {
     }
 }
 
-impl ViewPartSystem for EmptySystem {
+impl VisualizerSystem for EmptySystem {
     fn required_components(&self) -> ComponentNameSet {
         std::iter::empty().collect()
     }

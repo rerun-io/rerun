@@ -6,8 +6,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext, VisualizerSystem,
 };
 
 use crate::{
@@ -33,7 +33,7 @@ impl IdentifiedViewSystem for Transform3DArrowsPart {
     }
 }
 
-impl ViewPartSystem for Transform3DArrowsPart {
+impl VisualizerSystem for Transform3DArrowsPart {
     fn required_components(&self) -> ComponentNameSet {
         re_types::archetypes::Transform3D::required_components()
             .iter()

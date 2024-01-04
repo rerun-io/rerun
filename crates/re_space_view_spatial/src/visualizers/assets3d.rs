@@ -7,8 +7,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext, VisualizerSystem,
 };
 
 use super::{entity_iterator::process_archetype_views, SpatialViewVisualizerData};
@@ -101,7 +101,7 @@ impl IdentifiedViewSystem for Asset3DPart {
     }
 }
 
-impl ViewPartSystem for Asset3DPart {
+impl VisualizerSystem for Asset3DPart {
     fn required_components(&self) -> ComponentNameSet {
         Asset3D::required_components()
             .iter()
