@@ -1,8 +1,8 @@
 use paste::paste;
 use seq_macro::seq;
 
-use re_arrow_store::{DataStore, LatestAtQuery, TimeInt, Timeline};
-use re_data_store::{ExtraQueryHistory, VisibleHistory};
+use re_data_store::{DataStore, LatestAtQuery, TimeInt, Timeline};
+use re_entity_db::{ExtraQueryHistory, VisibleHistory};
 use re_log_types::{EntityPath, RowId};
 use re_query::query_archetype;
 use re_types_core::{components::InstanceKey, Archetype, Component};
