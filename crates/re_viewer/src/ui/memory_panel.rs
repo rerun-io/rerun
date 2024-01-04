@@ -103,8 +103,8 @@ impl MemoryPanel {
     }
 
     fn cpu_stats(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, limit: &MemoryLimit) {
-        if let Some(limit) = limit.limit {
-            ui.label(format!("Memory limit: {}", format_bytes(limit as _)));
+        if let Some(max_bytes) = limit.max_bytes {
+            ui.label(format!("Memory limit: {}", format_bytes(max_bytes as _)));
         } else {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
@@ -389,9 +389,9 @@ impl MemoryPanel {
             .include_y(0.0)
             // TODO(emilk): turn off plot interaction, and always do auto-sizing
             .show(ui, |plot_ui| {
-                if let Some(counted_limit) = limit.limit {
+                if let Some(max_bytes) = limit.max_bytes {
                     plot_ui.hline(
-                        egui_plot::HLine::new(counted_limit as f64)
+                        egui_plot::HLine::new(max_bytes as f64)
                             .name("Limit (counted)")
                             .width(2.0),
                     );

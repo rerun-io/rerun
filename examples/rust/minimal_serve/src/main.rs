@@ -12,6 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "0.0.0.0",
         Default::default(),
         Default::default(),
+        rerun::MemoryLimit::from_fraction_of_total(0.25),
         open_browser,
     )?;
 
