@@ -12,16 +12,16 @@ use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
     HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
-    UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    UiVerbosity, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::heuristics::auto_size_world_heuristic;
 use crate::{
     contexts::{AnnotationSceneContext, NonInteractiveEntities},
-    parts::{CamerasPart, ImagesPart, UiLabel, UiLabelTarget},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
+    visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
 };
 
 /// Default auto point radius in UI points.
@@ -449,7 +449,7 @@ pub fn picking(
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialSpaceViewState,
     view_ctx: &ViewContextCollection,
-    parts: &ViewPartCollection,
+    visualizers: &VisualizerCollection,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
     spatial_kind: SpatialSpaceViewKind,
@@ -491,7 +491,7 @@ pub fn picking(
 
     let non_interactive = view_ctx.get::<NonInteractiveEntities>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-    let images = parts.get::<ImagesPart>()?;
+    let images = visualizers.get::<ImageVisualizer>()?;
 
     let picking_result = picking_context.pick(
         ctx.render_ctx,
@@ -647,8 +647,8 @@ pub fn picking(
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
                     tracked_space_camera: state.state_3d.tracked_camera.clone(),
-                    point_in_space_cameras: parts
-                        .get::<CamerasPart>()?
+                    point_in_space_cameras: visualizers
+                        .get::<CamerasVisualizer>()?
                         .space_cameras
                         .iter()
                         .map(|cam| {

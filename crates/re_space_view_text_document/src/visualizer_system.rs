@@ -5,8 +5,8 @@ use re_types::{
     components, Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext, VisualizerSystem,
 };
 
 // ---
@@ -29,7 +29,7 @@ impl IdentifiedViewSystem for TextDocumentSystem {
     }
 }
 
-impl ViewPartSystem for TextDocumentSystem {
+impl VisualizerSystem for TextDocumentSystem {
     fn required_components(&self) -> ComponentNameSet {
         TextDocument::required_components()
             .iter()

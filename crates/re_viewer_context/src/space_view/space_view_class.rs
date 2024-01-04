@@ -49,7 +49,7 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
 
     /// Called once upon registration of the class
     ///
-    /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::ViewPartSystem`].
+    /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::VisualizerSystem`].
     fn on_register(
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
@@ -66,7 +66,7 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     /// Create context object that is passed to all of this classes visualizers
     /// to determine whether they can be visualized.
     ///
-    /// See [`crate::ViewPartSystem::filter_visualizable_entities`].
+    /// See [`crate::VisualizerSystem::filter_visualizable_entities`].
     fn visualizable_filter_context(
         &self,
         _space_origin: &EntityPath,

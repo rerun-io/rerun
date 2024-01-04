@@ -1,80 +1,73 @@
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
-    archetypes::LineStrips2D,
-    components::{LineStrip2D, Text},
-    Archetype as _, ComponentNameSet,
+    archetypes::Boxes2D,
+    components::{HalfSizes2D, Position2D, Text},
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
-    VisualizableEntities,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    VisualizableEntities, VisualizerSystem,
 };
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
-    parts::{
-        entity_iterator::process_archetype_views, process_colors, process_radii, UiLabel,
-        UiLabelTarget,
-    },
     view_kind::SpatialSpaceViewKind,
+    visualizers::{UiLabel, UiLabelTarget},
 };
 
 use super::{
-    filter_visualizable_2d_entities, picking_id_from_instance_key, process_annotations,
-    SpatialViewPartData,
+    entity_iterator::process_archetype_views, filter_visualizable_2d_entities,
+    picking_id_from_instance_key, process_annotations, process_colors, process_radii,
+    SpatialViewVisualizerData,
 };
 
-pub struct Lines2DPart {
-    /// If the number of arrows in the batch is > max_labels, don't render point labels.
+pub struct Boxes2DVisualizer {
+    /// If the number of points in the batch is > max_labels, don't render box labels.
     pub max_labels: usize,
-    pub data: SpatialViewPartData,
+    pub data: SpatialViewVisualizerData,
 }
 
-impl Default for Lines2DPart {
+impl Default for Boxes2DVisualizer {
     fn default() -> Self {
         Self {
-            max_labels: 10,
-            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
+            max_labels: 20,
+            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
         }
     }
 }
 
-impl Lines2DPart {
+impl Boxes2DVisualizer {
     fn process_labels<'a>(
-        arch_view: &'a ArchetypeView<LineStrips2D>,
+        arch_view: &'a ArchetypeView<Boxes2D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
         let labels = itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<LineStrip2D>()?,
+            arch_view.iter_required_component::<HalfSizes2D>()?,
+            arch_view.iter_optional_component::<Position2D>()?,
             arch_view.iter_optional_component::<Text>()?,
             colors,
             instance_path_hashes,
         )
         .filter_map(
-            move |(annotation_info, strip, label, color, labeled_instance)| {
+            move |(annotation_info, half_size, center, label, color, labeled_instance)| {
                 let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
-                match (strip, label) {
-                    (strip, Some(label)) => {
-                        let midpoint = strip
-                            .0
-                            .iter()
-                            .copied()
-                            .map(glam::Vec2::from)
-                            .sum::<glam::Vec2>()
-                            / (strip.0.len() as f32);
-                        Some(UiLabel {
-                            text: label,
-                            color: *color,
-                            target: UiLabelTarget::Point2D(egui::pos2(midpoint.x, midpoint.y)),
-                            labeled_instance: *labeled_instance,
-                        })
-                    }
-                    _ => None,
-                }
+                let center = center.unwrap_or(Position2D::ZERO);
+                let min = half_size.box_min(center);
+                let max = half_size.box_max(center);
+                label.map(|label| UiLabel {
+                    text: label,
+                    color: *color,
+                    target: UiLabelTarget::Rect(egui::Rect::from_min_max(
+                        egui::pos2(min.x, min.y),
+                        egui::pos2(max.x, max.y),
+                    )),
+                    labeled_instance: *labeled_instance,
+                })
             },
         );
         Ok(labels)
@@ -83,18 +76,23 @@ impl Lines2DPart {
     fn process_arch_view(
         &mut self,
         query: &ViewQuery<'_>,
-        arch_view: &ArchetypeView<LineStrips2D>,
+        arch_view: &ArchetypeView<Boxes2D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let annotation_infos = process_annotations::<LineStrip2D, LineStrips2D>(
+        let annotation_infos = process_annotations::<HalfSizes2D, Boxes2D>(
             query,
             arch_view,
             &ent_context.annotations,
         )?;
 
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
+        let instance_keys = arch_view.iter_instance_keys();
+        let half_sizes = arch_view.iter_required_component::<HalfSizes2D>()?;
+        let positions = arch_view
+            .iter_optional_component::<Position2D>()?
+            .map(|position| position.unwrap_or(Position2D::ZERO));
         let radii = process_radii(arch_view, ent_path)?;
+        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
 
         if arch_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
@@ -119,61 +117,66 @@ impl Lines2DPart {
 
         let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
-            .batch("lines 2d")
+            .batch("boxes2d")
             .depth_offset(ent_context.depth_offset)
             .world_from_obj(ent_context.world_from_entity)
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-        let instance_keys = arch_view.iter_instance_keys();
-        let pick_ids = arch_view
-            .iter_instance_keys()
-            .map(picking_id_from_instance_key);
-        let strips = arch_view.iter_required_component::<LineStrip2D>()?;
-
-        let mut bounding_box = macaw::BoundingBox::nothing();
-
-        for (instance_key, strip, radius, color, pick_id) in
-            itertools::izip!(instance_keys, strips, radii, colors, pick_ids)
+        for (instance_key, half_size, position, radius, color) in
+            itertools::izip!(instance_keys, half_sizes, positions, radii, colors)
         {
-            let lines = line_batch
-                .add_strip_2d(strip.0.iter().copied().map(Into::into))
+            let instance_hash = re_entity_db::InstancePathHash::instance(ent_path, instance_key);
+
+            let min = half_size.box_min(position);
+            let max = half_size.box_max(position);
+
+            self.data.extend_bounding_box(
+                macaw::BoundingBox {
+                    min: min.extend(0.),
+                    max: max.extend(0.),
+                },
+                ent_context.world_from_entity,
+            );
+
+            let rectangle = line_batch
+                .add_rectangle_outline_2d(
+                    min,
+                    glam::vec2(half_size.width(), 0.0),
+                    glam::vec2(0.0, half_size.height()),
+                )
                 .color(color)
                 .radius(radius)
-                .picking_instance_id(pick_id);
-
-            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
-                lines.outline_mask_ids(*outline_mask_ids);
-            }
-
-            for p in strip.0 {
-                bounding_box.extend(glam::vec3(p.x(), p.y(), 0.0));
+                .picking_instance_id(picking_id_from_instance_key(instance_key));
+            if let Some(outline_mask_ids) = ent_context
+                .highlight
+                .instances
+                .get(&instance_hash.instance_key)
+            {
+                rectangle.outline_mask_ids(*outline_mask_ids);
             }
         }
-
-        self.data
-            .extend_bounding_box(bounding_box, ent_context.world_from_entity);
 
         Ok(())
     }
 }
 
-impl IdentifiedViewSystem for Lines2DPart {
+impl IdentifiedViewSystem for Boxes2DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Lines2D".into()
+        "Boxes2D".into()
     }
 }
 
-impl ViewPartSystem for Lines2DPart {
+impl VisualizerSystem for Boxes2DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
-        LineStrips2D::required_components()
+        Boxes2D::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(LineStrips2D::indicator().name()).collect()
+        std::iter::once(Boxes2D::indicator().name()).collect()
     }
 
     fn filter_visualizable_entities(
@@ -191,11 +194,11 @@ impl ViewPartSystem for Lines2DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Lines2DPart, LineStrips2D, { LineStrips2D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Boxes2DVisualizer, Boxes2D, { Boxes2D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.points,
+            view_ctx.get::<EntityDepthOffsets>()?.box2d,
             |_ctx, ent_path, _ent_props, arch_view, ent_context| {
                 self.process_arch_view(query, &arch_view, ent_path, ent_context)
             },

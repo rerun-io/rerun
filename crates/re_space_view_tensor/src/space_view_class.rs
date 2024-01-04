@@ -18,7 +18,7 @@ use re_viewer_context::{
     TensorStatsCache, ViewQuery, ViewerContext,
 };
 
-use crate::{tensor_dimension_mapper::dimension_mapping_ui, view_part_system::TensorSystem};
+use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem};
 
 #[derive(Default)]
 pub struct TensorSpaceView;

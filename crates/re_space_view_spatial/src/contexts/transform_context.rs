@@ -10,8 +10,8 @@ use re_types::{
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
 
 use crate::{
-    parts::{image_view_coordinates, CamerasPart},
     query_pinhole,
+    visualizers::{image_view_coordinates, CamerasVisualizer},
 };
 
 #[derive(Clone)]
@@ -95,7 +95,7 @@ impl ViewContextSystem for TransformContext {
         // the image_depth_plane_distance property.
         let entity_prop_map: EntityPropertyMap = query
             .per_system_data_results
-            .get(&CamerasPart::identifier())
+            .get(&CamerasVisualizer::identifier())
             .map(|results| {
                 results
                     .iter()

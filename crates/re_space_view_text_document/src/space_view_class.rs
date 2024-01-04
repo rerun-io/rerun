@@ -6,9 +6,9 @@ use re_viewer_context::{
     SpaceViewState, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
-use crate::view_part_system::TextDocumentEntry;
+use crate::visualizer_system::TextDocumentEntry;
 
-use super::view_part_system::TextDocumentSystem;
+use super::visualizer_system::TextDocumentSystem;
 
 // TODO(andreas): This should be a blueprint component.
 

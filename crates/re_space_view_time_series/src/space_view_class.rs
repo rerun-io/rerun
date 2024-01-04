@@ -12,7 +12,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
+use crate::visualizer_system::{PlotSeriesKind, TimeSeriesSystem};
 
 #[derive(Clone, Default)]
 pub struct TimeSeriesSpaceViewState {

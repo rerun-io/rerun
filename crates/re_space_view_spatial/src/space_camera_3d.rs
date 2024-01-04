@@ -5,7 +5,7 @@ use re_log_types::EntityPath;
 use re_types::archetypes::Pinhole;
 use re_types::components::ViewCoordinates;
 
-use crate::parts::image_view_coordinates;
+use crate::visualizers::image_view_coordinates;
 
 /// A logged camera that connects spaces.
 #[derive(Clone, PartialEq)]

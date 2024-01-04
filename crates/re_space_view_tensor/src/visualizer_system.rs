@@ -8,7 +8,7 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext, VisualizerAdditionalApplicabilityFilter,
+    ViewQuery, ViewerContext, VisualizerAdditionalApplicabilityFilter, VisualizerSystem,
 };
 
 #[derive(Default)]
@@ -32,7 +32,7 @@ impl VisualizerAdditionalApplicabilityFilter for TensorVisualizerEntityFilter {
     }
 }
 
-impl ViewPartSystem for TensorSystem {
+impl VisualizerSystem for TensorSystem {
     fn required_components(&self) -> ComponentNameSet {
         Tensor::required_components()
             .iter()

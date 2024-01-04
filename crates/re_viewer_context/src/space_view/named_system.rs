@@ -21,7 +21,7 @@ impl Default for ViewSystemIdentifier {
 //                as selected by the query.
 pub type PerSystemEntities = BTreeMap<ViewSystemIdentifier, BTreeSet<EntityPath>>;
 
-/// Trait for naming/identifying [`crate::ViewPartSystem`]s & [`crate::ViewContextSystem`]s.
+/// Trait for naming/identifying [`crate::VisualizerSystem`]s & [`crate::ViewContextSystem`]s.
 ///
 /// Required to be implemented for registration.
 pub trait IdentifiedViewSystem {

@@ -6,30 +6,32 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext, VisualizerSystem,
 };
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
-    parts::{UiLabel, UiLabelTarget},
     view_kind::SpatialSpaceViewKind,
+    visualizers::{UiLabel, UiLabelTarget},
 };
 
 use super::{
     entity_iterator::process_archetype_views, picking_id_from_instance_key, process_annotations,
-    process_colors, process_labels, process_radii, SpatialViewPartData,
+    process_colors, process_labels, process_radii, SpatialViewVisualizerData,
 };
 
-pub struct Boxes3DPart(SpatialViewPartData);
+pub struct Boxes3DVisualizer(SpatialViewVisualizerData);
 
-impl Default for Boxes3DPart {
+impl Default for Boxes3DVisualizer {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
+        Self(SpatialViewVisualizerData::new(Some(
+            SpatialSpaceViewKind::ThreeD,
+        )))
     }
 }
 
-impl Boxes3DPart {
+impl Boxes3DVisualizer {
     fn process_arch_view(
         &mut self,
         query: &ViewQuery<'_>,
@@ -117,13 +119,13 @@ impl Boxes3DPart {
     }
 }
 
-impl IdentifiedViewSystem for Boxes3DPart {
+impl IdentifiedViewSystem for Boxes3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Boxes3D".into()
     }
 }
 
-impl ViewPartSystem for Boxes3DPart {
+impl VisualizerSystem for Boxes3DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         Boxes3D::required_components()
             .iter()
@@ -141,7 +143,7 @@ impl ViewPartSystem for Boxes3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Boxes3DPart, Boxes3D, { Boxes3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Boxes3DVisualizer, Boxes3D, { Boxes3D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

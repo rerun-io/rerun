@@ -10,7 +10,7 @@ use re_viewer_context::{
     ViewQuery, ViewerContext,
 };
 
-use super::view_part_system::{Entry, TextLogSystem};
+use super::visualizer_system::{Entry, TextLogSystem};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default)]

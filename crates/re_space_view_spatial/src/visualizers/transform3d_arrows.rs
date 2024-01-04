@@ -6,8 +6,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext, VisualizerSystem,
 };
 
 use crate::{
@@ -15,23 +15,25 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::SpatialViewPartData;
+use super::SpatialViewVisualizerData;
 
-pub struct Transform3DArrowsPart(SpatialViewPartData);
+pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 
-impl Default for Transform3DArrowsPart {
+impl Default for Transform3DArrowsVisualizer {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
+        Self(SpatialViewVisualizerData::new(Some(
+            SpatialSpaceViewKind::ThreeD,
+        )))
     }
 }
 
-impl IdentifiedViewSystem for Transform3DArrowsPart {
+impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Transform3DArrows".into()
     }
 }
 
-impl ViewPartSystem for Transform3DArrowsPart {
+impl VisualizerSystem for Transform3DArrowsVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         re_types::archetypes::Transform3D::required_components()
             .iter()

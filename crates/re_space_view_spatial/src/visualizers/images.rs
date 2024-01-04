@@ -21,19 +21,19 @@ use re_types::{
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizerAdditionalApplicabilityFilter,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizerAdditionalApplicabilityFilter,
+    VisualizerSystem,
 };
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
-    parts::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     query_pinhole,
     view_kind::SpatialSpaceViewKind,
+    visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     SpatialSpaceView2D, SpatialSpaceView3D,
 };
 
-use super::{entity_iterator::process_archetype_views, SpatialViewPartData};
+use super::{entity_iterator::process_archetype_views, SpatialViewVisualizerData};
 
 pub struct ViewerImage {
     /// Path to the image (note image instance ids would refer to pixels!)
@@ -135,23 +135,23 @@ struct ImageGrouping {
     draw_order: DrawOrder,
 }
 
-pub struct ImagesPart {
-    pub data: SpatialViewPartData,
+pub struct ImageVisualizer {
+    pub data: SpatialViewVisualizerData,
     pub images: Vec<ViewerImage>,
     pub depth_cloud_entities: IntSet<EntityPathHash>,
 }
 
-impl Default for ImagesPart {
+impl Default for ImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
             images: Vec::new(),
             depth_cloud_entities: IntSet::default(),
         }
     }
 }
 
-impl ImagesPart {
+impl ImageVisualizer {
     fn handle_image_layering(&mut self) {
         re_tracing::profile_function!();
 
@@ -637,7 +637,7 @@ impl ImagesPart {
     }
 }
 
-impl IdentifiedViewSystem for ImagesPart {
+impl IdentifiedViewSystem for ImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Images".into()
     }
@@ -653,7 +653,7 @@ impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
     }
 }
 
-impl ViewPartSystem for ImagesPart {
+impl VisualizerSystem for ImageVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         let image: ComponentNameSet = Image::required_components()
             .iter()
@@ -710,7 +710,7 @@ impl ViewPartSystem for ImagesPart {
 
         let transforms = view_ctx.get::<TransformContext>()?;
 
-        process_archetype_views::<ImagesPart, Image, { Image::NUM_COMPONENTS }, _>(
+        process_archetype_views::<ImageVisualizer, Image, { Image::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,
@@ -728,7 +728,7 @@ impl ViewPartSystem for ImagesPart {
         )?;
 
         process_archetype_views::<
-            ImagesPart,
+            ImageVisualizer,
             SegmentationImage,
             { SegmentationImage::NUM_COMPONENTS },
             _,
@@ -749,7 +749,7 @@ impl ViewPartSystem for ImagesPart {
             },
         )?;
 
-        process_archetype_views::<ImagesPart, DepthImage, { DepthImage::NUM_COMPONENTS }, _>(
+        process_archetype_views::<ImageVisualizer, DepthImage, { DepthImage::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

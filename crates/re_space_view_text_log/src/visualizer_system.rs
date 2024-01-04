@@ -8,8 +8,8 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext, VisualizerSystem,
 };
 
 #[derive(Debug, Clone)]
@@ -41,7 +41,7 @@ impl IdentifiedViewSystem for TextLogSystem {
     }
 }
 
-impl ViewPartSystem for TextLogSystem {
+impl VisualizerSystem for TextLogSystem {
     fn required_components(&self) -> ComponentNameSet {
         TextLog::required_components()
             .iter()

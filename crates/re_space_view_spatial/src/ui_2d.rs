@@ -19,10 +19,10 @@ use super::{
 };
 use crate::{
     contexts::SharedRenderBuilders,
-    parts::collect_ui_labels,
     query_pinhole,
     ui::{outline_config, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
+    visualizers::collect_ui_labels,
 };
 
 // ---

@@ -257,7 +257,7 @@ impl SpaceViewBlueprint {
 
             query_result.tree.visit(&mut |handle| {
                 if let Some(result) = query_result.tree.lookup_result(handle) {
-                    for system in &result.view_parts {
+                    for system in &result.visualizers {
                         per_system_entities
                             .entry(*system)
                             .or_default()
@@ -334,7 +334,7 @@ impl SpaceViewBlueprint {
 
             query_result.tree.visit(&mut |handle| {
                 if let Some(result) = query_result.tree.lookup_result(handle) {
-                    for system in &result.view_parts {
+                    for system in &result.visualizers {
                         per_system_data_results
                             .entry(*system)
                             .or_default()
@@ -416,7 +416,7 @@ impl SpaceViewBlueprint {
 
         DataResult {
             entity_path: entity_path.clone(),
-            view_parts: Default::default(),
+            visualizers: Default::default(),
             is_group: true,
             direct_included: true,
             property_overrides: Some(PropertyOverrides {

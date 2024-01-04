@@ -7,8 +7,8 @@ use re_viewer::external::{
         self, components::InstanceKey, Archetype, ComponentName, ComponentNameSet, Loggable as _,
     },
     re_viewer_context::{
-        IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-        ViewQuery, ViewSystemIdentifier, ViewerContext,
+        IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+        ViewSystemIdentifier, ViewerContext, VisualizerSystem,
     },
 };
 
@@ -43,7 +43,7 @@ impl IdentifiedViewSystem for InstanceColorSystem {
     }
 }
 
-impl ViewPartSystem for InstanceColorSystem {
+impl VisualizerSystem for InstanceColorSystem {
     fn required_components(&self) -> ComponentNameSet {
         ColorArchetype::required_components()
             .iter()

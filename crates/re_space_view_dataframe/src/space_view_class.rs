@@ -13,7 +13,7 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::view_part_system::EmptySystem;
+use crate::visualizer_system::EmptySystem;
 
 #[derive(Default)]
 pub struct DataframeSpaceView;

@@ -8,10 +8,10 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerSystem,
 };
 
-use super::SpatialViewPartData;
+use super::SpatialViewVisualizerData;
 use crate::{
     contexts::{SharedRenderBuilders, TransformContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
@@ -21,29 +21,29 @@ use crate::{
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
-pub struct CamerasPart {
-    pub data: SpatialViewPartData,
+pub struct CamerasVisualizer {
+    pub data: SpatialViewVisualizerData,
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
-impl Default for CamerasPart {
+impl Default for CamerasVisualizer {
     fn default() -> Self {
         Self {
             // Cameras themselves aren't inherently 2D or 3D since they represent intrinsics.
             // (extrinsics, represented by [`transform3d_arrow::Transform3DArrowsPart`] are 3D though)
-            data: (SpatialViewPartData::new(None)),
+            data: (SpatialViewVisualizerData::new(None)),
             space_cameras: Vec::new(),
         }
     }
 }
 
-impl IdentifiedViewSystem for CamerasPart {
+impl IdentifiedViewSystem for CamerasVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Cameras".into()
     }
 }
 
-impl CamerasPart {
+impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
@@ -186,7 +186,7 @@ impl CamerasPart {
     }
 }
 
-impl ViewPartSystem for CamerasPart {
+impl VisualizerSystem for CamerasVisualizer {
     fn required_components(&self) -> ComponentNameSet {
         re_types::archetypes::Pinhole::required_components()
             .iter()

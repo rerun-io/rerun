@@ -11,9 +11,9 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
-    parts::{calculate_bounding_box, register_3d_spatial_parts, CamerasPart},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
+    visualizers::{calculate_bounding_box, register_3d_spatial_visualizers, CamerasVisualizer},
 };
 
 // TODO(andreas): This context is used to determine whether a 2D entity has a valid transform
@@ -45,7 +45,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         register_spatial_contexts(system_registry)?;
-        register_3d_spatial_parts(system_registry)?;
+        register_3d_spatial_visualizers(system_registry)?;
 
         Ok(())
     }
@@ -120,7 +120,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         );
 
         if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(mut score) = score {
-            if let Some(camera_paths) = per_system_entities.get(&CamerasPart::identifier()) {
+            if let Some(camera_paths) = per_system_entities.get(&CamerasVisualizer::identifier()) {
                 // If there is a camera at the origin, this cannot be a 3D space -- it must be 2D
                 if camera_paths.contains(space_origin) {
                     return AutoSpawnHeuristic::NeverSpawn;

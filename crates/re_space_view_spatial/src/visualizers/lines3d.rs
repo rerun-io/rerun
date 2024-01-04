@@ -1,66 +1,70 @@
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
-use re_renderer::renderer::LineStripFlags;
 use re_types::{
-    archetypes::Arrows3D,
-    components::{Position3D, Text, Vector3D},
+    archetypes::LineStrips3D,
+    components::{LineStrip3D, Text},
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerSystem,
 };
 
-use super::{picking_id_from_instance_key, process_annotations, SpatialViewPartData};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
-    parts::{
-        entity_iterator::process_archetype_views, process_colors, process_radii, UiLabel,
-        UiLabelTarget,
-    },
     view_kind::SpatialSpaceViewKind,
+    visualizers::{
+        entity_iterator::process_archetype_views, process_annotations, process_colors,
+        process_radii, UiLabel, UiLabelTarget,
+    },
 };
 
-pub struct Arrows3DPart {
+use super::{picking_id_from_instance_key, SpatialViewVisualizerData};
+
+pub struct Lines3DVisualizer {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
-    pub data: SpatialViewPartData,
+    pub data: SpatialViewVisualizerData,
 }
 
-impl Default for Arrows3DPart {
+impl Default for Lines3DVisualizer {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::ThreeD)),
         }
     }
 }
 
-impl Arrows3DPart {
+impl Lines3DVisualizer {
     fn process_labels<'a>(
-        arch_view: &'a ArchetypeView<Arrows3D>,
+        arch_view: &'a ArchetypeView<LineStrips3D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
         world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
+        re_tracing::profile_function!();
+
         let labels = itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<Vector3D>()?,
-            arch_view.iter_optional_component::<Position3D>()?,
+            arch_view.iter_required_component::<LineStrip3D>()?,
             arch_view.iter_optional_component::<Text>()?,
             colors,
             instance_path_hashes,
         )
         .filter_map(
-            move |(annotation_info, vector, origin, label, color, labeled_instance)| {
-                let origin = origin.unwrap_or(Position3D::ZERO);
+            move |(annotation_info, strip, label, color, labeled_instance)| {
                 let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
-                match (vector, label) {
-                    (vector, Some(label)) => {
-                        let midpoint =
-                             // `0.45` rather than `0.5` to account for cap and such
-                            (glam::Vec3::from(origin.0) + glam::Vec3::from(vector.0)) * 0.45;
+                match (strip, label) {
+                    (strip, Some(label)) => {
+                        let midpoint = strip
+                            .0
+                            .iter()
+                            .copied()
+                            .map(glam::Vec3::from)
+                            .sum::<glam::Vec3>()
+                            / (strip.0.len() as f32);
                         Some(UiLabel {
                             text: label,
                             color: *color,
@@ -80,12 +84,17 @@ impl Arrows3DPart {
     fn process_arch_view(
         &mut self,
         query: &ViewQuery<'_>,
-        arch_view: &ArchetypeView<Arrows3D>,
+        arch_view: &ArchetypeView<LineStrips3D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        let annotation_infos =
-            process_annotations::<Vector3D, Arrows3D>(query, arch_view, &ent_context.annotations)?;
+        re_tracing::profile_function!();
+
+        let annotation_infos = process_annotations::<LineStrip3D, LineStrips3D>(
+            query,
+            arch_view,
+            &ent_context.annotations,
+        )?;
 
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
         let radii = process_radii(arch_view, ent_path)?;
@@ -114,7 +123,8 @@ impl Arrows3DPart {
 
         let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
-            .batch("arrows")
+            .batch("lines 3d")
+            .depth_offset(ent_context.depth_offset)
             .world_from_obj(ent_context.world_from_entity)
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
@@ -123,36 +133,26 @@ impl Arrows3DPart {
         let pick_ids = arch_view
             .iter_instance_keys()
             .map(picking_id_from_instance_key);
-        let vectors = arch_view.iter_required_component::<Vector3D>()?;
-        let origins = arch_view.iter_optional_component::<Position3D>()?;
+        let strips = arch_view.iter_required_component::<LineStrip3D>()?;
 
         let mut bounding_box = macaw::BoundingBox::nothing();
 
-        for (instance_key, vector, origin, radius, color, pick_id) in
-            itertools::izip!(instance_keys, vectors, origins, radii, colors, pick_ids)
+        for (instance_key, strip, radius, color, pick_id) in
+            itertools::izip!(instance_keys, strips, radii, colors, pick_ids)
         {
-            let vector: glam::Vec3 = vector.0.into();
-            let origin: glam::Vec3 = origin.unwrap_or(Position3D::ZERO).0.into();
-            let end = origin + vector;
-
-            let segment = line_batch
-                .add_segment(origin, end)
-                .radius(radius)
+            let lines = line_batch
+                .add_strip(strip.0.iter().copied().map(Into::into))
                 .color(color)
-                .flags(
-                    LineStripFlags::FLAG_COLOR_GRADIENT
-                        | LineStripFlags::FLAG_CAP_END_TRIANGLE
-                        | LineStripFlags::FLAG_CAP_START_ROUND
-                        | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
-                )
+                .radius(radius)
                 .picking_instance_id(pick_id);
 
             if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
-                segment.outline_mask_ids(*outline_mask_ids);
+                lines.outline_mask_ids(*outline_mask_ids);
             }
 
-            bounding_box.extend(origin);
-            bounding_box.extend(end);
+            for p in strip.0 {
+                bounding_box.extend(p.into());
+            }
         }
 
         self.data
@@ -162,22 +162,22 @@ impl Arrows3DPart {
     }
 }
 
-impl IdentifiedViewSystem for Arrows3DPart {
+impl IdentifiedViewSystem for Lines3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Arrows3D".into()
+        "Lines3D".into()
     }
 }
 
-impl ViewPartSystem for Arrows3DPart {
+impl VisualizerSystem for Lines3DVisualizer {
     fn required_components(&self) -> ComponentNameSet {
-        Arrows3D::required_components()
+        LineStrips3D::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Arrows3D::indicator().name()).collect()
+        std::iter::once(LineStrips3D::indicator().name()).collect()
     }
 
     fn execute(
@@ -186,11 +186,16 @@ impl ViewPartSystem for Arrows3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Arrows3DPart, Arrows3D, { Arrows3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<
+            Lines3DVisualizer,
+            LineStrips3D,
+            { LineStrips3D::NUM_COMPONENTS },
+            _,
+        >(
             ctx,
             query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.lines2d,
+            view_ctx.get::<EntityDepthOffsets>()?.points,
             |_ctx, ent_path, _ent_props, arch_view, ent_context| {
                 self.process_arch_view(query, &arch_view, ent_path, ent_context)
             },

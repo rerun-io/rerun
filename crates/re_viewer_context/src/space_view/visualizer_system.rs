@@ -11,7 +11,7 @@ use crate::{
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
-pub trait ViewPartSystem: Send + Sync + 'static {
+pub trait VisualizerSystem: Send + Sync + 'static {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
@@ -49,10 +49,6 @@ pub trait ViewPartSystem: Send + Sync + 'static {
     /// Queries the data store and performs data conversions to make it ready for display.
     ///
     /// Mustn't query any data outside of the archetype.
-    ///
-    /// TODO(andreas): don't pass in `ViewerContext` if we want to restrict the queries here.
-    /// If we want to make this restriction, then the trait-contract should be that something external
-    /// to the `ViewPartSystemImpl` does the query and then passes an `ArchetypeQueryResult` into populate.
     fn execute(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -62,9 +58,9 @@ pub trait ViewPartSystem: Send + Sync + 'static {
 
     /// Optionally retrieves a data store reference from the scene element.
     ///
-    /// This is useful for retrieving data that is common to several parts of a [`crate::SpaceViewClass`].
-    /// For example, if most scene parts produce ui elements, a concrete [`crate::SpaceViewClass`]
-    /// can pick those up in its [`crate::SpaceViewClass::ui`] method by iterating over all scene parts.
+    /// This is useful for retrieving data that is common to several visualizers of a [`crate::SpaceViewClass`].
+    /// For example, if most visualizers produce ui elements, a concrete [`crate::SpaceViewClass`]
+    /// can pick those up in its [`crate::SpaceViewClass::ui`] method by iterating over all visualizers.
     fn data(&self) -> Option<&dyn std::any::Any> {
         None
     }
@@ -72,20 +68,20 @@ pub trait ViewPartSystem: Send + Sync + 'static {
     fn as_any(&self) -> &dyn std::any::Any;
 }
 
-pub struct ViewPartCollection {
-    pub systems: HashMap<ViewSystemIdentifier, Box<dyn ViewPartSystem>>,
+pub struct VisualizerCollection {
+    pub systems: HashMap<ViewSystemIdentifier, Box<dyn VisualizerSystem>>,
 }
 
-impl ViewPartCollection {
+impl VisualizerCollection {
     #[inline]
-    pub fn get<T: ViewPartSystem + IdentifiedViewSystem + 'static>(
+    pub fn get<T: VisualizerSystem + IdentifiedViewSystem + 'static>(
         &self,
     ) -> Result<&T, SpaceViewSystemExecutionError> {
         self.systems
             .get(&T::identifier())
             .and_then(|s| s.as_any().downcast_ref())
             .ok_or_else(|| {
-                SpaceViewSystemExecutionError::PartSystemNotFound(T::identifier().as_str())
+                SpaceViewSystemExecutionError::VisualizerSystemNotFound(T::identifier().as_str())
             })
     }
 
@@ -93,22 +89,22 @@ impl ViewPartCollection {
     pub fn get_by_identifier(
         &self,
         name: ViewSystemIdentifier,
-    ) -> Result<&dyn ViewPartSystem, SpaceViewSystemExecutionError> {
+    ) -> Result<&dyn VisualizerSystem, SpaceViewSystemExecutionError> {
         self.systems
             .get(&name)
             .map(|s| s.as_ref())
-            .ok_or_else(|| SpaceViewSystemExecutionError::PartSystemNotFound(name.as_str()))
+            .ok_or_else(|| SpaceViewSystemExecutionError::VisualizerSystemNotFound(name.as_str()))
     }
 
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &dyn ViewPartSystem> {
+    pub fn iter(&self) -> impl Iterator<Item = &dyn VisualizerSystem> {
         self.systems.values().map(|s| s.as_ref())
     }
 
     #[inline]
     pub fn iter_with_identifiers(
         &self,
-    ) -> impl Iterator<Item = (ViewSystemIdentifier, &dyn ViewPartSystem)> {
+    ) -> impl Iterator<Item = (ViewSystemIdentifier, &dyn VisualizerSystem)> {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
     }
 }

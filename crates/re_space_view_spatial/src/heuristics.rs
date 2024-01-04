@@ -16,9 +16,11 @@ use re_viewer_context::{
 };
 
 use crate::{
-    parts::{CamerasPart, ImagesPart, SpatialViewPartData, Transform3DArrowsPart},
     query_pinhole,
     view_kind::SpatialSpaceViewKind,
+    visualizers::{
+        CamerasVisualizer, ImageVisualizer, SpatialViewVisualizerData, Transform3DArrowsVisualizer,
+    },
 };
 
 pub fn auto_spawn_heuristic(
@@ -31,14 +33,16 @@ pub fn auto_spawn_heuristic(
 
     let mut score = 0.0;
 
-    let parts = ctx.space_view_class_registry.new_part_collection(class);
+    let parts = ctx
+        .space_view_class_registry
+        .new_visualizer_collection(class);
 
     // Gather all systems that advertise a "preferred view kind" matching the passed in kind.
     let system_names_with_matching_view_kind = parts
         .iter_with_identifiers()
         .filter_map(|(name, part)| {
             part.data()
-                .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+                .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
                 .map_or(false, |data| data.preferred_view_kind == Some(view_kind))
                 .then_some(name)
         })
@@ -114,7 +118,7 @@ fn update_pinhole_property_heuristics(
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
     for ent_path in per_system_entities
-        .get(&CamerasPart::identifier())
+        .get(&CamerasVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
         let mut properties = entity_properties.get(ent_path);
@@ -143,7 +147,7 @@ fn update_depth_cloud_property_heuristics(
 ) {
     // TODO(andreas): There should be a depth cloud system
     for ent_path in per_system_entities
-        .get(&ImagesPart::identifier())
+        .get(&ImageVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
         let store = ctx.entity_db.store();
@@ -194,7 +198,7 @@ fn update_transform3d_lines_heuristics(
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
     for ent_path in per_system_entities
-        .get(&Transform3DArrowsPart::identifier())
+        .get(&Transform3DArrowsVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
         fn is_pinhole_extrinsics_of<'a>(

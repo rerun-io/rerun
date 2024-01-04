@@ -253,9 +253,9 @@ impl<'a> QueryExpressionEvaluator<'a> {
         // Pre-compute our matches
         let any_match = self.entity_path_filter.is_included(entity_path);
 
-        // Only populate view_parts if this is a match
+        // Only populate visualizers if this is a match
         // Note that allowed prefixes that aren't matches can still create groups
-        let view_parts: SmallVec<_> = if any_match {
+        let visualizers: SmallVec<_> = if any_match {
             self.visualizable_entities_for_visualizer_systems
                 .iter()
                 .filter_map(|(visualizer, ents)| {
@@ -290,11 +290,11 @@ impl<'a> QueryExpressionEvaluator<'a> {
         };
 
         let self_leaf =
-            if !view_parts.is_empty() || self.entity_path_filter.is_exact_included(entity_path) {
+            if !visualizers.is_empty() || self.entity_path_filter.is_exact_included(entity_path) {
                 Some(data_results.insert(DataResultNode {
                     data_result: DataResult {
                         entity_path: entity_path.clone(),
-                        view_parts,
+                        visualizers,
                         is_group: false,
                         direct_included: any_match,
                         property_overrides: None,
@@ -325,7 +325,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
-                    view_parts: Default::default(),
+                    visualizers: Default::default(),
                     is_group: true,
                     direct_included: any_match,
                     property_overrides: None,
@@ -556,7 +556,7 @@ mod tests {
                     "/parent/**",
                     "/parent",
                     "/parent/skipped/**", // Not an exact match and not found in tree
-                    "/parent/skipped/child1", // Only child 1 has ViewParts
+                    "/parent/skipped/child1", // Only child 1 has visualizers
                 ],
             },
             Scenario {
@@ -565,7 +565,7 @@ mod tests {
                     "/**",
                     "/parent/**",             // Only included because is a prefix
                     "/parent/skipped/**",     // Not an exact match and not found in tree
-                    "/parent/skipped/child1", // Only child 1 has ViewParts
+                    "/parent/skipped/child1", // Only child 1 has visualizers
                 ],
             },
             Scenario {

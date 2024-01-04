@@ -10,17 +10,17 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-    ViewQuery, ViewerContext, VisualizerAdditionalApplicabilityFilter,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
+    ViewerContext, VisualizerAdditionalApplicabilityFilter, VisualizerSystem,
 };
 
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
-pub struct BarChartViewPartSystem {
+pub struct BarChartVisualizerSystem {
     pub charts: BTreeMap<EntityPath, (TensorData, Option<Color>)>,
 }
 
-impl IdentifiedViewSystem for BarChartViewPartSystem {
+impl IdentifiedViewSystem for BarChartVisualizerSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "BarChartView".into()
     }
@@ -36,7 +36,7 @@ impl VisualizerAdditionalApplicabilityFilter for BarChartVisualizerEntityFilter 
     }
 }
 
-impl ViewPartSystem for BarChartViewPartSystem {
+impl VisualizerSystem for BarChartVisualizerSystem {
     fn required_components(&self) -> ComponentNameSet {
         BarChart::required_components()
             .iter()

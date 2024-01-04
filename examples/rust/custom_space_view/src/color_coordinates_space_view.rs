@@ -11,7 +11,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::color_coordinates_view_part_system::{ColorWithInstanceKey, InstanceColorSystem};
+use crate::color_coordinates_visualizer_system::{ColorWithInstanceKey, InstanceColorSystem};
 
 /// The different modes for displaying color coordinates in the custom space view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]

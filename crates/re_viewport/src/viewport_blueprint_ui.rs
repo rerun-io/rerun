@@ -276,7 +276,7 @@ impl Viewport<'_, '_> {
                     .subdued(
                         !group_is_visible
                             || !properties.visible
-                            || data_result.view_parts.is_empty(),
+                            || data_result.visualizers.is_empty(),
                     )
                     .force_hovered(is_item_hovered)
                     .with_buttons(|re_ui, ui| {

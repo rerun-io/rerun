@@ -322,7 +322,7 @@ fn create_entity_add_info(
         ctx.applicable_entities_per_visualizer,
         ctx.entity_db,
         &ctx.space_view_class_registry
-            .new_part_collection(class.identifier()),
+            .new_visualizer_collection(class.identifier()),
         class,
         &space_view.space_origin,
     );
