@@ -18,12 +18,13 @@ mod transform3d_arrows;
 pub use cameras::CamerasVisualizer;
 pub use images::ImageVisualizer;
 pub use images::ViewerImage;
-use re_viewer_context::ApplicableEntities;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer};
 
+use re_viewer_context::ApplicableEntities;
+
 #[doc(hidden)] // Public for benchmarks
-pub use points3d::LoadedPoints;
+pub use points3d::{LoadedPoints, Points3DComponentData};
 
 use ahash::HashMap;
 
@@ -126,22 +127,30 @@ pub fn picking_id_from_instance_key(
 }
 
 /// Process [`Color`] components using annotations and default colors.
-#[allow(dead_code)]
-pub fn process_colors<'a, A: Archetype>(
-    arch_view: &'a re_query::ArchetypeView<A>,
+pub fn process_colors<'a>(
+    colors: impl ExactSizeIterator<Item = Option<Color>> + 'a,
     ent_path: &'a EntityPath,
     annotation_infos: &'a ResolvedAnnotationInfos,
-) -> Result<impl Iterator<Item = egui::Color32> + 'a, re_query::QueryError> {
+) -> impl Iterator<Item = egui::Color32> + 'a {
     re_tracing::profile_function!();
     let default_color = DefaultColor::EntityPath(ent_path);
 
-    Ok(itertools::izip!(
-        annotation_infos.iter(),
-        arch_view.iter_optional_component::<Color>()?,
-    )
-    .map(move |(annotation_info, color)| {
+    itertools::izip!(annotation_infos.iter(), colors).map(move |(annotation_info, color)| {
         annotation_info.color(color.map(|c| c.to_array()), default_color)
-    }))
+    })
+}
+
+pub fn process_color_slice<'a>(
+    colors: &'a [Option<Color>],
+    ent_path: &'a EntityPath,
+    annotation_infos: &'a ResolvedAnnotationInfos,
+) -> impl Iterator<Item = egui::Color32> + 'a {
+    re_tracing::profile_function!();
+    let default_color = DefaultColor::EntityPath(ent_path);
+
+    itertools::izip!(annotation_infos.iter(), colors).map(move |(annotation_info, color)| {
+        annotation_info.color(color.map(|c| c.to_array()), default_color)
+    })
 }
 
 /// Process [`Text`] components using annotations.
@@ -161,30 +170,52 @@ pub fn process_labels<'a, A: Archetype>(
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
-pub fn process_radii<'a, A: Archetype>(
-    arch_view: &'a re_query::ArchetypeView<A>,
+pub fn process_radii<'a>(
+    radii: impl ExactSizeIterator<Item = Option<re_types::components::Radius>> + 'a,
     ent_path: &EntityPath,
-) -> Result<impl Iterator<Item = re_renderer::Size> + 'a, re_query::QueryError> {
+) -> impl Iterator<Item = re_renderer::Size> + 'a {
     re_tracing::profile_function!();
     let ent_path = ent_path.clone();
-    Ok(arch_view
-        .iter_optional_component::<re_types::components::Radius>()?
-        .map(move |radius| {
-            radius.map_or(re_renderer::Size::AUTO, |r| {
-                if 0.0 <= r.0 && r.0.is_finite() {
-                    re_renderer::Size::new_scene(r.0)
+    radii.map(move |radius| {
+        radius.map_or(re_renderer::Size::AUTO, |r| {
+            if 0.0 <= r.0 && r.0.is_finite() {
+                re_renderer::Size::new_scene(r.0)
+            } else {
+                if r.0 < 0.0 {
+                    re_log::warn_once!("Found negative radius in entity {ent_path}");
+                } else if r.0.is_infinite() {
+                    re_log::warn_once!("Found infinite radius in entity {ent_path}");
                 } else {
-                    if r.0 < 0.0 {
-                        re_log::warn_once!("Found negative radius in entity {ent_path}");
-                    } else if r.0.is_infinite() {
-                        re_log::warn_once!("Found infinite radius in entity {ent_path}");
-                    } else {
-                        re_log::warn_once!("Found NaN radius in entity {ent_path}");
-                    }
-                    re_renderer::Size::AUTO
+                    re_log::warn_once!("Found NaN radius in entity {ent_path}");
                 }
-            })
-        }))
+                re_renderer::Size::AUTO
+            }
+        })
+    })
+}
+
+pub fn process_radii_slice<'a>(
+    radii: &'a [Option<re_types::components::Radius>],
+    ent_path: &EntityPath,
+) -> impl Iterator<Item = re_renderer::Size> + 'a {
+    re_tracing::profile_function!();
+    let ent_path = ent_path.clone();
+    radii.iter().map(move |radius| {
+        radius.map_or(re_renderer::Size::AUTO, |r| {
+            if 0.0 <= r.0 && r.0.is_finite() {
+                re_renderer::Size::new_scene(r.0)
+            } else {
+                if r.0 < 0.0 {
+                    re_log::warn_once!("Found negative radius in entity {ent_path}");
+                } else if r.0.is_infinite() {
+                    re_log::warn_once!("Found infinite radius in entity {ent_path}");
+                } else {
+                    re_log::warn_once!("Found NaN radius in entity {ent_path}");
+                }
+                re_renderer::Size::AUTO
+            }
+        })
+    })
 }
 
 /// Resolves all annotations for the given entity view.

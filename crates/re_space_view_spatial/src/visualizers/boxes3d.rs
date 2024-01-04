@@ -2,7 +2,7 @@ use re_entity_db::EntityPath;
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes3D,
-    components::{HalfSizes3D, Position3D, Rotation3D},
+    components::{Color, HalfSizes3D, Position3D, Radius, Rotation3D},
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
@@ -53,8 +53,12 @@ impl Boxes3DVisualizer {
         let rotation = arch_view
             .iter_optional_component::<Rotation3D>()?
             .map(|position| position.unwrap_or(Rotation3D::IDENTITY));
-        let radii = process_radii(arch_view, ent_path)?;
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
+        let radii = process_radii(arch_view.iter_optional_component::<Radius>()?, ent_path);
+        let colors = process_colors(
+            arch_view.iter_optional_component::<Color>()?,
+            ent_path,
+            &annotation_infos,
+        );
         let labels = process_labels(arch_view, &annotation_infos)?;
 
         let mut line_builder = ent_context.shared_render_builders.lines();

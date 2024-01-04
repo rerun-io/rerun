@@ -2,7 +2,7 @@ use re_entity_db::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::LineStrips3D,
-    components::{LineStrip3D, Text},
+    components::{Color, LineStrip3D, Radius, Text},
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
@@ -96,13 +96,21 @@ impl Lines3DVisualizer {
             &ent_context.annotations,
         )?;
 
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
+        let colors = process_colors(
+            arch_view.iter_optional_component::<Color>()?,
+            ent_path,
+            &annotation_infos,
+        );
+        let radii = process_radii(arch_view.iter_optional_component::<Radius>()?, ent_path);
 
         if arch_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+            let colors = process_colors(
+                arch_view.iter_optional_component::<Color>()?,
+                ent_path,
+                &annotation_infos,
+            )
+            .collect::<Vec<_>>();
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");

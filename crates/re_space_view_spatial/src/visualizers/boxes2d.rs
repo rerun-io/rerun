@@ -2,7 +2,7 @@ use re_entity_db::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes2D,
-    components::{HalfSizes2D, Position2D, Text},
+    components::{Color, HalfSizes2D, Position2D, Radius, Text},
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
@@ -91,13 +91,21 @@ impl Boxes2DVisualizer {
         let positions = arch_view
             .iter_optional_component::<Position2D>()?
             .map(|position| position.unwrap_or(Position2D::ZERO));
-        let radii = process_radii(arch_view, ent_path)?;
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
+        let radii = process_radii(arch_view.iter_optional_component::<Radius>()?, ent_path);
+        let colors = process_colors(
+            arch_view.iter_optional_component::<Color>()?,
+            ent_path,
+            &annotation_infos,
+        );
 
         if arch_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+            let colors = process_colors(
+                arch_view.iter_optional_component::<Color>()?,
+                ent_path,
+                &annotation_infos,
+            )
+            .collect::<Vec<_>>();
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");

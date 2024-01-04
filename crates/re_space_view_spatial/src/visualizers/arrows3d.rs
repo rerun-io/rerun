@@ -3,7 +3,7 @@ use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Arrows3D,
-    components::{Position3D, Text, Vector3D},
+    components::{Color, Position3D, Radius, Text, Vector3D},
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
@@ -87,13 +87,21 @@ impl Arrows3DVisualizer {
         let annotation_infos =
             process_annotations::<Vector3D, Arrows3D>(query, arch_view, &ent_context.annotations)?;
 
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
+        let colors = process_colors(
+            arch_view.iter_optional_component::<Color>()?,
+            ent_path,
+            &annotation_infos,
+        );
+        let radii = process_radii(arch_view.iter_optional_component::<Radius>()?, ent_path);
 
         if arch_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+            let colors = process_colors(
+                arch_view.iter_optional_component::<Color>()?,
+                ent_path,
+                &annotation_infos,
+            )
+            .collect::<Vec<_>>();
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
