@@ -47,7 +47,7 @@ impl ViewPartSystem for TextDocumentSystem {
         query: &ViewQuery<'_>,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
 
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 

@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
-use re_data_store::StoreDb;
+use re_data_store::EntityDb;
 
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::ApplicationId;
@@ -71,7 +71,7 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
 /// If `time_selection` is specified, then only data for that specific timeline over that
 /// specific time range will be accounted for.
 pub fn save_database_to_file(
-    store_db: &StoreDb,
+    entity_db: &EntityDb,
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
 ) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
@@ -79,9 +79,9 @@ pub fn save_database_to_file(
 
     re_tracing::profile_function!();
 
-    store_db.store().sort_indices_if_needed();
+    entity_db.store().sort_indices_if_needed();
 
-    let set_store_info_msg = store_db
+    let set_store_info_msg = entity_db
         .store_info_msg()
         .map(|msg| LogMsg::SetStoreInfo(msg.clone()));
 
@@ -91,13 +91,13 @@ pub fn save_database_to_file(
             TimeRange::new(range.min.floor(), range.max.ceil()),
         )
     });
-    let data_msgs: Result<Vec<_>, _> = store_db
+    let data_msgs: Result<Vec<_>, _> = entity_db
         .store()
         .to_data_tables(time_filter)
         .map(|table| {
             table
                 .to_arrow_msg()
-                .map(|msg| LogMsg::ArrowMsg(store_db.store_id().clone(), msg))
+                .map(|msg| LogMsg::ArrowMsg(entity_db.store_id().clone(), msg))
         })
         .collect();
 

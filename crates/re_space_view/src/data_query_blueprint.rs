@@ -3,7 +3,7 @@ use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use re_data_store::{
-    EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree, StoreDb,
+    EntityDb, EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree,
 };
 use re_log_types::{
     path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, TimePoint,
@@ -65,7 +65,7 @@ impl DataQueryBlueprint {
     /// Attempt to load a [`DataQueryBlueprint`] from the blueprint store.
     pub fn try_from_db(
         id: DataQueryId,
-        blueprint_db: &StoreDb,
+        blueprint_db: &EntityDb,
         space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> Option<Self> {
         let expressions = blueprint_db
@@ -491,7 +491,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
 #[cfg(feature = "testing")]
 #[cfg(test)]
 mod tests {
-    use re_data_store::StoreDb;
+    use re_data_store::EntityDb;
     use re_log_types::{example_components::MyPoint, DataRow, RowId, StoreId, TimePoint, Timeline};
     use re_viewer_context::{StoreContext, VisualizableEntities};
 
@@ -499,8 +499,8 @@ mod tests {
 
     #[test]
     fn test_query_results() {
-        let mut recording = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        let blueprint = StoreDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);

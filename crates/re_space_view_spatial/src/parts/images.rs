@@ -224,7 +224,7 @@ impl ImagesPart {
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably do this for us.
-        if !ctx.store_db.store().entity_has_component(
+        if !ctx.entity_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
             &Image::indicator().name(),
@@ -317,7 +317,7 @@ impl ImagesPart {
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx.store_db.store().entity_has_component(
+        if !ctx.entity_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
             &DepthImage::indicator().name(),
@@ -455,7 +455,7 @@ impl ImagesPart {
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx.store_db.store().entity_has_component(
+        if !ctx.entity_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
             &SegmentationImage::indicator().name(),
@@ -546,7 +546,7 @@ impl ImagesPart {
         re_tracing::profile_function!();
 
         let Some(intrinsics) = query_pinhole(
-            ctx.store_db.store(),
+            ctx.entity_db.store(),
             &ctx.current_query(),
             parent_pinhole_path,
         ) else {
@@ -556,7 +556,7 @@ impl ImagesPart {
         // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
         let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
             parent_pinhole_path,
-            ctx.store_db.store(),
+            ctx.entity_db.store(),
             &ctx.current_query(),
         );
         let Some(world_from_view) = world_from_view else {

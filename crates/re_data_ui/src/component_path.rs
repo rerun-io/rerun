@@ -21,7 +21,7 @@ impl DataUi for ComponentPath {
         {
             ctx.store_context.blueprint.store()
         } else {
-            ctx.store_db.store()
+            ctx.entity_db.store()
         };
 
         if let Some(archetype_name) = component_name.indicator_component_archetype() {
@@ -36,7 +36,7 @@ impl DataUi for ComponentPath {
                 component_data,
             }
             .data_ui(ctx, ui, verbosity, query);
-        } else if let Some(entity_tree) = ctx.store_db.tree().subtree(entity_path) {
+        } else if let Some(entity_tree) = ctx.entity_db.tree().subtree(entity_path) {
             if entity_tree.entity.components.contains_key(component_name) {
                 ui.label("<unset>");
             } else {

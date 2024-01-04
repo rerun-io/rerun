@@ -41,7 +41,7 @@ fn candidate_space_view_paths<'a>(
 ) -> impl Iterator<Item = &'a EntityPath> {
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
     // as well as all direct descendants of the root.
-    let root_children = &ctx.store_db.tree().children;
+    let root_children = &ctx.entity_db.tree().children;
     spaces_info
         .iter()
         .map(|info| &info.path)
@@ -85,7 +85,7 @@ pub fn all_possible_space_views(
 
                     let visualizable_entities = determine_visualizable_entities(
                         ctx.applicable_entities_per_visualizer,
-                        ctx.store_db,
+                        ctx.entity_db,
                         &ctx.space_view_class_registry
                             .new_part_collection(class_identifier),
                         entry.class.as_ref(),
@@ -194,7 +194,7 @@ pub fn default_created_space_views(
 ) -> Vec<SpaceViewBlueprint> {
     re_tracing::profile_function!();
 
-    let store = ctx.store_db.store();
+    let store = ctx.entity_db.store();
     let candidates = all_possible_space_views(ctx, spaces_info);
 
     // All queries are "right most" on the log timeline.

@@ -92,7 +92,7 @@ impl SpaceViewClass for DataframeSpaceView {
             .cloned()
             .collect();
 
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
         let latest_at_query = query.latest_at_query();
 
         let sorted_instance_paths: Vec<_>;

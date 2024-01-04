@@ -1,5 +1,5 @@
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPropertiesComponent, StoreDb};
+use re_data_store::{EntityDb, EntityPropertiesComponent};
 use re_log_types::Timeline;
 use re_types::blueprint::components::{
     EntitiesDeterminedByUser, IncludedQueries, Name, SpaceViewClass, SpaceViewOrigin,
@@ -14,7 +14,7 @@ use re_viewport::{
 
 use crate::blueprint::components::PanelView;
 
-fn validate_component<C: Component>(blueprint: &StoreDb) -> bool {
+fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
     let query = LatestAtQuery::latest(Timeline::default());
 
     if let Some(data_type) = blueprint.data_store().lookup_datatype(&C::name()) {
@@ -54,7 +54,7 @@ fn validate_component<C: Component>(blueprint: &StoreDb) -> bool {
 
 /// Because blueprints are both read and written the schema must match what
 /// we expect to find or else we will run into all kinds of problems.
-pub fn is_valid_blueprint(blueprint: &StoreDb) -> bool {
+pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
     // TODO(jleibs): Generate this from codegen.
     validate_component::<AutoSpaceViews>(blueprint)
         && validate_component::<AutoLayout>(blueprint)

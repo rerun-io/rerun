@@ -57,7 +57,7 @@ pub struct ViewportBlueprint {
 impl ViewportBlueprint {
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
     pub fn try_from_db(
-        blueprint_db: &re_data_store::StoreDb,
+        blueprint_db: &re_data_store::EntityDb,
         app_options: &AppOptions,
         tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
     ) -> Self {

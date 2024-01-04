@@ -241,7 +241,7 @@ pub fn view_2d(
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
-    let store = ctx.store_db.store();
+    let store = ctx.entity_db.store();
 
     let scene_rect_accum = egui::Rect::from_min_max(
         state.scene_bbox_accum.min.truncate().to_array().into(),

@@ -59,7 +59,7 @@ impl ViewPartSystem for TextLogSystem {
         query: &ViewQuery<'_>,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             // We want everything, for all times:

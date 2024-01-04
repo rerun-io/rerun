@@ -61,7 +61,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
     fn visualizable_filter_context(
         &self,
         space_origin: &EntityPath,
-        store_db: &re_data_store::StoreDb,
+        entity_db: &re_data_store::EntityDb,
     ) -> Box<dyn std::any::Any> {
         re_tracing::profile_function!();
 
@@ -93,7 +93,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             }
         }
 
-        let entity_tree = &store_db.tree();
+        let entity_tree = &entity_db.tree();
 
         // Walk down the tree from the space_origin.
         let Some(current_tree) = &entity_tree.subtree(space_origin) else {

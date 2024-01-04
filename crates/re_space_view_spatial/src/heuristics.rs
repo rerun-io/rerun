@@ -146,7 +146,7 @@ fn update_depth_cloud_property_heuristics(
         .get(&ImagesPart::identifier())
         .unwrap_or(&BTreeSet::new())
     {
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
         let Some(tensor) =
             store.query_latest_component::<TensorData>(ent_path, &ctx.current_query())
         else {
@@ -206,7 +206,7 @@ fn update_transform3d_lines_heuristics(
                 return Some(ent_path);
             } else {
                 // Any direct child has a pinhole camera?
-                if let Some(child_tree) = ctx.store_db.tree().subtree(ent_path) {
+                if let Some(child_tree) = ctx.entity_db.tree().subtree(ent_path) {
                     for child in child_tree.children.values() {
                         if query_pinhole(store, &ctx.current_query(), &child.path).is_some() {
                             return Some(&child.path);
@@ -223,7 +223,7 @@ fn update_transform3d_lines_heuristics(
             // By default show the transform if it is a camera extrinsic,
             // or if this entity only contains Transform3D components.
             let only_has_transform_components = ctx
-                .store_db
+                .entity_db
                 .store()
                 .all_components(&ctx.current_query().timeline, ent_path)
                 .map_or(false, |c| {
@@ -232,13 +232,13 @@ fn update_transform3d_lines_heuristics(
                 });
             properties.transform_3d_visible = EditableAutoValue::Auto(
                 only_has_transform_components
-                    || is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx).is_some(),
+                    || is_pinhole_extrinsics_of(ctx.entity_db.store(), ent_path, ctx).is_some(),
             );
         }
 
         if properties.transform_3d_size.is_auto() {
             if let Some(pinhole_path) =
-                is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx)
+                is_pinhole_extrinsics_of(ctx.entity_db.store(), ent_path, ctx)
             {
                 // If there's a pinhole, we orient ourselves on its image plane distance
                 let pinhole_path_props = entity_properties.get(pinhole_path);

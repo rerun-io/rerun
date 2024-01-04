@@ -3,7 +3,7 @@ use std::{hash::Hash, str::FromStr};
 use re_log_types::{DataPath, EntityPath, EntityPathHash, PathParseError, RowId};
 use re_types_core::components::InstanceKey;
 
-use crate::{StoreDb, VersionedInstancePath, VersionedInstancePathHash};
+use crate::{EntityDb, VersionedInstancePath, VersionedInstancePathHash};
 
 // ----------------------------------------------------------------------------
 
@@ -221,8 +221,8 @@ impl InstancePathHash {
         }
     }
 
-    pub fn resolve(&self, store_db: &StoreDb) -> Option<InstancePath> {
-        let entity_path = store_db
+    pub fn resolve(&self, entity_db: &EntityDb) -> Option<InstancePath> {
+        let entity_path = entity_db
             .entity_path_from_hash(&self.entity_path_hash)
             .cloned()?;
 

@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use parking_lot::RwLock;
 
-use re_data_store::{store_db::StoreDb, EntityTree, TimeHistogramPerTimeline};
+use re_data_store::{entity_db::EntityDb, EntityTree, TimeHistogramPerTimeline};
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
@@ -27,7 +27,7 @@ pub struct ViewerContext<'a> {
 
     /// The current recording.
     /// TODO(jleibs): This can go away
-    pub store_db: &'a StoreDb,
+    pub entity_db: &'a EntityDb,
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,

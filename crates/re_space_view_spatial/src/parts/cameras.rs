@@ -207,7 +207,7 @@ impl ViewPartSystem for CamerasPart {
         let transforms = view_ctx.get::<TransformContext>()?;
         let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
 
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);

@@ -1,6 +1,6 @@
 use super::{large_text_button, url_large_text_button, WelcomeScreenResponse};
 use egui::{NumExt, Ui};
-use re_data_store::StoreDb;
+use re_data_store::EntityDb;
 use re_log_types::{
     DataRow, EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimePoint,
 };
@@ -347,8 +347,8 @@ fn open_markdown_recording(
         store_kind: StoreKind::Recording,
     };
 
-    let store_db = StoreDb::from_info_and_rows(store_info, [row])?;
-    command_sender.send_system(SystemCommand::LoadStoreDb(store_db));
+    let entity_db = EntityDb::from_info_and_rows(store_info, [row])?;
+    command_sender.send_system(SystemCommand::LoadStoreDb(entity_db));
 
     Ok(())
 }

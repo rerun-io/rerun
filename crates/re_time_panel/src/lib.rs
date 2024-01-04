@@ -178,7 +178,7 @@ impl TimePanel {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     let re_ui = &ctx.re_ui;
-                    let times_per_timeline = ctx.store_db.times_per_timeline();
+                    let times_per_timeline = ctx.entity_db.times_per_timeline();
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
                     self.time_control_ui.playback_speed_ui(time_ctrl, ui);
@@ -187,7 +187,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        ctx.store_db.times_per_timeline(),
+                        ctx.entity_db.times_per_timeline(),
                         ui,
                     );
                     collapsed_time_marker_and_time(ui, ctx, time_ctrl);
@@ -196,7 +196,7 @@ impl TimePanel {
         } else {
             // One row:
             let re_ui = &ctx.re_ui;
-            let times_per_timeline = ctx.store_db.times_per_timeline();
+            let times_per_timeline = ctx.entity_db.times_per_timeline();
             self.time_control_ui
                 .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
             self.time_control_ui
@@ -317,7 +317,7 @@ impl TimePanel {
             full_y_range,
         );
         time_selection_ui::loop_selection_ui(
-            ctx.store_db,
+            ctx.entity_db,
             time_ctrl,
             &self.time_ranges_ui,
             ui,
@@ -422,7 +422,7 @@ impl TimePanel {
                         time_area_painter,
                         tree_max_y,
                         None,
-                        ctx.store_db.tree(),
+                        ctx.entity_db.tree(),
                         ui,
                         "/",
                     );
@@ -433,7 +433,7 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         tree_max_y,
-                        ctx.store_db.tree(),
+                        ctx.entity_db.tree(),
                         ui,
                     );
                 }
@@ -697,7 +697,7 @@ impl TimePanel {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     let re_ui = &ctx.re_ui;
-                    let times_per_timeline = ctx.store_db.times_per_timeline();
+                    let times_per_timeline = ctx.entity_db.times_per_timeline();
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
                     self.time_control_ui.playback_speed_ui(time_ctrl, ui);
@@ -706,7 +706,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        ctx.store_db.times_per_timeline(),
+                        ctx.entity_db.times_per_timeline(),
                         ui,
                     );
 
@@ -720,7 +720,7 @@ impl TimePanel {
         } else {
             // One row:
             let re_ui = &ctx.re_ui;
-            let times_per_timeline = ctx.store_db.times_per_timeline();
+            let times_per_timeline = ctx.entity_db.times_per_timeline();
 
             self.time_control_ui
                 .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
@@ -861,15 +861,15 @@ fn help_button(ui: &mut egui::Ui) {
 ///
 /// This functions returns `true` iff the given time is safe to show.
 fn is_time_safe_to_show(
-    store_db: &re_data_store::StoreDb,
+    entity_db: &re_data_store::EntityDb,
     timeline: &re_arrow_store::Timeline,
     time: TimeReal,
 ) -> bool {
-    if store_db.num_timeless_messages() == 0 {
+    if entity_db.num_timeless_messages() == 0 {
         return true; // no timeless messages, no problem
     }
 
-    if let Some(times) = store_db.tree().subtree.time_histogram.get(timeline) {
+    if let Some(times) = entity_db.tree().subtree.time_histogram.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
                 re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),
@@ -886,7 +886,7 @@ fn is_time_safe_to_show(
 fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &TimeControl) {
     if let Some(time_int) = time_ctrl.time_int() {
         let timeline = time_ctrl.timeline();
-        if is_time_safe_to_show(ctx.store_db, timeline, time_int.into()) {
+        if is_time_safe_to_show(ctx.entity_db, timeline, time_int.into()) {
             let time_type = time_ctrl.time_type();
             ui.monospace(time_type.format(time_int, ctx.app_options.time_zone_for_timestamps));
         }
@@ -904,7 +904,7 @@ fn initialize_time_ranges_ui(
     re_tracing::profile_function!();
 
     // If there's any timeless data, add the "beginning range" that contains timeless data.
-    let mut time_range = if ctx.store_db.num_timeless_messages() > 0 {
+    let mut time_range = if ctx.entity_db.num_timeless_messages() > 0 {
         vec![TimeRange {
             min: TimeInt::BEGINNING,
             max: TimeInt::BEGINNING,
@@ -913,7 +913,7 @@ fn initialize_time_ranges_ui(
         Vec::new()
     };
 
-    if let Some(times) = ctx.store_db.time_histogram(time_ctrl.timeline()) {
+    if let Some(times) = ctx.entity_db.time_histogram(time_ctrl.timeline()) {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {
             let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times);

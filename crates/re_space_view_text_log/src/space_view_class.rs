@@ -236,7 +236,7 @@ impl ViewTextFilters {
             row_log_levels,
         } = self;
 
-        for timeline in ctx.store_db.timelines() {
+        for timeline in ctx.entity_db.timelines() {
             col_timelines.entry(*timeline).or_insert(true);
         }
 
@@ -249,7 +249,7 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
-    if let Some((time_point, _)) = ctx.store_db.store().get_msg_metadata(&entry.row_id) {
+    if let Some((time_point, _)) = ctx.entity_db.store().get_msg_metadata(&entry.row_id) {
         Some(time_point.clone())
     } else {
         re_log::warn_once!("Missing metadata for {:?}", entry.entity_path);

@@ -24,11 +24,11 @@ impl DataUi for InstancePath {
         {
             ctx.store_context.blueprint.store()
         } else {
-            ctx.store_db.store()
+            ctx.entity_db.store()
         };
 
         let Some(components) = store.all_components(&query.timeline, entity_path) else {
-            if ctx.store_db.is_known_entity(entity_path) {
+            if ctx.entity_db.is_known_entity(entity_path) {
                 // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
                 ui.label(format!(
                     "No components logged on timeline {:?}",

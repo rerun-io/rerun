@@ -122,7 +122,7 @@ impl Selection {
     pub fn resolve_mono_instance_path_items(&mut self, ctx: &ViewerContext<'_>) {
         for (item, _) in self.iter_mut() {
             *item =
-                resolve_mono_instance_path_item(&ctx.current_query(), ctx.store_db.store(), item);
+                resolve_mono_instance_path_item(&ctx.current_query(), ctx.entity_db.store(), item);
         }
     }
 

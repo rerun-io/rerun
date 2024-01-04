@@ -365,7 +365,7 @@ pub fn instance_hover_card_ui(ui: &mut Ui, ctx: &ViewerContext<'_>, instance_pat
     let query = ctx.current_query();
 
     if instance_path.instance_key.is_splat() {
-        if let Some(subtree) = ctx.store_db.tree().subtree(&instance_path.entity_path) {
+        if let Some(subtree) = ctx.entity_db.tree().subtree(&instance_path.entity_path) {
             entity_tree_stats_ui(ui, &query.timeline, subtree);
         }
     } else {

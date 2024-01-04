@@ -62,7 +62,7 @@ impl ViewPartSystem for InstanceColorSystem {
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             // ...gather all colors and their instance ids.
             if let Ok(arch_view) = query_archetype::<ColorArchetype>(
-                ctx.store_db.store(),
+                ctx.entity_db.store(),
                 &ctx.current_query(),
                 &data_result.entity_path,
             ) {
