@@ -1,4 +1,4 @@
-use re_data_store::{EntityPath, InstancePathHash};
+use re_entity_db::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes2D,
@@ -126,7 +126,7 @@ impl Boxes2DVisualizer {
         for (instance_key, half_size, position, radius, color) in
             itertools::izip!(instance_keys, half_sizes, positions, radii, colors)
         {
-            let instance_hash = re_data_store::InstancePathHash::instance(ent_path, instance_key);
+            let instance_hash = re_entity_db::InstancePathHash::instance(ent_path, instance_key);
 
             let min = half_size.box_min(position);
             let max = half_size.box_max(position);

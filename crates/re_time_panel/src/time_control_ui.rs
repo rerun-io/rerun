@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 
-use re_data_store::TimesPerTimeline;
+use re_entity_db::TimesPerTimeline;
 use re_log_types::TimeType;
 
 use re_viewer_context::{Looping, PlayState, TimeControl};

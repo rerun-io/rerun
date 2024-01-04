@@ -8,8 +8,8 @@ use ahash::HashMap;
 
 use egui_tiles::Behavior as _;
 use once_cell::sync::Lazy;
-use re_data_store::EntityPropertyMap;
 use re_data_ui::item_ui;
+use re_entity_db::EntityPropertyMap;
 
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{

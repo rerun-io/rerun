@@ -325,7 +325,7 @@ pub fn view_3d(
     let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
     let view_coordinates = ctx
-        .store_db
+        .entity_db
         .store()
         // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
         // See https://github.com/rerun-io/rerun/issues/3538

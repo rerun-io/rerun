@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_space_view::diff_component_filter;
 use re_types::{
     archetypes::{BarChart, Tensor},
@@ -65,7 +65,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let query = LatestAtQuery::new(query.timeline, query.latest_at);

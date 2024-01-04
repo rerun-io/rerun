@@ -1,7 +1,7 @@
 //! Handles picking in 2D and 3D spaces.
 
 use ahash::HashSet;
-use re_data_store::InstancePathHash;
+use re_entity_db::InstancePathHash;
 use re_renderer::PickingLayerProcessor;
 use re_types::components::InstanceKey;
 

@@ -143,14 +143,14 @@ impl ViewerAnalytics {
     }
 
     /// When we have loaded the start of a new recording.
-    pub fn on_open_recording(&mut self, store_db: &re_data_store::StoreDb) {
+    pub fn on_open_recording(&mut self, entity_db: &re_entity_db::EntityDb) {
         use re_log_types::StoreSource;
 
-        if store_db.store_kind() != re_log_types::StoreKind::Recording {
+        if entity_db.store_kind() != re_log_types::StoreKind::Recording {
             return;
         }
 
-        if let Some(store_info) = store_db.store_info() {
+        if let Some(store_info) = entity_db.store_info() {
             // We hash the application_id and recording_id unless this is an official example.
             // That's because we want to be able to track which are the popular examples,
             // but we don't want to collect actual application ids.
@@ -225,7 +225,7 @@ impl ViewerAnalytics {
             );
         }
 
-        if let Some(data_source) = &store_db.data_source {
+        if let Some(data_source) = &entity_db.data_source {
             let data_source = match data_source {
                 re_smart_channel::SmartChannelSource::File(_) => "file", // .rrd, .png, .glb, …
                 re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => "http",
@@ -255,5 +255,5 @@ impl ViewerAnalytics {
     ) {
     }
 
-    pub fn on_open_recording(&mut self, _store_db: &re_data_store::StoreDb) {}
+    pub fn on_open_recording(&mut self, _entity_db: &re_entity_db::EntityDb) {}
 }

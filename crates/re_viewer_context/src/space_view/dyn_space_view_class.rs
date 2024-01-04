@@ -1,4 +1,4 @@
-use re_data_store::{EntityProperties, EntityPropertyMap};
+use re_entity_db::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
 use re_types::ComponentName;
 
@@ -100,7 +100,7 @@ pub trait DynSpaceViewClass: Send + Sync {
     fn visualizable_filter_context(
         &self,
         space_origin: &EntityPath,
-        store_db: &re_data_store::StoreDb,
+        entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn std::any::Any>;
 
     /// Heuristic used to determine which space view is the best fit for a set of paths.

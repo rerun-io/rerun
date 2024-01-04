@@ -1,6 +1,6 @@
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
-use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
+use re_entity_db::{EntityDb, EntityPath, EntityProperties, TimeInt, VisibleHistory};
+use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 
 use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
@@ -81,7 +81,7 @@ impl SpaceViewBlueprint {
     }
 
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
-    pub fn try_from_db(id: SpaceViewId, blueprint_db: &StoreDb) -> Option<Self> {
+    pub fn try_from_db(id: SpaceViewId, blueprint_db: &EntityDb) -> Option<Self> {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
@@ -460,7 +460,7 @@ impl SpaceViewBlueprint {
 
 #[cfg(test)]
 mod tests {
-    use re_data_store::StoreDb;
+    use re_entity_db::EntityDb;
     use re_log_types::{DataCell, DataRow, EntityPathFilter, RowId, StoreId, TimePoint};
     use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
@@ -470,7 +470,7 @@ mod tests {
 
     use super::*;
 
-    fn save_override(props: EntityProperties, path: &EntityPath, store: &mut StoreDb) {
+    fn save_override(props: EntityProperties, path: &EntityPath, store: &mut EntityDb) {
         let component = EntityPropertiesComponent(props);
         let row = DataRow::from_cells1_sized(
             RowId::new(),
@@ -486,8 +486,8 @@ mod tests {
 
     #[test]
     fn test_overrides() {
-        let mut recording = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        let mut blueprint = StoreDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
 
         let points = Points3D::new(vec![[1.0, 2.0, 3.0]]);
 

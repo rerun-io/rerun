@@ -1,7 +1,7 @@
 use re_viewer::external::{
     egui,
-    re_data_store::{EntityProperties, InstancePath},
     re_data_ui::{item_ui, DataUi},
+    re_entity_db::{EntityProperties, InstancePath},
     re_log_types::EntityPath,
     re_ui,
     re_viewer_context::{

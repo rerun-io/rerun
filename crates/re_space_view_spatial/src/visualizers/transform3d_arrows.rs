@@ -59,7 +59,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         let mut line_builder = view_ctx.get::<SharedRenderBuilders>()?.lines();
         let transforms = view_ctx.get::<TransformContext>()?;
 
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
         let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             if store

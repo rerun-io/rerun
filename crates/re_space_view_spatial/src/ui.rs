@@ -1,9 +1,9 @@
 use egui::{text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
-use re_data_store::EntityPath;
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
+use re_entity_db::EntityPath;
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
@@ -120,7 +120,7 @@ impl SpatialSpaceViewState {
         let re_ui = ctx.re_ui;
 
         let view_coordinates = ctx
-            .store_db
+            .entity_db
             .store()
             .query_latest_component(space_origin, &ctx.current_query())
             .map(|c| c.value);
@@ -508,7 +508,7 @@ pub fn picking(
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
     for hit in &picking_result.hits {
-        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.store_db) else {
+        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.entity_db) else {
             continue;
         };
 
@@ -524,7 +524,7 @@ pub fn picking(
             continue;
         }
 
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
 
         // Special hover ui for images.
         let is_depth_cloud = images
@@ -671,7 +671,7 @@ pub fn picking(
 #[allow(clippy::too_many_arguments)]
 fn image_hover_ui(
     ui: &mut egui::Ui,
-    instance_path: &re_data_store::InstancePath,
+    instance_path: &re_entity_db::InstancePath,
     ctx: &ViewerContext<'_>,
     tensor: TensorData,
     spatial_kind: SpatialSpaceViewKind,

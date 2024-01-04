@@ -2,7 +2,7 @@ use crate::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
-use re_data_store::EntityProperties;
+use re_entity_db::EntityProperties;
 
 /// A placeholder space view class that can be used when the actual class is not registered.
 #[derive(Default)]

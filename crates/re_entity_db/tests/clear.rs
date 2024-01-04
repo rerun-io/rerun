@@ -1,5 +1,5 @@
 use re_arrow_store::{DataStoreStats, LatestAtQuery};
-use re_data_store::StoreDb;
+use re_entity_db::EntityDb;
 use re_log_types::{
     example_components::{MyColor, MyPoint},
     DataRow, EntityPath, RowId, StoreId, TimePoint, Timeline,
@@ -15,7 +15,7 @@ use re_types_core::{
 fn clears() -> anyhow::Result<()> {
     init_logs();
 
-    let mut db = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+    let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
 
     let timeline_frame = Timeline::new_sequence("frame");
 
@@ -439,7 +439,7 @@ fn clears() -> anyhow::Result<()> {
 fn clear_and_gc() -> anyhow::Result<()> {
     init_logs();
 
-    let mut db = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+    let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
 
     let timepoint = TimePoint::timeless();
     let entity_path: EntityPath = "space_view".into();

@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use re_arrow_store::GarbageCollectionOptions;
-use re_data_store::StoreDb;
+use re_entity_db::EntityDb;
 use re_int_histogram::RangeI64;
 use re_log_types::{
     example_components::{MyColor, MyPoint},
@@ -21,7 +21,7 @@ use re_types_core::{
 // timeline widget.
 #[test]
 fn time_histograms() -> anyhow::Result<()> {
-    let mut db = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+    let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
 
     let timeline_frame = Timeline::new_sequence("frame");
     let timeline_other = Timeline::new_temporal("other");
@@ -643,7 +643,7 @@ fn time_histograms() -> anyhow::Result<()> {
 
 /// Checks the state of the global time tracker (at the `EntityDb` level).
 fn assert_times_per_timeline<'a>(
-    db: &StoreDb,
+    db: &EntityDb,
     expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [impl Into<TimeInt> + Copy + 'a]>)>,
 ) {
     for (timeline, expected_times) in expected {
@@ -661,7 +661,7 @@ fn assert_times_per_timeline<'a>(
 
 /// Checks the state of the per-EntityTree recursive time tracker.
 fn assert_recursive_histogram<'a>(
-    db: &StoreDb,
+    db: &EntityDb,
     expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [(RangeI64, u64)]>)>,
 ) {
     for (timeline, expected_times) in expected {
@@ -680,7 +680,7 @@ fn assert_recursive_histogram<'a>(
 
 /// Checks the state of the per-`EntityTree` per-`ComponentName` flat time tracker.
 fn assert_histogram_for_component<'a>(
-    db: &StoreDb,
+    db: &EntityDb,
     entity_path: &EntityPath,
     component_name: ComponentName,
     expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [(RangeI64, u64)]>)>,

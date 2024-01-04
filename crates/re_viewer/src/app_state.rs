@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use re_data_store::StoreDb;
+use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
 use re_space_view::{DataQuery as _, PropertyResolver as _};
@@ -28,7 +28,7 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) cache: Caches,
 
-    /// Configuration for the current recording (found in [`StoreDb`]).
+    /// Configuration for the current recording (found in [`EntityDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
 
     selection_panel: crate::selection_panel::SelectionPanel,
@@ -61,7 +61,7 @@ impl AppState {
     pub fn loop_selection(
         &self,
         store_context: Option<&StoreContext<'_>>,
-    ) -> Option<(re_data_store::Timeline, TimeRangeF)> {
+    ) -> Option<(re_entity_db::Timeline, TimeRangeF)> {
         store_context
             .as_ref()
             .and_then(|ctx| ctx.recording)
@@ -85,7 +85,7 @@ impl AppState {
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
-        store_db: &StoreDb,
+        entity_db: &EntityDb,
         store_context: &StoreContext<'_>,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
@@ -127,22 +127,22 @@ impl AppState {
             // The blueprint isn't valid so nothing past this is going to work properly.
             // we might as well return and it will get fixed on the next frame.
 
-            // TODO(jleibs): If we move viewport loading up to a context where the StoreDb is mutable
+            // TODO(jleibs): If we move viewport loading up to a context where the EntityDb is mutable
             // we can run the clear and re-load.
             return;
         }
 
-        recording_config_entry(recording_configs, store_db.store_id().clone(), store_db)
+        recording_config_entry(recording_configs, entity_db.store_id().clone(), entity_db)
             .selection_state
             .on_frame_start(|item| viewport.is_item_valid(item));
 
         let rec_cfg =
-            recording_config_entry(recording_configs, store_db.store_id().clone(), store_db);
+            recording_config_entry(recording_configs, entity_db.store_id().clone(), entity_db);
 
         let applicable_entities_per_visualizer = space_view_class_registry
-            .applicable_entities_for_visualizer_systems(store_db.store_id());
+            .applicable_entities_for_visualizer_systems(entity_db.store_id());
         let indicator_matching_entities_per_visualizer = space_view_class_registry
-            .indicator_matching_entities_per_visualizer(store_db.store_id());
+            .indicator_matching_entities_per_visualizer(entity_db.store_id());
 
         // Execute the queries for every `SpaceView`
         let mut query_results = {
@@ -157,7 +157,7 @@ impl AppState {
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
                     let visualizable_entities = determine_visualizable_entities(
                         &applicable_entities_per_visualizer,
-                        store_db,
+                        entity_db,
                         &space_view_class_registry
                             .new_visualizer_collection(*space_view.class_identifier()),
                         space_view.class(space_view_class_registry),
@@ -187,7 +187,7 @@ impl AppState {
             cache,
             space_view_class_registry,
             component_ui_registry,
-            store_db,
+            entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
             indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
@@ -201,7 +201,7 @@ impl AppState {
         // First update the viewport and thus all active space views.
         // This may update their heuristics, so that all panels that are shown in this frame,
         // have the latest information.
-        let spaces_info = SpaceInfoCollection::new(ctx.store_db);
+        let spaces_info = SpaceInfoCollection::new(ctx.entity_db);
 
         viewport.on_frame_start(&ctx, &spaces_info);
 
@@ -226,7 +226,7 @@ impl AppState {
             cache,
             space_view_class_registry,
             component_ui_registry,
-            store_db,
+            entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
             indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
@@ -314,14 +314,14 @@ impl AppState {
             let dt = ui.ctx().input(|i| i.stable_dt);
 
             // Are we still connected to the data source for the current store?
-            let more_data_is_coming = if let Some(store_source) = &store_db.data_source {
+            let more_data_is_coming = if let Some(store_source) = &entity_db.data_source {
                 rx.sources().iter().any(|s| s.as_ref() == store_source)
             } else {
                 false
             };
 
             let needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
-                store_db.times_per_timeline(),
+                entity_db.times_per_timeline(),
                 dt,
                 more_data_is_coming,
             );
@@ -353,10 +353,10 @@ impl AppState {
 fn recording_config_entry<'cfgs>(
     configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
     id: StoreId,
-    store_db: &'_ StoreDb,
+    entity_db: &'_ EntityDb,
 ) -> &'cfgs mut RecordingConfig {
-    fn new_recording_config(store_db: &'_ StoreDb) -> RecordingConfig {
-        let play_state = if let Some(data_source) = &store_db.data_source {
+    fn new_recording_config(entity_db: &'_ EntityDb) -> RecordingConfig {
+        let play_state = if let Some(data_source) = &entity_db.data_source {
             match data_source {
                 // Play files from the start by default - it feels nice and alive.
                 // We assume the `RrdHttpStream` is a done recording.
@@ -379,14 +379,14 @@ fn recording_config_entry<'cfgs>(
         rec_cfg
             .time_ctrl
             .get_mut()
-            .set_play_state(store_db.times_per_timeline(), play_state);
+            .set_play_state(entity_db.times_per_timeline(), play_state);
 
         rec_cfg
     }
 
     configs
         .entry(id)
-        .or_insert_with(|| new_recording_config(store_db))
+        .or_insert_with(|| new_recording_config(entity_db))
 }
 
 /// We allow linking to entities and components via hyperlinks,

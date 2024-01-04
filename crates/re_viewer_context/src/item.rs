@@ -1,4 +1,4 @@
-use re_data_store::InstancePath;
+use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, DataPath, EntityPath};
 
 use crate::DataQueryId;
@@ -137,14 +137,14 @@ pub fn resolve_mono_instance_path_item(
 pub fn resolve_mono_instance_path(
     query: &re_arrow_store::LatestAtQuery,
     store: &re_arrow_store::DataStore,
-    instance: &re_data_store::InstancePath,
-) -> re_data_store::InstancePath {
+    instance: &re_entity_db::InstancePath,
+) -> re_entity_db::InstancePath {
     re_tracing::profile_function!();
 
     if instance.instance_key.0 == 0 {
         let Some(components) = store.all_components(&query.timeline, &instance.entity_path) else {
             // No components at all, return splatted entity.
-            return re_data_store::InstancePath::entity_splat(instance.entity_path.clone());
+            return re_entity_db::InstancePath::entity_splat(instance.entity_path.clone());
         };
         for component in components {
             if let Some((_row_id, instances)) = re_query::get_component_with_instances(
@@ -160,7 +160,7 @@ pub fn resolve_mono_instance_path(
         }
 
         // All instances had only a single element or less, resolve to splatted entity.
-        return re_data_store::InstancePath::entity_splat(instance.entity_path.clone());
+        return re_entity_db::InstancePath::entity_splat(instance.entity_path.clone());
     }
 
     instance.clone()

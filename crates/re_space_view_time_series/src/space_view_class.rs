@@ -4,7 +4,7 @@ use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
 use re_space_view::controls;
-use re_viewer_context::external::re_data_store::{
+use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, LegendCorner,
 };
 use re_viewer_context::{

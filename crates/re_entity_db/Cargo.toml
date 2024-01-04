@@ -1,7 +1,7 @@
 [package]
-name = "re_data_store"
+name = "re_entity_db"
 authors.workspace = true
-description = "In-memory storage of Rerun log data, indexed for fast queries."
+description = "In-memory storage of Rerun entities"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true

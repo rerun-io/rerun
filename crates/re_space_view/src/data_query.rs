@@ -1,4 +1,4 @@
-use re_data_store::{EntityProperties, EntityPropertyMap};
+use re_entity_db::{EntityProperties, EntityPropertyMap};
 use re_viewer_context::{
     DataQueryResult, IndicatorMatchingEntities, PerVisualizer, StoreContext, VisualizableEntities,
 };

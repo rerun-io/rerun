@@ -8,8 +8,8 @@ use std::ops::RangeInclusive;
 use egui::emath::Rangef;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
-use re_data_store::TimeHistogram;
 use re_data_ui::{item_ui, DataUi};
+use re_entity_db::TimeHistogram;
 use re_log_types::{TimeInt, TimeRange, TimeReal};
 use re_viewer_context::{Item, TimeControl, UiVerbosity, ViewerContext};
 

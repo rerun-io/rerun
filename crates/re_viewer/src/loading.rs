@@ -35,8 +35,8 @@ pub fn load_blueprint_file(
                 re_log::info!("Loaded {path:?}");
             }
 
-            for store_db in rrd.store_dbs_mut() {
-                store_db.data_source =
+            for entity_db in rrd.entity_dbs_mut() {
+                entity_db.data_source =
                     Some(re_smart_channel::SmartChannelSource::File(path.into()));
             }
             Some(rrd)

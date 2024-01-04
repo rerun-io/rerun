@@ -220,8 +220,8 @@ There are several important points to note:
 ### Storage
 
 The data is actually stored in two places:
-- in `StoreDb`, where every raw `LogMsg` is kept around so that it can later be saved to disk,
-    - Due to the lack of batching, the size of the data sitting in `StoreDb` is actually completely dwarfed by the size of the schema metadata.
+- in `EntityDb`, where every raw `LogMsg` is kept around so that it can later be saved to disk,
+    - Due to the lack of batching, the size of the data sitting in `EntityDb` is actually completely dwarfed by the size of the schema metadata.
 - in the `DataStore`, where the data is stripped down into parts and indexed as needed for our latest-at semantics.
     - That's the origin of the `MsgId` mismatch problem.
 
@@ -312,7 +312,7 @@ ComponentTable {
 ```
 (The space thresholds don't actually work today due to the hacks we do in the GC implementation to work around `MsgId` mismatches)
 
-Storing data in both `StoreDb` and the component tables can lead to a significant increase in memory usage if not managed carefully, effectively doubling the storage requirements. Therefore, bucket compaction is currently disabled, leaving some performance on the table.
+Storing data in both `EntityDb` and the component tables can lead to a significant increase in memory usage if not managed carefully, effectively doubling the storage requirements. Therefore, bucket compaction is currently disabled, leaving some performance on the table.
 
 Overall, this storage architecture maps well to our latest-at query semantics, but quite poorly to our range/timeseries semantics (see read path section below).
 
@@ -381,7 +381,7 @@ This happens because the GC blindly drops data rather than doing the correct thi
 
 ### Save-to-disk
 
-The current store cannot be dumped to disk, we rely on `StoreDb` to store all incoming `LogMsg`s and dump them to disk as-is if the user decides to save the recording.
+The current store cannot be dumped to disk, we rely on `EntityDb` to store all incoming `LogMsg`s and dump them to disk as-is if the user decides to save the recording.
 
 ---
 
@@ -746,7 +746,7 @@ Worth noticing:
 In addition to storing the indices themselves, we also require a bunch of auxiliary datastructures.
 
 First, we need to keep track of all `EventId`s currently present in the store, in `event_id` order (remember, these are time-based (clients' wall-clocks)!).
-This will replace the existing `chronological_msg_ids` in `StoreDb` (which is currently in insertion-order-as-seen-from-the-viewer, which isn't too great).
+This will replace the existing `chronological_msg_ids` in `EntityDb` (which is currently in insertion-order-as-seen-from-the-viewer, which isn't too great).
 We need this because some operations like GC and save-to-disk require to pick an arbitrary ordering to get going, and `event_id` is our best bet for now.
 
 Second, we need to map `EventId`s to index rows for GC purposes: `HashMap<EventId, HashSet<IndexRowId>>`.
@@ -861,7 +861,7 @@ The complete implementation; should close all existing GC issues.
 1. Dump directly from the store into an rrd file
 No rebatching yet, just dump every event in its own `LogMsg`.
 
-1. Remove `LogMsg`s from `StoreDb`
+1. Remove `LogMsg`s from `EntityDb`
 We shouldn't need to keep track of events outside the store past this point: clean it all up.
 Reminder: the timeline widget keeps track of timepoints directly, not events.
 
@@ -899,7 +899,7 @@ At some point we're gonna want to have a fully dedicated storage & query path fo
 
 ### Recursive clears native to the store
 
-Recursive clears are currently handled in `StoreDb`, which is an issue for (at least) two reasons:
+Recursive clears are currently handled in `EntityDb`, which is an issue for (at least) two reasons:
 - Once we start saving the store in a native format, rather than a collection of `LogMsg`, we'll lose the recursive clears when dumping then reloading the recording.
 - The recursive clears aren't even arrowified yet.
 

@@ -3,7 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use egui::Ui;
-use re_data_store::{EntityTree, InstancePath};
+use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_viewer_context::{
     DataQueryId, HoverHighlight, Item, Selection, SpaceViewId, UiVerbosity, ViewerContext,
@@ -365,7 +365,7 @@ pub fn instance_hover_card_ui(ui: &mut Ui, ctx: &ViewerContext<'_>, instance_pat
     let query = ctx.current_query();
 
     if instance_path.instance_key.is_splat() {
-        if let Some(subtree) = ctx.store_db.tree().subtree(&instance_path.entity_path) {
+        if let Some(subtree) = ctx.entity_db.tree().subtree(&instance_path.entity_path) {
             entity_tree_stats_ui(ui, &query.timeline, subtree);
         }
     } else {

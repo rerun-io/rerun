@@ -1,4 +1,4 @@
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes3D,
@@ -74,7 +74,7 @@ impl Boxes3DVisualizer {
             colors,
             labels
         ) {
-            let instance_hash = re_data_store::InstancePathHash::instance(ent_path, instance_key);
+            let instance_hash = re_entity_db::InstancePathHash::instance(ent_path, instance_key);
 
             self.0.extend_bounding_box(
                 macaw::BoundingBox {

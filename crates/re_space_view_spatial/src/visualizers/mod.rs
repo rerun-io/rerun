@@ -27,7 +27,7 @@ pub use points3d::LoadedPoints;
 
 use ahash::HashMap;
 
-use re_data_store::{EntityPath, InstancePathHash};
+use re_entity_db::{EntityPath, InstancePathHash};
 use re_types::components::{Color, InstanceKey, Text};
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
@@ -279,7 +279,7 @@ pub struct UiLabel {
 
 pub fn load_keypoint_connections(
     ent_context: &SpatialSceneEntityContext<'_>,
-    ent_path: &re_data_store::EntityPath,
+    ent_path: &re_entity_db::EntityPath,
     keypoints: &Keypoints,
 ) {
     if keypoints.is_empty() {

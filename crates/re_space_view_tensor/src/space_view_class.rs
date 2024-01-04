@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, fmt::Display};
 
 use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
-use re_data_store::EntityProperties;
+use re_entity_db::EntityProperties;
 
 use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_data_ui::tensor_summary_ui_grid_contents;

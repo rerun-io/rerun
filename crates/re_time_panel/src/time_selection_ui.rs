@@ -1,13 +1,13 @@
 use egui::{CursorIcon, Id, NumExt as _, Rect};
 
-use re_data_store::StoreDb;
+use re_entity_db::EntityDb;
 use re_log_types::{Duration, TimeInt, TimeRangeF, TimeReal, TimeType};
 use re_viewer_context::{Looping, TimeControl};
 
 use super::{is_time_safe_to_show, time_ranges_ui::TimeRangesUi};
 
 pub fn loop_selection_ui(
-    store_db: &StoreDb,
+    entity_db: &EntityDb,
     time_ctrl: &mut TimeControl,
     time_ranges_ui: &TimeRangesUi,
     ui: &egui::Ui,
@@ -76,8 +76,8 @@ pub fn loop_selection_ui(
 
             if is_active
                 && !selected_range.is_empty()
-                && is_time_safe_to_show(store_db, &timeline, selected_range.min)
-                && is_time_safe_to_show(store_db, &timeline, selected_range.max)
+                && is_time_safe_to_show(entity_db, &timeline, selected_range.min)
+                && is_time_safe_to_show(entity_db, &timeline, selected_range.max)
             {
                 paint_range_text(time_ctrl, selected_range, ui, time_area_painter, rect);
             }

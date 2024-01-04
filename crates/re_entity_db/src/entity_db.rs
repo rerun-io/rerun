@@ -80,11 +80,11 @@ fn insert_row_with_retries(
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
 /// NOTE: all mutation is to be done via public functions!
-pub struct StoreDb {
+pub struct EntityDb {
     /// The [`StoreId`] for this log.
     store_id: StoreId,
 
-    /// Set by whomever created this [`StoreDb`].
+    /// Set by whomever created this [`EntityDb`].
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
@@ -113,7 +113,7 @@ pub struct StoreDb {
     stats: IngestionStatistics,
 }
 
-impl StoreDb {
+impl EntityDb {
     pub fn new(store_id: StoreId) -> Self {
         Self {
             store_id: store_id.clone(),
@@ -140,17 +140,17 @@ impl StoreDb {
         store_info: StoreInfo,
         rows: impl IntoIterator<Item = DataRow>,
     ) -> Result<Self, Error> {
-        let mut store_db = StoreDb::new(store_info.store_id.clone());
+        let mut entity_db = EntityDb::new(store_info.store_id.clone());
 
-        store_db.set_store_info(SetStoreInfo {
+        entity_db.set_store_info(SetStoreInfo {
             row_id: RowId::new(),
             info: store_info,
         });
         for row in rows {
-            store_db.add_data_row(row)?;
+            entity_db.add_data_row(row)?;
         }
 
-        Ok(store_db)
+        Ok(entity_db)
     }
 
     #[inline]

@@ -1,6 +1,6 @@
 use egui::Label;
 
-use re_viewer_context::external::re_data_store::EntityProperties;
+use re_viewer_context::external::re_entity_db::EntityProperties;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewState, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,

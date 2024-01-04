@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use ahash::{HashMap, HashSet};
 use egui_tiles::{SimplificationOptions, TileId};
 use re_arrow_store::LatestAtQuery;
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_log_types::Timeline;
 use re_query::query_archetype;
 use re_viewer_context::{
@@ -57,7 +57,7 @@ pub struct ViewportBlueprint {
 impl ViewportBlueprint {
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
     pub fn try_from_db(
-        blueprint_db: &re_data_store::StoreDb,
+        blueprint_db: &re_entity_db::EntityDb,
         app_options: &AppOptions,
         tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
     ) -> Self {

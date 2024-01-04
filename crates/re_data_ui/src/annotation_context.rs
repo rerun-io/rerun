@@ -85,7 +85,7 @@ fn annotation_info(
     keypoint_id: KeypointId,
 ) -> Option<AnnotationInfo> {
     let class_id = ctx
-        .store_db
+        .entity_db
         .store()
         .query_latest_component::<re_types::components::ClassId>(entity_path, query)?;
     let annotations = crate::annotations(ctx, query, entity_path);

@@ -1,8 +1,8 @@
 use egui::{Response, Ui};
 use itertools::Itertools;
 
-use re_data_store::InstancePath;
 use re_data_ui::item_ui;
+use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, EntityPathRule};
 use re_space_view::DataQueryBlueprint;
 use re_ui::list_item::ListItem;

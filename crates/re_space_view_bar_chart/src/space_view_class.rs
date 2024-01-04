@@ -1,5 +1,5 @@
 use egui::util::hash;
-use re_data_store::{EditableAutoValue, EntityProperties, LegendCorner};
+use re_entity_db::{EditableAutoValue, EntityProperties, LegendCorner};
 use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_types::datatypes::TensorBuffer;
