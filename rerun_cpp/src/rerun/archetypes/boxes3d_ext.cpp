@@ -32,7 +32,7 @@ namespace rerun {
         ///
         /// TODO(#3285): Does *not* preserve data as-is and instead creates half-sizes from the
         /// input data.
-        /// TODO(#3794): This should not take an std::vector.
+        /// TODO(andreas): This should not take an std::vector.
         static Boxes3D from_sizes(const std::vector<datatypes::Vec3D>& sizes);
 
         /// Creates new `Boxes3D` with `centers` and `half_sizes` created from centers and (full)
@@ -40,7 +40,7 @@ namespace rerun {
         ///
         /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
         /// from the input data.
-        /// TODO(#3794): This should not take an std::vector.
+        /// TODO(andreas): This should not take an std::vector.
         static Boxes3D from_centers_and_sizes(
             Collection<components::Position3D> centers, const std::vector<datatypes::Vec3D>& sizes
         ) {
@@ -54,7 +54,7 @@ namespace rerun {
         ///
         /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
         /// from the input data.
-        /// TODO(#3794): This should not take an std::vector.
+        /// TODO(andreas): This should not take an std::vector.
         static Boxes3D from_mins_and_sizes(
             const std::vector<datatypes::Vec3D>& mins, const std::vector<datatypes::Vec3D>& sizes
         );

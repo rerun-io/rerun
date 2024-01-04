@@ -27,6 +27,6 @@ for i in range(0, 20000000):
     radii = rng.uniform(0, 1, size=[10000000])
     rr.log("points", rr.Points3D(positions, colors=colors, radii=radii))
 
-    # Sleep because large rows will absolutely destroy the viewer.
-    # TODO(#4183): Investigate this.
+    # Sleep because large single row recordings will absolutely destroy the viewer.
+    # TODO(#4185): Investigate this.
     time.sleep(1)

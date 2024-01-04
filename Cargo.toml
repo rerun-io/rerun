@@ -91,7 +91,7 @@ egui = { version = "0.24.1", features = [
 egui_commonmark = { version = "0.10", default-features = false }
 egui_extras = { version = "0.24.1", features = ["http", "image", "puffin"] }
 egui_plot = "0.24.2"
-egui_tiles = "0.4"
+egui_tiles = "0.5"
 egui-wgpu = "0.24.1"
 emath = "0.24.1"
 
@@ -205,7 +205,7 @@ strum = { version = "0.24", features = ["derive"] }
 strum_macros = "0.24"
 sublime_fuzzy = "0.7"
 syn = "2.0"
-sysinfo = { version = "0.29.0", default-features = false }
+sysinfo = { version = "0.30.1", default-features = false }
 tempfile = "3.0"
 thiserror = "1.0"
 time = { version = "0.3", default-features = false, features = [
@@ -281,4 +281,4 @@ debug = true
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b6e4fd457b2eee2c671747ead12f4a20feb380e8" } # Merge of: https://github.com/rerun-io/egui_tiles/pull/41
+# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b6e4fd457b2eee2c671747ead12f4a20feb380e8" } # Merge of: https://github.com/rerun-io/egui_tiles/pull/41

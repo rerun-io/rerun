@@ -23,11 +23,9 @@ from roundtrip_utils import cmake_build, cmake_configure, cpp_build_dir, roundtr
 # for one or more specific SDKs.
 opt_out_run = {
     "any_values": ["cpp", "rust"], # Not yet implemented
-    "custom_data": ["cpp"], # TODO(emilk): Not yet implemented in C++
     "extra_values": ["cpp", "rust"], # Missing examples
     "image_advanced": ["cpp", "rust"], # Missing examples
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
-    "quick_start_spawn": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "timelines_example": ["py", "cpp", "rust"], # TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
 
     # This is this script, it's not an example.

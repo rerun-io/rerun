@@ -41,8 +41,6 @@ Groups, despite being derived from the [Entity Path](../../concepts/entity-path.
 They are meant to improve the handling of large Space Views and allow for hierarchical manipulation
 of blueprints.
 
-[TODO(#1174)](https://github.com/rerun-io/rerun/issues/1174): Editable & user defined Data Blueprint Groups
-
 Adding Entities
 -----------------------------
 To (re-)add an Entity to a Space View, you need first need to select the respective Space View.

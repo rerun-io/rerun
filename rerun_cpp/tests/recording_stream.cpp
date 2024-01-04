@@ -129,12 +129,9 @@ SCENARIO("RecordingStream can be set as global and thread local", TEST_TAG) {
                 THEN("it can be set as global") {
                     stream.set_global();
                 }
-                // TODO(#2889): Setting thread locals causes a crash on shutdown on macOS.
-#ifndef __APPLE__
                 THEN("it can be set as thread local") {
                     stream.set_thread_local();
                 }
-#endif
 
                 // TODO(andreas): There's no way of telling right now if the set stream is
                 // functional.
