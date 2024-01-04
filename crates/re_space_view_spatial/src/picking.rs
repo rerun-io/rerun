@@ -5,7 +5,7 @@ use re_data_store::InstancePathHash;
 use re_renderer::PickingLayerProcessor;
 use re_types::components::InstanceKey;
 
-use crate::parts::ViewerImage;
+use crate::visualizers::ViewerImage;
 use crate::{eye::Eye, instance_hash_conversions::instance_path_hash_from_picking_layer_id};
 
 #[derive(Clone, PartialEq, Eq)]

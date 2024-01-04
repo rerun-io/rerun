@@ -10,8 +10,8 @@ use re_types::{
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
 
 use crate::{
-    parts::{image_view_coordinates, CamerasPart},
     query_pinhole,
+    visualizers::{image_view_coordinates, CamerasPart},
 };
 
 #[derive(Clone)]

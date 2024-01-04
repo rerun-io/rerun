@@ -27,9 +27,9 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
-    parts::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     query_pinhole,
     view_kind::SpatialSpaceViewKind,
+    visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
     SpatialSpaceView2D, SpatialSpaceView3D,
 };
 

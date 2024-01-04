@@ -8,9 +8,9 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
-    parts::{calculate_bounding_box, register_2d_spatial_parts, SpatialViewPartData},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
+    visualizers::{calculate_bounding_box, register_2d_spatial_parts, SpatialViewPartData},
 };
 
 #[derive(Default)]

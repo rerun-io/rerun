@@ -19,9 +19,9 @@ use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::heuristics::auto_size_world_heuristic;
 use crate::{
     contexts::{AnnotationSceneContext, NonInteractiveEntities},
-    parts::{CamerasPart, ImagesPart, UiLabel, UiLabelTarget},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
+    visualizers::{CamerasPart, ImagesPart, UiLabel, UiLabelTarget},
 };
 
 /// Default auto point radius in UI points.

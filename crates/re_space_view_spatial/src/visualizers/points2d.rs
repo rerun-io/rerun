@@ -1,55 +1,52 @@
 use re_data_store::{EntityPath, InstancePathHash};
-use re_log_types::TimeInt;
 use re_query::{ArchetypeView, QueryError};
-use re_renderer::PickingLayerInstanceId;
 use re_types::{
-    archetypes::Points3D,
-    components::{Position3D, Text},
-    Archetype as _, ComponentNameSet, DeserializationResult,
+    archetypes::Points2D,
+    components::{Position2D, Text},
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    Annotations, IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    VisualizableEntities,
 };
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
-    parts::{
+    view_kind::SpatialSpaceViewKind,
+    visualizers::{
         entity_iterator::process_archetype_views, load_keypoint_connections,
         process_annotations_and_keypoints, process_colors, process_radii, UiLabel, UiLabelTarget,
     },
-    view_kind::SpatialSpaceViewKind,
 };
 
-use super::{picking_id_from_instance_key, Keypoints, SpatialViewPartData};
+use super::{filter_visualizable_2d_entities, picking_id_from_instance_key, SpatialViewPartData};
 
-pub struct Points3DPart {
+pub struct Points2DPart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
     pub data: SpatialViewPartData,
 }
 
-impl Default for Points3DPart {
+impl Default for Points2DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)),
+            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
         }
     }
 }
 
-impl Points3DPart {
+impl Points2DPart {
     fn process_labels<'a>(
-        arch_view: &'a ArchetypeView<Points3D>,
+        arch_view: &'a ArchetypeView<Points2D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
-        world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
-        re_tracing::profile_function!();
         let labels = itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<Position3D>()?,
+            arch_view.iter_required_component::<Position2D>()?,
             arch_view.iter_optional_component::<Text>()?,
             colors,
             instance_path_hashes,
@@ -61,9 +58,7 @@ impl Points3DPart {
                     (point, Some(label)) => Some(UiLabel {
                         text: label,
                         color: *color,
-                        target: UiLabelTarget::Position3D(
-                            world_from_obj.transform_point3(point.into()),
-                        ),
+                        target: UiLabelTarget::Point2D(egui::pos2(point.x(), point.y())),
                         labeled_instance: *labeled_instance,
                     }),
                     _ => None,
@@ -76,38 +71,65 @@ impl Points3DPart {
     fn process_arch_view(
         &mut self,
         query: &ViewQuery<'_>,
-        arch_view: &ArchetypeView<Points3D>,
+        arch_view: &ArchetypeView<Points2D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let LoadedPoints {
-            annotation_infos,
-            keypoints,
-            positions,
-            radii,
-            colors,
-            picking_instance_ids,
-        } = LoadedPoints::load(
-            arch_view,
-            ent_path,
-            query.latest_at,
-            &ent_context.annotations,
-        )?;
+        let (annotation_infos, keypoints) =
+            process_annotations_and_keypoints::<Position2D, Points2D>(
+                query.latest_at,
+                arch_view,
+                &ent_context.annotations,
+                |p| (*p).into(),
+            )?;
+
+        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
+        let radii = process_radii(arch_view, ent_path)?;
+
+        let positions = arch_view
+            .iter_required_component::<Position2D>()?
+            .map(|pt| pt.into());
+
+        let picking_instance_ids = arch_view
+            .iter_instance_keys()
+            .map(picking_id_from_instance_key);
+
+        let positions: Vec<glam::Vec3> = {
+            re_tracing::profile_scope!("collect_positions");
+            positions.collect()
+        };
+        let radii: Vec<_> = {
+            re_tracing::profile_scope!("collect_radii");
+            radii.collect()
+        };
+        let colors: Vec<_> = {
+            re_tracing::profile_scope!("collect_colors");
+            colors.collect()
+        };
+        let picking_instance_ids: Vec<_> = {
+            re_tracing::profile_scope!("collect_picking_instance_ids");
+            picking_instance_ids.collect()
+        };
 
         {
             re_tracing::profile_scope!("to_gpu");
 
             let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
-                .batch("3d points")
+                .batch("2d points")
+                .depth_offset(ent_context.depth_offset)
+                .flags(
+                    re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
+                        | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
+                )
                 .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let mut point_range_builder =
-                point_batch.add_points(&positions, &radii, &colors, &picking_instance_ids);
+                point_batch.add_points_2d(&positions, &radii, &colors, &picking_instance_ids);
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
@@ -126,7 +148,7 @@ impl Points3DPart {
                     }
                 }
             }
-        }
+        };
 
         self.data.extend_bounding_box_with_points(
             positions.iter().copied(),
@@ -136,8 +158,6 @@ impl Points3DPart {
         load_keypoint_connections(ent_context, ent_path, &keypoints);
 
         if arch_view.num_instances() <= self.max_labels {
-            re_tracing::profile_scope!("labels");
-
             // Max labels is small enough that we can afford iterating on the colors again.
             let colors =
                 process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
@@ -155,7 +175,6 @@ impl Points3DPart {
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
-                ent_context.world_from_entity,
             )?);
         }
 
@@ -163,22 +182,31 @@ impl Points3DPart {
     }
 }
 
-impl IdentifiedViewSystem for Points3DPart {
+impl IdentifiedViewSystem for Points2DPart {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Points3D".into()
+        "Points2D".into()
     }
 }
 
-impl ViewPartSystem for Points3DPart {
+impl ViewPartSystem for Points2DPart {
     fn required_components(&self) -> ComponentNameSet {
-        Points3D::required_components()
+        Points2D::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Points3D::indicator().name()).collect()
+        std::iter::once(Points2D::indicator().name()).collect()
+    }
+
+    fn filter_visualizable_entities(
+        &self,
+        entities: ApplicableEntities,
+        context: &dyn std::any::Any,
+    ) -> VisualizableEntities {
+        re_tracing::profile_function!();
+        filter_visualizable_2d_entities(entities, context)
     }
 
     fn execute(
@@ -187,7 +215,7 @@ impl ViewPartSystem for Points3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Points3DPart, Points3D, { Points3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Points2DPart, Points2D, { Points2D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,
@@ -206,117 +234,5 @@ impl ViewPartSystem for Points3DPart {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
-    }
-}
-
-#[doc(hidden)] // Public for benchmarks
-pub struct LoadedPoints {
-    pub annotation_infos: ResolvedAnnotationInfos,
-    pub keypoints: Keypoints,
-    pub positions: Vec<glam::Vec3>,
-    pub radii: Vec<re_renderer::Size>,
-    pub colors: Vec<re_renderer::Color32>,
-    pub picking_instance_ids: Vec<PickingLayerInstanceId>,
-}
-
-impl LoadedPoints {
-    #[inline]
-    pub fn load(
-        arch_view: &ArchetypeView<Points3D>,
-        ent_path: &EntityPath,
-        latest_at: TimeInt,
-        annotations: &Annotations,
-    ) -> Result<Self, QueryError> {
-        re_tracing::profile_function!();
-
-        let (annotation_infos, keypoints) = process_annotations_and_keypoints::<
-            Position3D,
-            Points3D,
-        >(latest_at, arch_view, annotations, |p| {
-            (*p).into()
-        })?;
-
-        let (positions, radii, colors, picking_instance_ids) = join4(
-            || Self::load_positions(arch_view),
-            || Self::load_radii(arch_view, ent_path),
-            || Self::load_colors(arch_view, ent_path, &annotation_infos),
-            || Self::load_picking_ids(arch_view),
-        );
-
-        Ok(Self {
-            annotation_infos,
-            keypoints,
-            positions: positions?,
-            radii: radii?,
-            colors: colors?,
-            picking_instance_ids,
-        })
-    }
-
-    #[inline]
-    pub fn load_positions(
-        arch_view: &ArchetypeView<Points3D>,
-    ) -> DeserializationResult<Vec<glam::Vec3>> {
-        re_tracing::profile_function!();
-        arch_view.iter_required_component::<Position3D>().map(|p| {
-            re_tracing::profile_scope!("collect");
-            p.map(glam::Vec3::from).collect()
-        })
-    }
-
-    #[inline]
-    pub fn load_radii(
-        arch_view: &ArchetypeView<Points3D>,
-        ent_path: &EntityPath,
-    ) -> Result<Vec<re_renderer::Size>, QueryError> {
-        re_tracing::profile_function!();
-        process_radii(arch_view, ent_path).map(|radii| {
-            re_tracing::profile_scope!("collect");
-            radii.collect()
-        })
-    }
-
-    #[inline]
-    pub fn load_colors(
-        arch_view: &ArchetypeView<Points3D>,
-        ent_path: &EntityPath,
-        annotation_infos: &ResolvedAnnotationInfos,
-    ) -> Result<Vec<re_renderer::Color32>, QueryError> {
-        re_tracing::profile_function!();
-        process_colors(arch_view, ent_path, annotation_infos).map(|colors| {
-            re_tracing::profile_scope!("collect");
-            colors.collect()
-        })
-    }
-
-    #[inline]
-    pub fn load_picking_ids(arch_view: &ArchetypeView<Points3D>) -> Vec<PickingLayerInstanceId> {
-        re_tracing::profile_function!();
-        let iterator = arch_view
-            .iter_instance_keys()
-            .map(picking_id_from_instance_key);
-
-        re_tracing::profile_scope!("collect");
-        iterator.collect()
-    }
-}
-
-/// Run 4 things in parallel
-fn join4<A: Send, B: Send, C: Send, D: Send>(
-    a: impl FnOnce() -> A + Send,
-    b: impl FnOnce() -> B + Send,
-    c: impl FnOnce() -> C + Send,
-    d: impl FnOnce() -> D + Send,
-) -> (A, B, C, D) {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        re_tracing::profile_function!();
-        let ((a, b), (c, d)) = rayon::join(|| rayon::join(a, b), || rayon::join(c, d));
-        (a, b, c, d)
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        (a(), b(), c(), d())
     }
 }

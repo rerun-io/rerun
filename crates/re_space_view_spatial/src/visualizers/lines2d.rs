@@ -1,54 +1,55 @@
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
-    archetypes::LineStrips3D,
-    components::{LineStrip3D, Text},
+    archetypes::LineStrips2D,
+    components::{LineStrip2D, Text},
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    VisualizableEntities,
 };
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
-    parts::{
-        entity_iterator::process_archetype_views, process_annotations, process_colors,
-        process_radii, UiLabel, UiLabelTarget,
-    },
     view_kind::SpatialSpaceViewKind,
+    visualizers::{
+        entity_iterator::process_archetype_views, process_colors, process_radii, UiLabel,
+        UiLabelTarget,
+    },
 };
 
-use super::{picking_id_from_instance_key, SpatialViewPartData};
+use super::{
+    filter_visualizable_2d_entities, picking_id_from_instance_key, process_annotations,
+    SpatialViewPartData,
+};
 
-pub struct Lines3DPart {
+pub struct Lines2DPart {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
     pub data: SpatialViewPartData,
 }
 
-impl Default for Lines3DPart {
+impl Default for Lines2DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)),
+            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
         }
     }
 }
 
-impl Lines3DPart {
+impl Lines2DPart {
     fn process_labels<'a>(
-        arch_view: &'a ArchetypeView<LineStrips3D>,
+        arch_view: &'a ArchetypeView<LineStrips2D>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
-        world_from_obj: glam::Affine3A,
     ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
-        re_tracing::profile_function!();
-
         let labels = itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<LineStrip3D>()?,
+            arch_view.iter_required_component::<LineStrip2D>()?,
             arch_view.iter_optional_component::<Text>()?,
             colors,
             instance_path_hashes,
@@ -62,15 +63,13 @@ impl Lines3DPart {
                             .0
                             .iter()
                             .copied()
-                            .map(glam::Vec3::from)
-                            .sum::<glam::Vec3>()
+                            .map(glam::Vec2::from)
+                            .sum::<glam::Vec2>()
                             / (strip.0.len() as f32);
                         Some(UiLabel {
                             text: label,
                             color: *color,
-                            target: UiLabelTarget::Position3D(
-                                world_from_obj.transform_point3(midpoint),
-                            ),
+                            target: UiLabelTarget::Point2D(egui::pos2(midpoint.x, midpoint.y)),
                             labeled_instance: *labeled_instance,
                         })
                     }
@@ -84,13 +83,11 @@ impl Lines3DPart {
     fn process_arch_view(
         &mut self,
         query: &ViewQuery<'_>,
-        arch_view: &ArchetypeView<LineStrips3D>,
+        arch_view: &ArchetypeView<LineStrips2D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
-        re_tracing::profile_function!();
-
-        let annotation_infos = process_annotations::<LineStrip3D, LineStrips3D>(
+        let annotation_infos = process_annotations::<LineStrip2D, LineStrips2D>(
             query,
             arch_view,
             &ent_context.annotations,
@@ -117,13 +114,12 @@ impl Lines3DPart {
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
-                ent_context.world_from_entity,
             )?);
         }
 
         let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
-            .batch("lines 3d")
+            .batch("lines 2d")
             .depth_offset(ent_context.depth_offset)
             .world_from_obj(ent_context.world_from_entity)
             .outline_mask_ids(ent_context.highlight.overall)
@@ -133,7 +129,7 @@ impl Lines3DPart {
         let pick_ids = arch_view
             .iter_instance_keys()
             .map(picking_id_from_instance_key);
-        let strips = arch_view.iter_required_component::<LineStrip3D>()?;
+        let strips = arch_view.iter_required_component::<LineStrip2D>()?;
 
         let mut bounding_box = macaw::BoundingBox::nothing();
 
@@ -141,7 +137,7 @@ impl Lines3DPart {
             itertools::izip!(instance_keys, strips, radii, colors, pick_ids)
         {
             let lines = line_batch
-                .add_strip(strip.0.iter().copied().map(Into::into))
+                .add_strip_2d(strip.0.iter().copied().map(Into::into))
                 .color(color)
                 .radius(radius)
                 .picking_instance_id(pick_id);
@@ -151,7 +147,7 @@ impl Lines3DPart {
             }
 
             for p in strip.0 {
-                bounding_box.extend(p.into());
+                bounding_box.extend(glam::vec3(p.x(), p.y(), 0.0));
             }
         }
 
@@ -162,22 +158,31 @@ impl Lines3DPart {
     }
 }
 
-impl IdentifiedViewSystem for Lines3DPart {
+impl IdentifiedViewSystem for Lines2DPart {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Lines3D".into()
+        "Lines2D".into()
     }
 }
 
-impl ViewPartSystem for Lines3DPart {
+impl ViewPartSystem for Lines2DPart {
     fn required_components(&self) -> ComponentNameSet {
-        LineStrips3D::required_components()
+        LineStrips2D::required_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect()
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(LineStrips3D::indicator().name()).collect()
+        std::iter::once(LineStrips2D::indicator().name()).collect()
+    }
+
+    fn filter_visualizable_entities(
+        &self,
+        entities: ApplicableEntities,
+        context: &dyn std::any::Any,
+    ) -> VisualizableEntities {
+        re_tracing::profile_function!();
+        filter_visualizable_2d_entities(entities, context)
     }
 
     fn execute(
@@ -186,7 +191,7 @@ impl ViewPartSystem for Lines3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Lines3DPart, LineStrips3D, { LineStrips3D::NUM_COMPONENTS }, _>(
+        process_archetype_views::<Lines2DPart, LineStrips2D, { LineStrips2D::NUM_COMPONENTS }, _>(
             ctx,
             query,
             view_ctx,

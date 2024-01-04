@@ -1,4 +1,4 @@
-use crate::{parts::UiLabel, view_kind::SpatialSpaceViewKind};
+use crate::{view_kind::SpatialSpaceViewKind, visualizers::UiLabel};
 
 /// Common data struct for all spatial scene elements.
 ///

@@ -14,11 +14,11 @@ use re_viewer_context::{
 use super::{picking_id_from_instance_key, process_annotations, SpatialViewPartData};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
-    parts::{
+    view_kind::SpatialSpaceViewKind,
+    visualizers::{
         entity_iterator::process_archetype_views, process_colors, process_radii, UiLabel,
         UiLabelTarget,
     },
-    view_kind::SpatialSpaceViewKind,
 };
 
 pub struct Arrows3DPart {

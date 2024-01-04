@@ -19,13 +19,13 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SharedRenderBuilders,
-    parts::{
-        collect_ui_labels, image_view_coordinates, CamerasPart,
-        SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
-    },
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
+    visualizers::{
+        collect_ui_labels, image_view_coordinates, CamerasPart,
+        SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    },
 };
 
 use super::eye::{Eye, OrbitEye};
@@ -373,7 +373,7 @@ pub fn view_3d(
     //              As of #2522 state is now longer accessible there, move the property to a context?
     if state.state_3d.show_axes {
         let axis_length = 1.0; // The axes are also a measuring stick
-        crate::parts::add_axis_arrows(
+        crate::visualizers::add_axis_arrows(
             &mut line_builder,
             macaw::Affine3A::IDENTITY,
             None,

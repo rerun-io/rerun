@@ -12,8 +12,8 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
-    parts::{UiLabel, UiLabelTarget},
     view_kind::SpatialSpaceViewKind,
+    visualizers::{UiLabel, UiLabelTarget},
 };
 
 use super::{

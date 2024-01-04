@@ -16,9 +16,9 @@ use re_viewer_context::{
 };
 
 use crate::{
-    parts::{CamerasPart, ImagesPart, SpatialViewPartData, Transform3DArrowsPart},
     query_pinhole,
     view_kind::SpatialSpaceViewKind,
+    visualizers::{CamerasPart, ImagesPart, SpatialViewPartData, Transform3DArrowsPart},
 };
 
 pub fn auto_spawn_heuristic(
