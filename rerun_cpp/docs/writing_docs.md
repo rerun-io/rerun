@@ -12,8 +12,11 @@ pixi run cpp-docs
 They then can be locally viewed at `rerun_cpp/docs/html/index.html`
 
 ### How versioned docs are generated and served
-TODO(andreas): get this part working for C++!
+Our online documentation is generated in the same way and exists as a [GitHub Pages](https://pages.github.com/) project which is hosted from the
+contents of the [`gh-pages`](https://github.com/rerun-io/rerun/tree/gh-pages/docs/cpp) branch.
 
+Every commit that lands to main will generate bleeding edge documentation to the [`docs/cpp/main`](https://github.com/rerun-io/rerun/tree/gh-pages/docs/cpp/main).
+On a release, when GitHub sees a new tag: `X.Y.Z`, the GitHub action will instead push new docs to `docs/cpp/X.Y.Z`.
 
 ## Writing docs
 Docs are processed by the [`MkDoxy`](https://github.com/JakubAndrysek/MkDoxy) plugin
