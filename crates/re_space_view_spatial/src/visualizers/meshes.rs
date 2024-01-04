@@ -11,7 +11,7 @@ use re_viewer_context::{
     ViewQuery, ViewerContext,
 };
 
-use super::{entity_iterator::process_archetype_views, SpatialViewPartData};
+use super::{entity_iterator::process_archetype_views, SpatialViewVisualizerData};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
@@ -19,11 +19,13 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
 };
 
-pub struct Mesh3DPart(SpatialViewPartData);
+pub struct Mesh3DPart(SpatialViewVisualizerData);
 
 impl Default for Mesh3DPart {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
+        Self(SpatialViewVisualizerData::new(Some(
+            SpatialSpaceViewKind::ThreeD,
+        )))
     }
 }
 

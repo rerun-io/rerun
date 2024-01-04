@@ -20,20 +20,20 @@ use crate::{
 use super::{
     entity_iterator::process_archetype_views, filter_visualizable_2d_entities,
     picking_id_from_instance_key, process_annotations, process_colors, process_radii,
-    SpatialViewPartData,
+    SpatialViewVisualizerData,
 };
 
 pub struct Boxes2DPart {
     /// If the number of points in the batch is > max_labels, don't render box labels.
     pub max_labels: usize,
-    pub data: SpatialViewPartData,
+    pub data: SpatialViewVisualizerData,
 }
 
 impl Default for Boxes2DPart {
     fn default() -> Self {
         Self {
             max_labels: 20,
-            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
         }
     }
 }

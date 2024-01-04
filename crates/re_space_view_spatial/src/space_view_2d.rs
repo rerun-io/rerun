@@ -10,7 +10,7 @@ use crate::{
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{calculate_bounding_box, register_2d_spatial_parts, SpatialViewPartData},
+    visualizers::{calculate_bounding_box, register_2d_spatial_parts, SpatialViewVisualizerData},
 };
 
 #[derive(Default)]
@@ -98,7 +98,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                 if let Ok(part) = parts.get_by_identifier(*part) {
                     if let Some(part_data) = part
                         .data()
-                        .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+                        .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
                     {
                         if part_data.preferred_view_kind == Some(SpatialSpaceViewKind::ThreeD) {
                             return AutoSpawnHeuristic::NeverSpawn;

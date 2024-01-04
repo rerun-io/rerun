@@ -20,19 +20,21 @@ use crate::{
     },
 };
 
-use super::{filter_visualizable_2d_entities, picking_id_from_instance_key, SpatialViewPartData};
+use super::{
+    filter_visualizable_2d_entities, picking_id_from_instance_key, SpatialViewVisualizerData,
+};
 
 pub struct Points2DPart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
-    pub data: SpatialViewPartData,
+    pub data: SpatialViewVisualizerData,
 }
 
 impl Default for Points2DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
         }
     }
 }

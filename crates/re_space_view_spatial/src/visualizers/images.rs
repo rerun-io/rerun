@@ -33,7 +33,7 @@ use crate::{
     SpatialSpaceView2D, SpatialSpaceView3D,
 };
 
-use super::{entity_iterator::process_archetype_views, SpatialViewPartData};
+use super::{entity_iterator::process_archetype_views, SpatialViewVisualizerData};
 
 pub struct ViewerImage {
     /// Path to the image (note image instance ids would refer to pixels!)
@@ -136,7 +136,7 @@ struct ImageGrouping {
 }
 
 pub struct ImagesPart {
-    pub data: SpatialViewPartData,
+    pub data: SpatialViewVisualizerData,
     pub images: Vec<ViewerImage>,
     pub depth_cloud_entities: IntSet<EntityPathHash>,
 }
@@ -144,7 +144,7 @@ pub struct ImagesPart {
 impl Default for ImagesPart {
     fn default() -> Self {
         Self {
-            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::TwoD)),
             images: Vec::new(),
             depth_cloud_entities: IntSet::default(),
         }

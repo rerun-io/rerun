@@ -3,13 +3,13 @@ use crate::{view_kind::SpatialSpaceViewKind, visualizers::UiLabel};
 /// Common data struct for all spatial scene elements.
 ///
 /// Each spatial scene element is expected to fill an instance of this struct with its data.
-pub struct SpatialViewPartData {
+pub struct SpatialViewVisualizerData {
     pub ui_labels: Vec<UiLabel>,
     pub bounding_box: macaw::BoundingBox,
     pub preferred_view_kind: Option<SpatialSpaceViewKind>,
 }
 
-impl SpatialViewPartData {
+impl SpatialViewVisualizerData {
     pub fn new(preferred_view_kind: Option<SpatialSpaceViewKind>) -> Self {
         Self {
             ui_labels: Vec::new(),

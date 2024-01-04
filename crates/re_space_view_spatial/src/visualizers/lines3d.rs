@@ -19,19 +19,19 @@ use crate::{
     },
 };
 
-use super::{picking_id_from_instance_key, SpatialViewPartData};
+use super::{picking_id_from_instance_key, SpatialViewVisualizerData};
 
 pub struct Lines3DPart {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
-    pub data: SpatialViewPartData,
+    pub data: SpatialViewVisualizerData,
 }
 
 impl Default for Lines3DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::ThreeD)),
         }
     }
 }

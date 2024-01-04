@@ -18,7 +18,7 @@ use re_viewer_context::{
 use crate::{
     query_pinhole,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{CamerasPart, ImagesPart, SpatialViewPartData, Transform3DArrowsPart},
+    visualizers::{CamerasPart, ImagesPart, SpatialViewVisualizerData, Transform3DArrowsPart},
 };
 
 pub fn auto_spawn_heuristic(
@@ -38,7 +38,7 @@ pub fn auto_spawn_heuristic(
         .iter_with_identifiers()
         .filter_map(|(name, part)| {
             part.data()
-                .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+                .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
                 .map_or(false, |data| data.preferred_view_kind == Some(view_kind))
                 .then_some(name)
         })

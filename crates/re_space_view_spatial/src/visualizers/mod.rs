@@ -12,14 +12,14 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
-mod spatial_view_part;
+mod spatial_view_visualizer;
 mod transform3d_arrows;
 
 pub use cameras::CamerasPart;
 pub use images::ImagesPart;
 pub use images::ViewerImage;
 use re_viewer_context::ApplicableEntities;
-pub use spatial_view_part::SpatialViewPartData;
+pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
 
 #[doc(hidden)] // Public for benchmarks
@@ -91,7 +91,7 @@ pub fn calculate_bounding_box(
     for part in parts.iter() {
         if let Some(data) = part
             .data()
-            .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+            .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
         {
             bounding_box = bounding_box.union(data.bounding_box);
         }
@@ -111,7 +111,7 @@ pub fn collect_ui_labels(parts: &ViewPartCollection) -> Vec<UiLabel> {
     for part in parts.iter() {
         if let Some(data) = part
             .data()
-            .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+            .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
         {
             ui_labels.extend(data.ui_labels.iter().cloned());
         }

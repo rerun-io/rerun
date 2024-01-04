@@ -18,14 +18,16 @@ use crate::{
 
 use super::{
     entity_iterator::process_archetype_views, picking_id_from_instance_key, process_annotations,
-    process_colors, process_labels, process_radii, SpatialViewPartData,
+    process_colors, process_labels, process_radii, SpatialViewVisualizerData,
 };
 
-pub struct Boxes3DPart(SpatialViewPartData);
+pub struct Boxes3DPart(SpatialViewVisualizerData);
 
 impl Default for Boxes3DPart {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
+        Self(SpatialViewVisualizerData::new(Some(
+            SpatialSpaceViewKind::ThreeD,
+        )))
     }
 }
 

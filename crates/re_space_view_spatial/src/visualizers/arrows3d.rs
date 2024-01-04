@@ -11,7 +11,7 @@ use re_viewer_context::{
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
-use super::{picking_id_from_instance_key, process_annotations, SpatialViewPartData};
+use super::{picking_id_from_instance_key, process_annotations, SpatialViewVisualizerData};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     view_kind::SpatialSpaceViewKind,
@@ -24,14 +24,14 @@ use crate::{
 pub struct Arrows3DPart {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
     pub max_labels: usize,
-    pub data: SpatialViewPartData,
+    pub data: SpatialViewVisualizerData,
 }
 
 impl Default for Arrows3DPart {
     fn default() -> Self {
         Self {
             max_labels: 10,
-            data: SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)),
+            data: SpatialViewVisualizerData::new(Some(SpatialSpaceViewKind::ThreeD)),
         }
     }
 }

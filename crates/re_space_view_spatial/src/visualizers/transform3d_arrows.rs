@@ -15,13 +15,15 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::SpatialViewPartData;
+use super::SpatialViewVisualizerData;
 
-pub struct Transform3DArrowsPart(SpatialViewPartData);
+pub struct Transform3DArrowsPart(SpatialViewVisualizerData);
 
 impl Default for Transform3DArrowsPart {
     fn default() -> Self {
-        Self(SpatialViewPartData::new(Some(SpatialSpaceViewKind::ThreeD)))
+        Self(SpatialViewVisualizerData::new(Some(
+            SpatialSpaceViewKind::ThreeD,
+        )))
     }
 }
 

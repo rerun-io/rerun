@@ -11,7 +11,7 @@ use re_viewer_context::{
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
-use super::SpatialViewPartData;
+use super::SpatialViewVisualizerData;
 use crate::{
     contexts::{SharedRenderBuilders, TransformContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
@@ -22,7 +22,7 @@ use crate::{
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
 
 pub struct CamerasPart {
-    pub data: SpatialViewPartData,
+    pub data: SpatialViewVisualizerData,
     pub space_cameras: Vec<SpaceCamera3D>,
 }
 
@@ -31,7 +31,7 @@ impl Default for CamerasPart {
         Self {
             // Cameras themselves aren't inherently 2D or 3D since they represent intrinsics.
             // (extrinsics, represented by [`transform3d_arrow::Transform3DArrowsPart`] are 3D though)
-            data: (SpatialViewPartData::new(None)),
+            data: (SpatialViewVisualizerData::new(None)),
             space_cameras: Vec::new(),
         }
     }
