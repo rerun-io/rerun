@@ -66,7 +66,7 @@ fn tensor_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
-    entity_path: &re_data_store::EntityPath,
+    entity_path: &re_entity_db::EntityPath,
     annotations: &Annotations,
     tensor_data_row_id: RowId,
     original_tensor: &TensorData,

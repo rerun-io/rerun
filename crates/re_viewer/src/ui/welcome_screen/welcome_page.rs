@@ -1,6 +1,6 @@
 use super::{large_text_button, url_large_text_button, WelcomeScreenResponse};
 use egui::{NumExt, Ui};
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 use re_log_types::{
     DataRow, EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimePoint,
 };

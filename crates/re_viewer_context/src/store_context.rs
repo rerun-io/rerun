@@ -1,4 +1,4 @@
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 
 /// The current Blueprint and Recording being displayed by the viewer
 pub struct StoreContext<'a> {

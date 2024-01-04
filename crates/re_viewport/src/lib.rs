@@ -32,7 +32,7 @@ pub mod external {
     pub use re_space_view;
 }
 
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::datatypes;
 

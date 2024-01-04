@@ -1,7 +1,7 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
 use re_viewer::external::{
-    arrow2, eframe, egui, re_arrow_store, re_data_store, re_log, re_log_types, re_memory, re_query,
+    arrow2, eframe, egui, re_arrow_store, re_entity_db, re_log, re_log_types, re_memory, re_query,
     re_types,
 };
 
@@ -103,7 +103,7 @@ impl MyApp {
 }
 
 /// Show the content of the log database.
-fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_data_store::EntityDb) {
+fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
     if let Some(store_info) = entity_db.store_info() {
         ui.label(format!("Application ID: {}", store_info.application_id));
     }
@@ -128,7 +128,7 @@ fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_data_store::EntityDb) {
 
 fn entity_ui(
     ui: &mut egui::Ui,
-    entity_db: &re_data_store::EntityDb,
+    entity_db: &re_entity_db::EntityDb,
     timeline: re_log_types::Timeline,
     entity_path: &re_log_types::EntityPath,
 ) {
@@ -145,7 +145,7 @@ fn entity_ui(
 
 fn component_ui(
     ui: &mut egui::Ui,
-    entity_db: &re_data_store::EntityDb,
+    entity_db: &re_entity_db::EntityDb,
     timeline: re_log_types::Timeline,
     entity_path: &re_log_types::EntityPath,
     component_name: re_types::ComponentName,

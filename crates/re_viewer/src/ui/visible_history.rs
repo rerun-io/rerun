@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 
 use egui::{NumExt as _, Response, Ui};
 
-use re_data_store::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
+use re_entity_db::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
 use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;

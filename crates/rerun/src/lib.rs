@@ -133,7 +133,7 @@ pub use run::{run, CallSource};
 pub use sdk::*;
 
 /// Everything needed to build custom `StoreSubscriber`s.
-pub use re_data_store::external::re_arrow_store::{
+pub use re_entity_db::external::re_arrow_store::{
     DataStore, StoreDiff, StoreDiffKind, StoreEvent, StoreGeneration, StoreSubscriber,
 };
 
@@ -147,8 +147,8 @@ pub mod external {
 
     pub use re_build_info;
     pub use re_data_source;
-    pub use re_data_store;
-    pub use re_data_store::external::*;
+    pub use re_entity_db;
+    pub use re_entity_db::external::*;
     pub use re_format;
 
     #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]

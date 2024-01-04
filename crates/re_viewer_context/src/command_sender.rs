@@ -1,5 +1,5 @@
 use re_data_source::DataSource;
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 use re_log_types::{DataRow, StoreId};
 use re_ui::{UICommand, UICommandSender};
 

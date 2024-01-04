@@ -1,4 +1,4 @@
-use re_data_store::EntityProperties;
+use re_entity_db::EntityProperties;
 use re_log_types::EntityPath;
 use re_query::{query_archetype_with_history, ArchetypeView, QueryError};
 use re_renderer::DepthOffset;

@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use parking_lot::Mutex;
 
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 
 use crate::{item::resolve_mono_instance_path_item, ViewerContext};
 

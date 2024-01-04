@@ -1,5 +1,5 @@
 use crate::blueprint::components::PanelView;
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
@@ -125,7 +125,7 @@ impl<'a> AppBlueprint<'a> {
     }
 }
 
-fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::EntityDb) -> Option<bool> {
+fn load_panel_state(path: &EntityPath, blueprint_db: &re_entity_db::EntityDb) -> Option<bool> {
     re_tracing::profile_function!();
     blueprint_db
         .store()

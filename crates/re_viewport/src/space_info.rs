@@ -3,7 +3,7 @@ use re_space_view::UnreachableTransformReason;
 use std::collections::BTreeMap;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
-use re_data_store::{EntityDb, EntityPath, EntityTree};
+use re_entity_db::{EntityDb, EntityPath, EntityTree};
 use re_types::{
     archetypes::Pinhole,
     components::{DisconnectedSpace, Transform3D},

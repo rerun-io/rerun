@@ -1,5 +1,5 @@
 use re_arrow_store::{LatestAtQuery, VersionedComponent};
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_log_types::RowId;
 use re_space_view::diff_component_filter;
 use re_types::{

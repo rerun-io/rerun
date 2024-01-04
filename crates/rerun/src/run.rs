@@ -342,7 +342,7 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
     ///
     /// Fails if there are more than one data recordings present in the rrd file.
     fn compute_uber_table(path_to_rrd: &Path) -> anyhow::Result<re_log_types::DataTable> {
-        use re_data_store::EntityDb;
+        use re_entity_db::EntityDb;
         use re_log_types::StoreId;
 
         let rrd_file =
@@ -355,7 +355,7 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
             let msg = msg.context("decode rrd message")?;
             stores
                 .entry(msg.store_id().clone())
-                .or_insert(re_data_store::EntityDb::new(msg.store_id().clone()))
+                .or_insert(re_entity_db::EntityDb::new(msg.store_id().clone()))
                 .add(&msg)
                 .context("decode rrd file contents")?;
         }
@@ -611,10 +611,10 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 // NOTE: This is only used as part of end-to-end tests.
 fn assert_receive_into_entity_db(
     rx: &ReceiveSet<LogMsg>,
-) -> anyhow::Result<re_data_store::EntityDb> {
+) -> anyhow::Result<re_entity_db::EntityDb> {
     re_log::info!("Receiving messages into a StoreDb…");
 
-    let mut db: Option<re_data_store::EntityDb> = None;
+    let mut db: Option<re_entity_db::EntityDb> = None;
 
     let mut num_messages = 0;
 
@@ -632,7 +632,7 @@ fn assert_receive_into_entity_db(
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
                         let mut_db = db.get_or_insert_with(|| {
-                            re_data_store::EntityDb::new(msg.store_id().clone())
+                            re_entity_db::EntityDb::new(msg.store_id().clone())
                         });
 
                         mut_db.add(&msg)?;

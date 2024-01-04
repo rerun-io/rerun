@@ -1,7 +1,7 @@
 use web_time::Instant;
 
 use re_data_source::{DataSource, FileContents};
-use re_data_store::entity_db::EntityDb;
+use re_entity_db::entity_db::EntityDb;
 use re_log_types::{FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
@@ -1357,7 +1357,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 fn save(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
-    loop_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
+    loop_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
 ) {
     use crate::saving::save_database_to_file;
 

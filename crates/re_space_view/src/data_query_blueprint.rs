@@ -2,7 +2,7 @@ use nohash_hasher::IntMap;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
-use re_data_store::{
+use re_entity_db::{
     EntityDb, EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree,
 };
 use re_log_types::{
@@ -491,7 +491,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
 #[cfg(feature = "testing")]
 #[cfg(test)]
 mod tests {
-    use re_data_store::EntityDb;
+    use re_entity_db::EntityDb;
     use re_log_types::{example_components::MyPoint, DataRow, RowId, StoreId, TimePoint, Timeline};
     use re_viewer_context::{StoreContext, VisualizableEntities};
 

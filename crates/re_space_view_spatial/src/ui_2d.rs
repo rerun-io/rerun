@@ -4,7 +4,7 @@ use egui::{
 };
 use macaw::IsoTransform;
 
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{archetypes::Pinhole, components::ViewCoordinates};

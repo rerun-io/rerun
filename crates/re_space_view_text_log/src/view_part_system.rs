@@ -1,5 +1,5 @@
 use re_arrow_store::TimeRange;
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_log_types::RowId;
 use re_query::range_archetype;
 use re_types::{

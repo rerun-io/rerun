@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use parking_lot::RwLock;
 
-use re_data_store::{entity_db::EntityDb, EntityTree, TimeHistogramPerTimeline};
+use re_entity_db::{entity_db::EntityDb, EntityTree, TimeHistogramPerTimeline};
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,

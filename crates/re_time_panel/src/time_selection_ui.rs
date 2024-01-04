@@ -1,6 +1,6 @@
 use egui::{CursorIcon, Id, NumExt as _, Rect};
 
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 use re_log_types::{Duration, TimeInt, TimeRangeF, TimeReal, TimeType};
 use re_viewer_context::{Looping, TimeControl};
 

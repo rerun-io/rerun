@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
 use re_space_view::{DataQuery as _, PropertyResolver as _};
@@ -61,7 +61,7 @@ impl AppState {
     pub fn loop_selection(
         &self,
         store_context: Option<&StoreContext<'_>>,
-    ) -> Option<(re_data_store::Timeline, TimeRangeF)> {
+    ) -> Option<(re_entity_db::Timeline, TimeRangeF)> {
         store_context
             .as_ref()
             .and_then(|ctx| ctx.recording)
@@ -187,7 +187,7 @@ impl AppState {
             cache,
             space_view_class_registry,
             component_ui_registry,
-            entity_db: entity_db,
+            entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
             indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
@@ -226,7 +226,7 @@ impl AppState {
             cache,
             space_view_class_registry,
             component_ui_registry,
-            entity_db: entity_db,
+            entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
             indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,

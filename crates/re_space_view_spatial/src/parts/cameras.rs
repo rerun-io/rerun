@@ -1,5 +1,5 @@
 use glam::vec3;
-use re_data_store::{EntityPath, EntityProperties};
+use re_entity_db::{EntityPath, EntityProperties};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
@@ -153,7 +153,7 @@ impl CamerasPart {
 
         let radius = re_renderer::Size::new_points(1.0);
         let instance_path_for_picking =
-            re_data_store::InstancePathHash::instance(ent_path, instance_key);
+            re_entity_db::InstancePathHash::instance(ent_path, instance_key);
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut line_builder = shared_render_builders.lines();

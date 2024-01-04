@@ -1,4 +1,4 @@
-use re_data_store::InstancePath;
+use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
 use re_query::get_component_with_instances;
 use re_viewer_context::{UiVerbosity, ViewerContext};

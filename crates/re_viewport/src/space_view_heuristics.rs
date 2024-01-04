@@ -2,7 +2,7 @@ use ahash::HashMap;
 use itertools::Itertools;
 
 use re_arrow_store::{LatestAtQuery, Timeline};
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_log_types::EntityPathFilter;
 use re_space_view::{DataQuery as _, DataQueryBlueprint};
 use re_types::components::{DisconnectedSpace, TensorData};

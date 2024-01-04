@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use re_arrow_store::GarbageCollectionOptions;
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 use re_int_histogram::RangeI64;
 use re_log_types::{
     example_components::{MyColor, MyPoint},

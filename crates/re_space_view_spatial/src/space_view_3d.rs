@@ -1,5 +1,5 @@
 use nohash_hasher::IntSet;
-use re_data_store::{EntityProperties, EntityTree};
+use re_entity_db::{EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathHash};
 use re_types::{components::PinholeProjection, Loggable as _};
 use re_viewer_context::{
@@ -61,7 +61,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
     fn visualizable_filter_context(
         &self,
         space_origin: &EntityPath,
-        entity_db: &re_data_store::EntityDb,
+        entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn std::any::Any> {
         re_tracing::profile_function!();
 
@@ -144,7 +144,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &ViewerContext<'_>,
         state: &Self::State,
         ent_paths: &PerSystemEntities,
-        entity_properties: &mut re_data_store::EntityPropertyMap,
+        entity_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
         update_object_property_heuristics(
             ctx,

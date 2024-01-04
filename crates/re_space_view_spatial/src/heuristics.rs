@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use egui::NumExt as _;
 
-use re_data_store::EditableAutoValue;
 use re_data_ui::image_meaning_for_entity;
+use re_entity_db::EditableAutoValue;
 use re_log_types::EntityPath;
 use re_types::{
     components::{DepthMeter, TensorData},
@@ -61,7 +61,7 @@ pub fn auto_spawn_heuristic(
 pub fn update_object_property_heuristics(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_data_store::EntityPropertyMap,
+    entity_properties: &mut re_entity_db::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
     spatial_kind: SpatialSpaceViewKind,
 ) {
@@ -110,7 +110,7 @@ pub fn auto_size_world_heuristic(
 
 fn update_pinhole_property_heuristics(
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_data_store::EntityPropertyMap,
+    entity_properties: &mut re_entity_db::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
     for ent_path in per_system_entities
@@ -138,7 +138,7 @@ fn update_pinhole_property_heuristics(
 fn update_depth_cloud_property_heuristics(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_data_store::EntityPropertyMap,
+    entity_properties: &mut re_entity_db::EntityPropertyMap,
     spatial_kind: SpatialSpaceViewKind,
 ) {
     // TODO(andreas): There should be a depth cloud system
@@ -190,7 +190,7 @@ fn update_depth_cloud_property_heuristics(
 fn update_transform3d_lines_heuristics(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_data_store::EntityPropertyMap,
+    entity_properties: &mut re_entity_db::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
     for ent_path in per_system_entities

@@ -13,8 +13,8 @@ mod time_selection_ui;
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
-use re_data_store::{EntityTree, InstancePath, TimeHistogram};
 use re_data_ui::item_ui;
+use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
 use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{HoverHighlight, Item, TimeControl, TimeView, ViewerContext};
@@ -542,7 +542,7 @@ impl TimePanel {
 
             // show the density graph only if that item is closed
             if is_closed {
-                let empty = re_data_store::TimeHistogram::default();
+                let empty = re_entity_db::TimeHistogram::default();
                 let num_messages_at_time = tree
                     .subtree
                     .time_histogram
@@ -861,7 +861,7 @@ fn help_button(ui: &mut egui::Ui) {
 ///
 /// This functions returns `true` iff the given time is safe to show.
 fn is_time_safe_to_show(
-    entity_db: &re_data_store::EntityDb,
+    entity_db: &re_entity_db::EntityDb,
     timeline: &re_arrow_store::Timeline,
     time: TimeReal,
 ) -> bool {

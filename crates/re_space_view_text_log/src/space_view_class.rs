@@ -1,4 +1,4 @@
-use re_data_store::EntityProperties;
+use re_entity_db::EntityProperties;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;

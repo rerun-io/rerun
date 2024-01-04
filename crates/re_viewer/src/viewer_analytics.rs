@@ -143,7 +143,7 @@ impl ViewerAnalytics {
     }
 
     /// When we have loaded the start of a new recording.
-    pub fn on_open_recording(&mut self, entity_db: &re_data_store::EntityDb) {
+    pub fn on_open_recording(&mut self, entity_db: &re_entity_db::EntityDb) {
         use re_log_types::StoreSource;
 
         if entity_db.store_kind() != re_log_types::StoreKind::Recording {
@@ -255,5 +255,5 @@ impl ViewerAnalytics {
     ) {
     }
 
-    pub fn on_open_recording(&mut self, _entity_db: &re_data_store::EntityDb) {}
+    pub fn on_open_recording(&mut self, _entity_db: &re_entity_db::EntityDb) {}
 }

@@ -1,4 +1,4 @@
-use re_data_store::EntityProperties;
+use re_entity_db::EntityProperties;
 use re_log_types::EntityPath;
 use re_viewer_context::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
@@ -54,7 +54,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ctx: &ViewerContext<'_>,
         state: &Self::State,
         ent_paths: &PerSystemEntities,
-        entity_properties: &mut re_data_store::EntityPropertyMap,
+        entity_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
         update_object_property_heuristics(
             ctx,

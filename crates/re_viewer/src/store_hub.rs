@@ -2,7 +2,7 @@ use ahash::{HashMap, HashMapExt};
 use itertools::Itertools;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_viewer_context::StoreContext;
@@ -405,7 +405,7 @@ pub enum StoreLoadError {
     Decode(#[from] re_log_encoding::decoder::DecodeError),
 
     #[error(transparent)]
-    DataStore(#[from] re_data_store::Error),
+    DataStore(#[from] re_entity_db::Error),
 }
 
 /// Stores many [`StoreDb`]s of recordings and blueprints.

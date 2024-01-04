@@ -1,7 +1,7 @@
 use nohash_hasher::IntMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
+use re_entity_db::{EntityPath, EntityPropertyMap, EntityTree};
 use re_space_view::UnreachableTransformReason;
 use re_types::{
     components::{DisconnectedSpace, PinholeProjection, Transform3D, ViewCoordinates},

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_data_store::{EditableAutoValue, TimeCounts, TimesPerTimeline};
+use re_entity_db::{EditableAutoValue, TimeCounts, TimesPerTimeline};
 use re_log_types::{Duration, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType, Timeline};
 
 use crate::NeedsRepaint;

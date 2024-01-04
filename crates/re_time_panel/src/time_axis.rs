@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_data_store::TimeHistogram;
+use re_entity_db::TimeHistogram;
 use re_log_types::{TimeInt, TimeRange, TimeType};
 
 /// A piece-wise linear view of a single timeline.

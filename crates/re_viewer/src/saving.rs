@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::ApplicationId;
@@ -73,7 +73,7 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
 pub fn save_database_to_file(
     entity_db: &EntityDb,
     path: std::path::PathBuf,
-    time_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
+    time_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
 ) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
     use re_arrow_store::TimeRange;
 

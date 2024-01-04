@@ -1,9 +1,9 @@
 use egui::{text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
-use re_data_store::EntityPath;
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
+use re_entity_db::EntityPath;
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
@@ -671,7 +671,7 @@ pub fn picking(
 #[allow(clippy::too_many_arguments)]
 fn image_hover_ui(
     ui: &mut egui::Ui,
-    instance_path: &re_data_store::InstancePath,
+    instance_path: &re_entity_db::InstancePath,
     ctx: &ViewerContext<'_>,
     tensor: TensorData,
     spatial_kind: SpatialSpaceViewKind,

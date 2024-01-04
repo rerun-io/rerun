@@ -186,7 +186,7 @@ fn recording_ui(
     app_options: &AppOptions,
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    entity_db: &re_data_store::EntityDb,
+    entity_db: &re_entity_db::EntityDb,
     app_id_label: Option<&str>,
     active_recording: Option<&re_log_types::StoreId>,
     command_sender: &CommandSender,
@@ -241,7 +241,7 @@ fn recording_hover_ui(
     app_options: &AppOptions,
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    entity_db: &re_data_store::EntityDb,
+    entity_db: &re_entity_db::EntityDb,
 ) {
     egui::Grid::new("recording_hover_ui")
         .num_columns(2)

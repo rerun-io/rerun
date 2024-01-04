@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use egui_tiles::TileId;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint, Timeline};
 use re_query::query_archetype;

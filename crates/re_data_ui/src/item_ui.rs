@@ -3,7 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use egui::Ui;
-use re_data_store::{EntityTree, InstancePath};
+use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_viewer_context::{
     DataQueryId, HoverHighlight, Item, Selection, SpaceViewId, UiVerbosity, ViewerContext,

@@ -1,6 +1,6 @@
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityDb, EntityPath, EntityProperties, TimeInt, VisibleHistory};
-use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
+use re_entity_db::{EntityDb, EntityPath, EntityProperties, TimeInt, VisibleHistory};
+use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 
 use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
@@ -460,7 +460,7 @@ impl SpaceViewBlueprint {
 
 #[cfg(test)]
 mod tests {
-    use re_data_store::EntityDb;
+    use re_entity_db::EntityDb;
     use re_log_types::{DataCell, DataRow, EntityPathFilter, RowId, StoreId, TimePoint};
     use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;

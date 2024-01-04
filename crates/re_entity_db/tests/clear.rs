@@ -1,5 +1,5 @@
 use re_arrow_store::{DataStoreStats, LatestAtQuery};
-use re_data_store::EntityDb;
+use re_entity_db::EntityDb;
 use re_log_types::{
     example_components::{MyColor, MyPoint},
     DataRow, EntityPath, RowId, StoreId, TimePoint, Timeline,

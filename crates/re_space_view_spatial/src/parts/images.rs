@@ -4,7 +4,7 @@ use egui::NumExt;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_data_store::{EntityPath, EntityProperties};
+use re_entity_db::{EntityPath, EntityProperties};
 use re_log_types::{EntityPathHash, RowId};
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::{
@@ -592,13 +592,13 @@ impl ImagesPart {
         let world_depth_from_texture_depth = 1.0 / depth_from_world_scale;
 
         let colormap = match *properties.color_mapper {
-            re_data_store::ColorMapper::Colormap(colormap) => match colormap {
-                re_data_store::Colormap::Grayscale => Colormap::Grayscale,
-                re_data_store::Colormap::Turbo => Colormap::Turbo,
-                re_data_store::Colormap::Viridis => Colormap::Viridis,
-                re_data_store::Colormap::Plasma => Colormap::Plasma,
-                re_data_store::Colormap::Magma => Colormap::Magma,
-                re_data_store::Colormap::Inferno => Colormap::Inferno,
+            re_entity_db::ColorMapper::Colormap(colormap) => match colormap {
+                re_entity_db::Colormap::Grayscale => Colormap::Grayscale,
+                re_entity_db::Colormap::Turbo => Colormap::Turbo,
+                re_entity_db::Colormap::Viridis => Colormap::Viridis,
+                re_entity_db::Colormap::Plasma => Colormap::Plasma,
+                re_entity_db::Colormap::Magma => Colormap::Magma,
+                re_entity_db::Colormap::Inferno => Colormap::Inferno,
             },
         };
 
