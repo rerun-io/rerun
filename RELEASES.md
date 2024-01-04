@@ -53,6 +53,8 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
 
 ![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
 
+Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
+
 3. ### If this is a patch release, cherry-pick commits for inclusion in the release into the branch.
 
 4. ### Update [`CHANGELOG.md`](/CHANGELOG.md).
