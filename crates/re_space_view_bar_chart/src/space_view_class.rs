@@ -8,7 +8,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
-use super::view_part_system::BarChartViewPartSystem;
+use super::visualizer_system::BarChartViewPartSystem;
 
 #[derive(Default)]
 pub struct BarChartSpaceView;
