@@ -8,6 +8,7 @@ auto_space_views.py linguist-generated=true
 container_kind.py linguist-generated=true
 entities_determined_by_user.py linguist-generated=true
 entity_properties_component.py linguist-generated=true
+grid_columns.py linguist-generated=true
 included_contents.py linguist-generated=true
 included_queries.py linguist-generated=true
 included_space_views.py linguist-generated=true

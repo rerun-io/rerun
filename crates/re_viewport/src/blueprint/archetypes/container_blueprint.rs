@@ -38,7 +38,9 @@ pub struct ContainerBlueprint {
     /// For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
     pub primary_weights: Option<crate::blueprint::components::PrimaryWeights>,
 
-    /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
+    /// The weights of the secondary axis. For `Grid` this is the row weights.
+    ///
+    /// Ignored for `Horizontal`/`Vertical` containers.
     pub secondary_weights: Option<crate::blueprint::components::SecondaryWeights>,
 
     /// Which tab is active.
@@ -50,6 +52,13 @@ pub struct ContainerBlueprint {
     ///
     /// Defaults to true if not specified.
     pub visible: Option<crate::blueprint::components::Visible>,
+
+    /// How many columns this grid should have.
+    ///
+    /// If unset, the grid layout will be auto.
+    ///
+    /// Ignored for `Horizontal`/`Vertical` containers.
+    pub grid_columns: Option<crate::blueprint::components::GridColumns>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
@@ -60,10 +69,11 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
         || ["rerun.blueprint.components.ContainerBlueprintIndicator".into()],
     );
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ActiveTab".into(),
+            "rerun.blueprint.components.GridColumns".into(),
             "rerun.blueprint.components.IncludedContents".into(),
             "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.PrimaryWeights".into(),
@@ -73,12 +83,13 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ContainerKind".into(),
             "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
             "rerun.blueprint.components.ActiveTab".into(),
+            "rerun.blueprint.components.GridColumns".into(),
             "rerun.blueprint.components.IncludedContents".into(),
             "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.PrimaryWeights".into(),
@@ -89,7 +100,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     });
 
 impl ContainerBlueprint {
-    pub const NUM_COMPONENTS: usize = 9usize;
+    pub const NUM_COMPONENTS: usize = 10usize;
 }
 
 /// Indicator component for the [`ContainerBlueprint`] [`::re_types_core::Archetype`]
@@ -215,6 +226,16 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
         } else {
             None
         };
+        let grid_columns =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.GridColumns") {
+                <crate::blueprint::components::GridColumns>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#grid_columns")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         Ok(Self {
             container_kind,
             display_name,
@@ -223,6 +244,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
             secondary_weights,
             active_tab,
             visible,
+            grid_columns,
         })
     }
 }
@@ -252,6 +274,9 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
             self.visible
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.grid_columns
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -274,6 +299,7 @@ impl ContainerBlueprint {
             secondary_weights: None,
             active_tab: None,
             visible: None,
+            grid_columns: None,
         }
     }
 
@@ -328,6 +354,15 @@ impl ContainerBlueprint {
         visible: impl Into<crate::blueprint::components::Visible>,
     ) -> Self {
         self.visible = Some(visible.into());
+        self
+    }
+
+    #[inline]
+    pub fn with_grid_columns(
+        mut self,
+        grid_columns: impl Into<crate::blueprint::components::GridColumns>,
+    ) -> Self {
+        self.grid_columns = Some(grid_columns.into());
         self
     }
 }

@@ -31,6 +31,7 @@ class ContainerBlueprint(Archetype):
         secondary_weights: components.SecondaryWeightsLike | None = None,
         active_tab: datatypes.EntityPathLike | None = None,
         visible: components.VisibleLike | None = None,
+        grid_columns: components.GridColumnsLike | None = None,
     ):
         """
         Create a new instance of the ContainerBlueprint archetype.
@@ -48,7 +49,9 @@ class ContainerBlueprint(Archetype):
 
             For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
         secondary_weights:
-            The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
+            The weights of the secondary axis. For `Grid` this is the row weights.
+
+            Ignored for `Horizontal`/`Vertical` containers.
         active_tab:
             Which tab is active.
 
@@ -57,6 +60,12 @@ class ContainerBlueprint(Archetype):
             Whether this container is visible.
 
             Defaults to true if not specified.
+        grid_columns:
+            How many columns this grid should have.
+
+            If unset, the grid layout will be auto.
+
+            Ignored for `Horizontal`/`Vertical` containers.
         """
 
         # You can define your own __init__ function as a member of ContainerBlueprintExt in container_blueprint_ext.py
@@ -69,6 +78,7 @@ class ContainerBlueprint(Archetype):
                 secondary_weights=secondary_weights,
                 active_tab=active_tab,
                 visible=visible,
+                grid_columns=grid_columns,
             )
             return
         self.__attrs_clear__()
@@ -83,6 +93,7 @@ class ContainerBlueprint(Archetype):
             secondary_weights=None,  # type: ignore[arg-type]
             active_tab=None,  # type: ignore[arg-type]
             visible=None,  # type: ignore[arg-type]
+            grid_columns=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -134,7 +145,9 @@ class ContainerBlueprint(Archetype):
         default=None,
         converter=components.SecondaryWeightsBatch._optional,  # type: ignore[misc]
     )
-    # The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
+    # The weights of the secondary axis. For `Grid` this is the row weights.
+    #
+    # Ignored for `Horizontal`/`Vertical` containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -157,6 +170,19 @@ class ContainerBlueprint(Archetype):
     # Whether this container is visible.
     #
     # Defaults to true if not specified.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    grid_columns: components.GridColumnsBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.GridColumnsBatch._optional,  # type: ignore[misc]
+    )
+    # How many columns this grid should have.
+    #
+    # If unset, the grid layout will be auto.
+    #
+    # Ignored for `Horizontal`/`Vertical` containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
