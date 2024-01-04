@@ -60,7 +60,8 @@ def main() -> None:
     wheels = [blob.name.split("/")[-1] for blob in wheel_blobs if blob.name.endswith(".whl")]
     wheel_utils.check_expected_wheels(wheels)
 
-    shutil.rmtree("wheels")
+    if os.path.exists("wheels"):
+        shutil.rmtree("wheels")
     os.mkdir("wheels")
     with ThreadPoolExecutor() as e:
         for blob in wheel_blobs:
