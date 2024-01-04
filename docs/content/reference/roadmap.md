@@ -16,25 +16,24 @@ This page is meant to give an high level overview of ongoing and planned work.
 
 ## Roadmap of major feature areas
 
-### Last week of November: Release 0.11
-- Improvements to the C++ SDK
-    - Hosted api reference documentation
-    - Even easier cmake build system integration
-    - Logging non-rerun types is faster and easier
-- Expand the "Visual History" feature to "Visible Time Range"
-    - For supported views and data types you'll be able to specify both absolute and relative time ranges to include data from.
-
-### December 2023: Release 0.12
-- Significant performance improvements for all time range visualizations, particularly time series.
+### Early January 2024: Release 0.12
+- Parallelized rendering and processing for all views
+- Plugin system for loading any file into Rerun
 
 ### Near term: Now - Q1 2024
 - End to end performance for high frequency time series logging
 - Layout and configuration from code (blueprint)
 - Datasets that are bigger than RAM for the native viewer
+- CLI for manipulating and and exporting data from rrd files
 
-### Medium term
-- Extensibility of all parts of the stack
-- Easily read query data recordings from user code
+### Medium term (Q2-3 2024)
+- Broader coverage of robotics data types
+- Extension mechanisms for dynamically reading from external storage
+    - For example files like: VRS, MCAP, or mp4
 - Callbacks and the ability to build interactive applications with Rerun
     - For example: UI for tweaking configs, custom data annotation tools, etc
+
+### Longer term
+- Extensibility of all parts of the stack
+- Easily query data recordings from user code
 - Data format stability
