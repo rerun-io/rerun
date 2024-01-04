@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use egui::NumExt as _;
 
-use re_data_store::EditableAutoValue;
 use re_data_ui::image_meaning_for_entity;
+use re_entity_db::EditableAutoValue;
 use re_log_types::EntityPath;
 use re_types::{
     components::{DepthMeter, TensorData},
@@ -16,9 +16,11 @@ use re_viewer_context::{
 };
 
 use crate::{
-    parts::{CamerasPart, ImagesPart, SpatialViewPartData, Transform3DArrowsPart},
     query_pinhole,
     view_kind::SpatialSpaceViewKind,
+    visualizers::{
+        CamerasVisualizer, ImageVisualizer, SpatialViewVisualizerData, Transform3DArrowsVisualizer,
+    },
 };
 
 pub fn auto_spawn_heuristic(
@@ -31,14 +33,16 @@ pub fn auto_spawn_heuristic(
 
     let mut score = 0.0;
 
-    let parts = ctx.space_view_class_registry.new_part_collection(class);
+    let parts = ctx
+        .space_view_class_registry
+        .new_visualizer_collection(class);
 
     // Gather all systems that advertise a "preferred view kind" matching the passed in kind.
     let system_names_with_matching_view_kind = parts
         .iter_with_identifiers()
         .filter_map(|(name, part)| {
             part.data()
-                .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+                .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
                 .map_or(false, |data| data.preferred_view_kind == Some(view_kind))
                 .then_some(name)
         })
@@ -61,7 +65,7 @@ pub fn auto_spawn_heuristic(
 pub fn update_object_property_heuristics(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_data_store::EntityPropertyMap,
+    entity_properties: &mut re_entity_db::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
     spatial_kind: SpatialSpaceViewKind,
 ) {
@@ -110,11 +114,11 @@ pub fn auto_size_world_heuristic(
 
 fn update_pinhole_property_heuristics(
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_data_store::EntityPropertyMap,
+    entity_properties: &mut re_entity_db::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
     for ent_path in per_system_entities
-        .get(&CamerasPart::identifier())
+        .get(&CamerasVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
         let mut properties = entity_properties.get(ent_path);
@@ -138,15 +142,15 @@ fn update_pinhole_property_heuristics(
 fn update_depth_cloud_property_heuristics(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_data_store::EntityPropertyMap,
+    entity_properties: &mut re_entity_db::EntityPropertyMap,
     spatial_kind: SpatialSpaceViewKind,
 ) {
     // TODO(andreas): There should be a depth cloud system
     for ent_path in per_system_entities
-        .get(&ImagesPart::identifier())
+        .get(&ImageVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
         let Some(tensor) =
             store.query_latest_component::<TensorData>(ent_path, &ctx.current_query())
         else {
@@ -190,11 +194,11 @@ fn update_depth_cloud_property_heuristics(
 fn update_transform3d_lines_heuristics(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_data_store::EntityPropertyMap,
+    entity_properties: &mut re_entity_db::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
     for ent_path in per_system_entities
-        .get(&Transform3DArrowsPart::identifier())
+        .get(&Transform3DArrowsVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
         fn is_pinhole_extrinsics_of<'a>(
@@ -206,7 +210,7 @@ fn update_transform3d_lines_heuristics(
                 return Some(ent_path);
             } else {
                 // Any direct child has a pinhole camera?
-                if let Some(child_tree) = ctx.store_db.tree().subtree(ent_path) {
+                if let Some(child_tree) = ctx.entity_db.tree().subtree(ent_path) {
                     for child in child_tree.children.values() {
                         if query_pinhole(store, &ctx.current_query(), &child.path).is_some() {
                             return Some(&child.path);
@@ -223,7 +227,7 @@ fn update_transform3d_lines_heuristics(
             // By default show the transform if it is a camera extrinsic,
             // or if this entity only contains Transform3D components.
             let only_has_transform_components = ctx
-                .store_db
+                .entity_db
                 .store()
                 .all_components(&ctx.current_query().timeline, ent_path)
                 .map_or(false, |c| {
@@ -232,13 +236,13 @@ fn update_transform3d_lines_heuristics(
                 });
             properties.transform_3d_visible = EditableAutoValue::Auto(
                 only_has_transform_components
-                    || is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx).is_some(),
+                    || is_pinhole_extrinsics_of(ctx.entity_db.store(), ent_path, ctx).is_some(),
             );
         }
 
         if properties.transform_3d_size.is_auto() {
             if let Some(pinhole_path) =
-                is_pinhole_extrinsics_of(ctx.store_db.store(), ent_path, ctx)
+                is_pinhole_extrinsics_of(ctx.entity_db.store(), ent_path, ctx)
             {
                 // If there's a pinhole, we orient ourselves on its image plane distance
                 let pinhole_path_props = entity_properties.get(pinhole_path);

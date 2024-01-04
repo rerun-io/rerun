@@ -4,7 +4,7 @@ use egui::{
 };
 use macaw::IsoTransform;
 
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{archetypes::Pinhole, components::ViewCoordinates};
@@ -19,10 +19,10 @@ use super::{
 };
 use crate::{
     contexts::SharedRenderBuilders,
-    parts::collect_ui_labels,
     query_pinhole,
     ui::{outline_config, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
+    visualizers::collect_ui_labels,
 };
 
 // ---
@@ -241,7 +241,7 @@ pub fn view_2d(
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
-    let store = ctx.store_db.store();
+    let store = ctx.entity_db.store();
 
     let scene_rect_accum = egui::Rect::from_min_max(
         state.scene_bbox_accum.min.truncate().to_array().into(),

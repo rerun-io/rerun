@@ -113,32 +113,32 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
         ..
     } = ctx;
 
-    let mut store_dbs_map: BTreeMap<_, Vec<_>> = BTreeMap::new();
-    for store_db in &store_context.all_recordings {
-        let key = store_db
+    let mut entity_dbs_map: BTreeMap<_, Vec<_>> = BTreeMap::new();
+    for entity_db in &store_context.all_recordings {
+        let key = entity_db
             .store_info()
             .map_or("<unknown>", |info| info.application_id.as_str());
-        store_dbs_map.entry(key).or_default().push(*store_db);
+        entity_dbs_map.entry(key).or_default().push(*entity_db);
     }
 
-    if store_dbs_map.is_empty() {
+    if entity_dbs_map.is_empty() {
         return false;
     }
 
-    for store_dbs in store_dbs_map.values_mut() {
-        store_dbs.sort_by_key(|store_db| store_db.store_info().map(|info| info.started));
+    for entity_dbs in entity_dbs_map.values_mut() {
+        entity_dbs.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
     }
 
     let active_recording = store_context.recording.map(|rec| rec.store_id());
 
-    for (app_id, store_dbs) in store_dbs_map {
-        if store_dbs.len() == 1 {
-            let store_db = store_dbs[0];
+    for (app_id, entity_dbs) in entity_dbs_map {
+        if entity_dbs.len() == 1 {
+            let entity_db = entity_dbs[0];
             if recording_ui(
                 ctx.app_options,
                 ctx.re_ui,
                 ui,
-                store_db,
+                entity_db,
                 Some(app_id),
                 active_recording,
                 command_sender,
@@ -146,7 +146,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
             .clicked()
             {
                 command_sender
-                    .send_system(SystemCommand::SetRecordingId(store_db.store_id().clone()));
+                    .send_system(SystemCommand::SetRecordingId(entity_db.store_id().clone()));
             }
         } else {
             ctx.re_ui.list_item(app_id).active(false).show_collapsing(
@@ -154,12 +154,12 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
                 ui.make_persistent_id(app_id),
                 true,
                 |_, ui| {
-                    for store_db in store_dbs {
+                    for entity_db in entity_dbs {
                         if recording_ui(
                             ctx.app_options,
                             ctx.re_ui,
                             ui,
-                            store_db,
+                            entity_db,
                             None,
                             active_recording,
                             command_sender,
@@ -167,7 +167,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
                         .clicked()
                         {
                             command_sender.send_system(SystemCommand::SetRecordingId(
-                                store_db.store_id().clone(),
+                                entity_db.store_id().clone(),
                             ));
                         }
                     }
@@ -186,7 +186,7 @@ fn recording_ui(
     app_options: &AppOptions,
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    store_db: &re_data_store::StoreDb,
+    entity_db: &re_entity_db::EntityDb,
     app_id_label: Option<&str>,
     active_recording: Option<&re_log_types::StoreId>,
     command_sender: &CommandSender,
@@ -197,7 +197,7 @@ fn recording_ui(
         String::new()
     };
 
-    let name = store_db
+    let name = entity_db
         .store_info()
         .and_then(|info| {
             info.started.format_time_custom(
@@ -214,13 +214,14 @@ fn recording_ui(
                 .small_icon_button(ui, &re_ui::icons::REMOVE)
                 .on_hover_text("Close this Recording (unsaved data will be lost)");
             if resp.clicked() {
-                command_sender
-                    .send_system(SystemCommand::CloseRecordingId(store_db.store_id().clone()));
+                command_sender.send_system(SystemCommand::CloseRecordingId(
+                    entity_db.store_id().clone(),
+                ));
             }
             resp
         })
         .with_icon_fn(|_re_ui, ui, rect, visuals| {
-            let color = if active_recording == Some(store_db.store_id()) {
+            let color = if active_recording == Some(entity_db.store_id()) {
                 visuals.fg_stroke.color
             } else {
                 ui.visuals().widgets.noninteractive.fg_stroke.color
@@ -232,7 +233,7 @@ fn recording_ui(
         .show(ui);
 
     response.on_hover_ui(|ui| {
-        recording_hover_ui(app_options, re_ui, ui, store_db);
+        recording_hover_ui(app_options, re_ui, ui, entity_db);
     })
 }
 
@@ -240,22 +241,22 @@ fn recording_hover_ui(
     app_options: &AppOptions,
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    store_db: &re_data_store::StoreDb,
+    entity_db: &re_entity_db::EntityDb,
 ) {
     egui::Grid::new("recording_hover_ui")
         .num_columns(2)
         .show(ui, |ui| {
             re_ui.grid_left_hand_label(ui, "Store ID");
-            ui.label(store_db.store_id().to_string());
+            ui.label(entity_db.store_id().to_string());
             ui.end_row();
 
-            if let Some(data_source) = &store_db.data_source {
+            if let Some(data_source) = &entity_db.data_source {
                 re_ui.grid_left_hand_label(ui, "Data source");
                 ui.label(data_source_string(data_source));
                 ui.end_row();
             }
 
-            if let Some(store_info) = store_db.store_info() {
+            if let Some(store_info) = entity_db.store_info() {
                 let re_log_types::StoreInfo {
                     application_id,
                     store_id: _,

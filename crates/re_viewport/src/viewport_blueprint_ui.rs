@@ -1,15 +1,14 @@
 use egui::{Response, Ui};
 use itertools::Itertools;
 
-use re_data_store::InstancePath;
 use re_data_ui::item_ui;
+use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, EntityPathRule};
 use re_space_view::DataQueryBlueprint;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
-    DataQueryResult, DataResultHandle, DataResultNode, HoverHighlight, Item, SpaceViewId,
-    ViewerContext,
+    DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
 use crate::{
@@ -72,6 +71,7 @@ impl Viewport<'_, '_> {
             // so if the child is made invisible, we should do the same for the parent.
             let child_is_visible = self.tree.is_visible(child_id);
             self.tree.set_visible(tile_id, child_is_visible);
+            self.edited = true;
             return self.tile_ui(ctx, ui, child_id);
         }
 
@@ -84,8 +84,8 @@ impl Viewport<'_, '_> {
         let default_open = true;
 
         let response = ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
-            .subdued(true)
             .selected(ctx.selection().contains_item(&item))
+            .with_icon(crate::icon_for_container_kind(&container.kind()))
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
                 visibility_changed = vis_response.changed();
@@ -118,6 +118,7 @@ impl Viewport<'_, '_> {
             self.blueprint.set_auto_layout(false, ctx);
 
             self.tree.set_visible(tile_id, visible);
+            self.edited = true;
         }
     }
 
@@ -146,9 +147,9 @@ impl Viewport<'_, '_> {
         let visible_child = visible;
         let item = Item::SpaceView(space_view.id);
 
-        let default_open = result_tree
-            .root_node()
-            .map_or(false, Self::default_open_for_data_result);
+        let root_node = result_tree.first_interesting_root();
+
+        let default_open = root_node.map_or(false, Self::default_open_for_data_result);
 
         let collapsing_header_id = ui.id().with(space_view.id);
         let is_item_hovered =
@@ -171,7 +172,7 @@ impl Viewport<'_, '_> {
                 response | vis_response
             })
             .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                if let Some(result_handle) = result_tree.root_handle() {
+                if let Some(result_node) = root_node {
                     // TODO(jleibs): handle the case where the only result
                     // in the tree is a single path (no groups). This should never
                     // happen for a SpaceViewContents.
@@ -179,7 +180,7 @@ impl Viewport<'_, '_> {
                         ctx,
                         ui,
                         &query_result,
-                        result_handle,
+                        result_node,
                         space_view,
                         visible_child,
                     );
@@ -204,7 +205,15 @@ impl Viewport<'_, '_> {
             // Keep `auto_space_views` enabled.
             self.blueprint.set_auto_layout(false, ctx);
 
-            self.tree.set_visible(tile_id, visible);
+            if ctx.app_options.legacy_container_blueprint {
+                self.tree.set_visible(tile_id, visible);
+            } else {
+                // Note: we set visibility directly on the space view so it gets saved
+                // to the blueprint directly. If we set it on the tree there are some
+                // edge-cases where visibility can get lost when we simplify out trivial
+                // tab-containers.
+                space_view.set_visible(visible, ctx);
+            }
         }
     }
 
@@ -212,15 +221,10 @@ impl Viewport<'_, '_> {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         query_result: &DataQueryResult,
-        result_handle: DataResultHandle,
+        top_node: &DataResultNode,
         space_view: &SpaceViewBlueprint,
         space_view_visible: bool,
     ) {
-        let Some(top_node) = query_result.tree.lookup_node(result_handle) else {
-            debug_assert!(false, "Invalid data result handle in data result tree");
-            return;
-        };
-
         let group_is_visible =
             top_node.data_result.accumulated_properties().visible && space_view_visible;
 
@@ -282,7 +286,7 @@ impl Viewport<'_, '_> {
                     .subdued(
                         !group_is_visible
                             || !properties.visible
-                            || data_result.view_parts.is_empty(),
+                            || data_result.visualizers.is_empty(),
                     )
                     .force_hovered(is_item_hovered)
                     .with_buttons(|re_ui, ui| {
@@ -349,7 +353,7 @@ impl Viewport<'_, '_> {
                                 ctx,
                                 ui,
                                 query_result,
-                                *child,
+                                child_node,
                                 space_view,
                                 space_view_visible,
                             );

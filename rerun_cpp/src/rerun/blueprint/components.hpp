@@ -21,3 +21,4 @@
 #include "blueprint/components/space_view_maximized.hpp"
 #include "blueprint/components/space_view_origin.hpp"
 #include "blueprint/components/viewport_layout.hpp"
+#include "blueprint/components/visible.hpp"

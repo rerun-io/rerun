@@ -32,7 +32,7 @@ pub mod external {
     pub use re_space_view;
 }
 
-use re_data_store::StoreDb;
+use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::datatypes;
 
@@ -67,14 +67,14 @@ fn query_pinhole(
 // Updated whenever `applicable_entities_per_visualizer` or the space view blueprint changes.
 pub fn determine_visualizable_entities(
     applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
-    store_db: &StoreDb,
-    visualizers: &re_viewer_context::ViewPartCollection,
+    entity_db: &EntityDb,
+    visualizers: &re_viewer_context::VisualizerCollection,
     class: &dyn DynSpaceViewClass,
     space_origin: &EntityPath,
 ) -> PerVisualizer<VisualizableEntities> {
     re_tracing::profile_function!();
 
-    let filter_ctx = class.visualizable_filter_context(space_origin, store_db);
+    let filter_ctx = class.visualizable_filter_context(space_origin, entity_db);
 
     PerVisualizer::<VisualizableEntities>(
         visualizers
@@ -93,4 +93,14 @@ pub fn determine_visualizable_entities(
             })
             .collect(),
     )
+}
+
+/// Determines the icon to use for a given container kind.
+pub fn icon_for_container_kind(kind: &egui_tiles::ContainerKind) -> &'static re_ui::Icon {
+    match kind {
+        egui_tiles::ContainerKind::Tabs => &re_ui::icons::CONTAINER_TABS,
+        egui_tiles::ContainerKind::Horizontal => &re_ui::icons::CONTAINER_HORIZONTAL,
+        egui_tiles::ContainerKind::Vertical => &re_ui::icons::CONTAINER_VERTICAL,
+        egui_tiles::ContainerKind::Grid => &re_ui::icons::CONTAINER_GRID,
+    }
 }

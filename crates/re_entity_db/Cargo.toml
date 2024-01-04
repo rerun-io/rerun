@@ -1,0 +1,67 @@
+[package]
+name = "re_entity_db"
+authors.workspace = true
+description = "In-memory storage of Rerun entities"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+## Enable (de)serialization using serde.
+serde = ["dep:serde", "dep:rmp-serde", "re_log_types/serde"]
+
+
+[dependencies]
+re_arrow_store.workspace = true
+re_format.workspace = true
+re_int_histogram.workspace = true
+re_log_encoding = { workspace = true, optional = true }
+re_log_types.workspace = true
+re_log.workspace = true
+re_smart_channel.workspace = true
+re_tracing.workspace = true
+re_types_core.workspace = true
+
+ahash.workspace = true
+document-features.workspace = true
+egui_plot.workspace = true
+emath.workspace = true
+getrandom.workspace = true
+itertools.workspace = true
+nohash-hasher.workspace = true
+parking_lot.workspace = true
+rmp-serde = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive", "rc"], optional = true }
+thiserror.workspace = true
+web-time.workspace = true
+
+[dev-dependencies]
+re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
+re_log_types = { workspace = true, features = ["testing"] }
+re_types = { workspace = true, features = ["datagen"] }
+
+anyhow.workspace = true
+criterion.workspace = true
+mimalloc.workspace = true
+rand.workspace = true
+similar-asserts.workspace = true
+
+[lib]
+bench = false
+
+[[example]]
+name = "memory_usage"
+path = "examples/memory_usage.rs"
+required-features = ["re_log_encoding/decoder", "re_log_encoding/encoder"]

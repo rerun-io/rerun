@@ -1,14 +1,14 @@
 use egui::Label;
 
-use re_viewer_context::external::re_data_store::EntityProperties;
+use re_viewer_context::external::re_entity_db::EntityProperties;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewState, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
-use crate::view_part_system::TextDocumentEntry;
+use crate::visualizer_system::TextDocumentEntry;
 
-use super::view_part_system::TextDocumentSystem;
+use super::visualizer_system::TextDocumentSystem;
 
 // TODO(andreas): This should be a blueprint component.
 
@@ -52,7 +52,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
     const DISPLAY_NAME: &'static str = "Text Document";
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_TEXTBOX
+        &re_ui::icons::SPACE_VIEW_TEXT
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {

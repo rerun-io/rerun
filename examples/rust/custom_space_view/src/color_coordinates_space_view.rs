@@ -1,7 +1,7 @@
 use re_viewer::external::{
     egui,
-    re_data_store::{EntityProperties, InstancePath},
     re_data_ui::{item_ui, DataUi},
+    re_entity_db::{EntityProperties, InstancePath},
     re_log_types::EntityPath,
     re_ui,
     re_viewer_context::{
@@ -11,7 +11,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::color_coordinates_view_part_system::{ColorWithInstanceKey, InstanceColorSystem};
+use crate::color_coordinates_visualizer_system::{ColorWithInstanceKey, InstanceColorSystem};
 
 /// The different modes for displaying color coordinates in the custom space view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -71,7 +71,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     const DISPLAY_NAME: &'static str = "Color Coordinates";
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_SCATTERPLOT
+        &re_ui::icons::SPACE_VIEW_GENERIC
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {

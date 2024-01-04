@@ -2,7 +2,7 @@ use ahash::HashMap;
 use itertools::Itertools;
 
 use re_arrow_store::{LatestAtQuery, Timeline};
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_log_types::EntityPathFilter;
 use re_space_view::{DataQuery as _, DataQueryBlueprint};
 use re_types::components::{DisconnectedSpace, TensorData};
@@ -29,7 +29,7 @@ fn is_spatial_2d_class(class: &SpaceViewClassIdentifier) -> bool {
 
 fn spawn_one_space_view_per_entity(class: &SpaceViewClassIdentifier) -> bool {
     // For tensors create one space view for each tensor (even though we're able to stack them in one view)
-    // TODO(emilk): query the actual [`ViewPartSystem`] instead.
+    // TODO(emilk): query the actual [`VisualizerSystem`] instead.
     class == "Tensor" || class == "Text Document"
 }
 
@@ -41,7 +41,7 @@ fn candidate_space_view_paths<'a>(
 ) -> impl Iterator<Item = &'a EntityPath> {
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
     // as well as all direct descendants of the root.
-    let root_children = &ctx.store_db.tree().children;
+    let root_children = &ctx.entity_db.tree().children;
     spaces_info
         .iter()
         .map(|info| &info.path)
@@ -80,16 +80,14 @@ pub fn all_possible_space_views(
                     let mut entity_path_filter = EntityPathFilter::default();
                     entity_path_filter.add_subtree(candidate_space_path.clone());
 
-                    // TODO(#4377): The need to run a query-per-candidate for all possible candidates
-                    // is way too expensive. This needs to be optimized significantly.
                     let candidate_query =
                         DataQueryBlueprint::new(class_identifier, entity_path_filter);
 
                     let visualizable_entities = determine_visualizable_entities(
                         ctx.applicable_entities_per_visualizer,
-                        ctx.store_db,
+                        ctx.entity_db,
                         &ctx.space_view_class_registry
-                            .new_part_collection(class_identifier),
+                            .new_visualizer_collection(class_identifier),
                         entry.class.as_ref(),
                         candidate_space_path,
                     );
@@ -131,7 +129,7 @@ fn is_interesting_space_view_at_root(
             query_results
                 .tree
                 .lookup_node(*child)
-                .map_or(true, |child| child.data_result.view_parts.is_empty())
+                .map_or(true, |child| child.data_result.visualizers.is_empty())
         }) {
             return false;
         }
@@ -145,7 +143,7 @@ fn is_interesting_space_view_at_root(
                 .tree
                 .lookup_node(*child)
                 .map_or(false, |child| {
-                    child.data_result.view_parts.contains(&"Images".into()) // TODO(jleibs): Refer to `ImagesPart`
+                    child.data_result.visualizers.contains(&"Images".into()) // TODO(jleibs): Refer to `ImagesPart`
                 })
         }) {
             return false;
@@ -196,7 +194,7 @@ pub fn default_created_space_views(
 ) -> Vec<SpaceViewBlueprint> {
     re_tracing::profile_function!();
 
-    let store = ctx.store_db.store();
+    let store = ctx.entity_db.store();
     let candidates = all_possible_space_views(ctx, spaces_info);
 
     // All queries are "right most" on the log timeline.
@@ -217,14 +215,13 @@ pub fn default_created_space_views(
     // Main pass through all candidates.
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
     for (candidate, query_result) in candidates {
-        // TODO(#4377): Can spawn heuristics consume the query_result directly?
         let mut per_system_entities = PerSystemEntities::default();
         {
             re_tracing::profile_scope!("per_system_data_results");
 
             query_result.tree.visit(&mut |handle| {
                 if let Some(result) = query_result.tree.lookup_result(handle) {
-                    for system in &result.view_parts {
+                    for system in &result.visualizers {
                         per_system_entities
                             .entry(*system)
                             .or_default()
@@ -259,7 +256,7 @@ pub fn default_created_space_views(
         if spawn_one_space_view_per_entity(candidate.class_identifier()) {
             query_result.tree.visit(&mut |handle| {
                 if let Some(result) = query_result.tree.lookup_result(handle) {
-                    if !result.view_parts.is_empty() {
+                    if !result.visualizers.is_empty() {
                         let mut entity_path_filter = EntityPathFilter::default();
                         entity_path_filter.add_exact(result.entity_path.clone());
                         let query = DataQueryBlueprint::new(
@@ -336,7 +333,7 @@ pub fn default_created_space_views(
                         // For this we're only interested in the direct children.
                         for child in &root.children {
                             if let Some(node) = query_result.tree.lookup_node(*child) {
-                                if !node.data_result.view_parts.is_empty() {
+                                if !node.data_result.visualizers.is_empty() {
                                     let entity_path = &node.data_result.entity_path;
                                     if let Some(tensor) = store
                                         .query_latest_component::<TensorData>(entity_path, &query)

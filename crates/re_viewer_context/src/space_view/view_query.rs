@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
+use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
 use re_log_types::{DataCell, DataRow, RowId, TimePoint};
 use re_types::Loggable;
 use smallvec::SmallVec;
@@ -42,7 +42,7 @@ pub struct DataResult {
     pub entity_path: EntityPath,
 
     /// Which `ViewSystems`s to pass the `DataResult` to.
-    pub view_parts: SmallVec<[ViewSystemIdentifier; 4]>,
+    pub visualizers: SmallVec<[ViewSystemIdentifier; 4]>,
 
     /// This DataResult represents a group
     // TODO(jleibs): Maybe make this an enum instead?

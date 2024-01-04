@@ -39,3 +39,5 @@ space_view_origin.cpp linguist-generated=true
 space_view_origin.hpp linguist-generated=true
 viewport_layout.cpp linguist-generated=true
 viewport_layout.hpp linguist-generated=true
+visible.cpp linguist-generated=true
+visible.hpp linguist-generated=true

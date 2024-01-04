@@ -45,6 +45,11 @@ pub struct ContainerBlueprint {
     ///
     /// Only applies to `Tabs` containers.
     pub active_tab: Option<crate::blueprint::components::ActiveTab>,
+
+    /// Whether this container is visible.
+    ///
+    /// Defaults to true if not specified.
+    pub visible: Option<crate::blueprint::components::Visible>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
@@ -55,7 +60,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
         || ["rerun.blueprint.components.ContainerBlueprintIndicator".into()],
     );
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ActiveTab".into(),
@@ -63,11 +68,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
             "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.PrimaryWeights".into(),
             "rerun.blueprint.components.SecondaryWeights".into(),
+            "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ContainerKind".into(),
@@ -77,12 +83,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.PrimaryWeights".into(),
             "rerun.blueprint.components.SecondaryWeights".into(),
+            "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl ContainerBlueprint {
-    pub const NUM_COMPONENTS: usize = 8usize;
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
 /// Indicator component for the [`ContainerBlueprint`] [`::re_types_core::Archetype`]
@@ -198,6 +205,16 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
             } else {
                 None
             };
+        let visible = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Visible")
+        {
+            <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#visible")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self {
             container_kind,
             display_name,
@@ -205,6 +222,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
             primary_weights,
             secondary_weights,
             active_tab,
+            visible,
         })
     }
 }
@@ -231,6 +249,9 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
             self.active_tab
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.visible
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -252,6 +273,7 @@ impl ContainerBlueprint {
             primary_weights: None,
             secondary_weights: None,
             active_tab: None,
+            visible: None,
         }
     }
 
@@ -297,6 +319,15 @@ impl ContainerBlueprint {
         active_tab: impl Into<crate::blueprint::components::ActiveTab>,
     ) -> Self {
         self.active_tab = Some(active_tab.into());
+        self
+    }
+
+    #[inline]
+    pub fn with_visible(
+        mut self,
+        visible: impl Into<crate::blueprint::components::Visible>,
+    ) -> Self {
+        self.visible = Some(visible.into());
         self
     }
 }

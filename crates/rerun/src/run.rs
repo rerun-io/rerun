@@ -68,6 +68,17 @@ struct Args {
     #[clap(long, default_value = "75%")]
     memory_limit: String,
 
+    /// An upper limit on how much memory the WebSocket server should use.
+    ///
+    /// The server buffers log messages for the benefit of late-arriving viewers.
+    ///
+    /// When this limit is reached, Rerun will drop the oldest data.
+    /// Example: `16GB` or `50%` (of system total).
+    ///
+    /// Defaults to `25%`.
+    #[clap(long, default_value = "25%")]
+    server_memory_limit: String,
+
     /// Whether the Rerun Viewer should persist the state of the viewer to disk.
     ///
     /// When persisted, the state will be stored at the following locations:
@@ -331,20 +342,20 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
     ///
     /// Fails if there are more than one data recordings present in the rrd file.
     fn compute_uber_table(path_to_rrd: &Path) -> anyhow::Result<re_log_types::DataTable> {
-        use re_data_store::StoreDb;
+        use re_entity_db::EntityDb;
         use re_log_types::StoreId;
 
         let rrd_file =
             std::fs::File::open(path_to_rrd).context("couldn't open rrd file contents")?;
 
-        let mut stores: std::collections::HashMap<StoreId, StoreDb> = Default::default();
+        let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
         let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
         let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
         for msg in decoder {
             let msg = msg.context("decode rrd message")?;
             stores
                 .entry(msg.store_id().clone())
-                .or_insert(re_data_store::StoreDb::new(msg.store_id().clone()))
+                .or_insert(re_entity_db::EntityDb::new(msg.store_id().clone()))
                 .add(&msg)
                 .context("decode rrd file contents")?;
         }
@@ -436,7 +447,7 @@ async fn run_impl(
         re_tracing::profile_scope!("StartupOptions");
         re_viewer::StartupOptions {
             memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
-                .unwrap_or_else(|err| panic!("Bad --memory-limit: {err}")),
+                .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?,
             persist_state: args.persist_state,
             is_in_notebook: false,
             screenshot_to_path_then_quit: args.screenshot_to.clone(),
@@ -501,7 +512,7 @@ async fn run_impl(
 
     if args.test_receive {
         let rx = ReceiveSet::new(rx);
-        assert_receive_into_store_db(&rx).map(|_db| ())
+        assert_receive_into_entity_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
         let rx = ReceiveSet::new(rx);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
@@ -519,9 +530,16 @@ async fn run_impl(
                 );
             }
 
+            let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
+                .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+
             // This is the server which the web viewer will talk to:
-            let ws_server =
-                re_ws_comms::RerunServer::new(args.bind.clone(), args.ws_server_port).await?;
+            let ws_server = re_ws_comms::RerunServer::new(
+                args.bind.clone(),
+                args.ws_server_port,
+                server_memory_limit,
+            )
+            .await?;
             let ws_server_url = ws_server.server_url();
             let rx = ReceiveSet::new(rx);
             let ws_server_handle = tokio::spawn(ws_server.listen(rx));
@@ -591,10 +609,12 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 }
 
 // NOTE: This is only used as part of end-to-end tests.
-fn assert_receive_into_store_db(rx: &ReceiveSet<LogMsg>) -> anyhow::Result<re_data_store::StoreDb> {
-    re_log::info!("Receiving messages into a StoreDb…");
+fn assert_receive_into_entity_db(
+    rx: &ReceiveSet<LogMsg>,
+) -> anyhow::Result<re_entity_db::EntityDb> {
+    re_log::info!("Receiving messages into a EntityDb…");
 
-    let mut db: Option<re_data_store::StoreDb> = None;
+    let mut db: Option<re_entity_db::EntityDb> = None;
 
     let mut num_messages = 0;
 
@@ -612,7 +632,7 @@ fn assert_receive_into_store_db(rx: &ReceiveSet<LogMsg>) -> anyhow::Result<re_da
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
                         let mut_db = db.get_or_insert_with(|| {
-                            re_data_store::StoreDb::new(msg.store_id().clone())
+                            re_entity_db::EntityDb::new(msg.store_id().clone())
                         });
 
                         mut_db.add(&msg)?;
@@ -627,7 +647,7 @@ fn assert_receive_into_store_db(rx: &ReceiveSet<LogMsg>) -> anyhow::Result<re_da
                             re_log::info!("Successfully ingested {num_messages} messages.");
                             return Ok(db);
                         } else {
-                            anyhow::bail!("StoreDb never initialized");
+                            anyhow::bail!("EntityDb never initialized");
                         }
                     }
                 }

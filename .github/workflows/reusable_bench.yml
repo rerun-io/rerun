@@ -80,7 +80,7 @@ jobs:
           cargo bench \
             --all-features \
             -p re_arrow_store \
-            -p re_data_store \
+            -p re_entity_db \
             -p re_log_encoding \
             -p re_query \
             -p re_tuid \

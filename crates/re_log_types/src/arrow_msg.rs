@@ -39,7 +39,7 @@ where
 
 impl ArrowChunkReleaseCallback {
     #[inline]
-    pub fn as_ptr(&self) -> *const () {
+    fn as_ptr(&self) -> *const () {
         Arc::as_ptr(&self.0).cast::<()>()
     }
 }
@@ -47,7 +47,7 @@ impl ArrowChunkReleaseCallback {
 impl PartialEq for ArrowChunkReleaseCallback {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        std::ptr::eq(self.as_ptr(), other.as_ptr())
+        Arc::ptr_eq(&self.0, &other.0)
     }
 }
 

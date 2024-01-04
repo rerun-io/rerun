@@ -65,6 +65,17 @@ pub struct RerunArgs {
     #[clap(long)]
     serve: bool,
 
+    /// An upper limit on how much memory the WebSocket server should use.
+    ///
+    /// The server buffers log messages for the benefit of late-arriving viewers.
+    ///
+    /// When this limit is reached, Rerun will drop the oldest data.
+    /// Example: `16GB` or `50%` (of system total).
+    ///
+    /// Defaults to `25%`.
+    #[clap(long, default_value = "25%")]
+    server_memory_limit: String,
+
     /// What bind address IP to use.
     #[clap(long, default_value = "0.0.0.0")]
     bind: String,
@@ -132,6 +143,9 @@ impl RerunArgs {
                         .clone()
                 };
 
+                let server_memory_limit = re_memory::MemoryLimit::parse(&self.server_memory_limit)
+                    .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+
                 // Creating the actual web sink and associated servers will require the current
                 // thread to be in a Tokio context.
                 let _tokio_rt_guard = tokio_rt_handle.enter();
@@ -141,6 +155,7 @@ impl RerunArgs {
                     &self.bind,
                     Default::default(),
                     Default::default(),
+                    server_memory_limit,
                     open_browser,
                 )?;
 

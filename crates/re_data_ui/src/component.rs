@@ -1,5 +1,5 @@
 use egui::NumExt;
-use re_data_store::{EntityPath, InstancePath};
+use re_entity_db::{EntityPath, InstancePath};
 use re_query::ComponentWithInstances;
 use re_types::ComponentName;
 use re_viewer_context::{UiVerbosity, ViewerContext};

@@ -187,7 +187,7 @@ fn format_cell(cell: &DataCell) -> String {
 pub fn annotations(
     ctx: &ViewerContext<'_>,
     query: &re_arrow_store::LatestAtQuery,
-    entity_path: &re_data_store::EntityPath,
+    entity_path: &re_entity_db::EntityPath,
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
     re_tracing::profile_function!();
     let mut annotation_map = re_viewer_context::AnnotationMap::default();

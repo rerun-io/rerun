@@ -15,7 +15,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(6);
+        cells.reserve(7);
 
         {
             auto result = DataCell::from_loggable(archetype.class_identifier);
@@ -39,6 +39,11 @@ namespace rerun {
         }
         if (archetype.contents.has_value()) {
             auto result = DataCell::from_loggable(archetype.contents.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.visible.has_value()) {
+            auto result = DataCell::from_loggable(archetype.visible.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

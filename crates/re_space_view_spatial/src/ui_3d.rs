@@ -19,13 +19,13 @@ use re_viewer_context::{
 
 use crate::{
     contexts::SharedRenderBuilders,
-    parts::{
-        collect_ui_labels, image_view_coordinates, CamerasPart,
-        SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
-    },
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
+    visualizers::{
+        collect_ui_labels, image_view_coordinates, CamerasVisualizer,
+        SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    },
 };
 
 use super::eye::{Eye, OrbitEye};
@@ -323,9 +323,9 @@ pub fn view_3d(
     } = system_output;
 
     let highlights = &query.highlights;
-    let space_cameras = &parts.get::<CamerasPart>()?.space_cameras;
+    let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
     let view_coordinates = ctx
-        .store_db
+        .entity_db
         .store()
         // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
         // See https://github.com/rerun-io/rerun/issues/3538
@@ -373,13 +373,16 @@ pub fn view_3d(
     //              As of #2522 state is now longer accessible there, move the property to a context?
     if state.state_3d.show_axes {
         let axis_length = 1.0; // The axes are also a measuring stick
-        crate::parts::add_axis_arrows(
+        crate::visualizers::add_axis_arrows(
             &mut line_builder,
             macaw::Affine3A::IDENTITY,
             None,
             axis_length,
             re_renderer::OutlineMaskPreference::NONE,
         );
+
+        // If we are showing the axes for the space, then add the space origin to the bounding box.
+        state.scene_bbox.extend(glam::Vec3::ZERO);
     }
 
     // Determine view port resolution and position.

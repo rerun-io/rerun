@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use egui_tiles::TileId;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::StoreDb;
+use re_entity_db::EntityDb;
 use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
@@ -97,11 +97,12 @@ pub struct ContainerBlueprint {
     pub primary_weights: Vec<f32>,
     pub secondary_weights: Vec<f32>,
     pub active_tab: Option<Contents>,
+    pub visible: bool,
 }
 
 impl ContainerBlueprint {
     /// Attempt to load a [`ContainerBlueprint`] from the blueprint store.
-    pub fn try_from_db(blueprint_db: &StoreDb, id: ContainerId) -> Option<Self> {
+    pub fn try_from_db(blueprint_db: &EntityDb, id: ContainerId) -> Option<Self> {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
@@ -113,6 +114,7 @@ impl ContainerBlueprint {
             primary_weights,
             secondary_weights,
             active_tab,
+            visible,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
@@ -155,6 +157,8 @@ impl ContainerBlueprint {
 
         let active_tab = active_tab.and_then(|id| Contents::try_from(&id.0.into()));
 
+        let visible = visible.map_or(true, |v| v.0);
+
         Some(Self {
             id,
             container_kind,
@@ -163,6 +167,7 @@ impl ContainerBlueprint {
             primary_weights,
             secondary_weights,
             active_tab,
+            visible,
         })
     }
 
@@ -179,31 +184,39 @@ impl ContainerBlueprint {
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         let timepoint = TimePoint::timeless();
 
-        let contents: Vec<_> = self
-            .contents
-            .iter()
-            .map(|item| item.to_entity_path())
-            .collect();
+        let Self {
+            id,
+            container_kind,
+            display_name,
+            contents,
+            primary_weights,
+            secondary_weights,
+            active_tab,
+            visible,
+        } = self;
 
-        let primary_weights: ArrowBuffer<_> = self.primary_weights.clone().into();
-        let secondary_weights: ArrowBuffer<_> = self.secondary_weights.clone().into();
+        let contents: Vec<_> = contents.iter().map(|item| item.to_entity_path()).collect();
 
-        let mut arch = crate::blueprint::archetypes::ContainerBlueprint::new(self.container_kind)
-            .with_display_name(self.display_name.clone())
+        let primary_weights: ArrowBuffer<_> = primary_weights.clone().into();
+        let secondary_weights: ArrowBuffer<_> = secondary_weights.clone().into();
+
+        let mut arch = crate::blueprint::archetypes::ContainerBlueprint::new(*container_kind)
+            .with_display_name(display_name.clone())
             .with_contents(&contents)
             .with_primary_weights(primary_weights)
-            .with_secondary_weights(secondary_weights);
+            .with_secondary_weights(secondary_weights)
+            .with_visible(*visible);
 
         // TODO(jleibs): The need for this pattern is annoying. Should codegen
         // a version of this that can take an Option.
-        if let Some(active_tab) = &self.active_tab {
+        if let Some(active_tab) = &active_tab {
             arch = arch.with_active_tab(&active_tab.to_entity_path());
         }
 
         let mut deltas = vec![];
 
         if let Some(row) =
-            DataRow::from_archetype(RowId::new(), timepoint.clone(), self.entity_path(), &arch)
+            DataRow::from_archetype(RowId::new(), timepoint.clone(), id.as_entity_path(), &arch)
                 .warn_on_err_once("Failed to create Container blueprint.")
         {
             deltas.push(row);
@@ -223,6 +236,7 @@ impl ContainerBlueprint {
     pub fn from_egui_tiles_container(
         container_id: ContainerId,
         container: &egui_tiles::Container,
+        visible: bool,
         tile_to_contents: &HashMap<TileId, Contents>,
     ) -> Self {
         let contents = container
@@ -247,6 +261,7 @@ impl ContainerBlueprint {
                     primary_weights: vec![],
                     secondary_weights: vec![],
                     active_tab,
+                    visible,
                 }
             }
             egui_tiles::Container::Linear(linear) => {
@@ -267,6 +282,7 @@ impl ContainerBlueprint {
                         .collect(),
                     secondary_weights: vec![],
                     active_tab: None,
+                    visible,
                 }
             }
             egui_tiles::Container::Grid(grid) => Self {
@@ -277,6 +293,7 @@ impl ContainerBlueprint {
                 primary_weights: grid.col_shares.clone(),
                 secondary_weights: grid.row_shares.clone(),
                 active_tab: None,
+                visible,
             },
         }
     }

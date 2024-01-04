@@ -4,7 +4,7 @@ use ahash::HashMap;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_log_types::RowId;
 use re_query::{query_archetype, ArchetypeView};
 use re_types::archetypes::AnnotationContext;
@@ -244,7 +244,7 @@ impl AnnotationMap {
 
         let mut visited = IntSet::<EntityPath>::default();
 
-        let data_store = ctx.store_db.store();
+        let data_store = ctx.entity_db.store();
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
         // not made generic as `AnnotationContext` was the only user of that function

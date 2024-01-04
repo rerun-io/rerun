@@ -8,7 +8,6 @@ mod heuristics;
 mod instance_hash_conversions;
 mod mesh_cache;
 mod mesh_loader;
-mod parts;
 mod picking;
 mod space_camera_3d;
 mod space_view_2d;
@@ -16,13 +15,14 @@ mod space_view_3d;
 mod ui;
 mod ui_2d;
 mod ui_3d;
+mod visualizers;
 
 use re_types::components::{Resolution, TensorData};
 pub use space_view_2d::SpatialSpaceView2D;
 pub use space_view_3d::SpatialSpaceView3D;
 
 #[doc(hidden)] // Public for benchmarks
-pub use parts::LoadedPoints;
+pub use visualizers::LoadedPoints;
 
 // ---
 

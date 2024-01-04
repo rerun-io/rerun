@@ -1,10 +1,10 @@
 use egui::NumExt as _;
 use egui_tiles::{GridLayout, Tile};
 
-use re_data_store::{
+use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
+use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
-use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_log_types::{DataRow, EntityPathFilter, RowId, TimePoint};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
@@ -201,7 +201,7 @@ fn what_is_selected_ui(
                     ctx.re_ui,
                     ui,
                     &format!("{:?}", container.kind()),
-                    None,
+                    Some(re_viewport::icon_for_container_kind(&container.kind())),
                     &format!("{:?} container", container.kind()),
                 );
             }
@@ -532,30 +532,33 @@ fn blueprint_ui(
                 }
             });
 
-            if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-                if let Some(query) = space_view.queries.first() {
-                    if let Some(new_entity_path_filter) =
-                        entity_path_filter_ui(ui, &query.entity_path_filter)
-                    {
-                        let timepoint = TimePoint::timeless();
-                        let expressions_component = QueryExpressions::from(&new_entity_path_filter);
+            if ctx.app_options.experimental_entity_filter_editor {
+                if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+                    if let Some(query) = space_view.queries.first() {
+                        if let Some(new_entity_path_filter) =
+                            entity_path_filter_ui(ui, &query.entity_path_filter)
+                        {
+                            let timepoint = TimePoint::timeless();
+                            let expressions_component =
+                                QueryExpressions::from(&new_entity_path_filter);
 
-                        let row = DataRow::from_cells1_sized(
-                            RowId::new(),
-                            query.id.as_entity_path(),
-                            timepoint,
-                            1,
-                            [expressions_component],
-                        )
-                        .unwrap();
+                            let row = DataRow::from_cells1_sized(
+                                RowId::new(),
+                                query.id.as_entity_path(),
+                                timepoint,
+                                1,
+                                [expressions_component],
+                            )
+                            .unwrap();
 
-                        ctx.command_sender
-                            .send_system(SystemCommand::UpdateBlueprint(
-                                ctx.store_context.blueprint.store_id().clone(),
-                                vec![row],
-                            ));
+                            ctx.command_sender
+                                .send_system(SystemCommand::UpdateBlueprint(
+                                    ctx.store_context.blueprint.store_id().clone(),
+                                    vec![row],
+                                ));
 
-                        space_view.set_entity_determined_by_user(ctx);
+                            space_view.set_entity_determined_by_user(ctx);
+                        }
                     }
                 }
             }
@@ -887,7 +890,7 @@ fn pinhole_props_ui(
     entity_props: &mut EntityProperties,
 ) {
     let query = ctx.current_query();
-    let store = ctx.store_db.store();
+    let store = ctx.entity_db.store();
     if store
         .query_latest_component::<PinholeProjection>(entity_path, &query)
         .is_some()
@@ -919,7 +922,7 @@ fn depth_props_ui(
     re_tracing::profile_function!();
 
     let query = ctx.current_query();
-    let store = ctx.store_db.store();
+    let store = ctx.entity_db.store();
 
     let meaning = image_meaning_for_entity(entity_path, ctx);
 
@@ -1021,7 +1024,7 @@ fn transform3d_visualization_ui(
 
     let query = ctx.current_query();
     if ctx
-        .store_db
+        .entity_db
         .store()
         .query_latest_component::<Transform3D>(entity_path, &query)
         .is_none()

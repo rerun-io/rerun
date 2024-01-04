@@ -1,4 +1,4 @@
-use re_data_store::InstancePathHash;
+use re_entity_db::InstancePathHash;
 use re_log_types::EntityPathHash;
 use re_renderer::{PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId};
 use re_types::components::InstanceKey;

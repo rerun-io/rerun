@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/21c577a05570720e96b850e8da21b5aa1fcd6c93/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/21c577a05570720e96b850e8da21b5aa1fcd6c93/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/21c577a05570720e96b850e8da21b5aa1fcd6c93/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/21c577a05570720e96b850e8da21b5aa1fcd6c93/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/21c577a05570720e96b850e8da21b5aa1fcd6c93/1200w.png">
+  <img src="https://static.rerun.io/crates/1a5eff8b1577097cab249a751b658ba79c34396c/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/1a5eff8b1577097cab249a751b658ba79c34396c/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/1a5eff8b1577097cab249a751b658ba79c34396c/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/1a5eff8b1577097cab249a751b658ba79c34396c/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/1a5eff8b1577097cab249a751b658ba79c34396c/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -102,7 +102,7 @@ This image must be updated each time a crate is added/removed/updated.
 FigJam document: https://www.figma.com/file/Umob8ztK1HmYKLUMSq8aPb/Crates-org
 
 Update instructions:
-1) Update the FigJame document
+1) Update the FigJam document
 2) Select all -> right-click -> Copy as PNG
 3) `just upload --name crates`
 4) Copy/paste the resulting HTML
@@ -147,8 +147,9 @@ Update instructions:
 
 | Crate           | Description                                                     |
 |-----------------|-----------------------------------------------------------------|
-| re_data_store   | In-memory storage of Rerun log data, indexed for fast queries.  |
+| re_entity_db    | In-memory storage of Rerun entities                             |
 | re_query        | Querying data in the re_arrow_store                             |
+| re_query_cache  | Caching datastructures for re_query                             |
 | re_types        | The built-in Rerun data types, component types, and archetypes. |
 | re_log_encoding | Helpers for encoding and transporting Rerun log messages        |
 

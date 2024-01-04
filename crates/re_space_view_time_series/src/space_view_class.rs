@@ -4,7 +4,7 @@ use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
 use re_space_view::controls;
-use re_viewer_context::external::re_data_store::{
+use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, LegendCorner,
 };
 use re_viewer_context::{
@@ -12,7 +12,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
+use crate::visualizer_system::{PlotSeriesKind, TimeSeriesSystem};
 
 #[derive(Clone, Default)]
 pub struct TimeSeriesSpaceViewState {
@@ -46,7 +46,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     const DISPLAY_NAME: &'static str = "Time Series";
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_CHART
+        &re_ui::icons::SPACE_VIEW_TIMESERIES
     }
 
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {

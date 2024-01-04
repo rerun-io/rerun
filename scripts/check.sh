@@ -12,12 +12,14 @@ export RUSTFLAGS="--deny warnings"
 # https://github.com/ericseppanen/cargo-cranky/issues/8
 export RUSTDOCFLAGS="--deny warnings --deny rustdoc::missing_crate_level_docs"
 
+export RERUN_WERROR=ON
+
 # Fast things first:
 typos
 cargo fmt --all -- --check
-./scripts/lint.py
+pixi run lint-rerun
 ./scripts/ci/cargo_deny.sh
-RERUN_WERROR=ON pixi run cpp-test
+pixi run cpp-test
 just py-lint
 
 cargo check --all-targets --all-features

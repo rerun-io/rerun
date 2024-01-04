@@ -1,7 +1,7 @@
 use nohash_hasher::IntMap;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityPropertyMap, EntityTree};
+use re_entity_db::{EntityPath, EntityPropertyMap, EntityTree};
 use re_space_view::UnreachableTransformReason;
 use re_types::{
     components::{DisconnectedSpace, PinholeProjection, Transform3D, ViewCoordinates},
@@ -10,8 +10,8 @@ use re_types::{
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
 
 use crate::{
-    parts::{image_view_coordinates, CamerasPart},
     query_pinhole,
+    visualizers::{image_view_coordinates, CamerasVisualizer},
 };
 
 #[derive(Clone)]
@@ -86,8 +86,8 @@ impl ViewContextSystem for TransformContext {
     ) {
         re_tracing::profile_function!();
 
-        let entity_tree = ctx.store_db.tree();
-        let data_store = ctx.store_db.data_store();
+        let entity_tree = ctx.entity_db.tree();
+        let data_store = ctx.entity_db.data_store();
 
         // TODO(jleibs): The need to do this hints at a problem with how we think about
         // the interaction between properties and "context-systems".
@@ -95,7 +95,7 @@ impl ViewContextSystem for TransformContext {
         // the image_depth_plane_distance property.
         let entity_prop_map: EntityPropertyMap = query
             .per_system_data_results
-            .get(&CamerasPart::identifier())
+            .get(&CamerasVisualizer::identifier())
             .map(|results| {
                 results
                     .iter()

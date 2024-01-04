@@ -3,7 +3,7 @@
 use re_viewer::external::{re_log, re_memory};
 
 mod color_coordinates_space_view;
-mod color_coordinates_view_part_system;
+mod color_coordinates_visualizer_system;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -30,13 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    let startup_options = re_viewer::StartupOptions {
-        memory_limit: re_memory::MemoryLimit {
-            // Start pruning the data once we reach this much memory allocated
-            limit: Some(12_000_000_000),
-        },
-        ..Default::default()
-    };
+    let startup_options = re_viewer::StartupOptions::default();
 
     // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
     let app_env = re_viewer::AppEnvironment::Custom("My extended Rerun Viewer".to_owned());

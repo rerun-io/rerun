@@ -1,8 +1,8 @@
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_data_store::{EntityPath, EntityTree, InstancePath};
 use re_data_ui::item_ui;
+use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{EntityPathFilter, EntityPathRule};
 use re_viewer_context::{DataQueryResult, SpaceViewId, ViewerContext};
 
@@ -59,8 +59,8 @@ impl SpaceViewEntityPicker {
 fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &SpaceViewBlueprint) {
     re_tracing::profile_function!();
 
-    let spaces_info = SpaceInfoCollection::new(ctx.store_db);
-    let tree = &ctx.store_db.tree();
+    let spaces_info = SpaceInfoCollection::new(ctx.entity_db);
+    let tree = &ctx.entity_db.tree();
     // TODO(jleibs): Avoid clone
     let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
     let entity_path_filter = space_view.entity_path_filter();
@@ -188,57 +188,40 @@ fn add_entities_line_ui(
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // TODO(emilk): Show at most one button.
+            if entity_path_filter.contains_rule_for_exactly(entity_path) {
+                // Reset-button
+                // Shows when an entity is explicitly excluded or included
+                let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
 
-            // Reset-button
-            {
-                let enabled = add_info.can_add_self_or_descendant.is_compatible()
-                    && entity_path_filter.contains_rule_for_exactly(entity_path);
+                if response.clicked() {
+                    space_view.remove_filter_rule_for(ctx, &entity_tree.path);
+                }
 
-                ui.add_enabled_ui(enabled, |ui| {
-                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
+                if is_explicitly_excluded {
+                    response.on_hover_text("Stop excluding this EntityPath.");
+                } else if is_explicitly_included {
+                    response.on_hover_text("Stop including this EntityPath.");
+                }
+            } else if is_included {
+                // Remove-button
+                // Shows when an entity is already included (but not explicitly)
+                let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
 
-                    if response.clicked() {
-                        space_view.remove_filter_rule_for(ctx, &entity_tree.path);
-                    }
+                if response.clicked() {
+                    space_view.add_entity_exclusion(
+                        ctx,
+                        EntityPathRule::including_subtree(entity_tree.path.clone()),
+                    );
+                }
 
-                    if enabled {
-                        if is_explicitly_excluded {
-                            response.on_hover_text("Stop excluding this EntityPath.");
-                        } else if is_explicitly_included {
-                            response.on_hover_text("Stop including this EntityPath.");
-                        }
-                    }
-                });
-            }
-
-            // Remove-button
-            {
-                let enabled = is_included
-                    && add_info.can_add_self_or_descendant.is_compatible()
-                    && query_result.contains_any(&entity_tree.path);
-
-                ui.add_enabled_ui(enabled, |ui| {
-                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
-
-                    if response.clicked() {
-                        space_view.add_entity_exclusion(
-                            ctx,
-                            EntityPathRule::including_subtree(entity_tree.path.clone()),
-                        );
-                    }
-
-                    if enabled {
-                        response.on_hover_text(
-                            "Exclude this Entity and all its descendants from the Space View",
-                        );
-                    }
-                });
-            }
-
-            // Add-button
-            {
-                let enabled = !is_included && add_info.can_add_self_or_descendant.is_compatible();
+                response.on_hover_text(
+                    "Exclude this Entity and all its descendants from the Space View",
+                );
+            } else {
+                // Add-button:
+                // Shows when an entity is not included
+                // Only enabled if the entity is compatible.
+                let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
                 ui.add_enabled_ui(enabled, |ui| {
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
@@ -337,9 +320,9 @@ fn create_entity_add_info(
     let class = space_view.class(ctx.space_view_class_registry);
     let visualizable_entities = determine_visualizable_entities(
         ctx.applicable_entities_per_visualizer,
-        ctx.store_db,
+        ctx.entity_db,
         &ctx.space_view_class_registry
-            .new_part_collection(class.identifier()),
+            .new_visualizer_collection(class.identifier()),
         class,
         &space_view.space_origin,
     );

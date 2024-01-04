@@ -1,13 +1,13 @@
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
-use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
+use re_entity_db::{EntityDb, EntityPath, EntityProperties, TimeInt, VisibleHistory};
+use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 
 use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQueryBlueprint, ScreenshotMode};
 use re_space_view_time_series::TimeSeriesSpaceView;
-use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin};
+use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin, Visible};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
@@ -44,6 +44,9 @@ pub struct SpaceViewBlueprint {
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
+
+    /// True if this space view is visible in the UI.
+    pub visible: bool,
 }
 
 impl SpaceViewBlueprint {
@@ -77,11 +80,12 @@ impl SpaceViewBlueprint {
             space_origin: space_path.clone(),
             queries: vec![query],
             entities_determined_by_user: false,
+            visible: true,
         }
     }
 
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
-    pub fn try_from_db(id: SpaceViewId, blueprint_db: &StoreDb) -> Option<Self> {
+    pub fn try_from_db(id: SpaceViewId, blueprint_db: &EntityDb) -> Option<Self> {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
@@ -92,6 +96,7 @@ impl SpaceViewBlueprint {
             space_origin,
             entities_determined_by_user,
             contents,
+            visible,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
@@ -131,6 +136,8 @@ impl SpaceViewBlueprint {
 
         let entities_determined_by_user = entities_determined_by_user.unwrap_or_default().0;
 
+        let visible = visible.map_or(true, |v| v.0);
+
         Some(Self {
             id,
             display_name,
@@ -138,6 +145,7 @@ impl SpaceViewBlueprint {
             space_origin,
             queries,
             entities_determined_by_user,
+            visible,
         })
     }
 
@@ -150,18 +158,28 @@ impl SpaceViewBlueprint {
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         let timepoint = TimePoint::timeless();
 
-        let arch = re_types::blueprint::archetypes::SpaceViewBlueprint::new(
-            self.class_identifier().as_str(),
-        )
-        .with_display_name(self.display_name.clone())
-        .with_space_origin(&self.space_origin)
-        .with_entities_determined_by_user(self.entities_determined_by_user)
-        .with_contents(self.queries.iter().map(|q| q.id));
+        let Self {
+            id,
+            display_name,
+            class_identifier,
+            space_origin,
+            queries,
+            entities_determined_by_user,
+            visible,
+        } = self;
+
+        let arch =
+            re_types::blueprint::archetypes::SpaceViewBlueprint::new(class_identifier.as_str())
+                .with_display_name(display_name.clone())
+                .with_space_origin(space_origin)
+                .with_entities_determined_by_user(*entities_determined_by_user)
+                .with_contents(queries.iter().map(|q| q.id))
+                .with_visible(*visible);
 
         let mut deltas = vec![];
 
         if let Ok(row) =
-            DataRow::from_archetype(RowId::new(), timepoint.clone(), self.entity_path(), &arch)
+            DataRow::from_archetype(RowId::new(), timepoint.clone(), id.as_entity_path(), &arch)
         {
             deltas.push(row);
         }
@@ -188,6 +206,7 @@ impl SpaceViewBlueprint {
             space_origin: self.space_origin.clone(),
             queries: self.queries.iter().map(|q| q.duplicate()).collect(),
             entities_determined_by_user: self.entities_determined_by_user,
+            visible: self.visible,
         }
     }
 
@@ -224,6 +243,14 @@ impl SpaceViewBlueprint {
         }
     }
 
+    #[inline]
+    pub fn set_visible(&self, visible: bool, ctx: &ViewerContext<'_>) {
+        if visible != self.visible {
+            let component = Visible(visible);
+            ctx.save_blueprint_component(&self.entity_path(), component);
+        }
+    }
+
     pub fn class_identifier(&self) -> &SpaceViewClassIdentifier {
         &self.class_identifier
     }
@@ -251,14 +278,13 @@ impl SpaceViewBlueprint {
 
         let query_result = ctx.lookup_query_result(self.query_id()).clone();
 
-        // TODO(#4377): Use PerSystemDataResults
         let mut per_system_entities = PerSystemEntities::default();
         {
             re_tracing::profile_scope!("per_system_data_results");
 
             query_result.tree.visit(&mut |handle| {
                 if let Some(result) = query_result.tree.lookup_result(handle) {
-                    for system in &result.view_parts {
+                    for system in &result.visualizers {
                         per_system_entities
                             .entry(*system)
                             .or_default()
@@ -335,7 +361,7 @@ impl SpaceViewBlueprint {
 
             query_result.tree.visit(&mut |handle| {
                 if let Some(result) = query_result.tree.lookup_result(handle) {
-                    for system in &result.view_parts {
+                    for system in &result.visualizers {
                         per_system_data_results
                             .entry(*system)
                             .or_default()
@@ -417,7 +443,7 @@ impl SpaceViewBlueprint {
 
         DataResult {
             entity_path: entity_path.clone(),
-            view_parts: Default::default(),
+            visualizers: Default::default(),
             is_group: true,
             direct_included: true,
             property_overrides: Some(PropertyOverrides {
@@ -461,7 +487,7 @@ impl SpaceViewBlueprint {
 
 #[cfg(test)]
 mod tests {
-    use re_data_store::StoreDb;
+    use re_entity_db::EntityDb;
     use re_log_types::{DataCell, DataRow, EntityPathFilter, RowId, StoreId, TimePoint};
     use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
@@ -471,7 +497,7 @@ mod tests {
 
     use super::*;
 
-    fn save_override(props: EntityProperties, path: &EntityPath, store: &mut StoreDb) {
+    fn save_override(props: EntityProperties, path: &EntityPath, store: &mut EntityDb) {
         let component = EntityPropertiesComponent(props);
         let row = DataRow::from_cells1_sized(
             RowId::new(),
@@ -487,8 +513,8 @@ mod tests {
 
     #[test]
     fn test_overrides() {
-        let mut recording = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-        let mut blueprint = StoreDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
 
         let points = Points3D::new(vec![[1.0, 2.0, 3.0]]);
 

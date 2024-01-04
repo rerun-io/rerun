@@ -41,8 +41,8 @@ webgl = ["re_renderer/webgl"]
 re_arrow_store.workspace = true
 re_build_info.workspace = true
 re_data_source.workspace = true
-re_data_store = { workspace = true, features = ["serde"] }
 re_data_ui.workspace = true
+re_entity_db = { workspace = true, features = ["serde"] }
 re_error.workspace = true
 re_format.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }

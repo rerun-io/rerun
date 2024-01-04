@@ -44,7 +44,7 @@ impl ViewContextSystem for EntityDepthOffsets {
             DefaultPoints,
         }
 
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
 
         // Use a BTreeSet for entity hashes to get a stable order.
         let mut entities_per_draw_order = BTreeMap::<DrawOrder, BTreeSet<DrawOrderTarget>>::new();

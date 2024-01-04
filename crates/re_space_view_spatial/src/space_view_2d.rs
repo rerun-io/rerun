@@ -1,4 +1,4 @@
-use re_data_store::EntityProperties;
+use re_entity_db::EntityProperties;
 use re_log_types::EntityPath;
 use re_viewer_context::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
@@ -8,9 +8,11 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
-    parts::{calculate_bounding_box, register_2d_spatial_parts, SpatialViewPartData},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
+    visualizers::{
+        calculate_bounding_box, register_2d_spatial_visualizers, SpatialViewVisualizerData,
+    },
 };
 
 #[derive(Default)]
@@ -35,7 +37,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         register_spatial_contexts(system_registry)?;
-        register_2d_spatial_parts(system_registry)?;
+        register_2d_spatial_visualizers(system_registry)?;
 
         Ok(())
     }
@@ -54,7 +56,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ctx: &ViewerContext<'_>,
         state: &Self::State,
         ent_paths: &PerSystemEntities,
-        entity_properties: &mut re_data_store::EntityPropertyMap,
+        entity_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
         update_object_property_heuristics(
             ctx,
@@ -92,13 +94,13 @@ impl SpaceViewClass for SpatialSpaceView2D {
         if space_origin.is_root() {
             let parts = ctx
                 .space_view_class_registry
-                .new_part_collection(self.identifier());
+                .new_visualizer_collection(self.identifier());
 
             for part in per_system_entities.keys() {
                 if let Ok(part) = parts.get_by_identifier(*part) {
                     if let Some(part_data) = part
                         .data()
-                        .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+                        .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
                     {
                         if part_data.preferred_view_kind == Some(SpatialSpaceViewKind::ThreeD) {
                             return AutoSpawnHeuristic::NeverSpawn;

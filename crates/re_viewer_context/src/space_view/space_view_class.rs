@@ -1,4 +1,4 @@
-use re_data_store::{EntityProperties, EntityPropertyMap};
+use re_entity_db::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
 use re_types::ComponentName;
 
@@ -40,14 +40,16 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     }
 
     /// Icon used to identify this space view class.
-    fn icon(&self) -> &'static re_ui::Icon;
+    fn icon(&self) -> &'static re_ui::Icon {
+        &re_ui::icons::SPACE_VIEW_GENERIC
+    }
 
     /// Help text describing how to interact with this space view in the ui.
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText;
 
     /// Called once upon registration of the class
     ///
-    /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::ViewPartSystem`].
+    /// This can be used to register all built-in [`crate::ViewContextSystem`] and [`crate::VisualizerSystem`].
     fn on_register(
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
@@ -64,11 +66,11 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     /// Create context object that is passed to all of this classes visualizers
     /// to determine whether they can be visualized.
     ///
-    /// See [`crate::ViewPartSystem::filter_visualizable_entities`].
+    /// See [`crate::VisualizerSystem::filter_visualizable_entities`].
     fn visualizable_filter_context(
         &self,
         _space_origin: &EntityPath,
-        _store_db: &re_data_store::StoreDb,
+        _entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn std::any::Any> {
         Box::new(())
     }
@@ -100,7 +102,7 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
         _ctx: &ViewerContext<'_>,
         _state: &Self::State,
         _ent_paths: &PerSystemEntities,
-        _entity_properties: &mut re_data_store::EntityPropertyMap,
+        _entity_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
     }
 
@@ -186,9 +188,9 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     fn visualizable_filter_context(
         &self,
         space_origin: &EntityPath,
-        store_db: &re_data_store::StoreDb,
+        entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn std::any::Any> {
-        self.visualizable_filter_context(space_origin, store_db)
+        self.visualizable_filter_context(space_origin, entity_db)
     }
 
     #[inline]

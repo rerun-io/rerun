@@ -71,16 +71,25 @@ pub const EXTERNAL_LINK: Icon = Icon::new(
     "external_link",
     include_bytes!("../data/icons/external_link.png"),
 );
+pub const DISCORD: Icon = Icon::new("discord", include_bytes!("../data/icons/discord.png"));
 
-pub const SPACE_VIEW_TEXT: Icon = Icon::new(
-    "spaceview_text",
-    include_bytes!("../data/icons/spaceview_text.png"),
+pub const CONTAINER_HORIZONTAL: Icon = Icon::new(
+    "container_horizontal",
+    include_bytes!("../data/icons/container_horizontal.png"),
 );
-// TODO(jleibs): Differentiate icon?
-pub const SPACE_VIEW_TEXTBOX: Icon = Icon::new(
-    "spaceview_text",
-    include_bytes!("../data/icons/spaceview_text.png"),
+pub const CONTAINER_GRID: Icon = Icon::new(
+    "container_grid",
+    include_bytes!("../data/icons/container_grid.png"),
 );
+pub const CONTAINER_TABS: Icon = Icon::new(
+    "container_tabs",
+    include_bytes!("../data/icons/container_tabs.png"),
+);
+pub const CONTAINER_VERTICAL: Icon = Icon::new(
+    "container_vertical",
+    include_bytes!("../data/icons/container_vertical.png"),
+);
+
 pub const SPACE_VIEW_2D: Icon = Icon::new(
     "spaceview_2d",
     include_bytes!("../data/icons/spaceview_2d.png"),
@@ -89,25 +98,33 @@ pub const SPACE_VIEW_3D: Icon = Icon::new(
     "spaceview_3d",
     include_bytes!("../data/icons/spaceview_3d.png"),
 );
-pub const SPACE_VIEW_CHART: Icon = Icon::new(
-    "spaceview_chart",
-    include_bytes!("../data/icons/spaceview_chart.png"),
+pub const SPACE_VIEW_DATAFRAME: Icon = Icon::new(
+    "spaceview_dataframe",
+    include_bytes!("../data/icons/spaceview_dataframe.png"),
 );
-pub const SPACE_VIEW_SCATTERPLOT: Icon = Icon::new(
-    "spaceview_scatterplot",
-    include_bytes!("../data/icons/spaceview_scatterplot.png"),
+pub const SPACE_VIEW_GENERIC: Icon = Icon::new(
+    "spaceview_unknown",
+    include_bytes!("../data/icons/spaceview_generic.png"),
 );
-pub const SPACE_VIEW_RAW: Icon = Icon::new(
-    "spaceview_raw",
-    include_bytes!("../data/icons/spaceview_raw.png"),
+pub const SPACE_VIEW_HISTOGRAM: Icon = Icon::new(
+    "spaceview_histogram",
+    include_bytes!("../data/icons/spaceview_histogram.png"),
+);
+pub const SPACE_VIEW_LOG: Icon = Icon::new(
+    "spaceview_text",
+    include_bytes!("../data/icons/spaceview_log.png"),
 );
 pub const SPACE_VIEW_TENSOR: Icon = Icon::new(
     "spaceview_tensor",
     include_bytes!("../data/icons/spaceview_tensor.png"),
 );
-pub const SPACE_VIEW_HISTOGRAM: Icon = Icon::new(
-    "spaceview_histogram",
-    include_bytes!("../data/icons/spaceview_histogram.png"),
+pub const SPACE_VIEW_TEXT: Icon = Icon::new(
+    "spaceview_text",
+    include_bytes!("../data/icons/spaceview_text.png"),
+);
+pub const SPACE_VIEW_TIMESERIES: Icon = Icon::new(
+    "spaceview_chart",
+    include_bytes!("../data/icons/spaceview_timeseries.png"),
 );
 pub const SPACE_VIEW_UNKNOWN: Icon = Icon::new(
     "spaceview_unknown",

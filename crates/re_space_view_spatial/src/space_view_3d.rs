@@ -1,5 +1,5 @@
 use nohash_hasher::IntSet;
-use re_data_store::{EntityProperties, EntityTree};
+use re_entity_db::{EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathHash};
 use re_types::{components::PinholeProjection, Loggable as _};
 use re_viewer_context::{
@@ -11,9 +11,9 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
-    parts::{calculate_bounding_box, register_3d_spatial_parts, CamerasPart},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
+    visualizers::{calculate_bounding_box, register_3d_spatial_visualizers, CamerasVisualizer},
 };
 
 // TODO(andreas): This context is used to determine whether a 2D entity has a valid transform
@@ -45,7 +45,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         register_spatial_contexts(system_registry)?;
-        register_3d_spatial_parts(system_registry)?;
+        register_3d_spatial_visualizers(system_registry)?;
 
         Ok(())
     }
@@ -61,7 +61,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
     fn visualizable_filter_context(
         &self,
         space_origin: &EntityPath,
-        store_db: &re_data_store::StoreDb,
+        entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn std::any::Any> {
         re_tracing::profile_function!();
 
@@ -93,7 +93,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             }
         }
 
-        let entity_tree = &store_db.tree();
+        let entity_tree = &entity_db.tree();
 
         // Walk down the tree from the space_origin.
         let Some(current_tree) = &entity_tree.subtree(space_origin) else {
@@ -120,7 +120,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         );
 
         if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(mut score) = score {
-            if let Some(camera_paths) = per_system_entities.get(&CamerasPart::identifier()) {
+            if let Some(camera_paths) = per_system_entities.get(&CamerasVisualizer::identifier()) {
                 // If there is a camera at the origin, this cannot be a 3D space -- it must be 2D
                 if camera_paths.contains(space_origin) {
                     return AutoSpawnHeuristic::NeverSpawn;
@@ -144,7 +144,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &ViewerContext<'_>,
         state: &Self::State,
         ent_paths: &PerSystemEntities,
-        entity_properties: &mut re_data_store::EntityPropertyMap,
+        entity_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
         update_object_property_heuristics(
             ctx,

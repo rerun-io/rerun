@@ -1,9 +1,9 @@
 use egui::{text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
-use re_data_store::EntityPath;
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
+use re_entity_db::EntityPath;
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
@@ -12,16 +12,16 @@ use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
     HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
-    UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    UiVerbosity, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::heuristics::auto_size_world_heuristic;
 use crate::{
     contexts::{AnnotationSceneContext, NonInteractiveEntities},
-    parts::{CamerasPart, ImagesPart, UiLabel, UiLabelTarget},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
+    visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
 };
 
 /// Default auto point radius in UI points.
@@ -120,7 +120,7 @@ impl SpatialSpaceViewState {
         let re_ui = ctx.re_ui;
 
         let view_coordinates = ctx
-            .store_db
+            .entity_db
             .store()
             .query_latest_component(space_origin, &ctx.current_query())
             .map(|c| c.value);
@@ -418,10 +418,11 @@ pub fn screenshot_context_menu(
         if _ctx.app_options.experimental_space_view_screenshots {
             let mut take_screenshot = None;
             let response = response.context_menu(|ui| {
-                if ui.button("Screenshot (save to disk)").clicked() {
+                ui.style_mut().wrap = Some(false);
+                if ui.button("Save screenshot to disk").clicked() {
                     take_screenshot = Some(ScreenshotMode::SaveAndCopyToClipboard);
                     ui.close_menu();
-                } else if ui.button("Screenshot (clipboard only)").clicked() {
+                } else if ui.button("Copy screenshot to clipboard").clicked() {
                     take_screenshot = Some(ScreenshotMode::CopyToClipboard);
                     ui.close_menu();
                 }
@@ -448,7 +449,7 @@ pub fn picking(
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialSpaceViewState,
     view_ctx: &ViewContextCollection,
-    parts: &ViewPartCollection,
+    visualizers: &VisualizerCollection,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
     spatial_kind: SpatialSpaceViewKind,
@@ -490,7 +491,7 @@ pub fn picking(
 
     let non_interactive = view_ctx.get::<NonInteractiveEntities>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-    let images = parts.get::<ImagesPart>()?;
+    let images = visualizers.get::<ImageVisualizer>()?;
 
     let picking_result = picking_context.pick(
         ctx.render_ctx,
@@ -507,7 +508,7 @@ pub fn picking(
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
     for hit in &picking_result.hits {
-        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.store_db) else {
+        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.entity_db) else {
             continue;
         };
 
@@ -523,7 +524,7 @@ pub fn picking(
             continue;
         }
 
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
 
         // Special hover ui for images.
         let is_depth_cloud = images
@@ -646,8 +647,8 @@ pub fn picking(
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
                     tracked_space_camera: state.state_3d.tracked_camera.clone(),
-                    point_in_space_cameras: parts
-                        .get::<CamerasPart>()?
+                    point_in_space_cameras: visualizers
+                        .get::<CamerasVisualizer>()?
                         .space_cameras
                         .iter()
                         .map(|cam| {
@@ -670,7 +671,7 @@ pub fn picking(
 #[allow(clippy::too_many_arguments)]
 fn image_hover_ui(
     ui: &mut egui::Ui,
-    instance_path: &re_data_store::InstancePath,
+    instance_path: &re_entity_db::InstancePath,
     ctx: &ViewerContext<'_>,
     tensor: TensorData,
     spatial_kind: SpatialSpaceViewKind,

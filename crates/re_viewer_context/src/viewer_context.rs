@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use parking_lot::RwLock;
 
-use re_data_store::{store_db::StoreDb, EntityTree, TimeHistogramPerTimeline};
+use re_entity_db::{entity_db::EntityDb, EntityTree, TimeHistogramPerTimeline};
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
@@ -27,7 +27,7 @@ pub struct ViewerContext<'a> {
 
     /// The current recording.
     /// TODO(jleibs): This can go away
-    pub store_db: &'a StoreDb,
+    pub entity_db: &'a EntityDb,
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
@@ -43,7 +43,7 @@ pub struct ViewerContext<'a> {
     /// All the query results for this frame
     pub query_results: &'a HashMap<DataQueryId, DataQueryResult>,
 
-    /// UI config for the current recording (found in [`StoreDb`]).
+    /// UI config for the current recording (found in [`EntityDb`]).
     pub rec_cfg: &'a RecordingConfig,
 
     /// The look and feel of the UI.
@@ -96,7 +96,7 @@ impl<'a> ViewerContext<'a> {
 
 // ----------------------------------------------------------------------------
 
-/// UI config for the current recording (found in [`StoreDb`]).
+/// UI config for the current recording (found in [`EntityDb`]).
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct RecordingConfig {

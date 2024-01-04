@@ -1,7 +1,7 @@
 use web_time::Instant;
 
 use re_data_source::{DataSource, FileContents};
-use re_data_store::store_db::StoreDb;
+use re_entity_db::entity_db::EntityDb;
 use re_log_types::{FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
@@ -36,6 +36,7 @@ enum TimeControlCommand {
 /// Settings set once at startup (e.g. via command-line options) and not serialized.
 #[derive(Clone)]
 pub struct StartupOptions {
+    /// When the total process RAM reaches this limit, we GC old data.
     pub memory_limit: re_memory::MemoryLimit,
 
     pub persist_state: bool,
@@ -62,7 +63,7 @@ pub struct StartupOptions {
 impl Default for StartupOptions {
     fn default() -> Self {
         Self {
-            memory_limit: re_memory::MemoryLimit::default(),
+            memory_limit: re_memory::MemoryLimit::from_fraction_of_total(0.75),
             persist_state: true,
             is_in_notebook: false,
 
@@ -359,9 +360,9 @@ impl App {
                 }
             }
 
-            SystemCommand::LoadStoreDb(store_db) => {
-                let store_id = store_db.store_id().clone();
-                store_hub.insert_recording(store_db);
+            SystemCommand::LoadStoreDb(entity_db) => {
+                let store_id = entity_db.store_id().clone();
+                store_hub.insert_recording(entity_db);
                 store_hub.set_recording_id(store_id);
             }
 
@@ -373,7 +374,7 @@ impl App {
                 store_hub.clear_blueprint();
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
-                let blueprint_db = store_hub.store_db_mut(&blueprint_id);
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                 for row in updates {
                     match blueprint_db.add_data_row(row) {
                         Ok(()) => {}
@@ -577,16 +578,16 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         command: TimeControlCommand,
     ) {
-        let Some(store_db) = store_context.as_ref().and_then(|ctx| ctx.recording) else {
+        let Some(entity_db) = store_context.as_ref().and_then(|ctx| ctx.recording) else {
             return;
         };
-        let rec_id = store_db.store_id();
+        let rec_id = entity_db.store_id();
         let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else {
             return;
         };
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
-        let times_per_timeline = store_db.times_per_timeline();
+        let times_per_timeline = entity_db.times_per_timeline();
 
         match command {
             TimeControlCommand::TogglePlayPause => {
@@ -709,9 +710,9 @@ impl App {
                 self.style_panel_ui(egui_ctx, ui);
 
                 if let Some(store_view) = store_context {
-                    static EMPTY_STORE_DB: once_cell::sync::Lazy<StoreDb> =
+                    static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
                         once_cell::sync::Lazy::new(|| {
-                            StoreDb::new(re_log_types::StoreId::from_string(
+                            EntityDb::new(re_log_types::StoreId::from_string(
                                 StoreKind::Recording,
                                 "<EMPTY>".to_owned(),
                             ))
@@ -722,10 +723,10 @@ impl App {
                     // Note that EMPTY_STORE_DB is *not* part of the list of available recordings
                     // (StoreContext::alternate_recordings), which means that it's not displayed in
                     // the recordings UI.
-                    let store_db = if let Some(store_db) = store_view.recording {
-                        store_db
+                    let entity_db = if let Some(entity_db) = store_view.recording {
+                        entity_db
                     } else {
-                        &EMPTY_STORE_DB
+                        &EMPTY_ENTITY_DB
                     };
 
                     // TODO(andreas): store the re_renderer somewhere else.
@@ -743,7 +744,7 @@ impl App {
                             app_blueprint,
                             ui,
                             render_ctx,
-                            store_db,
+                            entity_db,
                             store_view,
                             &self.re_ui,
                             &self.component_ui_registry,
@@ -813,21 +814,21 @@ impl App {
 
             let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
 
-            let store_db = store_hub.store_db_mut(store_id);
+            let entity_db = store_hub.entity_db_mut(store_id);
 
-            if store_db.data_source.is_none() {
-                store_db.data_source = Some((*channel_source).clone());
+            if entity_db.data_source.is_none() {
+                entity_db.data_source = Some((*channel_source).clone());
             }
 
-            if let Err(err) = store_db.add(&msg) {
+            if let Err(err) = entity_db.add(&msg) {
                 re_log::error_once!("Failed to add incoming msg: {err}");
             };
 
-            if is_new_store && store_db.store_kind() == StoreKind::Recording {
+            if is_new_store && entity_db.store_kind() == StoreKind::Recording {
                 // Do analytics after ingesting the new message,
-                // because thats when the `store_db.store_info` is set,
+                // because thats when the `entity_db.store_info` is set,
                 // which we use in the analytics call.
-                self.analytics.on_open_recording(store_db);
+                self.analytics.on_open_recording(entity_db);
             }
 
             // Set the recording-id after potentially creating the store in the
@@ -877,12 +878,12 @@ impl App {
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_before) {
             re_log::info_once!(
                 "Reached memory limit of {}, dropping oldest data.",
-                format_limit(limit.limit)
+                format_limit(limit.max_bytes)
             );
 
             let fraction_to_purge = (minimum_fraction_to_purge + 0.2).clamp(0.25, 1.0);
 
-            re_log::trace!("RAM limit: {}", format_limit(limit.limit));
+            re_log::trace!("RAM limit: {}", format_limit(limit.max_bytes));
             if let Some(resident) = mem_use_before.resident {
                 re_log::trace!("Resident: {}", format_bytes(resident as _),);
             }
@@ -930,7 +931,7 @@ impl App {
         egui_ctx.set_style((*style).clone());
     }
 
-    pub fn recording_db(&self) -> Option<&StoreDb> {
+    pub fn recording_db(&self) -> Option<&EntityDb> {
         self.store_hub
             .as_ref()
             .and_then(|store_hub| store_hub.current_recording())
@@ -1066,7 +1067,7 @@ impl eframe::App for App {
             return;
         }
 
-        if self.startup_options.memory_limit.limit.is_none() {
+        if self.startup_options.memory_limit.is_unlimited() {
             // we only warn about high memory usage if the user hasn't specified a limit
             self.ram_limit_warner.update();
         }
@@ -1356,11 +1357,11 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 fn save(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
-    loop_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
+    loop_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
 ) {
     use crate::saving::save_database_to_file;
 
-    let Some(store_db) = store_context.as_ref().and_then(|view| view.recording) else {
+    let Some(entity_db) = store_context.as_ref().and_then(|view| view.recording) else {
         // NOTE: Can only happen if saving through the command palette.
         re_log::error!("No data to save!");
         return;
@@ -1377,7 +1378,7 @@ fn save(
         .set_title(title)
         .save_file()
     {
-        let f = match save_database_to_file(store_db, path, loop_selection) {
+        let f = match save_database_to_file(entity_db, path, loop_selection) {
             Ok(f) => f,
             Err(err) => {
                 re_log::error!("File saving failed: {err}");
