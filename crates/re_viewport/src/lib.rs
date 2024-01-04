@@ -68,7 +68,7 @@ fn query_pinhole(
 pub fn determine_visualizable_entities(
     applicable_entities_per_visualizer: &PerVisualizer<ApplicableEntities>,
     store_db: &StoreDb,
-    visualizers: &re_viewer_context::ViewPartCollection,
+    visualizers: &re_viewer_context::VisualizerCollection,
     class: &dyn DynSpaceViewClass,
     space_origin: &EntityPath,
 ) -> PerVisualizer<VisualizableEntities> {

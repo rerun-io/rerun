@@ -31,7 +31,7 @@ pub use system_execution_output::SystemExecutionOutput;
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
 pub use view_query::{DataResult, PerSystemDataResults, PropertyOverrides, ViewQuery};
 pub use visualizer_entity_subscriber::VisualizerAdditionalApplicabilityFilter;
-pub use visualizer_system::{ViewPartCollection, VisualizerSystem};
+pub use visualizer_system::{VisualizerCollection, VisualizerSystem};
 
 // ---------------------------------------------------------------------------
 
@@ -41,7 +41,7 @@ pub enum SpaceViewSystemExecutionError {
     ContextSystemNotFound(&'static str),
 
     #[error("View part system {0} not found")]
-    PartSystemNotFound(&'static str),
+    VisualizerSystemNotFound(&'static str),
 
     #[error(transparent)]
     QueryError(#[from] re_query::QueryError),

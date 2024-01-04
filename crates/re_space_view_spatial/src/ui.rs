@@ -12,7 +12,7 @@ use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
     HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
-    UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    UiVerbosity, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
@@ -449,7 +449,7 @@ pub fn picking(
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialSpaceViewState,
     view_ctx: &ViewContextCollection,
-    parts: &ViewPartCollection,
+    parts: &VisualizerCollection,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
     spatial_kind: SpatialSpaceViewKind,

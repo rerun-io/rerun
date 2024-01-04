@@ -33,7 +33,7 @@ use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
 use re_viewer_context::{
     auto_color, Annotations, DefaultColor, ResolvedAnnotationInfos, SpaceViewClassRegistryError,
-    SpaceViewSystemRegistrator, ViewPartCollection, ViewQuery, VisualizableEntities,
+    SpaceViewSystemRegistrator, ViewQuery, VisualizableEntities, VisualizerCollection,
 };
 
 use crate::space_view_3d::VisualizableFilterContext3D;
@@ -84,7 +84,7 @@ pub fn register_3d_spatial_parts(
 }
 
 pub fn calculate_bounding_box(
-    parts: &ViewPartCollection,
+    parts: &VisualizerCollection,
     bounding_box_accum: &mut macaw::BoundingBox,
 ) -> macaw::BoundingBox {
     let mut bounding_box = macaw::BoundingBox::nothing();
@@ -106,7 +106,7 @@ pub fn calculate_bounding_box(
     bounding_box
 }
 
-pub fn collect_ui_labels(parts: &ViewPartCollection) -> Vec<UiLabel> {
+pub fn collect_ui_labels(parts: &VisualizerCollection) -> Vec<UiLabel> {
     let mut ui_labels = Vec::new();
     for part in parts.iter() {
         if let Some(data) = part

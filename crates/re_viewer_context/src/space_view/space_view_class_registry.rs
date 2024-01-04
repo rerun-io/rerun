@@ -4,7 +4,7 @@ use re_arrow_store::DataStore;
 use crate::{
     ApplicableEntities, DynSpaceViewClass, IdentifiedViewSystem, IndicatorMatchingEntities,
     PerVisualizer, SpaceViewClassIdentifier, ViewContextCollection, ViewContextSystem,
-    ViewPartCollection, ViewSystemIdentifier, VisualizerSystem,
+    ViewSystemIdentifier, VisualizerCollection, VisualizerSystem,
 };
 
 use super::{
@@ -360,16 +360,16 @@ impl SpaceViewClassRegistry {
     pub fn new_part_collection(
         &self,
         space_view_class_identifier: SpaceViewClassIdentifier,
-    ) -> ViewPartCollection {
+    ) -> VisualizerCollection {
         re_tracing::profile_function!();
 
         let Some(class) = self.space_view_classes.get(&space_view_class_identifier) else {
-            return ViewPartCollection {
+            return VisualizerCollection {
                 systems: Default::default(),
             };
         };
 
-        ViewPartCollection {
+        VisualizerCollection {
             systems: class
                 .visualizer_system_ids
                 .iter()

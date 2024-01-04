@@ -1,9 +1,9 @@
-use crate::{ViewContextCollection, ViewPartCollection};
+use crate::{ViewContextCollection, VisualizerCollection};
 
 /// Output of space view system execution.
 pub struct SystemExecutionOutput {
     /// Executed view systems, may hold state that the ui method needs.
-    pub view_systems: ViewPartCollection,
+    pub view_systems: VisualizerCollection,
 
     /// Executed context systems, may hold state that the ui method needs.
     pub context_systems: ViewContextCollection,

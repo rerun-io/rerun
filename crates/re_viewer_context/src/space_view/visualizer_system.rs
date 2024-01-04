@@ -68,11 +68,11 @@ pub trait VisualizerSystem: Send + Sync + 'static {
     fn as_any(&self) -> &dyn std::any::Any;
 }
 
-pub struct ViewPartCollection {
+pub struct VisualizerCollection {
     pub systems: HashMap<ViewSystemIdentifier, Box<dyn VisualizerSystem>>,
 }
 
-impl ViewPartCollection {
+impl VisualizerCollection {
     #[inline]
     pub fn get<T: VisualizerSystem + IdentifiedViewSystem + 'static>(
         &self,
@@ -81,7 +81,7 @@ impl ViewPartCollection {
             .get(&T::identifier())
             .and_then(|s| s.as_any().downcast_ref())
             .ok_or_else(|| {
-                SpaceViewSystemExecutionError::PartSystemNotFound(T::identifier().as_str())
+                SpaceViewSystemExecutionError::VisualizerSystemNotFound(T::identifier().as_str())
             })
     }
 
@@ -93,7 +93,7 @@ impl ViewPartCollection {
         self.systems
             .get(&name)
             .map(|s| s.as_ref())
-            .ok_or_else(|| SpaceViewSystemExecutionError::PartSystemNotFound(name.as_str()))
+            .ok_or_else(|| SpaceViewSystemExecutionError::VisualizerSystemNotFound(name.as_str()))
     }
 
     #[inline]
