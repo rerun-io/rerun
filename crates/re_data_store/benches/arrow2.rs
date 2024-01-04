@@ -111,7 +111,12 @@ fn erased_clone(c: &mut Criterion) {
             .iter()
             .map(|array| array.total_size_bytes())
             .sum::<u64>();
-        assert!(total_size_bytes as usize >= NUM_ROWS * NUM_INSTANCES * std::mem::size_of::<T>());
+        assert!(
+            total_size_bytes as usize >= NUM_ROWS * NUM_INSTANCES * std::mem::size_of::<T>(),
+            "Size calculated to be {} bytes, but should be at least {} bytes",
+            total_size_bytes,
+            NUM_ROWS * NUM_INSTANCES * std::mem::size_of::<T>()
+        );
 
         group.bench_function("array", |b| {
             b.iter(|| {
