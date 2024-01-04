@@ -10,7 +10,7 @@ pub fn image_meaning_for_entity(
     entity_path: &EntityPath,
     ctx: &ViewerContext<'_>,
 ) -> TensorDataMeaning {
-    let store = ctx.store_db.store();
+    let store = ctx.entity_db.store();
     let timeline = &ctx.current_query().timeline;
     if store.entity_has_component(timeline, entity_path, &DepthImage::indicator().name()) {
         TensorDataMeaning::Depth

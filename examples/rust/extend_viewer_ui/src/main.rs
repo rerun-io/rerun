@@ -1,7 +1,7 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
 use re_viewer::external::{
-    arrow2, eframe, egui, re_arrow_store, re_data_store, re_log, re_log_types, re_memory, re_query,
+    arrow2, eframe, egui, re_arrow_store, re_entity_db, re_log, re_log_types, re_memory, re_query,
     re_types,
 };
 
@@ -94,8 +94,8 @@ impl MyApp {
         });
         ui.separator();
 
-        if let Some(store_db) = self.rerun_app.recording_db() {
-            store_db_ui(ui, store_db);
+        if let Some(entity_db) = self.rerun_app.recording_db() {
+            entity_db_ui(ui, entity_db);
         } else {
             ui.label("No log database loaded yet.");
         }
@@ -103,8 +103,8 @@ impl MyApp {
 }
 
 /// Show the content of the log database.
-fn store_db_ui(ui: &mut egui::Ui, store_db: &re_data_store::StoreDb) {
-    if let Some(store_info) = store_db.store_info() {
+fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
+    if let Some(store_info) = entity_db.store_info() {
         ui.label(format!("Application ID: {}", store_info.application_id));
     }
 
@@ -118,9 +118,9 @@ fn store_db_ui(ui: &mut egui::Ui, store_db: &re_data_store::StoreDb) {
     egui::ScrollArea::vertical()
         .auto_shrink([false, true])
         .show(ui, |ui| {
-            for entity_path in store_db.entity_paths() {
+            for entity_path in entity_db.entity_paths() {
                 ui.collapsing(entity_path.to_string(), |ui| {
-                    entity_ui(ui, store_db, timeline, entity_path);
+                    entity_ui(ui, entity_db, timeline, entity_path);
                 });
             }
         });
@@ -128,16 +128,16 @@ fn store_db_ui(ui: &mut egui::Ui, store_db: &re_data_store::StoreDb) {
 
 fn entity_ui(
     ui: &mut egui::Ui,
-    store_db: &re_data_store::StoreDb,
+    entity_db: &re_entity_db::EntityDb,
     timeline: re_log_types::Timeline,
     entity_path: &re_log_types::EntityPath,
 ) {
     // Each entity can have many components (e.g. position, color, radius, …):
-    if let Some(mut components) = store_db.store().all_components(&timeline, entity_path) {
+    if let Some(mut components) = entity_db.store().all_components(&timeline, entity_path) {
         components.sort(); // Make the order predicatable
         for component in components {
             ui.collapsing(component.to_string(), |ui| {
-                component_ui(ui, store_db, timeline, entity_path, component);
+                component_ui(ui, entity_db, timeline, entity_path, component);
             });
         }
     }
@@ -145,7 +145,7 @@ fn entity_ui(
 
 fn component_ui(
     ui: &mut egui::Ui,
-    store_db: &re_data_store::StoreDb,
+    entity_db: &re_entity_db::EntityDb,
     timeline: re_log_types::Timeline,
     entity_path: &re_log_types::EntityPath,
     component_name: re_types::ComponentName,
@@ -155,7 +155,7 @@ fn component_ui(
     let query = re_arrow_store::LatestAtQuery::latest(timeline);
 
     if let Some((_, component)) = re_query::get_component_with_instances(
-        store_db.store(),
+        entity_db.store(),
         &query,
         entity_path,
         component_name,

@@ -1,11 +1,11 @@
 use crate::blueprint::components::PanelView;
-use re_data_store::StoreDb;
+use re_entity_db::EntityDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
-    blueprint_db: Option<&'a StoreDb>,
+    blueprint_db: Option<&'a EntityDb>,
     is_narrow_screen: bool,
     pub blueprint_panel_expanded: bool,
     pub selection_panel_expanded: bool,
@@ -78,7 +78,7 @@ impl<'a> AppBlueprint<'a> {
     }
 }
 
-pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut StoreDb) {
+pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
     for (panel_name, is_expanded) in [
         (PanelView::BLUEPRINT_VIEW_PATH, true),
         (PanelView::SELECTION_VIEW_PATH, false),
@@ -125,7 +125,7 @@ impl<'a> AppBlueprint<'a> {
     }
 }
 
-fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::StoreDb) -> Option<bool> {
+fn load_panel_state(path: &EntityPath, blueprint_db: &re_entity_db::EntityDb) -> Option<bool> {
     re_tracing::profile_function!();
     blueprint_db
         .store()

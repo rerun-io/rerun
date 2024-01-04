@@ -3,8 +3,8 @@ use std::collections::BTreeSet;
 use egui_extras::Column;
 
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_data_store::{EntityProperties, InstancePath};
 use re_data_ui::item_ui::instance_path_button;
+use re_entity_db::{EntityProperties, InstancePath};
 use re_log_types::{EntityPath, Timeline};
 use re_query::get_component_with_instances;
 use re_viewer_context::{
@@ -92,7 +92,7 @@ impl SpaceViewClass for DataframeSpaceView {
             .cloned()
             .collect();
 
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
         let latest_at_query = query.latest_at_query();
 
         let sorted_instance_paths: Vec<_>;

@@ -4,7 +4,7 @@ use egui::NumExt;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
-use re_data_store::{EntityPath, EntityProperties};
+use re_entity_db::{EntityPath, EntityProperties};
 use re_log_types::{EntityPathHash, RowId};
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::{
@@ -224,7 +224,7 @@ impl ImagesPart {
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably do this for us.
-        if !ctx.store_db.store().entity_has_component(
+        if !ctx.entity_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
             &Image::indicator().name(),
@@ -317,7 +317,7 @@ impl ImagesPart {
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx.store_db.store().entity_has_component(
+        if !ctx.entity_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
             &DepthImage::indicator().name(),
@@ -455,7 +455,7 @@ impl ImagesPart {
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx.store_db.store().entity_has_component(
+        if !ctx.entity_db.store().entity_has_component(
             &ctx.current_query().timeline,
             ent_path,
             &SegmentationImage::indicator().name(),
@@ -546,7 +546,7 @@ impl ImagesPart {
         re_tracing::profile_function!();
 
         let Some(intrinsics) = query_pinhole(
-            ctx.store_db.store(),
+            ctx.entity_db.store(),
             &ctx.current_query(),
             parent_pinhole_path,
         ) else {
@@ -556,7 +556,7 @@ impl ImagesPart {
         // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
         let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
             parent_pinhole_path,
-            ctx.store_db.store(),
+            ctx.entity_db.store(),
             &ctx.current_query(),
         );
         let Some(world_from_view) = world_from_view else {
@@ -592,13 +592,13 @@ impl ImagesPart {
         let world_depth_from_texture_depth = 1.0 / depth_from_world_scale;
 
         let colormap = match *properties.color_mapper {
-            re_data_store::ColorMapper::Colormap(colormap) => match colormap {
-                re_data_store::Colormap::Grayscale => Colormap::Grayscale,
-                re_data_store::Colormap::Turbo => Colormap::Turbo,
-                re_data_store::Colormap::Viridis => Colormap::Viridis,
-                re_data_store::Colormap::Plasma => Colormap::Plasma,
-                re_data_store::Colormap::Magma => Colormap::Magma,
-                re_data_store::Colormap::Inferno => Colormap::Inferno,
+            re_entity_db::ColorMapper::Colormap(colormap) => match colormap {
+                re_entity_db::Colormap::Grayscale => Colormap::Grayscale,
+                re_entity_db::Colormap::Turbo => Colormap::Turbo,
+                re_entity_db::Colormap::Viridis => Colormap::Viridis,
+                re_entity_db::Colormap::Plasma => Colormap::Plasma,
+                re_entity_db::Colormap::Magma => Colormap::Magma,
+                re_entity_db::Colormap::Inferno => Colormap::Inferno,
             },
         };
 

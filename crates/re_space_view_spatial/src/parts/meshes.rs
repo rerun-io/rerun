@@ -1,4 +1,4 @@
-use re_data_store::EntityPath;
+use re_entity_db::EntityPath;
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_types::{
@@ -84,7 +84,7 @@ impl Mesh3DPart {
         };
 
         let primary_row_id = arch_view.primary_row_id();
-        let picking_instance_hash = re_data_store::InstancePathHash::entity_splat(ent_path);
+        let picking_instance_hash = re_entity_db::InstancePathHash::entity_splat(ent_path);
         let outline_mask_ids = ent_context.highlight.index_outline_mask(InstanceKey::SPLAT);
 
         let mesh = ctx.cache.entry(|c: &mut MeshCache| {

@@ -1,9 +1,9 @@
-use re_data_store::InstancePath;
+use re_entity_db::InstancePath;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
 
-impl DataUi for re_data_store::EntityPath {
+impl DataUi for re_entity_db::EntityPath {
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,

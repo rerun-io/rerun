@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use egui_tiles::TileId;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::StoreDb;
+use re_entity_db::EntityDb;
 use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint, Timeline};
 use re_query::query_archetype;
@@ -101,7 +101,7 @@ pub struct ContainerBlueprint {
 
 impl ContainerBlueprint {
     /// Attempt to load a [`ContainerBlueprint`] from the blueprint store.
-    pub fn try_from_db(blueprint_db: &StoreDb, id: ContainerId) -> Option<Self> {
+    pub fn try_from_db(blueprint_db: &EntityDb, id: ContainerId) -> Option<Self> {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());

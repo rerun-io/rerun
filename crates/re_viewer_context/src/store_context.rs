@@ -1,8 +1,8 @@
-use re_data_store::StoreDb;
+use re_entity_db::EntityDb;
 
 /// The current Blueprint and Recording being displayed by the viewer
 pub struct StoreContext<'a> {
-    pub blueprint: &'a StoreDb,
-    pub recording: Option<&'a StoreDb>,
-    pub all_recordings: Vec<&'a StoreDb>,
+    pub blueprint: &'a EntityDb,
+    pub recording: Option<&'a EntityDb>,
+    pub all_recordings: Vec<&'a EntityDb>,
 }

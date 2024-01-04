@@ -1,5 +1,5 @@
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange, Timeline};
-use re_data_store::ExtraQueryHistory;
+use re_entity_db::ExtraQueryHistory;
 use re_log_types::EntityPath;
 use re_types_core::Archetype;
 

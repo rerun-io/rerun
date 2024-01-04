@@ -2,7 +2,7 @@ use ahash::{HashMap, HashMapExt};
 use itertools::Itertools;
 
 use re_arrow_store::{DataStoreConfig, DataStoreStats};
-use re_data_store::StoreDb;
+use re_entity_db::EntityDb;
 use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_viewer_context::StoreContext;
@@ -17,7 +17,7 @@ use crate::{
 
 /// Interface for accessing all blueprints and recordings
 ///
-/// The [`StoreHub`] provides access to the [`StoreDb`] instances that are used
+/// The [`StoreHub`] provides access to the [`EntityDb`] instances that are used
 /// to store both blueprints and recordings.
 ///
 /// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
@@ -32,7 +32,7 @@ pub struct StoreHub {
     /// Was a recording ever activated? Used by the heuristic controlling the welcome screen.
     was_recording_active: bool,
 
-    // The [`StoreGeneration`] from when the [`StoreDb`] was last saved
+    // The [`StoreGeneration`] from when the [`EntityDb`] was last saved
     blueprint_last_save: HashMap<StoreId, StoreGeneration>,
 }
 
@@ -196,21 +196,21 @@ impl StoreHub {
     ///
     /// Note that the recording is not automatically made active. Use [`StoreHub::set_recording_id`]
     /// if needed.
-    pub fn insert_recording(&mut self, store_db: StoreDb) {
-        self.store_bundle.insert_recording(store_db);
+    pub fn insert_recording(&mut self, entity_db: EntityDb) {
+        self.store_bundle.insert_recording(entity_db);
     }
 
-    /// Mutable access to a [`StoreDb`] by id
-    pub fn store_db_mut(&mut self, store_id: &StoreId) -> &mut StoreDb {
-        self.store_bundle.store_db_entry(store_id)
+    /// Mutable access to a [`EntityDb`] by id
+    pub fn entity_db_mut(&mut self, store_id: &StoreId) -> &mut EntityDb {
+        self.store_bundle.entity_db_entry(store_id)
     }
 
-    /// Remove any empty [`StoreDb`]s from the hub
+    /// Remove any empty [`EntityDb`]s from the hub
     pub fn purge_empty(&mut self) {
         self.store_bundle.purge_empty();
     }
 
-    /// Call [`StoreDb::purge_fraction_of_ram`] on every recording
+    /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
     //
     // NOTE: If you touch any of this, make sure to play around with our GC stress test scripts
     // available under `$WORKSPACE_ROOT/tests/python/gc_stress`.
@@ -221,9 +221,9 @@ impl StoreHub {
             return;
         };
 
-        let store_dbs = &mut self.store_bundle.store_dbs;
+        let entity_dbs = &mut self.store_bundle.entity_dbs;
 
-        let Some(store_db) = store_dbs.get_mut(&store_id) else {
+        let Some(entity_db) = entity_dbs.get_mut(&store_id) else {
             if cfg!(debug_assertions) {
                 unreachable!();
             }
@@ -231,13 +231,13 @@ impl StoreHub {
         };
 
         let store_size_before =
-            store_db.store().timeless_size_bytes() + store_db.store().temporal_size_bytes();
-        store_db.purge_fraction_of_ram(fraction_to_purge);
+            entity_db.store().timeless_size_bytes() + entity_db.store().temporal_size_bytes();
+        entity_db.purge_fraction_of_ram(fraction_to_purge);
         let store_size_after =
-            store_db.store().timeless_size_bytes() + store_db.store().temporal_size_bytes();
+            entity_db.store().timeless_size_bytes() + entity_db.store().temporal_size_bytes();
 
         // No point keeping an empty recording around.
-        if store_db.is_empty() {
+        if entity_db.is_empty() {
             self.remove_recording_id(&store_id);
             return;
         }
@@ -250,7 +250,7 @@ impl StoreHub {
         //
         // If the user needs the memory for something else, they will get it back as soon as they
         // log new things anyhow.
-        if store_size_before == store_size_after && store_dbs.len() > 1 {
+        if store_size_before == store_size_after && entity_dbs.len() > 1 {
             self.remove_recording_id(&store_id);
         }
 
@@ -263,8 +263,8 @@ impl StoreHub {
         // we can get an accurate reading of the current memory used and decide if we should go on.
     }
 
-    /// Directly access the [`StoreDb`] for the selected recording
-    pub fn current_recording(&self) -> Option<&StoreDb> {
+    /// Directly access the [`EntityDb`] for the selected recording
+    pub fn current_recording(&self) -> Option<&EntityDb> {
         self.selected_rec_id
             .as_ref()
             .and_then(|id| self.store_bundle.recording(id))
@@ -328,7 +328,7 @@ impl StoreHub {
 
             let with_notifications = false;
             if let Some(mut bundle) = load_blueprint_file(&blueprint_path, with_notifications) {
-                for store in bundle.drain_store_dbs() {
+                for store in bundle.drain_entity_dbs() {
                     if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id)
                     {
                         if !is_valid_blueprint(&store) {
@@ -370,11 +370,11 @@ impl StoreHub {
             .and_then(|blueprint_id| self.store_bundle.blueprint(blueprint_id));
 
         let blueprint_stats = blueprint
-            .map(|store_db| DataStoreStats::from_store(store_db.store()))
+            .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
             .unwrap_or_default();
 
         let blueprint_config = blueprint
-            .map(|store_db| store_db.store().config().clone())
+            .map(|entity_db| entity_db.store().config().clone())
             .unwrap_or_default();
 
         let recording = self
@@ -383,11 +383,11 @@ impl StoreHub {
             .and_then(|rec_id| self.store_bundle.recording(rec_id));
 
         let recording_stats = recording
-            .map(|store_db| DataStoreStats::from_store(store_db.store()))
+            .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
             .unwrap_or_default();
 
         let recording_config = recording
-            .map(|store_db| store_db.store().config().clone())
+            .map(|entity_db| entity_db.store().config().clone())
             .unwrap_or_default();
 
         StoreHubStats {
@@ -405,14 +405,14 @@ pub enum StoreLoadError {
     Decode(#[from] re_log_encoding::decoder::DecodeError),
 
     #[error(transparent)]
-    DataStore(#[from] re_data_store::Error),
+    DataStore(#[from] re_entity_db::Error),
 }
 
-/// Stores many [`StoreDb`]s of recordings and blueprints.
+/// Stores many [`EntityDb`]s of recordings and blueprints.
 #[derive(Default)]
 pub struct StoreBundle {
     // TODO(emilk): two separate maps per [`StoreKind`].
-    store_dbs: ahash::HashMap<StoreId, StoreDb>,
+    entity_dbs: ahash::HashMap<StoreId, EntityDb>,
 }
 
 impl StoreBundle {
@@ -430,37 +430,37 @@ impl StoreBundle {
 
         for msg in decoder {
             let msg = msg?;
-            slf.store_db_entry(msg.store_id()).add(&msg)?;
+            slf.entity_db_entry(msg.store_id()).add(&msg)?;
         }
         Ok(slf)
     }
 
-    /// Returns either a recording or blueprint [`StoreDb`].
+    /// Returns either a recording or blueprint [`EntityDb`].
     /// One is created if it doesn't already exist.
-    pub fn store_db_entry(&mut self, id: &StoreId) -> &mut StoreDb {
-        self.store_dbs
+    pub fn entity_db_entry(&mut self, id: &StoreId) -> &mut EntityDb {
+        self.entity_dbs
             .entry(id.clone())
-            .or_insert_with(|| StoreDb::new(id.clone()))
+            .or_insert_with(|| EntityDb::new(id.clone()))
     }
 
-    /// All loaded [`StoreDb`], both recordings and blueprints, in arbitrary order.
-    pub fn store_dbs(&self) -> impl Iterator<Item = &StoreDb> {
-        self.store_dbs.values()
+    /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
+    pub fn entity_dbs(&self) -> impl Iterator<Item = &EntityDb> {
+        self.entity_dbs.values()
     }
 
-    /// All loaded [`StoreDb`], both recordings and blueprints, in arbitrary order.
-    pub fn store_dbs_mut(&mut self) -> impl Iterator<Item = &mut StoreDb> {
-        self.store_dbs.values_mut()
+    /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
+    pub fn entity_dbs_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
+        self.entity_dbs.values_mut()
     }
 
     pub fn append(&mut self, mut other: Self) {
-        for (id, store_db) in other.store_dbs.drain() {
-            self.store_dbs.insert(id, store_db);
+        for (id, entity_db) in other.entity_dbs.drain() {
+            self.entity_dbs.insert(id, entity_db);
         }
     }
 
     pub fn remove(&mut self, id: &StoreId) {
-        self.store_dbs.remove(id);
+        self.entity_dbs.remove(id);
     }
 
     /// Returns the closest "neighbor" recording to the given id.
@@ -470,7 +470,7 @@ impl StoreBundle {
     /// is deleted.
     pub fn find_closest_recording(&self, id: &StoreId) -> Option<&StoreId> {
         let mut recs = self.recordings().collect_vec();
-        recs.sort_by_key(|store_db| store_db.sort_key());
+        recs.sort_by_key(|entity_db| entity_db.sort_key());
 
         let cur_pos = recs.iter().position(|rec| rec.store_id() == id);
 
@@ -487,62 +487,64 @@ impl StoreBundle {
         }
     }
 
-    /// Returns the [`StoreId`] of the oldest modified recording, according to [`StoreDb::last_modified_at`].
+    /// Returns the [`StoreId`] of the oldest modified recording, according to [`EntityDb::last_modified_at`].
     pub fn find_oldest_modified_recording(&self) -> Option<&StoreId> {
-        let mut store_dbs = self
-            .store_dbs
+        let mut entity_dbs = self
+            .entity_dbs
             .values()
             .filter(|db| db.store_kind() == StoreKind::Recording)
             .collect_vec();
 
-        store_dbs.sort_by_key(|db| db.last_modified_at());
+        entity_dbs.sort_by_key(|db| db.last_modified_at());
 
-        store_dbs.first().map(|db| db.store_id())
+        entity_dbs.first().map(|db| db.store_id())
     }
 
     // --
 
     pub fn contains_recording(&self, id: &StoreId) -> bool {
         debug_assert_eq!(id.kind, StoreKind::Recording);
-        self.store_dbs.contains_key(id)
+        self.entity_dbs.contains_key(id)
     }
 
-    pub fn recording(&self, id: &StoreId) -> Option<&StoreDb> {
+    pub fn recording(&self, id: &StoreId) -> Option<&EntityDb> {
         debug_assert_eq!(id.kind, StoreKind::Recording);
-        self.store_dbs.get(id)
+        self.entity_dbs.get(id)
     }
 
-    pub fn recording_mut(&mut self, id: &StoreId) -> Option<&mut StoreDb> {
+    pub fn recording_mut(&mut self, id: &StoreId) -> Option<&mut EntityDb> {
         debug_assert_eq!(id.kind, StoreKind::Recording);
-        self.store_dbs.get_mut(id)
+        self.entity_dbs.get_mut(id)
     }
 
     /// Creates one if it doesn't exist.
-    pub fn recording_entry(&mut self, id: &StoreId) -> &mut StoreDb {
+    pub fn recording_entry(&mut self, id: &StoreId) -> &mut EntityDb {
         debug_assert_eq!(id.kind, StoreKind::Recording);
-        self.store_dbs
+        self.entity_dbs
             .entry(id.clone())
-            .or_insert_with(|| StoreDb::new(id.clone()))
+            .or_insert_with(|| EntityDb::new(id.clone()))
     }
 
-    pub fn insert_recording(&mut self, store_db: StoreDb) {
-        debug_assert_eq!(store_db.store_kind(), StoreKind::Recording);
-        self.store_dbs.insert(store_db.store_id().clone(), store_db);
+    pub fn insert_recording(&mut self, entity_db: EntityDb) {
+        debug_assert_eq!(entity_db.store_kind(), StoreKind::Recording);
+        self.entity_dbs
+            .insert(entity_db.store_id().clone(), entity_db);
     }
 
-    pub fn insert_blueprint(&mut self, store_db: StoreDb) {
-        debug_assert_eq!(store_db.store_kind(), StoreKind::Blueprint);
-        self.store_dbs.insert(store_db.store_id().clone(), store_db);
+    pub fn insert_blueprint(&mut self, entity_db: EntityDb) {
+        debug_assert_eq!(entity_db.store_kind(), StoreKind::Blueprint);
+        self.entity_dbs
+            .insert(entity_db.store_id().clone(), entity_db);
     }
 
-    pub fn recordings(&self) -> impl Iterator<Item = &StoreDb> {
-        self.store_dbs
+    pub fn recordings(&self) -> impl Iterator<Item = &EntityDb> {
+        self.entity_dbs
             .values()
             .filter(|log| log.store_kind() == StoreKind::Recording)
     }
 
-    pub fn blueprints(&self) -> impl Iterator<Item = &StoreDb> {
-        self.store_dbs
+    pub fn blueprints(&self) -> impl Iterator<Item = &EntityDb> {
+        self.entity_dbs
             .values()
             .filter(|log| log.store_kind() == StoreKind::Blueprint)
     }
@@ -551,29 +553,29 @@ impl StoreBundle {
 
     pub fn contains_blueprint(&self, id: &StoreId) -> bool {
         debug_assert_eq!(id.kind, StoreKind::Blueprint);
-        self.store_dbs.contains_key(id)
+        self.entity_dbs.contains_key(id)
     }
 
-    pub fn blueprint(&self, id: &StoreId) -> Option<&StoreDb> {
+    pub fn blueprint(&self, id: &StoreId) -> Option<&EntityDb> {
         debug_assert_eq!(id.kind, StoreKind::Blueprint);
-        self.store_dbs.get(id)
+        self.entity_dbs.get(id)
     }
 
-    pub fn blueprint_mut(&mut self, id: &StoreId) -> Option<&mut StoreDb> {
+    pub fn blueprint_mut(&mut self, id: &StoreId) -> Option<&mut EntityDb> {
         debug_assert_eq!(id.kind, StoreKind::Blueprint);
-        self.store_dbs.get_mut(id)
+        self.entity_dbs.get_mut(id)
     }
 
     /// Creates one if it doesn't exist.
-    pub fn blueprint_entry(&mut self, id: &StoreId) -> &mut StoreDb {
+    pub fn blueprint_entry(&mut self, id: &StoreId) -> &mut EntityDb {
         debug_assert_eq!(id.kind, StoreKind::Blueprint);
 
-        self.store_dbs.entry(id.clone()).or_insert_with(|| {
+        self.entity_dbs.entry(id.clone()).or_insert_with(|| {
             // TODO(jleibs): If the blueprint doesn't exist this probably means we are
             // initializing a new default-blueprint for the application in question.
             // Make sure it's marked as a blueprint.
 
-            let mut blueprint_db = StoreDb::new(id.clone());
+            let mut blueprint_db = EntityDb::new(id.clone());
 
             blueprint_db.set_store_info(re_log_types::SetStoreInfo {
                 row_id: re_log_types::RowId::new(),
@@ -594,10 +596,10 @@ impl StoreBundle {
     // --
 
     pub fn purge_empty(&mut self) {
-        self.store_dbs.retain(|_, store_db| !store_db.is_empty());
+        self.entity_dbs.retain(|_, entity_db| !entity_db.is_empty());
     }
 
-    pub fn drain_store_dbs(&mut self) -> impl Iterator<Item = StoreDb> + '_ {
-        self.store_dbs.drain().map(|(_, store)| store)
+    pub fn drain_entity_dbs(&mut self) -> impl Iterator<Item = EntityDb> + '_ {
+        self.entity_dbs.drain().map(|(_, store)| store)
     }
 }

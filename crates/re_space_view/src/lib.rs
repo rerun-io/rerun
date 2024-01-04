@@ -16,7 +16,7 @@ pub use unreachable_transform_reason::UnreachableTransformReason;
 
 // -----------
 
-use re_data_store::external::re_arrow_store;
+use re_entity_db::external::re_arrow_store;
 
 /// Utility for implementing [`re_viewer_context::VisualizerAdditionalApplicabilityFilter`] using on the properties of a concrete component.
 #[inline]

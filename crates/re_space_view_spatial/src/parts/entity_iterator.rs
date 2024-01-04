@@ -1,4 +1,4 @@
-use re_data_store::EntityProperties;
+use re_entity_db::EntityProperties;
 use re_log_types::EntityPath;
 use re_query::{query_archetype_with_history, ArchetypeView, QueryError};
 use re_renderer::DepthOffset;
@@ -52,7 +52,7 @@ where
             } else {
                 transforms.reference_from_entity_ignoring_pinhole(
                     &data_result.entity_path,
-                    ctx.store_db.store(),
+                    ctx.entity_db.store(),
                     &query.latest_at_query(),
                 )
             };
@@ -75,7 +75,7 @@ where
         };
 
         match query_archetype_with_history::<A, N>(
-            ctx.store_db.store(),
+            ctx.entity_db.store(),
             &query.timeline,
             &query.latest_at,
             &data_result.accumulated_properties().visible_history,

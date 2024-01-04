@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 
 use egui::{NumExt as _, Response, Ui};
 
-use re_data_store::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
+use re_entity_db::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
 use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
@@ -54,7 +54,7 @@ fn has_visible_history(
     }
 
     if let Some(entity_path) = entity_path {
-        let store = ctx.store_db.store();
+        let store = ctx.entity_db.store();
         let component_names = store.all_components(time_ctrl.timeline(), entity_path);
         if let Some(component_names) = component_names {
             if !component_names
@@ -112,7 +112,8 @@ pub fn visible_history_ui(
                 });
         });
 
-        let timeline_spec = if let Some(times) = ctx.store_db.time_histogram(time_ctrl.timeline()) {
+        let timeline_spec = if let Some(times) = ctx.entity_db.time_histogram(time_ctrl.timeline())
+        {
             TimelineSpec::from_time_histogram(times)
         } else {
             TimelineSpec::from_time_range(0..=0)

@@ -1,4 +1,4 @@
-use re_data_store::{EntityPath, InstancePathHash};
+use re_entity_db::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::LineStripFlags;
 use re_types::{

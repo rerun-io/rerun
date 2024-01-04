@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use re_data_store::VersionedInstancePathHash;
+use re_entity_db::VersionedInstancePathHash;
 use re_renderer::RenderContext;
 use re_types::components::MediaType;
 use re_viewer_context::Cache;
