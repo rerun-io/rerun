@@ -4,13 +4,14 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use arrow2::array::{Array as _, StructArray, UnionArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
+use itertools::Itertools;
 use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery,
     RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
-    build_frame_nr, DataCell, DataRow, DataTable, EntityPath, RowId, TableId, TimePoint, TimeType,
-    Timeline,
+    build_frame_nr, DataCell, DataReadResult, DataRow, DataTable, EntityPath, RowId, TableId,
+    TimePoint, TimeType, Timeline,
 };
 use re_types::datagen::build_some_instances;
 use re_types::{
@@ -71,23 +72,23 @@ fn insert(c: &mut Criterion) {
         ));
 
         let table = build_table_with_packed(packed);
+        let rows = table.to_rows().collect_vec();
 
         // Default config
         group.bench_function("default", |b| {
-            b.iter(|| insert_table(Default::default(), InstanceKey::name(), &table));
+            b.iter(|| insert_rows(Default::default(), &rows));
         });
 
         // Emulate more or less buckets
         for &num_rows_per_bucket in num_rows_per_bucket() {
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
-                    insert_table(
+                    insert_rows(
                         DataStoreConfig {
                             indexed_bucket_num_rows: num_rows_per_bucket,
                             ..Default::default()
                         },
-                        InstanceKey::name(),
-                        &table,
+                        &rows,
                     )
                 });
             });
@@ -151,10 +152,11 @@ fn latest_at(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
         let table = build_table_with_packed(packed);
+        let rows = table.to_rows().collect_vec();
 
         // Default config
         group.bench_function("default", |b| {
-            let store = insert_table(Default::default(), InstanceKey::name(), &table);
+            let store = insert_rows(Default::default(), &rows);
             b.iter(|| {
                 let cells = latest_data_at(&store, LargeStruct::name(), &[LargeStruct::name()]);
                 let large_structs = cells[0]
@@ -170,13 +172,12 @@ fn latest_at(c: &mut Criterion) {
 
         // Emulate more or less buckets
         for &num_rows_per_bucket in num_rows_per_bucket() {
-            let store = insert_table(
+            let store = insert_rows(
                 DataStoreConfig {
                     indexed_bucket_num_rows: num_rows_per_bucket,
                     ..Default::default()
                 },
-                InstanceKey::name(),
-                &table,
+                &rows,
             );
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
@@ -203,9 +204,10 @@ fn latest_at_missing(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
         let table = build_table_with_packed(packed);
+        let rows = table.to_rows().collect_vec();
 
         // Default config
-        let store = insert_table(Default::default(), InstanceKey::name(), &table);
+        let store = insert_rows(Default::default(), &rows);
         group.bench_function("primary/default", |b| {
             b.iter(|| {
                 let results = latest_data_at(
@@ -235,13 +237,12 @@ fn latest_at_missing(c: &mut Criterion) {
 
         // Emulate more or less buckets
         for &num_rows_per_bucket in num_rows_per_bucket() {
-            let store = insert_table(
+            let store = insert_rows(
                 DataStoreConfig {
                     indexed_bucket_num_rows: num_rows_per_bucket,
                     ..Default::default()
                 },
-                InstanceKey::name(),
-                &table,
+                &rows,
             );
             group.bench_function(format!("primary/bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
@@ -283,21 +284,21 @@ fn range(c: &mut Criterion) {
         ));
 
         let table = build_table_with_packed(packed);
+        let rows = table.to_rows().collect_vec();
 
         // Default config
         group.bench_function("default", |b| {
-            b.iter(|| insert_table(Default::default(), InstanceKey::name(), &table));
+            b.iter(|| insert_rows(Default::default(), &rows));
         });
 
         // Emulate more or less buckets
         for &num_rows_per_bucket in num_rows_per_bucket() {
-            let store = insert_table(
+            let store = insert_rows(
                 DataStoreConfig {
                     indexed_bucket_num_rows: num_rows_per_bucket,
                     ..Default::default()
                 },
-                InstanceKey::name(),
-                &table,
+                &rows,
             );
             group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
                 b.iter(|| {
@@ -330,10 +331,11 @@ fn gc(c: &mut Criterion) {
     ));
 
     let table = build_table_with_packed(false);
+    let rows = table.to_rows().collect_vec();
 
     // Default config
     group.bench_function("default", |b| {
-        let store = insert_table(Default::default(), InstanceKey::name(), &table);
+        let store = insert_rows(Default::default(), &rows);
         b.iter(|| {
             let mut store = store.clone();
             let (_, stats_diff) = store.gc(&GarbageCollectionOptions {
@@ -352,13 +354,12 @@ fn gc(c: &mut Criterion) {
     // Emulate more or less bucket
     for &num_rows_per_bucket in num_rows_per_bucket() {
         group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
-            let store = insert_table(
+            let store = insert_rows(
                 DataStoreConfig {
                     indexed_bucket_num_rows: num_rows_per_bucket,
                     ..Default::default()
                 },
-                InstanceKey::name(),
-                &table,
+                &rows,
             );
             b.iter(|| {
                 let mut store = store.clone();
@@ -434,18 +435,16 @@ fn build_table_ex(
     table
 }
 
-fn insert_table(
-    config: DataStoreConfig,
-    cluster_key: ComponentName,
-    table: &DataTable,
-) -> DataStore {
+fn insert_rows(config: DataStoreConfig, rows: &[DataReadResult<DataRow>]) -> DataStore {
+    let cluster_key = InstanceKey::name();
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         cluster_key,
         config,
     );
-    for row in table.to_rows() {
-        store.insert_row(&row.unwrap()).unwrap();
+    for row_result in rows {
+        let row = row_result.as_ref().unwrap();
+        store.insert_row(row).unwrap();
     }
     store
 }
