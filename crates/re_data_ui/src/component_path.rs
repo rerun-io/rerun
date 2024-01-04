@@ -9,7 +9,7 @@ impl DataUi for ComponentPath {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         let Self {
             entity_path,

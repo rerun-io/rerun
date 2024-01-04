@@ -1,6 +1,6 @@
 use nohash_hasher::IntMap;
 
-use re_arrow_store::LatestAtQuery;
+use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityPropertyMap, EntityTree};
 use re_space_view::UnreachableTransformReason;
 use re_types::{
@@ -185,7 +185,7 @@ impl TransformContext {
     fn gather_descendants_transforms(
         &mut self,
         tree: &EntityTree,
-        data_store: &re_arrow_store::DataStore,
+        data_store: &re_data_store::DataStore,
         query: &LatestAtQuery,
         entity_properties: &EntityPropertyMap,
         reference_from_entity: glam::Affine3A,
@@ -256,7 +256,7 @@ impl TransformContext {
     pub fn reference_from_entity_ignoring_pinhole(
         &self,
         ent_path: &EntityPath,
-        store: &re_arrow_store::DataStore,
+        store: &re_data_store::DataStore,
         query: &LatestAtQuery,
     ) -> Option<glam::Affine3A> {
         let transform_info = self.transform_per_entity.get(ent_path)?;
@@ -297,7 +297,7 @@ impl TransformContext {
 
 fn transform_at(
     entity_path: &EntityPath,
-    store: &re_arrow_store::DataStore,
+    store: &re_data_store::DataStore,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,

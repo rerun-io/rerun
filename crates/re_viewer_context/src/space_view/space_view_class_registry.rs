@@ -1,5 +1,5 @@
 use ahash::{HashMap, HashSet};
-use re_arrow_store::DataStore;
+use re_data_store::DataStore;
 
 use crate::{
     ApplicableEntities, DynSpaceViewClass, IdentifiedViewSystem, IndicatorMatchingEntities,
@@ -151,7 +151,7 @@ struct VisualizerTypeRegistryEntry {
     used_by: HashSet<SpaceViewClassIdentifier>,
 
     /// Handle to subscription of [`VisualizerEntitySubscriber`] for this visualizer.
-    entity_subscriber_handle: re_arrow_store::StoreSubscriberHandle,
+    entity_subscriber_handle: re_data_store::StoreSubscriberHandle,
 }
 
 impl Drop for VisualizerTypeRegistryEntry {

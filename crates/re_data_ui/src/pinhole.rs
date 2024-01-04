@@ -9,7 +9,7 @@ impl DataUi for PinholeProjection {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         if verbosity == UiVerbosity::Small {
             // See if this is a trivial pinhole, and can be displayed as such:
@@ -38,7 +38,7 @@ impl DataUi for Resolution {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        _query: &re_data_store::LatestAtQuery,
     ) {
         let [x, y] = self.0 .0;
         ui.monospace(format!("{x}x{y}"));

@@ -772,8 +772,8 @@ fn collapsed_time_marker_and_time(
     time_ctrl: &mut TimeControl,
 ) {
     let space_needed_for_current_time = match time_ctrl.timeline().typ() {
-        re_arrow_store::TimeType::Time => 220.0,
-        re_arrow_store::TimeType::Sequence => 100.0,
+        re_data_store::TimeType::Time => 220.0,
+        re_data_store::TimeType::Sequence => 100.0,
     };
 
     {
@@ -862,7 +862,7 @@ fn help_button(ui: &mut egui::Ui) {
 /// This functions returns `true` iff the given time is safe to show.
 fn is_time_safe_to_show(
     entity_db: &re_entity_db::EntityDb,
-    timeline: &re_arrow_store::Timeline,
+    timeline: &re_data_store::Timeline,
     time: TimeReal,
 ) -> bool {
     if entity_db.num_timeless_messages() == 0 {
@@ -872,8 +872,8 @@ fn is_time_safe_to_show(
     if let Some(times) = entity_db.tree().subtree.time_histogram.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
-                re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),
-                re_arrow_store::TimeType::Sequence => TimeInt::from_sequence(1_000),
+                re_data_store::TimeType::Time => TimeInt::from_seconds(10_000),
+                re_data_store::TimeType::Sequence => TimeInt::from_sequence(1_000),
             };
 
             return TimeInt::from(first_time) <= time + margin;

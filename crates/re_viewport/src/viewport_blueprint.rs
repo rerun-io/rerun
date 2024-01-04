@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ahash::{HashMap, HashSet};
 use egui_tiles::{SimplificationOptions, TileId};
-use re_arrow_store::LatestAtQuery;
+use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_log_types::Timeline;
 use re_query::query_archetype;

@@ -210,7 +210,7 @@ impl VisualizerSystem for CamerasVisualizer {
         let store = ctx.entity_db.store();
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
+            let time_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(pinhole) = query_pinhole(store, &time_query, &data_result.entity_path) {
                 let entity_highlight = query

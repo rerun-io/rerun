@@ -32,7 +32,7 @@ impl DataUi for EntityComponentWithInstances {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         re_tracing::profile_function!(self.component_name().full_name());
 

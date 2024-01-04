@@ -60,7 +60,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         let transforms = view_ctx.get::<TransformContext>()?;
 
         let store = ctx.entity_db.store();
-        let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
+        let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             if store
                 .query_latest_component::<Transform3D>(&data_result.entity_path, &latest_at_query)

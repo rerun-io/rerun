@@ -12,7 +12,7 @@ impl DataUi for IncludedQueries {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        _query: &re_data_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small => {
@@ -36,7 +36,7 @@ impl<T: BlueprintIdRegistry> DataUi for BlueprintId<T> {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        _query: &re_data_store::LatestAtQuery,
     ) {
         entity_path_button_to(ctx, ui, None, &self.as_entity_path(), self.to_string());
     }

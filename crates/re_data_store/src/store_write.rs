@@ -547,7 +547,7 @@ impl IndexedBucket {
     /// Run the following command to display a visualization of the store's internal
     /// datastructures and better understand how everything fits together:
     /// ```text
-    /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
+    /// cargo test -p re_data_store -- --nocapture datastore_internal_repr
     /// ```
     fn split(&self) -> Option<(TimeInt, Self)> {
         let Self {

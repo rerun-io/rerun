@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use itertools::Itertools;
 
-use re_arrow_store::{LatestAtQuery, Timeline};
+use re_data_store::{LatestAtQuery, Timeline};
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathFilter;
 use re_space_view::{DataQuery as _, DataQueryBlueprint};
@@ -119,7 +119,7 @@ pub fn all_possible_space_views(
 }
 
 fn is_interesting_space_view_at_root(
-    _data_store: &re_arrow_store::DataStore,
+    _data_store: &re_data_store::DataStore,
     query_results: &DataQueryResult,
 ) -> bool {
     if let Some(root) = query_results.tree.root_node() {
@@ -156,7 +156,7 @@ fn is_interesting_space_view_at_root(
 }
 
 fn is_interesting_space_view_not_at_root(
-    store: &re_arrow_store::DataStore,
+    store: &re_data_store::DataStore,
     candidate: &SpaceViewBlueprint,
     classes_with_interesting_roots: &[SpaceViewClassIdentifier],
     query: &LatestAtQuery,

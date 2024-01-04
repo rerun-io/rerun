@@ -45,8 +45,8 @@ use re_viewer_context::{
 /// TODO(andreas): It should be possible to convert `re_query::ArchetypeView` to its corresponding Archetype for situations like this.
 /// TODO(andreas): This is duplicated into `re_space_view_spatial`
 fn query_pinhole(
-    store: &re_arrow_store::DataStore,
-    query: &re_arrow_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
+    query: &re_data_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<re_types::archetypes::Pinhole> {
     store

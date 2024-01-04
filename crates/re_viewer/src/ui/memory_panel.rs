@@ -1,4 +1,4 @@
-use re_arrow_store::{DataStoreConfig, DataStoreRowStats, DataStoreStats};
+use re_data_store::{DataStoreConfig, DataStoreRowStats, DataStoreStats};
 use re_format::{format_bytes, format_number};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_renderer::WgpuResourcePoolStatistics;

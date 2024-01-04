@@ -1,4 +1,4 @@
-use re_arrow_store::TimeRange;
+use re_data_store::TimeRange;
 use re_entity_db::EntityPath;
 use re_log_types::RowId;
 use re_query::range_archetype;
@@ -64,7 +64,7 @@ impl VisualizerSystem for TextLogSystem {
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             // We want everything, for all times:
             let timeline_query =
-                re_arrow_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
+                re_data_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
 
             let arch_views = range_archetype::<TextLog, { TextLog::NUM_COMPONENTS }>(
                 store,

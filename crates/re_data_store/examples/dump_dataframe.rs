@@ -1,10 +1,10 @@
 //! Demonstrates usage of [`DataStore::to_dataframe`].
 //!
 //! ```text
-//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_arrow_store --example dump_dataframe
+//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_data_store --example dump_dataframe
 //! ```
 
-use re_arrow_store::{test_row, DataStore};
+use re_data_store::{test_row, DataStore};
 use re_log_types::{build_frame_nr, build_log_time, EntityPath, Time};
 use re_types::datagen::{build_some_instances, build_some_instances_from, build_some_positions2d};
 use re_types::{components::InstanceKey, testing::build_some_large_structs};

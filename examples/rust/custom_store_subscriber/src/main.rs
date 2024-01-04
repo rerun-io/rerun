@@ -13,7 +13,7 @@
 use std::collections::BTreeMap;
 
 use rerun::{
-    external::{anyhow, re_arrow_store, re_build_info, re_log, re_log_types::TimeRange, tokio},
+    external::{anyhow, re_build_info, re_data_store, re_log, re_log_types::TimeRange, tokio},
     time::TimeInt,
     ComponentName, EntityPath, StoreEvent, StoreId, StoreSubscriber, Timeline,
 };
@@ -22,7 +22,7 @@ use rerun::{
 async fn main() -> anyhow::Result<std::process::ExitCode> {
     re_log::setup_native_logging();
 
-    let _handle = re_arrow_store::DataStore::register_subscriber(Box::<Orchestrator>::default());
+    let _handle = re_data_store::DataStore::register_subscriber(Box::<Orchestrator>::default());
     // Could use the returned handle to get a reference to the view if needed.
 
     let build_info = re_build_info::build_info!();

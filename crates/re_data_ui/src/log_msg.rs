@@ -10,7 +10,7 @@ impl DataUi for LogMsg {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         match self {
             LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query),
@@ -25,7 +25,7 @@ impl DataUi for SetStoreInfo {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        _query: &re_data_store::LatestAtQuery,
     ) {
         ui.code("SetStoreInfo");
         let SetStoreInfo { row_id: _, info } = self;
@@ -72,7 +72,7 @@ impl DataUi for ArrowMsg {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         let table = match DataTable::from_arrow_msg(self) {
             Ok(table) => table,

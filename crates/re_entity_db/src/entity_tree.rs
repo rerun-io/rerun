@@ -4,7 +4,7 @@ use ahash::HashSet;
 use itertools::Itertools;
 
 use nohash_hasher::IntMap;
-use re_arrow_store::{StoreDiff, StoreDiffKind, StoreEvent, StoreSubscriber};
+use re_data_store::{StoreDiff, StoreDiffKind, StoreEvent, StoreSubscriber};
 use re_log_types::{
     ComponentPath, EntityPath, EntityPathHash, EntityPathPart, RowId, TimeInt, TimePoint, Timeline,
 };
@@ -12,13 +12,13 @@ use re_types_core::{ComponentName, Loggable};
 
 // Used all over in docstrings.
 #[allow(unused_imports)]
-use re_arrow_store::DataStore;
+use re_data_store::DataStore;
 
 use crate::TimeHistogramPerTimeline;
 
 // ----------------------------------------------------------------------------
 
-/// A recursive, manually updated [`re_arrow_store::StoreSubscriber`] that maintains the entity hierarchy.
+/// A recursive, manually updated [`re_data_store::StoreSubscriber`] that maintains the entity hierarchy.
 ///
 /// The tree contains a list of subtrees, and so on recursively.
 pub struct EntityTree {

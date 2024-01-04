@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
 use rand::Rng;
 
-use re_arrow_store::{
+use re_data_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
     GarbageCollectionOptions, LatestAtQuery, WriteError,
 };
@@ -291,7 +291,7 @@ fn write_errors() {
 fn latest_at_emptiness_edge_cases() {
     init_logs();
 
-    for config in re_arrow_store::test_util::all_configs() {
+    for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
@@ -421,7 +421,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 fn range_join_across_single_row() {
     init_logs();
 
-    for config in re_arrow_store::test_util::all_configs() {
+    for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
@@ -437,7 +437,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
         prelude::{DataFrame, JoinType},
         series::Series,
     };
-    use re_arrow_store::ArrayExt as _;
+    use re_data_store::ArrayExt as _;
     use re_types::components::{Color, Position2D};
 
     let ent_path = EntityPath::from("this/that");
@@ -449,12 +449,12 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     store.insert_row(&row).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = re_arrow_store::RangeQuery::new(
+    let query = re_data_store::RangeQuery::new(
         timeline_frame_nr,
-        re_arrow_store::TimeRange::new(i64::MIN.into(), i64::MAX.into()),
+        re_data_store::TimeRange::new(i64::MIN.into(), i64::MAX.into()),
     );
     let components = [InstanceKey::name(), Position2D::name(), Color::name()];
-    let dfs = re_arrow_store::polars_util::range_components(
+    let dfs = re_data_store::polars_util::range_components(
         store,
         &query,
         &ent_path,
@@ -584,7 +584,7 @@ fn gc_metadata_size() -> anyhow::Result<()> {
 
         for _ in 0..2 {
             _ = store.gc(&GarbageCollectionOptions {
-                target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
+                target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
                 gc_timeless: false,
                 protect_latest: 1,
                 purge_empty_tables: false,
@@ -593,7 +593,7 @@ fn gc_metadata_size() -> anyhow::Result<()> {
                 time_budget: std::time::Duration::MAX,
             });
             _ = store.gc(&GarbageCollectionOptions {
-                target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
+                target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
                 gc_timeless: false,
                 protect_latest: 1,
                 purge_empty_tables: false,
@@ -623,7 +623,7 @@ pub fn init_logs() {
 fn entity_min_time_correct() -> anyhow::Result<()> {
     init_logs();
 
-    for config in re_arrow_store::test_util::all_configs() {
+    for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),

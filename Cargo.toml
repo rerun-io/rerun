@@ -28,7 +28,7 @@ version = "0.12.0-alpha.3"
 # In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
 re_analytics = { path = "crates/re_analytics", version = "=0.12.0-alpha.3", default-features = false }
-re_arrow_store = { path = "crates/re_arrow_store", version = "=0.12.0-alpha.3", default-features = false }
+re_data_store = { path = "crates/re_data_store", version = "=0.12.0-alpha.3", default-features = false }
 re_build_examples = { path = "crates/re_build_examples", version = "=0.12.0-alpha.3", default-features = false }
 re_build_info = { path = "crates/re_build_info", version = "=0.12.0-alpha.3", default-features = false }
 re_build_tools = { path = "crates/re_build_tools", version = "=0.12.0-alpha.3", default-features = false }

@@ -1267,7 +1267,7 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Fix arrows requiring a radius to be visible [#1720](https://github.com/rerun-io/rerun/pull/1720)
 
 #### 🚀 Performance Improvements
-- Add re_arrow_store profile scopes [#1546](https://github.com/rerun-io/rerun/pull/1546)
+- Add re_data_store profile scopes [#1546](https://github.com/rerun-io/rerun/pull/1546)
 - datastore: early exit missing components at table level [#1554](https://github.com/rerun-io/rerun/pull/1554)
 - datastore: track bucket count in store stats & mem panel [#1555](https://github.com/rerun-io/rerun/pull/1555)
 - LogDb: dont split on index bucket size [#1558](https://github.com/rerun-io/rerun/pull/1558)

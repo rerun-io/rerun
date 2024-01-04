@@ -4496,38 +4496,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_arrow_store"
-version = "0.12.0-alpha.3"
-dependencies = [
- "ahash 0.8.6",
- "anyhow",
- "arrow2",
- "criterion",
- "document-features",
- "indent",
- "itertools 0.12.0",
- "mimalloc",
- "nohash-hasher",
- "once_cell",
- "parking_lot 0.12.1",
- "polars-core",
- "polars-ops",
- "rand",
- "re_error",
- "re_format",
- "re_log",
- "re_log_types",
- "re_tracing",
- "re_types",
- "re_types_core",
- "similar-asserts",
- "smallvec",
- "thiserror",
- "tinyvec",
- "web-time",
-]
-
-[[package]]
 name = "re_build_examples"
 version = "0.12.0-alpha.3"
 dependencies = [
@@ -4605,6 +4573,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_data_store"
+version = "0.12.0-alpha.3"
+dependencies = [
+ "ahash 0.8.6",
+ "anyhow",
+ "arrow2",
+ "criterion",
+ "document-features",
+ "indent",
+ "itertools 0.12.0",
+ "mimalloc",
+ "nohash-hasher",
+ "once_cell",
+ "parking_lot 0.12.1",
+ "polars-core",
+ "polars-ops",
+ "rand",
+ "re_error",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "similar-asserts",
+ "smallvec",
+ "thiserror",
+ "tinyvec",
+ "web-time",
+]
+
+[[package]]
 name = "re_data_ui"
 version = "0.12.0-alpha.3"
 dependencies = [
@@ -4616,7 +4616,7 @@ dependencies = [
  "egui_plot",
  "image",
  "itertools 0.12.0",
- "re_arrow_store",
+ "re_data_store",
  "re_entity_db",
  "re_error",
  "re_format",
@@ -4647,7 +4647,7 @@ dependencies = [
  "nohash-hasher",
  "parking_lot 0.12.1",
  "rand",
- "re_arrow_store",
+ "re_data_store",
  "re_format",
  "re_int_histogram",
  "re_log",
@@ -4801,7 +4801,7 @@ dependencies = [
  "mimalloc",
  "polars-core",
  "rand",
- "re_arrow_store",
+ "re_data_store",
  "re_entity_db",
  "re_format",
  "re_log",
@@ -4913,9 +4913,9 @@ dependencies = [
  "once_cell",
  "parking_lot 0.12.1",
  "rand",
- "re_arrow_store",
  "re_build_info",
  "re_build_tools",
+ "re_data_store",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -4980,7 +4980,7 @@ version = "0.12.0-alpha.3"
 dependencies = [
  "egui",
  "egui_plot",
- "re_arrow_store",
+ "re_data_store",
  "re_entity_db",
  "re_log",
  "re_log_types",
@@ -4999,7 +4999,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "itertools 0.12.0",
- "re_arrow_store",
+ "re_data_store",
  "re_data_ui",
  "re_entity_db",
  "re_log",
@@ -5028,7 +5028,7 @@ dependencies = [
  "nohash-hasher",
  "parking_lot 0.12.1",
  "rayon",
- "re_arrow_store",
+ "re_data_store",
  "re_data_ui",
  "re_entity_db",
  "re_error",
@@ -5056,7 +5056,7 @@ dependencies = [
  "egui",
  "half 2.3.1",
  "ndarray",
- "re_arrow_store",
+ "re_data_store",
  "re_data_ui",
  "re_entity_db",
  "re_log",
@@ -5079,7 +5079,7 @@ dependencies = [
  "egui",
  "egui_commonmark",
  "itertools 0.12.0",
- "re_arrow_store",
+ "re_data_store",
  "re_log",
  "re_query",
  "re_renderer",
@@ -5096,7 +5096,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "itertools 0.12.0",
- "re_arrow_store",
+ "re_data_store",
  "re_data_ui",
  "re_entity_db",
  "re_log",
@@ -5116,7 +5116,7 @@ dependencies = [
  "egui",
  "egui_plot",
  "itertools 0.12.0",
- "re_arrow_store",
+ "re_data_store",
  "re_format",
  "re_log_types",
  "re_query",
@@ -5145,7 +5145,7 @@ version = "0.12.0-alpha.3"
 dependencies = [
  "egui",
  "itertools 0.12.0",
- "re_arrow_store",
+ "re_data_store",
  "re_data_ui",
  "re_entity_db",
  "re_format",
@@ -5297,10 +5297,10 @@ dependencies = [
  "once_cell",
  "poll-promise",
  "re_analytics",
- "re_arrow_store",
  "re_build_info",
  "re_build_tools",
  "re_data_source",
+ "re_data_store",
  "re_data_ui",
  "re_entity_db",
  "re_error",
@@ -5358,8 +5358,8 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot 0.12.1",
- "re_arrow_store",
  "re_data_source",
+ "re_data_store",
  "re_entity_db",
  "re_log",
  "re_log_types",
@@ -5391,7 +5391,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "rayon",
- "re_arrow_store",
+ "re_data_store",
  "re_data_ui",
  "re_entity_db",
  "re_log",

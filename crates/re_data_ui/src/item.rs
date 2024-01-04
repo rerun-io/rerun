@@ -8,7 +8,7 @@ impl DataUi for Item {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         match self {
             Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => {

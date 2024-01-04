@@ -1,6 +1,6 @@
 mod common;
 
-use re_arrow_store::{DataStore, TimeInt, TimeRange};
+use re_data_store::{DataStore, TimeInt, TimeRange};
 use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId};
 use re_query::range_archetype;
 use re_types::{
@@ -72,7 +72,7 @@ fn simple_range() {
 
     // The exclusion of `timepoint1` means latest-at semantics will kick in!
 
-    let query = re_arrow_store::RangeQuery::new(
+    let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
@@ -156,7 +156,7 @@ fn simple_range() {
 
     // The inclusion of `timepoint1` means latest-at semantics will _not_ kick in!
 
-    let query = re_arrow_store::RangeQuery::new(
+    let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
@@ -353,7 +353,7 @@ fn timeless_range() {
 
     // The exclusion of `timepoint1` means latest-at semantics will kick in!
 
-    let query = re_arrow_store::RangeQuery::new(
+    let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
@@ -437,7 +437,7 @@ fn timeless_range() {
 
     // The inclusion of `timepoint1` means latest-at semantics will fall back to timeless data!
 
-    let query = re_arrow_store::RangeQuery::new(
+    let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
@@ -548,10 +548,8 @@ fn timeless_range() {
 
     // --- Third test: `[-inf, +inf]` ---
 
-    let query = re_arrow_store::RangeQuery::new(
-        timepoint1[0].0,
-        TimeRange::new(TimeInt::MIN, TimeInt::MAX),
-    );
+    let query =
+        re_data_store::RangeQuery::new(timepoint1[0].0, TimeRange::new(TimeInt::MIN, TimeInt::MAX));
 
     let arch_views =
         range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &ent_path);
@@ -748,7 +746,7 @@ fn simple_splatted_range() {
 
     // The exclusion of `timepoint1` means latest-at semantics will kick in!
 
-    let query = re_arrow_store::RangeQuery::new(
+    let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
@@ -839,7 +837,7 @@ fn simple_splatted_range() {
 
     // The inclusion of `timepoint1` means latest-at semantics will _not_ kick in!
 
-    let query = re_arrow_store::RangeQuery::new(
+    let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );

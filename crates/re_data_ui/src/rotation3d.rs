@@ -12,7 +12,7 @@ impl DataUi for components::Rotation3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         self.0.data_ui(ctx, ui, verbosity, query);
     }
@@ -24,7 +24,7 @@ impl DataUi for datatypes::Rotation3D {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         match self {
             datatypes::Rotation3D::Quaternion(q) => {

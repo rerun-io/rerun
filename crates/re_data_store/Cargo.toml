@@ -1,5 +1,5 @@
 [package]
-name = "re_arrow_store"
+name = "re_data_store"
 authors.workspace = true
 description = "An in-memory time series database for Rerun log data, based on Apache Arrow"
 edition.workspace = true

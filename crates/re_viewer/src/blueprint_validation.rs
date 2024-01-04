@@ -1,4 +1,4 @@
-use re_arrow_store::LatestAtQuery;
+use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPropertiesComponent};
 use re_log_types::Timeline;
 use re_types::blueprint::components::{

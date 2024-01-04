@@ -1,4 +1,4 @@
-use re_arrow_store::LatestAtQuery;
+use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityProperties, TimeInt, VisibleHistory};
 use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 

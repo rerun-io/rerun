@@ -16,7 +16,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
         ui: &mut egui::Ui,
         verbosity: re_viewer_context::UiVerbosity,
         entity_path: &re_log_types::EntityPath,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         let annotations = crate::annotations(ctx, query, entity_path);
         let class = annotations
@@ -61,7 +61,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
         ui: &mut egui::Ui,
         _verbosity: re_viewer_context::UiVerbosity,
         entity_path: &re_log_types::EntityPath,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         if let Some(info) = annotation_info(ctx, entity_path, query, self.0) {
             ui.horizontal(|ui| {
@@ -81,7 +81,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
 fn annotation_info(
     ctx: &re_viewer_context::ViewerContext<'_>,
     entity_path: &re_log_types::EntityPath,
-    query: &re_arrow_store::LatestAtQuery,
+    query: &re_data_store::LatestAtQuery,
     keypoint_id: KeypointId,
 ) -> Option<AnnotationInfo> {
     let class_id = ctx
@@ -99,7 +99,7 @@ impl DataUi for AnnotationContext {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        _query: &re_data_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::Reduced => {

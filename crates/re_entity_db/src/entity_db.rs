@@ -4,7 +4,7 @@ use itertools::Itertools;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use re_arrow_store::{
+use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
 };
 use re_log_types::{
@@ -43,7 +43,7 @@ fn insert_row_with_retries(
     mut row: DataRow,
     num_attempts: usize,
     step_size: u64,
-) -> re_arrow_store::WriteResult<StoreEvent> {
+) -> re_data_store::WriteResult<StoreEvent> {
     fn random_u64() -> u64 {
         let mut bytes = [0_u8; 8];
         getrandom::getrandom(&mut bytes).map_or(0, |_| u64::from_le_bytes(bytes))
@@ -52,7 +52,7 @@ fn insert_row_with_retries(
     for i in 0..num_attempts {
         match store.insert_row(&row) {
             Ok(event) => return Ok(event),
-            Err(re_arrow_store::WriteError::ReusedRowId(_)) => {
+            Err(re_data_store::WriteError::ReusedRowId(_)) => {
                 // TODO(#1894): currently we produce duplicate row-ids when hitting the "save" button.
                 // This means we hit this code path when loading an .rrd file that was saved from the viewer.
                 // In the future a row-id clash should probably either be considered an error (with a loud warning)
@@ -72,7 +72,7 @@ fn insert_row_with_retries(
         }
     }
 
-    Err(re_arrow_store::WriteError::ReusedRowId(row.row_id()))
+    Err(re_data_store::WriteError::ReusedRowId(row.row_id()))
 }
 
 // ----------------------------------------------------------------------------
@@ -123,7 +123,7 @@ impl EntityDb {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
-            data_store: re_arrow_store::DataStore::new(
+            data_store: re_data_store::DataStore::new(
                 store_id.clone(),
                 InstanceKey::name(),
                 DataStoreConfig::default(),
@@ -212,7 +212,7 @@ impl EntityDb {
 
     /// Return the current `StoreGeneration`. This can be used to determine whether the
     /// database has been modified since the last time it was queried.
-    pub fn generation(&self) -> re_arrow_store::StoreGeneration {
+    pub fn generation(&self) -> re_data_store::StoreGeneration {
         self.data_store.generation()
     }
 
@@ -417,7 +417,7 @@ impl EntityDb {
         re_tracing::profile_function!();
 
         self.gc(&GarbageCollectionOptions {
-            target: re_arrow_store::GarbageCollectionTarget::Everything,
+            target: re_data_store::GarbageCollectionTarget::Everything,
             gc_timeless: true,
             protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
             purge_empty_tables: true,
@@ -438,7 +438,7 @@ impl EntityDb {
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
         self.gc(&GarbageCollectionOptions {
-            target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(
+            target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
             gc_timeless: true,

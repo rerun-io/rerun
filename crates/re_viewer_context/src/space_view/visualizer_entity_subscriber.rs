@@ -3,7 +3,7 @@ use bit_vec::BitVec;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_arrow_store::StoreSubscriber;
+use re_data_store::StoreSubscriber;
 use re_log_types::{EntityPathHash, StoreId};
 use re_types::{ComponentName, ComponentNameSet};
 
@@ -51,14 +51,14 @@ pub trait VisualizerAdditionalApplicabilityFilter: Send + Sync {
     /// **This implies that the filter does not _need_ to be stateful.**
     /// It is perfectly fine to return `true` only if something in the diff is regarded as applicable and false otherwise.
     /// (However, if necessary, the applicability filter *can* keep track of state.)
-    fn update_applicability(&mut self, _event: &re_arrow_store::StoreEvent) -> bool;
+    fn update_applicability(&mut self, _event: &re_data_store::StoreEvent) -> bool;
 }
 
 struct DefaultVisualizerApplicabilityFilter;
 
 impl VisualizerAdditionalApplicabilityFilter for DefaultVisualizerApplicabilityFilter {
     #[inline]
-    fn update_applicability(&mut self, _event: &re_arrow_store::StoreEvent) -> bool {
+    fn update_applicability(&mut self, _event: &re_data_store::StoreEvent) -> bool {
         true
     }
 }
@@ -138,13 +138,13 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
         self
     }
 
-    fn on_events(&mut self, events: &[re_arrow_store::StoreEvent]) {
+    fn on_events(&mut self, events: &[re_data_store::StoreEvent]) {
         re_tracing::profile_function!(self.visualizer);
 
         // TODO(andreas): Need to react to store removals as well. As of writing doesn't exist yet.
 
         for event in events {
-            if event.diff.kind != re_arrow_store::StoreDiffKind::Addition {
+            if event.diff.kind != re_data_store::StoreDiffKind::Addition {
                 // Applicability is only additive, don't care about removals.
                 continue;
             }

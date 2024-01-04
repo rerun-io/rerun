@@ -3,8 +3,8 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use itertools::Itertools;
-use re_arrow_store::WriteError;
-use re_arrow_store::{
+use re_data_store::WriteError;
+use re_data_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreStats, GarbageCollectionOptions,
     TimeInt, TimeRange, Timeline,
 };
@@ -37,7 +37,7 @@ fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
 fn data_store_dump() {
     init_logs();
 
-    for mut config in re_arrow_store::test_util::all_configs() {
+    for mut config in re_data_store::test_util::all_configs() {
         // NOTE: insert IDs aren't serialized and can be different across runs.
         config.store_insert_ids = false;
 
@@ -142,7 +142,7 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
 fn data_store_dump_filtered() {
     init_logs();
 
-    for mut config in re_arrow_store::test_util::all_configs() {
+    for mut config in re_data_store::test_util::all_configs() {
         // NOTE: insert IDs aren't serialized and can be different across runs.
         config.store_insert_ids = false;
 
@@ -282,9 +282,9 @@ fn data_store_dump_empty_column() {
     init_logs();
 
     // Split tables on 1 row
-    let mut config = re_arrow_store::DataStoreConfig {
+    let mut config = re_data_store::DataStoreConfig {
         indexed_bucket_num_rows: 1,
-        ..re_arrow_store::DataStoreConfig::DEFAULT
+        ..re_data_store::DataStoreConfig::DEFAULT
     };
     config.store_insert_ids = false;
 

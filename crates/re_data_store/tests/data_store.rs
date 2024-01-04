@@ -10,8 +10,8 @@ use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
 use rand::Rng;
-use re_arrow_store::WriteError;
-use re_arrow_store::{
+use re_data_store::WriteError;
+use re_data_store::{
     polars_util, test_row, test_util::sanity_unwrap, ArrayExt as _, DataStore, DataStoreConfig,
     DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery, RangeQuery,
     TimeInt, TimeRange,
@@ -282,7 +282,7 @@ fn all_components() {
 fn latest_at() {
     init_logs();
 
-    for config in re_arrow_store::test_util::all_configs() {
+    for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
@@ -404,7 +404,7 @@ fn latest_at_impl(store: &mut DataStore) {
 fn range() {
     init_logs();
 
-    for config in re_arrow_store::test_util::all_configs() {
+    for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
@@ -890,7 +890,7 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
 fn gc() {
     init_logs();
 
-    for config in re_arrow_store::test_util::all_configs() {
+    for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
@@ -961,7 +961,7 @@ fn gc_impl(store: &mut DataStore) {
 fn protected_gc() {
     init_logs();
 
-    for config in re_arrow_store::test_util::all_configs() {
+    for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
@@ -1062,7 +1062,7 @@ fn protected_gc_impl(store: &mut DataStore) {
 fn protected_gc_clear() {
     init_logs();
 
-    for config in re_arrow_store::test_util::all_configs() {
+    for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),

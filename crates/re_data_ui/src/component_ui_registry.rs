@@ -1,4 +1,4 @@
-use re_arrow_store::LatestAtQuery;
+use re_data_store::LatestAtQuery;
 use re_log_types::{external::arrow2, EntityPath};
 use re_query::ComponentWithInstances;
 use re_types::external::arrow2::array::Utf8Array;

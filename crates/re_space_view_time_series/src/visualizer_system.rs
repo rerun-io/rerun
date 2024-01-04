@@ -1,4 +1,4 @@
-use re_arrow_store::TimeRange;
+use re_data_store::TimeRange;
 use re_query::{range_archetype, QueryError};
 use re_types::{
     archetypes::TimeSeriesScalar,
@@ -151,7 +151,7 @@ impl TimeSeriesSystem {
                 (i64::MIN.into(), i64::MAX.into())
             };
 
-            let query = re_arrow_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
+            let query = re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
             let arch_views = range_archetype::<
                 TimeSeriesScalar,

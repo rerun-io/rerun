@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use egui_extras::Column;
 
-use re_arrow_store::{DataStore, LatestAtQuery};
+use re_data_store::{DataStore, LatestAtQuery};
 use re_data_ui::item_ui::instance_path_button;
 use re_entity_db::{EntityProperties, InstancePath};
 use re_log_types::{EntityPath, Timeline};

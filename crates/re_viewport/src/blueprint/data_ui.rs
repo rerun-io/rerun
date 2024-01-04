@@ -10,7 +10,7 @@ impl DataUi for IncludedSpaceViews {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        _query: &re_data_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small => {
@@ -34,7 +34,7 @@ impl DataUi for SpaceViewMaximized {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
     ) {
         match self.0 {
             Some(space_view) => {
@@ -55,7 +55,7 @@ impl DataUi for ViewportLayout {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
+        _query: &re_data_store::LatestAtQuery,
     ) {
         match verbosity {
             UiVerbosity::Small => {

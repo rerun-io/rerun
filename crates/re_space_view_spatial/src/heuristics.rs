@@ -202,7 +202,7 @@ fn update_transform3d_lines_heuristics(
         .unwrap_or(&BTreeSet::new())
     {
         fn is_pinhole_extrinsics_of<'a>(
-            store: &re_arrow_store::DataStore,
+            store: &re_data_store::DataStore,
             ent_path: &'a EntityPath,
             ctx: &'a ViewerContext<'_>,
         ) -> Option<&'a EntityPath> {

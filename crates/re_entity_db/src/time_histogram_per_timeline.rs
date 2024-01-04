@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_arrow_store::{StoreEvent, StoreSubscriber};
+use re_data_store::{StoreEvent, StoreSubscriber};
 use re_log_types::{TimeInt, TimePoint, Timeline};
 
 // ---

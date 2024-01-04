@@ -553,7 +553,7 @@ fn show_row_ids_tooltip(
 
         ui.add_space(8.0);
 
-        let query = re_arrow_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max);
+        let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max);
         item.data_ui(ctx, ui, UiVerbosity::Reduced, &query);
     });
 }
