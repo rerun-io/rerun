@@ -4,14 +4,13 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use arrow2::array::{Array as _, StructArray, UnionArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use itertools::Itertools;
 use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery,
     RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
-    build_frame_nr, DataCell, DataReadResult, DataRow, DataTable, EntityPath, RowId, TableId,
-    TimePoint, TimeType, Timeline,
+    build_frame_nr, DataCell, DataRow, DataTable, EntityPath, RowId, TableId, TimePoint, TimeType,
+    Timeline,
 };
 use re_types::datagen::build_some_instances;
 use re_types::{
@@ -71,8 +70,7 @@ fn insert(c: &mut Criterion) {
             (NUM_INSTANCES * NUM_ROWS) as _,
         ));
 
-        let table = build_table_with_packed(packed);
-        let rows = table.to_rows().collect_vec();
+        let rows = build_rows_with_packed(packed);
 
         // Default config
         group.bench_function("default", |b| {
@@ -109,10 +107,9 @@ fn insert_same_time_point(c: &mut Criterion) {
             ));
             group.throughput(criterion::Throughput::Elements(num_rows * num_instances));
 
-            let table = build_table_ex(num_rows as _, num_instances as _, shuffled, packed, |_| {
+            let rows = build_rows_ex(num_rows as _, num_instances as _, shuffled, packed, |_| {
                 TimePoint::from([build_frame_nr(TimeInt::from(0))])
             });
-            let rows = table.to_rows().collect::<Vec<_>>();
 
             // Default config
             group.bench_function("insert", |b| {
@@ -127,7 +124,6 @@ fn insert_same_time_point(c: &mut Criterion) {
 
                     for chunk in rows.chunks(num_ingested_rows_per_sort) {
                         for row in chunk {
-                            let row = row.as_ref().unwrap();
                             store.insert_row(row).unwrap();
                         }
 
@@ -151,8 +147,7 @@ fn latest_at(c: &mut Criterion) {
         ));
         group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
-        let table = build_table_with_packed(packed);
-        let rows = table.to_rows().collect_vec();
+        let rows = build_rows_with_packed(packed);
 
         // Default config
         group.bench_function("default", |b| {
@@ -203,8 +198,7 @@ fn latest_at_missing(c: &mut Criterion) {
         ));
         group.throughput(criterion::Throughput::Elements(NUM_INSTANCES as _));
 
-        let table = build_table_with_packed(packed);
-        let rows = table.to_rows().collect_vec();
+        let rows = build_rows_with_packed(packed);
 
         // Default config
         let store = insert_rows(Default::default(), &rows);
@@ -283,8 +277,7 @@ fn range(c: &mut Criterion) {
             (NUM_INSTANCES * NUM_ROWS) as _,
         ));
 
-        let table = build_table_with_packed(packed);
-        let rows = table.to_rows().collect_vec();
+        let rows = build_rows_with_packed(packed);
 
         // Default config
         group.bench_function("default", |b| {
@@ -330,8 +323,7 @@ fn gc(c: &mut Criterion) {
         (NUM_INSTANCES * NUM_ROWS) as _,
     ));
 
-    let table = build_table_with_packed(false);
-    let rows = table.to_rows().collect_vec();
+    let rows = build_rows_with_packed(false);
 
     // Default config
     group.bench_function("default", |b| {
@@ -380,8 +372,8 @@ fn gc(c: &mut Criterion) {
 
 // --- Helpers ---
 
-fn build_table_with_packed(packed: bool) -> DataTable {
-    build_table_ex(
+fn build_rows_with_packed(packed: bool) -> Vec<DataRow> {
+    build_rows_ex(
         NUM_ROWS as _,
         NUM_INSTANCES as _,
         false,
@@ -390,13 +382,13 @@ fn build_table_with_packed(packed: bool) -> DataTable {
     )
 }
 
-fn build_table_ex(
+fn build_rows_ex(
     num_rows: usize,
     num_instances: usize,
     shuffled: bool,
     packed: bool,
     time_point: impl Fn(usize) -> TimePoint,
-) -> DataTable {
+) -> Vec<DataRow> {
     let rows = (0..num_rows).map(move |frame_idx| {
         DataRow::from_cells2(
             RowId::new(),
@@ -432,18 +424,17 @@ fn build_table_ex(
         table.compute_all_size_bytes();
     }
 
-    table
+    table.to_rows().map(|r| r.unwrap()).collect()
 }
 
-fn insert_rows(config: DataStoreConfig, rows: &[DataReadResult<DataRow>]) -> DataStore {
+fn insert_rows(config: DataStoreConfig, rows: &[DataRow]) -> DataStore {
     let cluster_key = InstanceKey::name();
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         cluster_key,
         config,
     );
-    for row_result in rows {
-        let row = row_result.as_ref().unwrap();
+    for row in rows {
         store.insert_row(row).unwrap();
     }
     store
