@@ -249,12 +249,16 @@ fn space_view_button(
     let item = Item::SpaceView(space_view.id);
     let is_selected = ctx.selection().contains_item(&item);
 
+    //TODO: adjust formatting for missing name
     let response = ctx
         .re_ui
         .selectable_label_with_icon(
             ui,
             space_view.class(ctx.space_view_class_registry).icon(),
-            space_view.display_name.clone(),
+            space_view
+                .display_name
+                .clone()
+                .unwrap_or(space_view.missing_name_placeholder()),
             is_selected,
         )
         .on_hover_text("Space View");
@@ -311,7 +315,11 @@ fn what_is_selected_ui(
                 item_title_ui(
                     ctx.re_ui,
                     ui,
-                    &space_view.display_name,
+                    //TODO: adjust formatting for missing name
+                    space_view
+                        .display_name
+                        .as_ref()
+                        .unwrap_or(&space_view.missing_name_placeholder()),
                     Some(space_view_class.icon()),
                     &format!(
                         "Space View {:?} of type {}",
@@ -444,7 +452,7 @@ fn space_view_top_level_properties(
         egui::Grid::new("space_view_top_level_properties")
             .num_columns(2)
             .show(ui, |ui| {
-                let mut name = space_view.display_name.clone();
+                let mut name = space_view.display_name.clone().unwrap_or("".to_owned());
                 ui.label("Name").on_hover_text(
                     "The name of the Space View used for display purposes. This can be any text \
                     string.",
@@ -452,7 +460,7 @@ fn space_view_top_level_properties(
                 ui.text_edit_singleline(&mut name);
                 ui.end_row();
 
-                space_view.set_display_name(name, ctx);
+                space_view.set_display_name(if name.is_empty() { None } else { Some(name) }, ctx);
 
                 ui.label("Space origin").on_hover_text(
                     "The origin Entity for this Space View. For spatial Space Views, the Space \
@@ -611,8 +619,15 @@ fn show_list_item_for_container_child(
 
             (
                 Item::SpaceView(*space_view_id),
-                ListItem::new(ctx.re_ui, space_view.display_name.clone())
-                    .with_icon(space_view.class(ctx.space_view_class_registry).icon()),
+                //TODO: fix formatting for missing name
+                ListItem::new(
+                    ctx.re_ui,
+                    space_view
+                        .display_name
+                        .clone()
+                        .unwrap_or(space_view.missing_name_placeholder()),
+                )
+                .with_icon(space_view.class(ctx.space_view_class_registry).icon()),
             )
         }
         Tile::Container(container) => {

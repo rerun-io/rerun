@@ -537,7 +537,12 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
     fn tab_title_for_pane(&mut self, space_view_id: &SpaceViewId) -> egui::WidgetText {
         if let Some(space_view) = self.space_views.get(space_view_id) {
-            space_view.display_name.clone().into()
+            //TODO: highlight if placeholder?
+            space_view
+                .display_name
+                .clone()
+                .unwrap_or(space_view.missing_name_placeholder())
+                .into()
         } else {
             // All panes are space views, so this shouldn't happen unless we have a bug
             re_log::warn_once!("SpaceViewId missing during egui_tiles");

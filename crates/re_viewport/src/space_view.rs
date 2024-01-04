@@ -30,7 +30,7 @@ use crate::system_execution::create_and_run_space_view_systems;
 /// [`SpaceViewBlueprint::duplicate`].
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
-    pub display_name: String,
+    pub display_name: Option<String>,
     class_identifier: SpaceViewClassIdentifier,
 
     /// The "anchor point" of this space view.
@@ -56,25 +56,13 @@ impl SpaceViewBlueprint {
     /// must call [`Self::save_to_blueprint_store`].
     pub fn new(
         space_view_class: SpaceViewClassIdentifier,
-        space_view_class_display_name: &str,
         space_path: &EntityPath,
         query: DataQueryBlueprint,
     ) -> Self {
-        // We previously named the [`SpaceView`] after the [`EntityPath`] if there was only a single entity. However,
-        // this led to somewhat confusing and inconsistent behavior. See https://github.com/rerun-io/rerun/issues/1220
-        // Spaces are now always named after the final element of the space-path (or the root), independent of the
-        // query entities.
-        let display_name = if let Some(name) = space_path.iter().last() {
-            name.ui_string()
-        } else {
-            // Include class name in the display for root paths because they look a tad bit too short otherwise.
-            format!("/ ({space_view_class_display_name})")
-        };
-
         let id = SpaceViewId::random();
 
         Self {
-            display_name,
+            display_name: None,
             class_identifier: space_view_class,
             id,
             space_origin: space_path.clone(),
@@ -82,6 +70,11 @@ impl SpaceViewBlueprint {
             entities_determined_by_user: false,
             visible: true,
         }
+    }
+
+    pub fn missing_name_placeholder(&self) -> String {
+        //TODO: make that more intelligent
+        "Unnamed Space View".into()
     }
 
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
@@ -114,17 +107,7 @@ impl SpaceViewBlueprint {
 
         let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
 
-        let display_name = display_name.map_or_else(
-            || {
-                if let Some(name) = space_origin.iter().last() {
-                    name.ui_string()
-                } else {
-                    // Include class name in the display for root paths because they look a tad bit too short otherwise.
-                    format!("/ ({})", class_identifier.as_str())
-                }
-            },
-            |v| v.0.to_string(),
-        );
+        let display_name = display_name.map(|v| v.0.to_string());
 
         let queries = contents
             .unwrap_or_default()
@@ -168,13 +151,16 @@ impl SpaceViewBlueprint {
             visible,
         } = self;
 
-        let arch =
+        let mut arch =
             re_types::blueprint::archetypes::SpaceViewBlueprint::new(class_identifier.as_str())
-                .with_display_name(display_name.clone())
                 .with_space_origin(space_origin)
                 .with_entities_determined_by_user(*entities_determined_by_user)
                 .with_contents(queries.iter().map(|q| q.id))
                 .with_visible(*visible);
+
+        if let Some(display_name) = display_name {
+            arch = arch.with_display_name(display_name.clone())
+        }
 
         let mut deltas = vec![];
 
@@ -228,10 +214,18 @@ impl SpaceViewBlueprint {
     }
 
     #[inline]
-    pub fn set_display_name(&self, name: String, ctx: &ViewerContext<'_>) {
+    pub fn set_display_name(&self, name: Option<String>, ctx: &ViewerContext<'_>) {
         if name != self.display_name {
-            let component = Name(name.into());
-            ctx.save_blueprint_component(&self.entity_path(), component);
+            match name {
+                Some(name) => {
+                    let component = Name(name.into());
+                    ctx.save_blueprint_component(&self.entity_path(), component);
+                }
+                None => {
+                    //TODO: how is that done??
+                    //ctx.delete_blueprint_component::<Name>(&self.entity_path());
+                }
+            }
         }
     }
 
@@ -315,6 +309,8 @@ impl SpaceViewBlueprint {
         // Get next available file name.
         let safe_display_name = self
             .display_name
+            .clone()
+            .unwrap_or(self.missing_name_placeholder())
             .replace(|c: char| !c.is_alphanumeric() && c != ' ', "");
         let mut i = 1;
         let filename = loop {
@@ -530,7 +526,6 @@ mod tests {
 
         let space_view = SpaceViewBlueprint::new(
             "3D".into(),
-            "3D",
             &EntityPath::root(),
             DataQueryBlueprint::new(
                 "3D".into(),
