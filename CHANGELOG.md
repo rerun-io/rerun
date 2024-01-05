@@ -2,6 +2,144 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.12.0](https://github.com/rerun-io/rerun/compare/0.11.0...0.12.0)
+
+### Overview & Highlights
+- 🌁 The Rerun Viewer now supports a plugin system for creating arbitrary external data loaders:
+  - [C++ Example](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/external_data_loader)
+  - [Python Example](https://github.com/rerun-io/rerun/tree/latest/examples/python/external_data_loader)
+  - [Rust Example](https://github.com/rerun-io/rerun/tree/latest/examples/rust/external_data_loader)
+- 🕸️ The viewer now fetches examples from the web, featuring many new build-in examples.
+- 🐍 The Python SDK now works with Python-3.12.
+- 📘 Blueprint containers can now be selected and modified.
+- 🚀 Space Views are now evaluated in parallel for improved performance.
+
+### Details
+
+#### 🌊 C++ API
+- Exposing `recording_id` in C and C++ SDKs [#4384](https://github.com/rerun-io/rerun/pull/4384)
+- All C++ preprocessor macros start now with RR_ (instead of a mix of RR_ and RERUN_) [#4371](https://github.com/rerun-io/rerun/pull/4371)
+- C++ & Python API: add helpers for constructing an entity path [#4595](https://github.com/rerun-io/rerun/pull/4595)
+
+#### 🐍 Python API
+- Add `--stdout`/`-o` to our CLI helper library [#4544](https://github.com/rerun-io/rerun/pull/4544)
+- Make it possible to log segmentation images directly as floats [#4585](https://github.com/rerun-io/rerun/pull/4585)
+- C++ & Python API: add helpers for constructing an entity path [#4595](https://github.com/rerun-io/rerun/pull/4595)
+- Python SDK: introduce deferred garbage collection queue [#4583](https://github.com/rerun-io/rerun/pull/4583)
+- Add support for Python 3.12 [#4146](https://github.com/rerun-io/rerun/pull/4146)
+
+#### 🦀 Rust API
+- Exposing `recording_id` in Rust SDK [#4383](https://github.com/rerun-io/rerun/pull/4383)
+- Add `--stdout`/`-o` to our CLI helper library [#4544](https://github.com/rerun-io/rerun/pull/4544)
+- Document how to construct an entity path for the Rust logging API [#4584](https://github.com/rerun-io/rerun/pull/4584)
+
+#### 🪳 Bug Fixes
+- Bugfix: show labels on segmentation images with trivial dimensions [#4368](https://github.com/rerun-io/rerun/pull/4368)
+- Datastore: don't eagerly sort in bucket split routine on ingestion path [#4417](https://github.com/rerun-io/rerun/pull/4417)
+- Resolve spurious blueprint panel group collapsing [#4548](https://github.com/rerun-io/rerun/pull/4548)
+- Fix rectangle that indicates the zoomed pixel area on hover being one pixel to small [#4590](https://github.com/rerun-io/rerun/pull/4590)
+- Fix wrong RowId order of logged data [#4658](https://github.com/rerun-io/rerun/pull/4658)
+- Make scroll-to-zoom a lot more responsive in 3D views [#4668](https://github.com/rerun-io/rerun/pull/4668)
+- Fix heuristic object properties being broken in some cases / fix DepthMeter being ignored sometimes [#4679](https://github.com/rerun-io/rerun/pull/4679)
+
+#### 🌁 Viewer Improvements
+- Make viewer contexts's render context reference non-mutable [#4430](https://github.com/rerun-io/rerun/pull/4430)
+- Pass viewer context always non-mutable [#4438](https://github.com/rerun-io/rerun/pull/4438)
+- The Rerun Viewer can now consume from stdin
+  - Standard input/output support 1: stream RRD data from stdin [#4511](https://github.com/rerun-io/rerun/pull/4511)
+  - Standard input/output support 2: Rust SDK stdout impl/examples/docs [#4512](https://github.com/rerun-io/rerun/pull/4512)
+  - Standard input/output support 3: Python SDK stdout impl/examples/docs [#4513](https://github.com/rerun-io/rerun/pull/4513)
+  - Standard input/output support 4: C++ SDK stdout impl/examples/docs [#4514](https://github.com/rerun-io/rerun/pull/4514)
+- Support for custom DataLoaders:
+  - `DataLoader`s 0: utility for hierarchical `EntityPath` from file path [#4516](https://github.com/rerun-io/rerun/pull/4516)
+  - `DataLoader`s 1: introduce, and migrate to, `DataLoader`s [#4517](https://github.com/rerun-io/rerun/pull/4517)
+  - `DataLoader`s 2: add text-based `DataLoader` (`.txt`, `.md`) [#4518](https://github.com/rerun-io/rerun/pull/4518)
+  - `DataLoader`s 3: add 3D point cloud `DataLoader` (`.ply`) [#4519](https://github.com/rerun-io/rerun/pull/4519)
+  - `DataLoader`s 4: add generic folder `DataLoader` [#4520](https://github.com/rerun-io/rerun/pull/4520)
+  - `DataLoader`s 5: add support for external binary `DataLoader`s (PATH) [#4521](https://github.com/rerun-io/rerun/pull/4521)
+  - `DataLoader`s 6: first-class support for `Incompatible` [#4565](https://github.com/rerun-io/rerun/pull/4565)
+  - `DataLoader`s 7: support for custom `DataLoader`s [#4566](https://github.com/rerun-io/rerun/pull/4566)
+- 3D->2D & 2D->3D selection visualizations stick now around on selection [#4587](https://github.com/rerun-io/rerun/pull/4587)
+- Fix incorrect bounding box calculation for camera view parts [#4640](https://github.com/rerun-io/rerun/pull/4640)
+
+#### 🚀 Performance Improvements
+- Parallelize Space View system evaluation [#4460](https://github.com/rerun-io/rerun/pull/4460)
+- Limit server memory [#4636](https://github.com/rerun-io/rerun/pull/4636)
+
+#### 🧑‍🏫 Examples
+- Add nuScenes-based lidar examples [#4407](https://github.com/rerun-io/rerun/pull/4407) (thanks [@roym899](https://github.com/roym899)!)
+- Nightly builds [#4505](https://github.com/rerun-io/rerun/pull/4505)
+- Add LLM token classification example [#4541](https://github.com/rerun-io/rerun/pull/4541) (thanks [@roym899](https://github.com/roym899)!)
+- Use TOML in examples [#4553](https://github.com/rerun-io/rerun/pull/4553)
+
+#### 📚 Docs
+- Shared recordings 3: add how-to guide [#4385](https://github.com/rerun-io/rerun/pull/4385)
+- Document our crate organization in ARCHITECTURE.md [#4458](https://github.com/rerun-io/rerun/pull/4458)
+
+#### 🖼 UI Improvements
+- Plot legend visibility and position control (part 1): route `EntityProperties` to `SpaceViewClass` methods [#4363](https://github.com/rerun-io/rerun/pull/4363)
+- Plot legend visibility and position control (part 2): minor UI spacing improvement [#4364](https://github.com/rerun-io/rerun/pull/4364)
+- Reset accumulated bounding box when resetting camera [#4369](https://github.com/rerun-io/rerun/pull/4369)
+- Plot legend visibility and position control (part 3): legend UI added for both timeseries and bar charts space views [#4365](https://github.com/rerun-io/rerun/pull/4365)
+- Improve component data table UI in the selection panel [#4370](https://github.com/rerun-io/rerun/pull/4370)
+- Add optional color component to BarChart archetype [#4372](https://github.com/rerun-io/rerun/pull/4372)
+- Resolve unexpected view-partitioning by only bucket images when creating a new 2d view [#4361](https://github.com/rerun-io/rerun/pull/4361)
+- Restore `egui_plot` auto-bounds state after dragging the time cursor in timeseries space views [#4270](https://github.com/rerun-io/rerun/pull/4270)
+- Make Space View containers selectable and editable [#4403](https://github.com/rerun-io/rerun/pull/4403)
+- Improve selection and hover behavior of viewport's tabs [#4424](https://github.com/rerun-io/rerun/pull/4424)
+- Improve the Selection Panel UI for components when a single item is selected [#4416](https://github.com/rerun-io/rerun/pull/4416)
+- Show connection status in top bar [#4443](https://github.com/rerun-io/rerun/pull/4443)
+- Add the possibility to add empty space views of all registered types [#4467](https://github.com/rerun-io/rerun/pull/4467)
+- Add experimental Dataframe Space View [#4468](https://github.com/rerun-io/rerun/pull/4468)
+- Show e2e latency in metric ui in top panel [#4502](https://github.com/rerun-io/rerun/pull/4502)
+- Show leading slash when formatting entity paths [#4537](https://github.com/rerun-io/rerun/pull/4537)
+- Improve entity size stats: include whole subtree [#4542](https://github.com/rerun-io/rerun/pull/4542)
+- Add support for modal windows to `re_ui` and use it for the Space View entity picker [#4577](https://github.com/rerun-io/rerun/pull/4577)
+- Show entity path parts (entity "folder" names) unescaped in UI [#4603](https://github.com/rerun-io/rerun/pull/4603)
+- Improve Rerun Menu with link to Rerun Discord [#4661](https://github.com/rerun-io/rerun/pull/4661)
+- Introduce container icons and update space views and UI icons [#4663](https://github.com/rerun-io/rerun/pull/4663)
+- Initial support for manually adding container and space view in the hierarchy [#4616](https://github.com/rerun-io/rerun/pull/4616)
+- Change modal position to a fixed vertical distance from the top of the window [#4700](https://github.com/rerun-io/rerun/pull/4700)
+
+#### 🕸️ Web
+- Load examples manifest via HTTP [#4391](https://github.com/rerun-io/rerun/pull/4391)
+- Remove builds and usage of `demo.rerun.io` [#4418](https://github.com/rerun-io/rerun/pull/4418)
+- Open all links in a new tab [#4582](https://github.com/rerun-io/rerun/pull/4582)
+
+#### 🎨 Renderer Improvements
+- Log wgpu adapter on web [#4414](https://github.com/rerun-io/rerun/pull/4414)
+- Interior mutablilty for re_renderer's static resource pools (RenderPipeline/Shader/Layouts/etc.) [#4421](https://github.com/rerun-io/rerun/pull/4421)
+- Make draw data creation no longer require a mutable re_renderer context [#4422](https://github.com/rerun-io/rerun/pull/4422)
+- Move re_renderer examples to its own crate in order to make workspace level examples less confusing [#4472](https://github.com/rerun-io/rerun/pull/4472)
+- Improved wgpu error handling, no more crashes through wgpu validation errors [#4509](https://github.com/rerun-io/rerun/pull/4509)
+- Expose `wgpu` profiling scopes to puffin [#4581](https://github.com/rerun-io/rerun/pull/4581)
+- Improve shading with two lights instead of one [#4648](https://github.com/rerun-io/rerun/pull/4648)
+
+#### 🧑‍💻 Dev-experience
+- Fix not tracking wgsl file changes for web build [#4374](https://github.com/rerun-io/rerun/pull/4374)
+- Auto format all the things [#4373](https://github.com/rerun-io/rerun/pull/4373)
+- Refactor naming of `SpaceViewClass` and changed `TextSpaceView` name to "Text Log" [#4386](https://github.com/rerun-io/rerun/pull/4386)
+- Local-first wheel publishing [#4454](https://github.com/rerun-io/rerun/pull/4454)
+
+#### 🗣 Refactors
+- Selection state is now fully double buffered and has interior mutability [#4387](https://github.com/rerun-io/rerun/pull/4387)
+- Time control is now behind a RwLock, making recording config access non-mutable everywhere [#4389](https://github.com/rerun-io/rerun/pull/4389)
+- Enable (selected) new cargo clippy lints [#4404](https://github.com/rerun-io/rerun/pull/4404)
+- Add lint for builder pattern functions and deref impls to be marked `#[inline]` [#4435](https://github.com/rerun-io/rerun/pull/4435)
+- RenderContext usage cleanup [#4446](https://github.com/rerun-io/rerun/pull/4446)
+- Integrate re_tensor_ops crate into re_space_view_tensor [#4450](https://github.com/rerun-io/rerun/pull/4450)
+- Rename `StoreDb` to `EntityDb`, `re_data_store` -> `re_entity_db` [#4670](https://github.com/rerun-io/rerun/pull/4670)
+- Rename `re_arrow_store` to `re_data_store` [#4672](https://github.com/rerun-io/rerun/pull/4672)
+
+#### 📦 Dependencies
+- Update egui and wgpu [#4111](https://github.com/rerun-io/rerun/pull/4111)
+- Update Rust to 1.74.0 [#4390](https://github.com/rerun-io/rerun/pull/4390)
+
+#### 🤷‍♂️ Other
+- Use `:` instead of `.` as the entity:component separator in paths [#4471](https://github.com/rerun-io/rerun/pull/4471)
+- File-like entity paths [#4476](https://github.com/rerun-io/rerun/pull/4476)
+- Make the new container blueprints the default behavior [#4642](https://github.com/rerun-io/rerun/pull/4642)
+
 ## [0.11.0](https://github.com/rerun-io/rerun/compare/0.10.1...0.11.0)
 
 ### Overview & Highlights
