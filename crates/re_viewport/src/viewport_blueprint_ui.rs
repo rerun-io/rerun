@@ -85,7 +85,7 @@ impl Viewport<'_, '_> {
 
             if visible != child_is_visible {
                 self.tree.set_visible(tile_id, child_is_visible);
-                // TODO(#4687): We must be share not to mark edited if not edit has occurred
+                // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
                 self.edited = true;
             }
 
@@ -137,7 +137,7 @@ impl Viewport<'_, '_> {
             self.blueprint.set_auto_layout(false, ctx);
 
             self.tree.set_visible(tile_id, visible);
-            // TODO(#4687): We must be share not to mark edited if not edit has occurred
+            // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
             self.edited = true;
         }
     }
