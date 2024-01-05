@@ -96,10 +96,11 @@ impl SpaceViewClass for SpatialSpaceView3D {
         let entity_tree = &entity_db.tree();
 
         // Walk down the tree from the space_origin.
-        let Some(current_tree) = &entity_tree.subtree(space_origin) else {
-            return Box::new(());
+        // Note that if there's no subtree, we still have to return a `VisualizerFilterContext3D` to
+        // indicate to all visualizable-filters that we're in a 3D space view.
+        if let Some(current_tree) = &entity_tree.subtree(space_origin) {
+            visit_children_recursively(current_tree, &mut entities_under_pinhole);
         };
-        visit_children_recursively(current_tree, &mut entities_under_pinhole);
 
         Box::new(VisualizableFilterContext3D {
             entities_under_pinhole,
