@@ -31,7 +31,7 @@ Here's a simple example of such a workflow:
 rerun /tmp/recording*.rrd  # they share the same Recording ID!
 ```
 
-For more information, check out our [dedicated example](https://github.com/rerun-io/rerun/tree/main/examples/python/shared_recording?speculative-link).
+For more information, check out our [dedicated example](https://github.com/rerun-io/rerun/tree/main/examples/python/shared_recording).
 
 ### Caveats
 
