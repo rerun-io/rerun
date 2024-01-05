@@ -343,7 +343,7 @@ fn experimental_feature_ui(
         .checkbox(
             ui,
             &mut app_options.experimental_primary_caching_series,
-            "Primary caching: 2D & 3D point clouds",
+            "Primary caching: TextLogs & TimeSeries",
         )
         .on_hover_text("Toggle primary caching for the time series & text logs space views.");
 
