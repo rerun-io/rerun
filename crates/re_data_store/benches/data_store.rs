@@ -102,7 +102,7 @@ fn insert_same_time_point(c: &mut Criterion) {
     #[cfg(debug_assertions)]
     let num_rows_list = [100];
     #[cfg(not(debug_assertions))]
-    let num_rows_list = [1000, 10_000, 100_000];
+    let num_rows_list = [1_000, 10_000, 50_000];
 
     for num_rows in num_rows_list {
         for shuffled in [false, true] {
@@ -111,6 +111,7 @@ fn insert_same_time_point(c: &mut Criterion) {
             let mut group = c.benchmark_group(format!(
                 "datastore/num_rows={num_rows}/num_instances={num_instances}/insert_same_time_point/shuffled={shuffled}"
             ));
+            group.sample_size(10); // it is so slow
             group.throughput(criterion::Throughput::Elements(num_rows * num_instances));
 
             let rows = build_rows_ex(num_rows as _, num_instances as _, shuffled, packed, |_| {
