@@ -13,9 +13,9 @@ title: "Arrows2D"
 **Optional**: [`Radius`](../components/radius.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
 ## Links
- * 🌊 [C++ API docs for `Arrows2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Arrows2D.html)
- * 🐍 [Python API docs for `Arrows2D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Arrows2D)
- * 🦀 [Rust API docs for `Arrows2D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Arrows2D.html)
+ * 🌊 [C++ API docs for `Arrows2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Arrows2D.html?speculative-link)
+ * 🐍 [Python API docs for `Arrows2D`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Arrows2D)
+ * 🦀 [Rust API docs for `Arrows2D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Arrows2D.html?speculative-link)
 
 ## Example
 

@@ -13,7 +13,7 @@ A Radius component.
 
 ## Used by
 
-* [`Arrows2D`](../archetypes/arrows2d.md)
+* [`Arrows2D`](../archetypes/arrows2d.md?speculative-link)
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)
