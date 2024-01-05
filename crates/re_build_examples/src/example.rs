@@ -22,6 +22,7 @@ pub enum Channel {
     #[default]
     Main,
     Nightly,
+    Release,
 }
 
 impl Channel {
@@ -31,6 +32,11 @@ impl Channel {
 
             // Include all `main` examples in `nightly`
             Channel::Nightly => matches!(other, Channel::Main | Channel::Nightly),
+
+            // Include all `main` and `nightly` examples in `release`
+            Channel::Release => {
+                matches!(other, Channel::Main | Channel::Nightly | Channel::Release)
+            }
         }
     }
 
@@ -101,6 +107,7 @@ impl Display for Channel {
         let s = match self {
             Channel::Main => "main",
             Channel::Nightly => "nightly",
+            Channel::Release => "release",
         };
         f.write_str(s)
     }
@@ -113,6 +120,7 @@ impl FromStr for Channel {
         match s {
             "main" => Ok(Self::Main),
             "nightly" => Ok(Self::Nightly),
+            "release" => Ok(Self::Release),
             _ => Err(InvalidChannelName),
         }
     }
