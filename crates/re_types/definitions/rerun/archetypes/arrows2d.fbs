@@ -15,7 +15,8 @@ namespace rerun.archetypes;
 table Arrows2D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
-  "attr.cpp.no_field_ctors"
+  "attr.cpp.no_field_ctors",
+  "attr.docs.unreleased"
 ) {
   // --- Required ---
 
