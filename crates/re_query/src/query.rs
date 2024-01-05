@@ -1,5 +1,5 @@
 use re_data_store::{DataStore, LatestAtQuery};
-use re_log_types::{EntityPath, RowId};
+use re_log_types::{EntityPath, RowId, TimeInt};
 use re_types_core::{components::InstanceKey, Archetype, ComponentName, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
@@ -53,14 +53,16 @@ pub fn get_component_with_instances(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
     component: ComponentName,
-) -> Option<(RowId, ComponentWithInstances)> {
+) -> Option<(Option<TimeInt>, RowId, ComponentWithInstances)> {
     debug_assert_eq!(store.cluster_key(), InstanceKey::name());
 
     let components = [InstanceKey::name(), component];
 
-    let (_, row_id, mut cells) = store.latest_at(query, ent_path, component, &components)?;
+    let (data_time, row_id, mut cells) =
+        store.latest_at(query, ent_path, component, &components)?;
 
     Some((
+        data_time,
         row_id,
         ComponentWithInstances {
             // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
@@ -119,7 +121,7 @@ pub fn query_archetype<A: Archetype>(
     store: &DataStore,
     query: &LatestAtQuery,
     ent_path: &EntityPath,
-) -> crate::Result<ArchetypeView<A>> {
+) -> crate::Result<(Option<TimeInt>, ArchetypeView<A>)> {
     re_tracing::profile_function!();
 
     let required_components: Vec<_> = A::required_components()
@@ -138,9 +140,11 @@ pub fn query_archetype<A: Archetype>(
         }
     }
 
-    let (row_ids, required_components): (Vec<_>, Vec<_>) =
-        required_components.into_iter().flatten().unzip();
+    use itertools::Itertools as _;
+    let (data_times, row_ids, required_components): (Vec<_>, Vec<_>, Vec<_>) =
+        required_components.into_iter().flatten().multiunzip();
 
+    let data_time = data_times.first().unwrap_or(&None);
     let row_id = row_ids.first().unwrap_or(&RowId::ZERO);
 
     let recommended_components = A::recommended_components();
@@ -151,12 +155,15 @@ pub fn query_archetype<A: Archetype>(
         .chain(optional_components.iter())
         .filter_map(|component| {
             get_component_with_instances(store, query, ent_path, *component)
-                .map(|(_, component_result)| component_result)
+                .map(|(_, _, component_result)| component_result)
         });
 
-    Ok(ArchetypeView::from_components(
-        *row_id,
-        required_components.into_iter().chain(other_components),
+    Ok((
+        *data_time,
+        ArchetypeView::from_components(
+            *row_id,
+            required_components.into_iter().chain(other_components),
+        ),
     ))
 }
 
@@ -218,7 +225,7 @@ fn simple_get_component() {
     let ent_path = "point";
     let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
-    let (_, component) =
+    let (_, _, component) =
         get_component_with_instances(&store, &query, &ent_path.into(), MyPoint::name()).unwrap();
 
     #[cfg(feature = "polars")]
@@ -253,7 +260,7 @@ fn simple_query_archetype() {
     let ent_path = "point";
     let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
-    let arch_view = query_archetype::<MyPoints>(&store, &query, &ent_path.into()).unwrap();
+    let (_, arch_view) = query_archetype::<MyPoints>(&store, &query, &ent_path.into()).unwrap();
 
     let expected_positions = [MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let expected_colors = [None, Some(MyColor::from(0xff000000))];

@@ -266,7 +266,7 @@ impl AnnotationMap {
                     std::collections::btree_map::Entry::Vacant(entry) => {
                         if query_archetype::<AnnotationContext>(data_store, time_query, &parent)
                             .ok()
-                            .and_then(|view| Annotations::try_from_view(&view))
+                            .and_then(|(_, view)| Annotations::try_from_view(&view))
                             .map(|annotations| entry.insert(Arc::new(annotations)))
                             .is_some()
                         {

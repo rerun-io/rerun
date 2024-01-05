@@ -162,7 +162,7 @@ impl SpaceViewClass for DataframeSpaceView {
                     // TODO(#4466): make it explicit if that value results
                     // from a splat joint.
 
-                    if let Some((_, comp_inst)) =
+                    if let Some((_, _, comp_inst)) =
                         // This is a duplicate of the one above, but this ok since this codes runs
                         // *only* for visible rows.
                         get_component_with_instances(
@@ -243,7 +243,7 @@ fn sorted_instance_paths_for<'a>(
         .filter(|comp| !comp.is_indicator_component())
         .flat_map(|comp| {
             get_component_with_instances(store, latest_at_query, entity_path, comp)
-                .map(|(_, comp_inst)| comp_inst.instance_keys())
+                .map(|(_, _, comp_inst)| comp_inst.instance_keys())
                 .unwrap_or_default()
         })
         .filter(|instance_key| !instance_key.is_splat())

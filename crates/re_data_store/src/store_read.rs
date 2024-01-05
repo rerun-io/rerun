@@ -239,7 +239,10 @@ impl DataStore {
     ///     let components = &[cluster_key, primary];
     ///     let (_, cells) = store
     ///         .latest_at(&query, ent_path, primary, components)
-    ///         .unwrap_or((RowId::ZERO, [(); 2].map(|_| None)));
+    ///         .map_or_else(
+    ///             || (RowId::ZERO, [(); 2].map(|_| None)),
+    ///             |(_, row_id, cells)| (row_id, cells),
+    ///         );
     ///
     ///     let series: Result<Vec<_>, _> = cells
     ///         .iter()
@@ -436,7 +439,10 @@ impl DataStore {
     ///         let query = LatestAtQuery::new(query.timeline, latest_time);
     ///         let (_, cells) = store
     ///             .latest_at(&query, ent_path, primary, &components)
-    ///             .unwrap_or((RowId::ZERO, [(); 2].map(|_| None)));
+    ///              .map_or_else(
+    ///                 || (RowId::ZERO, [(); 2].map(|_| None)),
+    ///                 |(_, row_id, cells)| (row_id, cells),
+    ///              );
     ///         dataframe_from_cells(cells)
     ///     };
     ///

@@ -147,7 +147,7 @@ pub fn resolve_mono_instance_path(
             return re_entity_db::InstancePath::entity_splat(instance.entity_path.clone());
         };
         for component in components {
-            if let Some((_row_id, instances)) = re_query::get_component_with_instances(
+            if let Some((_, _row_id, instances)) = re_query::get_component_with_instances(
                 store,
                 query,
                 &instance.entity_path,

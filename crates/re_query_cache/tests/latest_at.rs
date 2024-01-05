@@ -230,7 +230,7 @@ fn query_and_compare(store: &DataStore, query: &LatestAtQuery, ent_path: &Entity
         )
         .unwrap();
 
-        let expected = re_query::query_archetype::<Points2D>(store, query, ent_path).unwrap();
+        let (_, expected) = re_query::query_archetype::<Points2D>(store, query, ent_path).unwrap();
 
         let expected_instance_keys = expected.iter_instance_keys().collect_vec();
         let expected_positions = expected
