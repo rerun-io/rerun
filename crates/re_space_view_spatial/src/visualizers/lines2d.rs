@@ -8,7 +8,7 @@ use re_types::{
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizerSystem,VisualizableFilterContext
+    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
 };
 
 use crate::{
