@@ -73,6 +73,7 @@ impl SpaceViewBlueprint {
         }
     }
 
+    /// Placeholder name displayed in the UI if the user hasn't explicitly named the space view.
     #[allow(clippy::unused_self)]
     pub fn missing_name_placeholder(&self) -> String {
         let entity_path = self
