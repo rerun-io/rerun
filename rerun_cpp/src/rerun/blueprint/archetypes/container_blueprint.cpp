@@ -15,7 +15,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(8);
+        cells.reserve(9);
 
         {
             auto result = DataCell::from_loggable(archetype.container_kind);
@@ -49,6 +49,11 @@ namespace rerun {
         }
         if (archetype.visible.has_value()) {
             auto result = DataCell::from_loggable(archetype.visible.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.grid_columns.has_value()) {
+            auto result = DataCell::from_loggable(archetype.grid_columns.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

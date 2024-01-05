@@ -116,9 +116,11 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
         rr.set_time_seconds("time", sample.timestamp)
         frame_times.append(sample.timestamp)
 
-        rr.log("world/camera", rr.ImageEncoded(path=sample.image_path))
+        # TODO(#4689): log the camera first, so that Rerun's space view generation heuristic won't
+        # accidentally create a 2D space view at `world/`
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
+        rr.log("world/camera", rr.ImageEncoded(path=sample.image_path))
 
     log_frame_annotations(frame_times, seq.frame_annotations)
 

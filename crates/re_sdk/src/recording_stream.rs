@@ -299,7 +299,7 @@ impl RecordingStreamBuilder {
     /// remote Rerun instance.
     ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// ## Example
@@ -416,7 +416,7 @@ impl RecordingStreamBuilder {
     /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
     ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// ## Example
@@ -1285,7 +1285,7 @@ impl RecordingStream {
     /// the specified address.
     ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
@@ -1332,7 +1332,7 @@ impl RecordingStream {
     /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
     ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in

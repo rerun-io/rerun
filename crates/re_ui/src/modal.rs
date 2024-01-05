@@ -1,3 +1,5 @@
+use egui::NumExt;
+
 /// Helper object to handle a [`Modal`] window.
 ///
 /// A [`Modal`] is typically held only so long as it is displayed, so it's typically stored in an
@@ -74,6 +76,25 @@ pub struct ModalResponse<R> {
 /// [`Modal`] fakes as a modal window, since egui [doesn't have them yet](https://github.com/emilk/egui/issues/686).
 /// This done by dimming the background and capturing clicks outside the window.
 ///
+/// The positioning of the modal is as follows:
+///
+/// ```text
+/// ┌─rerun window─────▲─────────────────────┐
+/// │                  │ 75px / 10%          │
+/// │          ╔═modal═▼══════════╗  ▲       │
+/// │          ║               ▲  ║  │       │
+/// │          ║ actual height │  ║  │       │
+/// │          ║      based on │  ║  │ max   │
+/// │          ║       content │  ║  │ height│
+/// │          ║               │  ║  │       │
+/// │          ║               ▼  ║  │       │
+/// │          ╚══════════════════╝  │       │
+/// │          │                  │  │       │
+/// │          └───────▲──────────┘  ▼       │
+/// │                  │ 75px / 10%          │
+/// └──────────────────▼─────────────────────┘
+/// ```
+///
 /// Note that [`Modal`] are typically used via the [`ModalHandler`] helper object to reduce boilerplate.
 pub struct Modal {
     title: String,
@@ -109,10 +130,18 @@ impl Modal {
 
         let mut open = ui.input(|i| !i.key_pressed(egui::Key::Escape));
 
+        let screen_height = ui.ctx().screen_rect().height();
+        let modal_vertical_margins = (75.0).at_most(screen_height * 0.1);
+
         let mut window = egui::Window::new(&self.title)
-            .pivot(egui::Align2::CENTER_CENTER)
-            .fixed_pos(ui.ctx().screen_rect().center())
+            //TODO(ab): workaround for https://github.com/emilk/egui/pull/3721 until we make a new egui release
+            .id(egui::Id::new(("modal", &self.title)))
+            .pivot(egui::Align2::CENTER_TOP)
+            .fixed_pos(
+                ui.ctx().screen_rect().center_top() + egui::vec2(0.0, modal_vertical_margins),
+            )
             .constrain_to(ui.ctx().screen_rect())
+            .max_height(screen_height - 2.0 * modal_vertical_margins)
             .collapsible(false)
             .resizable(true)
             .frame(egui::Frame {

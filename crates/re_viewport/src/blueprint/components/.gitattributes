@@ -4,6 +4,7 @@
 auto_layout.rs linguist-generated=true
 auto_space_views.rs linguist-generated=true
 container_kind.rs linguist-generated=true
+grid_columns.rs linguist-generated=true
 included_space_views.rs linguist-generated=true
 mod.rs linguist-generated=true
 root_container.rs linguist-generated=true

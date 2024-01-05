@@ -318,7 +318,7 @@ def init(
 
     set_strict_mode(strict)
 
-    # Always check whether we are a forked child when calling init.  This should have happened
+    # Always check whether we are a forked child when calling init. This should have happened
     # via `_register_on_fork` but it's worth being conservative.
     cleanup_if_forked_child()
 

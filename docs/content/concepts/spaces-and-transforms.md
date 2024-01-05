@@ -23,11 +23,11 @@ by a specific space, and the other spaces must have well-defined transforms to t
 Which entities belong to which spaces is a function of the transform system, which uses the following rules to define
 the space connectivity:
 
-1.  Every unique entity path defines a potentially unique space.
-1.  Unless otherwise specified, every path is trivially connected to its parent by the identity transform.
-1.  Logging a transform to a path defines the relationship between that path and its parent (replacing the identity
+1. Every unique entity path defines a potentially unique space.
+1. Unless otherwise specified, every path is trivially connected to its parent by the identity transform.
+1. Logging a transform to a path defines the relationship between that path and its parent (replacing the identity
     connection).
-1.  Only paths which are connected by the identity transform are effectively considered to be part of the same
+1. Only paths which are connected by the identity transform are effectively considered to be part of the same
     space. All others are considered to be disjoint.
 
 Note that in the absence of transforms, all entity paths are fully connected by the identity transform, and therefore
@@ -65,7 +65,7 @@ space view because it is able to automatically transform data between different 
 
 In order to correctly display data from different spaces in the same view, Rerun uses the information from logged
 transforms. Since most transforms are invertible, Rerun can usually transform data from a parent space to a child space
-or vice versa.  As long as there is a continuous chain of well-defined transforms, Rerun will apply the correct series
+or vice versa. As long as there is a continuous chain of well-defined transforms, Rerun will apply the correct series
 of transformations to the component data when building the scene.
 
 Rerun transforms are currently limited to connections between _spatial_ views of 2D or 3D data. There are 3 types of

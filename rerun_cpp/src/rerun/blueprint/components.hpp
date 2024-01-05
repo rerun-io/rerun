@@ -8,6 +8,7 @@
 #include "blueprint/components/container_kind.hpp"
 #include "blueprint/components/entities_determined_by_user.hpp"
 #include "blueprint/components/entity_properties_component.hpp"
+#include "blueprint/components/grid_columns.hpp"
 #include "blueprint/components/included_contents.hpp"
 #include "blueprint/components/included_queries.hpp"
 #include "blueprint/components/included_space_views.hpp"

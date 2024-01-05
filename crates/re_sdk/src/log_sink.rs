@@ -220,7 +220,7 @@ impl TcpSink {
     /// Retries until successful.
     ///
     /// `flush_timeout` is the minimum time the [`TcpSink`] will wait during a flush
-    /// before potentially dropping data.  Note: Passing `None` here can cause a
+    /// before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     #[inline]
     pub fn new(addr: std::net::SocketAddr, flush_timeout: Option<std::time::Duration>) -> Self {
