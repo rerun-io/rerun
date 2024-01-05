@@ -443,9 +443,9 @@ fn table_ui(
                         };
                         text = text.layouter(&mut layouter);
 
-                        let mut response = text.ui(ui);
+                        let response = text.ui(ui);
                         if response.hovered() {
-                            response = response.on_hover_text(entry.body.as_str());
+                            response.on_hover_text(entry.body.as_str());
                         }
                     } else {
                         let mut text = egui::RichText::new(entry.body.as_str());
