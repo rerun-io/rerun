@@ -77,8 +77,8 @@ def lint_line(
         if " github " in line:
             return "It's 'GitHub', not 'github'"
 
-    if re.search(r"\.  [a-zA-Z]", line):
-        return "Found double spaces after period"
+    if re.search(r"[.a-zA-Z]  [a-zA-Z]", line):
+        return "Found double space"
 
     if double_the.search(line.lower()):
         return "Found 'the the'"
