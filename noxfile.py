@@ -17,6 +17,12 @@ PYTHON_VERSIONS = ["3.8", "3.9", "3.10", "3.11", "3.12"]
 def tests(session: nox.Session) -> None:
     """Run the Python test suite"""
     session.install("-r", "rerun_py/requirements-build.txt")
+    # TODO(#4704): clean that up when torch is 3.12 compatible
+    if session.python == "3.12":
+        session.run(
+            "pip", "install", "torch", "torchvision", "--pre", "--index-url", "https://download.pytorch.org/whl/nightly"
+        )
+
     session.install("./rerun_py")
     session.run("just", "py-test", external=True)
 
