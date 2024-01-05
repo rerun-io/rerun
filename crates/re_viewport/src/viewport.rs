@@ -249,6 +249,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 blueprint.set_auto_layout(false, ctx);
             }
 
+            // TODO(#4687): We must be share not to mark edited if not edit has occurred
             self.edited |= tab_viewer.edited;
 
             state.space_views_displayed_last_frame = tab_viewer.space_views_displayed_current_frame;
@@ -326,6 +327,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         let mut reset = false;
 
+        // TODO(#4687): We must be share not to mark edited if not edit has occurred
         for tree_action in self.tree_action_receiver.try_iter() {
             match tree_action {
                 TreeAction::AddSpaceView(space_view_id, parent_container) => {
@@ -436,6 +438,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
         if ctx.app_options.legacy_container_blueprint {
             self.blueprint.set_tree(&self.tree, ctx);
         } else if self.edited {
+            // TODO(#4687): We must be share not to mark edited if not edit has occurred
+
             // Simplify before we save the tree. Normally additional simplification will
             // happen on the next render loop, but that's too late -- unsimplified
             // changes will be baked into the tree.
