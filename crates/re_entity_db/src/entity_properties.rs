@@ -50,6 +50,17 @@ impl EntityPropertyMap {
         }
     }
 
+    /// Overrides the properties for a given entity path.
+    ///
+    /// Like `update`, but auto properties are always updated.
+    pub fn overwrite_properties(&mut self, entity_path: EntityPath, prop: EntityProperties) {
+        if prop == EntityProperties::default() {
+            self.props.remove(&entity_path); // save space
+        } else {
+            self.props.insert(entity_path, prop);
+        }
+    }
+
     #[inline]
     pub fn iter(&self) -> impl Iterator<Item = (&EntityPath, &EntityProperties)> {
         self.props.iter()
@@ -136,7 +147,7 @@ impl Default for EntityProperties {
             color_mapper: EditableAutoValue::default(),
             pinhole_image_plane_distance: EditableAutoValue::default(),
             backproject_depth: EditableAutoValue::Auto(true),
-            depth_from_world_scale: EditableAutoValue::default(),
+            depth_from_world_scale: EditableAutoValue::Auto(1.0),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
             transform_3d_visible: EditableAutoValue::Auto(false),
             transform_3d_size: EditableAutoValue::Auto(1.0),
