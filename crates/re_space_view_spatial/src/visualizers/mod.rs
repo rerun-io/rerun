@@ -18,7 +18,6 @@ mod transform3d_arrows;
 pub use cameras::CamerasVisualizer;
 pub use images::ImageVisualizer;
 pub use images::ViewerImage;
-use re_viewer_context::ApplicableEntities;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer};
 
@@ -32,10 +31,12 @@ use re_types::components::{Color, InstanceKey, Text};
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
 use re_viewer_context::{
-    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfos, SpaceViewClassRegistryError,
-    SpaceViewSystemRegistrator, ViewQuery, VisualizableEntities, VisualizerCollection,
+    auto_color, Annotations, ApplicableEntities, DefaultColor, ResolvedAnnotationInfos,
+    SpaceViewClassRegistryError, SpaceViewSystemRegistrator, ViewQuery, VisualizableEntities,
+    VisualizableFilterContext, VisualizerCollection,
 };
 
+use crate::space_view_2d::VisualizableFilterContext2D;
 use crate::space_view_3d::VisualizableFilterContext3D;
 
 use super::contexts::SpatialSceneEntityContext;
@@ -346,10 +347,13 @@ pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
 /// If 2d object is shown in a 3d space view, it is only then visualizable, if it is under a pinhole camera.
 fn filter_visualizable_2d_entities(
     entities: ApplicableEntities,
-    context: &dyn std::any::Any,
+    context: &dyn VisualizableFilterContext,
 ) -> VisualizableEntities {
     // `VisualizableFilterContext3D` will only be available if we're in a 3D space view.
-    if let Some(context) = context.downcast_ref::<VisualizableFilterContext3D>() {
+    if let Some(context) = context
+        .as_any()
+        .downcast_ref::<VisualizableFilterContext3D>()
+    {
         VisualizableEntities(
             entities
                 .0
@@ -359,5 +363,22 @@ fn filter_visualizable_2d_entities(
         )
     } else {
         VisualizableEntities(entities.0)
+    }
+}
+
+/// If 3d object is shown in a 2d space view, it is only visualizable, if the origin of the space view has a pinhole camera.
+fn filter_visualizable_3d_entities(
+    entities: ApplicableEntities,
+    context: &dyn VisualizableFilterContext,
+) -> VisualizableEntities {
+    // `VisualizableFilterContext2D` will only be available if we're in a 2D space view.
+    if context
+        .as_any()
+        .downcast_ref::<VisualizableFilterContext2D>()
+        .map_or(true, |c| c.has_pinhole_at_origin)
+    {
+        VisualizableEntities(entities.0)
+    } else {
+        VisualizableEntities::default()
     }
 }

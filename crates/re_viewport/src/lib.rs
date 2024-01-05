@@ -83,8 +83,10 @@ pub fn determine_visualizable_entities(
                 let entities = if let Some(applicable_entities) =
                     applicable_entities_per_visualizer.get(&visualizer_identifier)
                 {
-                    visualizer_system
-                        .filter_visualizable_entities(applicable_entities.clone(), &filter_ctx)
+                    visualizer_system.filter_visualizable_entities(
+                        applicable_entities.clone(),
+                        filter_ctx.as_ref(),
+                    )
                 } else {
                     VisualizableEntities::default()
                 };

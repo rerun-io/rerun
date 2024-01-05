@@ -7,11 +7,14 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
 };
 
-use super::{entity_iterator::process_archetype_views, SpatialViewVisualizerData};
+use super::{
+    entity_iterator::process_archetype_views, filter_visualizable_3d_entities,
+    SpatialViewVisualizerData,
+};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
@@ -111,6 +114,14 @@ impl VisualizerSystem for Asset3DVisualizer {
 
     fn indicator_components(&self) -> ComponentNameSet {
         std::iter::once(Asset3D::indicator().name()).collect()
+    }
+
+    fn filter_visualizable_entities(
+        &self,
+        entities: ApplicableEntities,
+        context: &dyn VisualizableFilterContext,
+    ) -> VisualizableEntities {
+        filter_visualizable_3d_entities(entities, context)
     }
 
     fn execute(

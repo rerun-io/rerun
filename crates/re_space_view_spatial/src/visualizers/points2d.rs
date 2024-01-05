@@ -8,7 +8,7 @@ use re_types::{
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
 };
 
 use crate::{
@@ -205,7 +205,7 @@ impl VisualizerSystem for Points2DVisualizer {
     fn filter_visualizable_entities(
         &self,
         entities: ApplicableEntities,
-        context: &dyn std::any::Any,
+        context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();
         filter_visualizable_2d_entities(entities, context)

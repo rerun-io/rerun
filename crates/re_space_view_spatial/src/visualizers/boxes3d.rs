@@ -6,8 +6,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
 };
 
 use crate::{
@@ -17,8 +17,9 @@ use crate::{
 };
 
 use super::{
-    entity_iterator::process_archetype_views, picking_id_from_instance_key, process_annotations,
-    process_colors, process_labels, process_radii, SpatialViewVisualizerData,
+    entity_iterator::process_archetype_views, filter_visualizable_3d_entities,
+    picking_id_from_instance_key, process_annotations, process_colors, process_labels,
+    process_radii, SpatialViewVisualizerData,
 };
 
 pub struct Boxes3DVisualizer(SpatialViewVisualizerData);
@@ -135,6 +136,14 @@ impl VisualizerSystem for Boxes3DVisualizer {
 
     fn indicator_components(&self) -> ComponentNameSet {
         std::iter::once(Boxes3D::indicator().as_ref().name()).collect()
+    }
+
+    fn filter_visualizable_entities(
+        &self,
+        entities: ApplicableEntities,
+        context: &dyn VisualizableFilterContext,
+    ) -> VisualizableEntities {
+        filter_visualizable_3d_entities(entities, context)
     }
 
     fn execute(
