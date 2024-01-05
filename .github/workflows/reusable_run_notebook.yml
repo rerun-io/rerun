@@ -45,7 +45,7 @@ jobs:
         # TODO(jleibs): pull these deps from pyproject.toml
         shell: bash
         run: |
-          pip install deprecated numpy>=1.23 pillow>=9.5.0 pyarrow==10.0.1 pytest==7.1.2
+          pip install deprecated numpy>=1.23 pillow>=9.5.0 pyarrow==14.0.2 pytest==7.1.2
 
       - name: Install downloaded wheel_artifact
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
