@@ -109,7 +109,7 @@ fn insert_same_time_point(c: &mut Criterion) {
             let num_instances = 1;
             let packed = false;
             let mut group = c.benchmark_group(format!(
-                "datastore/num_rows={num_rows}/num_instances={num_instances}/shuffled={shuffled}/insert_same_time_point"
+                "datastore/num_rows={num_rows}/num_instances={num_instances}/insert_same_time_point/shuffled={shuffled}"
             ));
             group.throughput(criterion::Throughput::Elements(num_rows * num_instances));
 
