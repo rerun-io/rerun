@@ -18,7 +18,7 @@ use crate::{
 };
 
 pub struct VisualizableFilterContext2D {
-    pub has_pinhole_at_root: bool,
+    pub has_pinhole_at_origin: bool,
 }
 
 impl VisualizableFilterContext for VisualizableFilterContext2D {
@@ -70,7 +70,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
     ) -> Box<dyn VisualizableFilterContext> {
         re_tracing::profile_function!();
 
-        let has_pinhole_at_root = entity_db
+        let has_pinhole_at_origin = entity_db
             .tree()
             .subtree(space_origin)
             .map_or(false, |tree| {
@@ -80,7 +80,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
             });
 
         Box::new(VisualizableFilterContext2D {
-            has_pinhole_at_root,
+            has_pinhole_at_origin,
         })
     }
 

@@ -366,7 +366,7 @@ fn filter_visualizable_2d_entities(
     }
 }
 
-/// If 3d object is shown in a 2d space view, it is only then visualizable, if it only visualizable if the root of the space view has a pinhole camera.
+/// If 3d object is shown in a 2d space view, it is only visualizable, if the origin of the space view has a pinhole camera.
 fn filter_visualizable_3d_entities(
     entities: ApplicableEntities,
     context: &dyn VisualizableFilterContext,
@@ -375,7 +375,7 @@ fn filter_visualizable_3d_entities(
     if context
         .as_any()
         .downcast_ref::<VisualizableFilterContext2D>()
-        .map_or(true, |c| c.has_pinhole_at_root)
+        .map_or(true, |c| c.has_pinhole_at_origin)
     {
         VisualizableEntities(entities.0)
     } else {
