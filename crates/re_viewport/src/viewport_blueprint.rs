@@ -70,7 +70,7 @@ impl ViewportBlueprint {
             &query,
             &VIEWPORT_PATH.into(),
         )
-        .and_then(|arch| arch.to_archetype())
+        .and_then(|(_, arch)| arch.to_archetype())
         {
             Ok(arch) => arch,
             Err(re_query::QueryError::PrimaryNotFound(_)) => {

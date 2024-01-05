@@ -41,7 +41,8 @@ fn simple_query() {
     // Retrieve the view
     let timeline_query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
+    let (_, arch_view) =
+        query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 
     // We expect this to generate the following `DataFrame`
     // ┌──────────┬─────────────┬────────────┐
@@ -101,7 +102,8 @@ fn timeless_query() {
     // Retrieve the view
     let timeline_query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
+    let (_, arch_view) =
+        query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 
     // We expect this to generate the following `DataFrame`
     // ┌──────────┬───────────┬────────────┐
@@ -162,7 +164,8 @@ fn no_instance_join_query() {
     // Retrieve the view
     let timeline_query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
+    let (_, arch_view) =
+        query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 
     // We expect this to generate the following `DataFrame`
     // ┌──────────┬───────────┬────────────┐
@@ -221,7 +224,8 @@ fn missing_column_join_query() {
     // Retrieve the view
     let timeline_query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
+    let (_, arch_view) =
+        query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 
     // We expect this to generate the following `DataFrame`
     //
@@ -289,7 +293,8 @@ fn splatted_query() {
     // Retrieve the view
     let timeline_query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
 
-    let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
+    let (_, arch_view) =
+        query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 
     // We expect this to generate the following `DataFrame`
     // ┌──────────┬───────────┬────────────┐

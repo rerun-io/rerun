@@ -11,7 +11,7 @@ pub fn query_archetype_with_history<'a, A: Archetype + 'a, const N: usize>(
     time: &'a TimeInt,
     history: &ExtraQueryHistory,
     ent_path: &'a EntityPath,
-) -> crate::Result<impl Iterator<Item = ArchetypeView<A>> + 'a> {
+) -> crate::Result<impl Iterator<Item = (Option<TimeInt>, ArchetypeView<A>)> + 'a> {
     let visible_history = match timeline.typ() {
         re_log_types::TimeType::Time => history.nanos,
         re_log_types::TimeType::Sequence => history.sequences,
@@ -30,6 +30,6 @@ pub fn query_archetype_with_history<'a, A: Archetype + 'a, const N: usize>(
 
         let range = range_archetype::<A, N>(store, &range_query, ent_path);
 
-        Ok(itertools::Either::Right(range.map(|(_, entity)| entity)))
+        Ok(itertools::Either::Right(range))
     }
 }

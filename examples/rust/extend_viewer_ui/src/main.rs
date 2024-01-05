@@ -154,7 +154,7 @@ fn component_ui(
     // just show the last value logged for each component:
     let query = re_data_store::LatestAtQuery::latest(timeline);
 
-    if let Some((_, component)) = re_query::get_component_with_instances(
+    if let Some((_, _, component)) = re_query::get_component_with_instances(
         entity_db.store(),
         &query,
         entity_path,

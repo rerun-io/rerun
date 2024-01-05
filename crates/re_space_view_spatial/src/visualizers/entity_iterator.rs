@@ -80,10 +80,10 @@ where
             &data_result.accumulated_properties().visible_history,
             &data_result.entity_path,
         )
-        .and_then(|entity_views| {
-            for ent_view in entity_views {
+        .and_then(|arch_views| {
+            for (_, arch_view) in arch_views {
                 counter.num_primitives.fetch_add(
-                    ent_view.num_instances(),
+                    arch_view.num_instances(),
                     std::sync::atomic::Ordering::Relaxed,
                 );
 
@@ -91,7 +91,7 @@ where
                     ctx,
                     &data_result.entity_path,
                     data_result.accumulated_properties(),
-                    ent_view,
+                    arch_view,
                     &entity_context,
                 )?;
             }

@@ -116,7 +116,8 @@ macro_rules! impl_query_archetype {
                     re_tracing::profile_scope!("fill");
 
                     let now = web_time::Instant::now();
-                    let arch_view = query_archetype::<A>(store, &query, entity_path)?;
+                    // TODO(cmc): cache deduplication.
+                    let (_data_time, arch_view) = query_archetype::<A>(store, &query, entity_path)?;
 
                     bucket.[<insert_pov $N _comp$M>]::<A, $($pov,)+ $($comp,)*>(query.at, &arch_view)?;
 
@@ -166,7 +167,7 @@ macro_rules! impl_query_archetype {
 
                     for (time, arch_view) in arch_views {
                         let data = (
-                            // TODO(cmc): `ArchetypeView` should indicate its pov time.
+                            // TODO(cmc): actual timeless caching support.
                             (time.unwrap_or(TimeInt::MIN), arch_view.primary_row_id()),
                             MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
                             $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
@@ -182,11 +183,11 @@ macro_rules! impl_query_archetype {
                 AnyQuery::LatestAt(query) if !cached => {
                     re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
-                    let arch_view = ::re_query::query_archetype::<A>(store, query, entity_path)?;
+                    let (data_time, arch_view) = ::re_query::query_archetype::<A>(store, query, entity_path)?;
 
                     let data = (
-                        // TODO(cmc): `ArchetypeView` should indicate its pov time.
-                        (TimeInt::MIN, arch_view.primary_row_id()),
+                        // TODO(cmc): actual timeless caching support.
+                        (data_time.unwrap_or(TimeInt::MIN), arch_view.primary_row_id()),
                         MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
                         $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
                         $(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect()),)*
