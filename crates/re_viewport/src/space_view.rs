@@ -1,3 +1,4 @@
+use itertools::{FoldWhile, Itertools};
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityProperties, TimeInt, VisibleHistory};
 use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
@@ -74,7 +75,30 @@ impl SpaceViewBlueprint {
 
     #[allow(clippy::unused_self)]
     pub fn missing_name_placeholder(&self) -> String {
-        "<unnamed space view>".to_owned()
+        let entity_path = self
+            .space_origin
+            .as_slice()
+            .iter()
+            .rev()
+            .fold_while(String::new(), |acc, path| {
+                if acc.len() > 10 {
+                    FoldWhile::Done(format!(".../{}", acc))
+                } else {
+                    FoldWhile::Continue(format!(
+                        "{}{}{}",
+                        path.ui_string(),
+                        if acc.is_empty() { "" } else { "/" },
+                        acc
+                    ))
+                }
+            })
+            .into_inner();
+
+        if entity_path.is_empty() {
+            "/".to_owned()
+        } else {
+            entity_path
+        }
     }
 
     /// Returns this space view's display name, along with a flag indicating whether it has actually been set by the
