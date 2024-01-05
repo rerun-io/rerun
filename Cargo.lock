@@ -5122,6 +5122,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
+ "re_query_cache",
  "re_renderer",
  "re_tracing",
  "re_types",
