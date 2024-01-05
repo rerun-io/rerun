@@ -16,5 +16,6 @@ A position in 2D space.
 
 ## Used by
 
+* [`Arrows2D`](../archetypes/arrows2d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Points2D`](../archetypes/points2d.md)

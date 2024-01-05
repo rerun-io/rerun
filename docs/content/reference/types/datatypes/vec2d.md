@@ -17,3 +17,4 @@ A vector in 2D space.
 * [`LineStrip2D`](../components/line_strip2d.md)
 * [`Position2D`](../components/position2d.md)
 * [`Resolution`](../components/resolution.md)
+* [`Vector2D`](../components/vector2d.md)
