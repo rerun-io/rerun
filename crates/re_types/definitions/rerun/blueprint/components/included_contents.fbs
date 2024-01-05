@@ -12,7 +12,6 @@ namespace rerun.blueprint.components;
 
 /// All the contents in the container.
 table IncludedContents (
-    "attr.docs.unreleased",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 ) {
