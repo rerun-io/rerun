@@ -12,6 +12,8 @@ pub use self::query::{
 
 pub(crate) use self::cache::LatestAtCache;
 
+pub use re_query::{QueryError, Result}; // convenience
+
 // TODO(cmc): Supporting N>1 generically is quite painful due to limitations in declarative macros,
 // not that we care at the moment.
 seq_macro::seq!(NUM_COMP in 0..10 { paste::paste! {
