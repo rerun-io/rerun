@@ -113,7 +113,8 @@ fn erased_clone(c: &mut Criterion) {
             .sum::<u64>();
         assert!(
             total_size_bytes as usize >= NUM_ROWS * NUM_INSTANCES * std::mem::size_of::<T>(),
-            "Size calculated to be {} bytes, but should be at least {} bytes",
+            "Size for {} calculated to be {} bytes, but should be at least {} bytes",
+            T::name(),
             total_size_bytes,
             NUM_ROWS * NUM_INSTANCES * std::mem::size_of::<T>()
         );
