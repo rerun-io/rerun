@@ -25,7 +25,7 @@ mod prelude {
     pub use re_types::components::{
         Color, HalfSizes2D, HalfSizes3D, InstanceKey, LineStrip2D, LineStrip3D, Material,
         MediaType, MeshProperties, OutOfTreeTransform3D, Position2D, Position3D, Radius, Text,
-        TextLogLevel, Vector3D,
+        TextLogLevel, Vector2D, Vector3D,
     };
     pub use re_types::datatypes::{
         Angle, AnnotationInfo, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32,

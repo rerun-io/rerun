@@ -106,6 +106,7 @@ from ._log import (
 from .any_value import AnyValues
 from .archetypes import (
     AnnotationContext,
+    Arrows2D,
     Arrows3D,
     Asset3D,
     BarChart,
