@@ -364,6 +364,8 @@ impl ContainerBlueprint {
                 grid.row_shares = self.secondary_weights.clone();
                 if let Some(cols) = self.grid_columns {
                     grid.layout = egui_tiles::GridLayout::Columns(cols as usize);
+                } else {
+                    grid.layout = egui_tiles::GridLayout::Auto;
                 }
 
                 egui_tiles::Container::Grid(grid)

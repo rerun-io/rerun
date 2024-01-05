@@ -563,9 +563,7 @@ fn container_top_level_properties(
 
                     // TODO(jleibs): Manually marking edited like this is way too error prone.
                     // Need to detect this in a better way.
-                    if original_layout != grid.layout {
-                        viewport.edited = true;
-                    }
+                    viewport.edited |= original_layout != grid.layout;
 
                     ui.end_row();
                 }
