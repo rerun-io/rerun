@@ -110,7 +110,7 @@ macro_rules! impl_query_archetype {
 
                     for (time, arch_view) in arch_views {
                         let data = (
-                            // TODO(cmc): `ArchetypeView` should indicate its pov time.
+                            // TODO(cmc): actual timeless caching support.
                             (time.unwrap_or(TimeInt::MIN), arch_view.primary_row_id()),
                             MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
                             $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
@@ -129,7 +129,7 @@ macro_rules! impl_query_archetype {
                     let (data_time, arch_view) = ::re_query::query_archetype::<A>(store, query, entity_path)?;
 
                     let data = (
-                        // TODO(cmc): `ArchetypeView` should indicate its pov time.
+                        // TODO(cmc): actual timeless caching support.
                         (data_time.unwrap_or(TimeInt::MIN), arch_view.primary_row_id()),
                         MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
                         $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
@@ -146,22 +146,62 @@ macro_rules! impl_query_archetype {
                         store.id().clone(),
                         entity_path.clone(),
                         query,
-                        |cache| {
+                        |latest_at_cache| {
                             re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
-                             let bucket = cache.entry(query.at).or_default();
-                            // NOTE: Implicitly dropping the write guard here: the LatestAtCache is
-                            // free once again!
+                            let mut iter_results = |bucket: &crate::CacheBucket| -> crate::Result<()> {
+                                let it = itertools::izip!(
+                                    bucket.iter_pov_data_times(),
+                                    bucket.iter_pov_instance_keys(),
+                                    $(bucket.iter_component::<$pov>()?,)+
+                                    $(bucket.iter_component_opt::<$comp>()?,)*
+                                ).map(|(time, instance_keys, $($pov,)+ $($comp,)*)| {
+                                    (
+                                        *time,
+                                        MaybeCachedComponentData::Cached(instance_keys),
+                                        $(MaybeCachedComponentData::Cached($pov),)+
+                                        $(MaybeCachedComponentData::Cached($comp),)*
+                                    )
+                                });
 
-                            if bucket.is_empty() {
+                                for data in it {
+                                    f(data);
+                                }
+
+                                Ok(())
+                            };
+
+                            let crate::LatestAtCache { per_query_time, per_data_time } = latest_at_cache;
+
+                            // Fastest path: we have an entry for this exact query, no need to look
+                            // any further.
+                            if let Some(query_time_bucket) = per_query_time.get(&query.at) {
+                                return iter_results(&query_time_bucket.read());
+                            }
+
+                            let (data_time, arch_view) = query_archetype::<A>(store, &query, entity_path)?;
+                            // TODO(cmc): actual timeless caching support.
+                            let data_time = data_time.unwrap_or(TimeInt::MIN);
+
+                            // Fast path: we've run the query and realized that we already have the data for the resulting
+                            // _data_ time, so let's use that.
+                            if let Some(data_time_bucket) = per_data_time.get(&data_time) {
+                                // We now know for a fact that a query at that data time would yield the same
+                                // results: copy the bucket accordingly so that the next cache hit ends up taking the fastest path.
+                                *per_query_time.entry(data_time).or_default() = std::sync::Arc::clone(&data_time_bucket);
+                                return iter_results(&data_time_bucket.read());
+                            }
+
+                            let query_time_bucket = per_query_time.entry(query.at).or_default();
+
+                            // Slowest path: this is a complete cache miss.
+                            {
                                 let now = web_time::Instant::now();
-                                // TODO: dedupe
-                                let (data_time, arch_view) = query_archetype::<A>(store, &query, entity_path)?;
 
-                                bucket.[<insert_pov $N _comp$M>]::<A, $($pov,)+ $($comp,)*>(query.at, &arch_view)?;
+                                let mut query_time_bucket = query_time_bucket.write();
+                                query_time_bucket.[<insert_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)*>(query.at, &arch_view)?;
 
-                                // TODO(cmc): I'd love a way of putting this information into
-                                // the `puffin` span directly.
+                                // TODO(cmc): I'd love a way of putting this information into the `puffin` span directly.
                                 let elapsed = now.elapsed();
                                 ::re_log::trace!(
                                     "cached new entry in {elapsed:?} ({:0.3} entries/s)",
@@ -169,25 +209,10 @@ macro_rules! impl_query_archetype {
                                 );
                             }
 
-                            let it = itertools::izip!(
-                                bucket.iter_pov_times(),
-                                bucket.iter_pov_instance_keys(),
-                                $(bucket.iter_component::<$pov>()?,)+
-                                $(bucket.iter_component_opt::<$comp>()?,)*
-                            ).map(|(time, instance_keys, $($pov,)+ $($comp,)*)| {
-                                (
-                                    *time,
-                                    MaybeCachedComponentData::Cached(instance_keys),
-                                    $(MaybeCachedComponentData::Cached($pov),)+
-                                    $(MaybeCachedComponentData::Cached($comp),)*
-                                )
-                            });
 
-                            for data in it {
-                                f(data);
-                            }
+                            *per_data_time.entry(data_time).or_default() = std::sync::Arc::clone(&query_time_bucket);
 
-                            Ok(())
+                            iter_results(&query_time_bucket.read())
                         }
                     )
                 },
