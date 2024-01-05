@@ -5,7 +5,7 @@ use re_types::{components::PinholeProjection, Loggable as _};
 use re_viewer_context::{
     AutoSpawnHeuristic, IdentifiedViewSystem as _, PerSystemEntities, SpaceViewClass,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError, ViewQuery,
-    ViewerContext,
+    ViewerContext, VisualizableFilterContext,
 };
 
 use crate::{
@@ -21,6 +21,12 @@ use crate::{
 pub struct VisualizableFilterContext3D {
     /// Set of all entities that are under a pinhole camera.
     pub entities_under_pinhole: IntSet<EntityPathHash>,
+}
+
+impl VisualizableFilterContext for VisualizableFilterContext3D {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[derive(Default)]
@@ -62,7 +68,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         space_origin: &EntityPath,
         entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn std::any::Any> {
+    ) -> Box<dyn VisualizableFilterContext> {
         re_tracing::profile_function!();
 
         // TODO(andreas): Potential optimization:

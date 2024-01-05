@@ -9,7 +9,7 @@ use re_types::{
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizerSystem,
+    VisualizableEntities, VisualizerSystem, VisualizableFilterContext
 };
 
 use super::{picking_id_from_instance_key, process_annotations, SpatialViewVisualizerData};
@@ -184,7 +184,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
     fn filter_visualizable_entities(
         &self,
         entities: ApplicableEntities,
-        context: &dyn std::any::Any,
+        context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         filter_visualizable_3d_entities(entities, context)
     }

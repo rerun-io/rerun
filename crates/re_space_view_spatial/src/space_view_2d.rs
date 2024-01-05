@@ -4,6 +4,7 @@ use re_types::{components::PinholeProjection, Loggable as _};
 use re_viewer_context::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    VisualizableFilterContext,
 };
 
 use crate::{
@@ -18,6 +19,12 @@ use crate::{
 
 pub struct VisualizableFilterContext2D {
     pub has_pinhole_at_root: bool,
+}
+
+impl VisualizableFilterContext for VisualizableFilterContext2D {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[derive(Default)]
@@ -60,7 +67,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         space_origin: &EntityPath,
         entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn std::any::Any> {
+    ) -> Box<dyn VisualizableFilterContext> {
         re_tracing::profile_function!();
 
         let has_pinhole_at_root = entity_db

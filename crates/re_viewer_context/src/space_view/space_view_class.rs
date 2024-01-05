@@ -6,6 +6,7 @@ use crate::{
     AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    VisualizableFilterContext,
 };
 
 /// Defines a class of space view.
@@ -71,7 +72,7 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
         &self,
         _space_origin: &EntityPath,
         _entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn std::any::Any> {
+    ) -> Box<dyn VisualizableFilterContext> {
         Box::new(())
     }
 
@@ -189,7 +190,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         &self,
         space_origin: &EntityPath,
         entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn std::any::Any> {
+    ) -> Box<dyn VisualizableFilterContext> {
         self.visualizable_filter_context(space_origin, entity_db)
     }
 

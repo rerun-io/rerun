@@ -8,7 +8,7 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities, VisualizerSystem,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities, VisualizerSystem,VisualizableFilterContext
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
@@ -201,7 +201,7 @@ impl VisualizerSystem for CamerasVisualizer {
     fn filter_visualizable_entities(
         &self,
         entities: ApplicableEntities,
-        context: &dyn std::any::Any,
+        context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         filter_visualizable_3d_entities(entities, context)
     }

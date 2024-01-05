@@ -8,7 +8,7 @@ use re_types::{
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizerSystem,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizerSystem,VisualizableFilterContext
 };
 
 use super::{
@@ -119,7 +119,7 @@ impl VisualizerSystem for Asset3DVisualizer {
     fn filter_visualizable_entities(
         &self,
         entities: ApplicableEntities,
-        context: &dyn std::any::Any,
+        context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         filter_visualizable_3d_entities(entities, context)
     }
