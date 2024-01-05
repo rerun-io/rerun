@@ -134,6 +134,8 @@ impl Modal {
         let modal_vertical_margins = (75.0).at_most(screen_height * 0.1);
 
         let mut window = egui::Window::new(&self.title)
+            //TODO(ab): workaround for https://github.com/emilk/egui/pull/3721 until we make a new egui release
+            .id(egui::Id::new(("modal", &self.title)))
             .pivot(egui::Align2::CENTER_TOP)
             .fixed_pos(
                 ui.ctx().screen_rect().center_top() + egui::vec2(0.0, modal_vertical_margins),
