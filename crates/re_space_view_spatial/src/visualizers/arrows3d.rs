@@ -7,8 +7,9 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    VisualizableEntities, VisualizerSystem,
 };
 
 use super::{picking_id_from_instance_key, process_annotations, SpatialViewVisualizerData};
@@ -16,8 +17,8 @@ use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
-        entity_iterator::process_archetype_views, process_colors, process_radii, UiLabel,
-        UiLabelTarget,
+        entity_iterator::process_archetype_views, filter_visualizable_3d_entities, process_colors,
+        process_radii, UiLabel, UiLabelTarget,
     },
 };
 
@@ -178,6 +179,14 @@ impl VisualizerSystem for Arrows3DVisualizer {
 
     fn indicator_components(&self) -> ComponentNameSet {
         std::iter::once(Arrows3D::indicator().name()).collect()
+    }
+
+    fn filter_visualizable_entities(
+        &self,
+        entities: ApplicableEntities,
+        context: &dyn std::any::Any,
+    ) -> VisualizableEntities {
+        filter_visualizable_3d_entities(entities, context)
     }
 
     fn execute(

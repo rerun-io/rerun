@@ -6,8 +6,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizerSystem,
 };
 
 use crate::{
@@ -15,7 +15,7 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::SpatialViewVisualizerData;
+use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 
 pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 
@@ -48,6 +48,14 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 .name(),
         )
         .collect()
+    }
+
+    fn filter_visualizable_entities(
+        &self,
+        entities: ApplicableEntities,
+        context: &dyn std::any::Any,
+    ) -> VisualizableEntities {
+        filter_visualizable_3d_entities(entities, context)
     }
 
     fn execute(

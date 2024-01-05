@@ -36,6 +36,7 @@ use re_viewer_context::{
     SpaceViewSystemRegistrator, ViewQuery, VisualizableEntities, VisualizerCollection,
 };
 
+use crate::space_view_2d::VisualizableFilterContext2D;
 use crate::space_view_3d::VisualizableFilterContext3D;
 
 use super::contexts::SpatialSceneEntityContext;
@@ -359,5 +360,21 @@ fn filter_visualizable_2d_entities(
         )
     } else {
         VisualizableEntities(entities.0)
+    }
+}
+
+/// If 3d object is shown in a 2d space view, it is only then visualizable, if it only visualizable if the root of the space view has a pinhole camera.
+fn filter_visualizable_3d_entities(
+    entities: ApplicableEntities,
+    context: &dyn std::any::Any,
+) -> VisualizableEntities {
+    // `VisualizableFilterContext2D` will only be available if we're in a 2D space view.
+    if context
+        .downcast_ref::<VisualizableFilterContext2D>()
+        .map_or(true, |c| c.has_pinhole_at_root)
+    {
+        VisualizableEntities(entities.0)
+    } else {
+        VisualizableEntities::default()
     }
 }

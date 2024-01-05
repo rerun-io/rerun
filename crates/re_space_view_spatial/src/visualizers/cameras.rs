@@ -7,11 +7,11 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities, VisualizerSystem,
 };
 
-use super::SpatialViewVisualizerData;
+use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
     contexts::{SharedRenderBuilders, TransformContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
@@ -196,6 +196,14 @@ impl VisualizerSystem for CamerasVisualizer {
 
     fn indicator_components(&self) -> ComponentNameSet {
         std::iter::once(re_types::archetypes::Pinhole::indicator().name()).collect()
+    }
+
+    fn filter_visualizable_entities(
+        &self,
+        entities: ApplicableEntities,
+        context: &dyn std::any::Any,
+    ) -> VisualizableEntities {
+        filter_visualizable_3d_entities(entities, context)
     }
 
     fn execute(
