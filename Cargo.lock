@@ -5701,6 +5701,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roundtrip_arrows2d"
+version = "0.12.0-alpha.5+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
 name = "roundtrip_arrows3d"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
