@@ -5,7 +5,7 @@ description: How to embed Rerun in notebooks like Jupyter or Colab
 ---
 
 Starting with version 0.5.0, Rerun now has limited support for embedding the Rerun viewer directly within IPython-style
-notebooks.  This makes it easy to iterate on API calls as well as to share data with others.
+notebooks. This makes it easy to iterate on API calls as well as to share data with others.
 
 Rerun has been tested with:
  - [Jupyter Notebook Classic](https://jupyter.org/)
@@ -88,7 +88,7 @@ This will create a new file `cube.html` that can be hosted on any static web ser
 ## Limitations
 
 Although convenient, the approach of fully inlining an RRD file as an HTML snippet has some drawbacks. In particular,
-it is not suited to large RRD files.  The RRD file is embedded as a base64 encoded string which can
+it is not suited to large RRD files. The RRD file is embedded as a base64 encoded string which can
 result in a very large HTML file. This can cause problems in some browsers. If you want to share large datasets,
 we recommend using the `save()` API to create a separate file and hosting it as a separate standalone asset.
 

@@ -54,7 +54,7 @@ impl Client {
     /// Connect via TCP to this log server.
     ///
     /// `flush_timeout` is the minimum time the `TcpClient` will wait during a
-    /// flush before potentially dropping data.  Note: Passing `None` here can
+    /// flush before potentially dropping data. Note: Passing `None` here can
     /// cause a call to `flush` to block indefinitely if a connection cannot be
     /// established.
     pub fn new(addr: SocketAddr, flush_timeout: Option<std::time::Duration>) -> Self {

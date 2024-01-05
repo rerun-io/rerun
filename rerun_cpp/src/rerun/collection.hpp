@@ -112,7 +112,7 @@ namespace rerun {
 
         /// Move assignment.
         void operator=(Collection<TElement>&& other) {
-            // Need to disable the maybe-uninitialized here.  It seems like the compiler may be confused in situations where
+            // Need to disable the maybe-uninitialized here. It seems like the compiler may be confused in situations where
             // we are assigning into an unused optional from a temporary. The fact that this hits the move-assignment without
             // having called the move constructor is suspicious though and hints of an actual bug.
             //

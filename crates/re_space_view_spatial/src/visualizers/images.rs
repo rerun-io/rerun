@@ -278,7 +278,7 @@ impl ImageVisualizer {
                 color.into(),
             ) {
                 // Only update the bounding box if this is a 2D space view or
-                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // the image_plane_distance is not auto. This is avoids a cyclic
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
@@ -409,7 +409,7 @@ impl ImageVisualizer {
                 color.into(),
             ) {
                 // Only update the bounding box if this is a 2D space view or
-                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // the image_plane_distance is not auto. This is avoids a cyclic
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
@@ -508,7 +508,7 @@ impl ImageVisualizer {
                 color.into(),
             ) {
                 // Only update the bounding box if this is a 2D space view or
-                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // the image_plane_distance is not auto. This is avoids a cyclic
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
