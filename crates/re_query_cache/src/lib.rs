@@ -10,7 +10,7 @@ pub use self::query::{
     query_archetype_pov1, query_archetype_with_history_pov1, MaybeCachedComponentData,
 };
 
-pub(crate) use self::cache::LatestAtCache;
+pub(crate) use self::cache::{CacheBucket, LatestAtCache};
 
 pub use re_query::{QueryError, Result}; // convenience
 

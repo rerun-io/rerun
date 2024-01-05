@@ -149,10 +149,10 @@ impl CacheKey {
 /// of data.
 #[derive(Default)]
 pub struct CacheBucket {
-    /// The timestamps and [`RowId`]s of all cached rows.
+    /// The _data_ timestamps and [`RowId`]s of all cached rows.
     ///
     /// Reminder: within a single timestamp, rows are sorted according to their [`RowId`]s.
-    pub(crate) pov_times: VecDeque<(TimeInt, RowId)>,
+    pub(crate) pov_data_times: VecDeque<(TimeInt, RowId)>,
 
     /// The [`InstanceKey`]s of the point-of-view components.
     pub(crate) pov_instance_keys: FlatVecDeque<InstanceKey>,
@@ -170,8 +170,8 @@ pub struct CacheBucket {
 impl CacheBucket {
     /// Iterate over the timestamps of the point-of-view components.
     #[inline]
-    pub fn iter_pov_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
-        self.pov_times.iter()
+    pub fn iter_pov_data_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
+        self.pov_data_times.iter()
     }
 
     /// Iterate over the [`InstanceKey`] batches of the point-of-view components.
@@ -207,7 +207,7 @@ impl CacheBucket {
     /// How many timestamps' worth of data is stored in this bucket?
     #[inline]
     pub fn num_entries(&self) -> usize {
-        self.pov_times.len()
+        self.pov_data_times.len()
     }
 
     #[inline]
@@ -236,15 +236,15 @@ macro_rules! impl_insert {
             re_tracing::profile_scope!("CacheBucket::insert", format!("arch={} pov={} comp={}", A::name(), $N, $M));
 
             let Self {
-                pov_times,
+                pov_data_times,
                 pov_instance_keys,
                 components: _,
             } = self;
 
             let pov_row_id = arch_view.primary_row_id();
-            let index = pov_times.partition_point(|t| t < &(query_time, pov_row_id));
+            let index = pov_data_times.partition_point(|t| t < &(query_time, pov_row_id));
 
-            pov_times.insert(index, (query_time, pov_row_id));
+            pov_data_times.insert(index, (query_time, pov_row_id));
             pov_instance_keys.insert(index, arch_view.iter_instance_keys());
             $(self.insert_component::<A, $pov>(index, arch_view)?;)+
             $(self.insert_component_opt::<A, $comp>(index, arch_view)?;)*
@@ -333,29 +333,17 @@ impl CacheBucket {
 // For this reason we move as much of the code as possible into the already existing macros in `query.rs`.
 
 /// Caches the results of `LatestAt` queries.
-///
-/// The `TimeInt` in the index corresponds to the timestamp of the query, _not_ the timestamp of
-/// the resulting data!
-//
-// TODO(cmc): we need an extra indirection layer so that cached entries can be shared across
-// queries with different query timestamps but identical data timestamps.
-// This requires keeping track of all `RowId`s in `ArchetypeView`, not just the `RowId` of the
-// point-of-view component.
 #[derive(Default)]
-pub struct LatestAtCache(BTreeMap<TimeInt, CacheBucket>);
+pub struct LatestAtCache {
+    /// Organized by _query_ time.
+    ///
+    /// If the data you're looking for isn't in here, try partially running the query and check
+    /// if there is any data available for the resulting _data_ time in [`Self::per_data_time`].
+    pub per_query_time: BTreeMap<TimeInt, Arc<RwLock<CacheBucket>>>,
 
-impl std::ops::Deref for LatestAtCache {
-    type Target = BTreeMap<TimeInt, CacheBucket>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for LatestAtCache {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
+    /// Organized by _data_ time.
+    ///
+    /// Due to how our latest-at semantics work, any number of queries at time `T+n` where `n >= 0`
+    /// can result in a data time of `T`.
+    pub per_data_time: BTreeMap<TimeInt, Arc<RwLock<CacheBucket>>>,
 }

@@ -106,35 +106,12 @@ macro_rules! impl_query_archetype {
                 format!("cached={cached} arch={} pov={} comp={}", A::name(), $N, $M)
             );
 
-            let mut latest_at_callback = |query: &LatestAtQuery, cache: &mut crate::LatestAtCache| {
-                re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
-                let bucket = cache.entry(query.at).or_default();
-                // NOTE: Implicitly dropping the write guard here: the LatestAtCache is free once again!
-
-                if bucket.is_empty() {
-                    re_tracing::profile_scope!("fill");
-
-                    let now = web_time::Instant::now();
-                    // TODO(cmc): cache deduplication.
-                    let arch_view = query_archetype::<A>(store, &query, entity_path)?;
-
-                    bucket.[<insert_pov $N _comp$M>]::<A, $($pov,)+ $($comp,)*>(query.at, &arch_view)?;
-
-                    let elapsed = now.elapsed();
-                    ::re_log::trace!(
-                        store_id=%store.id(),
-                        %entity_path,
-                        archetype=%A::name(),
-                        "cached new entry in {elapsed:?} ({:0.3} entries/s)",
-                        1f64 / elapsed.as_secs_f64()
-                    );
-                }
-
+            let mut iter_results = |bucket: &crate::CacheBucket| -> crate::Result<()> {
                 re_tracing::profile_scope!("iter");
 
                 let it = itertools::izip!(
-                    bucket.iter_pov_times(),
+                    bucket.iter_pov_data_times(),
                     bucket.iter_pov_instance_keys(),
                     $(bucket.iter_component::<$pov>()
                         .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
@@ -155,6 +132,58 @@ macro_rules! impl_query_archetype {
 
                 Ok(())
             };
+
+            let mut latest_at_callback = |query: &LatestAtQuery, latest_at_cache: &mut crate::LatestAtCache| {
+                re_tracing::profile_scope!("latest_at", format!("{query:?}"));
+
+                let crate::LatestAtCache { per_query_time, per_data_time } = latest_at_cache;
+
+                // Fastest path: we have an entry for this exact query, no need to look
+                // any further.
+                if let Some(query_time_bucket) = per_query_time.get(&query.at) {
+                    return iter_results(&query_time_bucket.read());
+                }
+
+                let arch_view = query_archetype::<A>(store, &query, entity_path)?;
+                // TODO(cmc): actual timeless caching support.
+                let data_time = arch_view.data_time().unwrap_or(TimeInt::MIN);
+
+                // Fast path: we've run the query and realized that we already have the data for the resulting
+                // _data_ time, so let's use that.
+                if let Some(data_time_bucket) = per_data_time.get(&data_time) {
+                    // We now know for a fact that a query at that data time would yield the same
+                    // results: copy the bucket accordingly so that the next cache hit ends up taking the fastest path.
+                    *per_query_time.entry(data_time).or_default() = std::sync::Arc::clone(&data_time_bucket);
+                    return iter_results(&data_time_bucket.read());
+                }
+
+                let query_time_bucket = per_query_time.entry(query.at).or_default();
+
+                // Slowest path: this is a complete cache miss.
+                {
+                    re_tracing::profile_scope!("fill");
+
+                    let now = web_time::Instant::now();
+
+                    let mut query_time_bucket = query_time_bucket.write();
+                    query_time_bucket.[<insert_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)*>(query.at, &arch_view)?;
+
+                    let elapsed = now.elapsed();
+                    ::re_log::trace!(
+                        store_id=%store.id(),
+                        %entity_path,
+                        archetype=%A::name(),
+                        "cached new entry in {elapsed:?} ({:0.3} entries/s)",
+                        1f64 / elapsed.as_secs_f64()
+                    );
+                }
+
+
+                *per_data_time.entry(data_time).or_default() = std::sync::Arc::clone(&query_time_bucket);
+
+                iter_results(&query_time_bucket.read())
+            };
+
 
             match &query {
                 // TODO(cmc): cached range support
@@ -203,7 +232,7 @@ macro_rules! impl_query_archetype {
                         store.id().clone(),
                         entity_path.clone(),
                         query,
-                        |cache| latest_at_callback(query, cache),
+                        |latest_at_cache| latest_at_callback(query, latest_at_cache),
                     )
                 },
             }
