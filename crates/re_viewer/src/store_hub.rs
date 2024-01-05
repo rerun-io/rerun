@@ -319,7 +319,7 @@ impl StoreHub {
         &mut self,
         app_id: &ApplicationId,
     ) -> anyhow::Result<()> {
-        use crate::blueprint_validation::is_valid_blueprint;
+        use crate::blueprint::is_valid_blueprint;
 
         re_tracing::profile_function!();
         let blueprint_path = default_blueprint_path(app_id)?;
