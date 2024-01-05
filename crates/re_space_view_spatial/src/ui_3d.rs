@@ -330,7 +330,7 @@ pub fn view_3d(
         // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
         // See https://github.com/rerun-io/rerun/issues/3538
         .query_latest_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
-        .map(|(_, c)| c.value);
+        .map(|(_, _, c)| c.value);
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());

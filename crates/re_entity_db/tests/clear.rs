@@ -49,11 +49,13 @@ fn clears() -> anyhow::Result<()> {
             let got_point = db
                 .store()
                 .query_latest_component::<MyPoint>(&entity_path_parent, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
             let got_color = db
                 .store()
                 .query_latest_component::<MyColor>(&entity_path_parent, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
 
@@ -86,6 +88,7 @@ fn clears() -> anyhow::Result<()> {
             let got_point = db
                 .store()
                 .query_latest_component::<MyPoint>(&entity_path_child1, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
 
@@ -117,6 +120,7 @@ fn clears() -> anyhow::Result<()> {
             let got_color = db
                 .store()
                 .query_latest_component::<MyColor>(&entity_path_child2, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
 
@@ -160,6 +164,7 @@ fn clears() -> anyhow::Result<()> {
             let got_clear = db
                 .store()
                 .query_latest_component::<ClearIsRecursive>(&entity_path_parent, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
             similar_asserts::assert_eq!(clear.is_recursive, got_clear);
@@ -214,6 +219,7 @@ fn clears() -> anyhow::Result<()> {
             let got_clear = db
                 .store()
                 .query_latest_component::<ClearIsRecursive>(&entity_path_parent, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
             similar_asserts::assert_eq!(clear.is_recursive, got_clear);
@@ -257,6 +263,7 @@ fn clears() -> anyhow::Result<()> {
             let got_instance_key = db
                 .store()
                 .query_latest_component::<InstanceKey>(&entity_path_parent, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
             similar_asserts::assert_eq!(instance_key, got_instance_key);
@@ -302,11 +309,13 @@ fn clears() -> anyhow::Result<()> {
             let got_point = db
                 .store()
                 .query_latest_component::<MyPoint>(&entity_path_child1, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
             let got_color = db
                 .store()
                 .query_latest_component::<MyColor>(&entity_path_child1, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
 
@@ -358,11 +367,13 @@ fn clears() -> anyhow::Result<()> {
             let got_color = db
                 .store()
                 .query_latest_component::<MyColor>(&entity_path_child2, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
             let got_point = db
                 .store()
                 .query_latest_component::<MyPoint>(&entity_path_child2, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
 
@@ -412,6 +423,7 @@ fn clears() -> anyhow::Result<()> {
             let got_color = db
                 .store()
                 .query_latest_component::<MyColor>(&entity_path_grandchild, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
 

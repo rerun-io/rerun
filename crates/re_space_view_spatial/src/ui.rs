@@ -123,7 +123,7 @@ impl SpatialSpaceViewState {
             .entity_db
             .store()
             .query_latest_component(space_origin, &ctx.current_query())
-            .map(|c| c.value);
+            .map(|(_, c)| c.value);
 
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
@@ -543,7 +543,7 @@ pub fn picking(
                         &instance_path.entity_path,
                         &ctx.current_query(),
                     )
-                    .and_then(|tensor| {
+                    .and_then(|(_, tensor)| {
                         // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
                         // (the back-projection property may be true despite this not being a depth image!)
                         if hit.hit_type != PickingHitType::TexturedRect
@@ -583,7 +583,7 @@ pub fn picking(
                     &instance_path.entity_path,
                     &ctx.current_query(),
                 )
-                .map(|meter| meter.value.0);
+                .map(|(_, meter)| meter.value.0);
 
             // TODO(jleibs): Querying this here feels weird. Would be nice to do this whole
             // thing as an up-front archetype query somewhere.

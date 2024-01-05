@@ -68,6 +68,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
             let got_point = store
                 .query_latest_component::<MyPoint>(&entity_path, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
             similar_asserts::assert_eq!(point2, got_point);
@@ -141,6 +142,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
             let got_point = store
                 .query_latest_component::<MyPoint>(&entity_path, &query)
+                .map(|(_, data)| data)
                 .unwrap()
                 .value;
             similar_asserts::assert_eq!(point1, got_point);
@@ -359,7 +361,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     // bunch of non-existing components
     {
         let components = &["they".into(), "dont".into(), "exist".into()];
-        let (_, cells) = store
+        let (_, _, cells) = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
@@ -372,7 +374,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 
     // empty component list
     {
-        let (_, cells) = store
+        let (_, _, cells) = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
                 &ent_path,
