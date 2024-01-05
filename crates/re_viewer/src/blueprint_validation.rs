@@ -35,7 +35,7 @@ fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
                 if let Some([Some(cell)]) = blueprint
                     .data_store()
                     .latest_at(&query, path, C::name(), &[C::name()])
-                    .map(|(_, cells)| cells)
+                    .map(|(_, _, cells)| cells)
                 {
                     if let Err(err) = cell.try_to_native_mono::<C>() {
                         re_log::debug!(

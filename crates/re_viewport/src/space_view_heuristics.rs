@@ -178,7 +178,7 @@ fn is_interesting_space_view_not_at_root(
         && (query_pinhole(store, query, &candidate.space_origin).is_some()
             || store
                 .query_latest_component::<DisconnectedSpace>(&candidate.space_origin, query)
-                .map_or(false, |dp| dp.0))
+                .map_or(false, |(_, dp)| dp.0))
     {
         return true;
     }
@@ -335,7 +335,7 @@ pub fn default_created_space_views(
                             if let Some(node) = query_result.tree.lookup_node(*child) {
                                 if !node.data_result.visualizers.is_empty() {
                                     let entity_path = &node.data_result.entity_path;
-                                    if let Some(tensor) = store
+                                    if let Some((_, tensor)) = store
                                         .query_latest_component::<TensorData>(entity_path, &query)
                                     {
                                         if let Some([height, width, _]) =

@@ -379,7 +379,7 @@ fn latest_data_at<const N: usize>(
 
     store
         .latest_at(&timeline_query, &ent_path, primary, secondaries)
-        .map_or_else(|| [(); N].map(|_| None), |(_, cells)| cells)
+        .map_or_else(|| [(); N].map(|_| None), |(_, _, cells)| cells)
 }
 
 fn range_data<const N: usize>(

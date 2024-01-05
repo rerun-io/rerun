@@ -41,7 +41,7 @@ fn resolution_from_tensor(
 ) -> Option<Resolution> {
     store
         .query_latest_component::<TensorData>(entity_path, query)
-        .and_then(|tensor| {
+        .and_then(|(_, tensor)| {
             tensor
                 .image_height_width_channels()
                 .map(|hwc| Resolution([hwc[1] as f32, hwc[0] as f32].into()))
@@ -59,14 +59,14 @@ fn query_pinhole(
 ) -> Option<re_types::archetypes::Pinhole> {
     store
         .query_latest_component::<re_types::components::PinholeProjection>(entity_path, query)
-        .map(|image_from_camera| re_types::archetypes::Pinhole {
+        .map(|(_, image_from_camera)| re_types::archetypes::Pinhole {
             image_from_camera: image_from_camera.value,
             resolution: store
                 .query_latest_component(entity_path, query)
-                .map(|c| c.value)
+                .map(|(_, c)| c.value)
                 .or_else(|| resolution_from_tensor(store, query, entity_path)),
             camera_xyz: store
                 .query_latest_component(entity_path, query)
-                .map(|c| c.value),
+                .map(|(_, c)| c.value),
         })
 }

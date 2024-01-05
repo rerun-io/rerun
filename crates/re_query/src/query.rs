@@ -58,7 +58,7 @@ pub fn get_component_with_instances(
 
     let components = [InstanceKey::name(), component];
 
-    let (row_id, mut cells) = store.latest_at(query, ent_path, component, &components)?;
+    let (_, row_id, mut cells) = store.latest_at(query, ent_path, component, &components)?;
 
     Some((
         row_id,

@@ -35,7 +35,7 @@ impl EntityDataUi for re_types::components::TensorData {
             .entity_db
             .store()
             .query_latest_component::<re_types::components::TensorData>(entity_path, query)
-            .map_or(RowId::ZERO, |tensor| tensor.row_id);
+            .map_or(RowId::ZERO, |(_, tensor)| tensor.row_id);
 
         let decoded = ctx
             .cache
@@ -85,7 +85,7 @@ fn tensor_ui(
         ctx.entity_db
             .store()
             .query_latest_component::<DepthMeter>(entity_path, &ctx.current_query())
-            .map(|meter| meter.value.0)
+            .map(|(_, meter)| meter.value.0)
     } else {
         None
     };

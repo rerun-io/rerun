@@ -69,15 +69,19 @@ impl VisualizerSystem for BarChartVisualizerSystem {
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
-            let tensor = store.query_latest_component::<re_types::components::TensorData>(
-                &data_result.entity_path,
-                &query,
-            );
+            let tensor = store
+                .query_latest_component::<re_types::components::TensorData>(
+                    &data_result.entity_path,
+                    &query,
+                )
+                .map(|(_, data)| data);
 
-            let color = store.query_latest_component::<re_types::components::Color>(
-                &data_result.entity_path,
-                &query,
-            );
+            let color = store
+                .query_latest_component::<re_types::components::Color>(
+                    &data_result.entity_path,
+                    &query,
+                )
+                .map(|(_, data)| data);
 
             if let Some(tensor) = tensor {
                 if tensor.is_vector() {
