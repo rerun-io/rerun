@@ -32,13 +32,13 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.primary_weights.has_value()) {
-            auto result = DataCell::from_loggable(archetype.primary_weights.value());
+        if (archetype.col_shares.has_value()) {
+            auto result = DataCell::from_loggable(archetype.col_shares.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.secondary_weights.has_value()) {
-            auto result = DataCell::from_loggable(archetype.secondary_weights.value());
+        if (archetype.row_shares.has_value()) {
+            auto result = DataCell::from_loggable(archetype.row_shares.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
