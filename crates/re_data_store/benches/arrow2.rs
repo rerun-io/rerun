@@ -15,7 +15,7 @@ use re_types::{
     components::{InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
 };
-use re_types_core::{Component, SizeBytes as _};
+use re_types_core::{Component, SizeBytes};
 
 // ---
 
@@ -97,7 +97,7 @@ fn erased_clone(c: &mut Criterion) {
     }
 
     // TODO(cmc): Use cells once `cell.size_bytes()` has landed (#1727)
-    fn bench_arrow<'a, T: Component + 'a>(
+    fn bench_arrow<'a, T: Component + SizeBytes + 'a>(
         group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
         data: &'a [T],
     ) where
@@ -111,7 +111,14 @@ fn erased_clone(c: &mut Criterion) {
             .iter()
             .map(|array| array.total_size_bytes())
             .sum::<u64>();
-        assert!(total_size_bytes as usize >= NUM_ROWS * NUM_INSTANCES * std::mem::size_of::<T>());
+        let expected_total_size_bytes = data.total_size_bytes();
+        assert!(
+            total_size_bytes >= expected_total_size_bytes,
+            "Size for {} calculated to be {} bytes, but should be at least {} bytes",
+            T::name(),
+            total_size_bytes,
+            expected_total_size_bytes,
+        );
 
         group.bench_function("array", |b| {
             b.iter(|| {

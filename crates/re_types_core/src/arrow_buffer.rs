@@ -11,6 +11,14 @@ use arrow2::buffer::Buffer;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ArrowBuffer<T>(Buffer<T>);
 
+impl<T: crate::SizeBytes> crate::SizeBytes for ArrowBuffer<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self(buf) = self;
+        std::mem::size_of_val(buf.as_slice()) as _
+    }
+}
+
 impl<T> ArrowBuffer<T> {
     /// The number of instances of T stored in this buffer.
     #[inline]

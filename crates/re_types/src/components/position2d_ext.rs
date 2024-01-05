@@ -39,3 +39,12 @@ impl From<Position2D> for glam::Vec3 {
         Self::new(pt.x(), pt.y(), 0.0)
     }
 }
+
+// TODO(#4690): this should be codegen'd.
+impl crate::SizeBytes for Position2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self(v) = self;
+        v.heap_size_bytes()
+    }
+}

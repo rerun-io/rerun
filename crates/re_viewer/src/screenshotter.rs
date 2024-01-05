@@ -5,7 +5,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Default)]
 pub struct Screenshotter {
-    countdown: Option<usize>,
+    countdown: Option<isize>,
     target_path: Option<std::path::PathBuf>,
     quit: bool,
     pre_screenshot_zoom_factor: Option<f32>,
@@ -46,10 +46,14 @@ impl Screenshotter {
     pub fn update(&mut self, egui_ctx: &egui::Context) -> ScreenshotterOutput {
         if let Some(countdown) = &mut self.countdown {
             if *countdown == 0 {
+                // From sending the screenshot command to actually taking it (calling `save`),
+                // an arbitrary amount of frames may pass since we don't know when the gpu frame copy
+                // is done and transferred to ram.
+                // Obviously we want to send the command this command only once, so we keep counting down
+                // to negatives until we get a call to `save` which then disables the counter.
                 egui_ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot);
-            } else {
-                *countdown -= 1;
             }
+            *countdown -= 1;
 
             egui_ctx.request_repaint(); // Make sure we keep counting down
         } else if let Some(pre_screenshot_zoom_factor) = self.pre_screenshot_zoom_factor.take() {
