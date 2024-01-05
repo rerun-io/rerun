@@ -24,7 +24,7 @@ This page is meant to give an high level overview of ongoing and planned work.
 - End to end performance for high frequency time series logging
 - Layout and configuration from code (blueprint)
 - Datasets that are bigger than RAM for the native viewer
-- CLI for manipulating and and exporting data from rrd files
+- CLI for manipulating and exporting data from rrd files
 
 ### Medium term (Q2-3 2024)
 - Broader coverage of robotics data types
