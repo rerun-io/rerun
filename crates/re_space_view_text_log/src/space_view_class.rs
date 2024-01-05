@@ -424,7 +424,7 @@ fn table_ui(
                         let text_color = if let Some(color) = entry.color {
                             color.into()
                         } else {
-                            // TODO(lupickup): Understand why TextEdit text color is white instead of grey like the RichText version.
+                            // TODO(lupickup): Understand why TextEdit text color is white instead of gray like the RichText version.
                             ui.visuals()
                                 .override_text_color
                                 .unwrap_or_else(|| ui.visuals().widgets.inactive.text_color())
