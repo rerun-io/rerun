@@ -27,7 +27,7 @@ impl Viewport<'_, '_> {
             .show(ui, |ui| {
                 ctx.re_ui.panel_content(ui, |_, ui| {
                     if let Some(root) = self.tree.root() {
-                        self.tile_ui(ctx, ui, root);
+                        self.tile_ui(ctx, ui, root, true);
                     }
                 });
             });
@@ -39,7 +39,13 @@ impl Viewport<'_, '_> {
         2 <= num_children && num_children <= 3
     }
 
-    fn tile_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, tile_id: egui_tiles::TileId) {
+    fn tile_ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        tile_id: egui_tiles::TileId,
+        parent_visible: bool,
+    ) {
         // Temporarily remove the tile so we don't get borrow-checker fights:
         let Some(mut tile) = self.tree.tiles.remove(tile_id) else {
             return;
@@ -47,11 +53,11 @@ impl Viewport<'_, '_> {
 
         match &mut tile {
             egui_tiles::Tile::Container(container) => {
-                self.container_tree_ui(ctx, ui, tile_id, container);
+                self.container_tree_ui(ctx, ui, tile_id, container, parent_visible);
             }
             egui_tiles::Tile::Pane(space_view_id) => {
                 // A space view
-                self.space_view_entry_ui(ctx, ui, tile_id, space_view_id);
+                self.space_view_entry_ui(ctx, ui, tile_id, space_view_id, parent_visible);
             }
         };
 
@@ -64,6 +70,7 @@ impl Viewport<'_, '_> {
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         container: &egui_tiles::Container,
+        parent_visible: bool,
     ) {
         // TODO(#4285): this will disappear once we walk the container blueprint tree instead of `egui_tiles::Tree`
         if let (egui_tiles::Container::Tabs(_), Some(child_id)) =
@@ -73,24 +80,33 @@ impl Viewport<'_, '_> {
             // This means we won't be showing the visibility button of the parent container,
             // so if the child is made invisible, we should do the same for the parent.
             let child_is_visible = self.tree.is_visible(child_id);
-            self.tree.set_visible(tile_id, child_is_visible);
-            self.edited = true;
-            return self.tile_ui(ctx, ui, child_id);
+
+            let visible = self.tree.is_visible(tile_id);
+
+            if visible != child_is_visible {
+                self.tree.set_visible(tile_id, child_is_visible);
+                // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
+                self.edited = true;
+            }
+
+            return self.tile_ui(ctx, ui, child_id, parent_visible);
         }
 
         let item = Item::Container(tile_id);
 
         let mut visibility_changed = false;
         let mut visible = self.tree.is_visible(tile_id);
+        let container_visible = visible && parent_visible;
         let mut remove = false;
 
         let default_open = true;
 
         let response = ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
+            .subdued(!container_visible)
             .selected(ctx.selection().contains_item(&item))
             .with_icon(crate::icon_for_container_kind(&container.kind()))
             .with_buttons(|re_ui, ui| {
-                let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
+                let vis_response = visibility_button_ui(re_ui, ui, parent_visible, &mut visible);
                 visibility_changed = vis_response.changed();
 
                 let remove_response = remove_button_ui(re_ui, ui, "Remove container");
@@ -100,7 +116,7 @@ impl Viewport<'_, '_> {
             })
             .show_collapsing(ui, ui.id().with(tile_id), default_open, |_, ui| {
                 for &child in container.children() {
-                    self.tile_ui(ctx, ui, child);
+                    self.tile_ui(ctx, ui, child, container_visible);
                 }
             })
             .item_response;
@@ -121,6 +137,7 @@ impl Viewport<'_, '_> {
             self.blueprint.set_auto_layout(false, ctx);
 
             self.tree.set_visible(tile_id, visible);
+            // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
             self.edited = true;
         }
     }
@@ -131,6 +148,7 @@ impl Viewport<'_, '_> {
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         space_view_id: &SpaceViewId,
+        container_visible: bool,
     ) {
         let Some(space_view) = self.blueprint.space_views.get(space_view_id) else {
             re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
@@ -147,7 +165,7 @@ impl Viewport<'_, '_> {
 
         let mut visibility_changed = false;
         let mut visible = self.tree.is_visible(tile_id);
-        let visible_child = visible;
+        let space_view_visible = visible && container_visible;
         let item = Item::SpaceView(space_view.id);
 
         let root_node = result_tree.first_interesting_root();
@@ -160,11 +178,11 @@ impl Viewport<'_, '_> {
 
         let response = ListItem::new(ctx.re_ui, space_view.display_name.clone())
             .selected(ctx.selection().contains_item(&item))
-            .subdued(!visible)
+            .subdued(!space_view_visible)
             .force_hovered(is_item_hovered)
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .with_buttons(|re_ui, ui| {
-                let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
+                let vis_response = visibility_button_ui(re_ui, ui, container_visible, &mut visible);
                 visibility_changed = vis_response.changed();
 
                 let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
@@ -185,7 +203,7 @@ impl Viewport<'_, '_> {
                         &query_result,
                         result_node,
                         space_view,
-                        visible_child,
+                        space_view_visible,
                     );
                 } else {
                     ui.label("No results");
