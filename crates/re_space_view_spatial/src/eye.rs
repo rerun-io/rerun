@@ -405,7 +405,7 @@ impl OrbitEye {
 
     /// Rotate based on a certain number of pixel delta.
     pub fn rotate(&mut self, delta: egui::Vec2) {
-        let sensitivity = 0.004; // radians-per-point  TODO(emilk): take fov_y and canvas size into account
+        let sensitivity = 0.004; // radians-per-point. TODO(emilk): take fov_y and canvas size into account
         let delta = sensitivity * delta;
 
         if self.up == Vec3::ZERO {

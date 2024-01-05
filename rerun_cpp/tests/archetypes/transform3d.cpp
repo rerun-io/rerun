@@ -17,7 +17,7 @@ SCENARIO(
     const bool from_parent = GENERATE(true, false);
 
     SECTION("TranslationAndMat3x3") {
-// Do NOT write this as rrd::Mat3x3 as this actually caught an overload resolution  bug.
+// Do NOT write this as rrd::Mat3x3 as this actually caught an overload resolution bug.
 #define MATRIX_ILIST                              \
     {                                             \
         {1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, { \

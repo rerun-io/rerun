@@ -2,7 +2,7 @@
 Status: proposal
 
 ## Intro
-The Blueprint APIs introduce a new mechanism of working with Rerun.  While the Rerun data-logging APIs emphasize
+The Blueprint APIs introduce a new mechanism of working with Rerun. While the Rerun data-logging APIs emphasize
 low-friction capture of time-varying user-data *without* consideration of display or UI, the Blueprint APIs function to
 give users explicit control over the details of how data is displayed in the viewer.
 
@@ -30,7 +30,7 @@ give users explicit control over the details of how data is displayed in the vie
 ### Blueprint Lifecycle
 In order to simplify many edge cases, custom blueprints will only be able to be sent to the viewer in their entirety as
 part of viewer startup. This limits blueprint control to: `rr.spawn()` (launch a native app), `rr.serve()` (launch a
-hosted web-app), and `rr.show()` (embed a viewer in a notebook).  Additionally a blueprint file will be able to be
+hosted web-app), and `rr.show()` (embed a viewer in a notebook). Additionally a blueprint file will be able to be
 provided to the viewer via the CLI at launch, or opened via the file-menu.
 
 Blueprints will not otherwise be able to be sent via `rr.connect()`, which is reserved for only transmitting log-data to
@@ -134,7 +134,7 @@ This means a trivial expression like: `rr.show(rrb.Points3D("points"))` is still
 ## Blueprint-Static Data
 
 As a further simplification, the Blueprint will allow for the direct inclusion of static data, allowing users to bypass
-the data-logging APIs entirely for simple use-cases that don't require temporal information.  This will be accomplished
+the data-logging APIs entirely for simple use-cases that don't require temporal information. This will be accomplished
 by allowing `rrb.Data` objects to be constructed from any Rerun-loggable object.
 
 Data that is a *query* from the recording store references an entity path used seprately by the logging APIs:

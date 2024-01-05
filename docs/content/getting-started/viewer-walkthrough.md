@@ -180,7 +180,7 @@ the specific thing that was logged.
 
 ### Changing the time slider
 To change the position on the timeline, simply grab the time indicator and pull it to the point in time you are
-interested in seeing.  The space views will adjust accordingly. You can also use the play/pause/step/loop controls to
+interested in seeing. The space views will adjust accordingly. You can also use the play/pause/step/loop controls to
 playback the Rerun data as you might with a video file.
 
 <picture>
@@ -202,7 +202,7 @@ Try out the following:
 ### Selecting different timelines
 The current view of timeline is showing the data organized by the *frame number* at which it was logged. Using frame
 numbers can be a helpful way to synchronize things that may not have been logged at precisely the same time. However,
-it's possible to also view the data in the specific order that it was logged.  Click on the drop-down that says "frame"
+it's possible to also view the data in the specific order that it was logged. Click on the drop-down that says "frame"
 and switch it to "log_time." If you zoom in on the timeline (using ctrl+scrollwheel), you can see that these events were
 all logged at slightly different times.
 

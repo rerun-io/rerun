@@ -19,7 +19,7 @@ namespace rerun::components {
         /// New tensor data from dimensions and pointer to tensor data.
         ///
         /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
-        /// \param shape  Shape of the tensor. Determines the number of elements expected to be in `data_`.
+        /// \param shape Shape of the tensor. Determines the number of elements expected to be in `data_`.
         /// \param data_ Target of the pointer must outlive the archetype.
         template <typename TElement>
         explicit TensorData(Collection<datatypes::TensorDimension> shape, const TElement* data_)

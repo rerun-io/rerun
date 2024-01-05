@@ -28,7 +28,7 @@ To run the roundtrip tests, check out `./docs/code-examples/roundtrips.py --help
 
 ### Implementing new tests
 
-Just pick a name for your test, and look at existing examples to get started.  The `app_id` must be `rerun_example_<test_name>`.
+Just pick a name for your test, and look at existing examples to get started. The `app_id` must be `rerun_example_<test_name>`.
 
 The roundtrip process is driven by file names, so make sure all 3 tests use the same name: `<test_name>.rs`, `<test_name>.cpp`, `<test_name>.py`.
 

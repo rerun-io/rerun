@@ -6,7 +6,7 @@ use re_log_types::{TimeInt, TimeRange, TimeType};
 /// A piece-wise linear view of a single timeline.
 ///
 /// It is piece-wise linear because we sometimes have big gaps in the data
-/// which we collapse in order to  present a compressed view of the data.
+/// which we collapse in order to present a compressed view of the data.
 #[derive(Clone, Debug)]
 pub(crate) struct TimelineAxis {
     pub ranges: vec1::Vec1<TimeRange>,
