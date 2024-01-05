@@ -10,14 +10,12 @@ namespace rerun.blueprint.components;
 // ---
 
 
-/// The weights of the primary axis.
-///
-/// For `Grid` this is the column weights.
-table PrimaryWeights (
+/// The layout shares of each column in the container.
+table ColumnShares (
     "attr.docs.unreleased",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 ) {
-    /// The weighting of each container element.
-    weights: [float] (order: 100);
+    /// The layout shares of each column in the container.
+    shares: [float] (order: 100);
 }
