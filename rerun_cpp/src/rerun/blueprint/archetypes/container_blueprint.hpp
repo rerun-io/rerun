@@ -38,14 +38,14 @@ namespace rerun::blueprint::archetypes {
         ///
         /// For `Horizontal` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Horizontal` containers.
+        /// Ignored for `Vertical` containers.
         std::optional<rerun::blueprint::components::ColumnShares> col_shares;
 
         /// The layout shares of each row of the container.
         ///
-        /// For `Horizontal` containers, the length of this list should always match the number of contents.
+        /// For `Vertical` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Vertical` containers.
+        /// Ignored for `Horizontal` containers.
         std::optional<rerun::blueprint::components::RowShares> row_shares;
 
         /// Which tab is active.
@@ -98,7 +98,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// For `Horizontal` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Horizontal` containers.
+        /// Ignored for `Vertical` containers.
         ContainerBlueprint with_col_shares(rerun::blueprint::components::ColumnShares _col_shares
         ) && {
             col_shares = std::move(_col_shares);
@@ -108,9 +108,9 @@ namespace rerun::blueprint::archetypes {
 
         /// The layout shares of each row of the container.
         ///
-        /// For `Horizontal` containers, the length of this list should always match the number of contents.
+        /// For `Vertical` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Vertical` containers.
+        /// Ignored for `Horizontal` containers.
         ContainerBlueprint with_row_shares(rerun::blueprint::components::RowShares _row_shares) && {
             row_shares = std::move(_row_shares);
             // See: https://github.com/rerun-io/rerun/issues/4027

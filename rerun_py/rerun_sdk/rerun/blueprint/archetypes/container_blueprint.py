@@ -49,13 +49,13 @@ class ContainerBlueprint(Archetype):
 
             For `Horizontal` containers, the length of this list should always match the number of contents.
 
-            Ignored for `Horizontal` containers.
+            Ignored for `Vertical` containers.
         row_shares:
             The layout shares of each row of the container.
 
-            For `Horizontal` containers, the length of this list should always match the number of contents.
+            For `Vertical` containers, the length of this list should always match the number of contents.
 
-            Ignored for `Vertical` containers.
+            Ignored for `Horizontal` containers.
         active_tab:
             Which tab is active.
 
@@ -142,7 +142,7 @@ class ContainerBlueprint(Archetype):
     #
     # For `Horizontal` containers, the length of this list should always match the number of contents.
     #
-    # Ignored for `Horizontal` containers.
+    # Ignored for `Vertical` containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -153,9 +153,9 @@ class ContainerBlueprint(Archetype):
     )
     # The layout shares of each row of the container.
     #
-    # For `Horizontal` containers, the length of this list should always match the number of contents.
+    # For `Vertical` containers, the length of this list should always match the number of contents.
     #
-    # Ignored for `Vertical` containers.
+    # Ignored for `Horizontal` containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

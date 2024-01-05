@@ -37,14 +37,14 @@ pub struct ContainerBlueprint {
     ///
     /// For `Horizontal` containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for `Horizontal` containers.
+    /// Ignored for `Vertical` containers.
     pub col_shares: Option<crate::blueprint::components::ColumnShares>,
 
     /// The layout shares of each row of the container.
     ///
-    /// For `Horizontal` containers, the length of this list should always match the number of contents.
+    /// For `Vertical` containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for `Vertical` containers.
+    /// Ignored for `Horizontal` containers.
     pub row_shares: Option<crate::blueprint::components::RowShares>,
 
     /// Which tab is active.
