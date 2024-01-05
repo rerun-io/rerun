@@ -143,4 +143,4 @@ If you're ready to move on to more advanced topics, check out the [Viewer Walkth
 more advanced guide for [Logging Data in Python](logging-python.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 
-If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main  s.
+If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main datatypes.
