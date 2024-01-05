@@ -11,6 +11,14 @@ use arrow2::buffer::Buffer;
 #[derive(Clone, Debug, Default)]
 pub struct ArrowString(pub Buffer<u8>);
 
+impl crate::SizeBytes for ArrowString {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self(buf) = self;
+        std::mem::size_of_val(buf.as_slice()) as _
+    }
+}
+
 impl PartialEq for ArrowString {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
