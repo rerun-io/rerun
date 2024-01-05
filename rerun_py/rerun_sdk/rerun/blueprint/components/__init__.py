@@ -32,6 +32,7 @@ from .entity_properties_component import (
     EntityPropertiesComponentLike,
     EntityPropertiesComponentType,
 )
+from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, GridColumnsLike, GridColumnsType
 from .included_contents import (
     IncludedContents,
     IncludedContentsArrayLike,
@@ -124,6 +125,11 @@ __all__ = [
     "EntityPropertiesComponentBatch",
     "EntityPropertiesComponentLike",
     "EntityPropertiesComponentType",
+    "GridColumns",
+    "GridColumnsArrayLike",
+    "GridColumnsBatch",
+    "GridColumnsLike",
+    "GridColumnsType",
     "IncludedContents",
     "IncludedContentsArrayLike",
     "IncludedContentsBatch",

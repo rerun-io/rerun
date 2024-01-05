@@ -536,6 +536,8 @@ fn container_top_level_properties(
                         }
                     }
 
+                    let original_layout = grid.layout;
+
                     egui::ComboBox::from_id_source("container_grid_columns")
                         .selected_text(grid_layout_to_string(&grid.layout))
                         .show_ui(ui, |ui| {
@@ -558,6 +560,10 @@ fn container_top_level_properties(
                                 );
                             }
                         });
+
+                    // TODO(jleibs): Manually marking edited like this is way too error prone.
+                    // Need to detect this in a better way.
+                    viewport.edited |= original_layout != grid.layout;
 
                     ui.end_row();
                 }
