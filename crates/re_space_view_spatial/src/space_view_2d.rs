@@ -1,5 +1,6 @@
 use re_entity_db::EntityProperties;
 use re_log_types::EntityPath;
+use re_types::{components::PinholeProjection, Loggable as _};
 use re_viewer_context::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
@@ -14,6 +15,10 @@ use crate::{
         calculate_bounding_box, register_2d_spatial_visualizers, SpatialViewVisualizerData,
     },
 };
+
+pub struct VisualizableFilterContext2D {
+    pub has_pinhole_at_root: bool,
+}
 
 #[derive(Default)]
 pub struct SpatialSpaceView2D;
@@ -49,6 +54,27 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::High
+    }
+
+    fn visualizable_filter_context(
+        &self,
+        space_origin: &EntityPath,
+        entity_db: &re_entity_db::EntityDb,
+    ) -> Box<dyn std::any::Any> {
+        re_tracing::profile_function!();
+
+        let has_pinhole_at_root = entity_db
+            .tree()
+            .subtree(space_origin)
+            .map_or(false, |tree| {
+                tree.entity
+                    .components
+                    .contains_key(&PinholeProjection::name())
+            });
+
+        Box::new(VisualizableFilterContext2D {
+            has_pinhole_at_root,
+        })
     }
 
     fn on_frame_start(
