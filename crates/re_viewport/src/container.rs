@@ -358,7 +358,7 @@ impl ContainerBlueprint {
                         );
 
                         for (share, id) in self.col_shares.iter().zip(children.iter()) {
-                            linear.shares[*id] = *share;
+                            linear.shares.set_share(*id, *share);
                         }
 
                         egui_tiles::Container::Linear(linear)
@@ -370,7 +370,7 @@ impl ContainerBlueprint {
                         );
 
                         for (share, id) in self.row_shares.iter().zip(children.iter()) {
-                            linear.shares[*id] = *share;
+                            linear.shares.set_share(*id, *share);
                         }
 
                         egui_tiles::Container::Linear(linear)
