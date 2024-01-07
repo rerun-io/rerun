@@ -41,6 +41,7 @@ arrow2 = { workspace = true, features = [
 backtrace.workspace = true
 document-features.workspace = true
 once_cell.workspace = true
+paste.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 
