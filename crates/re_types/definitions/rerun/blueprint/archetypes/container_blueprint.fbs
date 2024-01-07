@@ -27,15 +27,19 @@ table ContainerBlueprint (
     /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
     contents: rerun.blueprint.components.IncludedContents ("attr.rerun.component_optional", nullable, order: 300);
 
-    /// The weights of the primary axis. For `Grid` this is the column weights.
+    /// The layout shares of each column in the container.
     ///
-    /// For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
-    primary_weights: rerun.blueprint.components.PrimaryWeights ("attr.rerun.component_optional", nullable, order: 400);
+    /// For `Horizontal` containers, the length of this list should always match the number of contents.
+    ///
+    /// Ignored for `Vertical` containers.
+    col_shares: rerun.blueprint.components.ColumnShares ("attr.rerun.component_optional", nullable, order: 400);
 
-    /// The weights of the secondary axis. For `Grid` this is the row weights.
+    /// The layout shares of each row of the container.
     ///
-    /// Ignored for `Horizontal`/`Vertical` containers.
-    secondary_weights: rerun.blueprint.components.SecondaryWeights ("attr.rerun.component_optional", nullable, order: 500);
+    /// For `Vertical` containers, the length of this list should always match the number of contents.
+    ///
+    /// Ignored for `Horizontal` containers.
+    row_shares: rerun.blueprint.components.RowShares ("attr.rerun.component_optional", nullable, order: 500);
 
     /// Which tab is active.
     ///

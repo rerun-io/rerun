@@ -11,6 +11,7 @@ from .auto_space_views import (
     AutoSpaceViewsLike,
     AutoSpaceViewsType,
 )
+from .column_shares import ColumnShares, ColumnSharesArrayLike, ColumnSharesBatch, ColumnSharesLike, ColumnSharesType
 from .container_kind import (
     ContainerKind,
     ContainerKindArrayLike,
@@ -56,13 +57,6 @@ from .included_space_views import (
 )
 from .name import Name, NameArrayLike, NameBatch, NameLike, NameType
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
-from .primary_weights import (
-    PrimaryWeights,
-    PrimaryWeightsArrayLike,
-    PrimaryWeightsBatch,
-    PrimaryWeightsLike,
-    PrimaryWeightsType,
-)
 from .query_expressions import (
     QueryExpressions,
     QueryExpressionsArrayLike,
@@ -71,13 +65,7 @@ from .query_expressions import (
     QueryExpressionsType,
 )
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
-from .secondary_weights import (
-    SecondaryWeights,
-    SecondaryWeightsArrayLike,
-    SecondaryWeightsBatch,
-    SecondaryWeightsLike,
-    SecondaryWeightsType,
-)
+from .row_shares import RowShares, RowSharesArrayLike, RowSharesBatch, RowSharesLike, RowSharesType
 from .space_view_class import (
     SpaceViewClass,
     SpaceViewClassArrayLike,
@@ -110,6 +98,11 @@ __all__ = [
     "AutoSpaceViewsBatch",
     "AutoSpaceViewsLike",
     "AutoSpaceViewsType",
+    "ColumnShares",
+    "ColumnSharesArrayLike",
+    "ColumnSharesBatch",
+    "ColumnSharesLike",
+    "ColumnSharesType",
     "ContainerKind",
     "ContainerKindArrayLike",
     "ContainerKindBatch",
@@ -155,11 +148,6 @@ __all__ = [
     "PanelViewBatch",
     "PanelViewLike",
     "PanelViewType",
-    "PrimaryWeights",
-    "PrimaryWeightsArrayLike",
-    "PrimaryWeightsBatch",
-    "PrimaryWeightsLike",
-    "PrimaryWeightsType",
     "QueryExpressions",
     "QueryExpressionsArrayLike",
     "QueryExpressionsBatch",
@@ -168,11 +156,11 @@ __all__ = [
     "RootContainer",
     "RootContainerBatch",
     "RootContainerType",
-    "SecondaryWeights",
-    "SecondaryWeightsArrayLike",
-    "SecondaryWeightsBatch",
-    "SecondaryWeightsLike",
-    "SecondaryWeightsType",
+    "RowShares",
+    "RowSharesArrayLike",
+    "RowSharesBatch",
+    "RowSharesLike",
+    "RowSharesType",
     "SpaceViewClass",
     "SpaceViewClassArrayLike",
     "SpaceViewClassBatch",
