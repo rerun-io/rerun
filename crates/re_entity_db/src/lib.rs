@@ -13,7 +13,7 @@ mod times_per_timeline;
 mod versioned_instance_path;
 
 #[cfg(feature = "serde")]
-mod blueprint;
+pub mod blueprint;
 #[cfg(feature = "serde")]
 mod editable_auto_value;
 

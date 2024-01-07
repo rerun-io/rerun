@@ -2,4 +2,3 @@
 
 .gitattributes linguist-generated=true
 mod.rs linguist-generated=true
-panel_view.rs linguist-generated=true
