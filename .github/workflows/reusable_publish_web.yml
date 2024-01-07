@@ -83,13 +83,19 @@ jobs:
           name: ${{ inputs.wheel-artifact-name }}
           path: wheel
 
+      - name: Install example dependencies
+        shell: bash
+        run: |
+          pixi run pip install \
+            -r scripts/ci/requirements-examples-nightly.txt \
+            --no-input
+
       - name: Install Python dependencies and wheel
         shell: bash
         run: |
           pixi run pip install -r scripts/ci/requirements.txt
-          pixi run pip install -r scripts/ci/requirements-web-demo.txt
           pixi run pip uninstall rerun-sdk -y
-          pixi run pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
+          pixi run pip install deprecated numpy>=1.23 pyarrow==14.0.2 pytest==7.1.2
           pixi run pip install rerun-sdk --no-index --find-links wheel
 
       - name: Installed wheel version
@@ -108,7 +114,7 @@ jobs:
         shell: bash
         run: |
           pixi run build-examples rrd \
-            --channel "main" \
+            --channel "nightly" \
             web_viewer/examples
 
       - name: Build examples manifest
@@ -119,7 +125,7 @@ jobs:
 
           pixi run build-examples manifest \
             --base-url "https://app.rerun.io/commit/$sha" \
-            --channel "main" \
+            --channel "nightly" \
             web_viewer/examples_manifest.json
 
       - name: Upload app.rerun.io (versioned)
