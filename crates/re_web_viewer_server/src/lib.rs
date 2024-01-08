@@ -24,7 +24,7 @@ mod data {
     #![allow(clippy::large_include_file)]
 
     // If you add/remove/change the paths here, also update the include-list in `Cargo.toml`!
-    pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index_bundled.html");
+    pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index.html");
     pub const FAVICON: &[u8] = include_bytes!("../web_viewer/favicon.svg");
     pub const SW_JS: &[u8] = include_bytes!("../web_viewer/sw.js");
     pub const VIEWER_JS: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
