@@ -1184,6 +1184,11 @@ impl eframe::App for App {
             frame_start.elapsed().as_secs_f32(),
         );
     }
+
+    #[cfg(target_arch = "wasm32")]
+    fn as_any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
+        Some(&mut *self)
+    }
 }
 
 /// Add built-in space views to the registry.
