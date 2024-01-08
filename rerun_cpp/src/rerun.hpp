@@ -44,6 +44,7 @@ namespace rerun {
     using components::Radius;
     using components::Text;
     using components::TextLogLevel;
+    using components::Vector2D;
     using components::Vector3D;
 
     using datatypes::Angle;

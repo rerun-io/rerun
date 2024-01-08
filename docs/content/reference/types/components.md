@@ -37,5 +37,6 @@ Archetypes are bundles of components
 * [`Text`](components/text.md)
 * [`TextLogLevel`](components/text_log_level.md)
 * [`Transform3D`](components/transform3d.md)
+* [`Vector2D`](components/vector2d.md)
 * [`Vector3D`](components/vector3d.md)
 * [`ViewCoordinates`](components/view_coordinates.md)

@@ -164,7 +164,10 @@ pub fn build(
             anyhow::bail!(
                 "Failed to run wasm-bindgen: {err}. This is often because some dependency is calling `std::time::Instant::now()` or similar. You can try diagnosing this with:\n\
                 wasm2wat {target_wasm_path} | rg '\"env\"'\n\
-                wasm2wat {target_wasm_path} | rg 'call .now\\b' -B 20"
+                wasm2wat {target_wasm_path} | rg 'call .now\\b' -B 20\n\
+                \n\
+                You can also try https://rustwasm.github.io/twiggy/usage/command-line-interface/paths.html#twiggy-paths
+                "
             );
         } else {
             return Err(err.context("Failed to run wasm-bindgen"));

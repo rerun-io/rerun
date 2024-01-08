@@ -1,0 +1,19 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "../datatypes/vec2d.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A vector in 2D space.
+struct Vector2D (
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent",
+  "attr.docs.unreleased"
+) {
+  vector: rerun.datatypes.Vec2D (order: 100);
+}

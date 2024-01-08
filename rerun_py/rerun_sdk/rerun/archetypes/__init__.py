@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .annotation_context import AnnotationContext
+from .arrows2d import Arrows2D
 from .arrows3d import Arrows3D
 from .asset3d import Asset3D
 from .bar_chart import BarChart
@@ -28,6 +29,7 @@ from .view_coordinates import ViewCoordinates
 
 __all__ = [
     "AnnotationContext",
+    "Arrows2D",
     "Arrows3D",
     "Asset3D",
     "BarChart",

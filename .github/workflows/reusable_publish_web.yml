@@ -114,18 +114,15 @@ jobs:
         shell: bash
         run: |
           pixi run build-examples rrd \
-            --channel "nightly" \
+            --channel "release" \
             web_viewer/examples
 
       - name: Build examples manifest
         shell: bash
         run: |
-          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
-          sha="$(echo $full_commit | cut -c1-7)"
-
           pixi run build-examples manifest \
-            --base-url "https://app.rerun.io/commit/$sha" \
-            --channel "nightly" \
+            --base-url "https://app.rerun.io/version/${{inputs.release-version}}" \
+            --channel "release" \
             web_viewer/examples_manifest.json
 
       - name: Upload app.rerun.io (versioned)
