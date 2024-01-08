@@ -18,17 +18,15 @@ pub enum MaybeCachedComponentData<'a, C> {
     Cached(&'a [C]),
     // TODO(cmc): Ideally, this would be a reference to a `dyn Iterator` that is the result of
     // calling `ArchetypeView::iter_{required|optional}_component`.
-    // In practice this enters lifetime invariance hell for, from what I can see, no particular gains.
+    // In practice this enters lifetime invariance hell for, from what I can see, no particular gains
+    // (rustc is pretty good at optimizing out collections into obvious temporary variables).
     Raw(Vec<C>),
 }
 
 impl<'a, C: Clone> MaybeCachedComponentData<'a, C> {
     #[inline]
     pub fn iter(&self) -> impl ExactSizeIterator<Item = &C> + '_ {
-        match self {
-            MaybeCachedComponentData::Cached(data) => itertools::Either::Left(data.iter()),
-            MaybeCachedComponentData::Raw(data) => itertools::Either::Right(data.iter()),
-        }
+        self.as_slice().iter()
     }
 
     #[inline]
@@ -97,54 +95,57 @@ macro_rules! impl_query_archetype {
                 format!("arch={} pov={} comp={}", A::name(), $N, $M)
             );
 
+            let mut latest_at_callback = |query: &LatestAtQuery, cache: &mut crate::LatestAtCache| {
+                re_tracing::profile_scope!("latest_at");
+
+                let bucket = cache.entry(query.at).or_default();
+                // NOTE: Implicitly dropping the write guard here: the LatestAtCache is free once again!
+
+                if bucket.is_empty() {
+                    let now = web_time::Instant::now();
+                    let arch_view = query_archetype::<A>(store, &query, entity_path)?;
+
+                    bucket.[<insert_pov $N _comp$M>]::<A, $($pov,)+ $($comp,)*>(query.at, &arch_view)?;
+
+                    // TODO(cmc): I'd love a way of putting this information into the `puffin` span directly.
+                    let elapsed = now.elapsed();
+                    ::re_log::trace!(
+                        store_id=%store.id(),
+                        %entity_path,
+                        archetype=%A::name(),
+                        "cached new entry in {elapsed:?} ({:0.3} entries/s)",
+                        1f64 / elapsed.as_secs_f64()
+                    );
+                }
+
+                let it = itertools::izip!(
+                    bucket.iter_pov_times(),
+                    bucket.iter_pov_instance_keys(),
+                    $(bucket.iter_component::<$pov>()?,)+
+                    $(bucket.iter_component_opt::<$comp>()?,)*
+                ).map(|(time, instance_keys, $($pov,)+ $($comp,)*)| {
+                    (
+                        *time,
+                        MaybeCachedComponentData::Cached(instance_keys),
+                        $(MaybeCachedComponentData::Cached($pov),)+
+                        $(MaybeCachedComponentData::Cached($comp),)*
+                    )
+                });
+
+                for data in it {
+                    f(data);
+                }
+
+                Ok(())
+            };
+
             match &query {
                 AnyQuery::LatestAt(query) => {
                     Caches::with_latest_at::<A, _, _>(
                         store.id().clone(),
                         entity_path.clone(),
                         query,
-                        |cache| {
-                            re_tracing::profile_scope!("latest_at");
-
-                             let bucket = cache.entry(query.at).or_default();
-                            // NOTE: Implicitly dropping the write guard here: the LatestAtCache is
-                            // free once again!
-
-                            if bucket.is_empty() {
-                                let now = web_time::Instant::now();
-                                let arch_view = query_archetype::<A>(store, &query, entity_path)?;
-
-                                bucket.[<insert_pov $N _comp$M>]::<A, $($pov,)+ $($comp,)*>(query.at, &arch_view)?;
-
-                                // TODO(cmc): I'd love a way of putting this information into
-                                // the `puffin` span directly.
-                                let elapsed = now.elapsed();
-                                ::re_log::trace!(
-                                    "cached new entry in {elapsed:?} ({:0.3} entries/s)",
-                                    1f64 / elapsed.as_secs_f64()
-                                );
-                            }
-
-                            let it = itertools::izip!(
-                                bucket.iter_pov_times(),
-                                bucket.iter_pov_instance_keys(),
-                                $(bucket.iter_component::<$pov>()?,)+
-                                $(bucket.iter_component_opt::<$comp>()?,)*
-                            ).map(|(time, instance_keys, $($pov,)+ $($comp,)*)| {
-                                (
-                                    *time,
-                                    MaybeCachedComponentData::Cached(instance_keys),
-                                    $(MaybeCachedComponentData::Cached($pov),)+
-                                    $(MaybeCachedComponentData::Cached($comp),)*
-                                )
-                            });
-
-                            for data in it {
-                                f(data);
-                            }
-
-                            Ok(())
-                        }
+                        |cache| latest_at_callback(query, cache),
                     )
                 },
             }

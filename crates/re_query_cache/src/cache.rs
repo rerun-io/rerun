@@ -39,7 +39,7 @@ static CACHES: Lazy<Caches> = Lazy::new(Caches::default);
 /// Maintains the top-level cache mappings.
 //
 // TODO(cmc): Store subscriber and cache invalidation.
-// TODO(cmc): SizeBytes support + size stats + mem panel
+// TODO(#4730): SizeBytes support + size stats + mem panel
 // TODO(cmc): timeless caching support
 #[derive(Default)]
 pub struct Caches {
@@ -49,7 +49,7 @@ pub struct Caches {
 impl Caches {
     /// Clears all caches.
     //
-    // TODO(cmc): expose palette command.
+    // TODO(#4731): expose palette command.
     #[inline]
     pub fn clear() {
         let Caches { latest_at } = &*CACHES;
@@ -150,12 +150,12 @@ pub struct CacheBucket {
 
     /// The resulting component data, pre-deserialized, pre-joined.
     //
-    // TODO(cmc): Don't denormalize auto-generated instance keys.
-    // TODO(cmc): Don't denormalize splatted values.
+    // TODO(#4733): Don't denormalize auto-generated instance keys.
+    // TODO(#4734): Don't denormalize splatted values.
     pub(crate) components: BTreeMap<ComponentName, Box<dyn ErasedFlatVecDeque + Send + Sync>>,
     //
     // TODO(cmc): secondary cache
-    // TODO(cmc): size stats: this requires codegen'ing SizeBytes for all components!
+    // TODO(#4730): size stats: this requires codegen'ing SizeBytes for all components!
 }
 
 impl CacheBucket {
@@ -209,13 +209,13 @@ impl CacheBucket {
 
     /// How many timestamps' worth of data is stored in this bucket?
     #[inline]
-    pub fn len(&self) -> usize {
+    pub fn num_entries(&self) -> usize {
         self.pov_times.len()
     }
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.num_entries() == 0
     }
 }
 

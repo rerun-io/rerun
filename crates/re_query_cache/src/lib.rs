@@ -10,6 +10,8 @@ pub use self::query::{
     query_archetype_pov1, query_archetype_with_history_pov1, MaybeCachedComponentData,
 };
 
+pub(crate) use self::cache::LatestAtCache;
+
 // TODO(cmc): Supporting N>1 generically is quite painful due to limitations in declarative macros,
 // not that we care at the moment.
 seq_macro::seq!(NUM_COMP in 0..10 { paste::paste! {
