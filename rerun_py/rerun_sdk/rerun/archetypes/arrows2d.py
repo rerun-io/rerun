@@ -72,7 +72,7 @@ class Arrows2D(Archetype):
         origins:
             All the origin (base) positions for each arrow in the batch.
 
-            If no origins are set, (0, 0, 0) is used as the origin for each arrow.
+            If no origins are set, (0, 0) is used as the origin for each arrow.
         radii:
             Optional radii for the arrows.
 
@@ -138,7 +138,7 @@ class Arrows2D(Archetype):
     )
     # All the origin (base) positions for each arrow in the batch.
     #
-    # If no origins are set, (0, 0, 0) is used as the origin for each arrow.
+    # If no origins are set, (0, 0) is used as the origin for each arrow.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

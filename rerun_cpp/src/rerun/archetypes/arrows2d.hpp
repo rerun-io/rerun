@@ -52,7 +52,7 @@ namespace rerun::archetypes {
 
         /// All the origin (base) positions for each arrow in the batch.
         ///
-        /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
+        /// If no origins are set, (0, 0) is used as the origin for each arrow.
         std::optional<Collection<rerun::components::Position2D>> origins;
 
         /// Optional radii for the arrows.
@@ -84,8 +84,7 @@ namespace rerun::archetypes {
       public:
         // Extensions to generated type defined in 'arrows2d_ext.cpp'
 
-        /// Creates new 2D arrows pointing in the given directions, with a base at the origin (0, 0,
-        /// 0).
+        /// Creates new 2D arrows pointing in the given directions, with a base at the origin (0, 0).
         static Arrows2D from_vectors(Collection<components::Vector2D> vectors_) {
             Arrows2D arrows;
             arrows.vectors = std::move(vectors_);
@@ -98,7 +97,7 @@ namespace rerun::archetypes {
 
         /// All the origin (base) positions for each arrow in the batch.
         ///
-        /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
+        /// If no origins are set, (0, 0) is used as the origin for each arrow.
         Arrows2D with_origins(Collection<rerun::components::Position2D> _origins) && {
             origins = std::move(_origins);
             // See: https://github.com/rerun-io/rerun/issues/4027

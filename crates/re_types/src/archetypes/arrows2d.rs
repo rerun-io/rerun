@@ -58,7 +58,7 @@ pub struct Arrows2D {
 
     /// All the origin (base) positions for each arrow in the batch.
     ///
-    /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
+    /// If no origins are set, (0, 0) is used as the origin for each arrow.
     pub origins: Option<Vec<crate::components::Position2D>>,
 
     /// Optional radii for the arrows.

@@ -27,7 +27,7 @@ table Arrows2D (
 
   /// All the origin (base) positions for each arrow in the batch.
   ///
-  /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
+  /// If no origins are set, (0, 0) is used as the origin for each arrow.
   origins: [rerun.components.Position2D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   // --- Optional ---

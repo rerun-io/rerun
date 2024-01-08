@@ -27,8 +27,8 @@ namespace rerun::components {
         /// Construct Vector2D from x/y values.
         Vector2D(float x, float y) : vector{x, y} {}
 
-        /// Construct Vec2D from x/y/z float pointer.
-        explicit Vector2D(const float* xyz) : vector{xyz[0], xyz[1]} {}
+        /// Construct Vec2D from x/y float pointer.
+        explicit Vector2D(const float* xy) : vector{xy[0], xy[1]} {}
 
         float x() const {
             return vector.x();
