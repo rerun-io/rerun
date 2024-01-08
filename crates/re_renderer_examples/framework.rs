@@ -207,10 +207,12 @@ impl<E: Example + 'static> Application<E> {
                             .configure(&self.re_ctx.device, &self.surface_config);
                         self.window.request_redraw();
                     }
+
                     Event::WindowEvent {
                         event: WindowEvent::KeyboardInput { event, .. },
                         ..
                     } => self.example.on_key_event(event),
+
                     Event::WindowEvent {
                         event: WindowEvent::CursorMoved { position, .. },
                         ..
@@ -218,6 +220,7 @@ impl<E: Example + 'static> Application<E> {
                         .example
                         // Don't round the position: The entire range from 0 to excluding 1 should fall into pixel coordinate 0!
                         .on_cursor_moved(glam::uvec2(position.x as u32, position.y as u32)),
+
                     winit::event::Event::WindowEvent {
                         event: winit::event::WindowEvent::RedrawRequested,
                         ..
@@ -328,13 +331,17 @@ impl<E: Example + 'static> Application<E> {
                             );
                             re_log::info!("{time_info_str}");
                         }
+
+                        self.window.request_redraw(); // Busy-painting
                     }
+
                     Event::WindowEvent {
                         event: WindowEvent::CloseRequested,
                         ..
                     } => {
                         event_loop_window_target.exit();
                     }
+
                     _ => {}
                 }
             })
