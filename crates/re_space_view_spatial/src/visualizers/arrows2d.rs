@@ -61,7 +61,7 @@ impl Arrows2DVisualizer {
                     (vector, Some(label)) => {
                         let midpoint =
                              // `0.45` rather than `0.5` to account for cap and such
-                            (glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0)) * 0.45;
+                            glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0) * 0.45;
                         let midpoint = world_from_obj.transform_point3(midpoint.extend(0.0));
 
                         Some(UiLabel {
