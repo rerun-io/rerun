@@ -50,8 +50,20 @@ static CACHES: Lazy<Caches> = Lazy::new(Caches::default);
 // TODO(cmc): Store subscriber and cache invalidation.
 // TODO(#4730): SizeBytes support + size stats + mem panel
 #[derive(Default)]
-pub struct Caches {
-    latest_at: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
+pub struct Caches(RwLock<HashMap<CacheKey, CachesPerArchetype>>);
+
+#[derive(Default)]
+pub struct CachesPerArchetype {
+    /// Which [`Archetype`] are we querying for?
+    ///
+    /// This is very important because of our data model: we not only query for components, but we
+    /// query for components from a specific point-of-view (the so-called primary component).
+    /// Different archetypes have different point-of-views, and therefore can end up with different
+    /// results, even from the same raw data.
+    //
+    // TODO(cmc): At some point we should probably just store the PoV and optional components rather
+    // than an `ArchetypeName`: the query system doesn't care about archetypes.
+    latest_at_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<LatestAtCache>>>>,
 }
 
 impl Caches {
@@ -60,8 +72,8 @@ impl Caches {
     // TODO(#4731): expose palette command.
     #[inline]
     pub fn clear() {
-        let Caches { latest_at } = &*CACHES;
-        latest_at.write().clear();
+        let Caches(caches) = &*CACHES;
+        caches.write().clear();
     }
 
     /// Gives write access to the appropriate `LatestAtCache` according to the specified
@@ -77,12 +89,14 @@ impl Caches {
         A: Archetype,
         F: FnMut(&mut LatestAtCache) -> R,
     {
-        let key = CacheKey::new(store_id, entity_path, query.timeline, A::name());
+        let key = CacheKey::new(store_id, entity_path, query.timeline);
 
         // We want to make sure we release the lock on the top-level cache map ASAP.
         let cache = {
-            let mut caches = CACHES.latest_at.write();
-            let latest_at_cache = caches.entry(key).or_default();
+            let mut caches = CACHES.0.write();
+            let caches_per_archetype = caches.entry(key).or_default();
+            let mut latest_at_per_archetype = caches_per_archetype.latest_at_per_archetype.write();
+            let latest_at_cache = latest_at_per_archetype.entry(A::name()).or_default();
             Arc::clone(latest_at_cache)
         };
 
@@ -102,17 +116,6 @@ pub struct CacheKey {
 
     /// Which [`Timeline`] is the query targeting?
     pub timeline: Timeline,
-
-    /// Which [`Archetype`] are we querying for?
-    ///
-    /// This is very important because of our data model: we not only query for components, but we
-    /// query for components from a specific point-of-view (the so-called primary component).
-    /// Different archetypes have different point-of-views, and therefore can end up with different
-    /// results, even from the same raw data.
-    //
-    // TODO(cmc): At some point we should probably just store the PoV and optional components rather
-    // than an `ArchetypeName`: the query system doesn't care about archetypes.
-    pub archetype_name: ArchetypeName,
 }
 
 impl CacheKey {
@@ -121,13 +124,11 @@ impl CacheKey {
         store_id: impl Into<StoreId>,
         entity_path: impl Into<EntityPath>,
         timeline: impl Into<Timeline>,
-        archetype_name: impl Into<ArchetypeName>,
     ) -> Self {
         Self {
             store_id: store_id.into(),
             entity_path: entity_path.into(),
             timeline: timeline.into(),
-            archetype_name: archetype_name.into(),
         }
     }
 }
