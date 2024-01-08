@@ -20,10 +20,7 @@ use crate::{
     visualizers::{load_keypoint_connections, process_color_slice, UiLabel, UiLabelTarget},
 };
 
-use super::{
-    filter_visualizable_3d_entities, picking_id_from_instance_key, Keypoints,
-    SpatialViewVisualizerData,
-};
+use super::{filter_visualizable_3d_entities, Keypoints, SpatialViewVisualizerData};
 
 pub struct Points3DVisualizer {
     /// If the number of points in the batch is > max_labels, don't render point labels.
