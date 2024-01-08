@@ -11,9 +11,3 @@ A 16-byte uuid.
  * 🦀 [Rust API docs for `Uuid`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Uuid.html?speculative-link)
 
 
-## Used by
-
-* [`IncludedQueries`](../components/included_queries.md?speculative-link)
-* [`IncludedSpaceViews`](../components/included_space_views.md?speculative-link)
-* [`RootContainer`](../components/root_container.md?speculative-link)
-* [`SpaceViewMaximized`](../components/space_view_maximized.md?speculative-link)

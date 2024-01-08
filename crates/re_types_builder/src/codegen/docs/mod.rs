@@ -259,6 +259,10 @@ fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
 fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_map: &ObjectMap) {
     let mut used_by = Vec::new();
     for ty in object_map.values() {
+        // Since blueprints are being skipped there used-by links should also be skipped
+        if ty.scope() == Some("blueprint".to_owned()) {
+            continue;
+        }
         for field in &ty.fields {
             if field.typ.fqname() == Some(object.fqname.as_str()) {
                 let is_unreleased = ty.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
