@@ -49,7 +49,6 @@ static CACHES: Lazy<Caches> = Lazy::new(Caches::default);
 //
 // TODO(cmc): Store subscriber and cache invalidation.
 // TODO(#4730): SizeBytes support + size stats + mem panel
-// TODO(cmc): timeless caching support
 #[derive(Default)]
 pub struct Caches {
     latest_at: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
@@ -351,4 +350,13 @@ pub struct LatestAtCache {
     /// Due to how our latest-at semantics work, any number of queries at time `T+n` where `n >= 0`
     /// can result in a data time of `T`.
     pub per_data_time: BTreeMap<TimeInt, Arc<RwLock<CacheBucket>>>,
+
+    /// Dedicated bucket for timeless data, if any.
+    ///
+    /// Query time and data time are one and the same in the timeless case, therefore we only need
+    /// this one bucket.
+    //
+    // NOTE: Lives separately so we don't pay the extra `Option` cost in the much more common
+    // timeful case.
+    pub timeless: Option<CacheBucket>,
 }

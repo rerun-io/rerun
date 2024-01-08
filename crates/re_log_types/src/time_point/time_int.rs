@@ -68,11 +68,6 @@ impl TimeInt {
     pub fn abs(&self) -> Self {
         Self(self.0.saturating_abs())
     }
-
-    #[inline]
-    pub fn is_timeless(&self) -> bool {
-        self == &Self::BEGINNING
-    }
 }
 
 impl From<i64> for TimeInt {

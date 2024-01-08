@@ -66,7 +66,7 @@ where
     R1: Component + Send + Sync + 'static,
     F: FnMut(
         (
-            (TimeInt, RowId),
+            (Option<TimeInt>, RowId),
             MaybeCachedComponentData<'_, InstanceKey>,
             MaybeCachedComponentData<'_, R1>,
         ),
@@ -93,7 +93,7 @@ macro_rules! impl_query_archetype {
             $($comp: Component + Send + Sync + 'static,)*
             F: FnMut(
                 (
-                    (TimeInt, RowId),
+                    (Option<TimeInt>, RowId),
                     MaybeCachedComponentData<'_, InstanceKey>,
                     $(MaybeCachedComponentData<'_, $pov>,)+
                     $(MaybeCachedComponentData<'_, Option<$comp>>,)*
@@ -107,7 +107,7 @@ macro_rules! impl_query_archetype {
             );
 
 
-            let mut iter_results = |bucket: &crate::CacheBucket| -> crate::Result<()> {
+            let mut iter_results = |timeless: bool, bucket: &crate::CacheBucket| -> crate::Result<()> {
                 re_tracing::profile_scope!("iter");
 
                 let it = itertools::izip!(
@@ -117,9 +117,9 @@ macro_rules! impl_query_archetype {
                         .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
                     $(bucket.iter_component_opt::<$comp>()
                         .ok_or_else(|| re_query::ComponentNotFoundError(<$comp>::name()))?,)*
-                ).map(|(time, instance_keys, $($pov,)+ $($comp,)*)| {
+                ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
                     (
-                        *time,
+                        ((!timeless).then_some(*time), *row_id),
                         MaybeCachedComponentData::Cached(instance_keys),
                         $(MaybeCachedComponentData::Cached($pov),)+
                         $(MaybeCachedComponentData::Cached($comp),)*
@@ -133,68 +133,102 @@ macro_rules! impl_query_archetype {
                 Ok(())
             };
 
+
+            let upsert_results = |
+                    data_time: TimeInt,
+                    arch_view: &::re_query::ArchetypeView<A>,
+                    bucket: &mut crate::CacheBucket,
+                | -> crate::Result<()> {
+                re_log::trace!(data_time=?data_time, ?data_time, "fill");
+
+                // Grabbing the current time is quite costly on web.
+                #[cfg(not(target_arch = "wasm32"))]
+                let now = web_time::Instant::now();
+
+                bucket.[<insert_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)*>(data_time, &arch_view)?;
+
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let elapsed = now.elapsed();
+                    ::re_log::trace!(
+                        store_id=%store.id(),
+                        %entity_path,
+                        archetype=%A::name(),
+                        "cached new entry in {elapsed:?} ({:0.3} entries/s)",
+                        1f64 / elapsed.as_secs_f64()
+                    );
+                }
+
+                Ok(())
+            };
+
             let mut latest_at_callback = |query: &LatestAtQuery, latest_at_cache: &mut crate::LatestAtCache| {
                 re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
-                let crate::LatestAtCache { per_query_time, per_data_time } = latest_at_cache;
+                let crate::LatestAtCache { per_query_time, per_data_time, timeless } = latest_at_cache;
 
                 let query_time_bucket_at_query_time = match per_query_time.entry(query.at) {
                     std::collections::btree_map::Entry::Occupied(query_time_bucket_at_query_time) => {
                         // Fastest path: we have an entry for this exact query time, no need to look any
                         // further.
-                        return iter_results(&query_time_bucket_at_query_time.get().read());
+                        re_log::trace!(query_time=?query.at, "cache hit (query time)");
+                        return iter_results(false, &query_time_bucket_at_query_time.get().read());
                     }
                     entry @ std::collections::btree_map::Entry::Vacant(_) => entry,
                 };
 
-                let arch_view = query_archetype::<A>(store, &query, entity_path)?;
-                // TODO(cmc): actual timeless caching support.
-                let data_time = arch_view.data_time().unwrap_or(TimeInt::MIN);
+                let  arch_view = query_archetype::<A>(store, &query, entity_path)?;
+                let data_time = arch_view.data_time();
 
                 // Fast path: we've run the query and realized that we already have the data for the resulting
                 // _data_ time, so let's use that to avoid join & deserialization costs.
-                if let Some(data_time_bucket_at_data_time) = per_data_time.get(&data_time) {
-                    *query_time_bucket_at_query_time.or_default() = std::sync::Arc::clone(&data_time_bucket_at_data_time);
+                if let Some(data_time) = data_time { // Reminder: `None` means timeless.
+                    if let Some(data_time_bucket_at_data_time) = per_data_time.get(&data_time) {
+                        re_log::trace!(query_time=?query.at, ?data_time, "cache hit (data time)");
 
-                    // We now know for a fact that a query at that data time would yield the same
-                    // results: copy the bucket accordingly so that the next cache hit for that query
-                    // time ends up taking the fastest path.
-                    let query_time_bucket_at_data_time = per_query_time.entry(data_time);
-                    *query_time_bucket_at_data_time.or_default() = std::sync::Arc::clone(&data_time_bucket_at_data_time);
+                        *query_time_bucket_at_query_time.or_default() = std::sync::Arc::clone(&data_time_bucket_at_data_time);
 
-                    return iter_results(&data_time_bucket_at_data_time.read());
+                        // We now know for a fact that a query at that data time would yield the same
+                        // results: copy the bucket accordingly so that the next cache hit for that query
+                        // time ends up taking the fastest path.
+                        let query_time_bucket_at_data_time = per_query_time.entry(data_time);
+                        *query_time_bucket_at_data_time.or_default() = std::sync::Arc::clone(&data_time_bucket_at_data_time);
+
+                        return iter_results(false, &data_time_bucket_at_data_time.read());
+                    }
+                } else {
+                    if let Some(timeless_bucket) = timeless.as_ref() {
+                        re_log::trace!(query_time=?query.at, "cache hit (data time, timeless)");
+                        return iter_results(true, timeless_bucket);
+                    }
                 }
 
                 let query_time_bucket_at_query_time = query_time_bucket_at_query_time.or_default();
 
                 // Slowest path: this is a complete cache miss.
-                {
-                    re_tracing::profile_scope!("fill");
+                if let Some(data_time) = data_time { // Reminder: `None` means timeless.
+                    re_log::trace!(query_time=?query.at, ?data_time, "cache miss");
 
-                    // Grabbing the current time is quite costly on web.
-                    #[cfg(not(target_arch = "wasm32"))]
-                    let now = web_time::Instant::now();
-
-                    let mut query_time_bucket_at_query_time = query_time_bucket_at_query_time.write();
-                    query_time_bucket_at_query_time.[<insert_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)*>(query.at, &arch_view)?;
-
-                    #[cfg(not(target_arch = "wasm32"))]
                     {
-                        let elapsed = now.elapsed();
-                        ::re_log::trace!(
-                            store_id=%store.id(),
-                            %entity_path,
-                            archetype=%A::name(),
-                            "cached new entry in {elapsed:?} ({:0.3} entries/s)",
-                            1f64 / elapsed.as_secs_f64()
-                        );
+                        let mut query_time_bucket_at_query_time = query_time_bucket_at_query_time.write();
+                        upsert_results(data_time, &arch_view, &mut query_time_bucket_at_query_time)?;
                     }
+
+                    let data_time_bucket_at_data_time = per_data_time.entry(data_time);
+                    *data_time_bucket_at_data_time.or_default() = std::sync::Arc::clone(&query_time_bucket_at_query_time);
+
+                    iter_results(false, &query_time_bucket_at_query_time.read())
+                } else {
+                    re_log::trace!(query_time=?query.at, "cache miss (timeless)");
+
+                    let mut timeless_bucket = crate::CacheBucket::default();
+
+                    upsert_results(TimeInt::MIN, &arch_view, &mut timeless_bucket)?;
+                    iter_results(true, &timeless_bucket)?;
+
+                    *timeless = Some(timeless_bucket);
+                    Ok(())
                 }
-
-                let data_time_bucket_at_data_time = per_data_time.entry(data_time);
-                *data_time_bucket_at_data_time.or_default() = std::sync::Arc::clone(&query_time_bucket_at_query_time);
-
-                iter_results(&query_time_bucket_at_query_time.read())
             };
 
 
@@ -209,8 +243,7 @@ macro_rules! impl_query_archetype {
 
                     for arch_view in arch_views {
                         let data = (
-                            // TODO(cmc): actual timeless caching support.
-                            (arch_view.data_time().unwrap_or(TimeInt::MIN), arch_view.primary_row_id()),
+                            (arch_view.data_time(), arch_view.primary_row_id()),
                             MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
                             $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
                             $(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect()),)*
@@ -228,8 +261,7 @@ macro_rules! impl_query_archetype {
                     let arch_view = ::re_query::query_archetype::<A>(store, query, entity_path)?;
 
                     let data = (
-                        // TODO(cmc): actual timeless caching support.
-                        (arch_view.data_time().unwrap_or(TimeInt::MIN), arch_view.primary_row_id()),
+                        (arch_view.data_time(), arch_view.primary_row_id()),
                         MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
                         $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
                         $(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect()),)*
@@ -286,7 +318,7 @@ where
     R1: Component + Send + Sync + 'static,
     F: FnMut(
         (
-            (TimeInt, RowId),
+            (Option<TimeInt>, RowId),
             MaybeCachedComponentData<'_, InstanceKey>,
             MaybeCachedComponentData<'_, R1>,
         ),
@@ -318,7 +350,7 @@ macro_rules! impl_query_archetype_with_history {
             $($comp: Component + Send + Sync + 'static,)*
             F: FnMut(
                 (
-                    (TimeInt, RowId),
+                    (Option<TimeInt>, RowId),
                     MaybeCachedComponentData<'_, InstanceKey>,
                     $(MaybeCachedComponentData<'_, $pov>,)+
                     $(MaybeCachedComponentData<'_, Option<$comp>>,)*
