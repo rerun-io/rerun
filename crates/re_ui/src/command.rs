@@ -255,12 +255,27 @@ impl UICommand {
             return None; // e.g. we're typing in a TextField
         }
 
+        let mut commands: Vec<(KeyboardShortcut, UICommand)> = UICommand::iter()
+            .filter_map(|cmd| cmd.kb_shortcut().map(|kb_shortcut| (kb_shortcut, cmd)))
+            .collect();
+
+        // If the user pressed `Cmd-Shift-S` then egui will match that
+        // with both `Cmd-Shift-S` and `Cmd-S`.
+        // The reason is that `Shift` (and `Alt`) are sometimes required to produce certain keys,
+        // such as `+` (`Shift =` on an american keyboard).
+        // The result of this is that we bust check for `Cmd-Shift-S` before `Cmd-S`, etc.
+        // So we order the commands here so that the commands with `Shift` and `Alt` in them
+        // are checked first.
+        commands.sort_by_key(|(kb_shortcut, _cmd)| {
+            let num_shift_alts =
+                kb_shortcut.modifiers.shift as i32 + kb_shortcut.modifiers.alt as i32;
+            -num_shift_alts // most first
+        });
+
         egui_ctx.input_mut(|input| {
-            for command in UICommand::iter() {
-                if let Some(kb_shortcut) = command.kb_shortcut() {
-                    if input.consume_shortcut(&kb_shortcut) {
-                        return Some(command);
-                    }
+            for (kb_shortcut, command) in commands {
+                if input.consume_shortcut(&kb_shortcut) {
+                    return Some(command);
                 }
             }
             None
