@@ -30,5 +30,6 @@ tensor_data.rs linguist-generated=true
 text.rs linguist-generated=true
 text_log_level.rs linguist-generated=true
 transform3d.rs linguist-generated=true
+vector2d.rs linguist-generated=true
 vector3d.rs linguist-generated=true
 view_coordinates.rs linguist-generated=true

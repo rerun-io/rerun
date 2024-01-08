@@ -1,0 +1,13 @@
+[package]
+name = "roundtrip_arrows2d"
+edition.workspace = true
+license.workspace = true
+publish = false
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+rerun = { path = "../../../../crates/rerun" }
+
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }

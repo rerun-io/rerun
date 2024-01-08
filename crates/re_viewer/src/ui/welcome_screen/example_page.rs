@@ -131,16 +131,27 @@ fn default_manifest_url() -> String {
     }
 
     let build_info = re_build_info::build_info!();
-
-    // Always point to `version/main` for rerun devs,
-    // because the current commit's manifest is unlikely to be uploaded to GCS.
-    if build_info.is_in_rerun_workspace {
-        return "https://app.rerun.io/version/main/examples_manifest.json".into();
-    }
-
-    // Otherwise point to the current commit
     let short_sha = build_info.short_git_hash();
-    format!("https://app.rerun.io/commit/{short_sha}/examples_manifest.json")
+
+    if build_info.is_in_rerun_workspace {
+        // Always point to `version/main` for rerun devs,
+        // because the current commit's manifest is unlikely to be uploaded to GCS.
+        "https://app.rerun.io/version/main/examples_manifest.json".into()
+    } else if build_info.version.is_rc() || build_info.version.is_release() {
+        // Point to the current version's manifest
+        format!(
+            "https://app.rerun.io/version/{version}/examples_manifest.json",
+            version = build_info.version,
+        )
+    } else if !short_sha.is_empty() {
+        // If we have a sha, try to point at it.
+        format!("https://app.rerun.io/commit/{short_sha}/examples_manifest.json")
+    } else {
+        // If all else fails, point to the main branch
+        // TODO(#4729): this is better than nothing but still likely to have version
+        // compatibility issues.
+        "https://app.rerun.io/version/main/examples_manifest.json".into()
+    }
 }
 
 impl Default for ExamplePage {

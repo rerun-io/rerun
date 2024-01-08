@@ -32,5 +32,6 @@ tensor_data.py linguist-generated=true
 text.py linguist-generated=true
 text_log_level.py linguist-generated=true
 transform3d.py linguist-generated=true
+vector2d.py linguist-generated=true
 vector3d.py linguist-generated=true
 view_coordinates.py linguist-generated=true
