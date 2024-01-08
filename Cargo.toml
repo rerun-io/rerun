@@ -88,7 +88,7 @@ egui = { version = "0.25.0", features = [
   "log",
   "puffin",
 ] }
-egui_commonmark = { version = "0.10", default-features = false }
+egui_commonmark = { version = "0.11", default-features = false }
 egui_extras = { version = "0.25.0", features = ["http", "image", "puffin"] }
 egui_plot = "0.25.0"
 egui_tiles = "0.6"
@@ -284,4 +284,4 @@ debug = true
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b6e4fd457b2eee2c671747ead12f4a20feb380e8" } # Merge of: https://github.com/rerun-io/egui_tiles/pull/41
 
-egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "3d83a92f995a1d18ab1172d0b129d496e0eedaae" } # Update to egui 0.25 https://github.com/lampsitter/egui_commonmark/pull/27
+# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "3d83a92f995a1d18ab1172d0b129d496e0eedaae" } # Update to egui 0.25 https://github.com/lampsitter/egui_commonmark/pull/27

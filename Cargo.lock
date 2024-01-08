@@ -1482,7 +1482,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e16e44ab292b1dddfdaf7be62cfd8877df52f2f3fde5858d95bab606be259f20"
 dependencies = [
  "bitflags 2.4.1",
- "libloading 0.7.4",
+ "libloading 0.8.1",
  "winapi",
 ]
 
@@ -1580,7 +1580,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.7.4",
+ "libloading 0.8.1",
 ]
 
 [[package]]
@@ -1712,8 +1712,9 @@ dependencies = [
 
 [[package]]
 name = "egui_commonmark"
-version = "0.10.2"
-source = "git+https://github.com/rerun-io/egui_commonmark?rev=3d83a92f995a1d18ab1172d0b129d496e0eedaae#3d83a92f995a1d18ab1172d0b129d496e0eedaae"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a1f3092835a5e7b09405d3e6706d6fd913bb86706cbab53828f50c919dbf6e8"
 dependencies = [
  "egui",
  "egui_extras",
@@ -7391,7 +7392,7 @@ dependencies = [
  "js-sys",
  "khronos-egl",
  "libc",
- "libloading 0.7.4",
+ "libloading 0.8.1",
  "log",
  "metal",
  "naga",
