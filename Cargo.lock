@@ -110,17 +110,6 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
 name = "ahash"
-version = "0.7.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a824f2aa7e75a0c98c5a504fceb80649e9c35265d44525b5f94de4771a395cd"
-dependencies = [
- "getrandom",
- "once_cell",
- "version_check",
-]
-
-[[package]]
-name = "ahash"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "91429305e9f0a25f6205c5b8e0d2db09e0708a7a6df0f42212bb56c32c8ac97a"
@@ -141,6 +130,12 @@ checksum = "67fc08ce920c31afb70f013dcce1bfc3a3195de6a228474e45e1f145b36f8d04"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "allocator-api2"
+version = "0.2.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0942ffc6dcaadf03badf6e6a2d0228460359d5e34b57ccdc720b7382dfbd5ec5"
 
 [[package]]
 name = "android-activity"
@@ -338,7 +333,7 @@ version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0f73029049896b3d70ba17756afef171ceef3569016cfa9dbca58d29e0e16f9"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "arrow-format",
  "bytemuck",
  "chrono",
@@ -1675,7 +1670,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0bf640ed7f3bf3d14ebf00d73bacc09c886443ee84ca6494bde37953012c9e3"
 dependencies = [
  "accesskit",
- "ahash 0.8.6",
+ "ahash",
  "backtrace",
  "epaint",
  "log",
@@ -1779,7 +1774,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0255c0209b349b1a4a67a344556501e75accae669f3a25be6e07deb30fefa91"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "egui",
  "itertools 0.12.0",
  "log",
@@ -1917,7 +1912,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e638cb066bff0903bbb6143116cfd134a42279c7d68f19c0352a94f15a402de7"
 dependencies = [
  "ab_glyph",
- "ahash 0.8.6",
+ "ahash",
  "bytemuck",
  "ecolor",
  "emath",
@@ -2495,13 +2490,13 @@ dependencies = [
 
 [[package]]
 name = "gpu-descriptor"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b0c02e1ba0bdb14e965058ca34e09c020f8e507a760df1121728e0aef68d57a"
+checksum = "cc11df1ace8e7e564511f53af41f3e42ddc95b56fd07b3f4445d2a6048bc682c"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "gpu-descriptor-types",
- "hashbrown 0.12.3",
+ "hashbrown 0.14.2",
 ]
 
 [[package]]
@@ -2560,9 +2555,6 @@ name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
-dependencies = [
- "ahash 0.7.7",
-]
 
 [[package]]
 name = "hashbrown"
@@ -2570,7 +2562,7 @@ version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "rayon",
 ]
 
@@ -2579,6 +2571,10 @@ name = "hashbrown"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f93e7192158dbcda357bdec5fb5788eebf8bbac027f3f33e719d29135ae84156"
+dependencies = [
+ "ahash",
+ "allocator-api2",
+]
 
 [[package]]
 name = "hassle-rs"
@@ -4040,7 +4036,7 @@ version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "caa1f5af0505c67333487c1287f29644c172afbab7374e48a77843646064411c"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "arrow2",
  "bitflags 1.3.2",
  "chrono",
@@ -4582,7 +4578,7 @@ dependencies = [
 name = "re_data_source"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "image",
  "itertools 0.12.0",
@@ -4605,7 +4601,7 @@ dependencies = [
 name = "re_data_store"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "arrow2",
  "criterion",
@@ -4637,7 +4633,7 @@ dependencies = [
 name = "re_data_ui"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "bytemuck",
  "egui",
@@ -4664,7 +4660,7 @@ dependencies = [
 name = "re_entity_db"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "criterion",
  "document-features",
@@ -4763,7 +4759,7 @@ dependencies = [
 name = "re_log_types"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "arrow2",
  "backtrace",
@@ -4801,7 +4797,7 @@ dependencies = [
 name = "re_memory"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "backtrace",
  "emath",
  "itertools 0.12.0",
@@ -4845,7 +4841,7 @@ dependencies = [
 name = "re_query_cache"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "criterion",
  "document-features",
  "itertools 0.12.0",
@@ -4861,7 +4857,7 @@ dependencies = [
 name = "re_renderer"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "arrow2",
  "bitflags 2.4.1",
@@ -4906,7 +4902,7 @@ dependencies = [
 name = "re_renderer_examples"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "bytemuck",
  "console_error_panic_hook",
@@ -4931,7 +4927,7 @@ dependencies = [
 name = "re_sdk"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "atty",
  "crossbeam",
@@ -4963,7 +4959,7 @@ dependencies = [
 name = "re_sdk_comms"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "crossbeam",
  "document-features",
  "rand",
@@ -5045,7 +5041,7 @@ dependencies = [
 name = "re_space_view_spatial"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "bytemuck",
  "criterion",
@@ -5079,7 +5075,7 @@ dependencies = [
 name = "re_space_view_tensor"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "bytemuck",
  "egui",
@@ -5161,7 +5157,7 @@ dependencies = [
 name = "re_string_interner"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "nohash-hasher",
  "once_cell",
  "parking_lot 0.12.1",
@@ -5311,7 +5307,7 @@ dependencies = [
 name = "re_viewer"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "bytemuck",
  "cfg-if",
@@ -5371,7 +5367,7 @@ dependencies = [
 name = "re_viewer_context"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "anyhow",
  "arboard",
  "bit-vec",
@@ -5410,7 +5406,7 @@ dependencies = [
 name = "re_viewport"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "arrow2",
  "egui",
  "egui_tiles",
@@ -5609,7 +5605,7 @@ dependencies = [
 name = "rerun_c"
 version = "0.12.0-alpha.5+dev"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "arrow2",
  "once_cell",
  "parking_lot 0.12.1",
@@ -6653,7 +6649,7 @@ version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b450e3ba06251ec4fc76917dafeaf55805ffb26dbf7d5500bfb9511ce63a0d1f"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
 ]
 
 [[package]]
@@ -7815,7 +7811,7 @@ version = "0.29.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2376dab13e09c01ad8b679f0dbc7038af4ec43d9a91344338e37bd686481550"
 dependencies = [
- "ahash 0.8.6",
+ "ahash",
  "android-activity",
  "atomic-waker",
  "bitflags 2.4.1",
