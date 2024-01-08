@@ -209,6 +209,73 @@ fn invalidation() {
     query_and_compare(&store, &query, &ent_path.into());
 }
 
+// Test the following scenario:
+// ```py
+// rr.set_time(0)
+// rr.log("points", rr.Points3D([1, 2, 3]))
+//
+// # Do first query here: LatestAt(+inf)
+// # Expected: points=[[1,2,3]] colors=[]
+//
+// rr.set_time(1)
+// rr.log_components("points", rr.components.Color(0xFF0000))
+//
+// # Do second query here: LatestAt(+inf)
+// # Expected: points=[[1,2,3]] colors=[0xFF0000]
+//
+// rr.set_time(2)
+// rr.log_components("points", rr.components.Color(0x0000FF))
+//
+// # Do third query here: LatestAt(+inf)
+// # Expected: points=[[1,2,3]] colors=[0x0000FF]
+// ```
+//
+// TODO(cmc): this needs proper invalidation to pass
+#[should_panic(expected = "assertion failed: `(left == right)`")]
+#[test]
+fn invalidation_of_future_optionals() {
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
+
+    let ent_path = "points";
+
+    let frame1 = [build_frame_nr(1.into())];
+    let frame2 = [build_frame_nr(2.into())];
+    let frame3 = [build_frame_nr(3.into())];
+
+    let query_time = [build_frame_nr(9999.into())];
+
+    let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
+    let row = DataRow::from_cells1_sized(RowId::new(), ent_path, frame1, 2, positions).unwrap();
+    store.insert_row(&row).unwrap();
+
+    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    query_and_compare(&store, &query, &ent_path.into());
+
+    let color_instances = vec![InstanceKey::SPLAT];
+    let colors = vec![Color::from_rgb(255, 0, 0)];
+    let row =
+        DataRow::from_cells2_sized(RowId::new(), ent_path, frame2, 1, (color_instances, colors))
+            .unwrap();
+    store.insert_row(&row).unwrap();
+
+    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    query_and_compare(&store, &query, &ent_path.into());
+
+    let color_instances = vec![InstanceKey::SPLAT];
+    let colors = vec![Color::from_rgb(0, 0, 255)];
+    let row =
+        DataRow::from_cells2_sized(RowId::new(), ent_path, frame3, 1, (color_instances, colors))
+            .unwrap();
+    store.insert_row(&row).unwrap();
+
+    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    query_and_compare(&store, &query, &ent_path.into());
+}
+
 // ---
 
 fn query_and_compare(store: &DataStore, query: &LatestAtQuery, ent_path: &EntityPath) {
