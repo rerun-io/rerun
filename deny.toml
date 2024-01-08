@@ -57,11 +57,9 @@ skip = [
   { name = "hashbrown" },            # Old version used by polar-rs
   { name = "libloading" },           # Old version used by ash (vulkan binding), newer version used by khronos-egl
   { name = "memoffset" },            # Small crate
-  { name = "nix" },                  # difficult to avoid :(
   { name = "prettyplease" },         # Old version being used by prost
   { name = "raw-window-handle" },    # Awaiting new wgpu release
   { name = "spin" },                 # Old version used by rusttls
-  { name = "time" },                 # Too popular
   { name = "windows" },              # Old version used by accesskit_windows, newer version used by wgpu
 ]
 skip-tree = [
