@@ -34,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         "arrows",
 ///         &rerun::Arrows2D::from_vectors([[1.0, 0.0], [0.0, -1.0], [-0.7, 0.7]])
 ///             .with_radii([0.025])
-///             .with_origins([rerun::Position2D::ZERO])
+///             .with_origins([[0.25, 0.0], [0.25, 0.0], [-0.1, -0.1]])
 ///             .with_colors([[255, 0, 0], [0, 255, 0], [127, 0, 255]])
 ///             .with_labels(["right", "up", "left-down"]),
 ///     )?;
@@ -44,11 +44,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/1200w.png">
-///   <img src="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/full.png" width="640">
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1200w.png">
+///   <img src="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]

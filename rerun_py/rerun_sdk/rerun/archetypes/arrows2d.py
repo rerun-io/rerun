@@ -30,7 +30,7 @@ class Arrows2D(Arrows2DExt, Archetype):
     rr.log(
         "arrows",
         rr.Arrows2D(
-            origins=[0, 0],
+            origins=[[0.25, 0.0], [0.25, 0.0], [-0.1, -0.1]],
             vectors=[[1.0, 0.0], [0.0, -1.0], [-0.7, 0.7]],
             colors=[[255, 0, 0], [0, 255, 0], [127, 0, 255]],
             labels=["right", "up", "left-down"],
@@ -40,11 +40,11 @@ class Arrows2D(Arrows2DExt, Archetype):
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/1200w.png">
-      <img src="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1200w.png">
+      <img src="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/full.png" width="640">
     </picture>
     </center>
     """

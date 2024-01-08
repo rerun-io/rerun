@@ -27,7 +27,7 @@ namespace rerun::archetypes {
     /// ## Example
     ///
     /// ### Simple batch of 2D Arrows
-    /// ![image](https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/full.png)
+    /// ![image](https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
@@ -40,7 +40,7 @@ namespace rerun::archetypes {
     ///         "arrows",
     ///         rerun::Arrows2D::from_vectors({{1.0f, 0.0f}, {0.0f, -1.0f}, {-0.7f, 0.7f}})
     ///             .with_radii(0.025f)
-    ///             .with_origins({{0.0f, 0.0f}})
+    ///             .with_origins({{0.25f, 0.0f}, {0.25f, 0.0f}, {-0.1f, -0.1f}})
     ///             .with_colors({{255, 0, 0}, {0, 255, 0}, {127, 0, 255}})
     ///             .with_labels({"right", "up", "left-down"})
     ///     );

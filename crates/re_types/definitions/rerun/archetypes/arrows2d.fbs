@@ -11,7 +11,7 @@ namespace rerun.archetypes;
 
 /// 2D arrows with optional colors, radii, labels, etc.
 ///
-/// \example arrow2d_simple title="Simple batch of 2D Arrows" image="https://static.rerun.io/arrow2d_simple/1aaece5b7c3062dbf1470fdfb8c94f615e669602/1200w.png"
+/// \example arrow2d_simple title="Simple batch of 2D Arrows" image="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1200w.png"
 table Arrows2D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
