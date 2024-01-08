@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- The version of index.html that will be served by app.rerun.io -->
+<!-- Rerun SDK-bundled web viewer. -->
 <html>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
@@ -146,12 +146,6 @@
     <!-- The Wasm code will resize the canvas dynamically -->
     <canvas id="the_canvas_id" class="hidden"></canvas>
 
-    <script
-      src="https://fifteen-thirtyeight.rerun.io/script.js"
-      data-site="QKMCQFTQ"
-      defer
-    ></script>
-
     <script>
       // The `--no-modules`-generated JS from `wasm-bindgen` attempts to use
       // `WebAssembly.instantiateStreaming` to instantiate the wasm module,
@@ -169,6 +163,14 @@
     <script src="re_viewer.js"></script>
 
     <script>
+      if (window.location.hostname == "app.rerun.io") {
+        const script = document.createElement("script");
+        script.src = "https://fifteen-thirtyeight.rerun.io/script.js";
+        script.dataset.site = "QKMCQFTQ";
+        script.defer = true;
+        document.body.appendChild(script);
+      }
+
       function show_center_html(html) {
         center_text_elem = document.getElementById("center_text");
         center_text_elem.innerHTML = html;
@@ -199,12 +201,13 @@
         )
       ) {
         show_center_html(`
-                <p>
-                    Rerun is not yet supported on mobile browsers.
-                </p>
-                <p>
-                    <a class="button" href="#" id="try_anyways">Try anyways</a>
-                </p>`);
+          <p>
+              Rerun is not yet supported on mobile browsers.
+          </p>
+          <p>
+              <a class="button" href="#" id="try_anyways">Try anyways</a>
+          </p>
+        `);
         document
           .querySelector("#try_anyways")
           .addEventListener("click", function (event) {
@@ -312,13 +315,14 @@
             "`navigator.gpu` is undefined. This indicates lack of WebGPU support.",
           );
           show_center_html(`
-                    <p class="strong">
-                        Missing WebGPU support.
-                    </p>
-                    <p class="subdued">
-                        This version of Rerun requires WebGPU support which is not available in your browser.
-                        Either try a different browser or use the WebGL version of Rerun.
-                    </p>`);
+            <p class="strong">
+                Missing WebGPU support.
+            </p>
+            <p class="subdued">
+                This version of Rerun requires WebGPU support which is not available in your browser.
+                Either try a different browser or use the WebGL version of Rerun.
+            </p>
+          `);
           return;
         }
 
@@ -333,16 +337,17 @@
             document.getElementById("the_canvas_id").remove();
 
             show_center_html(`
-                        <p class="strong">
-                            Rerun has crashed.
-                        </p>
-                        <pre align="left">${handle.panic_message()}</pre>
-                        <p>
-                            See the console for details.
-                        </p>
-                        <p>
-                            Reload the page to try again.
-                        </p>`);
+              <p class="strong">
+                  Rerun has crashed.
+              </p>
+              <pre align="left">${handle.panic_message()}</pre>
+              <p>
+                  See the console for details.
+              </p>
+              <p>
+                  Reload the page to try again.
+              </p>
+            `);
           } else {
             let delay_ms = 1000;
             setTimeout(check_for_panic, delay_ms);
@@ -381,15 +386,16 @@
 
         hide_canvas();
         show_center_html(`
-                <p>
-                    An error occurred during loading:
-                </p>
-                <p style="font-family:Courier New">
-                    ${error}
-                </p>
-                <p style="font-size:14px">
-                        Make sure you use a modern browser with ${render_backend_name} and Wasm enabled.
-                </p>`);
+          <p>
+              An error occurred during loading:
+          </p>
+          <p style="font-family:Courier New">
+              ${error}
+          </p>
+          <p style="font-size:14px">
+                  Make sure you use a modern browser with ${render_backend_name} and Wasm enabled.
+          </p>
+        `);
       }
     </script>
   </body>
