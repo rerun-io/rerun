@@ -177,7 +177,7 @@ macro_rules! impl_query_archetype {
                     entry @ std::collections::btree_map::Entry::Vacant(_) => entry,
                 };
 
-                let  arch_view = query_archetype::<A>(store, &query, entity_path)?;
+                let arch_view = query_archetype::<A>(store, &query, entity_path)?;
                 let data_time = arch_view.data_time();
 
                 // Fast path: we've run the query and realized that we already have the data for the resulting
