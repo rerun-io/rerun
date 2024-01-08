@@ -65,6 +65,7 @@ pub fn setup_web_logging() {
     if LOG_INIT.load(Ordering::SeqCst) {
         return;
     }
+    LOG_INIT.store(true, Ordering::SeqCst);
 
     crate::multi_logger::init().expect("Failed to set logger");
     log::set_max_level(log::LevelFilter::Debug);
@@ -72,8 +73,6 @@ pub fn setup_web_logging() {
         log::LevelFilter::Debug,
     )))
     .expect("Failed to install logger");
-
-    LOG_INIT.store(true, Ordering::SeqCst);
 }
 
 // ----------------------------------------------------------------------------
