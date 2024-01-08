@@ -81,7 +81,7 @@ Note: you do not need to create a PR for this branch -- the release workflow wil
 
      - `rc` if the branch name is `release-x.y.z`.
        This will create a pull request for the release, and publish a release candidate.
-1
+
      - `final` for the final public release
 
    ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
