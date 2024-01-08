@@ -364,6 +364,26 @@ fn filter_visualizable_2d_entities(
                 .filter(|ent_path| context.entities_under_pinhole.contains(&ent_path.hash()))
                 .collect(),
         )
+    } else if let Some(context) = context
+        .as_any()
+        .downcast_ref::<VisualizableFilterContext2D>()
+    {
+        if !context.invalid_subtrees.is_empty() {
+            VisualizableEntities(
+                entities
+                    .0
+                    .into_iter()
+                    .filter(|ent_path| {
+                        !context
+                            .invalid_subtrees
+                            .iter()
+                            .any(|invalid_subtree| ent_path.starts_with(invalid_subtree))
+                    })
+                    .collect(),
+            )
+        } else {
+            VisualizableEntities(entities.0)
+        }
     } else {
         VisualizableEntities(entities.0)
     }
