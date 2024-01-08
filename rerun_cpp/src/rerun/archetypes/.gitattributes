@@ -3,6 +3,8 @@
 .gitattributes linguist-generated=true
 annotation_context.cpp linguist-generated=true
 annotation_context.hpp linguist-generated=true
+arrows2d.cpp linguist-generated=true
+arrows2d.hpp linguist-generated=true
 arrows3d.cpp linguist-generated=true
 arrows3d.hpp linguist-generated=true
 asset3d.cpp linguist-generated=true

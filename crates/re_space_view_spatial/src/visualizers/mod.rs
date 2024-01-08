@@ -1,5 +1,6 @@
 //! Responsible for populating `SceneSpatialPrimitives` and `SceneSpatialUiData`
 
+mod arrows2d;
 mod arrows3d;
 mod assets3d;
 mod boxes2d;
@@ -53,6 +54,7 @@ pub fn register_2d_spatial_visualizers(
     // Note: 2D spatial systems don't include cameras as this
     // visualizer only shows a 2D projection WITHIN a 3D view.
     system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
+    system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
@@ -70,6 +72,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry: &mut SpaceViewSystemRegistrator<'_>,
 ) -> Result<(), SpaceViewClassRegistryError> {
     system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
+    system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;

@@ -20,6 +20,10 @@ name = "annotation_context_segmentation"
 path = "annotation_context_segmentation.rs"
 
 [[bin]]
+name = "arrow2d_simple"
+path = "arrow2d_simple.rs"
+
+[[bin]]
 name = "arrow3d_simple"
 path = "arrow3d_simple.rs"
 

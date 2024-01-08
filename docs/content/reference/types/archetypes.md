@@ -8,6 +8,7 @@ Archetypes are bundles of components
 ## Available archetypes
 
 * [`AnnotationContext`](archetypes/annotation_context.md)
+* [`Arrows2D`](archetypes/arrows2d.md)
 * [`Arrows3D`](archetypes/arrows3d.md)
 * [`Asset3D`](archetypes/asset3d.md)
 * [`BarChart`](archetypes/bar_chart.md)
