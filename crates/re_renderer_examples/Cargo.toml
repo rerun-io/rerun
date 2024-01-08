@@ -59,10 +59,11 @@ zip = { workspace = true, default-features = false, features = ["deflate"] }
 console_error_panic_hook.workspace = true
 wasm-bindgen-futures.workspace = true
 web-sys = { workspace = true, features = [
-  "Location",
   "Blob",
+  "Element",
+  "Location",
+  "Request",
   "RequestInit",
   "RequestMode",
-  "Request",
   "Response",
 ] }
