@@ -147,8 +147,8 @@ impl SpaceViewClass for DataframeSpaceView {
 
         // Draw a single line of the table. This is called for each _visible_ row, so it's ok to
         // duplicate some of the querying.
-        let row_ui = |idx: usize, mut row: egui_extras::TableRow<'_, '_>| {
-            let instance = &sorted_instance_paths[idx];
+        let row_ui = |mut row: egui_extras::TableRow<'_, '_>| {
+            let instance = &sorted_instance_paths[row.index()];
 
             // TODO(#4466): make it explicit if that instance key is "out
             // of bounds" (aka cannot be joined to a primary component).

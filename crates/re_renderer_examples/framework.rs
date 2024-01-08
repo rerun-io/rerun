@@ -36,7 +36,7 @@ pub trait Example {
         pixels_from_point: f32,
     ) -> Vec<ViewDrawResult>;
 
-    fn on_keyboard_input(&mut self, _input: winit::event::KeyboardInput) {}
+    fn on_key_event(&mut self, _event: winit::event::KeyEvent) {}
 
     fn on_cursor_moved(&mut self, _position_in_pixel: glam::UVec2) {}
 }
@@ -189,164 +189,156 @@ impl<E: Example + 'static> Application<E> {
     }
 
     fn run(mut self) {
-        self.event_loop.run(move |event, _, control_flow| {
-            // Keep our example busy.
-            // Not how one should generally do it, but great for animated content and
-            // checking on perf.
-            *control_flow = ControlFlow::Poll;
+        self.event_loop
+            .run(move |event, event_loop_window_target| {
+                // Keep our example busy.
+                // Not how one should generally do it, but great for animated content and
+                // checking on perf.
+                event_loop_window_target.set_control_flow(ControlFlow::Poll);
 
-            match event {
-                Event::WindowEvent {
-                    event: WindowEvent::Resized(size),
-                    ..
-                } => {
-                    self.surface_config.width = size.width;
-                    self.surface_config.height = size.height;
-                    self.surface
-                        .configure(&self.re_ctx.device, &self.surface_config);
-                    self.window.request_redraw();
-                }
-                Event::WindowEvent {
-                    event: WindowEvent::KeyboardInput { input, .. },
-                    ..
-                } => self.example.on_keyboard_input(input),
-                Event::WindowEvent {
-                    event: WindowEvent::CursorMoved { position, .. },
-                    ..
-                } => self
-                    .example
-                    // Don't round the position: The entire range from 0 to excluding 1 should fall into pixel coordinate 0!
-                    .on_cursor_moved(glam::uvec2(position.x as u32, position.y as u32)),
-                Event::WindowEvent {
-                    event:
-                        WindowEvent::ScaleFactorChanged {
-                            scale_factor: _,
-                            new_inner_size,
-                        },
-                    ..
-                } => {
-                    self.surface_config.width = new_inner_size.width;
-                    self.surface_config.height = new_inner_size.height;
-                    self.surface
-                        .configure(&self.re_ctx.device, &self.surface_config);
-                    self.window.request_redraw();
-                }
-                Event::RedrawRequested(_) => {
-                    self.re_ctx.begin_frame();
-
-                    // native debug build
-                    #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
-                    let frame = match self.surface.get_current_texture() {
-                        Ok(frame) => frame,
-                        Err(wgpu::SurfaceError::Timeout | wgpu::SurfaceError::Outdated) => {
-                            // We haven't been able to present anything to the swapchain for
-                            // a while, because the pipeline is poisoned.
-                            // Recreate a sane surface to restart the cycle and see if the
-                            // user has fixed the issue.
-                            self.surface
-                                .configure(&self.re_ctx.device, &self.surface_config);
-                            return;
-                        }
-                        Err(err) => {
-                            re_log::warn!("Dropped frame: {err}");
-                            return;
-                        }
-                    };
-                    #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
-                    let frame = self
-                        .surface
-                        .get_current_texture()
-                        .expect("failed to acquire next swap chain texture");
-
-                    let view = frame
-                        .texture
-                        .create_view(&wgpu::TextureViewDescriptor::default());
-
-                    let draw_results = self.example.draw(
-                        &self.re_ctx,
-                        [self.surface_config.width, self.surface_config.height],
-                        &self.time,
-                        self.window.scale_factor() as f32,
-                    );
-
-                    let mut composite_cmd_encoder = self.re_ctx.device.create_command_encoder(
-                        &wgpu::CommandEncoderDescriptor {
-                            label: "composite_encoder".into(),
-                        },
-                    );
-
-                    {
-                        // Lock render pipelines for the lifetime of the composite pass.
-                        let render_pipelines =
-                            self.re_ctx.gpu_resources.render_pipelines.resources();
-
-                        let mut composite_pass =
-                            composite_cmd_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                                label: None,
-                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                                    view: &view,
-                                    resolve_target: None,
-                                    ops: wgpu::Operations {
-                                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                                        store: wgpu::StoreOp::Store,
-                                    },
-                                })],
-                                depth_stencil_attachment: None,
-                                timestamp_writes: None,
-                                occlusion_query_set: None,
-                            });
-
-                        for draw_result in &draw_results {
-                            draw_result.view_builder.composite(
-                                &self.re_ctx,
-                                &render_pipelines,
-                                &mut composite_pass,
-                                draw_result.target_location,
-                            );
-                        }
-                    };
-
-                    self.re_ctx.before_submit();
-                    self.re_ctx.queue.submit(
-                        draw_results
-                            .into_iter()
-                            .map(|d| d.command_buffer)
-                            .chain(std::iter::once(composite_cmd_encoder.finish())),
-                    );
-                    frame.present();
-
-                    // Note that this measures time spent on CPU, not GPU
-                    // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,
-                    // we eventually end up waiting for GPU in `get_current_texture`
-                    // (wgpu has a swap chain with a limited amount of buffers, the exact count is dependent on `present_mode` and backend!).
-                    // It's important to keep in mind that depending on the `present_mode`, the GPU might be waiting on the screen in turn.
-                    let current_time = Instant::now();
-                    let time_passed = current_time - self.time.last_draw_time;
-                    self.time.last_draw_time = current_time;
-                    self.time.last_frame_duration = time_passed;
-
-                    // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
-                    // Do it only every second.
-                    let time_until_next_report = 1.0 - self.time.seconds_since_startup().fract();
-                    if time_until_next_report - time_passed.as_secs_f32() < 0.0 {
-                        let time_info_str = format!(
-                            "{:.2} ms ({:.2} fps)",
-                            time_passed.as_secs_f32() * 1000.0,
-                            1.0 / time_passed.as_secs_f32()
-                        );
-                        re_log::info!("{time_info_str}");
+                match event {
+                    Event::WindowEvent {
+                        event: WindowEvent::Resized(size),
+                        ..
+                    } => {
+                        self.surface_config.width = size.width;
+                        self.surface_config.height = size.height;
+                        self.surface
+                            .configure(&self.re_ctx.device, &self.surface_config);
+                        self.window.request_redraw();
                     }
+                    Event::WindowEvent {
+                        event: WindowEvent::KeyboardInput { event, .. },
+                        ..
+                    } => self.example.on_key_event(event),
+                    Event::WindowEvent {
+                        event: WindowEvent::CursorMoved { position, .. },
+                        ..
+                    } => self
+                        .example
+                        // Don't round the position: The entire range from 0 to excluding 1 should fall into pixel coordinate 0!
+                        .on_cursor_moved(glam::uvec2(position.x as u32, position.y as u32)),
+                    winit::event::Event::WindowEvent {
+                        event: winit::event::WindowEvent::RedrawRequested,
+                        ..
+                    } => {
+                        self.re_ctx.begin_frame();
+
+                        // native debug build
+                        #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
+                        let frame = match self.surface.get_current_texture() {
+                            Ok(frame) => frame,
+                            Err(wgpu::SurfaceError::Timeout | wgpu::SurfaceError::Outdated) => {
+                                // We haven't been able to present anything to the swapchain for
+                                // a while, because the pipeline is poisoned.
+                                // Recreate a sane surface to restart the cycle and see if the
+                                // user has fixed the issue.
+                                self.surface
+                                    .configure(&self.re_ctx.device, &self.surface_config);
+                                return;
+                            }
+                            Err(err) => {
+                                re_log::warn!("Dropped frame: {err}");
+                                return;
+                            }
+                        };
+                        #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
+                        let frame = self
+                            .surface
+                            .get_current_texture()
+                            .expect("failed to acquire next swap chain texture");
+
+                        let view = frame
+                            .texture
+                            .create_view(&wgpu::TextureViewDescriptor::default());
+
+                        let draw_results = self.example.draw(
+                            &self.re_ctx,
+                            [self.surface_config.width, self.surface_config.height],
+                            &self.time,
+                            self.window.scale_factor() as f32,
+                        );
+
+                        let mut composite_cmd_encoder = self.re_ctx.device.create_command_encoder(
+                            &wgpu::CommandEncoderDescriptor {
+                                label: "composite_encoder".into(),
+                            },
+                        );
+
+                        {
+                            // Lock render pipelines for the lifetime of the composite pass.
+                            let render_pipelines =
+                                self.re_ctx.gpu_resources.render_pipelines.resources();
+
+                            let mut composite_pass = composite_cmd_encoder.begin_render_pass(
+                                &wgpu::RenderPassDescriptor {
+                                    label: None,
+                                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                        view: &view,
+                                        resolve_target: None,
+                                        ops: wgpu::Operations {
+                                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                                            store: wgpu::StoreOp::Store,
+                                        },
+                                    })],
+                                    depth_stencil_attachment: None,
+                                    timestamp_writes: None,
+                                    occlusion_query_set: None,
+                                },
+                            );
+
+                            for draw_result in &draw_results {
+                                draw_result.view_builder.composite(
+                                    &self.re_ctx,
+                                    &render_pipelines,
+                                    &mut composite_pass,
+                                    draw_result.target_location,
+                                );
+                            }
+                        };
+
+                        self.re_ctx.before_submit();
+                        self.re_ctx.queue.submit(
+                            draw_results
+                                .into_iter()
+                                .map(|d| d.command_buffer)
+                                .chain(std::iter::once(composite_cmd_encoder.finish())),
+                        );
+                        frame.present();
+
+                        // Note that this measures time spent on CPU, not GPU
+                        // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,
+                        // we eventually end up waiting for GPU in `get_current_texture`
+                        // (wgpu has a swap chain with a limited amount of buffers, the exact count is dependent on `present_mode` and backend!).
+                        // It's important to keep in mind that depending on the `present_mode`, the GPU might be waiting on the screen in turn.
+                        let current_time = Instant::now();
+                        let time_passed = current_time - self.time.last_draw_time;
+                        self.time.last_draw_time = current_time;
+                        self.time.last_frame_duration = time_passed;
+
+                        // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
+                        // Do it only every second.
+                        let time_until_next_report =
+                            1.0 - self.time.seconds_since_startup().fract();
+                        if time_until_next_report - time_passed.as_secs_f32() < 0.0 {
+                            let time_info_str = format!(
+                                "{:.2} ms ({:.2} fps)",
+                                time_passed.as_secs_f32() * 1000.0,
+                                1.0 / time_passed.as_secs_f32()
+                            );
+                            re_log::info!("{time_info_str}");
+                        }
+                    }
+                    Event::WindowEvent {
+                        event: WindowEvent::CloseRequested,
+                        ..
+                    } => {
+                        event_loop_window_target.exit();
+                    }
+                    _ => {}
                 }
-                Event::MainEventsCleared => {
-                    self.window.request_redraw();
-                }
-                Event::WindowEvent {
-                    event: WindowEvent::CloseRequested,
-                    ..
-                } => *control_flow = ControlFlow::Exit,
-                _ => {}
-            }
-        });
+            })
+            .unwrap();
     }
 }
 
@@ -371,22 +363,19 @@ async fn run<E: Example + 'static>(event_loop: EventLoop<()>, window: Window) {
 }
 
 pub fn start<E: Example + 'static>() {
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::new().unwrap();
     let window = winit::window::WindowBuilder::new()
         .with_title(format!("re_renderer sample - {}", E::title()))
+        .with_inner_size(winit::dpi::PhysicalSize {
+            width: 1920,
+            height: 1080,
+        })
         .build(&event_loop)
         .unwrap();
 
     #[cfg(not(target_arch = "wasm32"))]
     {
         re_log::setup_native_logging();
-
-        // Set size to a common physical resolution as a comparable start-up default.
-        window.set_inner_size(winit::dpi::PhysicalSize {
-            width: 1920,
-            height: 1080,
-        });
-
         pollster::block_on(run::<E>(event_loop, window));
     }
 

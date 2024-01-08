@@ -113,8 +113,8 @@ impl DataUi for EntityComponentWithInstances {
                 .body(|mut body| {
                     re_ui::ReUi::setup_table_body(&mut body);
                     let row_height = re_ui::ReUi::table_line_height();
-                    body.rows(row_height, displayed_row, |index, mut row| {
-                        if let Some(instance_key) = instance_keys.get(index) {
+                    body.rows(row_height, displayed_row, |mut row| {
+                        if let Some(instance_key) = instance_keys.get(row.index()) {
                             row.col(|ui| {
                                 let instance_path =
                                     InstancePath::instance(self.entity_path.clone(), *instance_key);

@@ -313,7 +313,7 @@ impl UICommand {
 #[test]
 fn check_for_clashing_command_shortcuts() {
     fn clashes(a: KeyboardShortcut, b: KeyboardShortcut) -> bool {
-        if a.key != b.key {
+        if a.logical_key != b.logical_key {
             return false;
         }
 

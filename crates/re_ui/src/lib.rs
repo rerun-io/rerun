@@ -561,27 +561,27 @@ impl ReUi {
         let text_pos = available.min + egui::vec2(indent, 0.0);
         let wrap_width = available.right() - text_pos.x;
         let wrap = Some(false);
-        let text = egui::WidgetText::from(label).into_galley(
+        let galley = egui::WidgetText::from(label).into_galley(
             ui,
             wrap,
             wrap_width,
             egui::TextStyle::Button,
         );
-        let text_max_x = text_pos.x + text.size().x;
+        let text_max_x = text_pos.x + galley.size().x;
 
         let mut desired_width = text_max_x + button_padding.x - available.left();
         if ui.visuals().collapsing_header_frame {
             desired_width = desired_width.max(available.width()); // fill full width
         }
 
-        let mut desired_size = egui::vec2(desired_width, text.size().y + 2.0 * button_padding.y);
+        let mut desired_size = egui::vec2(desired_width, galley.size().y + 2.0 * button_padding.y);
         desired_size = desired_size.at_least(ui.spacing().interact_size);
         let (_, rect) = ui.allocate_space(desired_size);
 
         let mut header_response = ui.interact(rect, id, egui::Sense::click());
         let text_pos = pos2(
             text_pos.x,
-            header_response.rect.center().y - text.size().y / 2.0,
+            header_response.rect.center().y - galley.size().y / 2.0,
         );
 
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -613,7 +613,7 @@ impl ReUi {
                 Self::paint_collapsing_triangle(ui, openness, icon_rect, &icon_response);
             }
 
-            text.paint_with_visuals(ui.painter(), text_pos, visuals);
+            ui.painter().galley(text_pos, galley, visuals.text_color());
         }
 
         let ret_response = ui
@@ -698,11 +698,9 @@ impl ReUi {
                 let space_after_icon = ui.spacing().icon_spacing;
 
                 let font_id = egui::TextStyle::Button.resolve(ui.style());
-                let galley = ui.painter().layout_no_wrap(
-                    label.to_owned(),
-                    font_id,
-                    Color32::TEMPORARY_COLOR,
-                );
+                let galley =
+                    ui.painter()
+                        .layout_no_wrap(label.to_owned(), font_id, Color32::PLACEHOLDER);
 
                 let desired_size = header_size.at_least(
                     egui::vec2(space_before_icon + icon_width + space_after_icon, 0.0)
@@ -727,8 +725,7 @@ impl ReUi {
                         space_after_icon,
                         -0.5 * galley.size().y + optical_vertical_alignment,
                     );
-                ui.painter()
-                    .galley_with_color(text_pos, galley, visuals.text_color());
+                ui.painter().galley(text_pos, galley, visuals.text_color());
 
                 // Let the rect cover the full panel width:
                 let mut bg_rect = rect;
@@ -882,20 +879,21 @@ impl ReUi {
         let total_extra = button_padding + button_padding;
 
         let wrap_width = ui.available_width() - total_extra.x;
-        let text = text
+        let galley = text
             .into()
             .into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
         let icon_width_plus_padding = Self::small_icon_size().x + ReUi::text_to_icon_padding();
 
-        let mut desired_size = total_extra + text.size() + egui::vec2(icon_width_plus_padding, 0.0);
+        let mut desired_size =
+            total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
         desired_size.y = desired_size
             .y
             .at_least(ui.spacing().interact_size.y)
             .at_least(Self::small_icon_size().y);
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
         response.widget_info(|| {
-            egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, selected, text.text())
+            egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, selected, galley.text())
         });
 
         if ui.is_rect_visible(rect) {
@@ -932,9 +930,9 @@ impl ReUi {
             text_rect.min.x = image_rect.max.x + ReUi::text_to_icon_padding();
             let text_pos = ui
                 .layout()
-                .align_size_within_rect(text.size(), text_rect)
+                .align_size_within_rect(galley.size(), text_rect)
                 .min;
-            text.paint_with_visuals(ui.painter(), text_pos, &visuals);
+            ui.painter().galley(text_pos, galley, visuals.text_color());
         }
 
         response

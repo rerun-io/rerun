@@ -6,7 +6,7 @@ use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     OutlineConfig, OutlineMaskPreference,
 };
-use winit::event::{ElementState, VirtualKeyCode};
+use winit::event::ElementState;
 
 mod framework;
 
@@ -135,13 +135,11 @@ impl framework::Example for Outlines {
         }]
     }
 
-    fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput) {
-        #[allow(clippy::single_match)]
-        match (input.state, input.virtual_keycode) {
-            (ElementState::Pressed, Some(VirtualKeyCode::Space)) => {
-                self.is_paused ^= true;
-            }
-            _ => {}
+    fn on_key_event(&mut self, input: winit::event::KeyEvent) {
+        if input.state == ElementState::Pressed
+            && input.logical_key == winit::keyboard::Key::Named(winit::keyboard::NamedKey::Space)
+        {
+            self.is_paused ^= true;
         }
     }
 }

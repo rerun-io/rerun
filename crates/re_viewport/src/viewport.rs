@@ -720,7 +720,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 /// which is either a Pane with a Space View, or a Container,
 /// e.g. a grid of tiles.
 struct TabWidget {
-    galley: egui::widget_text::WidgetTextGalley,
+    galley: std::sync::Arc<egui::Galley>,
     rect: egui::Rect,
     galley_rect: egui::Rect,
     icon: &'static Icon,
@@ -822,11 +822,11 @@ impl TabWidget {
             .tint(self.text_color);
         icon_image.paint_at(ui, self.icon_rect);
 
-        ui.painter().galley_with_color(
+        ui.painter().galley(
             egui::Align2::CENTER_CENTER
                 .align_size_within_rect(self.galley.size(), self.galley_rect)
                 .min,
-            self.galley.galley,
+            self.galley,
             self.text_color,
         );
     }
