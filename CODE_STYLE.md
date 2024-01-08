@@ -36,7 +36,9 @@ let first = if vec.is_empty() {
 can be better written as:
 
 ``` rust
-let Some(first) = vec.get(0) else { return; };
+let Some(first) = vec.get(0) else {
+    return;
+};
 ```
 
 ### Error handling and logging
