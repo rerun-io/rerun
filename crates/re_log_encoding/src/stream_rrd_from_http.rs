@@ -21,14 +21,24 @@ pub fn stream_rrd_from_http_to_channel(
                 on_msg();
             }
             match msg {
-                HttpMessage::LogMsg(msg) => tx.send(msg).warn_on_err_once("failed to send message"),
-                HttpMessage::Success => {
-                    tx.quit(None).warn_on_err_once("failed to send quit marker")
+                HttpMessage::LogMsg(msg) => {
+                    if tx.send(msg).is_ok() {
+                        ControlFlow::Continue(())
+                    } else {
+                        re_log::info!("Failed to send log message to viewer - closing");
+                        ControlFlow::Break(())
+                    }
                 }
-                HttpMessage::Failure(err) => tx
-                    .quit(Some(err))
-                    .warn_on_err_once("failed to send quit marker"),
-            };
+                HttpMessage::Success => {
+                    tx.quit(None).warn_on_err_once("failed to send quit marker");
+                    ControlFlow::Break(())
+                }
+                HttpMessage::Failure(err) => {
+                    tx.quit(Some(err))
+                        .warn_on_err_once("failed to send quit marker");
+                    ControlFlow::Break(())
+                }
+            }
         }),
     );
     rx
@@ -46,7 +56,7 @@ pub enum HttpMessage {
     Failure(Box<dyn std::error::Error + Send + Sync>),
 }
 
-pub type HttpMessageCallback = dyn Fn(HttpMessage) + Send + Sync;
+pub type HttpMessageCallback = dyn Fn(HttpMessage) -> ControlFlow<()> + Send + Sync;
 
 pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
@@ -69,15 +79,13 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                         on_msg(HttpMessage::Failure(
                             format!("Failed to fetch .rrd file from {url}: {status} {status_text}")
                                 .into(),
-                        ));
-                        ControlFlow::Break(())
+                        ))
                     }
                 }
                 ehttp::streaming::Part::Chunk(chunk) => {
                     if chunk.is_empty() {
                         re_log::debug!("Finished decoding .rrd file from {url:?}…");
-                        on_msg(HttpMessage::Success);
-                        return ControlFlow::Break(());
+                        return on_msg(HttpMessage::Success);
                     }
 
                     re_tracing::profile_scope!("decoding_rrd_stream");
@@ -85,25 +93,26 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                     loop {
                         match decoder.borrow_mut().try_read() {
                             Ok(message) => match message {
-                                Some(message) => on_msg(HttpMessage::LogMsg(message)),
+                                Some(message) => {
+                                    // only return if the callback asks us to
+                                    if on_msg(HttpMessage::LogMsg(message)).is_break() {
+                                        return ControlFlow::Break(());
+                                    }
+                                }
                                 None => return ControlFlow::Continue(()),
                             },
                             Err(err) => {
-                                on_msg(HttpMessage::Failure(
+                                return on_msg(HttpMessage::Failure(
                                     format!("Failed to fetch .rrd file from {url}: {err}").into(),
-                                ));
-                                return ControlFlow::Break(());
+                                ))
                             }
                         }
                     }
                 }
             },
-            Err(err) => {
-                on_msg(HttpMessage::Failure(
-                    format!("Failed to fetch .rrd file from {url}: {err}").into(),
-                ));
-                ControlFlow::Break(())
-            }
+            Err(err) => on_msg(HttpMessage::Failure(
+                format!("Failed to fetch .rrd file from {url}: {err}").into(),
+            )),
         }
     });
 }
