@@ -27,7 +27,10 @@ use crate::{
     ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
 
-use super::{arrow::quote_fqname_as_type_path, util::string_from_quoted};
+use super::{
+    arrow::quote_fqname_as_type_path, blueprint_validation::generate_blueprint_validation,
+    util::string_from_quoted,
+};
 
 // ---
 
@@ -65,6 +68,8 @@ impl CodeGenerator for RustCodeGenerator {
                 &mut files_to_write,
             );
         }
+
+        generate_blueprint_validation(reporter, objects, &mut files_to_write);
 
         files_to_write
     }

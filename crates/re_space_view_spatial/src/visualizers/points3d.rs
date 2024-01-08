@@ -8,8 +8,9 @@ use re_types::{
     Archetype as _, ComponentNameSet, DeserializationResult,
 };
 use re_viewer_context::{
-    Annotations, IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerSystem,
+    Annotations, ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
 };
 
 use crate::{
@@ -21,7 +22,10 @@ use crate::{
     },
 };
 
-use super::{picking_id_from_instance_key, Keypoints, SpatialViewVisualizerData};
+use super::{
+    filter_visualizable_3d_entities, picking_id_from_instance_key, Keypoints,
+    SpatialViewVisualizerData,
+};
 
 pub struct Points3DVisualizer {
     /// If the number of points in the batch is > max_labels, don't render point labels.
@@ -179,6 +183,14 @@ impl VisualizerSystem for Points3DVisualizer {
 
     fn indicator_components(&self) -> ComponentNameSet {
         std::iter::once(Points3D::indicator().name()).collect()
+    }
+
+    fn filter_visualizable_entities(
+        &self,
+        entities: ApplicableEntities,
+        context: &dyn VisualizableFilterContext,
+    ) -> VisualizableEntities {
+        filter_visualizable_3d_entities(entities, context)
     }
 
     fn execute(

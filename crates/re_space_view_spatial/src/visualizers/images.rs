@@ -21,8 +21,8 @@ use re_types::{
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizerAdditionalApplicabilityFilter,
-    VisualizerSystem,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext,
+    VisualizerAdditionalApplicabilityFilter, VisualizerSystem,
 };
 
 use crate::{
@@ -694,7 +694,7 @@ impl VisualizerSystem for ImageVisualizer {
     fn filter_visualizable_entities(
         &self,
         entities: ApplicableEntities,
-        context: &dyn std::any::Any,
+        context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();
         filter_visualizable_2d_entities(entities, context)

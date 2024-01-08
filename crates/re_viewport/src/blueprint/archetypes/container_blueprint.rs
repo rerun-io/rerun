@@ -33,15 +33,19 @@ pub struct ContainerBlueprint {
     /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
     pub contents: Option<crate::blueprint::components::IncludedContents>,
 
-    /// The weights of the primary axis. For `Grid` this is the column weights.
+    /// The layout shares of each column in the container.
     ///
-    /// For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
-    pub primary_weights: Option<crate::blueprint::components::PrimaryWeights>,
+    /// For `Horizontal` containers, the length of this list should always match the number of contents.
+    ///
+    /// Ignored for `Vertical` containers.
+    pub col_shares: Option<crate::blueprint::components::ColumnShares>,
 
-    /// The weights of the secondary axis. For `Grid` this is the row weights.
+    /// The layout shares of each row of the container.
     ///
-    /// Ignored for `Horizontal`/`Vertical` containers.
-    pub secondary_weights: Option<crate::blueprint::components::SecondaryWeights>,
+    /// For `Vertical` containers, the length of this list should always match the number of contents.
+    ///
+    /// Ignored for `Horizontal` containers.
+    pub row_shares: Option<crate::blueprint::components::RowShares>,
 
     /// Which tab is active.
     ///
@@ -73,11 +77,11 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ActiveTab".into(),
+            "rerun.blueprint.components.ColumnShares".into(),
             "rerun.blueprint.components.GridColumns".into(),
             "rerun.blueprint.components.IncludedContents".into(),
             "rerun.blueprint.components.Name".into(),
-            "rerun.blueprint.components.PrimaryWeights".into(),
-            "rerun.blueprint.components.SecondaryWeights".into(),
+            "rerun.blueprint.components.RowShares".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
         ]
@@ -89,11 +93,11 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
             "rerun.blueprint.components.ContainerKind".into(),
             "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
             "rerun.blueprint.components.ActiveTab".into(),
+            "rerun.blueprint.components.ColumnShares".into(),
             "rerun.blueprint.components.GridColumns".into(),
             "rerun.blueprint.components.IncludedContents".into(),
             "rerun.blueprint.components.Name".into(),
-            "rerun.blueprint.components.PrimaryWeights".into(),
-            "rerun.blueprint.components.SecondaryWeights".into(),
+            "rerun.blueprint.components.RowShares".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
         ]
@@ -185,27 +189,26 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
         } else {
             None
         };
-        let primary_weights =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.PrimaryWeights") {
-                <crate::blueprint::components::PrimaryWeights>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#primary_weights")?
+        let col_shares =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ColumnShares") {
+                <crate::blueprint::components::ColumnShares>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#col_shares")?
                     .into_iter()
                     .next()
                     .flatten()
             } else {
                 None
             };
-        let secondary_weights = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.SecondaryWeights")
-        {
-            <crate::blueprint::components::SecondaryWeights>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#secondary_weights")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let row_shares =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.RowShares") {
+                <crate::blueprint::components::RowShares>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#row_shares")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         let active_tab =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ActiveTab") {
                 <crate::blueprint::components::ActiveTab>::from_arrow_opt(&**array)
@@ -240,8 +243,8 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
             container_kind,
             display_name,
             contents,
-            primary_weights,
-            secondary_weights,
+            col_shares,
+            row_shares,
             active_tab,
             visible,
             grid_columns,
@@ -262,10 +265,10 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
             self.contents
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.primary_weights
+            self.col_shares
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.secondary_weights
+            self.row_shares
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.active_tab
@@ -295,8 +298,8 @@ impl ContainerBlueprint {
             container_kind: container_kind.into(),
             display_name: None,
             contents: None,
-            primary_weights: None,
-            secondary_weights: None,
+            col_shares: None,
+            row_shares: None,
             active_tab: None,
             visible: None,
             grid_columns: None,
@@ -322,20 +325,20 @@ impl ContainerBlueprint {
     }
 
     #[inline]
-    pub fn with_primary_weights(
+    pub fn with_col_shares(
         mut self,
-        primary_weights: impl Into<crate::blueprint::components::PrimaryWeights>,
+        col_shares: impl Into<crate::blueprint::components::ColumnShares>,
     ) -> Self {
-        self.primary_weights = Some(primary_weights.into());
+        self.col_shares = Some(col_shares.into());
         self
     }
 
     #[inline]
-    pub fn with_secondary_weights(
+    pub fn with_row_shares(
         mut self,
-        secondary_weights: impl Into<crate::blueprint::components::SecondaryWeights>,
+        row_shares: impl Into<crate::blueprint::components::RowShares>,
     ) -> Self {
-        self.secondary_weights = Some(secondary_weights.into());
+        self.row_shares = Some(row_shares.into());
         self
     }
 

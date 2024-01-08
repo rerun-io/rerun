@@ -27,8 +27,8 @@ class ContainerBlueprint(Archetype):
         *,
         display_name: components.NameLike | None = None,
         contents: components.IncludedContentsLike | None = None,
-        primary_weights: components.PrimaryWeightsLike | None = None,
-        secondary_weights: components.SecondaryWeightsLike | None = None,
+        col_shares: components.ColumnSharesLike | None = None,
+        row_shares: components.RowSharesLike | None = None,
         active_tab: datatypes.EntityPathLike | None = None,
         visible: components.VisibleLike | None = None,
         grid_columns: components.GridColumnsLike | None = None,
@@ -44,14 +44,18 @@ class ContainerBlueprint(Archetype):
             The name of the container.
         contents:
             `ContainerIds`s or `SpaceViewId`s that are children of this container.
-        primary_weights:
-            The weights of the primary axis. For `Grid` this is the column weights.
+        col_shares:
+            The layout shares of each column in the container.
 
-            For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
-        secondary_weights:
-            The weights of the secondary axis. For `Grid` this is the row weights.
+            For `Horizontal` containers, the length of this list should always match the number of contents.
 
-            Ignored for `Horizontal`/`Vertical` containers.
+            Ignored for `Vertical` containers.
+        row_shares:
+            The layout shares of each row of the container.
+
+            For `Vertical` containers, the length of this list should always match the number of contents.
+
+            Ignored for `Horizontal` containers.
         active_tab:
             Which tab is active.
 
@@ -74,8 +78,8 @@ class ContainerBlueprint(Archetype):
                 container_kind=container_kind,
                 display_name=display_name,
                 contents=contents,
-                primary_weights=primary_weights,
-                secondary_weights=secondary_weights,
+                col_shares=col_shares,
+                row_shares=row_shares,
                 active_tab=active_tab,
                 visible=visible,
                 grid_columns=grid_columns,
@@ -89,8 +93,8 @@ class ContainerBlueprint(Archetype):
             container_kind=None,  # type: ignore[arg-type]
             display_name=None,  # type: ignore[arg-type]
             contents=None,  # type: ignore[arg-type]
-            primary_weights=None,  # type: ignore[arg-type]
-            secondary_weights=None,  # type: ignore[arg-type]
+            col_shares=None,  # type: ignore[arg-type]
+            row_shares=None,  # type: ignore[arg-type]
             active_tab=None,  # type: ignore[arg-type]
             visible=None,  # type: ignore[arg-type]
             grid_columns=None,  # type: ignore[arg-type]
@@ -129,25 +133,29 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    primary_weights: components.PrimaryWeightsBatch | None = field(
+    col_shares: components.ColumnSharesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.PrimaryWeightsBatch._optional,  # type: ignore[misc]
+        converter=components.ColumnSharesBatch._optional,  # type: ignore[misc]
     )
-    # The weights of the primary axis. For `Grid` this is the column weights.
+    # The layout shares of each column in the container.
     #
-    # For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
+    # For `Horizontal` containers, the length of this list should always match the number of contents.
+    #
+    # Ignored for `Vertical` containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    secondary_weights: components.SecondaryWeightsBatch | None = field(
+    row_shares: components.RowSharesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.SecondaryWeightsBatch._optional,  # type: ignore[misc]
+        converter=components.RowSharesBatch._optional,  # type: ignore[misc]
     )
-    # The weights of the secondary axis. For `Grid` this is the row weights.
+    # The layout shares of each row of the container.
     #
-    # Ignored for `Horizontal`/`Vertical` containers.
+    # For `Vertical` containers, the length of this list should always match the number of contents.
+    #
+    # Ignored for `Horizontal` containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

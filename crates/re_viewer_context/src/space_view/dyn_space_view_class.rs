@@ -34,6 +34,17 @@ pub enum SpaceViewClassLayoutPriority {
     High,
 }
 
+/// Context object returned by [`crate::SpaceViewClass::visualizable_filter_context`].
+pub trait VisualizableFilterContext {
+    fn as_any(&self) -> &dyn std::any::Any;
+}
+
+impl VisualizableFilterContext for () {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
 /// Defines a class of space view without any concrete types making it suitable for storage and interfacing.
 ///
 /// Implemented by [`crate::SpaceViewClass`].
@@ -101,7 +112,7 @@ pub trait DynSpaceViewClass: Send + Sync {
         &self,
         space_origin: &EntityPath,
         entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn std::any::Any>;
+    ) -> Box<dyn VisualizableFilterContext>;
 
     /// Heuristic used to determine which space view is the best fit for a set of paths.
     fn auto_spawn_heuristic(

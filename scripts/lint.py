@@ -176,6 +176,10 @@ def lint_line(
         if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
             return "as_ref/borrow implementations should be marked #[inline]"
 
+    if any(s in line for s in (": &dyn std::any::Any", ": &mut dyn std::any::Any", ": &dyn Any", ": &mut dyn Any")):
+        return """Functions should never take `&dyn std::any::Any` as argument since `&Box<std::any::Any>`
+ itself implements `Any`, making it easy to accidentally pass the wrong object. Expect purpose defined traits instead."""
+
     return None
 
 
@@ -259,6 +263,8 @@ def test_lint_line() -> None:
         #[inline(always)]
         fn as_ref(&self) -> &Self {
 """,
+        "fn ret_any() -> &dyn std::any::Any",
+        "fn ret_any_mut() -> &mut dyn std::any::Any",
     ]
 
     should_error = [
@@ -303,6 +309,10 @@ def test_lint_line() -> None:
         "fn deref_mut(&mut self) -> &mut Self::Target",
         "fn borrow(&self) -> &Self",
         "fn as_ref(&self) -> &Self",
+        "fn take_any(thing: &dyn std::any::Any)",
+        "fn take_any_mut(thing: &mut dyn std::any::Any)",
+        "fn take_any(thing: &dyn Any)",
+        "fn take_any_mut(thing: &mut dyn Any)",
     ]
 
     for test in should_pass:

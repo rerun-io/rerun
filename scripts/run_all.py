@@ -27,6 +27,8 @@ HAS_NO_RERUN_ARGS = {
     "examples/python/dna",
     "examples/python/minimal",
     "examples/python/multiprocessing",
+    "examples/python/shared_recording",
+    "examples/python/stdio",
 }
 
 MIN_PYTHON_REQUIREMENTS: dict[str : tuple[int, int]] = {
@@ -35,11 +37,23 @@ MIN_PYTHON_REQUIREMENTS: dict[str : tuple[int, int]] = {
     "examples/python/open_photogrammetry_format": (3, 10),
 }
 
+MAX_PYTHON_REQUIREMENTS: dict[str : tuple[int, int]] = {
+    "examples/python/face_tracking": (3, 11),  # TODO(ab): remove when mediapipe is 3.12 compatible
+    "examples/python/human_pose_tracking": (3, 11),  # TODO(ab): remove when mediapipe is 3.12 compatible
+    "examples/python/llm_embedding_ner": (3, 11),  # TODO(ab): remove when torch is umap-learn/numba is 3.12 compatible
+}
+
 SKIP_LIST = [
     # depth_sensor requires a specific piece of hardware to be attached
     "examples/python/live_depth_sensor",
     # ros requires complex system dependencies to be installed
     "examples/python/ros_node",
+    # this needs special treatment to run
+    "examples/python/external_data_loader",
+]
+
+MAC_SKIP_LIST = [
+    "examples/python/signed_distance_fields",
 ]
 
 
@@ -112,11 +126,20 @@ def collect_examples(fast: bool) -> list[str]:
             if example in SKIP_LIST:
                 continue
 
+            major, minor, *_ = sys.version_info
+
             if example in MIN_PYTHON_REQUIREMENTS:
                 req_major, req_minor = MIN_PYTHON_REQUIREMENTS[example]
-                major, minor, *_ = sys.version_info
                 if major < req_major or (major == req_major and minor < req_minor):
                     continue
+
+            if example in MAX_PYTHON_REQUIREMENTS:
+                req_major, req_minor = MAX_PYTHON_REQUIREMENTS[example]
+                if major > req_major or (major == req_major and minor > req_minor):
+                    continue
+
+            if example in MAC_SKIP_LIST and sys.platform == "darwin":
+                continue
 
             examples.append(example)
 
