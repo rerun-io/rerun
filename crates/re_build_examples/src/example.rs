@@ -30,12 +30,14 @@ impl Channel {
         match self {
             Channel::Main => matches!(other, Channel::Main),
 
-            // Include all `main` examples in `nightly`
-            Channel::Nightly => matches!(other, Channel::Main | Channel::Nightly),
-
-            // Include all `main` and `nightly` examples in `release`
+            // Include all `main` examples in `release`
             Channel::Release => {
-                matches!(other, Channel::Main | Channel::Nightly | Channel::Release)
+                matches!(other, Channel::Main | Channel::Release)
+            }
+
+            // Include all `main` and `release` examples in `nightly`
+            Channel::Nightly => {
+                matches!(other, Channel::Main | Channel::Release | Channel::Nightly)
             }
         }
     }
