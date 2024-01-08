@@ -56,7 +56,6 @@ pub enum HttpMessage {
     Failure(Box<dyn std::error::Error + Send + Sync>),
 }
 
-// make this return ControlFlow
 pub type HttpMessageCallback = dyn Fn(HttpMessage) -> ControlFlow<()> + Send + Sync;
 
 pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {

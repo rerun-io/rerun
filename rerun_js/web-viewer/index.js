@@ -61,13 +61,11 @@ export class WebViewer {
       this.open(rrd);
     }
 
-    console.log("started");
-
     return;
   }
 
   /**
-   * Returns `true` if the viewer is ready for
+   * Returns `true` if the viewer is ready to connect to data sources.
    */
   get ready() {
     return this.#state === "ready";
@@ -132,7 +130,5 @@ export class WebViewer {
 
     this.#canvas = null;
     this.#handle = null;
-
-    console.log("stopped");
   }
 }
