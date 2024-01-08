@@ -28,31 +28,93 @@ export class WebViewer {
   /** @type {HTMLCanvasElement | null} */
   #canvas = null;
 
+  /** @type {'ready' | 'starting' | 'stopped'} */
+  #state = "stopped";
+
   /**
    * Start the viewer.
    *
-   * @param {string} [rrd] Optional URL to an `.rrd` file or a WebSocket connection to our SDK.
+   * @param {string | string[]} [rrd] URLs to `.rrd` files or WebSocket connections to our SDK.
    * @param {HTMLElement} [parent] The element to attach the canvas onto.
-   * @returns {Promise<this>}
+   * @returns {Promise<void>}
    */
   async start(rrd, parent = document.body) {
-    if (this.#canvas || this.#handle) return this;
+    if (this.#state !== "stopped") return;
+    this.#state = "starting";
 
-    const canvas = document.createElement("canvas");
-    canvas.id = randomId();
-    parent.append(canvas);
+    this.#canvas = document.createElement("canvas");
+    this.#canvas.id = randomId();
+    parent.append(this.#canvas);
 
     let WebHandle_class = await load();
-    const handle = new WebHandle_class();
-    await handle.start(canvas.id, rrd);
-    if (handle.has_panicked()) {
-      throw new Error(`Web viewer crashed: ${handle.panic_message()}`);
+    if (this.#state !== "starting") return;
+
+    this.#handle = new WebHandle_class();
+    await this.#handle.start(this.#canvas.id, undefined);
+    if (this.#state !== "starting") return;
+
+    if (this.#handle.has_panicked()) {
+      throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
     }
 
-    this.#canvas = canvas;
-    this.#handle = handle;
+    if (rrd) {
+      this.open(rrd);
+    }
 
-    return this;
+    console.log("started");
+
+    return;
+  }
+
+  /**
+   * Returns `true` if the viewer is ready for
+   */
+  get ready() {
+    return this.#state === "ready";
+  }
+
+  /**
+   * Open a recording.
+   *
+   * The viewer must have been started via `WebViewer.start`.
+   *
+   * @see {WebViewer.start}
+   *
+   * @param {string | string[]} rrd URLs to `.rrd` files or WebSocket connections to our SDK.
+   */
+  open(rrd) {
+    if (!this.#handle) {
+      throw new Error(`attempted to open \`${rrd}\` in a stopped viewer`);
+    }
+    const urls = Array.isArray(rrd) ? rrd : [rrd];
+    for (const url of urls) {
+      this.#handle.add_receiver(url);
+      if (this.#handle.has_panicked()) {
+        throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
+      }
+    }
+  }
+
+  /**
+   * Close a recording.
+   *
+   * The viewer must have been started via `WebViewer.start`.
+   *
+   * @see {WebViewer.start}
+   *
+   * @param {string | string[]} rrd URLs to `.rrd` files or WebSocket connections to our SDK.
+   */
+  close(rrd) {
+    if (!this.#handle) {
+      throw new Error(`attempted to close \`${rrd}\` in a stopped viewer`);
+    }
+    const urls = Array.isArray(rrd) ? rrd : [rrd];
+    for (const url of urls) {
+      this.#handle.remove_receiver(url);
+      if (this.#handle.has_panicked()) {
+        throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
+      }
+    }
   }
 
   /**
@@ -61,17 +123,16 @@ export class WebViewer {
    * The same viewer instance may be started multiple times.
    */
   stop() {
-    const canvas = this.#canvas;
-    this.#canvas = null;
-    if (canvas) {
-      canvas.remove();
-    }
+    if (this.#state !== "stopped") return;
+    this.#state = "stopped";
 
-    const handle = this.#handle;
+    this.#canvas?.remove();
+    this.#handle?.destroy();
+    this.#handle?.free();
+
+    this.#canvas = null;
     this.#handle = null;
-    if (handle) {
-      handle.destroy();
-      handle.free();
-    }
+
+    console.log("stopped");
   }
 }

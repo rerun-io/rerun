@@ -8,7 +8,7 @@
     "build:wasm:debug": "cargo run -p re_build_web_viewer -- --debug --module -o rerun_js/web-viewer",
     "build:types": "dts-buddy",
     "build": "npm run build:wasm && npm run build:types",
-    "prepublishOnly": "tsc --noEmit && dts-buddy"
+    "prepublishOnly": "tsc  --noEmit && dts-buddy"
   },
   "repository": {
     "type": "git",
