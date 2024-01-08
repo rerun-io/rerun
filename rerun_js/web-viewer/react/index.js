@@ -6,8 +6,8 @@ import * as rerun from "@rerun-io/web-viewer";
 /**
  * @typedef Props
  * @property {string | string[]} rrd URL(s) of the `.rrd` file(s) to load.
- *                                   Changing this prop will open any new unique URLs as recordings.
- *                                   It will not remove existing recordings, nor will it restart the web viewer.
+ *                                   Changing this prop will open any new unique URLs as recordings,
+ *                                   and close any URLs which are not present.
  * @property {string} [width] CSS width of the viewer's parent div
  * @property {string} [height] CSS height of the viewer's parent div
  */
