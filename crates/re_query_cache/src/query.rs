@@ -107,7 +107,7 @@ macro_rules! impl_query_archetype {
             );
 
             let mut latest_at_callback = |query: &LatestAtQuery, cache: &mut crate::LatestAtCache| {
-                re_tracing::profile_scope!("latest_at");
+                re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
                 let bucket = cache.entry(query.at).or_default();
                 // NOTE: Implicitly dropping the write guard here: the LatestAtCache is free once again!
