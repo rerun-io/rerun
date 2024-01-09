@@ -5562,6 +5562,7 @@ dependencies = [
  "rayon",
  "re_build_info",
  "re_build_tools",
+ "re_error",
  "re_log",
  "re_memory",
  "rerun",
