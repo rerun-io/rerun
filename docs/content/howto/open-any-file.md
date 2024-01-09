@@ -44,7 +44,7 @@ The easiest way to create your own `DataLoader` is by implementing what we call 
 
 This executable takes a file path as input on `stdin` and outputs Rerun logs on `stdout`.
 It will be called by the Rerun Viewer when the user opens a file, and be passed the path to that file.
-From there, it can log data as usual, using the [`stdout` logging sink](../reference/sdk-operating-modes#standard-inputoutput).
+From there, it can log data as usual, using the [`stdout` logging sink](../reference/sdk-operating-modes.md#standard-inputoutput).
 
 The Rerun Viewer will then automatically load the data streamed to the external loader's standard output.
 
