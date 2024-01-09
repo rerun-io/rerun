@@ -25,7 +25,7 @@ impl Vec4D {
 
     #[inline]
     pub fn w(&self) -> f32 {
-        self.0[2]
+        self.0[3]
     }
 }
 
