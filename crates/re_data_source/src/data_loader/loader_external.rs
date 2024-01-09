@@ -50,7 +50,26 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
         .collect();
 
     // NOTE: We call all available loaders and do so in parallel: order is irrelevant here.
-    executables.into_iter().collect()
+    let executables = executables.into_iter().collect_vec();
+
+    // If the user has multiple data-loaders in their PATH with the same exact name, warn that
+    // something is very likely wrong.
+    // That can very easily happen with tools like `pip`/`pipx`.
+
+    let mut exe_names = executables
+        .iter()
+        .filter_map(|path| path.file_name())
+        .collect_vec();
+    exe_names.sort();
+
+    use itertools::Itertools as _;
+    for (name1, name2) in exe_names.iter().tuple_windows::<(_, _)>() {
+        if name1 == name2 {
+            re_log::warn_once!("Found duplicated data-loader in $PATH: {:?}", name1);
+        }
+    }
+
+    executables
 });
 
 /// Iterator over all registered external [`crate::DataLoader`]s.
