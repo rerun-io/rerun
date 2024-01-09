@@ -97,7 +97,7 @@ emath = "0.24.1"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
-anyhow = "1.0"
+anyhow = { version = "1.0", default-features = false }
 arboard = { version = "3.2", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
