@@ -131,7 +131,8 @@ impl Points2DVisualizer {
             }
         };
 
-        self.data.extend_bounding_box_with_points(
+        self.data.add_bounding_box_from_points(
+            ent_path.hash(),
             positions.iter().copied(),
             ent_context.world_from_entity,
         );

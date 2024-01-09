@@ -87,29 +87,6 @@ pub fn register_3d_spatial_visualizers(
     Ok(())
 }
 
-pub fn calculate_bounding_box(
-    visualizers: &VisualizerCollection,
-    bounding_box_accum: &mut macaw::BoundingBox,
-) -> macaw::BoundingBox {
-    let mut bounding_box = macaw::BoundingBox::nothing();
-    for visualizer in visualizers.iter() {
-        if let Some(data) = visualizer
-            .data()
-            .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
-        {
-            bounding_box = bounding_box.union(data.bounding_box);
-        }
-    }
-
-    if bounding_box_accum.is_nothing() || !bounding_box_accum.size().is_finite() {
-        *bounding_box_accum = bounding_box;
-    } else {
-        *bounding_box_accum = bounding_box_accum.union(bounding_box);
-    }
-
-    bounding_box
-}
-
 pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
     let mut ui_labels = Vec::new();
     for visualizer in visualizers.iter() {

@@ -91,7 +91,8 @@ impl Asset3DVisualizer {
                 }
             }));
 
-            self.0.extend_bounding_box(mesh.bbox(), world_from_pose);
+            self.0
+                .add_bounding_box(ent_path.hash(), mesh.bbox(), world_from_pose);
         };
 
         Ok(())

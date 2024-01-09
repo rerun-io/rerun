@@ -91,9 +91,11 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             };
 
             // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
-            self.0
-                .bounding_box
-                .extend(world_from_obj.translation.into());
+            self.0.add_bounding_box(
+                data_result.entity_path.hash(),
+                macaw::BoundingBox::ZERO,
+                world_from_obj,
+            );
 
             // Given how simple transform gizmos are it would be nice to put them all into a single line batch.
             // However, we can set object picking ids only per batch.

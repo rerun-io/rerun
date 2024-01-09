@@ -13,7 +13,7 @@ use crate::{
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{calculate_bounding_box, register_3d_spatial_visualizers, CamerasVisualizer},
+    visualizers::{register_3d_spatial_visualizers, CamerasVisualizer},
 };
 
 // TODO(andreas): This context is used to determine whether a 2D entity has a valid transform
@@ -157,7 +157,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             ctx,
             ent_paths,
             entity_properties,
-            &state.scene_bbox_accum,
+            &state.bounding_boxes.accumulated,
             SpatialSpaceViewKind::ThreeD,
         );
     }
@@ -185,8 +185,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        state.scene_bbox =
-            calculate_bounding_box(&system_output.view_systems, &mut state.scene_bbox_accum);
+        state.bounding_boxes.update(&system_output.view_systems);
         state.scene_num_primitives = system_output
             .context_systems
             .get::<PrimitiveCounter>()?

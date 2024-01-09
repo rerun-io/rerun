@@ -12,9 +12,7 @@ use crate::{
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{
-        calculate_bounding_box, register_2d_spatial_visualizers, SpatialViewVisualizerData,
-    },
+    visualizers::{register_2d_spatial_visualizers, SpatialViewVisualizerData},
 };
 
 // TODO(#4388): 2D/3D relationships should be solved via a "SpatialTopology" construct.
@@ -60,7 +58,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
     }
 
     fn preferred_tile_aspect_ratio(&self, state: &Self::State) -> Option<f32> {
-        let size = state.scene_bbox_accum.size();
+        let size = state.bounding_boxes.accumulated.size();
         Some(size.x / size.y)
     }
 
@@ -123,7 +121,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
             ctx,
             ent_paths,
             entity_properties,
-            &state.scene_bbox_accum,
+            &state.bounding_boxes.accumulated,
             SpatialSpaceViewKind::TwoD,
         );
     }
@@ -205,8 +203,9 @@ impl SpaceViewClass for SpatialSpaceView2D {
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        state.scene_bbox =
-            calculate_bounding_box(&system_output.view_systems, &mut state.scene_bbox_accum);
+        re_tracing::profile_function!();
+
+        state.bounding_boxes.update(&system_output.view_systems);
         state.scene_num_primitives = system_output
             .context_systems
             .get::<PrimitiveCounter>()?

@@ -123,6 +123,8 @@ impl Boxes2DVisualizer {
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
+        let mut bounding_box = macaw::BoundingBox::nothing();
+
         for (instance_key, half_size, position, radius, color) in
             itertools::izip!(instance_keys, half_sizes, positions, radii, colors)
         {
@@ -130,14 +132,8 @@ impl Boxes2DVisualizer {
 
             let min = half_size.box_min(position);
             let max = half_size.box_max(position);
-
-            self.data.extend_bounding_box(
-                macaw::BoundingBox {
-                    min: min.extend(0.),
-                    max: max.extend(0.),
-                },
-                ent_context.world_from_entity,
-            );
+            bounding_box.extend(min.extend(0.0));
+            bounding_box.extend(max.extend(0.0));
 
             let rectangle = line_batch
                 .add_rectangle_outline_2d(
@@ -156,6 +152,9 @@ impl Boxes2DVisualizer {
                 rectangle.outline_mask_ids(*outline_mask_ids);
             }
         }
+
+        self.data
+            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
 
         Ok(())
     }

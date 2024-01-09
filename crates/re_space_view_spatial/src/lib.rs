@@ -9,6 +9,7 @@ mod instance_hash_conversions;
 mod mesh_cache;
 mod mesh_loader;
 mod picking;
+mod scene_bounding_boxes;
 mod space_camera_3d;
 mod space_view_2d;
 mod space_view_3d;

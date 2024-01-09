@@ -348,12 +348,15 @@ pub fn view_3d(
     };
     let orbit_eye = state.state_3d.update_eye(
         &response,
-        &state.scene_bbox_accum,
+        &state.bounding_boxes.accumulated,
         space_cameras,
         view_coordinates,
     );
-    let did_interact_with_eye =
-        orbit_eye.update(&response, orbit_eye_drag_threshold, &state.scene_bbox_accum);
+    let did_interact_with_eye = orbit_eye.update(
+        &response,
+        orbit_eye_drag_threshold,
+        &state.bounding_boxes.accumulated,
+    );
 
     let orbit_eye = *orbit_eye;
     let eye = orbit_eye.to_eye();
@@ -382,7 +385,7 @@ pub fn view_3d(
         );
 
         // If we are showing the axes for the space, then add the space origin to the bounding box.
-        state.scene_bbox.extend(glam::Vec3::ZERO);
+        state.bounding_boxes.current.extend(glam::Vec3::ZERO);
     }
 
     // Determine view port resolution and position.
@@ -474,10 +477,10 @@ pub fn view_3d(
         }
         // Without hovering, resets the camera.
         else {
-            state.scene_bbox_accum = state.scene_bbox;
+            state.bounding_boxes.accumulated = state.bounding_boxes.current;
             state
                 .state_3d
-                .reset_camera(&state.scene_bbox_accum, &view_coordinates);
+                .reset_camera(&state.bounding_boxes.accumulated, &view_coordinates);
         }
     }
 
@@ -525,12 +528,12 @@ pub fn view_3d(
         let mut box_batch = line_builder.batch("scene_bbox");
         if state.state_3d.show_bbox {
             box_batch
-                .add_box_outline(&state.scene_bbox)
+                .add_box_outline(&state.bounding_boxes.current)
                 .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
         }
         if state.state_3d.show_accumulated_bbox {
             box_batch
-                .add_box_outline(&state.scene_bbox_accum)
+                .add_box_outline(&state.bounding_boxes.accumulated)
                 .map(|lines| {
                     lines
                         .radius(Size::AUTO)
@@ -674,7 +677,7 @@ fn show_projections_from_2d_space(
                     add_picking_ray(
                         line_builder,
                         ray,
-                        &state.scene_bbox_accum,
+                        &state.bounding_boxes.accumulated,
                         thick_ray_length,
                         color,
                     );
@@ -695,7 +698,13 @@ fn show_projections_from_2d_space(
                     let cam_to_pos = *pos - cam.position();
                     let distance = cam_to_pos.length();
                     let ray = macaw::Ray3::from_origin_dir(cam.position(), cam_to_pos / distance);
-                    add_picking_ray(line_builder, ray, &state.scene_bbox_accum, distance, color);
+                    add_picking_ray(
+                        line_builder,
+                        ray,
+                        &state.bounding_boxes.accumulated,
+                        distance,
+                        color,
+                    );
                 }
             }
         }

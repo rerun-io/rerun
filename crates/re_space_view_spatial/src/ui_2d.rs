@@ -243,9 +243,10 @@ pub fn view_2d(
     let available_size = ui.available_size();
     let store = ctx.entity_db.store();
 
+    let scene_rect_accum = state.bounding_boxes.accumulated;
     let scene_rect_accum = egui::Rect::from_min_max(
-        state.scene_bbox_accum.min.truncate().to_array().into(),
-        state.scene_bbox_accum.max.truncate().to_array().into(),
+        scene_rect_accum.min.truncate().to_array().into(),
+        scene_rect_accum.max.truncate().to_array().into(),
     );
 
     // Determine the canvas which determines the extent of the explorable scene coordinates,

@@ -123,7 +123,7 @@ impl Mesh3DVisualizer {
             }));
 
             self.0
-                .extend_bounding_box(mesh.bbox(), ent_context.world_from_entity);
+                .add_bounding_box(ent_path.hash(), mesh.bbox(), ent_context.world_from_entity);
         };
 
         Ok(())

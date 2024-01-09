@@ -66,6 +66,8 @@ impl Boxes3DVisualizer {
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
+        let mut bounding_box = macaw::BoundingBox::nothing();
+
         for (instance_key, half_extent, position, rotation, radius, color, label) in itertools::izip!(
             instance_keys,
             half_sizes,
@@ -77,13 +79,8 @@ impl Boxes3DVisualizer {
         ) {
             let instance_hash = re_entity_db::InstancePathHash::instance(ent_path, instance_key);
 
-            self.0.extend_bounding_box(
-                macaw::BoundingBox {
-                    min: half_extent.box_min(position),
-                    max: half_extent.box_max(position),
-                },
-                ent_context.world_from_entity,
-            );
+            bounding_box.extend(half_extent.box_min(position));
+            bounding_box.extend(half_extent.box_max(position));
 
             let position = position.into();
 
@@ -115,6 +112,9 @@ impl Boxes3DVisualizer {
                 });
             }
         }
+
+        self.0
+            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
 
         Ok(())
     }
