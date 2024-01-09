@@ -24,6 +24,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AffixFuzzer13(pub Option<Vec<::re_types_core::ArrowString>>);
 
+impl ::re_types_core::SizeBytes for AffixFuzzer13 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<Option<Vec<::re_types_core::ArrowString>>> for AffixFuzzer13 {
     #[inline]
     fn from(many_strings_optional: Option<Vec<::re_types_core::ArrowString>>) -> Self {

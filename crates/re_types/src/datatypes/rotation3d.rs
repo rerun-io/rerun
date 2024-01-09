@@ -31,6 +31,17 @@ pub enum Rotation3D {
     AxisAngle(crate::datatypes::RotationAxisAngle),
 }
 
+impl ::re_types_core::SizeBytes for Rotation3D {
+    #[allow(clippy::match_same_arms)]
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Quaternion(v) => v.heap_size_bytes(),
+            Self::AxisAngle(v) => v.heap_size_bytes(),
+        }
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Rotation3D);
 
 impl ::re_types_core::Loggable for Rotation3D {

@@ -26,6 +26,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Blob(pub ::re_types_core::ArrowBuffer<u8>);
 
+impl ::re_types_core::SizeBytes for Blob {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<::re_types_core::ArrowBuffer<u8>> for Blob {
     #[inline]
     fn from(data: ::re_types_core::ArrowBuffer<u8>) -> Self {

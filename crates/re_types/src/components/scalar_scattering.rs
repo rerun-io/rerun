@@ -25,6 +25,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, Eq)]
 pub struct ScalarScattering(pub bool);
 
+impl ::re_types_core::SizeBytes for ScalarScattering {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<bool> for ScalarScattering {
     #[inline]
     fn from(scattered: bool) -> Self {

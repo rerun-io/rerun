@@ -27,6 +27,18 @@ pub struct AffixFuzzer21 {
     pub many_halves: ::re_types_core::ArrowBuffer<arrow2::types::f16>,
 }
 
+impl ::re_types_core::SizeBytes for AffixFuzzer21 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [
+            self.single_half.heap_size_bytes(),
+            self.many_halves.heap_size_bytes(),
+        ]
+        .into_iter()
+        .sum::<u64>()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer21);
 
 impl ::re_types_core::Loggable for AffixFuzzer21 {

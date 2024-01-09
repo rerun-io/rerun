@@ -27,6 +27,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy)]
 pub struct PanelView(pub bool);
 
+impl ::re_types_core::SizeBytes for PanelView {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<bool> for PanelView {
     #[inline]
     fn from(is_expanded: bool) -> Self {

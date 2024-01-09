@@ -26,6 +26,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct EntitiesDeterminedByUser(pub bool);
 
+impl ::re_types_core::SizeBytes for EntitiesDeterminedByUser {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<bool> for EntitiesDeterminedByUser {
     #[inline]
     fn from(value: bool) -> Self {
@@ -41,13 +48,6 @@ impl From<EntitiesDeterminedByUser> for bool {
 }
 
 ::re_types_core::macros::impl_into_cow!(EntitiesDeterminedByUser);
-
-impl ::re_types_core::SizeBytes for EntitiesDeterminedByUser {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        todo!()
-    }
-}
 
 impl ::re_types_core::Loggable for EntitiesDeterminedByUser {
     type Name = ::re_types_core::ComponentName;

@@ -75,6 +75,19 @@ pub struct TextLog {
     pub color: Option<crate::components::Color>,
 }
 
+impl ::re_types_core::SizeBytes for TextLog {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [
+            self.text.heap_size_bytes(),
+            self.level.heap_size_bytes(),
+            self.color.heap_size_bytes(),
+        ]
+        .into_iter()
+        .sum::<u64>()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Text".into()]);
 

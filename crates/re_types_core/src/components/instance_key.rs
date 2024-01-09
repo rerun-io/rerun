@@ -26,6 +26,13 @@ use crate::{DeserializationError, DeserializationResult};
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct InstanceKey(pub u64);
 
+impl crate::SizeBytes for InstanceKey {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<u64> for InstanceKey {
     #[inline]
     fn from(value: u64) -> Self {

@@ -104,11 +104,3 @@ impl std::fmt::Display for Vec2D {
         )
     }
 }
-
-// TODO(#4690): this should be codegen'd.
-impl crate::SizeBytes for Vec2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}

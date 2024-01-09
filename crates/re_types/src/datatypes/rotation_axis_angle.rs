@@ -35,6 +35,15 @@ pub struct RotationAxisAngle {
     pub angle: crate::datatypes::Angle,
 }
 
+impl ::re_types_core::SizeBytes for RotationAxisAngle {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.axis.heap_size_bytes(), self.angle.heap_size_bytes()]
+            .into_iter()
+            .sum::<u64>()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(RotationAxisAngle);
 
 impl ::re_types_core::Loggable for RotationAxisAngle {

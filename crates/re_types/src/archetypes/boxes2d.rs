@@ -83,6 +83,24 @@ pub struct Boxes2D {
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
+impl ::re_types_core::SizeBytes for Boxes2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [
+            self.half_sizes.heap_size_bytes(),
+            self.centers.heap_size_bytes(),
+            self.colors.heap_size_bytes(),
+            self.radii.heap_size_bytes(),
+            self.labels.heap_size_bytes(),
+            self.draw_order.heap_size_bytes(),
+            self.class_ids.heap_size_bytes(),
+            self.instance_keys.heap_size_bytes(),
+        ]
+        .into_iter()
+        .sum::<u64>()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.HalfSizes2D".into()]);
 

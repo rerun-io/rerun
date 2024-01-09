@@ -31,6 +31,15 @@ pub struct TensorDimension {
     pub name: Option<::re_types_core::ArrowString>,
 }
 
+impl ::re_types_core::SizeBytes for TensorDimension {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.size.heap_size_bytes(), self.name.heap_size_bytes()]
+            .into_iter()
+            .sum::<u64>()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(TensorDimension);
 
 impl ::re_types_core::Loggable for TensorDimension {

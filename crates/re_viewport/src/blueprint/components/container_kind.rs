@@ -34,6 +34,13 @@ pub struct ContainerKind(
     pub u8,
 );
 
+impl ::re_types_core::SizeBytes for ContainerKind {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<u8> for ContainerKind {
     #[inline]
     fn from(kind: u8) -> Self {

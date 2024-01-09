@@ -26,6 +26,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Radius(pub f32);
 
+impl ::re_types_core::SizeBytes for Radius {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<f32> for Radius {
     #[inline]
     fn from(value: f32) -> Self {

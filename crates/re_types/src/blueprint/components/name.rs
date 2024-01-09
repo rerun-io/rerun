@@ -26,6 +26,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Name(pub ::re_types_core::ArrowString);
 
+impl ::re_types_core::SizeBytes for Name {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<::re_types_core::ArrowString> for Name {
     #[inline]
     fn from(value: ::re_types_core::ArrowString) -> Self {
@@ -41,13 +48,6 @@ impl From<Name> for ::re_types_core::ArrowString {
 }
 
 ::re_types_core::macros::impl_into_cow!(Name);
-
-impl ::re_types_core::SizeBytes for Name {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        todo!()
-    }
-}
 
 impl ::re_types_core::Loggable for Name {
     type Name = ::re_types_core::ComponentName;

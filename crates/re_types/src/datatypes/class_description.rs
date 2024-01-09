@@ -47,6 +47,19 @@ pub struct ClassDescription {
     pub keypoint_connections: Vec<crate::datatypes::KeypointPair>,
 }
 
+impl ::re_types_core::SizeBytes for ClassDescription {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [
+            self.info.heap_size_bytes(),
+            self.keypoint_annotations.heap_size_bytes(),
+            self.keypoint_connections.heap_size_bytes(),
+        ]
+        .into_iter()
+        .sum::<u64>()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(ClassDescription);
 
 impl ::re_types_core::Loggable for ClassDescription {

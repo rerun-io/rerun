@@ -71,6 +71,13 @@ pub struct Transform3D {
     pub transform: crate::components::Transform3D,
 }
 
+impl ::re_types_core::SizeBytes for Transform3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.transform.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Transform3D".into()]);
 

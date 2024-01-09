@@ -26,6 +26,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(C)]
 pub struct UVec4D(pub [u32; 4usize]);
 
+impl ::re_types_core::SizeBytes for UVec4D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<[u32; 4usize]> for UVec4D {
     #[inline]
     fn from(xyzw: [u32; 4usize]) -> Self {

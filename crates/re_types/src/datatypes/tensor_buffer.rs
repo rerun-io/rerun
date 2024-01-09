@@ -41,6 +41,28 @@ pub enum TensorBuffer {
     Nv12(::re_types_core::ArrowBuffer<u8>),
 }
 
+impl ::re_types_core::SizeBytes for TensorBuffer {
+    #[allow(clippy::match_same_arms)]
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::U8(v) => v.heap_size_bytes(),
+            Self::U16(v) => v.heap_size_bytes(),
+            Self::U32(v) => v.heap_size_bytes(),
+            Self::U64(v) => v.heap_size_bytes(),
+            Self::I8(v) => v.heap_size_bytes(),
+            Self::I16(v) => v.heap_size_bytes(),
+            Self::I32(v) => v.heap_size_bytes(),
+            Self::I64(v) => v.heap_size_bytes(),
+            Self::F16(v) => v.heap_size_bytes(),
+            Self::F32(v) => v.heap_size_bytes(),
+            Self::F64(v) => v.heap_size_bytes(),
+            Self::Jpeg(v) => v.heap_size_bytes(),
+            Self::Nv12(v) => v.heap_size_bytes(),
+        }
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(TensorBuffer);
 
 impl ::re_types_core::Loggable for TensorBuffer {

@@ -36,6 +36,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LineStrip2D(pub Vec<crate::datatypes::Vec2D>);
 
+impl ::re_types_core::SizeBytes for LineStrip2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl<I: Into<crate::datatypes::Vec2D>, T: IntoIterator<Item = I>> From<T> for LineStrip2D {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())

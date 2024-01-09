@@ -57,11 +57,3 @@ impl std::fmt::Display for InstanceKey {
         }
     }
 }
-
-// TODO(#4690): this should be codegen'd.
-impl crate::SizeBytes for InstanceKey {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}

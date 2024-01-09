@@ -28,6 +28,13 @@ pub struct RootContainer(
     pub crate::datatypes::Uuid,
 );
 
+impl ::re_types_core::SizeBytes for RootContainer {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl<T: Into<crate::datatypes::Uuid>> From<T> for RootContainer {
     fn from(v: T) -> Self {
         Self(v.into())

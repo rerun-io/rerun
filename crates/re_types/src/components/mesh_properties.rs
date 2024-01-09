@@ -25,6 +25,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MeshProperties(pub crate::datatypes::MeshProperties);
 
+impl ::re_types_core::SizeBytes for MeshProperties {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl<T: Into<crate::datatypes::MeshProperties>> From<T> for MeshProperties {
     fn from(v: T) -> Self {
         Self(v.into())

@@ -30,6 +30,13 @@ pub struct ActiveTab(
     pub crate::datatypes::EntityPath,
 );
 
+impl ::re_types_core::SizeBytes for ActiveTab {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl<T: Into<crate::datatypes::EntityPath>> From<T> for ActiveTab {
     fn from(v: T) -> Self {
         Self(v.into())
@@ -53,13 +60,6 @@ impl std::ops::Deref for ActiveTab {
 }
 
 ::re_types_core::macros::impl_into_cow!(ActiveTab);
-
-impl ::re_types_core::SizeBytes for ActiveTab {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        todo!()
-    }
-}
 
 impl ::re_types_core::Loggable for ActiveTab {
     type Name = ::re_types_core::ComponentName;

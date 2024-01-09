@@ -31,6 +31,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Rgba32(pub u32);
 
+impl ::re_types_core::SizeBytes for Rgba32 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<u32> for Rgba32 {
     #[inline]
     fn from(rgba: u32) -> Self {

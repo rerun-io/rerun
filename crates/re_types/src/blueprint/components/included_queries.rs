@@ -28,6 +28,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct IncludedQueries(pub Vec<crate::datatypes::Uuid>);
 
+impl ::re_types_core::SizeBytes for IncludedQueries {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl<I: Into<crate::datatypes::Uuid>, T: IntoIterator<Item = I>> From<T> for IncludedQueries {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())
@@ -35,13 +42,6 @@ impl<I: Into<crate::datatypes::Uuid>, T: IntoIterator<Item = I>> From<T> for Inc
 }
 
 ::re_types_core::macros::impl_into_cow!(IncludedQueries);
-
-impl ::re_types_core::SizeBytes for IncludedQueries {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        todo!()
-    }
-}
 
 impl ::re_types_core::Loggable for IncludedQueries {
     type Name = ::re_types_core::ComponentName;

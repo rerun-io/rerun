@@ -28,6 +28,13 @@ pub struct GridColumns(
     pub u32,
 );
 
+impl ::re_types_core::SizeBytes for GridColumns {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<u32> for GridColumns {
     #[inline]
     fn from(columns: u32) -> Self {

@@ -26,6 +26,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct SpaceViewOrigin(pub crate::datatypes::EntityPath);
 
+impl ::re_types_core::SizeBytes for SpaceViewOrigin {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl<T: Into<crate::datatypes::EntityPath>> From<T> for SpaceViewOrigin {
     fn from(v: T) -> Self {
         Self(v.into())
@@ -49,13 +56,6 @@ impl std::ops::Deref for SpaceViewOrigin {
 }
 
 ::re_types_core::macros::impl_into_cow!(SpaceViewOrigin);
-
-impl ::re_types_core::SizeBytes for SpaceViewOrigin {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        todo!()
-    }
-}
 
 impl ::re_types_core::Loggable for SpaceViewOrigin {
     type Name = ::re_types_core::ComponentName;

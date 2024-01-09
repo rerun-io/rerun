@@ -26,6 +26,13 @@ use crate::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Utf8(pub crate::ArrowString);
 
+impl crate::SizeBytes for Utf8 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<crate::ArrowString> for Utf8 {
     #[inline]
     fn from(value: crate::ArrowString) -> Self {

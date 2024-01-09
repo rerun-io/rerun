@@ -24,6 +24,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer14(pub crate::testing::datatypes::AffixFuzzer3);
 
+impl ::re_types_core::SizeBytes for AffixFuzzer14 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl<T: Into<crate::testing::datatypes::AffixFuzzer3>> From<T> for AffixFuzzer14 {
     fn from(v: T) -> Self {
         Self(v.into())

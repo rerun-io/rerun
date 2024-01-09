@@ -44,6 +44,35 @@ pub struct AffixFuzzer2 {
     pub fuzz1122: Vec<crate::testing::components::AffixFuzzer22>,
 }
 
+impl ::re_types_core::SizeBytes for AffixFuzzer2 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [
+            self.fuzz1101.heap_size_bytes(),
+            self.fuzz1102.heap_size_bytes(),
+            self.fuzz1103.heap_size_bytes(),
+            self.fuzz1104.heap_size_bytes(),
+            self.fuzz1105.heap_size_bytes(),
+            self.fuzz1106.heap_size_bytes(),
+            self.fuzz1107.heap_size_bytes(),
+            self.fuzz1108.heap_size_bytes(),
+            self.fuzz1109.heap_size_bytes(),
+            self.fuzz1110.heap_size_bytes(),
+            self.fuzz1111.heap_size_bytes(),
+            self.fuzz1112.heap_size_bytes(),
+            self.fuzz1113.heap_size_bytes(),
+            self.fuzz1114.heap_size_bytes(),
+            self.fuzz1115.heap_size_bytes(),
+            self.fuzz1116.heap_size_bytes(),
+            self.fuzz1117.heap_size_bytes(),
+            self.fuzz1118.heap_size_bytes(),
+            self.fuzz1122.heap_size_bytes(),
+        ]
+        .into_iter()
+        .sum::<u64>()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 19usize]> =
     once_cell::sync::Lazy::new(|| {
         [

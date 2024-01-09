@@ -26,6 +26,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Visible(pub bool);
 
+impl ::re_types_core::SizeBytes for Visible {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<bool> for Visible {
     #[inline]
     fn from(visible: bool) -> Self {
@@ -41,13 +48,6 @@ impl From<Visible> for bool {
 }
 
 ::re_types_core::macros::impl_into_cow!(Visible);
-
-impl ::re_types_core::SizeBytes for Visible {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        todo!()
-    }
-}
 
 impl ::re_types_core::Loggable for Visible {
     type Name = ::re_types_core::ComponentName;

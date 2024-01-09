@@ -83,6 +83,23 @@ pub struct Mesh3D {
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
+impl ::re_types_core::SizeBytes for Mesh3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [
+            self.vertex_positions.heap_size_bytes(),
+            self.mesh_properties.heap_size_bytes(),
+            self.vertex_normals.heap_size_bytes(),
+            self.vertex_colors.heap_size_bytes(),
+            self.mesh_material.heap_size_bytes(),
+            self.class_ids.heap_size_bytes(),
+            self.instance_keys.heap_size_bytes(),
+        ]
+        .into_iter()
+        .sum::<u64>()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Position3D".into()]);
 

@@ -33,6 +33,18 @@ pub struct ClassDescriptionMapElem {
     pub class_description: crate::datatypes::ClassDescription,
 }
 
+impl ::re_types_core::SizeBytes for ClassDescriptionMapElem {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [
+            self.class_id.heap_size_bytes(),
+            self.class_description.heap_size_bytes(),
+        ]
+        .into_iter()
+        .sum::<u64>()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(ClassDescriptionMapElem);
 
 impl ::re_types_core::Loggable for ClassDescriptionMapElem {

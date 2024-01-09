@@ -51,6 +51,22 @@ pub struct SpaceViewBlueprint {
     pub visible: Option<crate::blueprint::components::Visible>,
 }
 
+impl ::re_types_core::SizeBytes for SpaceViewBlueprint {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [
+            self.class_identifier.heap_size_bytes(),
+            self.display_name.heap_size_bytes(),
+            self.space_origin.heap_size_bytes(),
+            self.entities_determined_by_user.heap_size_bytes(),
+            self.contents.heap_size_bytes(),
+            self.visible.heap_size_bytes(),
+        ]
+        .into_iter()
+        .sum::<u64>()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.SpaceViewClass".into()]);
 

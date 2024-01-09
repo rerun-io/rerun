@@ -65,6 +65,24 @@ pub struct ContainerBlueprint {
     pub grid_columns: Option<crate::blueprint::components::GridColumns>,
 }
 
+impl ::re_types_core::SizeBytes for ContainerBlueprint {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [
+            self.container_kind.heap_size_bytes(),
+            self.display_name.heap_size_bytes(),
+            self.contents.heap_size_bytes(),
+            self.col_shares.heap_size_bytes(),
+            self.row_shares.heap_size_bytes(),
+            self.active_tab.heap_size_bytes(),
+            self.visible.heap_size_bytes(),
+            self.grid_columns.heap_size_bytes(),
+        ]
+        .into_iter()
+        .sum::<u64>()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ContainerKind".into()]);
 

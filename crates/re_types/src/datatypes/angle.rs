@@ -28,6 +28,17 @@ pub enum Angle {
     Degrees(f32),
 }
 
+impl ::re_types_core::SizeBytes for Angle {
+    #[allow(clippy::match_same_arms)]
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Radians(v) => v.heap_size_bytes(),
+            Self::Degrees(v) => v.heap_size_bytes(),
+        }
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Angle);
 
 impl ::re_types_core::Loggable for Angle {

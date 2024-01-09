@@ -106,6 +106,18 @@ pub struct TextDocument {
     pub media_type: Option<crate::components::MediaType>,
 }
 
+impl ::re_types_core::SizeBytes for TextDocument {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [
+            self.text.heap_size_bytes(),
+            self.media_type.heap_size_bytes(),
+        ]
+        .into_iter()
+        .sum::<u64>()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Text".into()]);
 

@@ -26,6 +26,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Position3D(pub crate::datatypes::Vec3D);
 
+impl ::re_types_core::SizeBytes for Position3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl<T: Into<crate::datatypes::Vec3D>> From<T> for Position3D {
     fn from(v: T) -> Self {
         Self(v.into())

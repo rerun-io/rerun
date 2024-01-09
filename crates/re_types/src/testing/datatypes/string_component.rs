@@ -25,6 +25,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct StringComponent(pub ::re_types_core::ArrowString);
 
+impl ::re_types_core::SizeBytes for StringComponent {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<::re_types_core::ArrowString> for StringComponent {
     #[inline]
     fn from(value: ::re_types_core::ArrowString) -> Self {

@@ -29,6 +29,19 @@ pub enum AffixFuzzer3 {
     FixedSizeShenanigans([f32; 3usize]),
 }
 
+impl ::re_types_core::SizeBytes for AffixFuzzer3 {
+    #[allow(clippy::match_same_arms)]
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Degrees(v) => v.heap_size_bytes(),
+            Self::Radians(v) => v.heap_size_bytes(),
+            Self::Craziness(v) => v.heap_size_bytes(),
+            Self::FixedSizeShenanigans(v) => v.heap_size_bytes(),
+        }
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer3);
 
 impl ::re_types_core::Loggable for AffixFuzzer3 {

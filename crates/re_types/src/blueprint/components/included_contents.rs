@@ -31,6 +31,13 @@ pub struct IncludedContents(
     pub Vec<crate::datatypes::EntityPath>,
 );
 
+impl ::re_types_core::SizeBytes for IncludedContents {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl<I: Into<crate::datatypes::EntityPath>, T: IntoIterator<Item = I>> From<T>
     for IncludedContents
 {
@@ -40,13 +47,6 @@ impl<I: Into<crate::datatypes::EntityPath>, T: IntoIterator<Item = I>> From<T>
 }
 
 ::re_types_core::macros::impl_into_cow!(IncludedContents);
-
-impl ::re_types_core::SizeBytes for IncludedContents {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        todo!()
-    }
-}
 
 impl ::re_types_core::Loggable for IncludedContents {
     type Name = ::re_types_core::ComponentName;

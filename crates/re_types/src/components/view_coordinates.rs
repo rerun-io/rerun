@@ -44,6 +44,13 @@ pub struct ViewCoordinates(
     pub [u8; 3usize],
 );
 
+impl ::re_types_core::SizeBytes for ViewCoordinates {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<[u8; 3usize]> for ViewCoordinates {
     #[inline]
     fn from(coordinates: [u8; 3usize]) -> Self {

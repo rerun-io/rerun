@@ -30,6 +30,13 @@ pub struct MeshProperties {
     pub indices: Option<::re_types_core::ArrowBuffer<u32>>,
 }
 
+impl ::re_types_core::SizeBytes for MeshProperties {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.indices.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<Option<::re_types_core::ArrowBuffer<u32>>> for MeshProperties {
     #[inline]
     fn from(indices: Option<::re_types_core::ArrowBuffer<u32>>) -> Self {

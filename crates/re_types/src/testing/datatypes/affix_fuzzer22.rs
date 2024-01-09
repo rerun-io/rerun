@@ -26,6 +26,15 @@ pub struct AffixFuzzer22 {
     pub fixed_sized_native: [u8; 4usize],
 }
 
+impl ::re_types_core::SizeBytes for AffixFuzzer22 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.fixed_sized_native.heap_size_bytes()]
+            .into_iter()
+            .sum::<u64>()
+    }
+}
+
 impl From<[u8; 4usize]> for AffixFuzzer22 {
     #[inline]
     fn from(fixed_sized_native: [u8; 4usize]) -> Self {

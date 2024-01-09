@@ -38,6 +38,13 @@ pub struct Mat4x4(
     pub [f32; 16usize],
 );
 
+impl ::re_types_core::SizeBytes for Mat4x4 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<[f32; 16usize]> for Mat4x4 {
     #[inline]
     fn from(flat_columns: [f32; 16usize]) -> Self {

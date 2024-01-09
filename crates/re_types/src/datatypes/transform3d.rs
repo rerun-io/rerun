@@ -31,6 +31,17 @@ pub enum Transform3D {
     TranslationRotationScale(crate::datatypes::TranslationRotationScale3D),
 }
 
+impl ::re_types_core::SizeBytes for Transform3D {
+    #[allow(clippy::match_same_arms)]
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::TranslationAndMat3x3(v) => v.heap_size_bytes(),
+            Self::TranslationRotationScale(v) => v.heap_size_bytes(),
+        }
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(Transform3D);
 
 impl ::re_types_core::Loggable for Transform3D {

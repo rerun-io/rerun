@@ -32,6 +32,13 @@ pub struct DisconnectedSpace(
     pub bool,
 );
 
+impl ::re_types_core::SizeBytes for DisconnectedSpace {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<bool> for DisconnectedSpace {
     #[inline]
     fn from(is_disconnected: bool) -> Self {

@@ -37,6 +37,13 @@ pub struct Mat3x3(
     pub [f32; 9usize],
 );
 
+impl ::re_types_core::SizeBytes for Mat3x3 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+    }
+}
+
 impl From<[f32; 9usize]> for Mat3x3 {
     #[inline]
     fn from(flat_columns: [f32; 9usize]) -> Self {
