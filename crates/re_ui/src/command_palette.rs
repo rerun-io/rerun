@@ -30,11 +30,21 @@ impl CommandPalette {
         let max_height = 320.0.at_most(screen_rect.height());
 
         egui::Window::new("Command Palette")
-            .title_bar(false)
+            .fixed_pos(screen_rect.center() - 0.5 * max_height * egui::Vec2::Y)
             .fixed_size([width, max_height])
             .pivot(egui::Align2::CENTER_TOP)
-            .fixed_pos(screen_rect.center() - 0.5 * max_height * egui::Vec2::Y)
-            .show(egui_ctx, |ui| self.window_content_ui(ui))?
+            .resizable(false)
+            .scroll2(false)
+            .title_bar(false)
+            .show(egui_ctx, |ui| {
+                // We need an extra egui frame here because we set clip_rect_margin to zero.
+                egui::Frame {
+                    inner_margin: 2.0.into(),
+                    ..Default::default()
+                }
+                .show(ui, |ui| self.window_content_ui(ui))
+                .inner
+            })?
             .inner?
     }
 
@@ -199,7 +209,7 @@ fn commands_that_match(query: &str) -> Vec<FuzzyMatch> {
                 })
             })
             .collect();
-        matches.sort_by_key(|m| -m.score);
+        matches.sort_by_key(|m| -m.score); // highest score first
         matches
     }
 }
