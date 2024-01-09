@@ -30,7 +30,14 @@ pub fn default_log_filter() -> String {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn setup_native_logging() {
     if std::env::var("RUST_BACKTRACE").is_err() {
-        // Make sure we always produce backtraces for the (hopefully rare) cases when we crash!
+        // Default `RUST_BACKTRACE` to `1` if it is not set.
+        // Thid ensures sure we always produce backtraces for the (hopefully rare) cases when we crash!
+
+        // Our own crash handler (`re_crash_handler`) ignores `RUST_BACKTRACE` though,
+        // but we only use that for `rerun-cli`, our main binary.
+
+        // Note that this also turns on printing backtraces for `anyhow::Error`s that
+        // are returned from `main` (i.e. if `main` returns `anyhow::Result`).
         std::env::set_var("RUST_BACKTRACE", "1");
     }
 

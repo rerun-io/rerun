@@ -33,6 +33,8 @@ async fn main() -> std::process::ExitCode {
     match result {
         Ok(exit_code) => std::process::ExitCode::from(exit_code),
         Err(err) => {
+            // Note: we do not print the backtrace here, because our error messages should be short, readable, and actionable.
+            // If we instead return an `anyhow::Result` from `main`, then the backtrace will be printed if `RUST_BACKTRACE=1`.
             eprintln!("Error: {}", re_error::format(err));
             std::process::ExitCode::FAILURE
         }
