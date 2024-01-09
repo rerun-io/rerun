@@ -192,7 +192,7 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
         Item::InstancePath(_, entity_path) => entity_path.to_string(),
         Item::DataBlueprintGroup(_sid, _qid, entity_path) => entity_path.to_string(),
         Item::ComponentPath(path) => {
-            format!("{} {}", path.entity_path, path.component_name.short_name(),)
+            format!("{}:{}", path.entity_path, path.component_name.short_name(),)
         }
         Item::Container(tile_id) => {
             if let Some(tile) = blueprint.tree.tiles.get(*tile_id) {
