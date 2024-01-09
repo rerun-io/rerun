@@ -106,7 +106,7 @@ pub fn highlights_for_space_view(
 
     for current_hover in ctx.selection_state().hovered().iter_items() {
         match current_hover {
-            Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {}
+            Item::SpaceView(_) | Item::Container(_) => {}
 
             Item::DataBlueprintGroup(group_space_view_id, query_id, group_entity_path) => {
                 // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
@@ -133,6 +133,20 @@ pub fn highlights_for_space_view(
                             }
                         });
                 }
+            }
+
+            Item::ComponentPath(component_path) => {
+                let entity_hash = component_path.entity_path.hash();
+                let instance = component_path.entity_path.clone().into();
+
+                highlighted_entity_paths
+                    .entry(entity_hash)
+                    .or_default()
+                    .add_hover(&instance, HoverHighlight::Hovered);
+                outlines_masks
+                    .entry(entity_hash)
+                    .or_default()
+                    .add(&instance, next_hover_mask());
             }
 
             Item::InstancePath(_, selected_instance) => {
