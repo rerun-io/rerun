@@ -5,7 +5,13 @@
 /// Also sets some other log levels on crates that are too loud.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn default_log_filter() -> String {
-    let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
+    let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {
+        if cfg!(debug_assertions) {
+            "debug".to_owned()
+        } else {
+            "info".to_owned()
+        }
+    });
 
     for crate_name in crate::CRATES_AT_ERROR_LEVEL {
         if !rust_log.contains(&format!("{crate_name}=")) {
