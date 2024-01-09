@@ -60,13 +60,8 @@ impl Default for AppOptions {
 
             experimental_additive_workflow: cfg!(debug_assertions),
 
-            // TODO(cmc): default to true for debug/rerun-workspace once minimal features have been
-            // merged in.
-            experimental_primary_caching_point_clouds: false,
-
-            // TODO(cmc): default to true for debug/rerun-workspace once minimal features have been
-            // merged in.
-            experimental_primary_caching_series: false,
+            experimental_primary_caching_point_clouds: true,
+            experimental_primary_caching_series: true,
 
             show_picking_debug_overlay: false,
 
