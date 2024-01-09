@@ -73,7 +73,7 @@ where
 }
 
 #[cfg(feature = "glam")]
-impl From<Vec4D> for glam::Vec3 {
+impl From<Vec4D> for glam::Vec4 {
     #[inline]
     fn from(v: Vec4D) -> Self {
         Self::from_slice(&v.0)

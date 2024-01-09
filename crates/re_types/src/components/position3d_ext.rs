@@ -36,3 +36,15 @@ impl From<Position3D> for glam::Vec3 {
         Self::new(pt.x(), pt.y(), pt.z())
     }
 }
+
+#[cfg(feature = "mint")]
+impl From<Position3D> for mint::Point3<f32> {
+    #[inline]
+    fn from(position: Position3D) -> Self {
+        Self {
+            x: position.x(),
+            y: position.y(),
+            z: position.z(),
+        }
+    }
+}

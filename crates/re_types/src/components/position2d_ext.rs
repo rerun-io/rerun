@@ -48,3 +48,14 @@ impl crate::SizeBytes for Position2D {
         v.heap_size_bytes()
     }
 }
+
+#[cfg(feature = "mint")]
+impl From<Position2D> for mint::Point2<f32> {
+    #[inline]
+    fn from(position: Position2D) -> Self {
+        Self {
+            x: position.x(),
+            y: position.y(),
+        }
+    }
+}

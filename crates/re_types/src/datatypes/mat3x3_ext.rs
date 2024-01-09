@@ -83,3 +83,19 @@ impl From<glam::Mat3> for Mat3x3 {
         Self::from(v.to_cols_array_2d())
     }
 }
+
+#[cfg(feature = "mint")]
+impl From<Mat3x3> for mint::ColumnMatrix3<f32> {
+    #[inline]
+    fn from(v: Mat3x3) -> Self {
+        v.0.into()
+    }
+}
+
+#[cfg(feature = "mint")]
+impl From<mint::ColumnMatrix3<f32>> for Mat3x3 {
+    #[inline]
+    fn from(v: mint::ColumnMatrix3<f32>) -> Self {
+        std::convert::From::<[[f32; 3]; 3]>::from([v.x.into(), v.y.into(), v.z.into()])
+    }
+}
