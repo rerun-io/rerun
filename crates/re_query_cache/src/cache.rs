@@ -3,13 +3,15 @@ use std::{
     sync::Arc,
 };
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use paste::paste;
 use seq_macro::seq;
 
-use re_data_store::{LatestAtQuery, RangeQuery};
+use re_data_store::{
+    LatestAtQuery, RangeQuery, StoreDiff, StoreEvent, StoreSubscriber, StoreSubscriberHandle,
+};
 use re_log_types::{EntityPath, RowId, StoreId, TimeInt, Timeline};
 use re_query::ArchetypeView;
 use re_types_core::{components::InstanceKey, Archetype, ArchetypeName, Component, ComponentName};
@@ -43,11 +45,11 @@ impl From<RangeQuery> for AnyQuery {
 /// All primary caches (all stores, all entities, everything).
 //
 // TODO(cmc): Centralize and harmonize all caches (query, jpeg, mesh).
-static CACHES: Lazy<Caches> = Lazy::new(Caches::default);
+static CACHES: Lazy<StoreSubscriberHandle> =
+    Lazy::new(|| re_data_store::DataStore::register_subscriber(Box::<Caches>::default()));
 
 /// Maintains the top-level cache mappings.
 //
-// TODO(cmc): Store subscriber and cache invalidation.
 // TODO(#4730): SizeBytes support + size stats + mem panel
 #[derive(Default)]
 pub struct Caches(RwLock<HashMap<CacheKey, CachesPerArchetype>>);
@@ -64,6 +66,24 @@ pub struct CachesPerArchetype {
     // TODO(cmc): At some point we should probably just store the PoV and optional components rather
     // than an `ArchetypeName`: the query system doesn't care about archetypes.
     latest_at_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<LatestAtCache>>>>,
+
+    /// Everything greater than or equal to this timestamp has been asynchronously invalidated.
+    ///
+    /// The next time this cache gets queried, it must remove any entry matching this criteria.
+    /// `None` indicates that there's no pending invalidation.
+    ///
+    /// Invalidation is deferred to query time because it is far more efficient that way: the frame
+    /// time effectively behaves as a natural micro-batching mechanism.
+    pending_timeful_invalidation: Option<TimeInt>,
+
+    /// If `true`, the timeless data associated with this case has been asynchronously invalidated.
+    ///
+    /// The next time this cache gets queried, it must remove any entry matching this criteria.
+    /// `false` indicates that there's no pending invalidation.
+    ///
+    /// Invalidation is deferred to query time because it is far more efficient that way: the frame
+    /// time effectively behaves as a natural micro-batching mechanism.
+    pending_timeless_invalidation: bool,
 }
 
 impl Caches {
@@ -72,8 +92,9 @@ impl Caches {
     // TODO(#4731): expose palette command.
     #[inline]
     pub fn clear() {
-        let Caches(caches) = &*CACHES;
-        caches.write().clear();
+        re_data_store::DataStore::with_subscriber_once(*CACHES, |caches: &Caches| {
+            caches.0.write().clear();
+        });
     }
 
     /// Gives write access to the appropriate `LatestAtCache` according to the specified
@@ -91,14 +112,23 @@ impl Caches {
     {
         let key = CacheKey::new(store_id, entity_path, query.timeline);
 
-        // We want to make sure we release the lock on the top-level cache map ASAP.
-        let cache = {
-            let mut caches = CACHES.0.write();
-            let caches_per_archetype = caches.entry(key).or_default();
-            let mut latest_at_per_archetype = caches_per_archetype.latest_at_per_archetype.write();
-            let latest_at_cache = latest_at_per_archetype.entry(A::name()).or_default();
-            Arc::clone(latest_at_cache)
-        };
+        let cache =
+            re_data_store::DataStore::with_subscriber_once(*CACHES, move |caches: &Caches| {
+                let mut caches = caches.0.write();
+
+                let caches_per_archetype = caches.entry(key).or_default();
+                caches_per_archetype.handle_pending_invalidation();
+
+                let mut latest_at_per_archetype =
+                    caches_per_archetype.latest_at_per_archetype.write();
+                let latest_at_cache = latest_at_per_archetype.entry(A::name()).or_default();
+
+                Arc::clone(latest_at_cache)
+
+                // Implicitly releasing all intermediary locks.
+            })
+            // NOTE: downcasting cannot fail, this is our own private handle.
+            .unwrap();
 
         let mut cache = cache.write();
         f(&mut cache)
@@ -133,6 +163,140 @@ impl CacheKey {
     }
 }
 
+// --- Invalidation ---
+
+impl StoreSubscriber for Caches {
+    #[inline]
+    fn name(&self) -> String {
+        "rerun.store_subscribers.QueryCache".into()
+    }
+
+    #[inline]
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    #[inline]
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    // TODO(cmc): support dropped recordings.
+    fn on_events(&mut self, events: &[StoreEvent]) {
+        re_tracing::profile_function!(format!("num_events={}", events.len()));
+
+        for event in events {
+            let StoreEvent {
+                store_id,
+                store_generation: _,
+                event_id: _,
+                diff,
+            } = event;
+
+            let StoreDiff {
+                kind: _, // Don't care: both additions and deletions invalid query results.
+                row_id: _,
+                times,
+                entity_path,
+                cells: _, // Don't care: we invalidate at the entity level, not component level.
+            } = diff;
+
+            #[derive(Default, Debug)]
+            struct CompactedEvents {
+                timeless: HashSet<(StoreId, EntityPath)>,
+                timeful: HashMap<CacheKey, TimeInt>,
+            }
+
+            let mut compacted = CompactedEvents::default();
+            {
+                re_tracing::profile_scope!("compact events");
+
+                if times.is_empty() {
+                    compacted
+                        .timeless
+                        .insert((store_id.clone(), entity_path.clone()));
+                }
+
+                for &(timeline, time) in times {
+                    let key = CacheKey::new(store_id.clone(), entity_path.clone(), timeline);
+                    let min_time = compacted.timeful.entry(key).or_insert(TimeInt::MAX);
+                    *min_time = TimeInt::min(*min_time, time);
+                }
+            }
+
+            // TODO(cmc): This is horribly stupid and slow and can easily be made faster by adding
+            // yet another layer of caching indirection.
+            // But since this pretty much never happens in practice, let's not go there until we
+            // have metrics showing that we need to.
+            {
+                re_tracing::profile_scope!("timeless");
+
+                for (store_id, entity_path) in compacted.timeless {
+                    for (key, caches_per_archetype) in self.0.write().iter_mut() {
+                        if key.store_id == store_id && key.entity_path == entity_path {
+                            caches_per_archetype.pending_timeless_invalidation = true;
+                        }
+                    }
+                }
+            }
+
+            {
+                re_tracing::profile_scope!("timeful");
+
+                for (key, time) in compacted.timeful {
+                    if let Some(caches_per_archetype) = self.0.write().get_mut(&key) {
+                        if let Some(min_time) =
+                            caches_per_archetype.pending_timeful_invalidation.as_mut()
+                        {
+                            *min_time = TimeInt::min(*min_time, time);
+                        } else {
+                            caches_per_archetype.pending_timeful_invalidation = Some(time);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl CachesPerArchetype {
+    /// Removes all entries from the cache that have been asynchronously invalidated.
+    ///
+    /// Invalidation is deferred to query time because it is far more efficient that way: the frame
+    /// time effectively behaves as a natural micro-batching mechanism.
+    fn handle_pending_invalidation(&mut self) {
+        let pending_timeless_invalidation = self.pending_timeless_invalidation;
+        let pending_timeful_invalidation = self.pending_timeful_invalidation.is_some();
+
+        if !pending_timeless_invalidation && !pending_timeful_invalidation {
+            return;
+        }
+
+        re_tracing::profile_function!();
+
+        for latest_at_cache in self.latest_at_per_archetype.read().values() {
+            let mut latest_at_cache = latest_at_cache.write();
+
+            if pending_timeless_invalidation {
+                latest_at_cache.timeless = None;
+                self.pending_timeless_invalidation = false;
+            }
+
+            if let Some(min_time) = self.pending_timeful_invalidation {
+                latest_at_cache
+                    .per_query_time
+                    .retain(|&query_time, _| query_time < min_time);
+
+                latest_at_cache
+                    .per_data_time
+                    .retain(|&data_time, _| data_time < min_time);
+
+                self.pending_timeful_invalidation = None;
+            }
+        }
+    }
+}
+
 // ---
 
 /// Caches the results of any query for an arbitrary range of time.
@@ -151,8 +315,10 @@ impl CacheKey {
 pub struct CacheBucket {
     /// The _data_ timestamps and [`RowId`]s of all cached rows.
     ///
+    /// This corresponds to the data time and `RowId` returned by `re_query::query_archetype`.
+    ///
     /// Reminder: within a single timestamp, rows are sorted according to their [`RowId`]s.
-    pub(crate) pov_data_times: VecDeque<(TimeInt, RowId)>,
+    pub(crate) data_times: VecDeque<(TimeInt, RowId)>,
 
     /// The [`InstanceKey`]s of the point-of-view components.
     pub(crate) pov_instance_keys: FlatVecDeque<InstanceKey>,
@@ -170,8 +336,8 @@ pub struct CacheBucket {
 impl CacheBucket {
     /// Iterate over the timestamps of the point-of-view components.
     #[inline]
-    pub fn iter_pov_data_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
-        self.pov_data_times.iter()
+    pub fn iter_data_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
+        self.data_times.iter()
     }
 
     /// Iterate over the [`InstanceKey`] batches of the point-of-view components.
@@ -207,7 +373,7 @@ impl CacheBucket {
     /// How many timestamps' worth of data is stored in this bucket?
     #[inline]
     pub fn num_entries(&self) -> usize {
-        self.pov_data_times.len()
+        self.data_times.len()
     }
 
     #[inline]
@@ -236,15 +402,15 @@ macro_rules! impl_insert {
             re_tracing::profile_scope!("CacheBucket::insert", format!("arch={} pov={} comp={}", A::name(), $N, $M));
 
             let Self {
-                pov_data_times,
+                data_times,
                 pov_instance_keys,
                 components: _,
             } = self;
 
             let pov_row_id = arch_view.primary_row_id();
-            let index = pov_data_times.partition_point(|t| t < &(query_time, pov_row_id));
+            let index = data_times.partition_point(|t| t < &(query_time, pov_row_id));
 
-            pov_data_times.insert(index, (query_time, pov_row_id));
+            data_times.insert(index, (query_time, pov_row_id));
             pov_instance_keys.insert(index, arch_view.iter_instance_keys());
             $(self.insert_component::<A, $pov>(index, arch_view)?;)+
             $(self.insert_component_opt::<A, $comp>(index, arch_view)?;)*

@@ -98,7 +98,7 @@ impl DataStore {
         StoreSubscriberHandle(subscribers.len() as u32 - 1)
     }
 
-    /// Passes a reference to the downcasted subscriber to the given callback.
+    /// Passes a reference to the downcasted subscriber to the given `FnMut` callback.
     ///
     /// Returns `None` if the subscriber doesn't exist or downcasting failed.
     pub fn with_subscriber<V: StoreSubscriber, T, F: FnMut(&V) -> T>(
@@ -109,6 +109,20 @@ impl DataStore {
         subscribers.get(handle as usize).and_then(|subscriber| {
             let subscriber = subscriber.read();
             subscriber.as_any().downcast_ref::<V>().map(&mut f)
+        })
+    }
+
+    /// Passes a reference to the downcasted subscriber to the given `FnOnce` callback.
+    ///
+    /// Returns `None` if the subscriber doesn't exist or downcasting failed.
+    pub fn with_subscriber_once<V: StoreSubscriber, T, F: FnOnce(&V) -> T>(
+        StoreSubscriberHandle(handle): StoreSubscriberHandle,
+        f: F,
+    ) -> Option<T> {
+        let subscribers = SUBSCRIBERS.read();
+        subscribers.get(handle as usize).and_then(|subscriber| {
+            let subscriber = subscriber.read();
+            subscriber.as_any().downcast_ref::<V>().map(f)
         })
     }
 
