@@ -148,9 +148,9 @@ impl SelectionPanel {
                     _ => {}
                 }
 
-                if has_data_section(item) {
+                if let Some(data_ui_item) = data_section_ui(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
-                        item.data_ui(ctx, ui, multi_selection_verbosity, &query);
+                        data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query);
                     });
                 }
 
@@ -233,11 +233,12 @@ impl SelectionPanel {
     }
 }
 
-fn has_data_section(item: &Item) -> bool {
+fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
     match item {
-        Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
+        Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
+        Item::InstancePath(_, instance_path) => Some(Box::new(instance_path.clone())),
         // Skip data ui since we don't know yet what to show for these.
-        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => false,
+        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => None,
     }
 }
 

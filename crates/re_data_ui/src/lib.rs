@@ -18,7 +18,6 @@ mod entity_path;
 mod image;
 mod image_meaning;
 mod instance_path;
-mod item;
 pub mod item_ui;
 mod log_msg;
 mod pinhole;
