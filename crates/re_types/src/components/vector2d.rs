@@ -31,6 +31,11 @@ impl ::re_types_core::SizeBytes for Vector2D {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Vec2D>::is_pod()
+    }
 }
 
 impl<T: Into<crate::datatypes::Vec2D>> From<T> for Vector2D {

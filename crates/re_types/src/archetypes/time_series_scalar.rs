@@ -114,6 +114,15 @@ impl ::re_types_core::SizeBytes for TimeSeriesScalar {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::Scalar>::is_pod()
+            && <Option<crate::components::Radius>>::is_pod()
+            && <Option<crate::components::Color>>::is_pod()
+            && <Option<crate::components::Text>>::is_pod()
+            && <Option<crate::components::ScalarScattering>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

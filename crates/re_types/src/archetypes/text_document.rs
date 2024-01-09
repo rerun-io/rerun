@@ -116,6 +116,11 @@ impl ::re_types_core::SizeBytes for TextDocument {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::Text>::is_pod() && <Option<crate::components::MediaType>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

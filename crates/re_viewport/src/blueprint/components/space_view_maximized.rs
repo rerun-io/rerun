@@ -33,6 +33,11 @@ impl ::re_types_core::SizeBytes for SpaceViewMaximized {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::datatypes::Uuid>>::is_pod()
+    }
 }
 
 impl<T: Into<Option<crate::datatypes::Uuid>>> From<T> for SpaceViewMaximized {

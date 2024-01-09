@@ -69,6 +69,11 @@ impl ::re_types_core::SizeBytes for ViewCoordinates {
     fn heap_size_bytes(&self) -> u64 {
         [self.xyz.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::ViewCoordinates>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

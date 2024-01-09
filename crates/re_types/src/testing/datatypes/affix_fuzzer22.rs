@@ -33,6 +33,11 @@ impl ::re_types_core::SizeBytes for AffixFuzzer22 {
             .into_iter()
             .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[u8; 4usize]>::is_pod()
+    }
 }
 
 impl From<[u8; 4usize]> for AffixFuzzer22 {

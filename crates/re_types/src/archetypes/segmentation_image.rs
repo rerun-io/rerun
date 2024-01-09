@@ -92,6 +92,12 @@ impl ::re_types_core::SizeBytes for SegmentationImage {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::TensorData>::is_pod()
+            && <Option<crate::components::DrawOrder>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

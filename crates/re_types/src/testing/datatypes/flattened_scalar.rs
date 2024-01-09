@@ -31,6 +31,11 @@ impl ::re_types_core::SizeBytes for FlattenedScalar {
     fn heap_size_bytes(&self) -> u64 {
         [self.value.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f32>::is_pod()
+    }
 }
 
 impl From<f32> for FlattenedScalar {

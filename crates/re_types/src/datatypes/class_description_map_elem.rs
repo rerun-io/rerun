@@ -43,6 +43,11 @@ impl ::re_types_core::SizeBytes for ClassDescriptionMapElem {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::ClassId>::is_pod() && <crate::datatypes::ClassDescription>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(ClassDescriptionMapElem);

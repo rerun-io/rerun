@@ -59,6 +59,16 @@ impl ::re_types_core::SizeBytes for ViewportBlueprint {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::components::IncludedSpaceViews>::is_pod()
+            && <Option<crate::blueprint::components::ViewportLayout>>::is_pod()
+            && <Option<crate::blueprint::components::RootContainer>>::is_pod()
+            && <Option<crate::blueprint::components::SpaceViewMaximized>>::is_pod()
+            && <Option<crate::blueprint::components::AutoLayout>>::is_pod()
+            && <Option<crate::blueprint::components::AutoSpaceViews>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

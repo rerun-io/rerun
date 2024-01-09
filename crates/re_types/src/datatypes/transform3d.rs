@@ -40,6 +40,12 @@ impl ::re_types_core::SizeBytes for Transform3D {
             Self::TranslationRotationScale(v) => v.heap_size_bytes(),
         }
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::TranslationAndMat3x3>::is_pod()
+            && <crate::datatypes::TranslationRotationScale3D>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(Transform3D);

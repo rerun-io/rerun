@@ -76,6 +76,11 @@ impl ::re_types_core::SizeBytes for DisconnectedSpace {
             .into_iter()
             .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::DisconnectedSpace>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

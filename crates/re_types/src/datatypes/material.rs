@@ -35,6 +35,11 @@ impl ::re_types_core::SizeBytes for Material {
             .into_iter()
             .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::datatypes::Rgba32>>::is_pod()
+    }
 }
 
 impl<T: Into<Option<crate::datatypes::Rgba32>>> From<T> for Material {

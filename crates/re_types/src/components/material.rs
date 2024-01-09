@@ -30,6 +30,11 @@ impl ::re_types_core::SizeBytes for Material {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Material>::is_pod()
+    }
 }
 
 impl<T: Into<crate::datatypes::Material>> From<T> for Material {

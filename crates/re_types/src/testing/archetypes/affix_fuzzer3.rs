@@ -69,6 +69,28 @@ impl ::re_types_core::SizeBytes for AffixFuzzer3 {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::testing::components::AffixFuzzer1>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer2>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer3>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer4>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer5>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer6>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer7>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer8>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer9>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer10>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer11>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer12>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer13>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer14>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer15>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer16>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer17>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer18>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =

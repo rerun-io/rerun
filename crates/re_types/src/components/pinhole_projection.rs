@@ -40,6 +40,11 @@ impl ::re_types_core::SizeBytes for PinholeProjection {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Mat3x3>::is_pod()
+    }
 }
 
 impl<T: Into<crate::datatypes::Mat3x3>> From<T> for PinholeProjection {

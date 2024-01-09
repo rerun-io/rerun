@@ -81,6 +81,18 @@ impl ::re_types_core::SizeBytes for ContainerBlueprint {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::components::ContainerKind>::is_pod()
+            && <Option<crate::blueprint::components::Name>>::is_pod()
+            && <Option<crate::blueprint::components::IncludedContents>>::is_pod()
+            && <Option<crate::blueprint::components::ColumnShares>>::is_pod()
+            && <Option<crate::blueprint::components::RowShares>>::is_pod()
+            && <Option<crate::blueprint::components::ActiveTab>>::is_pod()
+            && <Option<crate::blueprint::components::Visible>>::is_pod()
+            && <Option<crate::blueprint::components::GridColumns>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

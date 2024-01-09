@@ -36,6 +36,11 @@ impl ::re_types_core::SizeBytes for Rgba32 {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u32>::is_pod()
+    }
 }
 
 impl From<u32> for Rgba32 {

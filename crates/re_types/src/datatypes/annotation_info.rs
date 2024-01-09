@@ -48,6 +48,13 @@ impl ::re_types_core::SizeBytes for AnnotationInfo {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u16>::is_pod()
+            && <Option<crate::datatypes::Utf8>>::is_pod()
+            && <Option<crate::datatypes::Rgba32>>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AnnotationInfo);

@@ -41,6 +41,11 @@ impl ::re_types_core::SizeBytes for KeypointPair {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::KeypointId>::is_pod() && <crate::datatypes::KeypointId>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(KeypointPair);

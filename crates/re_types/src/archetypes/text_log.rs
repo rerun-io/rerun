@@ -86,6 +86,13 @@ impl ::re_types_core::SizeBytes for TextLog {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::Text>::is_pod()
+            && <Option<crate::components::TextLogLevel>>::is_pod()
+            && <Option<crate::components::Color>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

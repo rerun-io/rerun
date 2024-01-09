@@ -52,6 +52,14 @@ impl ::re_types_core::SizeBytes for TranslationRotationScale3D {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::datatypes::Vec3D>>::is_pod()
+            && <Option<crate::datatypes::Rotation3D>>::is_pod()
+            && <Option<crate::datatypes::Scale3D>>::is_pod()
+            && <bool>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TranslationRotationScale3D);

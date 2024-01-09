@@ -42,6 +42,11 @@ impl ::re_types_core::SizeBytes for RotationAxisAngle {
             .into_iter()
             .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Vec3D>::is_pod() && <crate::datatypes::Angle>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(RotationAxisAngle);

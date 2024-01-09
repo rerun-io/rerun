@@ -31,6 +31,11 @@ impl ::re_types_core::SizeBytes for Blob {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <::re_types_core::ArrowBuffer<u8>>::is_pod()
+    }
 }
 
 impl From<::re_types_core::ArrowBuffer<u8>> for Blob {

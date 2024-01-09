@@ -29,6 +29,11 @@ impl ::re_types_core::SizeBytes for AffixFuzzer20 {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::testing::datatypes::AffixFuzzer20>::is_pod()
+    }
 }
 
 impl<T: Into<crate::testing::datatypes::AffixFuzzer20>> From<T> for AffixFuzzer20 {

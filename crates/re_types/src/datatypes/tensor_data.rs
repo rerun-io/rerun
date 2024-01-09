@@ -42,6 +42,12 @@ impl ::re_types_core::SizeBytes for TensorData {
             .into_iter()
             .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::TensorDimension>>::is_pod()
+            && <crate::datatypes::TensorBuffer>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorData);

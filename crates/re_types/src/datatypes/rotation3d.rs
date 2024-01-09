@@ -40,6 +40,11 @@ impl ::re_types_core::SizeBytes for Rotation3D {
             Self::AxisAngle(v) => v.heap_size_bytes(),
         }
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Quaternion>::is_pod() && <crate::datatypes::RotationAxisAngle>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(Rotation3D);

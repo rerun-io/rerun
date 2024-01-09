@@ -30,6 +30,11 @@ impl crate::SizeBytes for Float32 {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f32>::is_pod()
+    }
 }
 
 impl From<f32> for Float32 {

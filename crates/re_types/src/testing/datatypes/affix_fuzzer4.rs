@@ -38,6 +38,13 @@ impl ::re_types_core::SizeBytes for AffixFuzzer4 {
             Self::ManyOptional(v) => v.heap_size_bytes(),
         }
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::testing::datatypes::AffixFuzzer3>::is_pod()
+            && <Vec<crate::testing::datatypes::AffixFuzzer3>>::is_pod()
+            && <Option<Vec<crate::testing::datatypes::AffixFuzzer3>>>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer4);

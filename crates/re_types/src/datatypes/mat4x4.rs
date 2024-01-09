@@ -43,6 +43,11 @@ impl ::re_types_core::SizeBytes for Mat4x4 {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[f32; 16usize]>::is_pod()
+    }
 }
 
 impl From<[f32; 16usize]> for Mat4x4 {

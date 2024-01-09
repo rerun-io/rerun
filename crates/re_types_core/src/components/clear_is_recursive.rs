@@ -33,6 +33,11 @@ impl crate::SizeBytes for ClearIsRecursive {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <bool>::is_pod()
+    }
 }
 
 impl From<bool> for ClearIsRecursive {

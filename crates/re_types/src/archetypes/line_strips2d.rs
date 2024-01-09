@@ -102,6 +102,17 @@ impl ::re_types_core::SizeBytes for LineStrips2D {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::components::LineStrip2D>>::is_pod()
+            && <Option<Vec<crate::components::Radius>>>::is_pod()
+            && <Option<Vec<crate::components::Color>>>::is_pod()
+            && <Option<Vec<crate::components::Text>>>::is_pod()
+            && <Option<crate::components::DrawOrder>>::is_pod()
+            && <Option<Vec<crate::components::ClassId>>>::is_pod()
+            && <Option<Vec<crate::components::InstanceKey>>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

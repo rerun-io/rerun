@@ -109,6 +109,13 @@ impl ::re_types_core::SizeBytes for Pinhole {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::PinholeProjection>::is_pod()
+            && <Option<crate::components::Resolution>>::is_pod()
+            && <Option<crate::components::ViewCoordinates>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

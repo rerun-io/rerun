@@ -37,6 +37,12 @@ impl ::re_types_core::SizeBytes for AffixFuzzer21 {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <arrow2::types::f16>::is_pod()
+            && <::re_types_core::ArrowBuffer<arrow2::types::f16>>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer21);

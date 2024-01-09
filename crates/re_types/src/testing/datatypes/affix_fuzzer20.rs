@@ -34,6 +34,12 @@ impl ::re_types_core::SizeBytes for AffixFuzzer20 {
             .into_iter()
             .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::testing::datatypes::PrimitiveComponent>::is_pod()
+            && <crate::testing::datatypes::StringComponent>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer20);

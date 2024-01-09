@@ -39,6 +39,11 @@ impl ::re_types_core::SizeBytes for AnnotationContext {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::ClassDescriptionMapElem>>::is_pod()
+    }
 }
 
 impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = I>> From<T>

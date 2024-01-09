@@ -65,6 +65,16 @@ impl ::re_types_core::SizeBytes for SpaceViewBlueprint {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::components::SpaceViewClass>::is_pod()
+            && <Option<crate::blueprint::components::Name>>::is_pod()
+            && <Option<crate::blueprint::components::SpaceViewOrigin>>::is_pod()
+            && <Option<crate::blueprint::components::EntitiesDeterminedByUser>>::is_pod()
+            && <Option<crate::blueprint::components::IncludedQueries>>::is_pod()
+            && <Option<crate::blueprint::components::Visible>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

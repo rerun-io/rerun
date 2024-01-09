@@ -33,6 +33,11 @@ impl ::re_types_core::SizeBytes for AffixFuzzer5 {
             .into_iter()
             .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::testing::datatypes::AffixFuzzer4>>::is_pod()
+    }
 }
 
 impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer4>>> From<T> for AffixFuzzer5 {

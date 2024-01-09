@@ -33,6 +33,11 @@ impl ::re_types_core::SizeBytes for Uuid {
     fn heap_size_bytes(&self) -> u64 {
         [self.bytes.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[u8; 16usize]>::is_pod()
+    }
 }
 
 impl From<[u8; 16usize]> for Uuid {

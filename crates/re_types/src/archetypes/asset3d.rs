@@ -86,6 +86,13 @@ impl ::re_types_core::SizeBytes for Asset3D {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::Blob>::is_pod()
+            && <Option<crate::components::MediaType>>::is_pod()
+            && <Option<crate::components::OutOfTreeTransform3D>>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

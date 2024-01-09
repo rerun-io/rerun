@@ -41,6 +41,11 @@ impl ::re_types_core::SizeBytes for LineStrip2D {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::Vec2D>>::is_pod()
+    }
 }
 
 impl<I: Into<crate::datatypes::Vec2D>, T: IntoIterator<Item = I>> From<T> for LineStrip2D {

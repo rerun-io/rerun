@@ -38,6 +38,11 @@ impl ::re_types_core::SizeBytes for TensorDimension {
             .into_iter()
             .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u64>::is_pod() && <Option<::re_types_core::ArrowString>>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorDimension);

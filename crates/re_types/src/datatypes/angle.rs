@@ -37,6 +37,11 @@ impl ::re_types_core::SizeBytes for Angle {
             Self::Degrees(v) => v.heap_size_bytes(),
         }
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f32>::is_pod() && <f32>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(Angle);

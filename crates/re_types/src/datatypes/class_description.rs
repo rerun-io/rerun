@@ -58,6 +58,13 @@ impl ::re_types_core::SizeBytes for ClassDescription {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::AnnotationInfo>::is_pod()
+            && <Vec<crate::datatypes::AnnotationInfo>>::is_pod()
+            && <Vec<crate::datatypes::KeypointPair>>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(ClassDescription);

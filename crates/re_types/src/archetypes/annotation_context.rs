@@ -83,6 +83,11 @@ impl ::re_types_core::SizeBytes for AnnotationContext {
     fn heap_size_bytes(&self) -> u64 {
         [self.context.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::AnnotationContext>::is_pod()
+    }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =

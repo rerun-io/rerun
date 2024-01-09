@@ -31,6 +31,11 @@ impl crate::SizeBytes for InstanceKey {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u64>::is_pod()
+    }
 }
 
 impl From<u64> for InstanceKey {

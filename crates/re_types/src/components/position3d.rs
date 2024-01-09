@@ -31,6 +31,11 @@ impl ::re_types_core::SizeBytes for Position3D {
     fn heap_size_bytes(&self) -> u64 {
         [self.0.heap_size_bytes()].into_iter().sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Vec3D>::is_pod()
+    }
 }
 
 impl<T: Into<crate::datatypes::Vec3D>> From<T> for Position3D {

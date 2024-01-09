@@ -51,6 +51,19 @@ impl ::re_types_core::SizeBytes for AffixFuzzer1 {
         .into_iter()
         .sum::<u64>()
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<f32>>::is_pod()
+            && <::re_types_core::ArrowString>::is_pod()
+            && <Option<::re_types_core::ArrowString>>::is_pod()
+            && <Option<::re_types_core::ArrowBuffer<f32>>>::is_pod()
+            && <Vec<::re_types_core::ArrowString>>::is_pod()
+            && <Option<Vec<::re_types_core::ArrowString>>>::is_pod()
+            && <f32>::is_pod()
+            && <crate::testing::datatypes::FlattenedScalar>::is_pod()
+            && <Option<bool>>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer1);

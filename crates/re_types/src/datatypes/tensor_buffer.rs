@@ -61,6 +61,23 @@ impl ::re_types_core::SizeBytes for TensorBuffer {
             Self::Nv12(v) => v.heap_size_bytes(),
         }
     }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <::re_types_core::ArrowBuffer<u8>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u16>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u32>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u64>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i8>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i16>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i32>>::is_pod()
+            && <::re_types_core::ArrowBuffer<i64>>::is_pod()
+            && <::re_types_core::ArrowBuffer<arrow2::types::f16>>::is_pod()
+            && <::re_types_core::ArrowBuffer<f32>>::is_pod()
+            && <::re_types_core::ArrowBuffer<f64>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u8>>::is_pod()
+            && <::re_types_core::ArrowBuffer<u8>>::is_pod()
+    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorBuffer);
