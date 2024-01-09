@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Raw Mesh"
+description = "Demonstrates logging of raw 3D mesh data with simple material properties."
 thumbnail = "https://static.rerun.io/raw_mesh/64bec98280b07794f7c9617f30ba2c20278601c3/480w.png"
 -->
 
