@@ -322,6 +322,12 @@ fn invalidation() {
 //
 // # Do third query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[0x0000FF]
+//
+// rr.set_time(3)
+// rr.log_components("points", rr.components.Color(0x00FF00))
+//
+// # Do fourth query here: LatestAt(+inf)
+// # Expected: points=[[1,2,3]] colors=[0x00FF00]
 // ```
 #[test]
 fn invalidation_of_future_optionals() {
@@ -361,6 +367,69 @@ fn invalidation_of_future_optionals() {
     let row =
         DataRow::from_cells2_sized(RowId::new(), ent_path, frame3, 1, (color_instances, colors))
             .unwrap();
+    store.insert_row(&row).unwrap();
+
+    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    query_and_compare(&store, &query, &ent_path.into());
+
+    let color_instances = vec![InstanceKey::SPLAT];
+    let colors = vec![Color::from_rgb(0, 255, 0)];
+    let row =
+        DataRow::from_cells2_sized(RowId::new(), ent_path, frame3, 1, (color_instances, colors))
+            .unwrap();
+    store.insert_row(&row).unwrap();
+
+    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    query_and_compare(&store, &query, &ent_path.into());
+}
+
+#[test]
+fn invalidation_timeless() {
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
+
+    let ent_path = "points";
+
+    let timeless = TimePoint::timeless();
+
+    let query_time = [build_frame_nr(9999.into())];
+
+    let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
+    let row =
+        DataRow::from_cells1_sized(RowId::new(), ent_path, timeless.clone(), 2, positions).unwrap();
+    store.insert_row(&row).unwrap();
+
+    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    query_and_compare(&store, &query, &ent_path.into());
+
+    let color_instances = vec![InstanceKey::SPLAT];
+    let colors = vec![Color::from_rgb(255, 0, 0)];
+    let row = DataRow::from_cells2_sized(
+        RowId::new(),
+        ent_path,
+        timeless.clone(),
+        1,
+        (color_instances, colors),
+    )
+    .unwrap();
+    store.insert_row(&row).unwrap();
+
+    let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
+    query_and_compare(&store, &query, &ent_path.into());
+
+    let color_instances = vec![InstanceKey::SPLAT];
+    let colors = vec![Color::from_rgb(0, 0, 255)];
+    let row = DataRow::from_cells2_sized(
+        RowId::new(),
+        ent_path,
+        timeless,
+        1,
+        (color_instances, colors),
+    )
+    .unwrap();
     store.insert_row(&row).unwrap();
 
     let query = re_data_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);

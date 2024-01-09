@@ -90,7 +90,7 @@ pub fn get_component_with_instances(
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
-/// let query = LatestAtQuery::n ew(Timeline::new_sequence("frame_nr"), 123.into());
+/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 ///
 /// let arch_view = re_query::query_archetype::<MyPoints>(
 ///   &store,

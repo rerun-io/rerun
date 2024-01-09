@@ -76,9 +76,9 @@ pub struct CachesPerArchetype {
     /// time effectively behaves as a natural micro-batching mechanism.
     pending_timeful_invalidation: Option<TimeInt>,
 
-    /// If `true`, the timeless data associated with this case has been asynchronously invalidated.
+    /// If `true`, the timeless data associated with this cache has been asynchronously invalidated.
     ///
-    /// The next time this cache gets queried, it must remove any entry matching this criteria.
+    /// If `true`, this cache must remove all of its timeless entries the next time it gets queried.
     /// `false` indicates that there's no pending invalidation.
     ///
     /// Invalidation is deferred to query time because it is far more efficient that way: the frame
@@ -194,7 +194,7 @@ impl StoreSubscriber for Caches {
             } = event;
 
             let StoreDiff {
-                kind: _, // Don't care: both additions and deletions invalid query results.
+                kind: _, // Don't care: both additions and deletions invalidate query results.
                 row_id: _,
                 times,
                 entity_path,
