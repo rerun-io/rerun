@@ -88,6 +88,27 @@ impl From<glam::Vec4> for Vec4D {
     }
 }
 
+#[cfg(feature = "mint")]
+impl From<Vec4D> for mint::Vector4<f32> {
+    #[inline]
+    fn from(v: Vec4D) -> Self {
+        Self {
+            x: v[0],
+            y: v[1],
+            z: v[2],
+            w: v[3],
+        }
+    }
+}
+
+#[cfg(feature = "mint")]
+impl From<mint::Vector4<f32>> for Vec4D {
+    #[inline]
+    fn from(v: mint::Vector4<f32>) -> Self {
+        Self([v.x, v.y, v.z, v.w])
+    }
+}
+
 impl std::fmt::Display for Vec4D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(

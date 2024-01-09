@@ -84,6 +84,26 @@ impl From<glam::Vec3> for Vec3D {
     }
 }
 
+#[cfg(feature = "mint")]
+impl From<Vec3D> for mint::Vector3<f32> {
+    #[inline]
+    fn from(v: Vec3D) -> Self {
+        Self {
+            x: v[0],
+            y: v[1],
+            z: v[2],
+        }
+    }
+}
+
+#[cfg(feature = "mint")]
+impl From<mint::Vector3<f32>> for Vec3D {
+    #[inline]
+    fn from(v: mint::Vector3<f32>) -> Self {
+        Self([v.x, v.y, v.z])
+    }
+}
+
 impl std::fmt::Display for Vec3D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
