@@ -37,7 +37,7 @@ impl CommandPalette {
             .scroll2(false)
             .title_bar(false)
             .show(egui_ctx, |ui| {
-                // We need an exatra frame here because we set clip_rect_margin to zero.
+                // We need an extra egui frame here because we set clip_rect_margin to zero.
                 egui::Frame {
                     inner_margin: 2.0.into(),
                     ..Default::default()
