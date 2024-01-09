@@ -23,6 +23,14 @@ use crate::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Empties all the components of an entity.
 ///
+/// The presence of a clear means that a latest-at query of components at a given path(s)
+/// will not return any components that were logged at those paths before the clear.
+/// Any logged components after the clear are unaffected by the clear.
+///
+/// This implies that a range query that includes time points that are before the clear,
+/// still returns all components at the given path(s), except those logged directly before the clear.
+/// Meaning that in practice clears are ineffective for time series plots and other usages of visible time ranges.
+///
 /// ## Example
 ///
 /// ### Flat
