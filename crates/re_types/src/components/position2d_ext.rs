@@ -59,3 +59,11 @@ impl From<Position2D> for mint::Point2<f32> {
         }
     }
 }
+
+#[cfg(feature = "mint")]
+impl From<mint::Point2<f32>> for Position2D {
+    #[inline]
+    fn from(position: mint::Point2<f32>) -> Self {
+        Self(Vec2D([position.x, position.y]))
+    }
+}
