@@ -1,5 +1,6 @@
 use std::io::Read;
 
+use ahash::HashMap;
 use once_cell::sync::Lazy;
 
 // ---
@@ -50,7 +51,29 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
         .collect();
 
     // NOTE: We call all available loaders and do so in parallel: order is irrelevant here.
-    executables.into_iter().collect()
+    let executables = executables.into_iter().collect::<Vec<_>>();
+
+    // If the user has multiple data-loaders in their PATH with the same exact name, warn that
+    // something is very likely wrong.
+    // That can very easily happen with tools like `pip`/`pipx`.
+
+    let mut exe_names = HashMap::<String, Vec<std::path::PathBuf>>::default();
+    for path in &executables {
+        if let Some(filename) = path.file_name() {
+            let exe_paths = exe_names
+                .entry(filename.to_string_lossy().to_string())
+                .or_default();
+            exe_paths.push(path.clone());
+        }
+    }
+
+    for (name, paths) in exe_names {
+        if paths.len() > 1 {
+            re_log::warn!(name, ?paths, "Found duplicated data-loader in $PATH");
+        }
+    }
+
+    executables
 });
 
 /// Iterator over all registered external [`crate::DataLoader`]s.
