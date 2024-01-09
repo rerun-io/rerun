@@ -98,7 +98,10 @@ impl std::fmt::Debug for Item {
 impl Item {
     pub fn kind(self: &Item) -> &'static str {
         match self {
-            Item::StoreId(_) => "Store ID",
+            Item::StoreId(store_id) => match store_id.kind {
+                re_log_types::StoreKind::Recording => "Recording ID",
+                re_log_types::StoreKind::Blueprint => "Blueprint ID",
+            },
             Item::InstancePath(space_view_id, instance_path) => {
                 match (
                     instance_path.instance_key.is_specific(),

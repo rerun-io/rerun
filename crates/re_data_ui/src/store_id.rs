@@ -9,7 +9,7 @@ impl crate::DataUi for re_log_types::StoreId {
         if let Some(entity_db) = ctx.store_context.recording(self) {
             entity_db.data_ui(ctx, ui, verbosity, query);
         } else {
-            ui.label(format!("Store ID {self} (not found)"));
+            ui.label(format!("{} ID {} (not found)", self.kind, self.id));
         }
     }
 }

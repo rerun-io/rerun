@@ -21,7 +21,7 @@ impl crate::DataUi for re_entity_db::EntityDb {
         }
 
         egui::Grid::new("entity_db").num_columns(2).show(ui, |ui| {
-            re_ui.grid_left_hand_label(ui, "Store ID");
+            re_ui.grid_left_hand_label(ui, &format!("{} ID", self.store_id().kind));
             ui.label(self.store_id().to_string());
             ui.end_row();
 

@@ -274,6 +274,8 @@ fn what_is_selected_ui(
 ) {
     match item {
         Item::StoreId(store_id) => {
+            let id_str = format!("{} ID: {}", store_id.kind, store_id);
+
             let title = if let Some(entity_db) = ctx.store_context.recording(store_id) {
                 if let Some(info) = entity_db.store_info() {
                     let time = info
@@ -286,19 +288,13 @@ fn what_is_selected_ui(
 
                     format!("{} - {}", info.application_id, time)
                 } else {
-                    format!("Store ID {store_id}")
+                    id_str.clone()
                 }
             } else {
-                format!("Store ID {store_id}")
+                id_str.clone()
             };
 
-            item_title_ui(
-                ctx.re_ui,
-                ui,
-                &title,
-                Some(&re_ui::icons::STORE),
-                "Store ID {store_id}",
-            );
+            item_title_ui(ctx.re_ui, ui, &title, Some(&re_ui::icons::STORE), &id_str);
         }
         Item::Container(tile_id) => {
             if let Some(Tile::Container(container)) = viewport.tree.tiles.get(*tile_id) {
