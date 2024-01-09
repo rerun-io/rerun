@@ -28,3 +28,12 @@ impl From<RotationAxisAngle> for glam::Quat {
             .unwrap_or_default()
     }
 }
+
+#[cfg(feature = "mint")]
+impl From<RotationAxisAngle> for mint::Quaternion<f32> {
+    #[inline]
+    fn from(val: RotationAxisAngle) -> Self {
+        let (s, c) = (val.angle.radians() * 0.5).sin_cos();
+        [val.axis.x() * s, val.axis.y() * s, val.axis.z() * s, c].into()
+    }
+}

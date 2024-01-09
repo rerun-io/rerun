@@ -3350,6 +3350,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mint"
+version = "0.5.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e53debba6bda7a793e5f99b8dacf19e626084f525f7829104ba9898f367d85ff"
+
+[[package]]
 name = "mio"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5197,6 +5203,7 @@ dependencies = [
  "itertools 0.12.0",
  "linked-hash-map",
  "mime_guess2",
+ "mint",
  "ndarray",
  "once_cell",
  "ply-rs",
