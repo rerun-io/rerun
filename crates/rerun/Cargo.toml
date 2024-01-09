@@ -37,6 +37,10 @@ demo = []
 ## Only relevant if feature `sdk` is enabled.
 glam = ["re_types?/glam"]
 
+## Add support for math type conversions using [`mint`](https://crates.io/crates/mint/).
+## Only relevant if feature `sdk` is enabled.
+mint = ["re_types?/mint"]
+
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["re_types?/image"]
 
