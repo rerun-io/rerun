@@ -42,6 +42,13 @@ impl From<Name> for ::re_types_core::ArrowString {
 
 ::re_types_core::macros::impl_into_cow!(Name);
 
+impl ::re_types_core::SizeBytes for Name {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        todo!()
+    }
+}
+
 impl ::re_types_core::Loggable for Name {
     type Name = ::re_types_core::ComponentName;
 

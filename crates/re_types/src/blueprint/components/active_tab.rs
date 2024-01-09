@@ -54,6 +54,13 @@ impl std::ops::Deref for ActiveTab {
 
 ::re_types_core::macros::impl_into_cow!(ActiveTab);
 
+impl ::re_types_core::SizeBytes for ActiveTab {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        todo!()
+    }
+}
+
 impl ::re_types_core::Loggable for ActiveTab {
     type Name = ::re_types_core::ComponentName;
 

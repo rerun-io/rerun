@@ -36,6 +36,13 @@ impl<I: Into<crate::datatypes::Uuid>, T: IntoIterator<Item = I>> From<T> for Inc
 
 ::re_types_core::macros::impl_into_cow!(IncludedQueries);
 
+impl ::re_types_core::SizeBytes for IncludedQueries {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        todo!()
+    }
+}
+
 impl ::re_types_core::Loggable for IncludedQueries {
     type Name = ::re_types_core::ComponentName;
 

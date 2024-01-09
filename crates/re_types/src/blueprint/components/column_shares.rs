@@ -44,6 +44,13 @@ impl From<ColumnShares> for ::re_types_core::ArrowBuffer<f32> {
 
 ::re_types_core::macros::impl_into_cow!(ColumnShares);
 
+impl ::re_types_core::SizeBytes for ColumnShares {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        todo!()
+    }
+}
+
 impl ::re_types_core::Loggable for ColumnShares {
     type Name = ::re_types_core::ComponentName;
 

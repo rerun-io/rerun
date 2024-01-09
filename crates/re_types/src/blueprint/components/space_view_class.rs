@@ -42,6 +42,13 @@ impl From<SpaceViewClass> for ::re_types_core::ArrowString {
 
 ::re_types_core::macros::impl_into_cow!(SpaceViewClass);
 
+impl ::re_types_core::SizeBytes for SpaceViewClass {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        todo!()
+    }
+}
+
 impl ::re_types_core::Loggable for SpaceViewClass {
     type Name = ::re_types_core::ComponentName;
 
