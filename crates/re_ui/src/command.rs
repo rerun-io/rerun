@@ -22,6 +22,9 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
 
+    OpenWebHelp,
+    OpenRerunDiscord,
+
     ResetViewer,
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -95,6 +98,9 @@ impl UICommand {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Quit => ("Quit", "Close the Rerun Viewer"),
+
+            UICommand::OpenWebHelp => ("Help", "Visit the help page on our website, with troubleshooting tips and more"),
+            UICommand::OpenRerunDiscord => ("Rerun Discord", "Visit the Rerun Discord server, where you can ask questions and get help"),
 
             UICommand::ResetViewer => (
                 "Reset Viewer",
@@ -203,6 +209,9 @@ impl UICommand {
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
             UICommand::Quit => Some(KeyboardShortcut::new(Modifiers::ALT, Key::F4)),
 
+            UICommand::OpenWebHelp => None,
+            UICommand::OpenRerunDiscord => None,
+
             #[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))]
             UICommand::Quit => Some(cmd(Key::Q)),
 
@@ -246,6 +255,18 @@ impl UICommand {
         }
     }
 
+    pub fn icon(self) -> Option<&'static crate::Icon> {
+        match self {
+            Self::OpenWebHelp => Some(&crate::icons::EXTERNAL_LINK),
+            Self::OpenRerunDiscord => Some(&crate::icons::DISCORD),
+            _ => None,
+        }
+    }
+
+    pub fn is_link(self) -> bool {
+        matches!(self, Self::OpenWebHelp | Self::OpenRerunDiscord)
+    }
+
     #[must_use = "Returns the Command that was triggered by some keyboard shortcut"]
     pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<UICommand> {
         use strum::IntoEnumIterator as _;
@@ -276,19 +297,35 @@ impl UICommand {
         command_sender: &impl UICommandSender,
     ) -> egui::Response {
         let button = self.menu_button(ui.ctx());
-        let response = ui.add(button).on_hover_text(self.tooltip());
+        let mut response = ui.add(button).on_hover_text(self.tooltip());
+
+        if self.is_link() {
+            response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
+        }
+
         if response.clicked() {
             command_sender.send_ui(self);
             ui.close_menu();
         }
+
         response
     }
 
     pub fn menu_button(self, egui_ctx: &egui::Context) -> egui::Button<'static> {
-        let mut button = egui::Button::new(self.text());
+        let mut button = if let Some(icon) = self.icon() {
+            egui::Button::image_and_text(
+                icon.as_image()
+                    .fit_to_exact_size(crate::ReUi::small_icon_size()),
+                self.text(),
+            )
+        } else {
+            egui::Button::new(self.text())
+        };
+
         if let Some(shortcut) = self.kb_shortcut() {
             button = button.shortcut_text(egui_ctx.format_shortcut(&shortcut));
         }
+
         button
     }
 

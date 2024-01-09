@@ -405,7 +405,7 @@ impl App {
 
     fn run_ui_command(
         &mut self,
-        _egui_ctx: &egui::Context,
+        egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
@@ -435,7 +435,7 @@ impl App {
             }
             #[cfg(target_arch = "wasm32")]
             UICommand::Open => {
-                let egui_ctx = _egui_ctx.clone();
+                let egui_ctx = egui_ctx.clone();
                 self.open_files_promise = Some(poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
@@ -454,7 +454,21 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Quit => {
-                _egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+
+            UICommand::OpenWebHelp => {
+                egui_ctx.open_url(egui::output::OpenUrl {
+                    url: "https://www.rerun.io/docs/getting-started/viewer-walkthrough".to_owned(),
+                    new_tab: true,
+                });
+            }
+
+            UICommand::OpenRerunDiscord => {
+                egui_ctx.open_url(egui::output::OpenUrl {
+                    url: "https://discord.gg/PXtCgFBSmH".to_owned(),
+                    new_tab: true,
+                });
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
@@ -482,28 +496,28 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ToggleFullscreen => {
-                let fullscreen = _egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
-                _egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
+                let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+                egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomIn => {
-                let mut zoom_factor = _egui_ctx.zoom_factor();
+                let mut zoom_factor = egui_ctx.zoom_factor();
                 zoom_factor += 0.1;
                 zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
                 zoom_factor = (zoom_factor * 10.).round() / 10.;
-                _egui_ctx.set_zoom_factor(zoom_factor);
+                egui_ctx.set_zoom_factor(zoom_factor);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomOut => {
-                let mut zoom_factor = _egui_ctx.zoom_factor();
+                let mut zoom_factor = egui_ctx.zoom_factor();
                 zoom_factor -= 0.1;
                 zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
                 zoom_factor = (zoom_factor * 10.).round() / 10.;
-                _egui_ctx.set_zoom_factor(zoom_factor);
+                egui_ctx.set_zoom_factor(zoom_factor);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomReset => {
-                _egui_ctx.set_zoom_factor(1.0);
+                egui_ctx.set_zoom_factor(1.0);
             }
 
             UICommand::SelectionPrevious => {
@@ -548,7 +562,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ScreenshotWholeApp => {
-                self.screenshotter.request_screenshot(_egui_ctx);
+                self.screenshotter.request_screenshot(egui_ctx);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintDatastore => {
