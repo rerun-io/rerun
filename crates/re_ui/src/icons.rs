@@ -135,6 +135,8 @@ pub const SPACE_VIEW_UNKNOWN: Icon = Icon::new(
 
 pub const CONTAINER: Icon = Icon::new("container", include_bytes!("../data/icons/container.png"));
 
+pub const STORE: Icon = Icon::new("store", include_bytes!("../data/icons/container.png")); // TODO: it's own icon
+
 pub const WELCOME_SCREEN_CONFIGURE: Icon = Icon::new(
     "welcome_screen_configure",
     include_bytes!("../data/images/onboarding-configure.png"),

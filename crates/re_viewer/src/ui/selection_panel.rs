@@ -235,6 +235,7 @@ impl SelectionPanel {
 
 fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
     match item {
+        Item::StoreId(store_id) => Some(Box::new(store_id.clone())),
         Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
         Item::InstancePath(_, instance_path) => Some(Box::new(instance_path.clone())),
         // Skip data ui since we don't know yet what to show for these.
@@ -272,6 +273,33 @@ fn what_is_selected_ui(
     item: &Item,
 ) {
     match item {
+        Item::StoreId(store_id) => {
+            let title = if let Some(entity_db) = ctx.store_context.recording(store_id) {
+                if let Some(info) = entity_db.store_info() {
+                    let time = info
+                        .started
+                        .format_time_custom(
+                            "[hour]:[minute]:[second]",
+                            ctx.app_options.time_zone_for_timestamps,
+                        )
+                        .unwrap_or("<unknown time>".to_owned());
+
+                    format!("{} - {}", info.application_id, time)
+                } else {
+                    format!("Store ID {store_id}")
+                }
+            } else {
+                format!("Store ID {store_id}")
+            };
+
+            item_title_ui(
+                ctx.re_ui,
+                ui,
+                &title,
+                Some(&re_ui::icons::STORE),
+                "Store ID {store_id}",
+            );
+        }
         Item::Container(tile_id) => {
             if let Some(Tile::Container(container)) = viewport.tree.tiles.get(*tile_id) {
                 item_title_ui(
@@ -861,7 +889,7 @@ fn blueprint_ui(
             }
         }
 
-        Item::ComponentPath(_) | Item::Container(_) => {}
+        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) => {}
     }
 }
 

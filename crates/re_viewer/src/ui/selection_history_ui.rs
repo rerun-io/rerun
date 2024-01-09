@@ -182,6 +182,7 @@ fn selection_to_string(blueprint: &ViewportBlueprint, selection: &Selection) -> 
 
 fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
     match item {
+        Item::StoreId(store_id) => store_id.to_string(),
         Item::SpaceView(sid) => {
             if let Some(space_view) = blueprint.space_view(sid) {
                 space_view.display_name.clone()
