@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_data_ui::DataUi;
 use re_log_types::LogMsg;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_viewer_context::{AppOptions, SystemCommand, SystemCommandSender, ViewerContext};
+use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
 
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
@@ -217,12 +217,15 @@ fn recording_ui(
     }
 
     if response.clicked() {
-        // Both show it in the selection panel…
-        ctx.selection_state().set_selection(item);
-
-        // …and show the data in it.
+        // Open the recording…
         ctx.command_sender
-            .send_system(SystemCommand::SetRecordingId(store_id));
+            .send_system(SystemCommand::SetRecordingId(store_id.clone()));
+
+        // …and select the recording in the recording.
+        // Note that we must do it in this order, since the selection state is stored in the recording.
+        // That's also why we use a command to set the selection.
+        ctx.command_sender
+            .send_system(SystemCommand::SetSelection(store_id, item));
     }
 }
 

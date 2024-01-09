@@ -400,6 +400,14 @@ impl App {
                     );
                 }
             }
+
+            SystemCommand::SetSelection(store_id, item) => {
+                if let Some(rec_cfg) = self.state.recording_config_mut(&store_id) {
+                    rec_cfg.selection_state.set_selection(item);
+                } else {
+                    re_log::debug!("Failed to select item {item:?}");
+                }
+            }
         }
     }
 
@@ -533,7 +541,7 @@ impl App {
             UICommand::SelectionNext => {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = store_context
-                    .and_then(|ctx| ctx.recording)
+                    .and_then(|store_context| store_context.recording)
                     .map(|rec| rec.store_id())
                     .and_then(|rec_id| state.recording_config_mut(rec_id))
                 {
