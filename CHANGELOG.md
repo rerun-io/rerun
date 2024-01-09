@@ -119,6 +119,7 @@
 - Auto format all the things [#4373](https://github.com/rerun-io/rerun/pull/4373)
 - Refactor naming of `SpaceViewClass` and changed `TextSpaceView` name to "Text Log" [#4386](https://github.com/rerun-io/rerun/pull/4386)
 - Local-first wheel publishing [#4454](https://github.com/rerun-io/rerun/pull/4454)
+- Remove backtraces on error when running `rerun` binary [#4746](https://github.com/rerun-io/rerun/pull/4746)
 
 #### 🗣 Refactors
 - Selection state is now fully double buffered and has interior mutability [#4387](https://github.com/rerun-io/rerun/pull/4387)
