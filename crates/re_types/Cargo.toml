@@ -90,6 +90,7 @@ zune-jpeg = { workspace = true, optional = true }
 # External
 glam.workspace = true
 itertools.workspace = true
+mint.workspace = true
 similar-asserts.workspace = true
 
 
