@@ -12,7 +12,6 @@ namespace rerun.blueprint.components;
 
 /// The layout shares of each column in the container.
 table ColumnShares (
-    "attr.docs.unreleased",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 ) {

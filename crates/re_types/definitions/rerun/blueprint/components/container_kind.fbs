@@ -23,7 +23,6 @@ enum ContainerKind: byte {
 /// The kind of a blueprint container.
 table ContainerKind (
     "attr.rerun.scope": "blueprint",
-    "attr.docs.unreleased",
     "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.override_crate": "re_viewport"
 ) {
