@@ -90,25 +90,13 @@ impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
     }
 }
 
-impl<T: SizeBytes> SizeBytes for &[T] {
-    /// Does not take capacity into account.
-    #[inline]
-    #[allow(clippy::manual_slice_size_calculation)]
-    fn heap_size_bytes(&self) -> u64 {
-        // NOTE: It's all on the heap at this point.
-        if T::is_pod() {
-            (self.len() * std::mem::size_of::<T>()) as _
-        } else {
-            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
-        }
-    }
-}
+// NOTE: Do _not_ implement `SizeBytes` for slices: we cannot know whether they point to the stack
+// or the heap!
 
-impl<T: SizeBytes> SizeBytes for [T] {
-    /// Does not take capacity into account.
+impl<T: SizeBytes, const N: usize> SizeBytes for [T; N] {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        <&[T]>::heap_size_bytes(&self)
+        0
     }
 }
 
@@ -116,7 +104,12 @@ impl<T: SizeBytes> SizeBytes for Vec<T> {
     /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        <&[T]>::heap_size_bytes(&self.as_slice())
+        // NOTE: It's all on the heap at this point.
+        if T::is_pod() {
+            (self.len() * std::mem::size_of::<T>()) as _
+        } else {
+            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+        }
     }
 }
 
@@ -137,7 +130,16 @@ impl<T: SizeBytes, const N: usize> SizeBytes for SmallVec<[T; N]> {
     /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        <&[T]>::heap_size_bytes(&self.as_slice())
+        if self.len() < N {
+            0
+        } else {
+            // NOTE: It's all on the heap at this point.
+            if T::is_pod() {
+                (self.len() * std::mem::size_of::<T>()) as _
+            } else {
+                self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+            }
+        }
     }
 }
 
