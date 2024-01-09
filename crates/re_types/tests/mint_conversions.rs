@@ -1,5 +1,5 @@
-use re_types::components;
-use re_types::datatypes;
+#[cfg(feature = "mint")]
+use re_types::{components, datatypes};
 
 #[test]
 #[cfg(feature = "mint")]
