@@ -355,43 +355,46 @@ fn quote_struct(
 
     let quoted_builder = quote_builder_from_obj(obj);
 
-    let quoted_heap_size_bytes =
-        if is_tuple_struct_from_obj(obj) && obj.fields[0].has_attr(crate::ATTR_RUST_SERDE_TYPE) {
-            // TODO(cmc): serde types are a temporary hack that's not worth worrying about.
-            quote!()
+    let quoted_heap_size_bytes = if obj
+        .fields
+        .iter()
+        .any(|field| field.has_attr(crate::ATTR_RUST_SERDE_TYPE))
+    {
+        // TODO(cmc): serde types are a temporary hack that's not worth worrying about.
+        quote!()
+    } else {
+        let heap_size_bytes_impl = if is_tuple_struct_from_obj(obj) {
+            quote!(self.0.heap_size_bytes())
         } else {
-            let heap_size_bytes_impl = if is_tuple_struct_from_obj(obj) {
-                quote!(self.0.heap_size_bytes())
-            } else {
-                let quoted_heap_size_bytes = obj.fields.iter().map(|obj_field| {
-                    let field_name = format_ident!("{}", obj_field.name);
-                    quote!(self.#field_name.heap_size_bytes())
-                });
-                quote!(#(#quoted_heap_size_bytes)+*)
-            };
+            let quoted_heap_size_bytes = obj.fields.iter().map(|obj_field| {
+                let field_name = format_ident!("{}", obj_field.name);
+                quote!(self.#field_name.heap_size_bytes())
+            });
+            quote!(#(#quoted_heap_size_bytes)+*)
+        };
 
-            let is_pod_impl = {
-                let quoted_is_pods = obj.fields.iter().map(|obj_field| {
-                    let quoted_field_type = quote_field_type_from_object_field(obj_field);
-                    quote!(<#quoted_field_type>::is_pod())
-                });
-                quote!(#(#quoted_is_pods)&&*)
-            };
+        let is_pod_impl = {
+            let quoted_is_pods = obj.fields.iter().map(|obj_field| {
+                let quoted_field_type = quote_field_type_from_object_field(obj_field);
+                quote!(<#quoted_field_type>::is_pod())
+            });
+            quote!(#(#quoted_is_pods)&&*)
+        };
 
-            quote! {
-                impl ::re_types_core::SizeBytes for #name {
-                    #[inline]
-                    fn heap_size_bytes(&self) -> u64 {
-                        #heap_size_bytes_impl
-                    }
+        quote! {
+            impl ::re_types_core::SizeBytes for #name {
+                #[inline]
+                fn heap_size_bytes(&self) -> u64 {
+                    #heap_size_bytes_impl
+                }
 
-                    #[inline]
-                    fn is_pod() -> bool {
-                        #is_pod_impl
-                    }
+                #[inline]
+                fn is_pod() -> bool {
+                    #is_pod_impl
                 }
             }
-        };
+        }
+    };
 
     let tokens = quote! {
         #quoted_doc
@@ -454,41 +457,44 @@ fn quote_union(
 
     let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
 
-    let quoted_heap_size_bytes =
-        if is_tuple_struct_from_obj(obj) && obj.fields[0].has_attr(crate::ATTR_RUST_SERDE_TYPE) {
-            // TODO(cmc): serde types are a temporary hack that's not worth worrying about.
-            quote!()
-        } else {
-            let quoted_matches = fields.iter().map(|obj_field| {
-                let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
-                quote!(Self::#name(v) => v.heap_size_bytes())
+    let quoted_heap_size_bytes = if obj
+        .fields
+        .iter()
+        .any(|field| field.has_attr(crate::ATTR_RUST_SERDE_TYPE))
+    {
+        // TODO(cmc): serde types are a temporary hack that's not worth worrying about.
+        quote!()
+    } else {
+        let quoted_matches = fields.iter().map(|obj_field| {
+            let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
+            quote!(Self::#name(v) => v.heap_size_bytes())
+        });
+
+        let is_pod_impl = {
+            let quoted_is_pods = obj.fields.iter().map(|obj_field| {
+                let quoted_field_type = quote_field_type_from_object_field(obj_field);
+                quote!(<#quoted_field_type>::is_pod())
             });
+            quote!(#(#quoted_is_pods)&&*)
+        };
 
-            let is_pod_impl = {
-                let quoted_is_pods = obj.fields.iter().map(|obj_field| {
-                    let quoted_field_type = quote_field_type_from_object_field(obj_field);
-                    quote!(<#quoted_field_type>::is_pod())
-                });
-                quote!(#(#quoted_is_pods)&&*)
-            };
-
-            quote! {
-                impl ::re_types_core::SizeBytes for #name {
-                    #[allow(clippy::match_same_arms)]
-                    #[inline]
-                    fn heap_size_bytes(&self) -> u64 {
-                        match self {
-                            #(#quoted_matches),*
-                        }
-                    }
-
-                    #[inline]
-                    fn is_pod() -> bool {
-                        #is_pod_impl
+        quote! {
+            impl ::re_types_core::SizeBytes for #name {
+                #[allow(clippy::match_same_arms)]
+                #[inline]
+                fn heap_size_bytes(&self) -> u64 {
+                    match self {
+                        #(#quoted_matches),*
                     }
                 }
+
+                #[inline]
+                fn is_pod() -> bool {
+                    #is_pod_impl
+                }
             }
-        };
+        }
+    };
 
     let tokens = quote! {
         #quoted_doc

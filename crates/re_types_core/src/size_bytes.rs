@@ -96,7 +96,7 @@ impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
 impl<T: SizeBytes, const N: usize> SizeBytes for [T; N] {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        0
+        0 // it's a const-sized array
     }
 }
 
@@ -131,6 +131,8 @@ impl<T: SizeBytes, const N: usize> SizeBytes for SmallVec<[T; N]> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         if self.len() < N {
+            // The `SmallVec` is still smaller than the threshold so no heap data has been
+            // allocated yet.
             0
         } else {
             // NOTE: It's all on the heap at this point.
