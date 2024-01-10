@@ -62,12 +62,24 @@ impl StoreSubscriber for TimesPerTimeline {
 
                 if delta < 0 {
                     *count = count.checked_sub(delta.unsigned_abs()).unwrap_or_else(|| {
-                        re_log::warn_once!("Time counter underflowed, store events are bugged!");
-                        0
+                        re_log::debug!(
+                            store_id = %event.store_id,
+                            entity_path = %event.diff.entity_path,
+                            current = count,
+                            removed = delta.unsigned_abs(),
+                            "book keeping underflowed"
+                        );
+                        u64::MIN
                     });
                 } else {
                     *count = count.checked_add(delta.unsigned_abs()).unwrap_or_else(|| {
-                        re_log::warn_once!("Time counter overflowed, store events are bugged!");
+                        re_log::debug!(
+                            store_id = %event.store_id,
+                            entity_path = %event.diff.entity_path,
+                            current = count,
+                            removed = delta.unsigned_abs(),
+                            "book keeping overflowed"
+                        );
                         u64::MAX
                     });
                 }

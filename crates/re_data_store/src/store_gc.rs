@@ -282,10 +282,13 @@ impl DataStore {
                     .heap_size_bytes
                     .checked_sub(metadata_dropped_size_bytes)
                     .unwrap_or_else(|| {
-                        re_log::warn_once!(
-                            "GC metadata_registry size tracker underflowed, this is a bug!"
+                        re_log::debug!(
+                            entity_path = %dropped.entity_path,
+                            current = metadata_registry.heap_size_bytes,
+                            removed = metadata_dropped_size_bytes,
+                            "book keeping underflowed"
                         );
-                        0
+                        u64::MIN
                     });
                 num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
 
@@ -323,10 +326,13 @@ impl DataStore {
                     .heap_size_bytes
                     .checked_sub(metadata_dropped_size_bytes)
                     .unwrap_or_else(|| {
-                        re_log::warn_once!(
-                            "GC metadata_registry size tracker underflowed, this is a bug!"
+                        re_log::debug!(
+                            entity_path = %dropped.entity_path,
+                            current = metadata_registry.heap_size_bytes,
+                            removed = metadata_dropped_size_bytes,
+                            "book keeping underflowed"
                         );
-                        0
+                        u64::MIN
                     });
                 num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
 
