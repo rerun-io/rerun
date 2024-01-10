@@ -51,8 +51,6 @@ static CACHES: Lazy<StoreSubscriberHandle> =
     Lazy::new(|| re_data_store::DataStore::register_subscriber(Box::<Caches>::default()));
 
 /// Maintains the top-level cache mappings.
-//
-// TODO(#4730): SizeBytes support + size stats + mem panel
 #[derive(Default)]
 pub struct Caches(pub(crate) RwLock<HashMap<CacheKey, CachesPerArchetype>>);
 
@@ -368,7 +366,6 @@ pub struct CacheBucket {
     pub(crate) total_size_bytes: u64,
     //
     // TODO(cmc): secondary cache
-    // TODO(#4730): size stats: this requires codegen'ing SizeBytes for all components!
 }
 
 impl CacheBucket {
