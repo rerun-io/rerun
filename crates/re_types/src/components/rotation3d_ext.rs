@@ -13,3 +13,11 @@ impl From<Rotation3D> for glam::Quat {
         val.0.into()
     }
 }
+
+#[cfg(feature = "mint")]
+impl From<Rotation3D> for mint::Quaternion<f32> {
+    #[inline]
+    fn from(val: Rotation3D) -> Self {
+        val.0.into()
+    }
+}

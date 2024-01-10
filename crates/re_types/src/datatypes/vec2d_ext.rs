@@ -77,6 +77,22 @@ impl From<glam::Vec2> for Vec2D {
     }
 }
 
+#[cfg(feature = "mint")]
+impl From<Vec2D> for mint::Vector2<f32> {
+    #[inline]
+    fn from(v: Vec2D) -> Self {
+        Self { x: v[0], y: v[1] }
+    }
+}
+
+#[cfg(feature = "mint")]
+impl From<mint::Vector2<f32>> for Vec2D {
+    #[inline]
+    fn from(v: mint::Vector2<f32>) -> Self {
+        Self([v.x, v.y])
+    }
+}
+
 impl std::fmt::Display for Vec2D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(

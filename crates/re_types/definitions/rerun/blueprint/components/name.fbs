@@ -12,7 +12,6 @@ namespace rerun.blueprint.components;
 /// The name of a blueprint entity.
 table Name (
     "attr.rerun.scope": "blueprint",
-    "attr.docs.unreleased",
     "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.repr": "transparent"
 ) {

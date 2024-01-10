@@ -551,9 +551,7 @@ impl DecodedTensor {
         jpeg_bytes: &::re_types_core::ArrowBuffer<u8>,
         [expected_height, expected_width, expected_channels]: [u64; 3],
     ) -> Result<DecodedTensor, TensorImageLoadError> {
-        re_tracing::profile_function!();
-
-        re_log::debug!("Decoding {expected_width}x{expected_height} JPEG");
+        re_tracing::profile_function!(format!("{expected_width}x{expected_height}"));
 
         use zune_core::colorspace::ColorSpace;
         use zune_core::options::DecoderOptions;

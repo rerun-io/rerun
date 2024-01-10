@@ -23,7 +23,7 @@ features = ["all"]
 default = []
 
 ## All features except `testing`.
-all = ["ecolor", "glam", "image", "serde"]
+all = ["ecolor", "glam", "image", "mint", "serde"]
 
 ## Enables the `datagen` module, which exposes a number of tools for generating random data for
 ## tests and benchmarks.
@@ -78,6 +78,7 @@ uuid = { workspace = true, features = ["serde", "v4", "js"] }
 ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 image = { workspace = true, optional = true, default-features = false }
+mint = { workspace = true, optional = true }
 rand = { workspace = true, optional = true, features = ["std", "std_rng"] }
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
 zune-core = { workspace = true, optional = true }
@@ -89,6 +90,7 @@ zune-jpeg = { workspace = true, optional = true }
 # External
 glam.workspace = true
 itertools.workspace = true
+mint.workspace = true
 similar-asserts.workspace = true
 
 

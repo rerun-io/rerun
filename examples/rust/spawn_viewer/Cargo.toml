@@ -1,6 +1,6 @@
 [package]
 name = "spawn_viewer"
-version = "0.12.0-alpha.5+dev"
+version = "0.13.0-alpha.1+dev"
 edition = "2021"
 rust-version = "1.72"
 license = "MIT OR Apache-2.0"

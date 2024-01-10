@@ -1,7 +1,7 @@
 ---
 title: Custom data-loader
 tags: [data-loader, extension]
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_data_loader/src/main.rs?speculative-link
+rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_data_loader/src/main.rs
 ---
 
 <picture>

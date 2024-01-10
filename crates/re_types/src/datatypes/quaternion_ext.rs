@@ -39,3 +39,19 @@ impl From<glam::Quat> for Quaternion {
         Self::from_xyzw(q.to_array())
     }
 }
+
+#[cfg(feature = "mint")]
+impl From<Quaternion> for mint::Quaternion<f32> {
+    #[inline]
+    fn from(val: Quaternion) -> Self {
+        val.0.into()
+    }
+}
+
+#[cfg(feature = "mint")]
+impl From<mint::Quaternion<f32>> for Quaternion {
+    #[inline]
+    fn from(val: mint::Quaternion<f32>) -> Self {
+        Self::from_xyzw(val.into())
+    }
+}
