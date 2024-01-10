@@ -313,10 +313,25 @@ impl ApplicationSelectionState {
             .iter_items()
             .any(|current| match current {
                 Item::StoreId(_)
-                | Item::ComponentPath(_)
                 | Item::SpaceView(_)
                 | Item::DataBlueprintGroup(_, _, _)
                 | Item::Container(_) => current == test,
+
+                Item::ComponentPath(component_path) => match test {
+                    Item::StoreId(_)
+                    | Item::SpaceView(_)
+                    | Item::DataBlueprintGroup(_, _, _)
+                    | Item::Container(_) => false,
+
+                    Item::ComponentPath(test_component_path) => {
+                        test_component_path == component_path
+                    }
+
+                    Item::InstancePath(_, test_instance_path) => {
+                        !test_instance_path.instance_key.is_specific()
+                            && test_instance_path.entity_path == component_path.entity_path
+                    }
+                },
 
                 Item::InstancePath(current_space_view_id, current_instance_path) => {
                     if let Item::InstancePath(test_space_view_id, test_instance_path) = test {
