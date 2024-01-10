@@ -484,26 +484,13 @@ pub fn view_3d(
         )?;
     }
 
-    // Double click changes camera to focus on an entity.
-    if response.double_clicked() {
-        // Clear out tracked camera if there's any.
-        state.state_3d.tracked_entity = None;
-        state.state_3d.camera_before_tracked_entity = None;
-
-        // While hovering an entity, focuses the camera on it.
-        if let Some((Item::InstancePath(_, instance_path), _)) = ctx.hovered().first() {
-            state
-                .state_3d
-                .track_entity(instance_path.entity_path.clone());
-            ui.ctx().request_repaint(); // Make sure interpolation happens in the next frames.
-        }
-        // Without hovering, resets the camera.
-        else {
-            state.bounding_boxes.accumulated = state.bounding_boxes.current;
-            state
-                .state_3d
-                .reset_camera(&state.bounding_boxes.accumulated, &view_coordinates);
-        }
+    // Double click on nothing resets the camera.
+    // (double clicking on an entity is handled as part of the picking code)
+    if response.double_clicked() && ctx.hovered().is_empty() {
+        state.bounding_boxes.accumulated = state.bounding_boxes.current;
+        state
+            .state_3d
+            .reset_camera(&state.bounding_boxes.accumulated, &view_coordinates);
     }
 
     // Track focused entity if any.
