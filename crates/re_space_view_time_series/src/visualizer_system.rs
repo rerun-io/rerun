@@ -1,5 +1,5 @@
 use re_data_store::TimeRange;
-use re_query::{range_archetype, QueryError};
+use re_query_cache::QueryError;
 use re_types::{
     archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
@@ -153,42 +153,48 @@ impl TimeSeriesSystem {
 
             let query = re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
-            let arch_views = range_archetype::<
+            re_query_cache::query_archetype_pov1_comp4::<
                 TimeSeriesScalar,
-                { TimeSeriesScalar::NUM_COMPONENTS },
-            >(store, &query, &data_result.entity_path);
+                Scalar,
+                ScalarScattering,
+                Color,
+                Radius,
+                Text,
+                _,
+            >(
+                ctx.app_options.experimental_primary_caching_series,
+                store,
+                &query.clone().into(),
+                &data_result.entity_path,
+                |((time, _row_id), _, scalars, scatterings, colors, radii, labels)| {
+                    re_tracing::profile_scope!("primary");
 
-            for (time, arch_view) in arch_views {
-                let Some(time) = time else {
-                    continue;
-                }; // scalars cannot be timeless
+                    for (scalar, scattered, color, radius, label) in itertools::izip!(
+                        scalars.iter(),
+                        scatterings.iter(),
+                        colors.iter(),
+                        radii.iter(),
+                        labels.iter()
+                    ) {
+                        let color =
+                            annotation_info.color(color.map(|c| c.to_array()), default_color);
+                        let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
 
-                for (scalar, scattered, color, radius, label) in itertools::izip!(
-                    arch_view.iter_required_component::<Scalar>()?,
-                    arch_view.iter_optional_component::<ScalarScattering>()?,
-                    arch_view.iter_optional_component::<Color>()?,
-                    arch_view.iter_optional_component::<Radius>()?,
-                    arch_view.iter_optional_component::<Text>()?,
-                ) {
-                    let color = annotation_info.color(color.map(|c| c.to_array()), default_color);
-                    let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+                        const DEFAULT_RADIUS: f32 = 0.75;
 
-                    const DEFAULT_RADIUS: f32 = 0.75;
-
-                    points.push(PlotPoint {
-                        time: time.as_i64(),
-                        value: scalar.0,
-                        attrs: PlotPointAttrs {
-                            label,
-                            color,
-                            radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
-                            scattered: scattered.map_or(false, |s| s.0),
-                        },
-                    });
-                }
-            }
-
-            points.sort_by_key(|s| s.time);
+                        points.push(PlotPoint {
+                            time: time.as_i64(),
+                            value: scalar.0,
+                            attrs: PlotPointAttrs {
+                                label,
+                                color,
+                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
+                                scattered: scattered.map_or(false, |s| s.0),
+                            },
+                        });
+                    }
+                },
+            )?;
 
             if points.is_empty() {
                 continue;

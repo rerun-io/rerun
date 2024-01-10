@@ -28,6 +28,9 @@ pub struct AppOptions {
     /// Toggle primary caching for the 2D & 3D point cloud space views.
     pub experimental_primary_caching_point_clouds: bool,
 
+    /// Toggle primary caching for the time series & text logs space views.
+    pub experimental_primary_caching_series: bool,
+
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -60,6 +63,10 @@ impl Default for AppOptions {
             // TODO(cmc): default to true for debug/rerun-workspace once minimal features have been
             // merged in.
             experimental_primary_caching_point_clouds: false,
+
+            // TODO(cmc): default to true for debug/rerun-workspace once minimal features have been
+            // merged in.
+            experimental_primary_caching_series: false,
 
             show_picking_debug_overlay: false,
 
