@@ -11,6 +11,13 @@ pub struct TimeInt(pub(crate) i64);
 
 impl nohash_hasher::IsEnabled for TimeInt {}
 
+impl re_types_core::SizeBytes for TimeInt {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl TimeInt {
     /// The beginning of time.
     ///
