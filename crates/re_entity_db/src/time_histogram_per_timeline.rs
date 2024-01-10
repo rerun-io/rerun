@@ -57,7 +57,11 @@ impl TimeHistogramPerTimeline {
                 .num_timeless_messages
                 .checked_add(n as u64)
                 .unwrap_or_else(|| {
-                    re_log::warn_once!("Timeless counter overflowed, store events are bugged!");
+                    re_log::debug!(
+                        current = self.num_timeless_messages,
+                        added = n,
+                        "book keeping overflowed"
+                    );
                     u64::MAX
                 });
         } else {
@@ -76,8 +80,13 @@ impl TimeHistogramPerTimeline {
                 .num_timeless_messages
                 .checked_sub(n as u64)
                 .unwrap_or_else(|| {
-                    re_log::debug_once!("Timeless counter underflowed, store events are bugged!"); // TODO(#4355): hitting this on plots demo
-                    0
+                    // TODO(#4355): hitting this on plots demo
+                    re_log::debug!(
+                        current = self.num_timeless_messages,
+                        removed = n,
+                        "book keeping underflowed"
+                    );
+                    u64::MIN
                 });
         } else {
             for (timeline, time_value) in timepoint.iter() {

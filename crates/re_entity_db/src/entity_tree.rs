@@ -112,13 +112,20 @@ impl SubtreeInfo {
                     .remove(&event.timepoint(), event.num_components() as _);
 
                 for cell in event.cells.values() {
-                    if let Some(bytes_left) = self.data_bytes.checked_sub(cell.total_size_bytes()) {
-                        self.data_bytes = bytes_left;
-                    } else if cfg!(debug_assertions) {
-                        re_log::warn_once!(
-                            "Error in book-keeping: we've removed more bytes then we've added"
-                        );
-                    }
+                    let removed_bytes = cell.total_size_bytes();
+                    self.data_bytes =
+                        self.data_bytes
+                            .checked_sub(removed_bytes)
+                            .unwrap_or_else(|| {
+                                re_log::debug!(
+                                    store_id = %event.store_id,
+                                    entity_path = %event.diff.entity_path,
+                                    current = self.data_bytes,
+                                    removed = removed_bytes,
+                                    "book keeping underflowed"
+                                );
+                                u64::MIN
+                            });
                 }
             }
         }
