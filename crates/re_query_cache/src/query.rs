@@ -1,7 +1,7 @@
 use paste::paste;
 use seq_macro::seq;
 
-use re_data_store::{DataStore, LatestAtQuery, TimeInt, Timeline};
+use re_data_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange, Timeline};
 use re_entity_db::{ExtraQueryHistory, VisibleHistory};
 use re_log_types::{EntityPath, RowId};
 use re_query::query_archetype;
@@ -55,6 +55,7 @@ impl<'a, C> MaybeCachedComponentData<'a, C> {
 /// Alias for [`query_archetype_pov1_comp0`].
 #[inline]
 pub fn query_archetype_pov1<'a, A, R1, F>(
+    cached: bool,
     store: &'a DataStore,
     query: &AnyQuery,
     entity_path: &'a EntityPath,
@@ -71,7 +72,7 @@ where
         ),
     ),
 {
-    query_archetype_pov1_comp0::<A, R1, F>(store, query, entity_path, f)
+    query_archetype_pov1_comp0::<A, R1, F>(cached, store, query, entity_path, f)
 }
 
 macro_rules! impl_query_archetype {
@@ -80,6 +81,7 @@ macro_rules! impl_query_archetype {
         #[doc = "(combined) for `" $N "` point-of-view components and `" $M "` optional components."]
         #[allow(non_snake_case)]
         pub fn [<query_archetype_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
+            cached: bool,
             store: &'a DataStore,
             query: &AnyQuery,
             entity_path: &'a EntityPath,
@@ -101,11 +103,11 @@ macro_rules! impl_query_archetype {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!(
                 "query_archetype",
-                format!("arch={} pov={} comp={}", A::name(), $N, $M)
+                format!("cached={cached} arch={} pov={} comp={}", A::name(), $N, $M)
             );
 
             let mut latest_at_callback = |query: &LatestAtQuery, cache: &mut crate::LatestAtCache| {
-                re_tracing::profile_scope!("latest_at");
+                re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
                 let bucket = cache.entry(query.at).or_default();
                 // NOTE: Implicitly dropping the write guard here: the LatestAtCache is free once again!
@@ -154,6 +156,47 @@ macro_rules! impl_query_archetype {
             };
 
             match &query {
+                // TODO(cmc): cached range support
+                AnyQuery::Range(query) => {
+                    re_tracing::profile_scope!("range", format!("{query:?}"));
+
+                    // NOTE: `+ 2` because we always grab the indicator component as well as the
+                    // instance keys.
+                    let arch_views = ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, query, entity_path);
+
+                    for (time, arch_view) in arch_views {
+                        let data = (
+                            // TODO(cmc): `ArchetypeView` should indicate its pov time.
+                            (time.unwrap_or(TimeInt::MIN), arch_view.primary_row_id()),
+                            MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
+                            $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
+                            $(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect()),)*
+                        );
+
+                        f(data);
+                    }
+
+                    Ok(())
+                }
+
+                AnyQuery::LatestAt(query) if !cached => {
+                    re_tracing::profile_scope!("latest_at", format!("{query:?}"));
+
+                    let arch_view = ::re_query::query_archetype::<A>(store, query, entity_path)?;
+
+                    let data = (
+                        // TODO(cmc): `ArchetypeView` should indicate its pov time.
+                        (TimeInt::MIN, arch_view.primary_row_id()),
+                        MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
+                        $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
+                        $(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect()),)*
+                    );
+
+                    f(data);
+
+                    Ok(())
+                }
+
                 AnyQuery::LatestAt(query) => {
                     Caches::with_latest_at::<A, _, _>(
                         store.id().clone(),
@@ -187,6 +230,7 @@ seq!(NUM_COMP in 0..10 {
 /// Alias for [`query_archetype_with_history_pov1_comp0`].
 #[inline]
 pub fn query_archetype_with_history_pov1<'a, A, R1, F>(
+    cached: bool,
     store: &'a DataStore,
     timeline: &'a Timeline,
     time: &'a TimeInt,
@@ -205,7 +249,9 @@ where
         ),
     ),
 {
-    query_archetype_with_history_pov1_comp0::<A, R1, F>(store, timeline, time, history, ent_path, f)
+    query_archetype_with_history_pov1_comp0::<A, R1, F>(
+        cached, store, timeline, time, history, ent_path, f,
+    )
 }
 
 /// Generates a function to cache a (potentially historical) query with N point-of-view components and M
@@ -215,6 +261,7 @@ macro_rules! impl_query_archetype_with_history {
         #[doc = "Cached implementation of [`re_query::query_archetype_with_history`] for `" $N "` point-of-view"]
         #[doc = "components and `" $M "` optional components."]
         pub fn [<query_archetype_with_history_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
+            cached: bool,
             store: &'a DataStore,
             timeline: &'a Timeline,
             time: &'a TimeInt,
@@ -238,7 +285,7 @@ macro_rules! impl_query_archetype_with_history {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!(
                 "query_archetype_with_history",
-                format!("arch={} pov={} comp={}", A::name(), $N, $M)
+                format!("cached={cached} arch={} pov={} comp={}", A::name(), $N, $M)
             );
 
             let visible_history = match timeline.typ() {
@@ -249,13 +296,23 @@ macro_rules! impl_query_archetype_with_history {
             if !history.enabled || visible_history == VisibleHistory::OFF {
                 let query = LatestAtQuery::new(*timeline, *time);
                 $crate::[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
+                    cached,
                     store,
                     &query.clone().into(),
                     ent_path,
                     f,
                 )
             } else {
-                unimplemented!("TODO(cmc): range support");
+                let min_time = visible_history.from(*time);
+                let max_time = visible_history.to(*time);
+                let query = RangeQuery::new(*timeline, TimeRange::new(min_time, max_time));
+                $crate::[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
+                    cached,
+                    store,
+                    &query.clone().into(),
+                    ent_path,
+                    f,
+                )
             }
         } }
     };

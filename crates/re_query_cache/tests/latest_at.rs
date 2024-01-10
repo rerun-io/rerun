@@ -218,6 +218,7 @@ fn query_and_compare(store: &DataStore, query: &LatestAtQuery, ent_path: &Entity
         let mut got_colors = Vec::new();
 
         query_archetype_pov1_comp1::<Points2D, Position2D, Color, _>(
+            true, // cached?
             store,
             &query.clone().into(),
             ent_path,

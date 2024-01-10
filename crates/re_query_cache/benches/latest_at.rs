@@ -279,6 +279,7 @@ fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePo
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths {
         query_archetype_pov1_comp1::<Points2D, Position2D, Color, _>(
+            true, // cached?
             store,
             &query.clone().into(),
             path,
@@ -309,6 +310,7 @@ fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveS
 
     for path in paths {
         query_archetype_pov1_comp1::<Points2D, Position2D, Text, _>(
+            true, // cached?
             store,
             &query.clone().into(),
             path,
