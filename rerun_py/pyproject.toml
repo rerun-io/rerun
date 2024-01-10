@@ -112,6 +112,10 @@ select = [
   # Missing required import: `from __future__ import annotations`
   "I002",
 ]
+"crates/re_viewer/data/quick_start_guides/*" = [
+  # Missing required import: `from __future__ import annotations`
+  "I002",
+]
 "__init__.py" = ["F401", "F403"]
 
 [tool.ruff.isort]
