@@ -40,6 +40,8 @@ impl From<RangeQuery> for AnyQuery {
 
 // ---
 
+/// All primary caches (all stores, all entities, everything).
+//
 // TODO(cmc): Centralize and harmonize all caches (query, jpeg, mesh).
 static CACHES: Lazy<Caches> = Lazy::new(Caches::default);
 
