@@ -257,6 +257,12 @@ impl View3DState {
         }
     }
 
+    fn track_entity(&mut self, entity: EntityPath) {
+        re_log::debug!("3D view tracks now {:?}", entity);
+        self.tracked_entity = Some(entity);
+        self.camera_before_tracked_entity = None;
+    }
+
     pub fn spin(&self) -> bool {
         self.spin
     }
@@ -486,10 +492,9 @@ pub fn view_3d(
 
         // While hovering an entity, focuses the camera on it.
         if let Some((Item::InstancePath(_, instance_path), _)) = ctx.hovered().first() {
-            re_log::debug!("3D view tracks now {:?}", instance_path);
-            state.state_3d.camera_before_tracked_entity =
-                state.state_3d.orbit_eye.map(|eye| eye.to_eye());
-            state.state_3d.tracked_entity = Some(instance_path.entity_path.clone());
+            state
+                .state_3d
+                .track_entity(instance_path.entity_path.clone());
             ui.ctx().request_repaint(); // Make sure interpolation happens in the next frames.
         }
         // Without hovering, resets the camera.
@@ -498,6 +503,21 @@ pub fn view_3d(
             state
                 .state_3d
                 .reset_camera(&state.bounding_boxes.accumulated, &view_coordinates);
+        }
+    }
+
+    // Track focused entity if any.
+    if let Some(focused_item) = ctx.focused_item {
+        if let Some(entity_path) = match focused_item {
+            Item::StoreId(_)
+            | Item::SpaceView(_)
+            | Item::DataBlueprintGroup(_, _, _)
+            | Item::Container(_) => None,
+            Item::ComponentPath(component_path) => Some(component_path.entity_path.clone()),
+            Item::InstancePath(_, path) => Some(path.entity_path.clone()),
+        } {
+            state.state_3d.track_entity(entity_path);
+            ui.ctx().request_repaint(); // Make sure interpolation happens in the next frames.
         }
     }
 

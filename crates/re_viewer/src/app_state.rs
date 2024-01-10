@@ -41,6 +41,13 @@ pub struct AppState {
     // sense than the blueprint
     #[serde(skip)]
     viewport_state: ViewportState,
+
+    /// Item that got focused on the last frame if any.
+    ///
+    /// The focused item is cleared every frame, but views may react with side-effects
+    /// that last several frames.
+    #[serde(skip)]
+    pub(crate) focused_item: Option<re_viewer_context::Item>,
 }
 
 impl AppState {
@@ -103,6 +110,7 @@ impl AppState {
             time_panel,
             welcome_screen,
             viewport_state,
+            focused_item,
         } = self;
 
         // Some of the mutations APIs of `ViewportBlueprints` are recorded as `Viewport::TreeAction`
@@ -196,6 +204,7 @@ impl AppState {
             re_ui,
             render_ctx,
             command_sender,
+            focused_item,
         };
 
         // First update the viewport and thus all active space views.
@@ -235,6 +244,7 @@ impl AppState {
             re_ui,
             render_ctx,
             command_sender,
+            focused_item,
         };
 
         time_panel.show_panel(&ctx, ui, app_blueprint.time_panel_expanded);
@@ -336,6 +346,9 @@ impl AppState {
 
         // This must run after any ui code, or other code that tells egui to open an url:
         check_for_clicked_hyperlinks(&re_ui.egui_ctx, &rec_cfg.selection_state);
+
+        // Reset the focused item.
+        *focused_item = None;
     }
 
     pub fn recording_config_mut(&mut self, rec_id: &StoreId) -> Option<&mut RecordingConfig> {

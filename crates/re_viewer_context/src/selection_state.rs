@@ -27,7 +27,7 @@ pub enum SelectedSpaceContext {
 
         /// Path of a space camera, this 3D space is viewed through.
         /// (None for a free floating Eye)
-        tracked_space_camera: Option<EntityPath>,
+        tracked_entity: Option<EntityPath>,
 
         /// Corresponding 2D spaces and pixel coordinates (with Z=depth)
         point_in_space_cameras: Vec<(EntityPath, Option<glam::Vec3>)>,

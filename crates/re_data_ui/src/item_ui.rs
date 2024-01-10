@@ -6,7 +6,8 @@ use egui::Ui;
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_viewer_context::{
-    DataQueryId, HoverHighlight, Item, Selection, SpaceViewId, UiVerbosity, ViewerContext,
+    DataQueryId, HoverHighlight, Item, Selection, SpaceViewId, SystemCommandSender, UiVerbosity,
+    ViewerContext,
 };
 
 use super::DataUi;
@@ -337,6 +338,13 @@ pub fn select_hovered_on_click(
 
     if response.hovered() {
         selection_state.set_hovered(selection.clone());
+    }
+
+    if response.double_clicked() {
+        if let Some((item, _)) = selection.first() {
+            ctx.command_sender
+                .send_system(re_viewer_context::SystemCommand::SetFocus(item.clone()));
+        }
     }
 
     if response.clicked() {
