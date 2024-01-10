@@ -20,21 +20,32 @@ pub use parse_path::PathParseError;
 
 // ----------------------------------------------------------------------------
 
+/// Reexports for use by macros to avoid depending on the caller's namespacing.
+#[doc(hidden)]
+pub mod __private {
+    pub use ::std::{string, vec};
+}
+
 /// Build a `Vec<EntityPathPart>`:
 /// ```
+/// # #![no_std] // test that the macro does not depend on the std *prelude*
+/// # extern crate std;
+/// # fn main() {
+/// # use std::vec::Vec;
 /// # use re_log_types::*;
 /// let parts: Vec<EntityPathPart> = entity_path_vec!("foo", 42, "my image!");
+/// # }
 /// ```
 #[macro_export]
 macro_rules! entity_path_vec {
     () => {
         // A vector of no elements that nevertheless has the expected concrete type.
-        ::std::vec::Vec::<$crate::EntityPathPart>::new()
+       $crate::path::__private::vec::Vec::<$crate::EntityPathPart>::new()
     };
     ($($part: expr),* $(,)?) => {
-        vec![ $($crate::EntityPathPart::from(
+        $crate::path::__private::vec![ $($crate::EntityPathPart::from(
             #[allow(clippy::str_to_string, clippy::string_to_string)]
-            $part.to_string()
+            $crate::path::__private::string::ToString::to_string(&$part)
         ),)+ ]
     };
 }
