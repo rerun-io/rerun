@@ -56,3 +56,5 @@ wheels
 
 .nox/
 *.rrd
+
+/meilisearch

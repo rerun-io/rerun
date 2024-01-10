@@ -1,3 +1,4 @@
+version: 2
 metadata:
   content_hash:
     linux-64: e90c2ee71ad70fc0a1c8302029533a7d1498f2bffcd0eaa8d2934700e775dc1d
@@ -9146,6 +9147,79 @@ package:
   noarch: python
   size: 13707
   timestamp: 1639515992326
+- platform: linux-64
+  name: meilisearch
+  version: 1.5.1
+  category: main
+  manager: conda
+  dependencies:
+  - libgcc-ng >=12
+  url: https://conda.anaconda.org/conda-forge/linux-64/meilisearch-1.5.1-he8a937b_0.conda
+  hash:
+    md5: d648052889e66626c93825ce8ee1d6f2
+    sha256: 233f9c2e3c83e2b27a7915cd21433c7f2566971470ec8f2f416cf298b9b73d97
+  build: he8a937b_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 83512382
+  timestamp: 1702682895721
+- platform: osx-64
+  name: meilisearch
+  version: 1.5.1
+  category: main
+  manager: conda
+  dependencies: []
+  url: https://conda.anaconda.org/conda-forge/osx-64/meilisearch-1.5.1-hc85fda4_0.conda
+  hash:
+    md5: d84149b3fce1ed6384959f7096a27877
+    sha256: b6545f77a15b4535f28f7b20d6d9cf957d06537a14e83ba159694effc6f546e2
+  build: hc85fda4_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 81301310
+  timestamp: 1702680502752
+- platform: osx-arm64
+  name: meilisearch
+  version: 1.5.1
+  category: main
+  manager: conda
+  dependencies: []
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/meilisearch-1.5.1-h5ef7bb8_0.conda
+  hash:
+    md5: 595899dbe10e2a0ab8e37f894f683082
+    sha256: c359718f193da18e77b7d19402d7453fa732978433ac562bbc86dfd17ef1bff8
+  build: h5ef7bb8_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 81671718
+  timestamp: 1702680633448
+- platform: win-64
+  name: meilisearch
+  version: 1.5.1
+  category: main
+  manager: conda
+  dependencies: []
+  url: https://conda.anaconda.org/conda-forge/win-64/meilisearch-1.5.1-h8b8d39b_0.conda
+  hash:
+    md5: 7e7bf2fea36389d2177cdca54df2d4ce
+    sha256: 20d6cb4a77ef155a3dd86bc671681ed2c616dab96fd0a9a6aea0a85119411a12
+  build: h8b8d39b_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 80798614
+  timestamp: 1702681657601
 - platform: win-64
   name: mkl
   version: 2022.1.0
@@ -13363,4 +13437,3 @@ package:
   license_family: BSD
   size: 343428
   timestamp: 1693151615801
-version: 1

@@ -14,6 +14,7 @@ pub struct Example {
     pub thumbnail_dimensions: [u64; 2],
     pub script_path: PathBuf,
     pub script_args: Vec<String>,
+    pub readme_body: String,
 }
 
 #[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq)]
@@ -44,16 +45,17 @@ impl Channel {
 
     pub fn examples(self) -> anyhow::Result<Vec<Example>> {
         let mut examples = vec![];
-        let dir = Path::new("examples/python");
+        let workspace_root = re_build_tools::cargo_metadata()?.workspace_root;
+        let dir = workspace_root.join("examples").join("python");
         if !dir.exists() {
-            anyhow::bail!("Failed to find {}", dir.display())
+            anyhow::bail!("Failed to find {dir:?}")
         }
         if !dir.is_dir() {
-            anyhow::bail!("{} is not a directory", dir.display())
+            anyhow::bail!("{dir:?} is not a directory")
         }
 
         let folders: std::collections::BTreeMap<String, std::fs::DirEntry> =
-            std::fs::read_dir(dir)?
+            std::fs::read_dir(&dir)?
                 .filter_map(Result::ok)
                 .map(|folder| {
                     let name = folder.file_name().to_string_lossy().to_string();
@@ -65,8 +67,7 @@ impl Channel {
             let metadata = folder.metadata()?;
             let readme = folder.path().join("README.md");
             if metadata.is_dir() && readme.exists() {
-                let readme = parse_frontmatter(readme)?;
-                let Some(readme) = readme else {
+                let Some((readme, body)) = parse_frontmatter(readme)? else {
                     eprintln!("{name:?}: skipped - MISSING FRONTMATTER");
                     continue;
                 };
@@ -91,12 +92,13 @@ impl Channel {
                     thumbnail_dimensions: readme.thumbnail_dimensions,
                     script_path: folder.path().join("main.py"),
                     script_args: readme.build_args,
+                    readme_body: body,
                 });
             }
         }
 
         if examples.is_empty() {
-            anyhow::bail!("No examples found in {}", dir.display())
+            anyhow::bail!("No examples found in {dir:?}")
         }
 
         examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
@@ -163,7 +165,7 @@ struct Frontmatter {
     build_args: Vec<String>,
 }
 
-fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatter>> {
+fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<(Frontmatter, String)>> {
     const START: &str = "<!--[metadata]";
     const END: &str = "-->";
 
@@ -176,16 +178,22 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatt
     let start = start + START.len();
 
     let Some(end) = content[start..].find(END) else {
-        anyhow::bail!("{:?} has invalid frontmatter: missing --> terminator", path);
+        anyhow::bail!(
+            "{:?} has invalid frontmatter: missing {END:?} terminator",
+            path
+        );
     };
     let end = start + end;
 
-    toml::from_str(content[start..end].trim())
-        .map(Some)
-        .map_err(|err| {
-            anyhow::anyhow!(
-                "Failed to parse TOML metadata of {:?}: {err}",
-                path.parent().unwrap().file_name().unwrap()
-            )
-        })
+    let frontmatter: Frontmatter = toml::from_str(content[start..end].trim()).map_err(|err| {
+        anyhow::anyhow!(
+            "Failed to parse TOML metadata of {:?}: {err}",
+            path.parent().unwrap().file_name().unwrap()
+        )
+    })?;
+
+    Ok(Some((
+        frontmatter,
+        content[end + END.len()..].trim().to_owned(),
+    )))
 }

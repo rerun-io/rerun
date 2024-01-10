@@ -28,6 +28,7 @@ version = "0.13.0-alpha.1+dev"
 # In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
 re_analytics = { path = "crates/re_analytics", version = "=0.13.0-alpha.1", default-features = false }
+re_build_search_index = { path = "crates/re_build_search_index", version = "=0.13.0-alpha.1", default-features = false }
 re_build_examples = { path = "crates/re_build_examples", version = "=0.13.0-alpha.1", default-features = false }
 re_build_info = { path = "crates/re_build_info", version = "=0.13.0-alpha.1", default-features = false }
 re_build_tools = { path = "crates/re_build_tools", version = "=0.13.0-alpha.1", default-features = false }
@@ -198,6 +199,7 @@ serde = "1"
 serde_bytes = "0.11"
 serde_json = { version = "1", default-features = false, features = ["std"] }
 serde_test = "1"
+serde_yaml = { version = "0.9.21", default-features = false }
 sha2 = "0.10"
 similar-asserts = "1.4.2"
 slotmap = { version = "1.0.6", features = ["serde"] }

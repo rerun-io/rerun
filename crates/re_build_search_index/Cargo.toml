@@ -1,0 +1,42 @@
+[package]
+name = "re_build_search_index"
+authors.workspace = true
+description = "Build a Meilisearch index from all of Rerun's documentation"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = false
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+re_build_examples.workspace = true
+re_build_tools.workspace = true
+
+# External
+anyhow.workspace = true
+argh.workspace = true
+camino.workspace = true
+glob.workspace = true
+indicatif.workspace = true
+rayon.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serde_yaml.workspace = true
+tokio = { workspace = true, features = [
+  "macros",
+  "net",
+  "rt-multi-thread",
+  "signal",
+  "io-util",
+  "sync",
+] }
+toml = { workspace = true, features = ["parse", "preserve_order"] }
+meilisearch-sdk = "0.24.3"
