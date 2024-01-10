@@ -1,10 +1,12 @@
 //! Caching datastructures for `re_query`.
 
 mod cache;
+mod cache_stats;
 mod flat_vec_deque;
 mod query;
 
 pub use self::cache::{AnyQuery, Caches};
+pub use self::cache_stats::{CachedEntityStats, CachesStats};
 pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
 pub use self::query::{
     query_archetype_pov1, query_archetype_with_history_pov1, MaybeCachedComponentData,

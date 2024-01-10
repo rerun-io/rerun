@@ -122,6 +122,17 @@ impl<T: SizeBytes> SizeBytes for FlatVecDeque<T> {
     }
 }
 
+impl<T> From<VecDeque<T>> for FlatVecDeque<T> {
+    #[inline]
+    fn from(values: VecDeque<T>) -> Self {
+        let num_values = values.len();
+        Self {
+            values,
+            offsets: std::iter::once(num_values).collect(),
+        }
+    }
+}
+
 impl<T> Default for FlatVecDeque<T> {
     #[inline]
     fn default() -> Self {
@@ -284,11 +295,7 @@ impl<T> FlatVecDeque<T> {
     #[inline]
     pub fn insert(&mut self, entry_index: usize, values: impl IntoIterator<Item = T>) {
         let values: VecDeque<T> = values.into_iter().collect();
-        let num_values = values.len();
-        let deque = Self {
-            values,
-            offsets: std::iter::once(num_values).collect(),
-        };
+        let deque = values.into();
         self.insert_deque(entry_index, deque);
     }
 

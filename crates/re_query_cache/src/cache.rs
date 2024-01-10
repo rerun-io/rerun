@@ -14,7 +14,9 @@ use re_data_store::{
 };
 use re_log_types::{EntityPath, RowId, StoreId, TimeInt, Timeline};
 use re_query::ArchetypeView;
-use re_types_core::{components::InstanceKey, Archetype, ArchetypeName, Component, ComponentName};
+use re_types_core::{
+    components::InstanceKey, Archetype, ArchetypeName, Component, ComponentName, SizeBytes as _,
+};
 
 use crate::{ErasedFlatVecDeque, FlatVecDeque};
 
@@ -52,7 +54,7 @@ static CACHES: Lazy<StoreSubscriberHandle> =
 //
 // TODO(#4730): SizeBytes support + size stats + mem panel
 #[derive(Default)]
-pub struct Caches(RwLock<HashMap<CacheKey, CachesPerArchetype>>);
+pub struct Caches(pub(crate) RwLock<HashMap<CacheKey, CachesPerArchetype>>);
 
 #[derive(Default)]
 pub struct CachesPerArchetype {
@@ -65,7 +67,7 @@ pub struct CachesPerArchetype {
     //
     // TODO(cmc): At some point we should probably just store the PoV and optional components rather
     // than an `ArchetypeName`: the query system doesn't care about archetypes.
-    latest_at_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<LatestAtCache>>>>,
+    pub(crate) latest_at_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<LatestAtCache>>>>,
 
     /// Everything greater than or equal to this timestamp has been asynchronously invalidated.
     ///
@@ -132,6 +134,12 @@ impl Caches {
 
         let mut cache = cache.write();
         f(&mut cache)
+    }
+
+    #[inline]
+    pub(crate) fn with<F: FnMut(&Caches) -> R, R>(f: F) -> R {
+        // NOTE: downcasting cannot fail, this is our own private handle.
+        re_data_store::DataStore::with_subscriber(*CACHES, f).unwrap()
     }
 }
 
@@ -387,12 +395,14 @@ macro_rules! impl_insert {
         #[doc = "Inserts the contents of the given [`ArchetypeView`], which are made of the specified"]
         #[doc = "`" $N "` point-of-view components and `" $M "` optional components, to the cache."]
         #[doc = ""]
+        #[doc = "Returns the size in bytes of the data that was cached."]
+        #[doc = ""]
         #[doc = "`query_time` must be the time of query, _not_ of the resulting data."]
         pub fn [<insert_pov$N _comp$M>]<A, $($pov,)+ $($comp),*>(
             &mut self,
             query_time: TimeInt,
             arch_view: &ArchetypeView<A>,
-        ) -> ::re_query::Result<()>
+        ) -> ::re_query::Result<u64>
         where
             A: Archetype,
             $($pov: Component + Send + Sync + 'static,)+
@@ -401,21 +411,29 @@ macro_rules! impl_insert {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!("CacheBucket::insert", format!("arch={} pov={} comp={}", A::name(), $N, $M));
 
-            let Self {
-                data_times,
-                pov_instance_keys,
-                components: _,
-            } = self;
-
             let pov_row_id = arch_view.primary_row_id();
-            let index = data_times.partition_point(|t| t < &(query_time, pov_row_id));
+            let index = self.data_times.partition_point(|t| t < &(query_time, pov_row_id));
 
-            data_times.insert(index, (query_time, pov_row_id));
-            pov_instance_keys.insert(index, arch_view.iter_instance_keys());
-            $(self.insert_component::<A, $pov>(index, arch_view)?;)+
-            $(self.insert_component_opt::<A, $comp>(index, arch_view)?;)*
+            let mut added_size_bytes = 0u64;
 
-            Ok(())
+            self.data_times.insert(index, (query_time, pov_row_id));
+            added_size_bytes += (query_time, pov_row_id).total_size_bytes();
+
+            {
+                // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
+                // instead, that way we can efficiently computes its size while we're at it.
+                let added: FlatVecDeque<InstanceKey> = arch_view
+                    .iter_instance_keys()
+                    .collect::<VecDeque<InstanceKey>>()
+                    .into();
+                added_size_bytes += added.total_size_bytes();
+                self.pov_instance_keys.insert_deque(index, added);
+            }
+
+            $(added_size_bytes += self.insert_component::<A, $pov>(index, arch_view)?;)+
+            $(added_size_bytes += self.insert_component_opt::<A, $comp>(index, arch_view)?;)*
+
+            Ok(added_size_bytes)
         } }
     };
 
@@ -436,7 +454,7 @@ impl CacheBucket {
         &mut self,
         query_time: TimeInt,
         arch_view: &ArchetypeView<A>,
-    ) -> ::re_query::Result<()>
+    ) -> ::re_query::Result<u64>
     where
         A: Archetype,
         R1: Component + Send + Sync + 'static,
@@ -453,7 +471,7 @@ impl CacheBucket {
         &mut self,
         at: usize,
         arch_view: &ArchetypeView<A>,
-    ) -> re_query::Result<()> {
+    ) -> re_query::Result<u64> {
         re_tracing::profile_function!(C::name());
 
         let data = self
@@ -461,11 +479,19 @@ impl CacheBucket {
             .entry(C::name())
             .or_insert_with(|| Box::new(FlatVecDeque::<C>::new()));
 
+        // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
+        // instead, that way we can efficiently computes its size while we're at it.
+        let added: FlatVecDeque<C> = arch_view
+            .iter_required_component::<C>()?
+            .collect::<VecDeque<C>>()
+            .into();
+        let added_size_bytes = added.total_size_bytes();
+
         // NOTE: downcast cannot fail, we create it just above.
         let data = data.as_any_mut().downcast_mut::<FlatVecDeque<C>>().unwrap();
-        data.insert(at, arch_view.iter_required_component::<C>()?);
+        data.insert_deque(at, added);
 
-        Ok(())
+        Ok(added_size_bytes)
     }
 
     #[inline]
@@ -473,7 +499,7 @@ impl CacheBucket {
         &mut self,
         at: usize,
         arch_view: &ArchetypeView<A>,
-    ) -> re_query::Result<()> {
+    ) -> re_query::Result<u64> {
         re_tracing::profile_function!(C::name());
 
         let data = self
@@ -481,14 +507,22 @@ impl CacheBucket {
             .entry(C::name())
             .or_insert_with(|| Box::new(FlatVecDeque::<Option<C>>::new()));
 
+        // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
+        // instead, that way we can efficiently computes its size while we're at it.
+        let added: FlatVecDeque<Option<C>> = arch_view
+            .iter_optional_component::<C>()?
+            .collect::<VecDeque<Option<C>>>()
+            .into();
+        let added_size_bytes = added.total_size_bytes();
+
         // NOTE: downcast cannot fail, we create it just above.
         let data = data
             .as_any_mut()
             .downcast_mut::<FlatVecDeque<Option<C>>>()
             .unwrap();
-        data.insert(at, arch_view.iter_optional_component::<C>()?);
+        data.insert_deque(at, added);
 
-        Ok(())
+        Ok(added_size_bytes)
     }
 }
 
@@ -526,4 +560,7 @@ pub struct LatestAtCache {
     // NOTE: Lives separately so we don't pay the extra `Option` cost in the much more common
     // timeful case.
     pub timeless: Option<CacheBucket>,
+
+    // TODO
+    pub total_size_bytes: u64,
 }
