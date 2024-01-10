@@ -145,8 +145,14 @@ impl View3DState {
 
                 if let Some(bbox) = bounding_boxes.per_entity.get(&tracked_entity.hash()) {
                     let mut new_orbit_eye = *orbit_eye;
-                    new_orbit_eye.orbit_radius = bbox.centered_bounding_sphere_radius() * 1.5;
                     new_orbit_eye.orbit_center = bbox.center();
+                    new_orbit_eye.orbit_radius = bbox.centered_bounding_sphere_radius() * 1.5;
+
+                    if new_orbit_eye.orbit_radius < 0.0001 {
+                        // Bounding box may be zero size or degenerated
+                        new_orbit_eye.orbit_radius = orbit_eye.orbit_radius;
+                    }
+
                     self.interpolate_to_orbit_eye(new_orbit_eye);
 
                     // Re-borrow orbit_eye to work around borrow checker issues.
@@ -520,12 +526,10 @@ pub fn view_3d(
 
     // Allow to restore the camera state with escape if a camera was tracked before.
     if response.hovered() && ui.input(|i| i.key_pressed(TRACKED_OBJECT_RESTORE_KEY)) {
-        if let Some(camera_before_changing_tracked_state) =
-            state.state_3d.camera_before_tracked_entity
-        {
+        if let Some(camera_before_tracked_entity) = state.state_3d.camera_before_tracked_entity {
             state
                 .state_3d
-                .interpolate_to_eye(camera_before_changing_tracked_state);
+                .interpolate_to_eye(camera_before_tracked_entity);
             state.state_3d.camera_before_tracked_entity = None;
             state.state_3d.tracked_entity = None;
         }
