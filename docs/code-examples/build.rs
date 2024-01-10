@@ -1,5 +1,5 @@
 //! Finds all the `*.rs` files in `docs/code-examples/all`,
-//! copies them to `src` (with slight modifications), and generate a `lib.rs` for them.
+//! copies them to `src/examples` (with slight modifications), and generate a `examples/mod.rs` for them.
 //!
 //! The reason we combine all the examples into a single binary
 //! is to reduce the amount of binaries in our workspace.
@@ -16,6 +16,7 @@ fn main() {
         Path::new(&re_build_tools::get_and_track_env_var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
     let all_path = crate_path.join("all");
     let src_path = crate_path.join("src");
+    let examples_path = src_path.join("examples");
 
     assert!(
         all_path.exists() && all_path.is_dir(),
@@ -41,7 +42,7 @@ fn main() {
                         "let args = _args;",
                     );
 
-                    let target_path = src_path.join(format!("{example_name}.rs"));
+                    let target_path = examples_path.join(format!("{example_name}.rs"));
                     re_build_tools::write_file_if_necessary(target_path, contents.as_bytes())
                         .unwrap();
 
@@ -108,5 +109,6 @@ fn main() {
         .format_str(source)
         .expect("Failed to format");
 
-    re_build_tools::write_file_if_necessary(src_path.join("lib.rs"), source.as_bytes()).unwrap();
+    re_build_tools::write_file_if_necessary(examples_path.join("mod.rs"), source.as_bytes())
+        .unwrap();
 }
