@@ -68,13 +68,13 @@ impl ComponentWithInstances {
         }
         let arr = self
             .lookup_arrow(instance_key)
-            .map_or_else(|| Err(QueryError::ComponentNotFound(C::name())), Ok)?;
+            .map_or_else(|| Err(crate::ComponentNotFoundError(C::name())), Ok)?;
 
         let mut iter = C::from_arrow(arr.as_ref())?.into_iter();
 
         let val = iter
             .next()
-            .map_or_else(|| Err(QueryError::ComponentNotFound(C::name())), Ok)?;
+            .map_or_else(|| Err(crate::ComponentNotFoundError(C::name())), Ok)?;
         Ok(val)
     }
 

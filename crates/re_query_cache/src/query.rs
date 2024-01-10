@@ -23,7 +23,16 @@ pub enum MaybeCachedComponentData<'a, C> {
     Raw(Vec<C>),
 }
 
-impl<'a, C: Clone> MaybeCachedComponentData<'a, C> {
+impl<'a, C> std::ops::Deref for MaybeCachedComponentData<'a, C> {
+    type Target = [C];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+
+impl<'a, C> MaybeCachedComponentData<'a, C> {
     #[inline]
     pub fn iter(&self) -> impl ExactSizeIterator<Item = &C> + '_ {
         self.as_slice().iter()
@@ -102,12 +111,13 @@ macro_rules! impl_query_archetype {
                 // NOTE: Implicitly dropping the write guard here: the LatestAtCache is free once again!
 
                 if bucket.is_empty() {
+                    re_tracing::profile_scope!("fill");
+
                     let now = web_time::Instant::now();
                     let arch_view = query_archetype::<A>(store, &query, entity_path)?;
 
                     bucket.[<insert_pov $N _comp$M>]::<A, $($pov,)+ $($comp,)*>(query.at, &arch_view)?;
 
-                    // TODO(cmc): I'd love a way of putting this information into the `puffin` span directly.
                     let elapsed = now.elapsed();
                     ::re_log::trace!(
                         store_id=%store.id(),
@@ -118,11 +128,15 @@ macro_rules! impl_query_archetype {
                     );
                 }
 
+                re_tracing::profile_scope!("iter");
+
                 let it = itertools::izip!(
                     bucket.iter_pov_times(),
                     bucket.iter_pov_instance_keys(),
-                    $(bucket.iter_component::<$pov>()?,)+
-                    $(bucket.iter_component_opt::<$comp>()?,)*
+                    $(bucket.iter_component::<$pov>()
+                        .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
+                    $(bucket.iter_component_opt::<$comp>()
+                        .ok_or_else(|| re_query::ComponentNotFoundError(<$comp>::name()))?,)*
                 ).map(|(time, instance_keys, $($pov,)+ $($comp,)*)| {
                     (
                         *time,

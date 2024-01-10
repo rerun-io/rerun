@@ -4,7 +4,6 @@ use std::{
 };
 
 use ahash::HashMap;
-use itertools::Either;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use paste::paste;
@@ -175,36 +174,24 @@ impl CacheBucket {
     #[inline]
     pub fn iter_component<C: Component + Send + Sync + 'static>(
         &self,
-    ) -> re_query::Result<impl Iterator<Item = &[C]>> {
+    ) -> Option<impl Iterator<Item = &[C]>> {
         let data = self
             .components
             .get(&C::name())
-            .map(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())
-            .ok_or_else(|| re_query::QueryError::RequiredComponentNotFound(C::name()))?;
-
-        let Some(data) = data else {
-            return Ok(Either::Left(std::iter::empty()));
-        };
-
-        Ok(Either::Right(data.iter()))
+            .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())?;
+        Some(data.iter())
     }
 
     /// Iterate over the batches of the specified optional component.
     #[inline]
     pub fn iter_component_opt<C: Component + Send + Sync + 'static>(
         &self,
-    ) -> re_query::Result<impl Iterator<Item = &[Option<C>]>> {
+    ) -> Option<impl Iterator<Item = &[Option<C>]>> {
         let data = self
             .components
             .get(&C::name())
-            .map(|data| data.as_any().downcast_ref::<FlatVecDeque<Option<C>>>())
-            .ok_or_else(|| re_query::QueryError::ComponentNotFound(C::name()))?;
-
-        let Some(data) = data else {
-            return Ok(Either::Left(std::iter::empty()));
-        };
-
-        Ok(Either::Right(data.iter()))
+            .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<Option<C>>>())?;
+        Some(data.iter())
     }
 
     /// How many timestamps' worth of data is stored in this bucket?

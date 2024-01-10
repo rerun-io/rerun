@@ -54,7 +54,7 @@ criterion_main!(benches);
 fn mono_points(c: &mut Criterion) {
     // Each mono point gets logged at a different path
     let paths = (0..NUM_POINTS)
-        .map(move |point_idx| entity_path!("points", point_idx.to_string()))
+        .map(move |point_idx| entity_path!("points", point_idx))
         .collect_vec();
     let msgs = build_points_rows(&paths, 1);
 
@@ -83,7 +83,7 @@ fn mono_points(c: &mut Criterion) {
 fn mono_strings(c: &mut Criterion) {
     // Each mono string gets logged at a different path
     let paths = (0..NUM_STRINGS)
-        .map(move |string_idx| entity_path!("strings", string_idx.to_string()))
+        .map(move |string_idx| entity_path!("strings", string_idx))
         .collect_vec();
     let msgs = build_strings_rows(&paths, 1);
 
