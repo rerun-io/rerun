@@ -79,6 +79,18 @@ pub struct Clear {
     pub is_recursive: crate::components::ClearIsRecursive,
 }
 
+impl crate::SizeBytes for Clear {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.is_recursive.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::ClearIsRecursive>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.ClearIsRecursive".into()]);
 

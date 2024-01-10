@@ -26,6 +26,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(C)]
 pub struct UVec2D(pub [u32; 2usize]);
 
+impl ::re_types_core::SizeBytes for UVec2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[u32; 2usize]>::is_pod()
+    }
+}
+
 impl From<[u32; 2usize]> for UVec2D {
     #[inline]
     fn from(xy: [u32; 2usize]) -> Self {

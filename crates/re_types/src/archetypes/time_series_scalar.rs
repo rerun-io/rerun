@@ -101,6 +101,26 @@ pub struct TimeSeriesScalar {
     pub scattered: Option<crate::components::ScalarScattering>,
 }
 
+impl ::re_types_core::SizeBytes for TimeSeriesScalar {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.scalar.heap_size_bytes()
+            + self.radius.heap_size_bytes()
+            + self.color.heap_size_bytes()
+            + self.label.heap_size_bytes()
+            + self.scattered.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::Scalar>::is_pod()
+            && <Option<crate::components::Radius>>::is_pod()
+            && <Option<crate::components::Color>>::is_pod()
+            && <Option<crate::components::Text>>::is_pod()
+            && <Option<crate::components::ScalarScattering>>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Scalar".into()]);
 

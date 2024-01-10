@@ -24,6 +24,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer5(pub Option<crate::testing::datatypes::AffixFuzzer1>);
 
+impl ::re_types_core::SizeBytes for AffixFuzzer5 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::testing::datatypes::AffixFuzzer1>>::is_pod()
+    }
+}
+
 impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer1>>> From<T> for AffixFuzzer5 {
     fn from(v: T) -> Self {
         Self(v.into())

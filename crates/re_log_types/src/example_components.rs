@@ -1,6 +1,6 @@
 //! Example components to be used for tests and docs
 
-use re_types_core::Loggable;
+use re_types_core::{Loggable, SizeBytes};
 
 // ----------------------------------------------------------------------------
 
@@ -37,6 +37,14 @@ impl MyPoint {
 }
 
 re_types_core::macros::impl_into_cow!(MyPoint);
+
+impl SizeBytes for MyPoint {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { x: _, y: _ } = self;
+        0
+    }
+}
 
 impl Loggable for MyPoint {
     type Name = re_types_core::ComponentName;
@@ -120,6 +128,14 @@ impl From<u32> for MyColor {
 
 re_types_core::macros::impl_into_cow!(MyColor);
 
+impl SizeBytes for MyColor {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self(_) = self;
+        0
+    }
+}
+
 impl Loggable for MyColor {
     type Name = re_types_core::ComponentName;
 
@@ -162,6 +178,14 @@ impl Loggable for MyColor {
 pub struct MyLabel(pub String);
 
 re_types_core::macros::impl_into_cow!(MyLabel);
+
+impl SizeBytes for MyLabel {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self(s) = self;
+        s.heap_size_bytes()
+    }
+}
 
 impl Loggable for MyLabel {
     type Name = re_types_core::ComponentName;

@@ -32,6 +32,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct DrawOrder(pub f32);
 
+impl ::re_types_core::SizeBytes for DrawOrder {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f32>::is_pod()
+    }
+}
+
 impl From<f32> for DrawOrder {
     #[inline]
     fn from(value: f32) -> Self {

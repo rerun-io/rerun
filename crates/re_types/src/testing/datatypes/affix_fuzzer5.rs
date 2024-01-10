@@ -26,6 +26,18 @@ pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::testing::datatypes::AffixFuzzer4>,
 }
 
+impl ::re_types_core::SizeBytes for AffixFuzzer5 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.single_optional_union.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::testing::datatypes::AffixFuzzer4>>::is_pod()
+    }
+}
+
 impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer4>>> From<T> for AffixFuzzer5 {
     fn from(v: T) -> Self {
         Self {

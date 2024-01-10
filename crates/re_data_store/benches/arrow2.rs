@@ -80,18 +80,18 @@ fn erased_clone(c: &mut Criterion) {
         match kind {
             ArrayKind::Primitive => {
                 let data = build_some_instances(NUM_INSTANCES);
-                bench_arrow(&mut group, data.as_slice());
-                bench_native(&mut group, data.as_slice());
+                bench_arrow(&mut group, &data);
+                bench_native(&mut group, &data);
             }
             ArrayKind::Struct => {
                 let data = build_some_positions2d(NUM_INSTANCES);
-                bench_arrow(&mut group, data.as_slice());
-                bench_native(&mut group, data.as_slice());
+                bench_arrow(&mut group, &data);
+                bench_native(&mut group, &data);
             }
             ArrayKind::StructLarge => {
                 let data = build_some_large_structs(NUM_INSTANCES);
-                bench_arrow(&mut group, data.as_slice());
-                bench_native(&mut group, data.as_slice());
+                bench_arrow(&mut group, &data);
+                bench_native(&mut group, &data);
             }
         }
     }
@@ -99,7 +99,7 @@ fn erased_clone(c: &mut Criterion) {
     // TODO(cmc): Use cells once `cell.size_bytes()` has landed (#1727)
     fn bench_arrow<'a, T: Component + SizeBytes + 'a>(
         group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
-        data: &'a [T],
+        data: &'a Vec<T>,
     ) where
         &'a T: Into<::std::borrow::Cow<'a, T>>,
     {
@@ -132,11 +132,12 @@ fn erased_clone(c: &mut Criterion) {
         });
     }
 
+    #[allow(clippy::ptr_arg)] // We want to know it's a vec and not a slice to the stack!
     fn bench_native<T: Clone>(
         group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
-        data: &[T],
+        data: &Vec<T>,
     ) {
-        let vecs = (0..NUM_ROWS).map(|_| data.to_vec()).collect_vec();
+        let vecs = (0..NUM_ROWS).map(|_| data.clone()).collect_vec();
 
         let total_size_bytes = vecs
             .iter()
@@ -145,7 +146,7 @@ fn erased_clone(c: &mut Criterion) {
         assert!(total_size_bytes as usize >= NUM_ROWS * NUM_INSTANCES * std::mem::size_of::<T>());
 
         {
-            let vecs = (0..NUM_ROWS).map(|_| data.to_vec()).collect_vec();
+            let vecs = (0..NUM_ROWS).map(|_| data.clone()).collect_vec();
             group.bench_function("vec", |b| {
                 b.iter(|| {
                     let sz = vecs
@@ -170,7 +171,7 @@ fn erased_clone(c: &mut Criterion) {
 
         {
             let vecs: Vec<Box<dyn SizeOf>> = (0..NUM_ROWS)
-                .map(|_| Box::new(data.to_vec()) as Box<dyn SizeOf>)
+                .map(|_| Box::new(data.clone()) as Box<dyn SizeOf>)
                 .collect_vec();
 
             group.bench_function("vec/erased", |b| {

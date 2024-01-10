@@ -28,6 +28,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct IncludedQueries(pub Vec<crate::datatypes::Uuid>);
 
+impl ::re_types_core::SizeBytes for IncludedQueries {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::Uuid>>::is_pod()
+    }
+}
+
 impl<I: Into<crate::datatypes::Uuid>, T: IntoIterator<Item = I>> From<T> for IncludedQueries {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())

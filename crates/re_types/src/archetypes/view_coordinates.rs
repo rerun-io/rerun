@@ -64,6 +64,18 @@ pub struct ViewCoordinates {
     pub xyz: crate::components::ViewCoordinates,
 }
 
+impl ::re_types_core::SizeBytes for ViewCoordinates {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.xyz.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::ViewCoordinates>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.ViewCoordinates".into()]);
 

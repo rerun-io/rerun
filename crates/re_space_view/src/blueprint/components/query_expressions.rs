@@ -59,6 +59,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QueryExpressions(pub ::re_types_core::ArrowString);
 
+impl ::re_types_core::SizeBytes for QueryExpressions {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <::re_types_core::ArrowString>::is_pod()
+    }
+}
+
 impl From<::re_types_core::ArrowString> for QueryExpressions {
     #[inline]
     fn from(filter: ::re_types_core::ArrowString) -> Self {

@@ -28,6 +28,18 @@ pub struct Transform3D(
     pub crate::datatypes::Transform3D,
 );
 
+impl ::re_types_core::SizeBytes for Transform3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Transform3D>::is_pod()
+    }
+}
+
 impl<T: Into<crate::datatypes::Transform3D>> From<T> for Transform3D {
     fn from(v: T) -> Self {
         Self(v.into())

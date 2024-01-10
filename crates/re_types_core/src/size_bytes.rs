@@ -90,25 +90,13 @@ impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
     }
 }
 
-impl<T: SizeBytes> SizeBytes for &[T] {
-    /// Does not take capacity into account.
-    #[inline]
-    #[allow(clippy::manual_slice_size_calculation)]
-    fn heap_size_bytes(&self) -> u64 {
-        // NOTE: It's all on the heap at this point.
-        if T::is_pod() {
-            (self.len() * std::mem::size_of::<T>()) as _
-        } else {
-            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
-        }
-    }
-}
+// NOTE: Do _not_ implement `SizeBytes` for slices: we cannot know whether they point to the stack
+// or the heap!
 
-impl<T: SizeBytes> SizeBytes for [T] {
-    /// Does not take capacity into account.
+impl<T: SizeBytes, const N: usize> SizeBytes for [T; N] {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        <&[T]>::heap_size_bytes(&self)
+        0 // it's a const-sized array
     }
 }
 
@@ -116,7 +104,12 @@ impl<T: SizeBytes> SizeBytes for Vec<T> {
     /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        <&[T]>::heap_size_bytes(&self.as_slice())
+        // NOTE: It's all on the heap at this point.
+        if T::is_pod() {
+            (self.len() * std::mem::size_of::<T>()) as _
+        } else {
+            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+        }
     }
 }
 
@@ -137,7 +130,18 @@ impl<T: SizeBytes, const N: usize> SizeBytes for SmallVec<[T; N]> {
     /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        <&[T]>::heap_size_bytes(&self.as_slice())
+        if self.len() < N {
+            // The `SmallVec` is still smaller than the threshold so no heap data has been
+            // allocated yet.
+            0
+        } else {
+            // NOTE: It's all on the heap at this point.
+            if T::is_pod() {
+                (self.len() * std::mem::size_of::<T>()) as _
+            } else {
+                self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+            }
+        }
     }
 }
 
@@ -170,6 +174,7 @@ macro_rules! impl_size_bytes_pod {
 }
 
 impl_size_bytes_pod!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, bool, f32, f64);
+impl_size_bytes_pod!(arrow2::types::f16);
 
 impl<T, U> SizeBytes for (T, U)
 where

@@ -36,6 +36,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LineStrip3D(pub Vec<crate::datatypes::Vec3D>);
 
+impl ::re_types_core::SizeBytes for LineStrip3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::Vec3D>>::is_pod()
+    }
+}
+
 impl<I: Into<crate::datatypes::Vec3D>, T: IntoIterator<Item = I>> From<T> for LineStrip3D {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())

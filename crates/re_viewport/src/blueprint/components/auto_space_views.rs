@@ -28,6 +28,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct AutoSpaceViews(pub bool);
 
+impl ::re_types_core::SizeBytes for AutoSpaceViews {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <bool>::is_pod()
+    }
+}
+
 impl From<bool> for AutoSpaceViews {
     #[inline]
     fn from(auto_space_views: bool) -> Self {

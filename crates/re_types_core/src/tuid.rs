@@ -1,4 +1,4 @@
-use crate::{DeserializationError, Loggable};
+use crate::{DeserializationError, Loggable, SizeBytes};
 use arrow2::{
     array::{StructArray, UInt64Array},
     datatypes::{DataType, Field},
@@ -7,6 +7,13 @@ use arrow2::{
 use re_tuid::Tuid;
 
 // ---
+
+impl SizeBytes for Tuid {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        Tuid::heap_size_bytes(self)
+    }
+}
 
 impl Loggable for Tuid {
     type Name = crate::ComponentName;

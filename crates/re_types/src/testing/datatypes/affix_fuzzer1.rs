@@ -34,6 +34,34 @@ pub struct AffixFuzzer1 {
     pub from_parent: Option<bool>,
 }
 
+impl ::re_types_core::SizeBytes for AffixFuzzer1 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.single_float_optional.heap_size_bytes()
+            + self.single_string_required.heap_size_bytes()
+            + self.single_string_optional.heap_size_bytes()
+            + self.many_floats_optional.heap_size_bytes()
+            + self.many_strings_required.heap_size_bytes()
+            + self.many_strings_optional.heap_size_bytes()
+            + self.flattened_scalar.heap_size_bytes()
+            + self.almost_flattened_scalar.heap_size_bytes()
+            + self.from_parent.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<f32>>::is_pod()
+            && <::re_types_core::ArrowString>::is_pod()
+            && <Option<::re_types_core::ArrowString>>::is_pod()
+            && <Option<::re_types_core::ArrowBuffer<f32>>>::is_pod()
+            && <Vec<::re_types_core::ArrowString>>::is_pod()
+            && <Option<Vec<::re_types_core::ArrowString>>>::is_pod()
+            && <f32>::is_pod()
+            && <crate::testing::datatypes::FlattenedScalar>::is_pod()
+            && <Option<bool>>::is_pod()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer1);
 
 impl ::re_types_core::Loggable for AffixFuzzer1 {

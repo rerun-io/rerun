@@ -37,6 +37,18 @@ pub struct Mat3x3(
     pub [f32; 9usize],
 );
 
+impl ::re_types_core::SizeBytes for Mat3x3 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[f32; 9usize]>::is_pod()
+    }
+}
+
 impl From<[f32; 9usize]> for Mat3x3 {
     #[inline]
     fn from(flat_columns: [f32; 9usize]) -> Self {

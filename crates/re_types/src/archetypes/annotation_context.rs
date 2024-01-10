@@ -78,6 +78,18 @@ pub struct AnnotationContext {
     pub context: crate::components::AnnotationContext,
 }
 
+impl ::re_types_core::SizeBytes for AnnotationContext {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.context.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::AnnotationContext>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.AnnotationContext".into()]);
 

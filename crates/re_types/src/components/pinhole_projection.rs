@@ -35,6 +35,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct PinholeProjection(pub crate::datatypes::Mat3x3);
 
+impl ::re_types_core::SizeBytes for PinholeProjection {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Mat3x3>::is_pod()
+    }
+}
+
 impl<T: Into<crate::datatypes::Mat3x3>> From<T> for PinholeProjection {
     fn from(v: T) -> Self {
         Self(v.into())

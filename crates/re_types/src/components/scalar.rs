@@ -28,6 +28,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Scalar(pub f64);
 
+impl ::re_types_core::SizeBytes for Scalar {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f64>::is_pod()
+    }
+}
+
 impl From<f64> for Scalar {
     #[inline]
     fn from(value: f64) -> Self {
