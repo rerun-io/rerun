@@ -1,8 +1,8 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query::{ArchetypeView, QueryError};
+use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points2D,
-    components::{Position2D, Text},
+    components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text},
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
@@ -15,14 +15,14 @@ use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
-        entity_iterator::process_archetype_views, load_keypoint_connections,
-        process_annotations_and_keypoints, process_colors, process_radii, UiLabel, UiLabelTarget,
+        load_keypoint_connections, process_annotation_and_keypoint_slices, process_color_slice,
+        UiLabel, UiLabelTarget,
     },
 };
 
-use super::{
-    filter_visualizable_2d_entities, picking_id_from_instance_key, SpatialViewVisualizerData,
-};
+use super::{filter_visualizable_2d_entities, SpatialViewVisualizerData};
+
+// ---
 
 pub struct Points2DVisualizer {
     /// If the number of points in the batch is > max_labels, don't render point labels.
@@ -41,15 +41,16 @@ impl Default for Points2DVisualizer {
 
 impl Points2DVisualizer {
     fn process_labels<'a>(
-        arch_view: &'a ArchetypeView<Points2D>,
+        &Points2DComponentData { labels, .. }: &'a Points2DComponentData<'_>,
+        positions: &'a [glam::Vec3],
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
-    ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
-        let labels = itertools::izip!(
+    ) -> impl Iterator<Item = UiLabel> + 'a {
+        itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<Position2D>()?,
-            arch_view.iter_optional_component::<Text>()?,
+            positions,
+            labels,
             colors,
             instance_path_hashes,
         )
@@ -60,60 +61,37 @@ impl Points2DVisualizer {
                     (point, Some(label)) => Some(UiLabel {
                         text: label,
                         color: *color,
-                        target: UiLabelTarget::Point2D(egui::pos2(point.x(), point.y())),
+                        target: UiLabelTarget::Point2D(egui::pos2(point.x, point.y)),
                         labeled_instance: *labeled_instance,
                     }),
                     _ => None,
                 }
             },
-        );
-        Ok(labels)
+        )
     }
 
-    fn process_arch_view(
+    fn process_data(
         &mut self,
         query: &ViewQuery<'_>,
-        arch_view: &ArchetypeView<Points2D>,
+        data: &Points2DComponentData<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError> {
+    ) {
         re_tracing::profile_function!();
 
-        let (annotation_infos, keypoints) =
-            process_annotations_and_keypoints::<Position2D, Points2D>(
-                query.latest_at,
-                arch_view,
-                &ent_context.annotations,
-                |p| (*p).into(),
-            )?;
+        let (annotation_infos, keypoints) = process_annotation_and_keypoint_slices(
+            query.latest_at,
+            data.instance_keys,
+            data.keypoint_ids,
+            data.class_ids,
+            data.positions.iter().map(|p| glam::vec3(p.x(), p.y(), 0.0)),
+            &ent_context.annotations,
+        );
 
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
-
-        let positions = arch_view
-            .iter_required_component::<Position2D>()?
-            .map(|pt| pt.into());
-
-        let picking_instance_ids = arch_view
-            .iter_instance_keys()
-            .map(picking_id_from_instance_key);
-
-        let positions: Vec<glam::Vec3> = {
-            re_tracing::profile_scope!("collect_positions");
-            positions.collect()
-        };
-        let radii: Vec<_> = {
-            re_tracing::profile_scope!("collect_radii");
-            radii.collect()
-        };
-        let colors: Vec<_> = {
-            re_tracing::profile_scope!("collect_colors");
-            colors.collect()
-        };
-        let picking_instance_ids: Vec<_> = {
-            re_tracing::profile_scope!("collect_picking_instance_ids");
-            picking_instance_ids.collect()
-        };
+        let positions = Self::load_positions(data);
+        let colors = Self::load_colors(data, ent_path, &annotation_infos);
+        let radii = Self::load_radii(data, ent_path);
+        let picking_instance_ids = Self::load_picking_ids(data);
 
         {
             re_tracing::profile_scope!("to_gpu");
@@ -138,9 +116,10 @@ impl Points2DVisualizer {
                 re_tracing::profile_scope!("marking additional highlight points");
                 for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
                     // TODO(andreas, jeremy): We can do this much more efficiently
-                    let highlighted_point_index = arch_view
-                        .iter_instance_keys()
-                        .position(|key| *highlighted_key == key);
+                    let highlighted_point_index = data
+                        .instance_keys
+                        .iter()
+                        .position(|key| highlighted_key == key);
                     if let Some(highlighted_point_index) = highlighted_point_index {
                         point_range_builder = point_range_builder
                             .push_additional_outline_mask_ids_for_range(
@@ -159,29 +138,90 @@ impl Points2DVisualizer {
 
         load_keypoint_connections(ent_context, ent_path, &keypoints);
 
-        if arch_view.num_instances() <= self.max_labels {
+        if data.instance_keys.len() <= self.max_labels {
+            re_tracing::profile_scope!("labels");
+
             // Max labels is small enough that we can afford iterating on the colors again.
             let colors =
-                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+                process_color_slice(data.colors, ent_path, &annotation_infos).collect::<Vec<_>>();
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
-                arch_view
-                    .iter_instance_keys()
+                data.instance_keys
+                    .iter()
+                    .copied()
                     .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
                     .collect::<Vec<_>>()
             };
 
             self.data.ui_labels.extend(Self::process_labels(
-                arch_view,
+                data,
+                &positions,
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
-            )?);
+            ));
         }
-
-        Ok(())
     }
+
+    #[inline]
+    pub fn load_positions(
+        Points2DComponentData { positions, .. }: &Points2DComponentData<'_>,
+    ) -> Vec<glam::Vec3> {
+        re_tracing::profile_function!();
+        positions
+            .iter()
+            .map(|p| glam::vec3(p.x(), p.y(), 0.0))
+            .collect()
+    }
+
+    #[inline]
+    pub fn load_radii(
+        &Points2DComponentData { radii, .. }: &Points2DComponentData<'_>,
+        ent_path: &EntityPath,
+    ) -> Vec<re_renderer::Size> {
+        re_tracing::profile_function!();
+        let radii = crate::visualizers::process_radius_slice(radii, ent_path);
+        {
+            re_tracing::profile_scope!("collect");
+            radii.collect()
+        }
+    }
+
+    #[inline]
+    pub fn load_colors(
+        &Points2DComponentData { colors, .. }: &Points2DComponentData<'_>,
+        ent_path: &EntityPath,
+        annotation_infos: &ResolvedAnnotationInfos,
+    ) -> Vec<re_renderer::Color32> {
+        re_tracing::profile_function!();
+        let colors = crate::visualizers::process_color_slice(colors, ent_path, annotation_infos);
+        {
+            re_tracing::profile_scope!("collect");
+            colors.collect()
+        }
+    }
+
+    #[inline]
+    pub fn load_picking_ids(
+        &Points2DComponentData { instance_keys, .. }: &Points2DComponentData<'_>,
+    ) -> Vec<PickingLayerInstanceId> {
+        re_tracing::profile_function!();
+        bytemuck::cast_slice(instance_keys).to_vec()
+    }
+}
+
+// ---
+
+#[doc(hidden)] // Public for benchmarks
+pub struct Points2DComponentData<'a> {
+    pub instance_keys: &'a [InstanceKey],
+    pub positions: &'a [Position2D],
+    pub colors: &'a [Option<Color>],
+    pub radii: &'a [Option<Radius>],
+    pub labels: &'a [Option<Text>],
+    pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
+    pub class_ids: Option<&'a [Option<ClassId>]>,
 }
 
 impl IdentifiedViewSystem for Points2DVisualizer {
@@ -217,13 +257,48 @@ impl VisualizerSystem for Points2DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Points2DVisualizer, Points2D, { Points2D::NUM_COMPONENTS }, _>(
+        super::entity_iterator::process_archetype_pov1_comp5::<
+            Points2DVisualizer,
+            Points2D,
+            Position2D,
+            Color,
+            Radius,
+            Text,
+            re_types::components::KeypointId,
+            re_types::components::ClassId,
+            _,
+        >(
             ctx,
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |_ctx, ent_path, _ent_props, arch_view, ent_context| {
-                self.process_arch_view(query, &arch_view, ent_path, ent_context)
+            ctx.app_options.experimental_primary_caching_point_clouds,
+            |_ctx,
+             ent_path,
+             _ent_props,
+             ent_context,
+             (_time, _row_id),
+             instance_keys,
+             positions,
+             colors,
+             radii,
+             labels,
+             keypoint_ids,
+             class_ids| {
+                let data = Points2DComponentData {
+                    instance_keys,
+                    positions,
+                    colors,
+                    radii,
+                    labels,
+                    keypoint_ids: keypoint_ids
+                        .iter()
+                        .any(Option::is_some)
+                        .then_some(keypoint_ids),
+                    class_ids: class_ids.iter().any(Option::is_some).then_some(class_ids),
+                };
+                self.process_data(query, &data, ent_path, ent_context);
+                Ok(())
             },
         )?;
 
