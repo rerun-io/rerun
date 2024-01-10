@@ -16,6 +16,18 @@ pub trait ErasedFlatVecDeque: std::any::Any {
 
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any>;
 
+    /// Dynamically dispatches to [`FlatVecDeque::num_entries`].
+    ///
+    /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
+    /// avoid even with explicit syntax and that silently lead to infinite recursions.
+    fn dyn_num_entries(&self) -> usize;
+
+    /// Dynamically dispatches to [`FlatVecDeque::num_values`].
+    ///
+    /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
+    /// avoid even with explicit syntax and that silently lead to infinite recursions.
+    fn dyn_num_values(&self) -> usize;
+
     /// Dynamically dispatches to [`FlatVecDeque::remove`].
     ///
     /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
@@ -49,6 +61,16 @@ impl<T: 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
     #[inline]
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
         self
+    }
+
+    #[inline]
+    fn dyn_num_entries(&self) -> usize {
+        self.num_entries()
+    }
+
+    #[inline]
+    fn dyn_num_values(&self) -> usize {
+        self.num_values()
     }
 
     #[inline]

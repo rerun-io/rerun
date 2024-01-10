@@ -1,7 +1,8 @@
 use re_data_store::{DataStoreConfig, DataStoreRowStats, DataStoreStats};
 use re_format::{format_bytes, format_number};
+use re_log_types::EntityPath;
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
-use re_query_cache::{CachedEntityStats, CachesStats};
+use re_query_cache::{CachedComponentStats, CachedEntityStats, CachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 
 use crate::{env_vars::RERUN_TRACK_ALLOCATIONS, store_hub::StoreHubStats};
@@ -106,7 +107,7 @@ impl MemoryPanel {
 
         ui.separator();
         ui.collapsing("Primary Cache Resources", |ui| {
-            Self::caches_stats(ui, caches_stats);
+            Self::caches_stats(ui, re_ui, caches_stats);
         });
 
         ui.separator();
@@ -309,13 +310,18 @@ impl MemoryPanel {
             });
     }
 
-    fn caches_stats(ui: &mut egui::Ui, caches_stats: &CachesStats) {
+    fn caches_stats(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, caches_stats: &CachesStats) {
+        let mut detailed_stats = re_query_cache::detailed_stats();
+        re_ui
+            .checkbox(ui, &mut detailed_stats, "Detailed stats")
+            .on_hover_text("Show detailed statistics when hovering entity paths below.\nThis will slow down the program.");
+        re_query_cache::set_detailed_stats(detailed_stats);
+
         egui::Grid::new("cache stats grid")
             .num_columns(3)
             .show(ui, |ui| {
                 let CachesStats { latest_at } = caches_stats;
 
-                ui.label(egui::RichText::new("Stats").italics());
                 ui.label("Entity");
                 ui.label("Entries").on_hover_text(
                     "How many timestamps distinct data timestamps have been cached?",
@@ -323,21 +329,50 @@ impl MemoryPanel {
                 ui.label("Size");
                 ui.end_row();
 
-                fn label_entity_stats(ui: &mut egui::Ui, cache_stats: &CachedEntityStats) {
-                    let &CachedEntityStats {
+                fn label_entity_stats(
+                    ui: &mut egui::Ui,
+                    cache_stats: &CachedEntityStats,
+                    entity_path: &EntityPath,
+                ) {
+                    let CachedEntityStats {
                         total_size_bytes,
-                        num_cached_timestamps,
+                        total_times,
+                        per_component,
                     } = cache_stats;
 
-                    ui.label(re_format::format_number(num_cached_timestamps as _));
-                    ui.label(re_format::format_bytes(total_size_bytes as _));
+                    let res = ui.label(entity_path.to_string());
+                    if let Some(per_component) = per_component.as_ref() {
+                        res.on_hover_ui_at_pointer(|ui| {
+                            egui::Grid::new("component cache stats grid")
+                                .num_columns(3)
+                                .show(ui, |ui| {
+                                    ui.label("Component");
+                                    ui.label("Entries");
+                                    ui.label("Count");
+                                    ui.end_row();
+
+                                    for (component_name, stats) in per_component {
+                                        let &CachedComponentStats {
+                                            total_times,
+                                            total_values,
+                                        } = stats;
+
+                                        ui.label(component_name.to_string());
+                                        ui.label(re_format::format_number(total_times as _));
+                                        ui.label(re_format::format_number(total_values as _));
+                                        ui.end_row();
+                                    }
+                                });
+                        });
+                    }
+
+                    ui.label(re_format::format_number(*total_times as _));
+                    ui.label(re_format::format_bytes(*total_size_bytes as _));
+                    ui.end_row();
                 }
 
                 for (entity_path, stats) in latest_at {
-                    ui.label(entity_path.to_string());
-                    ui.label("");
-                    label_entity_stats(ui, stats);
-                    ui.end_row();
+                    label_entity_stats(ui, stats, entity_path);
                 }
             });
     }
