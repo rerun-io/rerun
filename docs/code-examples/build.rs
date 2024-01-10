@@ -12,15 +12,19 @@ use itertools::Itertools as _;
 use rust_format::Formatter as _;
 
 fn main() {
-    let manifest_path =
+    let crate_path =
         Path::new(&re_build_tools::get_and_track_env_var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
-    let path = manifest_path.join("all");
+    let all_path = crate_path.join("all");
+    let src_path = crate_path.join("src");
 
-    assert!(path.exists() && path.is_dir(), "Failed to find {path:?}");
+    assert!(
+        all_path.exists() && all_path.is_dir(),
+        "Failed to find {all_path:?}"
+    );
 
     let mut examples = Vec::new();
 
-    for entry in fs::read_dir(path).unwrap().flatten() {
+    for entry in fs::read_dir(all_path).unwrap().flatten() {
         let path = entry.path();
         if let Some(extension) = path.extension() {
             if extension == "rs" {
@@ -37,7 +41,7 @@ fn main() {
                         "let args = _args;",
                     );
 
-                    let target_path = format!("src/{example_name}.rs");
+                    let target_path = src_path.join(format!("{example_name}.rs"));
                     re_build_tools::write_file_if_necessary(target_path, contents.as_bytes())
                         .unwrap();
 
@@ -99,5 +103,5 @@ fn main() {
         .format_str(source)
         .expect("Failed to format");
 
-    re_build_tools::write_file_if_necessary("src/lib.rs", source.as_bytes()).unwrap();
+    re_build_tools::write_file_if_necessary(src_path.join("lib.rs"), source.as_bytes()).unwrap();
 }
