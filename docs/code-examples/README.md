@@ -12,7 +12,7 @@ You can run each example individually using the following:
   - `pixi run cpp-build-doc-examples` to compile all examples
   - `./build/docs/code-examples/all/<example_name>` to run, e.g. `./build/docs/code-examples/all/point3d_random`
 - **Python**: `python <example_name>.py`, e.g. `python point3d_random.py`.
-- **Rust**: `cargo run -p code_examples -- <example_name`, e.g. `cargo run -p code_examples -- point3d_random`.
+- **Rust**: `cargo run -p code_examples -- <example_name> [args]`, e.g. `cargo run -p code_examples -- point3d_random`.
 
 ## Roundtrips
 
