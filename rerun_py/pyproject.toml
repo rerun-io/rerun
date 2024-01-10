@@ -108,7 +108,14 @@ select = [
 ]
 
 [tool.ruff.per-file-ignores]
-"docs/code-examples/*" = ["I002"]
+"docs/code-examples/*" = [
+  # Missing required import: `from __future__ import annotations`
+  "I002",
+]
+"crates/re_viewer/data/quick_start_guides/*" = [
+  # Missing required import: `from __future__ import annotations`
+  "I002",
+]
 "__init__.py" = ["F401", "F403"]
 
 [tool.ruff.isort]
