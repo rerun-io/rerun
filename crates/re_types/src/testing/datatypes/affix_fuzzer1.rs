@@ -37,19 +37,15 @@ pub struct AffixFuzzer1 {
 impl ::re_types_core::SizeBytes for AffixFuzzer1 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.single_float_optional.heap_size_bytes(),
-            self.single_string_required.heap_size_bytes(),
-            self.single_string_optional.heap_size_bytes(),
-            self.many_floats_optional.heap_size_bytes(),
-            self.many_strings_required.heap_size_bytes(),
-            self.many_strings_optional.heap_size_bytes(),
-            self.flattened_scalar.heap_size_bytes(),
-            self.almost_flattened_scalar.heap_size_bytes(),
-            self.from_parent.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.single_float_optional.heap_size_bytes()
+            + self.single_string_required.heap_size_bytes()
+            + self.single_string_optional.heap_size_bytes()
+            + self.many_floats_optional.heap_size_bytes()
+            + self.many_strings_required.heap_size_bytes()
+            + self.many_strings_optional.heap_size_bytes()
+            + self.flattened_scalar.heap_size_bytes()
+            + self.almost_flattened_scalar.heap_size_bytes()
+            + self.from_parent.heap_size_bytes()
     }
 
     #[inline]

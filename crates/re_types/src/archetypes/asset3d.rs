@@ -78,13 +78,9 @@ pub struct Asset3D {
 impl ::re_types_core::SizeBytes for Asset3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.blob.heap_size_bytes(),
-            self.media_type.heap_size_bytes(),
-            self.transform.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.blob.heap_size_bytes()
+            + self.media_type.heap_size_bytes()
+            + self.transform.heap_size_bytes()
     }
 
     #[inline]

@@ -36,12 +36,7 @@ pub struct ClassDescriptionMapElem {
 impl ::re_types_core::SizeBytes for ClassDescriptionMapElem {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.class_id.heap_size_bytes(),
-            self.class_description.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.class_id.heap_size_bytes() + self.class_description.heap_size_bytes()
     }
 
     #[inline]

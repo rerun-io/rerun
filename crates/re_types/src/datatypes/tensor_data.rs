@@ -38,9 +38,7 @@ pub struct TensorData {
 impl ::re_types_core::SizeBytes for TensorData {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [self.shape.heap_size_bytes(), self.buffer.heap_size_bytes()]
-            .into_iter()
-            .sum::<u64>()
+        self.shape.heap_size_bytes() + self.buffer.heap_size_bytes()
     }
 
     #[inline]

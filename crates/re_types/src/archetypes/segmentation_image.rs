@@ -85,12 +85,7 @@ pub struct SegmentationImage {
 impl ::re_types_core::SizeBytes for SegmentationImage {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.data.heap_size_bytes(),
-            self.draw_order.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.data.heap_size_bytes() + self.draw_order.heap_size_bytes()
     }
 
     #[inline]

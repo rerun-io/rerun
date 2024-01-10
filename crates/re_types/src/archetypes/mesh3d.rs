@@ -86,17 +86,13 @@ pub struct Mesh3D {
 impl ::re_types_core::SizeBytes for Mesh3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.vertex_positions.heap_size_bytes(),
-            self.mesh_properties.heap_size_bytes(),
-            self.vertex_normals.heap_size_bytes(),
-            self.vertex_colors.heap_size_bytes(),
-            self.mesh_material.heap_size_bytes(),
-            self.class_ids.heap_size_bytes(),
-            self.instance_keys.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.vertex_positions.heap_size_bytes()
+            + self.mesh_properties.heap_size_bytes()
+            + self.vertex_normals.heap_size_bytes()
+            + self.vertex_colors.heap_size_bytes()
+            + self.mesh_material.heap_size_bytes()
+            + self.class_ids.heap_size_bytes()
+            + self.instance_keys.heap_size_bytes()
     }
 
     #[inline]

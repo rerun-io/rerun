@@ -101,13 +101,9 @@ pub struct Pinhole {
 impl ::re_types_core::SizeBytes for Pinhole {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.image_from_camera.heap_size_bytes(),
-            self.resolution.heap_size_bytes(),
-            self.camera_xyz.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.image_from_camera.heap_size_bytes()
+            + self.resolution.heap_size_bytes()
+            + self.camera_xyz.heap_size_bytes()
     }
 
     #[inline]

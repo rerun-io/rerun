@@ -37,7 +37,7 @@ pub struct TextLogLevel(pub crate::datatypes::Utf8);
 impl ::re_types_core::SizeBytes for TextLogLevel {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+        self.0.heap_size_bytes()
     }
 
     #[inline]

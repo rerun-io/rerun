@@ -67,7 +67,7 @@ pub struct ViewCoordinates {
 impl ::re_types_core::SizeBytes for ViewCoordinates {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [self.xyz.heap_size_bytes()].into_iter().sum::<u64>()
+        self.xyz.heap_size_bytes()
     }
 
     #[inline]

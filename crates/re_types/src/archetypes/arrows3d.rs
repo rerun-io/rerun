@@ -98,17 +98,13 @@ pub struct Arrows3D {
 impl ::re_types_core::SizeBytes for Arrows3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.vectors.heap_size_bytes(),
-            self.origins.heap_size_bytes(),
-            self.radii.heap_size_bytes(),
-            self.colors.heap_size_bytes(),
-            self.labels.heap_size_bytes(),
-            self.class_ids.heap_size_bytes(),
-            self.instance_keys.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.vectors.heap_size_bytes()
+            + self.origins.heap_size_bytes()
+            + self.radii.heap_size_bytes()
+            + self.colors.heap_size_bytes()
+            + self.labels.heap_size_bytes()
+            + self.class_ids.heap_size_bytes()
+            + self.instance_keys.heap_size_bytes()
     }
 
     #[inline]

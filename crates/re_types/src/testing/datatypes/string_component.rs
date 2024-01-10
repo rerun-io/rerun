@@ -28,7 +28,7 @@ pub struct StringComponent(pub ::re_types_core::ArrowString);
 impl ::re_types_core::SizeBytes for StringComponent {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+        self.0.heap_size_bytes()
     }
 
     #[inline]

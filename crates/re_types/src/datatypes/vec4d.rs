@@ -29,7 +29,7 @@ pub struct Vec4D(pub [f32; 4usize]);
 impl ::re_types_core::SizeBytes for Vec4D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+        self.0.heap_size_bytes()
     }
 
     #[inline]

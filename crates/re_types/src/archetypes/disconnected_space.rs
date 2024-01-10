@@ -72,9 +72,7 @@ pub struct DisconnectedSpace {
 impl ::re_types_core::SizeBytes for DisconnectedSpace {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [self.disconnected_space.heap_size_bytes()]
-            .into_iter()
-            .sum::<u64>()
+        self.disconnected_space.heap_size_bytes()
     }
 
     #[inline]

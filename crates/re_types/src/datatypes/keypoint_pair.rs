@@ -34,12 +34,7 @@ pub struct KeypointPair {
 impl ::re_types_core::SizeBytes for KeypointPair {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.keypoint0.heap_size_bytes(),
-            self.keypoint1.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.keypoint0.heap_size_bytes() + self.keypoint1.heap_size_bytes()
     }
 
     #[inline]

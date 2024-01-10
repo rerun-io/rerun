@@ -36,7 +36,7 @@ pub struct KeypointId(pub crate::datatypes::KeypointId);
 impl ::re_types_core::SizeBytes for KeypointId {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [self.0.heap_size_bytes()].into_iter().sum::<u64>()
+        self.0.heap_size_bytes()
     }
 
     #[inline]

@@ -54,16 +54,12 @@ pub struct SpaceViewBlueprint {
 impl ::re_types_core::SizeBytes for SpaceViewBlueprint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.class_identifier.heap_size_bytes(),
-            self.display_name.heap_size_bytes(),
-            self.space_origin.heap_size_bytes(),
-            self.entities_determined_by_user.heap_size_bytes(),
-            self.contents.heap_size_bytes(),
-            self.visible.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.class_identifier.heap_size_bytes()
+            + self.display_name.heap_size_bytes()
+            + self.space_origin.heap_size_bytes()
+            + self.entities_determined_by_user.heap_size_bytes()
+            + self.contents.heap_size_bytes()
+            + self.visible.heap_size_bytes()
     }
 
     #[inline]

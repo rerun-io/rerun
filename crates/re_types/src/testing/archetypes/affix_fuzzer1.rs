@@ -50,32 +50,28 @@ pub struct AffixFuzzer1 {
 impl ::re_types_core::SizeBytes for AffixFuzzer1 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.fuzz1001.heap_size_bytes(),
-            self.fuzz1002.heap_size_bytes(),
-            self.fuzz1003.heap_size_bytes(),
-            self.fuzz1004.heap_size_bytes(),
-            self.fuzz1005.heap_size_bytes(),
-            self.fuzz1006.heap_size_bytes(),
-            self.fuzz1007.heap_size_bytes(),
-            self.fuzz1008.heap_size_bytes(),
-            self.fuzz1009.heap_size_bytes(),
-            self.fuzz1010.heap_size_bytes(),
-            self.fuzz1011.heap_size_bytes(),
-            self.fuzz1012.heap_size_bytes(),
-            self.fuzz1013.heap_size_bytes(),
-            self.fuzz1014.heap_size_bytes(),
-            self.fuzz1015.heap_size_bytes(),
-            self.fuzz1016.heap_size_bytes(),
-            self.fuzz1017.heap_size_bytes(),
-            self.fuzz1018.heap_size_bytes(),
-            self.fuzz1019.heap_size_bytes(),
-            self.fuzz1020.heap_size_bytes(),
-            self.fuzz1021.heap_size_bytes(),
-            self.fuzz1022.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.fuzz1001.heap_size_bytes()
+            + self.fuzz1002.heap_size_bytes()
+            + self.fuzz1003.heap_size_bytes()
+            + self.fuzz1004.heap_size_bytes()
+            + self.fuzz1005.heap_size_bytes()
+            + self.fuzz1006.heap_size_bytes()
+            + self.fuzz1007.heap_size_bytes()
+            + self.fuzz1008.heap_size_bytes()
+            + self.fuzz1009.heap_size_bytes()
+            + self.fuzz1010.heap_size_bytes()
+            + self.fuzz1011.heap_size_bytes()
+            + self.fuzz1012.heap_size_bytes()
+            + self.fuzz1013.heap_size_bytes()
+            + self.fuzz1014.heap_size_bytes()
+            + self.fuzz1015.heap_size_bytes()
+            + self.fuzz1016.heap_size_bytes()
+            + self.fuzz1017.heap_size_bytes()
+            + self.fuzz1018.heap_size_bytes()
+            + self.fuzz1019.heap_size_bytes()
+            + self.fuzz1020.heap_size_bytes()
+            + self.fuzz1021.heap_size_bytes()
+            + self.fuzz1022.heap_size_bytes()
     }
 
     #[inline]

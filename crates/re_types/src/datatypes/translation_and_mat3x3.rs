@@ -42,13 +42,9 @@ pub struct TranslationAndMat3x3 {
 impl ::re_types_core::SizeBytes for TranslationAndMat3x3 {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.translation.heap_size_bytes(),
-            self.mat3x3.heap_size_bytes(),
-            self.from_parent.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.translation.heap_size_bytes()
+            + self.mat3x3.heap_size_bytes()
+            + self.from_parent.heap_size_bytes()
     }
 
     #[inline]

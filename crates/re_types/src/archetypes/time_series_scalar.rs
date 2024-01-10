@@ -104,15 +104,11 @@ pub struct TimeSeriesScalar {
 impl ::re_types_core::SizeBytes for TimeSeriesScalar {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [
-            self.scalar.heap_size_bytes(),
-            self.radius.heap_size_bytes(),
-            self.color.heap_size_bytes(),
-            self.label.heap_size_bytes(),
-            self.scattered.heap_size_bytes(),
-        ]
-        .into_iter()
-        .sum::<u64>()
+        self.scalar.heap_size_bytes()
+            + self.radius.heap_size_bytes()
+            + self.color.heap_size_bytes()
+            + self.label.heap_size_bytes()
+            + self.scattered.heap_size_bytes()
     }
 
     #[inline]

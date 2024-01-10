@@ -34,9 +34,7 @@ pub struct TensorDimension {
 impl ::re_types_core::SizeBytes for TensorDimension {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        [self.size.heap_size_bytes(), self.name.heap_size_bytes()]
-            .into_iter()
-            .sum::<u64>()
+        self.size.heap_size_bytes() + self.name.heap_size_bytes()
     }
 
     #[inline]
