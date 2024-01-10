@@ -118,8 +118,8 @@ impl Caches {
             re_data_store::DataStore::with_subscriber_once(*CACHES, move |caches: &Caches| {
                 let mut caches = caches.0.write();
 
-                let caches_per_archetype = caches.entry(key).or_default();
-                caches_per_archetype.handle_pending_invalidation();
+                let caches_per_archetype = caches.entry(key.clone()).or_default();
+                caches_per_archetype.handle_pending_invalidation(&key);
 
                 let mut latest_at_per_archetype =
                     caches_per_archetype.latest_at_per_archetype.write();
@@ -272,7 +272,7 @@ impl CachesPerArchetype {
     ///
     /// Invalidation is deferred to query time because it is far more efficient that way: the frame
     /// time effectively behaves as a natural micro-batching mechanism.
-    fn handle_pending_invalidation(&mut self) {
+    fn handle_pending_invalidation(&mut self, key: &CacheKey) {
         let pending_timeless_invalidation = self.pending_timeless_invalidation;
         let pending_timeful_invalidation = self.pending_timeful_invalidation.is_some();
 
@@ -289,15 +289,39 @@ impl CachesPerArchetype {
                 latest_at_cache.timeless = None;
             }
 
+            let mut removed_bytes = 0u64;
             if let Some(min_time) = self.pending_timeful_invalidation {
                 latest_at_cache
                     .per_query_time
                     .retain(|&query_time, _| query_time < min_time);
 
-                latest_at_cache
-                    .per_data_time
-                    .retain(|&data_time, _| data_time < min_time);
+                latest_at_cache.per_data_time.retain(|&data_time, bucket| {
+                    if data_time < min_time {
+                        return true;
+                    }
+
+                    // Only if that bucket is about to be dropped.
+                    if Arc::strong_count(bucket) == 1 {
+                        removed_bytes += bucket.read().total_size_bytes;
+                    }
+
+                    false
+                });
             }
+
+            latest_at_cache.total_size_bytes = latest_at_cache
+                .total_size_bytes
+                .checked_sub(removed_bytes)
+                .unwrap_or_else(|| {
+                    re_log::debug!(
+                        store_id = %key.store_id,
+                        entity_path = %key.entity_path,
+                        current = latest_at_cache.total_size_bytes,
+                        removed = removed_bytes,
+                        "book keeping underflowed"
+                    );
+                    u64::MIN
+                });
         }
 
         self.pending_timeful_invalidation = None;
@@ -336,6 +360,12 @@ pub struct CacheBucket {
     // TODO(#4733): Don't denormalize auto-generated instance keys.
     // TODO(#4734): Don't denormalize splatted values.
     pub(crate) components: BTreeMap<ComponentName, Box<dyn ErasedFlatVecDeque + Send + Sync>>,
+
+    /// The total size in bytes stored in this bucket.
+    ///
+    /// Only used so we can decrement the global cache size when the last reference to a bucket
+    /// gets dropped.
+    pub(crate) total_size_bytes: u64,
     //
     // TODO(cmc): secondary cache
     // TODO(#4730): size stats: this requires codegen'ing SizeBytes for all components!
@@ -432,6 +462,8 @@ macro_rules! impl_insert {
 
             $(added_size_bytes += self.insert_component::<A, $pov>(index, arch_view)?;)+
             $(added_size_bytes += self.insert_component_opt::<A, $comp>(index, arch_view)?;)*
+
+            self.total_size_bytes += added_size_bytes;
 
             Ok(added_size_bytes)
         } }
@@ -561,6 +593,6 @@ pub struct LatestAtCache {
     // timeful case.
     pub timeless: Option<CacheBucket>,
 
-    // TODO
+    /// Total size of the data stored in this cache in bytes.
     pub total_size_bytes: u64,
 }
