@@ -186,6 +186,6 @@ install(FILES
 # -----------------------------------------------------------------------------
 # Add tests if they exist (they are not part of the distribution zip).
 # Has direct dependency to arrow, so needs to happen last.
-if(EXISTS tests)
-    add_subdirectory(tests)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests)
 endif()
