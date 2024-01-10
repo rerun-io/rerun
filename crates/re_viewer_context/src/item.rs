@@ -10,6 +10,8 @@ use super::SpaceViewId;
 /// This is the granularity of what is selectable and hoverable.
 #[derive(Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Item {
+    /// A recording (or blueprint)
+    StoreId(re_log_types::StoreId),
     ComponentPath(ComponentPath),
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
@@ -81,6 +83,7 @@ impl std::str::FromStr for Item {
 impl std::fmt::Debug for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Item::StoreId(store_id) => store_id.fmt(f),
             Item::ComponentPath(s) => s.fmt(f),
             Item::SpaceView(s) => write!(f, "{s:?}"),
             Item::InstancePath(sid, path) => write!(f, "({sid:?}, {path})"),
@@ -95,6 +98,10 @@ impl std::fmt::Debug for Item {
 impl Item {
     pub fn kind(self: &Item) -> &'static str {
         match self {
+            Item::StoreId(store_id) => match store_id.kind {
+                re_log_types::StoreKind::Recording => "Recording ID",
+                re_log_types::StoreKind::Blueprint => "Blueprint ID",
+            },
             Item::InstancePath(space_view_id, instance_path) => {
                 match (
                     instance_path.instance_key.is_specific(),
@@ -126,7 +133,8 @@ pub fn resolve_mono_instance_path_item(
             *space_view,
             resolve_mono_instance_path(query, store, instance),
         ),
-        Item::ComponentPath(_)
+        Item::StoreId(_)
+        | Item::ComponentPath(_)
         | Item::SpaceView(_)
         | Item::DataBlueprintGroup(_, _, _)
         | Item::Container(_) => item.clone(),

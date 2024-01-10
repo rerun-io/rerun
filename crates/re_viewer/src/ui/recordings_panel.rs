@@ -1,10 +1,9 @@
 use std::collections::BTreeMap;
 
+use re_data_ui::DataUi;
 use re_log_types::LogMsg;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_viewer_context::{
-    AppOptions, CommandSender, SystemCommand, SystemCommandSender, ViewerContext,
-};
+use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
 
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
@@ -107,14 +106,8 @@ fn loading_receivers_ui(
 ///
 /// Returns `true` if any recordings were shown.
 fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
-    let ViewerContext {
-        store_context,
-        command_sender,
-        ..
-    } = ctx;
-
     let mut entity_dbs_map: BTreeMap<_, Vec<_>> = BTreeMap::new();
-    for entity_db in &store_context.all_recordings {
+    for entity_db in &ctx.store_context.all_recordings {
         let key = entity_db
             .store_info()
             .map_or("<unknown>", |info| info.application_id.as_str());
@@ -129,25 +122,12 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
         entity_dbs.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
     }
 
-    let active_recording = store_context.recording.map(|rec| rec.store_id());
+    let active_recording = ctx.store_context.recording.map(|rec| rec.store_id());
 
     for (app_id, entity_dbs) in entity_dbs_map {
         if entity_dbs.len() == 1 {
             let entity_db = entity_dbs[0];
-            if recording_ui(
-                ctx.app_options,
-                ctx.re_ui,
-                ui,
-                entity_db,
-                Some(app_id),
-                active_recording,
-                command_sender,
-            )
-            .clicked()
-            {
-                command_sender
-                    .send_system(SystemCommand::SetRecordingId(entity_db.store_id().clone()));
-            }
+            recording_ui(ctx, ui, entity_db, Some(app_id), active_recording);
         } else {
             ctx.re_ui.list_item(app_id).active(false).show_collapsing(
                 ui,
@@ -155,21 +135,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
                 true,
                 |_, ui| {
                     for entity_db in entity_dbs {
-                        if recording_ui(
-                            ctx.app_options,
-                            ctx.re_ui,
-                            ui,
-                            entity_db,
-                            None,
-                            active_recording,
-                            command_sender,
-                        )
-                        .clicked()
-                        {
-                            command_sender.send_system(SystemCommand::SetRecordingId(
-                                entity_db.store_id().clone(),
-                            ));
-                        }
+                        recording_ui(ctx, ui, entity_db, None, active_recording);
                     }
                 },
             );
@@ -183,45 +149,36 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
 ///
 /// If an `app_id_label` is provided, it will be shown in front of the recording time.
 fn recording_ui(
-    app_options: &AppOptions,
-    re_ui: &re_ui::ReUi,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_db: &re_entity_db::EntityDb,
     app_id_label: Option<&str>,
     active_recording: Option<&re_log_types::StoreId>,
-    command_sender: &CommandSender,
-) -> egui::Response {
-    let prefix = if let Some(app_id_label) = app_id_label {
-        format!("{app_id_label} - ")
-    } else {
-        String::new()
-    };
+) {
+    let app_id_label =
+        app_id_label.map_or(String::new(), |app_id_label| format!("{app_id_label} - "));
 
-    let name = entity_db
+    let time = entity_db
         .store_info()
         .and_then(|info| {
             info.started.format_time_custom(
                 "[hour]:[minute]:[second]",
-                app_options.time_zone_for_timestamps,
+                ctx.app_options.time_zone_for_timestamps,
             )
         })
         .unwrap_or("<unknown time>".to_owned());
 
-    let response = re_ui
-        .list_item(format!("{prefix}{name}"))
-        .with_buttons(|re_ui, ui| {
-            let resp = re_ui
-                .small_icon_button(ui, &re_ui::icons::REMOVE)
-                .on_hover_text("Close this Recording (unsaved data will be lost)");
-            if resp.clicked() {
-                command_sender.send_system(SystemCommand::CloseRecordingId(
-                    entity_db.store_id().clone(),
-                ));
-            }
-            resp
-        })
+    let title = format!("{app_id_label}{time}");
+
+    let store_id = entity_db.store_id().clone();
+    let item = re_viewer_context::Item::StoreId(store_id.clone());
+
+    let mut list_item = ctx
+        .re_ui
+        .list_item(title)
+        .selected(ctx.selection().contains_item(&item))
         .with_icon_fn(|_re_ui, ui, rect, visuals| {
-            let color = if active_recording == Some(entity_db.store_id()) {
+            let color = if active_recording == Some(&store_id) {
                 visuals.fg_stroke.color
             } else {
                 ui.visuals().widgets.noninteractive.fg_stroke.color
@@ -230,73 +187,45 @@ fn recording_ui(
             ui.painter()
                 .circle(rect.center(), 4.0, color, egui::Stroke::NONE);
         })
-        .show(ui);
-
-    response.on_hover_ui(|ui| {
-        recording_hover_ui(app_options, re_ui, ui, entity_db);
-    })
-}
-
-fn recording_hover_ui(
-    app_options: &AppOptions,
-    re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
-    entity_db: &re_entity_db::EntityDb,
-) {
-    egui::Grid::new("recording_hover_ui")
-        .num_columns(2)
-        .show(ui, |ui| {
-            re_ui.grid_left_hand_label(ui, "Store ID");
-            ui.label(entity_db.store_id().to_string());
-            ui.end_row();
-
-            if let Some(data_source) = &entity_db.data_source {
-                re_ui.grid_left_hand_label(ui, "Data source");
-                ui.label(data_source_string(data_source));
-                ui.end_row();
+        .with_buttons(|re_ui, ui| {
+            // Close-button:
+            let resp = re_ui
+                .small_icon_button(ui, &re_ui::icons::REMOVE)
+                .on_hover_text("Close this Recording (unsaved data will be lost)");
+            if resp.clicked() {
+                ctx.command_sender
+                    .send_system(SystemCommand::CloseRecordingId(store_id.clone()));
             }
-
-            if let Some(store_info) = entity_db.store_info() {
-                let re_log_types::StoreInfo {
-                    application_id,
-                    store_id: _,
-                    is_official_example: _,
-                    started,
-                    store_source,
-                    store_kind,
-                } = store_info;
-
-                re_ui.grid_left_hand_label(ui, "Application ID");
-                ui.label(application_id.to_string());
-                ui.end_row();
-
-                re_ui.grid_left_hand_label(ui, "Recording started");
-                ui.label(started.format(app_options.time_zone_for_timestamps));
-                ui.end_row();
-
-                re_ui.grid_left_hand_label(ui, "Source");
-                ui.label(store_source.to_string());
-                ui.end_row();
-
-                // We are in the recordings menu, we know the kind
-                if false {
-                    re_ui.grid_left_hand_label(ui, "Kind");
-                    ui.label(store_kind.to_string());
-                    ui.end_row();
-                }
-            }
+            resp
         });
-}
 
-fn data_source_string(data_source: &re_smart_channel::SmartChannelSource) -> String {
-    match data_source {
-        SmartChannelSource::File(path) => path.display().to_string(),
-        SmartChannelSource::RrdHttpStream { url } => url.clone(),
-        SmartChannelSource::RrdWebEventListener => "Web Event Listener".to_owned(),
-        SmartChannelSource::Sdk => "SDK".to_owned(),
-        SmartChannelSource::WsClient { ws_server_url } => ws_server_url.clone(),
-        SmartChannelSource::TcpServer { port } => format!("TCP Server, port {port}"),
-        SmartChannelSource::Stdin => "Standard Input".to_owned(),
+    if ctx.hovered().contains_item(&item) {
+        list_item = list_item.force_hovered(true);
+    }
+
+    let response = list_item.show(ui).on_hover_ui(|ui| {
+        entity_db.data_ui(
+            ctx,
+            ui,
+            re_viewer_context::UiVerbosity::Full,
+            &ctx.current_query(),
+        );
+    });
+
+    if response.hovered() {
+        ctx.selection_state().set_hovered(item.clone());
+    }
+
+    if response.clicked() {
+        // Open the recording…
+        ctx.command_sender
+            .send_system(SystemCommand::SetRecordingId(store_id.clone()));
+
+        // …and select the recording in the recording.
+        // Note that we must do it in this order, since the selection state is stored in the recording.
+        // That's also why we use a command to set the selection.
+        ctx.command_sender
+            .send_system(SystemCommand::SetSelection(store_id, item));
     }
 }
 

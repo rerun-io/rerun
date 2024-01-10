@@ -312,7 +312,8 @@ impl ApplicationSelectionState {
             .hovered_previous_frame
             .iter_items()
             .any(|current| match current {
-                Item::ComponentPath(_)
+                Item::StoreId(_)
+                | Item::ComponentPath(_)
                 | Item::SpaceView(_)
                 | Item::DataBlueprintGroup(_, _, _)
                 | Item::Container(_) => current == test,

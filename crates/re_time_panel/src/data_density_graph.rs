@@ -8,10 +8,12 @@ use std::ops::RangeInclusive;
 use egui::emath::Rangef;
 use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
 
-use re_data_ui::{item_ui, DataUi};
+use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
-use re_log_types::{TimeInt, TimeRange, TimeReal};
+use re_log_types::{ComponentPath, TimeInt, TimeRange, TimeReal};
 use re_viewer_context::{Item, TimeControl, UiVerbosity, ViewerContext};
+
+use crate::TimePanelItem;
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -376,7 +378,7 @@ pub fn data_density_graph_ui(
     time_histogram: &TimeHistogram,
     row_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
-    item: &Item,
+    item: &TimePanelItem,
 ) {
     re_tracing::profile_function!();
 
@@ -476,15 +478,15 @@ pub fn data_density_graph_ui(
         data_dentity_graph_painter,
         row_rect.y_range(),
         time_area_painter,
-        graph_color(ctx, item, ui),
+        graph_color(ctx, &item.to_item(), ui),
         hovered_x_range,
     );
 
     if 0 < num_hovered_messages {
-        ctx.selection_state().set_hovered(item.clone());
+        ctx.selection_state().set_hovered(item.to_item());
 
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
-            ctx.selection_state().set_selection(item.clone());
+            ctx.selection_state().set_selection(item.to_item());
             time_ctrl.set_time(hovered_time_range.min);
             time_ctrl.pause();
         } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
@@ -523,10 +525,12 @@ fn show_row_ids_tooltip(
     ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
     egui_ctx: &egui::Context,
-    item: &Item,
+    item: &TimePanelItem,
     time_range: TimeRange,
     num_events: usize,
 ) {
+    use re_data_ui::DataUi as _;
+
     if num_events == 0 {
         return;
     }
@@ -538,22 +542,24 @@ fn show_row_ids_tooltip(
             ui.label(format!("{num_events} events"));
         }
 
-        match item {
-            Item::ComponentPath(path) => {
-                item_ui::component_path_button(ctx, ui, path);
-            }
-            Item::InstancePath(_, path) => {
-                item_ui::instance_path_button(ctx, ui, None, path);
-            }
-            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => {
-                // No extra info. This should never happen, but not worth printing a warning over.
-                // Even if it does go here, the ui after will still look ok.
-            }
-        }
-
-        ui.add_space(8.0);
-
         let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max);
-        item.data_ui(ctx, ui, UiVerbosity::Reduced, &query);
+        let verbosity = UiVerbosity::Reduced;
+
+        let TimePanelItem {
+            entity_path,
+            component_name,
+        } = item;
+
+        if let Some(component_name) = component_name {
+            let component_path = ComponentPath::new(entity_path.clone(), *component_name);
+            item_ui::component_path_button(ctx, ui, &component_path);
+            ui.add_space(8.0);
+            component_path.data_ui(ctx, ui, verbosity, &query);
+        } else {
+            let instance_path = re_entity_db::InstancePath::entity_splat(entity_path.clone());
+            item_ui::instance_path_button(ctx, ui, None, &instance_path);
+            ui.add_space(8.0);
+            instance_path.data_ui(ctx, ui, verbosity, &query);
+        }
     });
 }
