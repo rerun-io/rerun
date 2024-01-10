@@ -23,8 +23,8 @@ These tests check that A) all of our SDKs yield the exact same data when used th
 
 ### Usage
 
-To run the roundtrip tests, check out `./docs/code-examples/roundtrips.py --help`.
-`./docs/code-examples/roundtrips.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
+To run the roundtrip tests, check out `./docs/code-example/compare_code_example_output.py --help`.
+`./docs/code-example/compare_code_example_output.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
 
 ### Implementing new tests
 

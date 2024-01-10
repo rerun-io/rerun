@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Run end-to-end cross-language roundtrip tests for all code examples."""
+"""Runs all our code-examples, for all our languages, and compares the .rrd they output."""
 
 from __future__ import annotations
 
