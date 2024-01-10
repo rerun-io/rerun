@@ -53,10 +53,10 @@ extend-exclude = [
   "target/",
 
   # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
-  "docs/code-examples/text_document.py",
+  "docs/code-examples/all/text_document.py",
 
   # TODO(#4047): incomplete example snippet
-  "docs/code-examples/timelines_example.py",
+  "docs/code-examples/all/timelines_example.py",
 
   # generated
   "examples/python/objectron/proto/objectron/proto.py",
@@ -108,7 +108,10 @@ select = [
 ]
 
 [tool.ruff.per-file-ignores]
-"docs/code-examples/*" = ["I002"]
+"docs/code-examples/all/*" = [
+  # Missing required import: `from __future__ import annotations`
+  "I002",
+]
 "__init__.py" = ["F401", "F403"]
 
 [tool.ruff.isort]

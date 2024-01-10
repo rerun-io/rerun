@@ -1130,9 +1130,12 @@ dependencies = [
 name = "code_examples"
 version = "0.13.0-alpha.1+dev"
 dependencies = [
+ "itertools 0.12.0",
  "ndarray",
  "rand",
+ "re_build_tools",
  "rerun",
+ "rust-format",
 ]
 
 [[package]]

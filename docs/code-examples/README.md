@@ -9,10 +9,10 @@ Most of these examples are automatically used as docstrings for the `Archetype` 
 You can run each example individually using the following:
 
 - **C++**:
-  - `pixi run cpp-build-examples` to compile all examples
-  - `./build/docs/code-examples/<example_name>` to run, e.g. `./build/docs/code-examples/point3d_random`
+  - `pixi run cpp-build-doc-examples` to compile all examples
+  - `./build/docs/code-examples/all/<example_name>` to run, e.g. `./build/docs/code-examples/all/point3d_random`
 - **Python**: `python <example_name>.py`, e.g. `python point3d_random.py`.
-- **Rust**: `cargo r -p code_examples --bin <example_name`, e.g. `cargo r -p code_examples --bin point3d_random`.
+- **Rust**: `cargo run -p code_examples -- <example_name`, e.g. `cargo run -p code_examples -- point3d_random`.
 
 ## Roundtrips
 
@@ -31,6 +31,3 @@ To run the roundtrip tests, check out `./docs/code-examples/roundtrips.py --help
 Just pick a name for your test, and look at existing examples to get started. The `app_id` must be `rerun_example_<test_name>`.
 
 The roundtrip process is driven by file names, so make sure all 3 tests use the same name: `<test_name>.rs`, `<test_name>.cpp`, `<test_name>.py`.
-
-For Rust, also make sure to declare the new binary in `docs/code-examples/Cargo.toml`.
-

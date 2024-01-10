@@ -250,7 +250,7 @@ pub fn collect_examples_for_api_docs<'a>(
     let mut out = Vec::new();
 
     if let Some(examples) = docs.tagged_docs.get("example") {
-        let base_path = crate::rerun_workspace_path().join("docs/code-examples");
+        let base_path = crate::rerun_workspace_path().join("docs/code-examples/all");
 
         for base @ ExampleInfo {
             name,

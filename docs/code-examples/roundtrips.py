@@ -47,6 +47,7 @@ opt_out_compare = {
     "quick_start_spawn":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
     "scalar_multiple_plots": ["cpp"], # trigonometric functions have slightly different outcomes
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "text_log_integration": ["cpp", "py", "rust"], # The entity path will differ because the Rust code is part of a library
 }
 
 extra_args = {
@@ -105,8 +106,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Build rerun_c & rerun_cpp…")
         start_time = time.time()
-        cmake_configure(args.release, build_env)
-        cmake_build("rerun_sdk", args.release)
+        run(["pixi", "run", "cpp-build-doc-examples"])
         elapsed = time.time() - start_time
         print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
         print("")
@@ -114,7 +114,7 @@ def main() -> None:
     if len(args.example) > 0:
         examples = args.example
     else:
-        dir = os.path.dirname(__file__)
+        dir = os.path.join(os.path.dirname(__file__), "all")
         files = [f for f in listdir(dir) if isfile(join(dir, f))]
         examples = [
             filename
@@ -170,9 +170,9 @@ def main() -> None:
         if "rust" in example_opt_out_entirely:
             continue  # No baseline to compare against
 
-        cpp_output_path = f"docs/code-examples/{example}_cpp.rrd"
-        python_output_path = f"docs/code-examples/{example}_py.rrd"
-        rust_output_path = f"docs/code-examples/{example}_rust.rrd"
+        cpp_output_path = f"docs/code-examples/all/{example}_cpp.rrd"
+        python_output_path = f"docs/code-examples/all/{example}_py.rrd"
+        rust_output_path = f"docs/code-examples/all/{example}_rust.rrd"
 
         if "cpp" in active_languages and "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
             run_comparison(cpp_output_path, rust_output_path, args.full_dump)
@@ -200,8 +200,8 @@ def run_example(example: str, language: str, args: argparse.Namespace) -> None:
 
 
 def run_roundtrip_python(example: str) -> str:
-    main_path = f"docs/code-examples/{example}.py"
-    output_path = f"docs/code-examples/{example}_py.rrd"
+    main_path = f"docs/code-examples/all/{example}.py"
+    output_path = f"docs/code-examples/all/{example}_py.rrd"
 
     # sys.executable: the absolute path of the executable binary for the Python interpreter
     python_executable = sys.executable
@@ -217,9 +217,9 @@ def run_roundtrip_python(example: str) -> str:
 
 
 def run_roundtrip_rust(example: str, release: bool, target: str | None, target_dir: str | None) -> str:
-    output_path = f"docs/code-examples/{example}_rust.rrd"
+    output_path = f"docs/code-examples/all/{example}_rust.rrd"
 
-    cmd = ["cargo", "run", "--quiet", "-p", "code_examples", "--bin", example]
+    cmd = ["cargo", "run", "--quiet", "-p", "code_examples", "--", example]
 
     if target is not None:
         cmd += ["--target", target]
@@ -231,7 +231,7 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
         cmd += ["--release"]
 
     if extra_args.get(example):
-        cmd += ["--"] + extra_args[example]
+        cmd += extra_args[example]
 
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
@@ -240,12 +240,9 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
 
 
 def run_roundtrip_cpp(example: str, release: bool) -> str:
-    target_name = f"{example}"
-    output_path = f"docs/code-examples/{example}_cpp.rrd"
+    output_path = f"docs/code-examples/all/{example}_cpp.rrd"
 
-    cmake_build(target_name, release)
-
-    cmd = [f"{cpp_build_dir}/docs/code-examples/{example}"] + (extra_args.get(example) or [])
+    cmd = [f"./build/debug/docs/code-examples/{example}"] + (extra_args.get(example) or [])
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
 
