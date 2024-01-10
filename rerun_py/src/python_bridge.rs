@@ -1093,7 +1093,7 @@ authkey = multiprocessing.current_process().authkey
     )
     .and_then(|()| {
         locals
-            .get_item("authkey")
+            .get_item("authkey")?
             .ok_or_else(|| PyRuntimeError::new_err("authkey missing from expected locals"))
     })
     .and_then(|authkey| {
