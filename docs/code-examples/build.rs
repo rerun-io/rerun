@@ -12,7 +12,9 @@ use itertools::Itertools as _;
 use rust_format::Formatter as _;
 
 fn main() {
-    let path = Path::new("./all");
+    let manifest_path =
+        Path::new(&re_build_tools::get_and_track_env_var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
+    let path = manifest_path.join("all");
 
     assert!(path.exists() && path.is_dir(), "Failed to find {path:?}");
 
