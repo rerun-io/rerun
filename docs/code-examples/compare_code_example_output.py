@@ -13,7 +13,7 @@ from os import listdir
 from os.path import isfile, join
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../scripts/")
-from roundtrip_utils import cmake_build, cmake_configure, cpp_build_dir, roundtrip_env, run, run_comparison  # noqa
+from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
 
 # fmt: off
 
