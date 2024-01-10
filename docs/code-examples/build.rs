@@ -32,7 +32,7 @@ fn main() {
 
                 let contents = fs::read_to_string(&path).unwrap();
 
-                // some examples lack a main, see https://github.com/rerun-io/landing/issues/515
+                // TODO(#515): some examples lack a main, they should come with their necessary stub code commented out so that we can re-add it here.
                 if contents.contains("fn main()") {
                     // Patch the source code so we can call into `main` and pass arguments to it:
                     let contents = contents.replace("fn main()", "pub fn main(_args: &[String])");
