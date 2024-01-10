@@ -288,6 +288,52 @@ where
     Ok((ResolvedAnnotationInfos::Many(annotation_info), keypoints))
 }
 
+/// Resolves all annotations and keypoints for the given entity view.
+fn process_annotation_and_keypoint_slices(
+    latest_at: re_log_types::TimeInt,
+    instance_keys: &[InstanceKey],
+    keypoint_ids: Option<&[Option<re_types::components::KeypointId>]>,
+    class_ids: Option<&[Option<re_types::components::ClassId>]>,
+    positions: impl Iterator<Item = glam::Vec3>,
+    annotations: &Annotations,
+) -> (ResolvedAnnotationInfos, Keypoints) {
+    re_tracing::profile_function!();
+
+    let mut keypoints: Keypoints = HashMap::default();
+
+    // No need to process annotations if we don't have keypoints or class-ids
+    let (Some(keypoint_ids), Some(class_ids)) = (keypoint_ids, class_ids) else {
+        let resolved_annotation = annotations
+            .resolved_class_description(None)
+            .annotation_info();
+
+        return (
+            ResolvedAnnotationInfos::Same(instance_keys.len(), resolved_annotation),
+            keypoints,
+        );
+    };
+
+    let annotation_info = itertools::izip!(positions, keypoint_ids, class_ids)
+        .map(|(positions, &keypoint_id, &class_id)| {
+            let class_description = annotations.resolved_class_description(class_id);
+
+            if let (Some(keypoint_id), Some(class_id), position) =
+                (keypoint_id, class_id, positions)
+            {
+                keypoints
+                    .entry((class_id, latest_at.as_i64()))
+                    .or_default()
+                    .insert(keypoint_id.0, position);
+                class_description.annotation_info_with_keypoint(keypoint_id.0)
+            } else {
+                class_description.annotation_info()
+            }
+        })
+        .collect();
+
+    (ResolvedAnnotationInfos::Many(annotation_info), keypoints)
+}
+
 #[derive(Clone)]
 pub enum UiLabelTarget {
     /// Labels a given rect (in scene coordinates)

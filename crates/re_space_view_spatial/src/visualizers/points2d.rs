@@ -1,5 +1,3 @@
-use ahash::HashMap;
-
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_renderer::PickingLayerInstanceId;
 use re_types::{
@@ -8,7 +6,7 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    Annotations, ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
     VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
 };
@@ -17,7 +15,8 @@ use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
-        load_keypoint_connections, process_color_slice, Keypoints, UiLabel, UiLabelTarget,
+        load_keypoint_connections, process_annotation_and_keypoint_slices, process_color_slice,
+        UiLabel, UiLabelTarget,
     },
 };
 
@@ -80,9 +79,12 @@ impl Points2DVisualizer {
     ) {
         re_tracing::profile_function!();
 
-        let (annotation_infos, keypoints) = Self::process_annotations_and_keypoints(
+        let (annotation_infos, keypoints) = process_annotation_and_keypoint_slices(
             query.latest_at,
-            data,
+            data.instance_keys,
+            data.keypoint_ids,
+            data.class_ids,
+            data.positions.iter().map(|p| glam::vec3(p.x(), p.y(), 0.0)),
             &ent_context.annotations,
         );
 
@@ -206,54 +208,6 @@ impl Points2DVisualizer {
     ) -> Vec<PickingLayerInstanceId> {
         re_tracing::profile_function!();
         bytemuck::cast_slice(instance_keys).to_vec()
-    }
-
-    /// Resolves all annotations and keypoints for the given entity view.
-    fn process_annotations_and_keypoints(
-        latest_at: re_log_types::TimeInt,
-        data @ &Points2DComponentData {
-            instance_keys,
-            keypoint_ids,
-            class_ids,
-            ..
-        }: &Points2DComponentData<'_>,
-        annotations: &Annotations,
-    ) -> (ResolvedAnnotationInfos, Keypoints) {
-        re_tracing::profile_function!();
-
-        let mut keypoints: Keypoints = HashMap::default();
-
-        // No need to process annotations if we don't have keypoints or class-ids
-        let (Some(keypoint_ids), Some(class_ids)) = (keypoint_ids, class_ids) else {
-            let resolved_annotation = annotations
-                .resolved_class_description(None)
-                .annotation_info();
-
-            return (
-                ResolvedAnnotationInfos::Same(instance_keys.len(), resolved_annotation),
-                keypoints,
-            );
-        };
-
-        let annotation_info = itertools::izip!(data.positions.iter(), keypoint_ids, class_ids)
-            .map(|(positions, &keypoint_id, &class_id)| {
-                let class_description = annotations.resolved_class_description(class_id);
-
-                if let (Some(keypoint_id), Some(class_id), position) =
-                    (keypoint_id, class_id, positions)
-                {
-                    keypoints
-                        .entry((class_id, latest_at.as_i64()))
-                        .or_default()
-                        .insert(keypoint_id.0, glam::vec3(position.x(), position.y(), 0.0));
-                    class_description.annotation_info_with_keypoint(keypoint_id.0)
-                } else {
-                    class_description.annotation_info()
-                }
-            })
-            .collect();
-
-        (ResolvedAnnotationInfos::Many(annotation_info), keypoints)
     }
 }
 
