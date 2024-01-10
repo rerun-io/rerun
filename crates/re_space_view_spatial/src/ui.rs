@@ -628,7 +628,7 @@ pub fn picking(
                 SelectedSpaceContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
-                    tracked_space_camera: state.state_3d.tracked_camera.clone(),
+                    tracked_entity: state.state_3d.tracked_entity.clone(),
                     point_in_space_cameras: visualizers
                         .get::<CamerasVisualizer>()?
                         .space_cameras
