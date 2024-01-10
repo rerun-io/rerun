@@ -74,26 +74,26 @@ re_ws_comms = { path = "crates/re_ws_comms", version = "=0.13.0-alpha.1", defaul
 rerun = { path = "crates/rerun", version = "=0.13.0-alpha.1", default-features = false }
 
 # egui-crates:
-ecolor = "0.24.1"
-eframe = { version = "0.24.1", default-features = false, features = [
+ecolor = "0.25.0"
+eframe = { version = "0.25.0", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "puffin",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.24.1", features = [
+egui = { version = "0.25.0", features = [
   "callstack",
   "extra_debug_asserts",
   "log",
   "puffin",
 ] }
-egui_commonmark = { version = "0.10", default-features = false }
-egui_extras = { version = "0.24.1", features = ["http", "image", "puffin"] }
-egui_plot = "0.24.2"
-egui_tiles = "0.5"
-egui-wgpu = "0.24.1"
-emath = "0.24.1"
+egui_commonmark = { version = "0.11", default-features = false }
+egui_extras = { version = "0.25.0", features = ["http", "image", "puffin"] }
+egui_plot = "0.25.0"
+egui_tiles = "0.6"
+egui-wgpu = "0.25.0"
+emath = "0.25.0"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
@@ -231,7 +231,7 @@ wasm-bindgen-futures = "0.4.33"
 web-sys = "0.3.61"
 web-time = "0.2.0"
 webbrowser = "0.8"
-winit = "0.28.7"
+winit = { version = "0.29.9", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
 wgpu = { version = "0.18.0", features = ["fragile-send-sync-non-atomic-wasm"] }
@@ -279,7 +279,10 @@ debug = true
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
 # egui_extras = { path = "../../egui/crates/egui_extras" }
+# egui_plot = { path = "../../egui/crates/egui_plot" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b6e4fd457b2eee2c671747ead12f4a20feb380e8" } # Merge of: https://github.com/rerun-io/egui_tiles/pull/41
+
+# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "3d83a92f995a1d18ab1172d0b129d496e0eedaae" } # Update to egui 0.25 https://github.com/lampsitter/egui_commonmark/pull/27

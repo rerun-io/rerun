@@ -146,13 +146,14 @@ impl SpaceViewClass for BarChartSpaceView {
                 .allow_zoom([true, zoom_both_axis]);
 
             if *root_entity_properties.show_legend {
-                plot = plot.legend(Legend {
-                    position: root_entity_properties
-                        .legend_location
-                        .unwrap_or(LegendCorner::RightTop)
-                        .into(),
-                    ..Default::default()
-                });
+                plot = plot.legend(
+                    Legend::default().position(
+                        root_entity_properties
+                            .legend_location
+                            .unwrap_or(LegendCorner::RightTop)
+                            .into(),
+                    ),
+                );
             }
 
             plot.show(ui, |plot_ui| {

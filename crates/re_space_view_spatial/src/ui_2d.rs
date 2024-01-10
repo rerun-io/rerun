@@ -535,10 +535,10 @@ fn show_projections_from_3d_space(
                     ));
                     shapes.push(Shape::circle_filled(pos_in_ui, radius, color));
 
+                    let text_color = Color32::WHITE;
                     let text = format!("Depth: {:.3} m", pos_2d.z);
                     let font_id = egui::TextStyle::Body.resolve(ui.style());
-                    let galley =
-                        ui.fonts(|fonts| fonts.layout_no_wrap(text, font_id, Color32::WHITE));
+                    let galley = ui.fonts(|fonts| fonts.layout_no_wrap(text, font_id, text_color));
                     let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(
                         pos_in_ui + vec2(0.0, 5.0),
                         galley.size(),
@@ -548,7 +548,7 @@ fn show_projections_from_3d_space(
                         2.0,
                         Color32::from_black_alpha(196),
                     ));
-                    shapes.push(Shape::galley(rect.min, galley));
+                    shapes.push(Shape::galley(rect.min, galley, text_color));
                 }
             }
         }

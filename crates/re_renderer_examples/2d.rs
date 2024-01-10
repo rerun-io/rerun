@@ -360,7 +360,7 @@ impl framework::Example for Render2D {
         ]
     }
 
-    fn on_keyboard_input(&mut self, _input: winit::event::KeyboardInput) {}
+    fn on_key_event(&mut self, _input: winit::event::KeyEvent) {}
 }
 
 fn main() {

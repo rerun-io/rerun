@@ -134,17 +134,16 @@ impl CommandPalette {
             let text = format_match(fuzzy_match, ui, &font_id, style.text_color());
 
             // TODO(emilk): shorten long text using '…'
-            let galley = text
-                .into_galley(
-                    ui,
-                    Some(false),
-                    f32::INFINITY,
-                    egui::FontSelection::default(),
-                )
-                .galley;
+            let galley = text.into_galley(
+                ui,
+                Some(false),
+                f32::INFINITY,
+                egui::FontSelection::default(),
+            );
             let text_rect = Align2::LEFT_CENTER
                 .anchor_rect(egui::Rect::from_min_size(rect.left_center(), galley.size()));
-            ui.painter().galley(text_rect.min, galley);
+            ui.painter()
+                .galley(text_rect.min, galley, style.text_color());
 
             ui.painter().text(
                 rect.right_center(),
