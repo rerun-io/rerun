@@ -41,6 +41,9 @@ fn main() {
                         "let args = std::env::args().collect::<Vec<_>>();",
                         "let args = _args;",
                     );
+                    let contents = format!(
+                        "//! DO NOT EDIT! This is a py. The original is in {path:?}.\n{contents}"
+                    );
 
                     let target_path = examples_path.join(format!("{example_name}.rs"));
                     re_build_tools::write_file_if_necessary(target_path, contents.as_bytes())
