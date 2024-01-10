@@ -361,12 +361,13 @@ fn quote_struct(
             quote!()
         } else {
             let heap_size_bytes_impl = if is_tuple_struct_from_obj(obj) {
-                itertools::Either::Left(std::iter::once(quote!(self.0.heap_size_bytes())))
+                quote!(self.0.heap_size_bytes())
             } else {
-                itertools::Either::Right(obj.fields.iter().map(|obj_field| {
+                let quoted_heap_size_bytes = obj.fields.iter().map(|obj_field| {
                     let field_name = format_ident!("{}", obj_field.name);
                     quote!(self.#field_name.heap_size_bytes())
-                }))
+                });
+                quote!(#(#quoted_heap_size_bytes)+*)
             };
 
             let is_pod_impl = {
@@ -381,7 +382,7 @@ fn quote_struct(
                 impl ::re_types_core::SizeBytes for #name {
                     #[inline]
                     fn heap_size_bytes(&self) -> u64 {
-                        [#(#heap_size_bytes_impl,)*].into_iter().sum::<u64>()
+                        #heap_size_bytes_impl
                     }
 
                     #[inline]
@@ -852,7 +853,6 @@ fn quote_trait_impls_from_obj(
                 quote!()
             };
 
-            // TODO: Loggable: SizeBytes
             quote! {
                 ::re_types_core::macros::impl_into_cow!(#name);
 
