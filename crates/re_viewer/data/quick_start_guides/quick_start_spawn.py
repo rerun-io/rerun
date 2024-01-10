@@ -1,1 +1,1 @@
-docs/code-examples/all/quick_start_spawn.py
+../../../../docs/code-examples/all/quick_start_spawn.py
