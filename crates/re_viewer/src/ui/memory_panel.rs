@@ -323,9 +323,8 @@ impl MemoryPanel {
                 let CachesStats { latest_at } = caches_stats;
 
                 ui.label("Entity");
-                ui.label("Entries").on_hover_text(
-                    "How many timestamps distinct data timestamps have been cached?",
-                );
+                ui.label("Timestamps")
+                    .on_hover_text("How many distinct data timestamps have been cached?");
                 ui.label("Size");
                 ui.end_row();
 
@@ -347,7 +346,7 @@ impl MemoryPanel {
                                 .num_columns(3)
                                 .show(ui, |ui| {
                                     ui.label("Component");
-                                    ui.label("Entries");
+                                    ui.label("Timestamps");
                                     ui.label("Count");
                                     ui.end_row();
 

@@ -20,6 +20,8 @@ pub fn set_detailed_stats(b: bool) {
     ENABLE_DETAILED_STATS.store(b, std::sync::atomic::Ordering::Relaxed);
 }
 
+// ---
+
 /// Stats for all primary caches.
 ///
 /// Fetch them via [`Caches::stats`].
