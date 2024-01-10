@@ -23,6 +23,21 @@ pub enum DeviceTier {
     //HighEnd
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum InsufficientDeviceCapabilities {
+    #[error("Adapter does not support the minimum shader model required. Supported is {actual:?} but required is {required:?}")]
+    TooLowShaderModel {
+        required: wgpu::ShaderModel,
+        actual: wgpu::ShaderModel,
+    },
+
+    #[error("Adapter does not have all the required capability flags required. Supported are {actual:?} but required are {required:?}")]
+    MissingCapabilitiesFlags {
+        required: wgpu::DownlevelFlags,
+        actual: wgpu::DownlevelFlags,
+    },
+}
+
 /// Capabilities of a given device.
 ///
 /// Generally, this is a higher level interpretation of [`wgpu::Limits`].
@@ -115,25 +130,27 @@ impl DeviceCaps {
     /// Checks if passed downlevel capabilities support the given device tier.
     pub fn check_downlevel_capabilities(
         &self,
-        downlevel_capabilities: &wgpu::DownlevelCapabilities,
-    ) -> anyhow::Result<()> {
-        let required_downlevel_capabilities = self.required_downlevel_capabilities();
-        anyhow::ensure!(
-            downlevel_capabilities.shader_model >= required_downlevel_capabilities.shader_model,
-            "Adapter does not support the minimum shader model required to run re_renderer at the {:?} tier: {:?}",
-            self.tier,
-            required_downlevel_capabilities.shader_model
-        );
-        anyhow::ensure!(
-            downlevel_capabilities
-                .flags
-                .contains(required_downlevel_capabilities.flags),
-            "Adapter does not support the downlevel capabilities required to run re_renderer at the {:?} tier: {:?}",
-            self.tier,
-            required_downlevel_capabilities.flags - downlevel_capabilities.flags
-        );
+        capabilities: &wgpu::DownlevelCapabilities,
+    ) -> Result<(), InsufficientDeviceCapabilities> {
+        let wgpu::DownlevelCapabilities {
+            flags,
+            limits: _,
+            shader_model,
+        } = self.required_downlevel_capabilities();
 
-        Ok(())
+        if capabilities.shader_model < shader_model {
+            Err(InsufficientDeviceCapabilities::TooLowShaderModel {
+                required: shader_model,
+                actual: capabilities.shader_model,
+            })
+        } else if !capabilities.flags.contains(flags) {
+            Err(InsufficientDeviceCapabilities::MissingCapabilitiesFlags {
+                required: flags,
+                actual: capabilities.flags,
+            })
+        } else {
+            Ok(())
+        }
     }
 }
 

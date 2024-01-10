@@ -12,7 +12,7 @@ use crate::{
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
     mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh, Mesh},
-    resource_managers::{GpuMeshHandle, ResourceHandle},
+    resource_managers::{GpuMeshHandle, ResourceHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
@@ -151,7 +151,10 @@ impl MeshDrawData {
     /// Try bundling all mesh instances into a single draw data instance whenever possible.
     /// If you pass zero mesh instances, subsequent drawing will do nothing.
     /// Mesh data itself is gpu uploaded if not already present.
-    pub fn new(ctx: &RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
+    pub fn new(
+        ctx: &RenderContext,
+        instances: &[MeshInstance],
+    ) -> Result<MeshDrawData, ResourceManagerError> {
         re_tracing::profile_function!();
 
         let _mesh_renderer = ctx.renderer::<MeshRenderer>();
