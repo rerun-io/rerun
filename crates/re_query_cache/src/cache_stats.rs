@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, sync::atomic::AtomicBool};
 use re_log_types::EntityPath;
 use re_types_core::ComponentName;
 
-use crate::Caches;
+use crate::{cache::LatestAtCache, Caches};
 
 // ---
 
@@ -76,13 +76,28 @@ impl Caches {
                         for latest_at_cache in
                             caches_per_arch.latest_at_per_archetype.read().values()
                         {
-                            let latest_at_cache = latest_at_cache.read();
+                            let latest_at_cache @ LatestAtCache {
+                                per_query_time: _,
+                                per_data_time,
+                                timeless,
+                                total_size_bytes: _,
+                            } = &*latest_at_cache.read();
+
                             total_size_bytes += latest_at_cache.total_size_bytes;
-                            total_times = latest_at_cache.per_data_time.len() as _;
+                            total_times = per_data_time.len() as u64 + timeless.is_some() as u64;
 
                             if let Some(per_component) = per_component.as_mut() {
-                                for bucket in latest_at_cache.per_data_time.values() {
+                                for bucket in per_data_time.values() {
                                     for (component_name, data) in &bucket.read().components {
+                                        let stats: &mut CachedComponentStats =
+                                            per_component.entry(*component_name).or_default();
+                                        stats.total_times += data.dyn_num_entries() as u64;
+                                        stats.total_values += data.dyn_num_values() as u64;
+                                    }
+                                }
+
+                                if let Some(bucket) = &timeless {
+                                    for (component_name, data) in &bucket.components {
                                         let stats: &mut CachedComponentStats =
                                             per_component.entry(*component_name).or_default();
                                         stats.total_times += data.dyn_num_entries() as u64;
