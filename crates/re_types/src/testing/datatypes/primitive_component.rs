@@ -25,6 +25,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct PrimitiveComponent(pub u32);
 
+impl ::re_types_core::SizeBytes for PrimitiveComponent {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u32>::is_pod()
+    }
+}
+
 impl From<u32> for PrimitiveComponent {
     #[inline]
     fn from(value: u32) -> Self {

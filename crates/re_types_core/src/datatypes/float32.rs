@@ -25,6 +25,18 @@ use crate::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Float32(pub f32);
 
+impl crate::SizeBytes for Float32 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f32>::is_pod()
+    }
+}
+
 impl From<f32> for Float32 {
     #[inline]
     fn from(value: f32) -> Self {

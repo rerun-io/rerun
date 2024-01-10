@@ -1,4 +1,3 @@
-use anyhow::Context;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -517,8 +516,7 @@ impl ViewBuilder {
                     phase,
                     pass,
                     queued_draw.draw_data.as_ref(),
-                )
-                .with_context(|| format!("draw call during phase {phase:?}"));
+                );
                 if let Err(err) = res {
                     re_log::error!(renderer=%queued_draw.renderer_name, %err,
                         "renderer failed to draw");

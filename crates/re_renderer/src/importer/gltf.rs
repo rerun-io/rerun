@@ -1,19 +1,46 @@
 use std::sync::Arc;
 
 use ahash::{HashMap, HashMapExt};
-use anyhow::Context as _;
 use gltf::texture::WrappingMode;
 use itertools::Itertools;
 use smallvec::SmallVec;
 
 use crate::{
-    mesh::{Material, Mesh},
+    mesh::{Material, Mesh, MeshError},
     renderer::MeshInstance,
     resource_managers::{
-        GpuMeshHandle, GpuTexture2D, ResourceLifeTime, Texture2DCreationDesc, TextureManager2D,
+        GpuMeshHandle, GpuTexture2D, ResourceLifeTime, ResourceManagerError, Texture2DCreationDesc,
+        TextureManager2D,
     },
     RenderContext, Rgba32Unmul,
 };
+
+#[derive(thiserror::Error, Debug)]
+pub enum GltfImportError {
+    #[error(transparent)]
+    GltfLoading(#[from] gltf::Error),
+
+    #[error(transparent)]
+    ResourceManager(#[from] ResourceManagerError),
+
+    #[error(transparent)]
+    MeshError(#[from] MeshError),
+
+    #[error("Unsupported texture format {0:?}.")]
+    UnsupportedTextureFormat(gltf::image::Format),
+
+    #[error("Mesh {mesh_name:?} has multiple sets of texture coordinates. Only a single one is supported.")]
+    MultipleTextureCoordinateSets { mesh_name: String },
+
+    #[error("Mesh {mesh_name:?} has no triangles.")]
+    NoIndices { mesh_name: String },
+
+    #[error("Mesh {mesh_name:?} has no vertex positions.")]
+    NoPositions { mesh_name: String },
+
+    #[error("Mesh {mesh_name:?} has no triangle primitives.")]
+    NoTrianglePrimitives { mesh_name: String },
+}
 
 /// Loads both gltf and glb into the mesh & texture manager.
 pub fn load_gltf_from_buffer(
@@ -21,7 +48,7 @@ pub fn load_gltf_from_buffer(
     buffer: &[u8],
     lifetime: ResourceLifeTime,
     ctx: &RenderContext,
-) -> anyhow::Result<Vec<MeshInstance>> {
+) -> Result<Vec<MeshInstance>, GltfImportError> {
     re_tracing::profile_function!();
 
     let (doc, buffers, images) = {
@@ -44,7 +71,7 @@ pub fn load_gltf_from_buffer(
                     crate::pad_rgb_to_rgba(&image.pixels, 255),
                 )
             } else {
-                anyhow::bail!("Unsupported texture format {:?}", image.format);
+                return Err(GltfImportError::UnsupportedTextureFormat(image.format));
             }
         };
 
@@ -93,8 +120,7 @@ pub fn load_gltf_from_buffer(
     for ref mesh in doc.meshes() {
         re_tracing::profile_scope!("mesh");
 
-        let re_mesh = import_mesh(mesh, &buffers, &images_as_textures, &ctx.texture_manager_2d)
-            .with_context(|| format!("mesh {} (name {:?})", mesh.index(), mesh.name()))?;
+        let re_mesh = import_mesh(mesh, &buffers, &images_as_textures, &ctx.texture_manager_2d)?;
         meshes.insert(
             mesh.index(),
             (
@@ -140,8 +166,10 @@ fn import_mesh(
     buffers: &[gltf::buffer::Data],
     gpu_image_handles: &[GpuTexture2D],
     texture_manager: &TextureManager2D, //imported_materials: HashMap<usize, Material>,
-) -> anyhow::Result<Mesh> {
+) -> Result<Mesh, GltfImportError> {
     re_tracing::profile_function!();
+
+    let mesh_name = mesh.name().map_or("<unknown", |f| f).to_owned();
 
     let mut triangle_indices = Vec::new();
     let mut vertex_positions = Vec::new();
@@ -171,13 +199,13 @@ fn import_mesh(
                     .map(glam::UVec3::from),
             );
         } else {
-            anyhow::bail!("Gltf primitives must have indices");
+            return Err(GltfImportError::NoIndices { mesh_name });
         }
 
         if let Some(primitive_positions) = reader.read_positions() {
             vertex_positions.extend(primitive_positions.map(glam::Vec3::from));
         } else {
-            anyhow::bail!("Gltf primitives must have positions");
+            return Err(GltfImportError::NoPositions { mesh_name });
         }
 
         if let Some(colors) = reader.read_colors(set) {
@@ -206,10 +234,9 @@ fn import_mesh(
         let pbr_material = primitive_material.pbr_metallic_roughness();
 
         let albedo = if let Some(texture) = pbr_material.base_color_texture() {
-            anyhow::ensure!(
-                texture.tex_coord() == 0,
-                "Only a single set of texture coordinates is supported"
-            );
+            if texture.tex_coord() != 0 {
+                return Err(GltfImportError::MultipleTextureCoordinateSets { mesh_name });
+            }
             let texture = &texture.texture();
 
             let sampler = &texture.sampler();
@@ -259,7 +286,7 @@ fn import_mesh(
         });
     }
     if vertex_positions.is_empty() || triangle_indices.is_empty() {
-        anyhow::bail!("empty mesh");
+        return Err(GltfImportError::NoTrianglePrimitives { mesh_name });
     }
 
     let mesh = Mesh {

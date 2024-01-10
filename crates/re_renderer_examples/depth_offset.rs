@@ -12,6 +12,7 @@ use re_renderer::{
     renderer::{ColormappedTexture, RectangleDrawData, RectangleOptions, TexturedRect},
     view_builder::{self, Projection, ViewBuilder},
 };
+use winit::keyboard;
 
 mod framework;
 
@@ -127,22 +128,22 @@ impl framework::Example for Render2D {
         }]
     }
 
-    fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput) {
+    fn on_key_event(&mut self, input: winit::event::KeyEvent) {
         if input.state == winit::event::ElementState::Pressed {
-            match input.virtual_keycode {
-                Some(winit::event::VirtualKeyCode::Up) => {
+            match input.logical_key {
+                keyboard::Key::Named(keyboard::NamedKey::ArrowUp) => {
                     self.distance_scale *= 1.1;
                     re_log::info!(self.distance_scale);
                 }
-                Some(winit::event::VirtualKeyCode::Down) => {
+                keyboard::Key::Named(keyboard::NamedKey::ArrowDown) => {
                     self.distance_scale /= 1.1;
                     re_log::info!(self.distance_scale);
                 }
-                Some(winit::event::VirtualKeyCode::Right) => {
+                keyboard::Key::Named(keyboard::NamedKey::ArrowRight) => {
                     self.near_plane *= 1.1;
                     re_log::info!(self.near_plane);
                 }
-                Some(winit::event::VirtualKeyCode::Left) => {
+                keyboard::Key::Named(keyboard::NamedKey::ArrowLeft) => {
                     self.near_plane /= 1.1;
                     re_log::info!(self.near_plane);
                 }

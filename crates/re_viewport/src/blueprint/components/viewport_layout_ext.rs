@@ -6,6 +6,20 @@ impl Default for ViewportLayout {
     }
 }
 
+impl re_types_core::SizeBytes for ViewportLayout {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // TODO(cmc): Implementing SizeBytes for this type would require a lot of effort,
+        // which would be wasted since this is supposed to go away very soon.
+        #[allow(clippy::manual_assert)] // readability
+        if cfg!(debug_assertions) {
+            panic!("ViewportLayout does not report its size properly");
+        }
+
+        0
+    }
+}
+
 #[test]
 fn test_viewport_layout() {
     use re_types::Loggable as _;

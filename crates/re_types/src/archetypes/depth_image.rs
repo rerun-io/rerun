@@ -81,6 +81,22 @@ pub struct DepthImage {
     pub draw_order: Option<crate::components::DrawOrder>,
 }
 
+impl ::re_types_core::SizeBytes for DepthImage {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.data.heap_size_bytes()
+            + self.meter.heap_size_bytes()
+            + self.draw_order.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::TensorData>::is_pod()
+            && <Option<crate::components::DepthMeter>>::is_pod()
+            && <Option<crate::components::DrawOrder>>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 

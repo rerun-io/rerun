@@ -27,6 +27,19 @@ pub struct AffixFuzzer20 {
     pub s: crate::testing::datatypes::StringComponent,
 }
 
+impl ::re_types_core::SizeBytes for AffixFuzzer20 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.p.heap_size_bytes() + self.s.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::testing::datatypes::PrimitiveComponent>::is_pod()
+            && <crate::testing::datatypes::StringComponent>::is_pod()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer20);
 
 impl ::re_types_core::Loggable for AffixFuzzer20 {

@@ -17,7 +17,7 @@ use re_renderer::{
     Color32, GpuReadbackIdentifier, Hsva, LineStripSeriesBuilder, PointCloudBuilder, RenderContext,
     Rgba, ScreenshotProcessor, Size,
 };
-use winit::event::{ElementState, VirtualKeyCode};
+use winit::{event::ElementState, keyboard};
 
 mod framework;
 
@@ -396,33 +396,31 @@ impl Example for Multiview {
         draw_results
     }
 
-    fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput) {
-        match (input.state, input.virtual_keycode) {
-            (ElementState::Pressed, Some(VirtualKeyCode::O)) => {
+    fn on_key_event(&mut self, input: winit::event::KeyEvent) {
+        if input.state == ElementState::Pressed {
+            if input.logical_key == keyboard::Key::Character("O".into()) {
                 self.perspective_projection = !self.perspective_projection;
             }
 
-            (ElementState::Pressed, Some(VirtualKeyCode::Space)) => {
+            if input.logical_key == keyboard::Key::Named(keyboard::NamedKey::Space) {
                 self.camera_control = match self.camera_control {
                     CameraControl::RotateAroundCenter => CameraControl::Manual,
                     CameraControl::Manual => CameraControl::RotateAroundCenter,
                 };
             }
 
-            (ElementState::Pressed, Some(VirtualKeyCode::Key1)) => {
+            if input.logical_key == keyboard::Key::Character("1".into()) {
                 self.take_screenshot_next_frame_for_view = Some(0);
             }
-            (ElementState::Pressed, Some(VirtualKeyCode::Key2)) => {
+            if input.logical_key == keyboard::Key::Character("2".into()) {
                 self.take_screenshot_next_frame_for_view = Some(1);
             }
-            (ElementState::Pressed, Some(VirtualKeyCode::Key3)) => {
+            if input.logical_key == keyboard::Key::Character("3".into()) {
                 self.take_screenshot_next_frame_for_view = Some(2);
             }
-            (ElementState::Pressed, Some(VirtualKeyCode::Key4)) => {
+            if input.logical_key == keyboard::Key::Character("4".into()) {
                 self.take_screenshot_next_frame_for_view = Some(3);
             }
-
-            _ => {}
         }
     }
 }

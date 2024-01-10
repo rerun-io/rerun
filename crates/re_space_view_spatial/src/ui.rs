@@ -384,7 +384,11 @@ pub fn create_labels(
         };
 
         label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
-        label_shapes.push(egui::Shape::galley(text_rect.center_top(), galley));
+        label_shapes.push(egui::Shape::galley(
+            text_rect.center_top(),
+            galley,
+            label.color,
+        ));
 
         ui_rects.push(PickableUiRect {
             rect: ui_from_canvas.inverse().transform_rect(bg_rect),

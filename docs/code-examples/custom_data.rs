@@ -48,17 +48,27 @@ impl From<f32> for Confidence {
     }
 }
 
+impl rerun::SizeBytes for Confidence {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl rerun::Loggable for Confidence {
     type Name = rerun::ComponentName;
 
+    #[inline]
     fn name() -> Self::Name {
         "user.Confidence".into()
     }
 
+    #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         rerun::Float32::arrow_datatype()
     }
 
+    #[inline]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>

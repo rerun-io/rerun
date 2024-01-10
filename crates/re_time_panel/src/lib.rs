@@ -15,13 +15,55 @@ use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shap
 
 use re_data_ui::item_ui;
 use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
-use re_log_types::{ComponentPath, EntityPathPart, TimeInt, TimeRange, TimeReal};
+use re_log_types::{
+    external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart, TimeInt,
+    TimeRange, TimeReal,
+};
 use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{HoverHighlight, Item, TimeControl, TimeView, ViewerContext};
 
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
 use time_ranges_ui::TimeRangesUi;
+
+#[derive(Clone)]
+struct TimePanelItem {
+    pub entity_path: EntityPath,
+    pub component_name: Option<ComponentName>,
+}
+
+impl TimePanelItem {
+    pub fn entity_path(entity_path: EntityPath) -> Self {
+        Self {
+            entity_path,
+            component_name: None,
+        }
+    }
+
+    pub fn component_path(component_path: ComponentPath) -> Self {
+        let ComponentPath {
+            entity_path,
+            component_name,
+        } = component_path;
+        Self {
+            entity_path,
+            component_name: Some(component_name),
+        }
+    }
+
+    pub fn to_item(&self) -> Item {
+        let Self {
+            entity_path,
+            component_name,
+        } = self;
+
+        if let Some(component_name) = component_name {
+            Item::ComponentPath(ComponentPath::new(entity_path.clone(), *component_name))
+        } else {
+            Item::InstancePath(None, InstancePath::entity_splat(entity_path.clone()))
+        }
+    }
+}
 
 /// A panel that shows entity names to the left, time on the top.
 ///
@@ -483,10 +525,12 @@ impl TimePanel {
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
         let default_open = tree.path.len() <= 1 && !tree.is_leaf();
 
-        let item = Item::InstancePath(None, InstancePath::entity_splat(tree.path.clone()));
-        let is_selected = ctx.selection().contains_item(&item);
-        let is_item_hovered =
-            ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
+        let item = TimePanelItem::entity_path(tree.path.clone());
+        let is_selected = ctx.selection().contains_item(&item.to_item());
+        let is_item_hovered = ctx
+            .selection_state()
+            .highlight_for_ui_element(&item.to_item())
+            == HoverHighlight::Hovered;
 
         let clip_rect_save = ui.clip_rect();
         let mut clip_rect = clip_rect_save;
@@ -517,7 +561,7 @@ impl TimePanel {
         let response = response
             .on_hover_ui(|ui| re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, &tree.path));
 
-        item_ui::select_hovered_on_click(ctx, &response, item.clone());
+        item_ui::select_hovered_on_click(ctx, &response, item.to_item());
 
         let is_closed = body_response.is_none();
         let response_rect = response.rect;
@@ -538,7 +582,7 @@ impl TimePanel {
             let row_rect =
                 Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
 
-            highlight_timeline_row(ui, ctx, time_area_painter, &item, &row_rect);
+            highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
 
             // show the density graph only if that item is closed
             if is_closed {
@@ -602,7 +646,7 @@ impl TimePanel {
                     ctx.component_has_data_in_current_timeline(data);
                 let component_path = ComponentPath::new(tree.path.clone(), *component_name);
                 let short_component_name = component_path.component_name.short_name();
-                let item = Item::ComponentPath(component_path);
+                let item = TimePanelItem::component_path(component_path);
 
                 let mut clip_rect = clip_rect_save;
                 clip_rect.max.x = tree_max_y;
@@ -611,10 +655,11 @@ impl TimePanel {
                 let response =
                     re_data_ui::temporary_style_ui_for_component(ui, component_name, |ui| {
                         ListItem::new(ctx.re_ui, short_component_name)
-                            .selected(ctx.selection().contains_item(&item))
+                            .selected(ctx.selection().contains_item(&item.to_item()))
                             .width_allocation_mode(WidthAllocationMode::Compact)
                             .force_hovered(
-                                ctx.selection_state().highlight_for_ui_element(&item)
+                                ctx.selection_state()
+                                    .highlight_for_ui_element(&item.to_item())
                                     == HoverHighlight::Hovered,
                             )
                             .with_icon_fn(|_, ui, rect, visual| {
@@ -626,7 +671,7 @@ impl TimePanel {
 
                 ui.set_clip_rect(clip_rect_save);
 
-                re_data_ui::item_ui::select_hovered_on_click(ctx, &response, item.clone());
+                re_data_ui::item_ui::select_hovered_on_click(ctx, &response, item.to_item());
 
                 let response_rect = response.rect;
 
@@ -664,7 +709,7 @@ impl TimePanel {
                         response_rect.y_range(),
                     );
 
-                    highlight_timeline_row(ui, ctx, time_area_painter, &item, &row_rect);
+                    highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
 
                     data_density_graph::data_density_graph_ui(
                         &mut self.data_density_graph_painter,

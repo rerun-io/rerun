@@ -44,7 +44,6 @@ namespace rerun.blueprint.components;
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 table QueryExpressions (
-  "attr.docs.unreleased",
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "PartialEq, Eq",
   "attr.rust.override_crate": "re_space_view"

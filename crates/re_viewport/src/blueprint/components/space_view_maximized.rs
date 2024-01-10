@@ -28,6 +28,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct SpaceViewMaximized(pub Option<crate::datatypes::Uuid>);
 
+impl ::re_types_core::SizeBytes for SpaceViewMaximized {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::datatypes::Uuid>>::is_pod()
+    }
+}
+
 impl<T: Into<Option<crate::datatypes::Uuid>>> From<T> for SpaceViewMaximized {
     fn from(v: T) -> Self {
         Self(v.into())

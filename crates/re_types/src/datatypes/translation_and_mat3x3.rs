@@ -39,6 +39,22 @@ pub struct TranslationAndMat3x3 {
     pub from_parent: bool,
 }
 
+impl ::re_types_core::SizeBytes for TranslationAndMat3x3 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.translation.heap_size_bytes()
+            + self.mat3x3.heap_size_bytes()
+            + self.from_parent.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::datatypes::Vec3D>>::is_pod()
+            && <Option<crate::datatypes::Mat3x3>>::is_pod()
+            && <bool>::is_pod()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(TranslationAndMat3x3);
 
 impl ::re_types_core::Loggable for TranslationAndMat3x3 {

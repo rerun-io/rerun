@@ -40,6 +40,24 @@ pub struct TranslationRotationScale3D {
     pub from_parent: bool,
 }
 
+impl ::re_types_core::SizeBytes for TranslationRotationScale3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.translation.heap_size_bytes()
+            + self.rotation.heap_size_bytes()
+            + self.scale.heap_size_bytes()
+            + self.from_parent.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::datatypes::Vec3D>>::is_pod()
+            && <Option<crate::datatypes::Rotation3D>>::is_pod()
+            && <Option<crate::datatypes::Scale3D>>::is_pod()
+            && <bool>::is_pod()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(TranslationRotationScale3D);
 
 impl ::re_types_core::Loggable for TranslationRotationScale3D {

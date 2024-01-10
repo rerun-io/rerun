@@ -35,6 +35,19 @@ pub struct TensorData {
     pub buffer: crate::datatypes::TensorBuffer,
 }
 
+impl ::re_types_core::SizeBytes for TensorData {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.shape.heap_size_bytes() + self.buffer.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::TensorDimension>>::is_pod()
+            && <crate::datatypes::TensorBuffer>::is_pod()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(TensorData);
 
 impl ::re_types_core::Loggable for TensorData {

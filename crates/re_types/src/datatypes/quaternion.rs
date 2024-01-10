@@ -28,6 +28,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Quaternion(pub [f32; 4usize]);
 
+impl ::re_types_core::SizeBytes for Quaternion {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[f32; 4usize]>::is_pod()
+    }
+}
+
 impl From<[f32; 4usize]> for Quaternion {
     #[inline]
     fn from(xyzw: [f32; 4usize]) -> Self {

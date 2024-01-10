@@ -34,6 +34,18 @@ pub struct AnnotationContext(
     pub Vec<crate::datatypes::ClassDescriptionMapElem>,
 );
 
+impl ::re_types_core::SizeBytes for AnnotationContext {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::ClassDescriptionMapElem>>::is_pod()
+    }
+}
+
 impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = I>> From<T>
     for AnnotationContext
 {

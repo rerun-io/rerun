@@ -27,7 +27,10 @@ use re_renderer::{
     view_builder::{self, Projection, ViewBuilder},
     Color32, LineStripSeriesBuilder, PointCloudBuilder, Rgba, Size,
 };
-use winit::event::{ElementState, VirtualKeyCode};
+use winit::{
+    event::ElementState,
+    keyboard::{self},
+};
 
 mod framework;
 
@@ -344,10 +347,10 @@ impl framework::Example for RenderDepthClouds {
         ]
     }
 
-    fn on_keyboard_input(&mut self, input: winit::event::KeyboardInput) {
+    fn on_key_event(&mut self, input: winit::event::KeyEvent) {
         #![allow(clippy::single_match)]
-        match (input.state, input.virtual_keycode) {
-            (ElementState::Released, Some(VirtualKeyCode::Space)) => {
+        match (input.state, input.logical_key) {
+            (ElementState::Released, keyboard::Key::Named(keyboard::NamedKey::Space)) => {
                 self.camera_control = match self.camera_control {
                     CameraControl::RotateAroundCenter => CameraControl::Manual,
                     CameraControl::Manual => CameraControl::RotateAroundCenter,

@@ -28,6 +28,18 @@ pub struct Material {
     pub albedo_factor: Option<crate::datatypes::Rgba32>,
 }
 
+impl ::re_types_core::SizeBytes for Material {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.albedo_factor.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::datatypes::Rgba32>>::is_pod()
+    }
+}
+
 impl<T: Into<Option<crate::datatypes::Rgba32>>> From<T> for Material {
     fn from(v: T) -> Self {
         Self {

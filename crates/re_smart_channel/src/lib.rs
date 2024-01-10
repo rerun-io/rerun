@@ -55,6 +55,20 @@ pub enum SmartChannelSource {
     Stdin,
 }
 
+impl std::fmt::Display for SmartChannelSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::File(path) => path.display().fmt(f),
+            Self::RrdHttpStream { url } => url.fmt(f),
+            Self::RrdWebEventListener => "Web Event Listener".fmt(f),
+            Self::Sdk => "SDK".fmt(f),
+            Self::WsClient { ws_server_url } => ws_server_url.fmt(f),
+            Self::TcpServer { port } => write!(f, "TCP Server, port {port}"),
+            Self::Stdin => "Standard Input".fmt(f),
+        }
+    }
+}
+
 impl SmartChannelSource {
     pub fn is_network(&self) -> bool {
         match self {

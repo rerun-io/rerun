@@ -26,6 +26,18 @@ use crate::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct EntityPath(pub crate::ArrowString);
 
+impl crate::SizeBytes for EntityPath {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::ArrowString>::is_pod()
+    }
+}
+
 impl From<crate::ArrowString> for EntityPath {
     #[inline]
     fn from(path: crate::ArrowString) -> Self {

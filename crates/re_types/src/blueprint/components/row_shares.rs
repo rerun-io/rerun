@@ -28,6 +28,18 @@ pub struct RowShares(
     pub ::re_types_core::ArrowBuffer<f32>,
 );
 
+impl ::re_types_core::SizeBytes for RowShares {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <::re_types_core::ArrowBuffer<f32>>::is_pod()
+    }
+}
+
 impl From<::re_types_core::ArrowBuffer<f32>> for RowShares {
     #[inline]
     fn from(shares: ::re_types_core::ArrowBuffer<f32>) -> Self {

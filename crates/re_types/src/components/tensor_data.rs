@@ -26,6 +26,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct TensorData(pub crate::datatypes::TensorData);
 
+impl ::re_types_core::SizeBytes for TensorData {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::TensorData>::is_pod()
+    }
+}
+
 impl<T: Into<crate::datatypes::TensorData>> From<T> for TensorData {
     fn from(v: T) -> Self {
         Self(v.into())

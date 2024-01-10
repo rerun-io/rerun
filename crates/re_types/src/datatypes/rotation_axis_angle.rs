@@ -35,6 +35,18 @@ pub struct RotationAxisAngle {
     pub angle: crate::datatypes::Angle,
 }
 
+impl ::re_types_core::SizeBytes for RotationAxisAngle {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.axis.heap_size_bytes() + self.angle.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Vec3D>::is_pod() && <crate::datatypes::Angle>::is_pod()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(RotationAxisAngle);
 
 impl ::re_types_core::Loggable for RotationAxisAngle {

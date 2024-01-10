@@ -58,6 +58,18 @@ pub struct BarChart {
     pub color: Option<crate::components::Color>,
 }
 
+impl ::re_types_core::SizeBytes for BarChart {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.values.heap_size_bytes() + self.color.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::TensorData>::is_pod() && <Option<crate::components::Color>>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 

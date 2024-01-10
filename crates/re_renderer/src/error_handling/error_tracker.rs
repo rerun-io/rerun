@@ -8,7 +8,7 @@ use super::wgpu_core_error::WrappedContextError;
 
 #[cfg(webgpu)]
 #[derive(Hash, PartialEq, Eq, Debug)]
-struct WrappedContextError(pub String);
+pub struct WrappedContextError(pub String);
 
 pub struct ErrorEntry {
     /// Frame index for frame on which this error was last logged.

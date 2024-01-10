@@ -28,6 +28,18 @@ pub struct Uuid {
     pub bytes: [u8; 16usize],
 }
 
+impl ::re_types_core::SizeBytes for Uuid {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.bytes.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[u8; 16usize]>::is_pod()
+    }
+}
+
 impl From<[u8; 16usize]> for Uuid {
     #[inline]
     fn from(bytes: [u8; 16usize]) -> Self {

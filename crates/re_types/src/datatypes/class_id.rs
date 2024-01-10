@@ -41,6 +41,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct ClassId(pub u16);
 
+impl ::re_types_core::SizeBytes for ClassId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u16>::is_pod()
+    }
+}
+
 impl From<u16> for ClassId {
     #[inline]
     fn from(id: u16) -> Self {

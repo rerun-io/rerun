@@ -316,13 +316,14 @@ impl<'a> ListItem<'a> {
             collapse_extra: f32,
             icon_extra: f32,
         ) -> f32 {
-            let text_job = item.text.clone().into_text_job(
+            let layout_job = item.text.clone().into_layout_job(
                 ui.style(),
                 egui::FontSelection::Default,
                 Align::LEFT,
             );
+            let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
 
-            let text_width = ui.fonts(|f| text_job.into_galley(f)).size().x;
+            let text_width = galley.size().x;
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being
             // truncated even though we allocated enough space.
@@ -430,27 +431,27 @@ impl<'a> ListItem<'a> {
                 text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
             }
 
-            let mut text_job =
+            let mut layout_job =
                 self.text
-                    .into_text_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
-            text_job.job.wrap = TextWrapping::truncate_at_width(text_rect.width());
+                    .into_layout_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
+            layout_job.wrap = TextWrapping::truncate_at_width(text_rect.width());
 
-            let text = ui.fonts(|f| text_job.into_galley(f));
+            let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
 
             // this happens here to avoid cloning the text
             response.widget_info(|| {
                 egui::WidgetInfo::selected(
                     egui::WidgetType::SelectableLabel,
                     self.selected,
-                    text.text(),
+                    galley.text(),
                 )
             });
 
             let text_pos = Align2::LEFT_CENTER
-                .align_size_within_rect(text.size(), text_rect)
+                .align_size_within_rect(galley.size(), text_rect)
                 .min;
 
-            text.paint_with_visuals(ui.painter(), text_pos, &visuals);
+            ui.painter().galley(text_pos, galley, visuals.text_color());
 
             // Draw background on interaction.
             let bg_fill = if button_response.map_or(false, |r| r.hovered()) {

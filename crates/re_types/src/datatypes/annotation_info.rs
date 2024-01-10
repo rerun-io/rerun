@@ -37,6 +37,20 @@ pub struct AnnotationInfo {
     pub color: Option<crate::datatypes::Rgba32>,
 }
 
+impl ::re_types_core::SizeBytes for AnnotationInfo {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.id.heap_size_bytes() + self.label.heap_size_bytes() + self.color.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u16>::is_pod()
+            && <Option<crate::datatypes::Utf8>>::is_pod()
+            && <Option<crate::datatypes::Rgba32>>::is_pod()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AnnotationInfo);
 
 impl ::re_types_core::Loggable for AnnotationInfo {

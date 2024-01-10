@@ -43,6 +43,52 @@ pub struct AffixFuzzer3 {
     pub fuzz2018: Option<crate::testing::components::AffixFuzzer18>,
 }
 
+impl ::re_types_core::SizeBytes for AffixFuzzer3 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.fuzz2001.heap_size_bytes()
+            + self.fuzz2002.heap_size_bytes()
+            + self.fuzz2003.heap_size_bytes()
+            + self.fuzz2004.heap_size_bytes()
+            + self.fuzz2005.heap_size_bytes()
+            + self.fuzz2006.heap_size_bytes()
+            + self.fuzz2007.heap_size_bytes()
+            + self.fuzz2008.heap_size_bytes()
+            + self.fuzz2009.heap_size_bytes()
+            + self.fuzz2010.heap_size_bytes()
+            + self.fuzz2011.heap_size_bytes()
+            + self.fuzz2012.heap_size_bytes()
+            + self.fuzz2013.heap_size_bytes()
+            + self.fuzz2014.heap_size_bytes()
+            + self.fuzz2015.heap_size_bytes()
+            + self.fuzz2016.heap_size_bytes()
+            + self.fuzz2017.heap_size_bytes()
+            + self.fuzz2018.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::testing::components::AffixFuzzer1>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer2>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer3>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer4>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer5>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer6>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer7>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer8>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer9>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer10>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer11>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer12>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer13>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer14>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer15>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer16>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer17>>::is_pod()
+            && <Option<crate::testing::components::AffixFuzzer18>>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

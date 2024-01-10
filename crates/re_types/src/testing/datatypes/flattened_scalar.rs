@@ -26,6 +26,18 @@ pub struct FlattenedScalar {
     pub value: f32,
 }
 
+impl ::re_types_core::SizeBytes for FlattenedScalar {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.value.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f32>::is_pod()
+    }
+}
+
 impl From<f32> for FlattenedScalar {
     #[inline]
     fn from(value: f32) -> Self {

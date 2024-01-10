@@ -24,6 +24,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer8(pub Option<f32>);
 
+impl ::re_types_core::SizeBytes for AffixFuzzer8 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<f32>>::is_pod()
+    }
+}
+
 impl From<Option<f32>> for AffixFuzzer8 {
     #[inline]
     fn from(single_float_optional: Option<f32>) -> Self {

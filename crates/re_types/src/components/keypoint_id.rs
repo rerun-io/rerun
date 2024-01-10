@@ -33,6 +33,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct KeypointId(pub crate::datatypes::KeypointId);
 
+impl ::re_types_core::SizeBytes for KeypointId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::KeypointId>::is_pod()
+    }
+}
+
 impl<T: Into<crate::datatypes::KeypointId>> From<T> for KeypointId {
     fn from(v: T) -> Self {
         Self(v.into())

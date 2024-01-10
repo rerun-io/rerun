@@ -14,15 +14,16 @@ mod component;
 mod component_path;
 mod component_ui_registry;
 mod data;
+mod entity_db;
 mod entity_path;
 mod image;
 mod image_meaning;
 mod instance_path;
-mod item;
 pub mod item_ui;
 mod log_msg;
 mod pinhole;
 mod rotation3d;
+mod store_id;
 mod transform3d;
 
 pub use crate::image::{

@@ -1,14 +1,25 @@
 use std::sync::Arc;
 
-use anyhow::Context as _;
 use smallvec::smallvec;
 
 use crate::{
-    mesh::{Material, Mesh},
+    mesh::{Material, Mesh, MeshError},
     renderer::MeshInstance,
-    resource_managers::ResourceLifeTime,
+    resource_managers::{ResourceLifeTime, ResourceManagerError},
     RenderContext, Rgba32Unmul,
 };
+
+#[derive(thiserror::Error, Debug)]
+pub enum ObjImportError {
+    #[error(transparent)]
+    ObjLoading(#[from] tobj::LoadError),
+
+    #[error(transparent)]
+    Mesh(#[from] MeshError),
+
+    #[error(transparent)]
+    ResourceManager(#[from] ResourceManagerError),
+}
 
 /// Load a [Wavefront .obj file](https://en.wikipedia.org/wiki/Wavefront_.obj_file)
 /// into the mesh & texture manager.
@@ -16,7 +27,7 @@ pub fn load_obj_from_buffer(
     buffer: &[u8],
     lifetime: ResourceLifeTime,
     ctx: &RenderContext,
-) -> anyhow::Result<Vec<MeshInstance>> {
+) -> Result<Vec<MeshInstance>, ObjImportError> {
     re_tracing::profile_function!();
 
     let (models, _materials) = tobj::load_obj_buf(
@@ -27,8 +38,7 @@ pub fn load_obj_from_buffer(
             ..Default::default()
         },
         |_material_path| Err(tobj::LoadError::MaterialParseError),
-    )
-    .context("failed loading obj")?;
+    )?;
 
     // TODO(andreas) Merge all obj meshes into a single re_renderer mesh with multiple materials.
     models

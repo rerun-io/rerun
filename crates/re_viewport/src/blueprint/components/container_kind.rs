@@ -34,6 +34,18 @@ pub struct ContainerKind(
     pub u8,
 );
 
+impl ::re_types_core::SizeBytes for ContainerKind {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u8>::is_pod()
+    }
+}
+
 impl From<u8> for ContainerKind {
     #[inline]
     fn from(kind: u8) -> Self {
