@@ -123,19 +123,52 @@ pub fn rerun_if_changed_glob(path: impl AsRef<Path>, files_to_watch: &mut HashSe
 ///
 /// This prevents recursive feedback loops where one generates source files from build.rs, which in
 /// turn triggers `cargo`'s implicit `rerun-if-changed=src/**` clause.
+///
+/// The file will also be marked read-only to prevent users from editing it
+/// when they should probably be editing the source file instead.
 //
 // TODO(cmc): use the same source tracking system as re_types* instead
 pub fn write_file_if_necessary(
     path: impl AsRef<std::path::Path>,
     content: &[u8],
 ) -> std::io::Result<()> {
-    if let Ok(cur_bytes) = std::fs::read(&path) {
+    let path = path.as_ref();
+
+    if let Ok(cur_bytes) = std::fs::read(path) {
         if cur_bytes == content {
             return Ok(());
         }
     }
 
-    std::fs::write(path, content)
+    make_readonly(path, false).ok(); // make sure we can edit it
+    std::fs::write(path, content)?;
+    make_readonly(path, true).ok(); // generated files shouldn't be edited by users
+
+    Ok(())
+}
+
+pub fn make_readonly(path: &std::path::Path, readonly: bool) -> std::io::Result<()> {
+    #[cfg(unix)] // Mac and Linux
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        let mut perms = std::fs::metadata(path)?.permissions();
+        perms.set_mode(if readonly {
+            0o444 // Read-only for everyone
+        } else {
+            0o666 // Read-write for everyone
+        });
+        std::fs::set_permissions(path, perms)?;
+    }
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::PermissionsExt as _;
+        let mut perms = std::fs::metadata(path)?.permissions();
+        perms.set_readonly(readonly);
+        std::fs::set_permissions(path, perms)?;
+    }
+
+    Ok(())
 }
 
 /// Track any files that are part of the given crate, identified by the manifest path.
