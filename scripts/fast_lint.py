@@ -76,7 +76,7 @@ class LintJob:
         return proc.returncode == 0
 
 
-PY_FOLDERS = ["docs/code-examples", "examples", "rerun_py", "scripts", "tests"]
+PY_FOLDERS = ["."]
 
 
 def main() -> None:

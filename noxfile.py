@@ -1,4 +1,5 @@
-"""Nox sessions.
+"""
+Nox sessions.
 
 This file is used by `nox` to run tests and examples against multiple Python versions.
 
@@ -9,13 +10,12 @@ from __future__ import annotations
 
 import nox  # type: ignore
 
-
 PYTHON_VERSIONS = ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
 
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session: nox.Session) -> None:
-    """Run the Python test suite"""
+    """Run the Python test suite."""
     session.install("-r", "rerun_py/requirements-build.txt")
 
     # TODO(#4704): clean that up when torch is 3.12 compatible
@@ -30,7 +30,7 @@ def tests(session: nox.Session) -> None:
 
 @nox.session(python=PYTHON_VERSIONS)
 def run_all(session: nox.Session) -> None:
-    """Run all examples through the run_all.py script (pass args with: "-- <args>")"""
+    """Run all examples through the run_all.py script (pass args with: "-- <args>")."""
 
     # TODO(#4704): clean that up when torch is 3.12 compatible
     if session.python == "3.12":
@@ -48,7 +48,7 @@ roundtrip_cpp_built = False
 
 @nox.session(python=PYTHON_VERSIONS)
 def roundtrips(session: nox.Session) -> None:
-    """Run all roundtrip tests (C++ will be built only once / skip with: "-- --no-cpp-build")"""
+    """Run all roundtrip tests (C++ will be built only once / skip with: "-- --no-cpp-build")."""
 
     global roundtrip_cpp_built
 
