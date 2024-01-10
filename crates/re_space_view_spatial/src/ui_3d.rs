@@ -500,8 +500,18 @@ pub fn view_3d(
             | Item::SpaceView(_)
             | Item::DataBlueprintGroup(_, _, _)
             | Item::Container(_) => None,
+
             Item::ComponentPath(component_path) => Some(component_path.entity_path.clone()),
-            Item::InstancePath(_, path) => Some(path.entity_path.clone()),
+
+            Item::InstancePath(space_view, path) => {
+                // If this is about a specific space view, focus only if it's this one.
+                // (if it's about any space view, focus regardless of which one)
+                if space_view.is_none() || space_view == &Some(query.space_view_id) {
+                    Some(path.entity_path.clone())
+                } else {
+                    None
+                }
+            }
         } {
             state.state_3d.track_entity(entity_path);
             ui.ctx().request_repaint(); // Make sure interpolation happens in the next frames.
