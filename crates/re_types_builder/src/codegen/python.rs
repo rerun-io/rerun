@@ -12,9 +12,10 @@ use crate::{
         common::{collect_examples_for_api_docs, Example},
         StringExt as _,
     },
-    format_path, ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object,
-    ObjectField, ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES,
-    ATTR_PYTHON_ARRAY_ALIASES,
+    format_path,
+    objects::ObjectType,
+    ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
+    ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 use super::common::ExampleInfo;
@@ -425,11 +426,16 @@ impl PythonCodeGenerator {
                 code.push_unindented_text(format!("\n__all__ = [{manifest}]\n\n\n"), 0);
             }
 
-            let obj_code = if obj.is_struct() {
-                code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
-            } else {
-                code_for_union(arrow_registry, &ext_class, objects, obj)
+            let obj_code = match obj.typ() {
+                crate::objects::ObjectType::Struct => {
+                    code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                }
+                crate::objects::ObjectType::Union => {
+                    code_for_union(arrow_registry, &ext_class, objects, obj)
+                }
+                crate::objects::ObjectType::Enum => unimplemented!("enums"),
             };
+
             code.push_text(&obj_code, 1, 0);
 
             if ext_class.has_deferred_patch_class {
@@ -738,7 +744,7 @@ fn code_for_union(
     objects: &Objects,
     obj: &Object,
 ) -> String {
-    assert!(!obj.is_struct());
+    assert_eq!(obj.typ(), ObjectType::Union);
     assert_eq!(obj.kind, ObjectKind::Datatype);
 
     let Object {

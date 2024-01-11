@@ -610,6 +610,10 @@ impl Object {
         self.attrs.has(name)
     }
 
+    pub fn typ(&self) -> ObjectType {
+        self.specifics.typ()
+    }
+
     pub fn is_struct(&self) -> bool {
         match &self.specifics {
             ObjectSpecifics::Struct {} => true,
@@ -699,6 +703,27 @@ pub enum ObjectSpecifics {
         /// `None` if this is a union, some value if this is an enum.
         utype: Option<ElementType>,
     },
+}
+
+impl ObjectSpecifics {
+    pub fn typ(&self) -> ObjectType {
+        match self {
+            ObjectSpecifics::Struct => ObjectType::Struct,
+            ObjectSpecifics::Union { utype: None } => ObjectType::Union,
+            ObjectSpecifics::Union { utype: Some(_) } => ObjectType::Enum,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObjectType {
+    Struct,
+
+    /// A proper union sum type
+    Union,
+
+    /// An enumeration of alternatives
+    Enum,
 }
 
 /// A high-level representation of a flatbuffers field, which can be either a struct member or a

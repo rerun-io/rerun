@@ -13,7 +13,9 @@ use rayon::prelude::*;
 
 use crate::{
     codegen::{autogen_warning, common::collect_examples_for_api_docs},
-    format_path, ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind,
+    format_path,
+    objects::ObjectType,
+    ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind,
     ObjectSpecifics, Objects, Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
 };
 
@@ -360,8 +362,8 @@ impl QuotedObject {
         hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
     ) -> Self {
-        match obj.specifics {
-            crate::ObjectSpecifics::Struct => match obj.kind {
+        match obj.typ() {
+            ObjectType::Struct => match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
                     Self::from_struct(objects, obj, hpp_includes, hpp_type_extensions)
                 }
@@ -369,8 +371,9 @@ impl QuotedObject {
                     Self::from_archetype(obj, hpp_includes, hpp_type_extensions)
                 }
             },
-            crate::ObjectSpecifics::Union { .. } => {
-                Self::from_union(objects, obj, hpp_includes, hpp_type_extensions)
+            ObjectType::Union => Self::from_union(objects, obj, hpp_includes, hpp_type_extensions),
+            ObjectType::Enum => {
+                unimplemented!("enum")
             }
         }
     }

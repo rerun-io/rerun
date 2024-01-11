@@ -21,8 +21,10 @@ use crate::{
         },
         StringExt as _,
     },
-    format_path, ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind,
-    Objects, Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    format_path,
+    objects::ObjectType,
+    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
     ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
@@ -175,10 +177,10 @@ fn generate_object_file(
     // inject some of our own when writing to file… while making sure that don't inject
     // random spacing into doc comments that look like code!
 
-    let quoted_obj = if obj.is_struct() {
-        quote_struct(reporter, arrow_registry, objects, obj)
-    } else {
-        quote_union(reporter, arrow_registry, objects, obj)
+    let quoted_obj = match obj.typ() {
+        crate::objects::ObjectType::Struct => quote_struct(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectType::Union => quote_union(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectType::Enum => unimplemented!("enums"),
     };
 
     let mut tokens = quoted_obj.into_iter();
@@ -422,7 +424,7 @@ fn quote_union(
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
-    assert!(!obj.is_struct());
+    assert_eq!(obj.typ(), ObjectType::Union);
 
     let Object { name, fields, .. } = obj;
 
