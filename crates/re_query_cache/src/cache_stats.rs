@@ -20,6 +20,19 @@ pub fn set_detailed_stats(b: bool) {
     ENABLE_DETAILED_STATS.store(b, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// If `true`, will show stats about empty caches too, which likely indicates a bug (dangling bucket).
+static SHOW_EMPTY_CACHES: AtomicBool = AtomicBool::new(false);
+
+#[inline]
+pub fn show_empty_caches() -> bool {
+    SHOW_EMPTY_CACHES.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+#[inline]
+pub fn set_show_empty_caches(b: bool) {
+    SHOW_EMPTY_CACHES.store(b, std::sync::atomic::Ordering::Relaxed);
+}
+
 // ---
 
 /// Stats for all primary caches.
@@ -61,6 +74,15 @@ pub struct CachedEntityStats {
 
     /// Only if [`detailed_stats`] returns `true` (see [`set_detailed_stats`]).
     pub per_component: Option<BTreeMap<ComponentName, CachedComponentStats>>,
+}
+
+impl CachedEntityStats {
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        // NOTE: That looks non-sensical, but it can happen if the cache is bugged, which we'd like
+        // to know.
+        self.total_rows == 0 && self.total_size_bytes == 0
+    }
 }
 
 /// Stats for a cached component.

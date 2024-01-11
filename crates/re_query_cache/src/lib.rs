@@ -9,7 +9,8 @@ mod range;
 
 pub use self::cache::{AnyQuery, Caches};
 pub use self::cache_stats::{
-    detailed_stats, set_detailed_stats, CachedComponentStats, CachedEntityStats, CachesStats,
+    detailed_stats, set_detailed_stats, set_show_empty_caches, show_empty_caches,
+    CachedComponentStats, CachedEntityStats, CachesStats,
 };
 pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
 pub use self::query::{

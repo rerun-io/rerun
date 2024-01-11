@@ -316,65 +316,85 @@ impl MemoryPanel {
             .on_hover_text("Show detailed statistics when hovering entity paths below.\nThis will slow down the program.");
         re_query_cache::set_detailed_stats(detailed_stats);
 
+        let mut show_empty_caches = re_query_cache::show_empty_caches();
+        re_ui
+            .checkbox(ui, &mut show_empty_caches, "Show empty caches")
+            .on_hover_text(
+                "Show empty caches too.\nDangling buckets are generally the result of a bug.",
+            );
+        re_query_cache::set_show_empty_caches(show_empty_caches);
+
         let CachesStats { latest_at, range } = caches_stats;
 
-        // NOTE: This is a debug tool: do _not_ hide empty things. Empty things are a bug.
-
-        ui.separator();
-
-        ui.strong("LatestAt");
-        egui::ScrollArea::vertical()
-            .max_height(200.0)
-            .id_source("latest_at")
-            .show(ui, |ui| {
-                egui::Grid::new("latest_at cache stats grid")
-                    .num_columns(3)
-                    .show(ui, |ui| {
-                        ui.label(egui::RichText::new("Entity").underline());
-                        ui.label(egui::RichText::new("Rows").underline())
-                            .on_hover_text("How many distinct data timestamps have been cached?");
-                        ui.label(egui::RichText::new("Size").underline());
-                        ui.end_row();
-
-                        for (entity_path, stats) in latest_at {
-                            let res = ui.label(entity_path.to_string());
-                            entity_stats_ui(ui, res, stats);
+        if show_empty_caches || !latest_at.is_empty() {
+            ui.separator();
+            ui.strong("LatestAt");
+            egui::ScrollArea::vertical()
+                .max_height(200.0)
+                .id_source("latest_at")
+                .show(ui, |ui| {
+                    egui::Grid::new("latest_at cache stats grid")
+                        .num_columns(3)
+                        .show(ui, |ui| {
+                            ui.label(egui::RichText::new("Entity").underline());
+                            ui.label(egui::RichText::new("Rows").underline())
+                                .on_hover_text(
+                                    "How many distinct data timestamps have been cached?",
+                                );
+                            ui.label(egui::RichText::new("Size").underline());
                             ui.end_row();
-                        }
-                    });
-            });
 
-        ui.separator();
+                            for (entity_path, stats) in latest_at {
+                                if !show_empty_caches && stats.is_empty() {
+                                    continue;
+                                }
 
-        ui.strong("Range");
-        egui::ScrollArea::vertical()
-            .max_height(200.0)
-            .id_source("range")
-            .show(ui, |ui| {
-                egui::Grid::new("range cache stats grid")
-                    .num_columns(4)
-                    .show(ui, |ui| {
-                        ui.label(egui::RichText::new("Entity").underline());
-                        ui.label(egui::RichText::new("Time range").underline());
-                        ui.label(egui::RichText::new("Rows").underline())
-                            .on_hover_text("How many distinct data timestamps have been cached?");
-                        ui.label(egui::RichText::new("Size").underline());
-                        ui.end_row();
-
-                        for (entity_path, stats_per_range) in range {
-                            for (timeline, time_range, stats) in stats_per_range {
                                 let res = ui.label(entity_path.to_string());
-                                ui.label(format!(
-                                    "{}({})",
-                                    timeline.name(),
-                                    timeline.format_time_range_utc(time_range)
-                                ));
                                 entity_stats_ui(ui, res, stats);
                                 ui.end_row();
                             }
-                        }
-                    });
-            });
+                        });
+                });
+        }
+
+        if show_empty_caches || !latest_at.is_empty() {
+            ui.separator();
+            ui.strong("Range");
+            egui::ScrollArea::vertical()
+                .max_height(200.0)
+                .id_source("range")
+                .show(ui, |ui| {
+                    egui::Grid::new("range cache stats grid")
+                        .num_columns(4)
+                        .show(ui, |ui| {
+                            ui.label(egui::RichText::new("Entity").underline());
+                            ui.label(egui::RichText::new("Time range").underline());
+                            ui.label(egui::RichText::new("Rows").underline())
+                                .on_hover_text(
+                                    "How many distinct data timestamps have been cached?",
+                                );
+                            ui.label(egui::RichText::new("Size").underline());
+                            ui.end_row();
+
+                            for (entity_path, stats_per_range) in range {
+                                for (timeline, time_range, stats) in stats_per_range {
+                                    if !show_empty_caches && stats.is_empty() {
+                                        continue;
+                                    }
+
+                                    let res = ui.label(entity_path.to_string());
+                                    ui.label(format!(
+                                        "{}({})",
+                                        timeline.name(),
+                                        timeline.format_time_range_utc(time_range)
+                                    ));
+                                    entity_stats_ui(ui, res, stats);
+                                    ui.end_row();
+                                }
+                            }
+                        });
+                });
+        }
 
         fn entity_stats_ui(
             ui: &mut egui::Ui,
