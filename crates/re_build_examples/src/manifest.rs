@@ -36,9 +36,10 @@ impl Manifest {
             }
         };
 
+        let workspace_root = re_build_tools::cargo_metadata()?.workspace_root;
         let manifest = self
             .channel
-            .examples()?
+            .examples(workspace_root)?
             .into_iter()
             .map(|example| ManifestEntry::new(example, &base_url))
             .collect::<Vec<_>>();

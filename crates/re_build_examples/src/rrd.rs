@@ -27,7 +27,8 @@ impl Rrd {
     pub fn run(self) -> anyhow::Result<()> {
         create_dir_all(&self.output_dir)?;
 
-        let examples = self.channel.examples()?;
+        let workspace_root = re_build_tools::cargo_metadata()?.workspace_root;
+        let examples = self.channel.examples(workspace_root)?;
         let progress = MultiProgress::new();
         let results: Vec<anyhow::Result<PathBuf>> = examples
             .into_par_iter()

@@ -4744,6 +4744,7 @@ dependencies = [
  "anyhow",
  "argh",
  "camino",
+ "cargo_metadata 0.18.1",
  "glob",
  "indicatif",
  "meilisearch-sdk",
