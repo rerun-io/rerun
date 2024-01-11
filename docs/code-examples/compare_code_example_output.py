@@ -126,7 +126,6 @@ def main() -> None:
     examples.sort()
 
     print("----------------------------------------------------------")
-    print(f"Running {len(examples)} examples…")
 
     active_languages = ["rust"]
     if not args.no_cpp:
@@ -135,14 +134,15 @@ def main() -> None:
         active_languages.append("py")
 
     # Running CMake in parallel causes failures during rerun_sdk & arrow build.
-    # TODO(andreas): Tell cmake in a single command to build everything at once.
     if not args.no_cpp_build:
+        print(f"Running {len(examples)} C++ examples…")
         for example in examples:
             example_opt_out_entirely = opt_out_run.get(example, [])
             if "cpp" in example_opt_out_entirely:
                 continue
             run_example(example, "cpp", args)
 
+    print(f"Running {len(examples)} Rust and Python examples…")
     with multiprocessing.Pool() as pool:
         jobs = []
         for example in examples:
