@@ -185,8 +185,8 @@ proc-macro2 = { version = "1.0", default-features = false }
 profiling = { version = "1.0.12", default-features = false }
 puffin = "0.18"
 puffin_http = "0.15"
-pyo3 = "0.19.0"
-pyo3-build-config = "0.19.0"
+pyo3 = "0.20.2"
+pyo3-build-config = "0.20.2"
 quote = "1.0"
 rand = { version = "0.8", default-features = false }
 rayon = "1.7"
@@ -225,7 +225,7 @@ tracing = { version = "0.1", default-features = false }
 tungstenite = { version = "0.17", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
-unindent = "0.1" # pyo3 0.19 uses unindent 0.1, so update unindent when we update pyo3
+unindent = "0.2"
 uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
