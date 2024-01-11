@@ -394,6 +394,9 @@ pub struct CacheBucket {
     ///
     /// This corresponds to the data time and `RowId` returned by `re_query::query_archetype`.
     ///
+    /// This is guaranteed to always be sorted and dense (i.e. there cannot be a hole in the cached
+    /// data, unless the raw itself in the store has a hole at that particular point in time).
+    ///
     /// Reminder: within a single timestamp, rows are sorted according to their [`RowId`]s.
     pub(crate) data_times: VecDeque<(TimeInt, RowId)>,
 
@@ -420,6 +423,21 @@ impl CacheBucket {
     #[inline]
     pub fn iter_data_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
         self.data_times.iter()
+    }
+
+    #[inline]
+    pub fn contains_data_time(&self, data_time: TimeInt) -> bool {
+        let first_time = self.data_times.front().map_or(&TimeInt::MAX, |(t, _)| t);
+        let last_time = self.data_times.back().map_or(&TimeInt::MIN, |(t, _)| t);
+        *first_time <= data_time && data_time <= *last_time
+    }
+
+    #[inline]
+    pub fn contains_data_row(&self, data_time: TimeInt, row_id: RowId) -> bool {
+        if !self.contains_data_time(data_time) {
+            return false; // fast path
+        }
+        self.data_times.binary_search(&(data_time, row_id)).is_ok()
     }
 
     /// Iterate over the [`InstanceKey`] batches of the point-of-view components.
