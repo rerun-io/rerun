@@ -433,7 +433,14 @@ impl PythonCodeGenerator {
                 crate::objects::ObjectType::Union => {
                     code_for_union(arrow_registry, &ext_class, objects, obj)
                 }
-                crate::objects::ObjectType::Enum => unimplemented!("enums"),
+                crate::objects::ObjectType::Enum => {
+                    reporter.error(
+                        &obj.virtpath,
+                        &obj.fqname,
+                        "Enums are not implemented in Python",
+                    );
+                    continue;
+                }
             };
 
             code.push_text(&obj_code, 1, 0);

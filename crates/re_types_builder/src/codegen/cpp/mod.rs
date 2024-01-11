@@ -26,6 +26,8 @@ use self::method::{Method, MethodDeclaration};
 
 use super::common::ExampleInfo;
 
+type Result<T = (), E = anyhow::Error> = std::result::Result<T, E>;
+
 trait CppObjectExtensions {
     fn namespace_ident(&self) -> Ident;
     fn ident(&self) -> Ident;
@@ -152,7 +154,7 @@ impl CppCodeGenerator {
 
     fn generate_folder(
         &self,
-        _reporter: &Reporter,
+        reporter: &Reporter,
         objects: &Objects,
         scope: &Option<String>,
         object_kind: ObjectKind,
@@ -173,38 +175,16 @@ impl CppCodeGenerator {
             .into_iter()
             .filter(|obj| &obj.scope() == scope)
             .collect_vec();
+
         for &obj in &ordered_objects {
-            let filename_stem = obj.snake_case_name();
-
-            let mut hpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
-            hpp_includes.insert_system("cstdint"); // we use `uint32_t` etc everywhere.
-            hpp_includes.insert_rerun("result.hpp"); // rerun result is used for serialization methods
-
-            let (hpp_type_extensions, hpp_extension_string) =
-                hpp_type_extensions(&folder_path_sdk, &filename_stem, &mut hpp_includes);
-
-            let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions);
-
-            for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
-                let mut contents = string_from_token_stream(&tokens, obj.relative_filepath());
-                if let Some(hpp_extension_string) = &hpp_extension_string {
-                    contents = contents.replace(
-                        &format!("\"{HEADER_EXTENSION_TOKEN}\""), // NOLINT
-                        hpp_extension_string,
-                    );
-                }
-                let folder_path = if obj.is_testing() {
-                    &folder_path_testing
-                } else {
-                    &folder_path_sdk
-                };
-                let filepath = folder_path.join(format!("{filename_stem}.{extension}"));
-                let previous = files_to_write.insert(filepath, contents);
-                assert!(
-                    previous.is_none(),
-                    "Multiple objects with the same name: {:?}",
-                    obj.name
-                );
+            if let Err(err) = generate_object_files(
+                objects,
+                &folder_path_sdk,
+                &folder_path_testing,
+                &mut files_to_write,
+                obj,
+            ) {
+                reporter.error(&obj.virtpath, &obj.fqname, err);
             }
         }
 
@@ -239,6 +219,51 @@ impl CppCodeGenerator {
 
         files_to_write
     }
+}
+
+fn generate_object_files(
+    objects: &Objects,
+    folder_path_sdk: &Utf8PathBuf,
+    folder_path_testing: &Utf8PathBuf,
+    files_to_write: &mut std::collections::BTreeMap<Utf8PathBuf, String>,
+    obj: &Object,
+) -> Result {
+    let filename_stem = obj.snake_case_name();
+
+    let mut hpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
+    hpp_includes.insert_system("cstdint");
+    // we use `uint32_t` etc everywhere.
+    hpp_includes.insert_rerun("result.hpp");
+    // rerun result is used for serialization methods
+
+    let (hpp_type_extensions, hpp_extension_string) =
+        hpp_type_extensions(folder_path_sdk, &filename_stem, &mut hpp_includes);
+
+    let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions)?;
+
+    for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
+        let mut contents = string_from_token_stream(&tokens, obj.relative_filepath());
+        if let Some(hpp_extension_string) = &hpp_extension_string {
+            contents = contents.replace(
+                &format!("\"{HEADER_EXTENSION_TOKEN}\""), // NOLINT
+                hpp_extension_string,
+            );
+        }
+        let folder_path = if obj.is_testing() {
+            folder_path_testing
+        } else {
+            folder_path_sdk
+        };
+        let filepath = folder_path.join(format!("{filename_stem}.{extension}"));
+        let previous = files_to_write.insert(filepath, contents);
+        assert!(
+            previous.is_none(),
+            "Multiple objects with the same name: {:?}",
+            obj.name
+        );
+    }
+
+    Ok(())
 }
 
 /// Retrieves code from an extension cpp file that should go to the generated header.
@@ -323,9 +348,9 @@ fn generate_hpp_cpp(
     obj: &Object,
     hpp_includes: Includes,
     hpp_type_extensions: &TokenStream,
-) -> (TokenStream, TokenStream) {
+) -> Result<(TokenStream, TokenStream)> {
     let QuotedObject { hpp, cpp } =
-        QuotedObject::new(objects, obj, hpp_includes, hpp_type_extensions);
+        QuotedObject::new(objects, obj, hpp_includes, hpp_type_extensions)?;
     let snake_case_name = obj.snake_case_name();
     let hash = quote! { # };
     let pragma_once = pragma_once();
@@ -340,7 +365,7 @@ fn generate_hpp_cpp(
         #cpp
     };
 
-    (hpp, cpp)
+    Ok((hpp, cpp))
 }
 
 fn pragma_once() -> TokenStream {
@@ -361,19 +386,27 @@ impl QuotedObject {
         obj: &Object,
         hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
-    ) -> Self {
+    ) -> Result<Self> {
         match obj.typ() {
             ObjectType::Struct => match obj.kind {
-                ObjectKind::Datatype | ObjectKind::Component => {
-                    Self::from_struct(objects, obj, hpp_includes, hpp_type_extensions)
-                }
+                ObjectKind::Datatype | ObjectKind::Component => Ok(Self::from_struct(
+                    objects,
+                    obj,
+                    hpp_includes,
+                    hpp_type_extensions,
+                )),
                 ObjectKind::Archetype => {
-                    Self::from_archetype(obj, hpp_includes, hpp_type_extensions)
+                    Ok(Self::from_archetype(obj, hpp_includes, hpp_type_extensions))
                 }
             },
-            ObjectType::Union => Self::from_union(objects, obj, hpp_includes, hpp_type_extensions),
+            ObjectType::Union => Ok(Self::from_union(
+                objects,
+                obj,
+                hpp_includes,
+                hpp_type_extensions,
+            )),
             ObjectType::Enum => {
-                unimplemented!("enum")
+                anyhow::bail!("Enums are not implemented in C++")
             }
         }
     }
