@@ -1,6 +1,5 @@
 use re_data_store::{DataStoreConfig, DataStoreRowStats, DataStoreStats};
 use re_format::{format_bytes, format_number};
-use re_log_types::EntityPath;
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_query_cache::{CachedComponentStats, CachedEntityStats, CachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
@@ -317,63 +316,68 @@ impl MemoryPanel {
             .on_hover_text("Show detailed statistics when hovering entity paths below.\nThis will slow down the program.");
         re_query_cache::set_detailed_stats(detailed_stats);
 
-        egui::Grid::new("cache stats grid")
+        let CachesStats { latest_at } = caches_stats;
+
+        // NOTE: This is a debug tool: do _not_ hide empty things. Empty things are a bug.
+
+        ui.separator();
+
+        ui.strong("LatestAt");
+        egui::Grid::new("latest_at cache stats grid")
             .num_columns(3)
             .show(ui, |ui| {
-                let CachesStats { latest_at } = caches_stats;
-
-                ui.label("Entity");
-                ui.label("Timestamps")
+                ui.label(egui::RichText::new("Entity").underline());
+                ui.label(egui::RichText::new("Rows").underline())
                     .on_hover_text("How many distinct data timestamps have been cached?");
-                ui.label("Size");
+                ui.label(egui::RichText::new("Size").underline());
                 ui.end_row();
 
-                fn label_entity_stats(
-                    ui: &mut egui::Ui,
-                    cache_stats: &CachedEntityStats,
-                    entity_path: &EntityPath,
-                ) {
-                    let CachedEntityStats {
-                        total_size_bytes,
-                        total_times,
-                        per_component,
-                    } = cache_stats;
-
+                for (entity_path, stats) in latest_at {
                     let res = ui.label(entity_path.to_string());
-                    if let Some(per_component) = per_component.as_ref() {
-                        res.on_hover_ui_at_pointer(|ui| {
-                            egui::Grid::new("component cache stats grid")
-                                .num_columns(3)
-                                .show(ui, |ui| {
-                                    ui.label("Component");
-                                    ui.label("Timestamps");
-                                    ui.label("Count");
-                                    ui.end_row();
-
-                                    for (component_name, stats) in per_component {
-                                        let &CachedComponentStats {
-                                            total_times,
-                                            total_values,
-                                        } = stats;
-
-                                        ui.label(component_name.to_string());
-                                        ui.label(re_format::format_number(total_times as _));
-                                        ui.label(re_format::format_number(total_values as _));
-                                        ui.end_row();
-                                    }
-                                });
-                        });
-                    }
-
-                    ui.label(re_format::format_number(*total_times as _));
-                    ui.label(re_format::format_bytes(*total_size_bytes as _));
+                    entity_stats_ui(ui, res, stats);
                     ui.end_row();
                 }
-
-                for (entity_path, stats) in latest_at {
-                    label_entity_stats(ui, stats, entity_path);
-                }
             });
+
+        fn entity_stats_ui(
+            ui: &mut egui::Ui,
+            hover_response: egui::Response,
+            entity_stats: &CachedEntityStats,
+        ) {
+            let CachedEntityStats {
+                total_size_bytes,
+                total_rows,
+                per_component,
+            } = entity_stats;
+
+            if let Some(per_component) = per_component.as_ref() {
+                hover_response.on_hover_ui_at_pointer(|ui| {
+                    egui::Grid::new("component cache stats grid")
+                        .num_columns(3)
+                        .show(ui, |ui| {
+                            ui.label(egui::RichText::new("Component").underline());
+                            ui.label(egui::RichText::new("Rows").underline());
+                            ui.label(egui::RichText::new("Instances").underline());
+                            ui.end_row();
+
+                            for (component_name, stats) in per_component {
+                                let &CachedComponentStats {
+                                    total_rows,
+                                    total_instances,
+                                } = stats;
+
+                                ui.label(component_name.to_string());
+                                ui.label(re_format::format_number(total_rows as _));
+                                ui.label(re_format::format_number(total_instances as _));
+                                ui.end_row();
+                            }
+                        });
+                });
+            }
+
+            ui.label(re_format::format_number(*total_rows as _));
+            ui.label(re_format::format_bytes(*total_size_bytes as _));
+        }
     }
 
     fn tracking_stats(
