@@ -6,6 +6,7 @@ add_subdirectory(minimal)
 add_subdirectory(shared_recording)
 add_subdirectory(spawn_viewer)
 add_subdirectory(stdio)
+add_subdirectory(visualize_openMVG_sfm_data)
 
 add_custom_target(examples)
 
@@ -17,3 +18,4 @@ add_dependencies(examples example_shared_recording)
 add_dependencies(examples example_spawn_viewer)
 add_dependencies(examples example_stdio)
 add_dependencies(examples rerun-loader-cpp-file)
+add_dependencies(examples example_openMVG_sfm_data)
