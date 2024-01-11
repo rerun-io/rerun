@@ -316,7 +316,7 @@ impl MemoryPanel {
             .on_hover_text("Show detailed statistics when hovering entity paths below.\nThis will slow down the program.");
         re_query_cache::set_detailed_stats(detailed_stats);
 
-        let CachesStats { latest_at } = caches_stats;
+        let CachesStats { latest_at, range } = caches_stats;
 
         // NOTE: This is a debug tool: do _not_ hide empty things. Empty things are a bug.
 
@@ -336,6 +336,29 @@ impl MemoryPanel {
                     let res = ui.label(entity_path.to_string());
                     entity_stats_ui(ui, res, stats);
                     ui.end_row();
+                }
+            });
+
+        ui.separator();
+
+        ui.strong("Range");
+        egui::Grid::new("range cache stats grid")
+            .num_columns(4)
+            .show(ui, |ui| {
+                ui.label(egui::RichText::new("Entity").underline());
+                ui.label(egui::RichText::new("Time range").underline());
+                ui.label(egui::RichText::new("Rows").underline())
+                    .on_hover_text("How many distinct data timestamps have been cached?");
+                ui.label(egui::RichText::new("Size").underline());
+                ui.end_row();
+
+                for (entity_path, stats_per_range) in range {
+                    for (timeline, time_range, stats) in stats_per_range {
+                        let res = ui.label(entity_path.to_string());
+                        ui.label(timeline.format_time_range_utc(time_range));
+                        entity_stats_ui(ui, res, stats);
+                        ui.end_row();
+                    }
                 }
             });
 

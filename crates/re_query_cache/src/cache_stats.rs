@@ -1,9 +1,9 @@
 use std::{collections::BTreeMap, sync::atomic::AtomicBool};
 
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, TimeRange, Timeline};
 use re_types_core::ComponentName;
 
-use crate::{Caches, LatestAtCache};
+use crate::{Caches, LatestAtCache, RangeCache};
 
 // ---
 
@@ -28,6 +28,7 @@ pub fn set_detailed_stats(b: bool) {
 #[derive(Default, Debug, Clone)]
 pub struct CachesStats {
     pub latest_at: BTreeMap<EntityPath, CachedEntityStats>,
+    pub range: BTreeMap<EntityPath, Vec<(Timeline, TimeRange, CachedEntityStats)>>,
 }
 
 impl CachesStats {
@@ -35,12 +36,20 @@ impl CachesStats {
     pub fn total_size_bytes(&self) -> u64 {
         re_tracing::profile_function!();
 
-        let Self { latest_at } = self;
+        let Self { latest_at, range } = self;
 
         let latest_at_size_bytes: u64 =
             latest_at.values().map(|stats| stats.total_size_bytes).sum();
+        let range_size_bytes: u64 = range
+            .values()
+            .flat_map(|all_ranges| {
+                all_ranges
+                    .iter()
+                    .map(|(_, _, stats)| stats.total_size_bytes)
+            })
+            .sum();
 
-        latest_at_size_bytes
+        latest_at_size_bytes + range_size_bytes
     }
 }
 
@@ -123,7 +132,51 @@ impl Caches {
                 })
                 .collect();
 
-            CachesStats { latest_at }
+            let range = caches
+                .0
+                .read()
+                .iter()
+                .map(|(key, caches_per_arch)| {
+                    (key.entity_path.clone(), {
+                        caches_per_arch
+                            .range_per_archetype
+                            .read()
+                            .values()
+                            .map(|range_cache| {
+                                let RangeCache {
+                                    bucket,
+                                    total_size_bytes,
+                                } = &*range_cache.read();
+
+                                let total_rows = bucket.data_times.len() as u64;
+
+                                let mut per_component = detailed_stats().then(BTreeMap::default);
+                                if let Some(per_component) = per_component.as_mut() {
+                                    for (component_name, data) in &bucket.components {
+                                        let stats: &mut CachedComponentStats =
+                                            per_component.entry(*component_name).or_default();
+                                        stats.total_rows += data.dyn_num_entries() as u64;
+                                        stats.total_instances += data.dyn_num_values() as u64;
+                                    }
+                                }
+
+                                (
+                                    key.timeline,
+                                    bucket.time_range().unwrap_or(TimeRange::EMPTY),
+                                    CachedEntityStats {
+                                        total_size_bytes: *total_size_bytes,
+                                        total_rows,
+
+                                        per_component,
+                                    },
+                                )
+                            })
+                            .collect()
+                    })
+                })
+                .collect();
+
+            CachesStats { latest_at, range }
         })
     }
 }
