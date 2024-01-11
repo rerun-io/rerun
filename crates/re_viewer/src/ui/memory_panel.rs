@@ -323,47 +323,57 @@ impl MemoryPanel {
         ui.separator();
 
         ui.strong("LatestAt");
-        egui::Grid::new("latest_at cache stats grid")
-            .num_columns(3)
+        egui::ScrollArea::vertical()
+            .max_height(200.0)
+            .id_source("latest_at")
             .show(ui, |ui| {
-                ui.label(egui::RichText::new("Entity").underline());
-                ui.label(egui::RichText::new("Rows").underline())
-                    .on_hover_text("How many distinct data timestamps have been cached?");
-                ui.label(egui::RichText::new("Size").underline());
-                ui.end_row();
+                egui::Grid::new("latest_at cache stats grid")
+                    .num_columns(3)
+                    .show(ui, |ui| {
+                        ui.label(egui::RichText::new("Entity").underline());
+                        ui.label(egui::RichText::new("Rows").underline())
+                            .on_hover_text("How many distinct data timestamps have been cached?");
+                        ui.label(egui::RichText::new("Size").underline());
+                        ui.end_row();
 
-                for (entity_path, stats) in latest_at {
-                    let res = ui.label(entity_path.to_string());
-                    entity_stats_ui(ui, res, stats);
-                    ui.end_row();
-                }
+                        for (entity_path, stats) in latest_at {
+                            let res = ui.label(entity_path.to_string());
+                            entity_stats_ui(ui, res, stats);
+                            ui.end_row();
+                        }
+                    });
             });
 
         ui.separator();
 
         ui.strong("Range");
-        egui::Grid::new("range cache stats grid")
-            .num_columns(4)
+        egui::ScrollArea::vertical()
+            .max_height(200.0)
+            .id_source("range")
             .show(ui, |ui| {
-                ui.label(egui::RichText::new("Entity").underline());
-                ui.label(egui::RichText::new("Time range").underline());
-                ui.label(egui::RichText::new("Rows").underline())
-                    .on_hover_text("How many distinct data timestamps have been cached?");
-                ui.label(egui::RichText::new("Size").underline());
-                ui.end_row();
-
-                for (entity_path, stats_per_range) in range {
-                    for (timeline, time_range, stats) in stats_per_range {
-                        let res = ui.label(entity_path.to_string());
-                        ui.label(format!(
-                            "{}({})",
-                            timeline.name(),
-                            timeline.format_time_range_utc(time_range)
-                        ));
-                        entity_stats_ui(ui, res, stats);
+                egui::Grid::new("range cache stats grid")
+                    .num_columns(4)
+                    .show(ui, |ui| {
+                        ui.label(egui::RichText::new("Entity").underline());
+                        ui.label(egui::RichText::new("Time range").underline());
+                        ui.label(egui::RichText::new("Rows").underline())
+                            .on_hover_text("How many distinct data timestamps have been cached?");
+                        ui.label(egui::RichText::new("Size").underline());
                         ui.end_row();
-                    }
-                }
+
+                        for (entity_path, stats_per_range) in range {
+                            for (timeline, time_range, stats) in stats_per_range {
+                                let res = ui.label(entity_path.to_string());
+                                ui.label(format!(
+                                    "{}({})",
+                                    timeline.name(),
+                                    timeline.format_time_range_utc(time_range)
+                                ));
+                                entity_stats_ui(ui, res, stats);
+                                ui.end_row();
+                            }
+                        }
+                    });
             });
 
         fn entity_stats_ui(
