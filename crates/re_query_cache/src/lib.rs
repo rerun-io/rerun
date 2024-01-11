@@ -3,6 +3,7 @@
 mod cache;
 mod cache_stats;
 mod flat_vec_deque;
+mod latest_at;
 mod query;
 
 pub use self::cache::{AnyQuery, Caches};
@@ -13,19 +14,22 @@ pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
 pub use self::query::{
     query_archetype_pov1, query_archetype_with_history_pov1, MaybeCachedComponentData,
 };
-
-pub(crate) use self::cache::{CacheBucket, LatestAtCache};
-
-pub use re_query::{QueryError, Result}; // convenience
-
-// TODO(cmc): Supporting N>1 generically is quite painful due to limitations in declarative macros,
-// not that we care at the moment.
 seq_macro::seq!(NUM_COMP in 0..10 { paste::paste! {
     pub use self::query::{#(
         query_archetype_pov1_comp~NUM_COMP,
         query_archetype_with_history_pov1_comp~NUM_COMP,
     )*};
 }});
+
+pub(crate) use self::cache::CacheBucket;
+pub(crate) use self::latest_at::LatestAtCache;
+seq_macro::seq!(NUM_COMP in 0..10 { paste::paste! {
+    pub(crate) use self::latest_at::{#(
+        query_archetype_latest_at_pov1_comp~NUM_COMP,
+    )*};
+}});
+
+pub use re_query::{QueryError, Result}; // convenience
 
 pub mod external {
     pub use re_query;

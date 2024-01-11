@@ -18,7 +18,7 @@ use re_types_core::{
     components::InstanceKey, Archetype, ArchetypeName, Component, ComponentName, SizeBytes as _,
 };
 
-use crate::{ErasedFlatVecDeque, FlatVecDeque};
+use crate::{ErasedFlatVecDeque, FlatVecDeque, LatestAtCache};
 
 // ---
 
@@ -553,43 +553,4 @@ impl CacheBucket {
 
         Ok(added_size_bytes)
     }
-}
-
-// ---
-
-// NOTE: Because we're working with deserialized data, everything has to be done with metaprogramming,
-// which is notoriously painful in Rust (i.e., macros).
-// For this reason we move as much of the code as possible into the already existing macros in `query.rs`.
-
-/// Caches the results of `LatestAt` archetype queries (`ArchetypeView`).
-///
-/// There is one `LatestAtCache` for each unique [`CacheKey`].
-///
-/// All query steps are cached: index search, cluster key joins and deserialization.
-#[derive(Default)]
-pub struct LatestAtCache {
-    /// Organized by _query_ time.
-    ///
-    /// If the data you're looking for isn't in here, try partially running the query (i.e. run the
-    /// index search in order to find a data time, but don't actually deserialize and join the data)
-    /// and check if there is any data available for the resulting _data_ time in [`Self::per_data_time`].
-    pub per_query_time: BTreeMap<TimeInt, Arc<RwLock<CacheBucket>>>,
-
-    /// Organized by _data_ time.
-    ///
-    /// Due to how our latest-at semantics work, any number of queries at time `T+n` where `n >= 0`
-    /// can result in a data time of `T`.
-    pub per_data_time: BTreeMap<TimeInt, Arc<RwLock<CacheBucket>>>,
-
-    /// Dedicated bucket for timeless data, if any.
-    ///
-    /// Query time and data time are one and the same in the timeless case, therefore we only need
-    /// this one bucket.
-    //
-    // NOTE: Lives separately so we don't pay the extra `Option` cost in the much more common
-    // timeful case.
-    pub timeless: Option<CacheBucket>,
-
-    /// Total size of the data stored in this cache in bytes.
-    pub total_size_bytes: u64,
 }
