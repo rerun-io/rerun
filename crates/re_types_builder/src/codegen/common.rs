@@ -321,7 +321,7 @@ pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
         .collect();
 
     for folder_path in folder_paths {
-        re_log::debug!("Checking for orphaned files in {folder_path}");
+        re_log::trace!("Checking for orphaned files in {folder_path}");
 
         let iter = std::fs::read_dir(folder_path).ok();
         if iter.is_none() {
