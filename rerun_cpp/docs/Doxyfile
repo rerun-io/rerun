@@ -1773,7 +1773,7 @@ GENERATE_MAN           = NO
 # captures the structure of the code including all documentation.
 # The default value is: NO.
 
-GENERATE_XML           = NO
+GENERATE_XML           = YES
 
 #---------------------------------------------------------------------------
 # Configuration options related to the DOCBOOK output
