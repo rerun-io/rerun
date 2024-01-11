@@ -188,9 +188,11 @@ seq!(NUM_COMP in 0..10 {
 /// and no optional components.
 ///
 /// Alias for [`query_archetype_with_history_pov1_comp0`].
+#[allow(clippy::too_many_arguments)]
 #[inline]
 pub fn query_archetype_with_history_pov1<'a, A, R1, F>(
-    cached: bool,
+    cached_latest_at: bool,
+    cached_range: bool,
     store: &'a DataStore,
     timeline: &'a Timeline,
     time: &'a TimeInt,
@@ -210,7 +212,14 @@ where
     ),
 {
     query_archetype_with_history_pov1_comp0::<A, R1, F>(
-        cached, store, timeline, time, history, ent_path, f,
+        cached_latest_at,
+        cached_range,
+        store,
+        timeline,
+        time,
+        history,
+        ent_path,
+        f,
     )
 }
 
@@ -220,8 +229,10 @@ macro_rules! impl_query_archetype_with_history {
     (for N=$N:expr, M=$M:expr => povs=[$($pov:ident)+] comps=[$($comp:ident)*]) => { paste! {
         #[doc = "Cached implementation of [`re_query::query_archetype_with_history`] for `" $N "` point-of-view"]
         #[doc = "components and `" $M "` optional components."]
+        #[allow(clippy::too_many_arguments)]
         pub fn [<query_archetype_with_history_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
-            cached: bool,
+            cached_latest_at: bool,
+            cached_range: bool,
             store: &'a DataStore,
             timeline: &'a Timeline,
             time: &'a TimeInt,
@@ -242,11 +253,6 @@ macro_rules! impl_query_archetype_with_history {
                 ),
             ),
         {
-            // NOTE: not `profile_function!` because we want them merged together.
-            re_tracing::profile_scope!(
-                "query_archetype_with_history",
-                format!("cached={cached} arch={} pov={} comp={}", A::name(), $N, $M)
-            );
 
             let visible_history = match timeline.typ() {
                 re_log_types::TimeType::Time => history.nanos,
@@ -254,20 +260,32 @@ macro_rules! impl_query_archetype_with_history {
             };
 
             if !history.enabled || visible_history == VisibleHistory::OFF {
+                // NOTE: not `profile_function!` because we want them merged together.
+                re_tracing::profile_scope!(
+                    "query_archetype_with_history",
+                    format!("cached={cached_latest_at} arch={} pov={} comp={}", A::name(), $N, $M)
+                );
+
                 let query = LatestAtQuery::new(*timeline, *time);
                 $crate::[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    cached,
+                    cached_latest_at,
                     store,
                     &query.clone().into(),
                     ent_path,
                     f,
                 )
             } else {
+                // NOTE: not `profile_function!` because we want them merged together.
+                re_tracing::profile_scope!(
+                    "query_archetype_with_history",
+                    format!("cached={cached_range} arch={} pov={} comp={}", A::name(), $N, $M)
+                );
+
                 let min_time = visible_history.from(*time);
                 let max_time = visible_history.to(*time);
                 let query = RangeQuery::new(*timeline, TimeRange::new(min_time, max_time));
                 $crate::[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    cached,
+                    cached_range,
                     store,
                     &query.clone().into(),
                     ent_path,

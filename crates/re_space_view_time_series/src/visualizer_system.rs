@@ -167,7 +167,7 @@ impl TimeSeriesSystem {
                     Text,
                     _,
                 >(
-                    ctx.app_options.experimental_primary_caching_series,
+                    ctx.app_options.experimental_primary_caching_range,
                     store,
                     &query.clone().into(),
                     &data_result.entity_path,
