@@ -355,7 +355,11 @@ impl MemoryPanel {
                 for (entity_path, stats_per_range) in range {
                     for (timeline, time_range, stats) in stats_per_range {
                         let res = ui.label(entity_path.to_string());
-                        ui.label(timeline.format_time_range_utc(time_range));
+                        ui.label(format!(
+                            "{}({})",
+                            timeline.name(),
+                            timeline.format_time_range_utc(time_range)
+                        ));
                         entity_stats_ui(ui, res, stats);
                         ui.end_row();
                     }
