@@ -108,7 +108,7 @@ impl Caches {
         });
     }
 
-    /// Gives write access to the appropriate  `LatestAtCache` according to the specified
+    /// Gives write access to the appropriate `LatestAtCache` according to the specified
     /// query parameters.
     #[inline]
     pub fn with_latest_at<A, F, R>(
@@ -145,7 +145,7 @@ impl Caches {
         f(&mut cache)
     }
 
-    /// Gives write access to the appropriate  `RangeCache` according to the specified
+    /// Gives write access to the appropriate `RangeCache` according to the specified
     /// query parameters.
     #[inline]
     pub fn with_range<A, F, R>(
@@ -395,7 +395,7 @@ pub struct CacheBucket {
     /// This corresponds to the data time and `RowId` returned by `re_query::query_archetype`.
     ///
     /// This is guaranteed to always be sorted and dense (i.e. there cannot be a hole in the cached
-    /// data, unless the raw itself in the store has a hole at that particular point in time).
+    /// data, unless the raw data itself in the store has a hole at that particular point in time).
     ///
     /// Reminder: within a single timestamp, rows are sorted according to their [`RowId`]s.
     pub(crate) data_times: VecDeque<(TimeInt, RowId)>,
@@ -434,9 +434,6 @@ impl CacheBucket {
 
     #[inline]
     pub fn contains_data_row(&self, data_time: TimeInt, row_id: RowId) -> bool {
-        if !self.contains_data_time(data_time) {
-            return false; // fast path
-        }
         self.data_times.binary_search(&(data_time, row_id)).is_ok()
     }
 
