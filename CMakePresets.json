@@ -1,0 +1,111 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/../build/${hostSystemName}/${presetName}",
+      "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": {
+          "type": "PATH",
+          "value": "${sourceDir}/../install/${hostSystemName}"
+        },
+        "CMAKE_RUNTIME_OUTPUT_DIRECTORY": {
+          "type": "PATH",
+          "value": "${sourceDir}/../build/${hostSystemName}/${presetName}/bin"
+        }
+      }
+    },
+    {
+      "name": "windows-default",
+      "inherits": [
+        "default"
+      ],
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "C:\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake"
+        },
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux-default",
+      "inherits": [
+        "default"
+      ],
+      "hidden": true,
+      "cacheVariables": {
+        "_comment": "if you installed dependcies system wide using apt or other wise remove the nex two lines",
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "~/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        }
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "msvc-x64-static-debug",
+      "displayName": "MSVC Win64",
+      "description": "Default build using Visual Studio generator",
+      "inherits": [
+        "windows-default"
+      ],
+      "generator": "Visual Studio 16 2019",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "msvc-x64-static-release",
+      "displayName": "MSVC Win64",
+      "description": "Default build using Visual Studio generator",
+      "inherits": [
+        "windows-default"
+      ],
+      "generator": "Visual Studio 16 2019",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "gcc-debug",
+      "inherits": [
+        "linux-default"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER":"g++"
+      }
+    },
+    {
+      "name": "gcc-release",
+      "inherits": [
+        "linux-default"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER":"g++"
+      }
+    }
+  ]
+}
