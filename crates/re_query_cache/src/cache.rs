@@ -108,7 +108,7 @@ impl Caches {
         });
     }
 
-    /// Gives write access to the appropriate [`LatestAtCache`] according to the specified
+    /// Gives write access to the appropriate  `LatestAtCache` according to the specified
     /// query parameters.
     #[inline]
     pub fn with_latest_at<A, F, R>(
@@ -145,7 +145,7 @@ impl Caches {
         f(&mut cache)
     }
 
-    /// Gives write access to the appropriate [`RangeCache` ]according to the specified
+    /// Gives write access to the appropriate  `RangeCache` according to the specified
     /// query parameters.
     #[inline]
     pub fn with_range<A, F, R>(
