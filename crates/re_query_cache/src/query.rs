@@ -106,28 +106,6 @@ macro_rules! impl_query_archetype {
             );
 
             match &query {
-                // TODO(cmc): cached range support
-                AnyQuery::Range(query) => {
-                    re_tracing::profile_scope!("range", format!("{query:?}"));
-
-                    // NOTE: `+ 2` because we always grab the indicator component as well as the
-                    // instance keys.
-                    let arch_views = ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, query, entity_path);
-
-                    for arch_view in arch_views {
-                        let data = (
-                            (arch_view.data_time(), arch_view.primary_row_id()),
-                            MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
-                            $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
-                            $(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect()),)*
-                        );
-
-                        f(data);
-                    }
-
-                    Ok(())
-                }
-
                 AnyQuery::LatestAt(query) if !cached => {
                     re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
@@ -149,6 +127,38 @@ macro_rules! impl_query_archetype {
                     re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
                     crate::[<query_archetype_latest_at_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* F>(
+                        store,
+                        query,
+                        entity_path,
+                        f,
+                    )
+                }
+
+                AnyQuery::Range(query) if !cached => {
+                    re_tracing::profile_scope!("range", format!("{query:?}"));
+
+                    // NOTE: `+ 2` because we always grab the indicator component as well as the
+                    // instance keys.
+                    let arch_views = ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, query, entity_path);
+
+                    for arch_view in arch_views {
+                        let data = (
+                            (arch_view.data_time(), arch_view.primary_row_id()),
+                            MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
+                            $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
+                            $(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect()),)*
+                        );
+
+                        f(data);
+                    }
+
+                    Ok(())
+                }
+
+                AnyQuery::Range(query) => {
+                    re_tracing::profile_scope!("range", format!("{query:?}"));
+
+                    crate::[<query_archetype_range_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* F>(
                         store,
                         query,
                         entity_path,

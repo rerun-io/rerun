@@ -13,10 +13,6 @@ use crate::{CacheBucket, Caches, MaybeCachedComponentData};
 
 // --- Data structures ---
 
-// NOTE: Because we're working with deserialized data, everything has to be done with metaprogramming,
-// which is notoriously painful in Rust (i.e., macros).
-// For this reason we move as much of the code as possible into the already existing macros in `query.rs`.
-
 /// Caches the results of `LatestAt` queries.
 #[derive(Default)]
 pub struct LatestAtCache {

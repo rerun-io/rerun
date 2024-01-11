@@ -18,7 +18,7 @@ use re_types_core::{
     components::InstanceKey, Archetype, ArchetypeName, Component, ComponentName, SizeBytes as _,
 };
 
-use crate::{ErasedFlatVecDeque, FlatVecDeque, LatestAtCache};
+use crate::{ErasedFlatVecDeque, FlatVecDeque, LatestAtCache, RangeCache};
 
 // ---
 
@@ -67,6 +67,17 @@ pub struct CachesPerArchetype {
     // than an `ArchetypeName`: the query system doesn't care about archetypes.
     pub(crate) latest_at_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<LatestAtCache>>>>,
 
+    /// Which [`Archetype`] are we querying for?
+    ///
+    /// This is very important because of our data model: we not only query for components, but we
+    /// query for components from a specific point-of-view (the so-called primary component).
+    /// Different archetypes have different point-of-views, and therefore can end up with different
+    /// results, even from the same raw data.
+    //
+    // TODO(cmc): At some point we should probably just store the PoV and optional components rather
+    // than an `ArchetypeName`: the query system doesn't care about archetypes.
+    pub(crate) range_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<RangeCache>>>>,
+
     /// Everything greater than or equal to this timestamp has been asynchronously invalidated.
     ///
     /// The next time this cache gets queried, it must remove any entry matching this criteria.
@@ -97,7 +108,7 @@ impl Caches {
         });
     }
 
-    /// Gives write access to the appropriate `LatestAtCache` according to the specified
+    /// Gives write access to the appropriate [`LatestAtCache`] according to the specified
     /// query parameters.
     #[inline]
     pub fn with_latest_at<A, F, R>(
@@ -124,6 +135,42 @@ impl Caches {
                 let latest_at_cache = latest_at_per_archetype.entry(A::name()).or_default();
 
                 Arc::clone(latest_at_cache)
+
+                // Implicitly releasing all intermediary locks.
+            })
+            // NOTE: downcasting cannot fail, this is our own private handle.
+            .unwrap();
+
+        let mut cache = cache.write();
+        f(&mut cache)
+    }
+
+    /// Gives write access to the appropriate [`RangeCache` ]according to the specified
+    /// query parameters.
+    #[inline]
+    pub fn with_range<A, F, R>(
+        store_id: StoreId,
+        entity_path: EntityPath,
+        query: &RangeQuery,
+        mut f: F,
+    ) -> R
+    where
+        A: Archetype,
+        F: FnMut(&mut RangeCache) -> R,
+    {
+        let key = CacheKey::new(store_id, entity_path, query.timeline);
+
+        let cache =
+            re_data_store::DataStore::with_subscriber_once(*CACHES, move |caches: &Caches| {
+                let mut caches = caches.0.write();
+
+                let caches_per_archetype = caches.entry(key.clone()).or_default();
+                caches_per_archetype.handle_pending_invalidation(&key);
+
+                let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
+                let range_cache = range_per_archetype.entry(A::name()).or_default();
+
+                Arc::clone(range_cache)
 
                 // Implicitly releasing all intermediary locks.
             })

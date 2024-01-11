@@ -5,6 +5,7 @@ mod cache_stats;
 mod flat_vec_deque;
 mod latest_at;
 mod query;
+mod range;
 
 pub use self::cache::{AnyQuery, Caches};
 pub use self::cache_stats::{
@@ -26,6 +27,12 @@ pub(crate) use self::latest_at::LatestAtCache;
 seq_macro::seq!(NUM_COMP in 0..10 { paste::paste! {
     pub(crate) use self::latest_at::{#(
         query_archetype_latest_at_pov1_comp~NUM_COMP,
+    )*};
+}});
+pub(crate) use self::range::RangeCache;
+seq_macro::seq!(NUM_COMP in 0..10 { paste::paste! {
+    pub(crate) use self::range::{#(
+        query_archetype_range_pov1_comp~NUM_COMP,
     )*};
 }});
 
