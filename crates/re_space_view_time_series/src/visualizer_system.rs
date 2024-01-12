@@ -227,7 +227,17 @@ impl TimeSeriesSystem {
             let line_label =
                 same_label(&points).unwrap_or_else(|| data_result.entity_path.to_string());
 
-            self.add_line_segments(&line_label, points);
+            if points.len() == 1 {
+                self.lines.push(PlotSeries {
+                    label: line_label,
+                    color: points[0].attrs.color,
+                    width: 2.0 * points[0].attrs.radius,
+                    kind: PlotSeriesKind::Scatter,
+                    points: vec![(points[0].time, points[0].value)],
+                });
+            } else {
+                self.add_line_segments(&line_label, points);
+            }
         }
 
         Ok(())
