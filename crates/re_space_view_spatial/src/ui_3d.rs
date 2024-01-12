@@ -278,7 +278,7 @@ impl View3DState {
     ) {
         re_log::debug!("3D view tracks now {:?}", entity_path);
         self.tracked_entity = Some(entity_path.clone());
-        self.camera_before_tracked_entity = None;
+        self.camera_before_tracked_entity = self.orbit_eye.map(|eye| eye.to_eye());
 
         self.interpolate_eye_to_entity(entity_path, bounding_boxes, space_cameras);
     }
