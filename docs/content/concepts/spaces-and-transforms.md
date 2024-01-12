@@ -90,11 +90,11 @@ Say you have a 3D world with two cameras with known extrinsics (pose) and intrin
 rr.log("world/points", rr.Points3D(…))
 
 # Log first camera:
-rr.log("world/camera/0", rr.TranslationAndMat3(translation=cam0_pose.pos, matrix=cam0_pose.rot))
+rr.log("world/camera/0", rr.Transform3D(translation=cam0_pose.pos, mat3x3=cam0_pose.rot))
 rr.log("world/camera/0/image", rr.Pinhole(…))
 
 # Log second camera:
-rr.log("world/camera/1", rr.TranslationAndMat3(translation=cam1_pose.pos, matrix=cam1_pose.rot))
+rr.log("world/camera/1", rr.Transform3D(translation=cam1_pose.pos, mat3x3=cam1_pose.rot))
 rr.log("world/camera/1/image", rr.Pinhole(…))
 
 # Log some data to the image spaces of the first camera:
