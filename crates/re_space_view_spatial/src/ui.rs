@@ -607,6 +607,11 @@ pub fn picking(
         };
     }
 
+    if hovered_items.is_empty() {
+        // If we hover nothing, we are hovering the space-view itself.
+        hovered_items.push(Item::SpaceView(query.space_view_id));
+    }
+
     // Associate the hovered space with the first item in the hovered item list.
     // If we were to add several, space views might render unnecessary additional hints.
     // TODO(andreas): Should there be context if no item is hovered at all? There's no usecase for that today it seems.
