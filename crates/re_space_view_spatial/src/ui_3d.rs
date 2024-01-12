@@ -533,9 +533,19 @@ pub fn view_3d(
                 }
             }
         } {
-            state
-                .state_3d
-                .track_entity(entity_path, &state.bounding_boxes, space_cameras);
+            // For the moment we only track cameras.
+            // We have everything in place to track arbitrary objects but it's a bit odd sometimes, so only focus on them instead.
+            if space_cameras.iter().any(|c| &c.ent_path == entity_path) {
+                state
+                    .state_3d
+                    .track_entity(entity_path, &state.bounding_boxes, space_cameras);
+            } else {
+                state.state_3d.interpolate_eye_to_entity(
+                    entity_path,
+                    &state.bounding_boxes,
+                    space_cameras,
+                );
+            }
             ui.ctx().request_repaint(); // Make sure interpolation happens in the next frames.
         }
     }
