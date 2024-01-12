@@ -246,9 +246,6 @@ fn current_range_ui(
     is_sequence_timeline: bool,
     visible_history: &VisibleHistory,
 ) {
-    let from = visible_history.from(current_time.into());
-    let to = visible_history.to(current_time.into());
-
     let (time_type, quantity_name) = if is_sequence_timeline {
         (TimeType::Sequence, "frame")
     } else {
@@ -260,22 +257,13 @@ fn current_range_ui(
         ctx.app_options.time_zone_for_timestamps,
     );
 
-    if from == to {
-        ui.label(format!(
-            "Showing last data logged on or before {quantity_name} {from_formatted}"
-        ));
-    } else {
-        ui.label(format!(
-            "Showing data between {quantity_name}s {from_formatted} and {}.",
-            time_type.format(
-                visible_history.to(current_time.into()),
-                ctx.app_options.time_zone_for_timestamps
-            )
-        ))
-        .on_hover_text(format!(
-            "This includes the data current as of the starting {quantity_name}."
-        ));
-    };
+    ui.label(format!(
+        "Showing data between {quantity_name}s {from_formatted} and {} (included).",
+        time_type.format(
+            visible_history.to(current_time.into()),
+            ctx.app_options.time_zone_for_timestamps
+        )
+    ));
 }
 
 #[allow(clippy::too_many_arguments)]
