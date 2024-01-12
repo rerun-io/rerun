@@ -90,7 +90,6 @@ macro_rules! impl_query_archetype_range {
                 for (data_time, arch_view) in arch_views {
                     let data_time = data_time.unwrap_or(TimeInt::MIN); // TODO(cmc): timeless
 
-                    // TODO(cmc): can't be relying on the primary RowId here, we need the max RowId.
                     if bucket.contains_data_row(data_time, arch_view.primary_row_id()) {
                         continue;
                     }
