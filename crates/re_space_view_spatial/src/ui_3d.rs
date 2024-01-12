@@ -236,9 +236,13 @@ impl View3DState {
                 return;
             };
 
-            // Bounding box may be zero size.
             let radius = bbox.centered_bounding_sphere_radius() * 1.5;
-            if radius > 0.0001 {
+            if radius < 0.0001 {
+                // Bounding box may be zero size.
+                new_orbit_eye.orbit_radius =
+                    (bounding_boxes.accumulated.centered_bounding_sphere_radius() * 1.5)
+                        .at_least(1.0);
+            } else {
                 new_orbit_eye.orbit_radius = radius;
             }
             new_orbit_eye.orbit_center = bbox.center();
@@ -504,22 +508,19 @@ pub fn view_3d(
         )?;
     }
 
-    // Double click on nothing resets the camera.
-    // (double clicking on an entity is handled as part of the picking code)
-    if response.double_clicked() && ctx.hovered().is_empty() {
-        state.bounding_boxes.accumulated = state.bounding_boxes.current;
-        state
-            .state_3d
-            .reset_camera(&state.bounding_boxes.accumulated, &view_coordinates);
-    }
-
     // Track focused entity if any.
     if let Some(focused_item) = ctx.focused_item {
-        if let Some(entity_path) = match focused_item {
-            Item::StoreId(_)
-            | Item::SpaceView(_)
-            | Item::DataBlueprintGroup(_, _, _)
-            | Item::Container(_) => None,
+        let focused_entity = match focused_item {
+            Item::StoreId(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => None,
+
+            Item::SpaceView(space_view_id) => {
+                if space_view_id == &query.space_view_id {
+                    state
+                        .state_3d
+                        .reset_camera(&state.bounding_boxes.accumulated, &view_coordinates);
+                }
+                None
+            }
 
             Item::ComponentPath(component_path) => Some(&component_path.entity_path),
 
@@ -532,7 +533,8 @@ pub fn view_3d(
                     None
                 }
             }
-        } {
+        };
+        if let Some(entity_path) = focused_entity {
             // For the moment we only track cameras.
             // We have everything in place to track arbitrary objects but it's a bit odd sometimes, so only focus on them instead.
             if space_cameras.iter().any(|c| &c.ent_path == entity_path) {
@@ -546,8 +548,10 @@ pub fn view_3d(
                     space_cameras,
                 );
             }
-            ui.ctx().request_repaint(); // Make sure interpolation happens in the next frames.
         }
+
+        // Make sure focus consequences happen in the next frames.
+        ui.ctx().request_repaint();
     }
 
     // Allow to restore the camera state with escape if a camera was tracked before.
@@ -806,15 +810,15 @@ fn add_picking_ray(
 }
 
 fn default_eye(
-    scene_bbox: &macaw::BoundingBox,
+    bounding_box: &macaw::BoundingBox,
     view_coordinates: &Option<ViewCoordinates>,
 ) -> OrbitEye {
-    let mut center = scene_bbox.center();
+    let mut center = bounding_box.center();
     if !center.is_finite() {
         center = Vec3::ZERO;
     }
 
-    let mut radius = 1.5 * scene_bbox.half_size().length();
+    let mut radius = 1.5 * bounding_box.half_size().length();
     if !radius.is_finite() || radius == 0.0 {
         radius = 1.0;
     }
