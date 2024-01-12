@@ -116,6 +116,15 @@ impl ComponentWithInstances {
             values: DataCell::from_arrow(C::name(), values),
         })
     }
+
+    #[inline]
+    pub fn into_data_cell_row(self) -> DataCellRow {
+        let Self {
+            instance_keys,
+            values,
+        } = self;
+        DataCellRow(smallvec::smallvec![instance_keys, values])
+    }
 }
 
 /// Iterator over a single [`Component`] joined onto a primary [`Component`]
