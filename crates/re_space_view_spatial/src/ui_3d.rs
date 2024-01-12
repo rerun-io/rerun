@@ -108,60 +108,25 @@ impl View3DState {
             ));
         }
 
-        let mut orbit_eye = self
-            .orbit_eye
-            .get_or_insert_with(|| default_eye(&bounding_boxes.accumulated, &view_coordinates));
-
         // Follow tracked object.
-        if let Some(tracked_entity) = &self.tracked_entity {
-            // Tracking a camera is special.
-            if let Some(tracked_camera) = find_camera(space_cameras, tracked_entity) {
-                // While we're still interpolating towards it, we need to continuously update the interpolation target.
-                if let Some(cam_interpolation) = &mut self.eye_interpolation {
-                    cam_interpolation.target_orbit = None;
-                    if cam_interpolation.target_eye != Some(tracked_camera) {
-                        cam_interpolation.target_eye = Some(tracked_camera);
-                        response.ctx.request_repaint();
-                    }
-                } else {
-                    orbit_eye.copy_from_eye(&tracked_camera);
+        if let Some(tracked_entity) = self.tracked_entity.clone() {
+            if let Some(target_eye) = find_camera(space_cameras, &tracked_entity) {
+                // For cameras, we want to exactly track the camera pose once we're done interpolating.
+                if let Some(eye_interpolation) = &mut self.eye_interpolation {
+                    eye_interpolation.target_orbit = None;
+                    eye_interpolation.target_eye = Some(target_eye);
+                } else if let Some(orbit_eye) = &mut self.orbit_eye {
+                    orbit_eye.copy_from_eye(&target_eye);
                 }
             } else {
-                // Otherwise we're focusing on the entity.
-                //
-                // Note that we may want to focus on an _instance_ instead in the future:
-                // The problem with that is that there may be **many** instances (think point cloud)
-                // and they may not be consistent over time.
-                // -> we don't know the bounding box of every instance (right now)
-                // -> tracking instances over time may not be desired
-                //    (this can happen with entities as well, but is less likely).
-                //
-                // For future reference it's also worth pointing out that for interactions in the view we
-                // already nave the 3D position:
-                // if let Some(SelectedSpaceContext::ThreeD {
-                //     pos: Some(clicked_point),
-                //     ..
-                // }) = ctx.selection_state().hovered_space_context()
-
-                if let Some(bbox) = bounding_boxes.per_entity.get(&tracked_entity.hash()) {
-                    let mut new_orbit_eye = *orbit_eye;
-                    new_orbit_eye.orbit_center = bbox.center();
-                    new_orbit_eye.orbit_radius = bbox.centered_bounding_sphere_radius() * 1.5;
-
-                    if new_orbit_eye.orbit_radius < 0.0001 {
-                        // Bounding box may be zero size or degenerated
-                        new_orbit_eye.orbit_radius = orbit_eye.orbit_radius;
-                    }
-
-                    self.interpolate_to_orbit_eye(new_orbit_eye);
-
-                    // Re-borrow orbit_eye to work around borrow checker issues.
-                    orbit_eye = self.orbit_eye.get_or_insert_with(|| {
-                        default_eye(&bounding_boxes.accumulated, &view_coordinates)
-                    });
-                }
+                // For other entities we keep interpolating, so when the entity jumps, we follow smoothly.
+                self.interpolate_eye_to_entity(&tracked_entity, bounding_boxes, space_cameras);
             }
         }
+
+        let orbit_eye = self
+            .orbit_eye
+            .get_or_insert_with(|| default_eye(&bounding_boxes.accumulated, &view_coordinates));
 
         if self.spin {
             orbit_eye.rotate(egui::vec2(
@@ -194,6 +159,9 @@ impl View3DState {
             if 1.0 <= t {
                 // We have arrived at our target
                 self.eye_interpolation = None;
+            } else {
+                // There's more frames to render to finish interpolation.
+                response.ctx.request_repaint();
             }
         }
 
@@ -240,11 +208,50 @@ impl View3DState {
         }
     }
 
-    fn interpolate_to_orbit_eye(&mut self, target: OrbitEye) {
-        if let Some(start) = self.orbit_eye {
-            // the user wants to move the camera somewhere, so stop spinning
-            self.spin = false;
+    fn interpolate_eye_to_entity(
+        &mut self,
+        entity_path: &EntityPath,
+        bounding_boxes: &SceneBoundingBoxes,
+        space_cameras: &[SpaceCamera3D],
+    ) {
+        // Note that we may want to focus on an _instance_ instead in the future:
+        // The problem with that is that there may be **many** instances (think point cloud)
+        // and they may not be consistent over time.
+        // -> we don't know the bounding box of every instance (right now)
+        // -> tracking instances over time may not be desired
+        //    (this can happen with entities as well, but is less likely).
+        //
+        // For future reference it's also worth pointing out that for interactions in the view we
+        // already nave the 3D position:
+        // if let Some(SelectedSpaceContext::ThreeD {
+        //     pos: Some(clicked_point),
+        //     ..
+        // }) = ctx.selection_state().hovered_space_context()
 
+        if let Some(tracked_camera) = find_camera(space_cameras, entity_path) {
+            self.interpolate_to_eye(tracked_camera);
+        } else if let Some(bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
+            let Some(mut new_orbit_eye) = self.orbit_eye else {
+                // Happens only the first frame when there's no eye set up yet.
+                return;
+            };
+
+            // Bounding box may be zero size.
+            let radius = bbox.centered_bounding_sphere_radius() * 1.5;
+            if radius > 0.0001 {
+                new_orbit_eye.orbit_radius = radius;
+            }
+            new_orbit_eye.orbit_center = bbox.center();
+
+            self.interpolate_to_orbit_eye(new_orbit_eye);
+        }
+    }
+
+    fn interpolate_to_orbit_eye(&mut self, target: OrbitEye) {
+        // the user wants to move the camera somewhere, so stop spinning
+        self.spin = false;
+
+        if let Some(start) = self.orbit_eye {
             if let Some(target_time) =
                 EyeInterpolation::target_time(&start.to_eye(), &target.to_eye())
             {
@@ -263,10 +270,17 @@ impl View3DState {
         }
     }
 
-    fn track_entity(&mut self, entity: EntityPath) {
-        re_log::debug!("3D view tracks now {:?}", entity);
-        self.tracked_entity = Some(entity);
+    fn track_entity(
+        &mut self,
+        entity_path: &EntityPath,
+        bounding_boxes: &SceneBoundingBoxes,
+        space_cameras: &[SpaceCamera3D],
+    ) {
+        re_log::debug!("3D view tracks now {:?}", entity_path);
+        self.tracked_entity = Some(entity_path.clone());
         self.camera_before_tracked_entity = None;
+
+        self.interpolate_eye_to_entity(entity_path, bounding_boxes, space_cameras);
     }
 
     pub fn spin(&self) -> bool {
@@ -507,19 +521,21 @@ pub fn view_3d(
             | Item::DataBlueprintGroup(_, _, _)
             | Item::Container(_) => None,
 
-            Item::ComponentPath(component_path) => Some(component_path.entity_path.clone()),
+            Item::ComponentPath(component_path) => Some(&component_path.entity_path),
 
             Item::InstancePath(space_view, path) => {
                 // If this is about a specific space view, focus only if it's this one.
                 // (if it's about any space view, focus regardless of which one)
                 if space_view.is_none() || space_view == &Some(query.space_view_id) {
-                    Some(path.entity_path.clone())
+                    Some(&path.entity_path)
                 } else {
                     None
                 }
             }
         } {
-            state.state_3d.track_entity(entity_path);
+            state
+                .state_3d
+                .track_entity(entity_path, &state.bounding_boxes, space_cameras);
             ui.ctx().request_repaint(); // Make sure interpolation happens in the next frames.
         }
     }
