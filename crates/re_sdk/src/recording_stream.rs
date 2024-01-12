@@ -1,4 +1,5 @@
 use std::fmt;
+use std::io::IsTerminal;
 use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
@@ -35,6 +36,12 @@ const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 /// a race between file creation (and thus clearing) and pending file writes.
 fn forced_sink_path() -> Option<String> {
     std::env::var(ENV_FORCE_SAVE).ok()
+}
+
+/// Should we stream data to stdout when requested, or should we refrain because it's actually a
+/// terminal?
+fn is_stdout_listening() -> bool {
+    !std::io::stdout().is_terminal()
 }
 
 /// Errors that can occur when creating/manipulating a [`RecordingStream`].
@@ -368,8 +375,7 @@ impl RecordingStreamBuilder {
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
     pub fn stdout(self) -> RecordingStreamResult<RecordingStream> {
-        let is_stdout_listening = !atty::is(atty::Stream::Stdout);
-        if !is_stdout_listening {
+        if !is_stdout_listening() {
             return self.buffered();
         }
 
@@ -1409,8 +1415,7 @@ impl RecordingStream {
             return Ok(());
         }
 
-        let is_stdout_listening = !atty::is(atty::Stream::Stdout);
-        if !is_stdout_listening {
+        if !is_stdout_listening() {
             self.set_sink(Box::new(crate::log_sink::BufferedSink::new()));
             return Ok(());
         }
