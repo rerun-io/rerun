@@ -1,5 +1,3 @@
-mod common;
-
 use smallvec::smallvec;
 
 use re_data_store::DataStore;
