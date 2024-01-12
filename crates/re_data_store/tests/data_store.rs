@@ -419,7 +419,6 @@ fn range_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0 = TimeInt::from(0);
     let frame1 = TimeInt::from(1);
     let frame2 = TimeInt::from(2);
     let frame3 = TimeInt::from(3);
@@ -554,61 +553,43 @@ fn range_impl(store: &mut DataStore) {
 
     // Unit ranges (Color's PoV)
 
+    // NOTE: Check out [1] to see what the results would've looked like with latest-at semantics at
+    // T-1 baked in (like we used to do).
+    //
+    // [1]: <https://github.com/rerun-io/rerun/blob/790f391/crates/re_data_store/tests/data_store.rs#L555-L837>
+
     assert_range_components(
         TimeRange::new(frame1, frame1),
         [Color::name(), Position2D::name()],
-        &[
-            (
-                Some(frame0),
-                &[(Color::name(), &row4_3), (Position2D::name(), &row4_4)],
-            ), // timeless
-            (
-                Some(frame1),
-                &[
-                    (Color::name(), &row1),
-                    (Position2D::name(), &row4_4), // timeless
-                ],
-            ),
-        ],
+        &[(
+            Some(frame1),
+            &[
+                (Color::name(), &row1),
+                // (Position2D::name(), &row4_4), // timeless
+            ],
+        )],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
         [Color::name(), Position2D::name()],
-        &[
-            (
-                Some(frame1),
-                &[
-                    (Color::name(), &row1),
-                    (Position2D::name(), &row4_4), // timeless
-                ],
-            ), //
-        ],
+        &[],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
         [Color::name(), Position2D::name()],
-        &[
-            (
-                Some(frame2),
-                &[(Color::name(), &row1), (Position2D::name(), &row2)],
-            ), //
-        ],
+        &[],
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
         [Color::name(), Position2D::name()],
         &[
             (
-                Some(frame3),
-                &[(Color::name(), &row1), (Position2D::name(), &row3)],
+                Some(frame4),
+                &[(Color::name(), &row4_1)], //
             ),
             (
                 Some(frame4),
-                &[(Color::name(), &row4_1), (Position2D::name(), &row3)],
-            ),
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_2), (Position2D::name(), &row3)],
+                &[(Color::name(), &row4_2)], //
             ),
             (
                 Some(frame4),
@@ -619,12 +600,7 @@ fn range_impl(store: &mut DataStore) {
     assert_range_components(
         TimeRange::new(frame5, frame5),
         [Color::name(), Position2D::name()],
-        &[
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_3), (Position2D::name(), &row4_4)], // !!!
-            ), //
-        ],
+        &[],
     );
 
     // Unit ranges (Position2D's PoV)
@@ -632,52 +608,30 @@ fn range_impl(store: &mut DataStore) {
     assert_range_components(
         TimeRange::new(frame1, frame1),
         [Position2D::name(), Color::name()],
-        &[
-            (
-                Some(frame0),
-                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
-            ), // timeless
-        ],
+        &[],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
         [Position2D::name(), Color::name()],
         &[
             (
-                Some(frame1),
-                &[
-                    (Position2D::name(), &row4_4), // timeless
-                    (Color::name(), &row1),
-                ],
-            ),
-            (
                 Some(frame2),
-                &[(Position2D::name(), &row2), (Color::name(), &row1)],
+                &[(Position2D::name(), &row2)], //
             ), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
         [Position2D::name(), Color::name()],
-        &[
-            (
-                Some(frame2),
-                &[(Position2D::name(), &row2), (Color::name(), &row1)],
-            ),
-            (
-                Some(frame3),
-                &[(Position2D::name(), &row3), (Color::name(), &row1)],
-            ),
-        ],
+        &[(
+            Some(frame3),
+            &[(Position2D::name(), &row3)], //
+        )],
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
         [Position2D::name(), Color::name()],
         &[
-            (
-                Some(frame3),
-                &[(Position2D::name(), &row3), (Color::name(), &row1)],
-            ),
             (
                 Some(frame4),
                 &[(Position2D::name(), &row4_25), (Color::name(), &row4_2)],
@@ -691,12 +645,7 @@ fn range_impl(store: &mut DataStore) {
     assert_range_components(
         TimeRange::new(frame5, frame5),
         [Position2D::name(), Color::name()],
-        &[
-            (
-                Some(frame4),
-                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
-            ), //
-        ],
+        &[],
     );
 
     // Full range (Color's PoV)
@@ -706,15 +655,8 @@ fn range_impl(store: &mut DataStore) {
         [Color::name(), Position2D::name()],
         &[
             (
-                Some(frame0),
-                &[(Color::name(), &row4_3), (Position2D::name(), &row4_4)],
-            ), // timeless
-            (
                 Some(frame1),
-                &[
-                    (Color::name(), &row1),
-                    (Position2D::name(), &row4_4), // timeless
-                ],
+                &[(Color::name(), &row1)], //
             ),
             (
                 Some(frame4),
@@ -737,10 +679,6 @@ fn range_impl(store: &mut DataStore) {
         TimeRange::new(frame1, frame5),
         [Position2D::name(), Color::name()],
         &[
-            (
-                Some(frame0),
-                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
-            ), // timeless
             (
                 Some(frame2),
                 &[(Position2D::name(), &row2), (Color::name(), &row1)],
