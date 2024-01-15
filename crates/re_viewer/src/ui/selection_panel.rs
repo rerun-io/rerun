@@ -457,7 +457,7 @@ fn space_view_top_level_properties(
         egui::Grid::new("space_view_top_level_properties")
             .num_columns(2)
             .show(ui, |ui| {
-                let mut name = space_view.display_name.clone().unwrap_or(String::new());
+                let mut name = space_view.display_name.clone().unwrap_or_default();
                 ui.label("Name").on_hover_text(
                     "The name of the Space View used for display purposes. This can be any text \
                     string.",
