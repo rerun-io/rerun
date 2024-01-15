@@ -52,17 +52,18 @@ pollster.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 web-time.workspace = true
 wgpu.workspace = true
-winit.workspace = true
+winit = { workspace = true, features = ["rwh_05"] }
 zip = { workspace = true, default-features = false, features = ["deflate"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook.workspace = true
 wasm-bindgen-futures.workspace = true
 web-sys = { workspace = true, features = [
-  "Location",
   "Blob",
+  "Element",
+  "Location",
+  "Request",
   "RequestInit",
   "RequestMode",
-  "Request",
   "Response",
 ] }

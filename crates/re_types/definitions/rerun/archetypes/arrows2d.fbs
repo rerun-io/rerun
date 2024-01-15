@@ -1,0 +1,54 @@
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+include "cpp/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+// ---
+
+/// 2D arrows with optional colors, radii, labels, etc.
+///
+/// \example arrow2d_simple title="Simple batch of 2D Arrows" image="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1200w.png"
+table Arrows2D (
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate",
+  "attr.cpp.no_field_ctors",
+  "attr.docs.unreleased"
+) {
+  // --- Required ---
+
+  /// All the vectors for each arrow in the batch.
+  vectors: [rerun.components.Vector2D] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// All the origin (base) positions for each arrow in the batch.
+  ///
+  /// If no origins are set, (0, 0) is used as the origin for each arrow.
+  origins: [rerun.components.Position2D] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // --- Optional ---
+
+  /// Optional radii for the arrows.
+  ///
+  /// The shaft is rendered as a line with `radius = 0.5 * radius`.
+  /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
+  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optional colors for the points.
+  colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional text labels for the arrows.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Optional class Ids for the points.
+  ///
+  /// The class ID provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
+
+  /// Unique identifiers for each individual point in the batch.
+  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
+}

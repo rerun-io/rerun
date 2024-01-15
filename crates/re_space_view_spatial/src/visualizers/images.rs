@@ -21,8 +21,8 @@ use re_types::{
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizerAdditionalApplicabilityFilter,
-    VisualizerSystem,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext,
+    VisualizerAdditionalApplicabilityFilter, VisualizerSystem,
 };
 
 use crate::{
@@ -278,7 +278,7 @@ impl ImageVisualizer {
                 color.into(),
             ) {
                 // Only update the bounding box if this is a 2D space view or
-                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // the image_plane_distance is not auto. This is avoids a cyclic
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
@@ -409,7 +409,7 @@ impl ImageVisualizer {
                 color.into(),
             ) {
                 // Only update the bounding box if this is a 2D space view or
-                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // the image_plane_distance is not auto. This is avoids a cyclic
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
@@ -508,7 +508,7 @@ impl ImageVisualizer {
                 color.into(),
             ) {
                 // Only update the bounding box if this is a 2D space view or
-                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // the image_plane_distance is not auto. This is avoids a cyclic
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
@@ -694,7 +694,7 @@ impl VisualizerSystem for ImageVisualizer {
     fn filter_visualizable_entities(
         &self,
         entities: ApplicableEntities,
-        context: &dyn std::any::Any,
+        context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         re_tracing::profile_function!();
         filter_visualizable_2d_entities(entities, context)

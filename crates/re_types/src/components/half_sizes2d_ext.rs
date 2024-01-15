@@ -52,3 +52,14 @@ impl From<HalfSizes2D> for glam::Vec3 {
         Self::new(extent.x(), extent.y(), 0.0)
     }
 }
+
+#[cfg(feature = "mint")]
+impl From<HalfSizes2D> for mint::Vector2<f32> {
+    #[inline]
+    fn from(extent: HalfSizes2D) -> Self {
+        Self {
+            x: extent.x(),
+            y: extent.y(),
+        }
+    }
+}

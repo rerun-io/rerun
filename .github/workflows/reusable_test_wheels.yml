@@ -121,6 +121,10 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.6.0
+
       # The pip-cache setup logic doesn't work in the ubuntu docker container
       # That's probably fine since we bake these deps into the container already
       - name: Setup python
@@ -150,7 +154,7 @@ jobs:
         # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
         shell: bash
         run: |
-          pip install attrs>=23.1.0 numpy>=1.23 pillow pyarrow==10.0.1 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
+          pip install attrs>=23.1.0 numpy>=1.23 pillow pyarrow==14.0.2 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
 
       - name: Get version
         id: get-version
@@ -191,11 +195,11 @@ jobs:
         run: |
           RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
-      - name: Run docs/code-examples/roundtrips.py
+      - name: Run docs/code-examples/compare_code_example_output.py
         if: ${{ inputs.PLATFORM != 'windows' }}
         shell: bash
         # --release so we can inherit from some of the artifacts that maturin has just built before
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          RUST_LOG=debug docs/code-examples/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          RUST_LOG=debug docs/code-examples/compare_code_example_output.py --release --target x86_64-unknown-linux-gnu --no-py-build

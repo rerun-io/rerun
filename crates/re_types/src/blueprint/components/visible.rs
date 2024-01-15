@@ -26,6 +26,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Visible(pub bool);
 
+impl ::re_types_core::SizeBytes for Visible {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <bool>::is_pod()
+    }
+}
+
 impl From<bool> for Visible {
     #[inline]
     fn from(visible: bool) -> Self {

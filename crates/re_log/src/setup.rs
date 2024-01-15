@@ -5,7 +5,13 @@
 /// Also sets some other log levels on crates that are too loud.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn default_log_filter() -> String {
-    let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
+    let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {
+        if cfg!(debug_assertions) {
+            "debug".to_owned()
+        } else {
+            "info".to_owned()
+        }
+    });
 
     for crate_name in crate::CRATES_AT_ERROR_LEVEL {
         if !rust_log.contains(&format!("{crate_name}=")) {
@@ -29,8 +35,15 @@ pub fn default_log_filter() -> String {
 /// Directs [`log`] calls to stderr.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn setup_native_logging() {
-    if std::env::var("RUST_BACKTRACE").is_err() {
-        // Make sure we always produce backtraces for the (hopefully rare) cases when we crash!
+    if cfg!(debug_assertions) && std::env::var("RUST_BACKTRACE").is_err() {
+        // In debug build, default `RUST_BACKTRACE` to `1` if it is not set.
+        // This ensures sure we produce backtraces if our examples (etc) panics.
+
+        // Our own crash handler (`re_crash_handler`) always prints a backtraces
+        // (currently ignoring `RUST_BACKTRACE`) but we only use that for `rerun-cli`, our main binary.
+
+        // `RUST_BACKTRACE` also turns on printing backtraces for `anyhow::Error`s that
+        // are returned from `main` (i.e. if `main` returns `anyhow::Result`).
         std::env::set_var("RUST_BACKTRACE", "1");
     }
 
@@ -59,6 +72,14 @@ pub fn setup_native_logging() {
 
 #[cfg(target_arch = "wasm32")]
 pub fn setup_web_logging() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    static LOG_INIT: AtomicBool = AtomicBool::new(false);
+    if LOG_INIT.load(Ordering::SeqCst) {
+        return;
+    }
+    LOG_INIT.store(true, Ordering::SeqCst);
+
     crate::multi_logger::init().expect("Failed to set logger");
     log::set_max_level(log::LevelFilter::Debug);
     crate::add_boxed_logger(Box::new(crate::web_logger::WebLogger::new(

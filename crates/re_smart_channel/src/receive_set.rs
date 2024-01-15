@@ -36,6 +36,19 @@ impl<T: Send> ReceiveSet<T> {
         self.receivers.lock().retain(|r| r.source() != source);
     }
 
+    /// Disconnect from any channel with a source pointing at this `uri`.
+    #[cfg(target_arch = "wasm32")]
+    pub fn remove_by_uri(&self, uri: &str) {
+        self.receivers.lock().retain(|r| match r.source() {
+            // retain only sources which:
+            // - aren't network sources
+            // - don't point at the given `uri`
+            SmartChannelSource::RrdHttpStream { url } => url != uri,
+            SmartChannelSource::WsClient { ws_server_url } => ws_server_url != uri,
+            _ => true,
+        });
+    }
+
     /// List of connected receiver sources.
     ///
     /// This gets culled after calling one of the `recv` methods.

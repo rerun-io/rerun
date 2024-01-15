@@ -275,6 +275,28 @@ impl StoreHub {
         self.store_bundle.contains_recording(id)
     }
 
+    /// Remove any recordings with a network source pointing at this `uri`.
+    #[cfg(target_arch = "wasm32")]
+    pub fn remove_recording_by_uri(&mut self, uri: &str) {
+        self.store_bundle.entity_dbs.retain(|_, db| {
+            let Some(data_source) = &db.data_source else {
+                // no data source, keep
+                return true;
+            };
+
+            // retain only sources which:
+            // - aren't network sources
+            // - don't point at the given `uri`
+            match data_source {
+                re_smart_channel::SmartChannelSource::RrdHttpStream { url } => url != uri,
+                re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
+                    ws_server_url != uri
+                }
+                _ => true,
+            }
+        });
+    }
+
     /// Persist any in-use blueprints to durable storage.
     // TODO(#2579): implement persistence for web
     #[allow(clippy::unnecessary_wraps)]
@@ -319,7 +341,7 @@ impl StoreHub {
         &mut self,
         app_id: &ApplicationId,
     ) -> anyhow::Result<()> {
-        use crate::blueprint_validation::is_valid_blueprint;
+        use crate::blueprint::is_valid_blueprint;
 
         re_tracing::profile_function!();
         let blueprint_path = default_blueprint_path(app_id)?;

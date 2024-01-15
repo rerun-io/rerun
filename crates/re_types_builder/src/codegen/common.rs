@@ -250,7 +250,7 @@ pub fn collect_examples_for_api_docs<'a>(
     let mut out = Vec::new();
 
     if let Some(examples) = docs.tagged_docs.get("example") {
-        let base_path = crate::rerun_workspace_path().join("docs/code-examples");
+        let base_path = crate::rerun_workspace_path().join("docs/code-examples/all");
 
         for base @ ExampleInfo {
             name,
@@ -321,7 +321,7 @@ pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
         .collect();
 
     for folder_path in folder_paths {
-        re_log::debug!("Checking for orphaned files in {folder_path}");
+        re_log::trace!("Checking for orphaned files in {folder_path}");
 
         let iter = std::fs::read_dir(folder_path).ok();
         if iter.is_none() {

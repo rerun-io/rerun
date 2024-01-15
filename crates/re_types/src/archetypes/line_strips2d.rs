@@ -87,6 +87,30 @@ pub struct LineStrips2D {
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
+impl ::re_types_core::SizeBytes for LineStrips2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.strips.heap_size_bytes()
+            + self.radii.heap_size_bytes()
+            + self.colors.heap_size_bytes()
+            + self.labels.heap_size_bytes()
+            + self.draw_order.heap_size_bytes()
+            + self.class_ids.heap_size_bytes()
+            + self.instance_keys.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::components::LineStrip2D>>::is_pod()
+            && <Option<Vec<crate::components::Radius>>>::is_pod()
+            && <Option<Vec<crate::components::Color>>>::is_pod()
+            && <Option<Vec<crate::components::Text>>>::is_pod()
+            && <Option<crate::components::DrawOrder>>::is_pod()
+            && <Option<Vec<crate::components::ClassId>>>::is_pod()
+            && <Option<Vec<crate::components::InstanceKey>>>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.LineStrip2D".into()]);
 

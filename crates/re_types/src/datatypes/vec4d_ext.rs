@@ -25,7 +25,7 @@ impl Vec4D {
 
     #[inline]
     pub fn w(&self) -> f32 {
-        self.0[2]
+        self.0[3]
     }
 }
 
@@ -73,7 +73,7 @@ where
 }
 
 #[cfg(feature = "glam")]
-impl From<Vec4D> for glam::Vec3 {
+impl From<Vec4D> for glam::Vec4 {
     #[inline]
     fn from(v: Vec4D) -> Self {
         Self::from_slice(&v.0)
@@ -85,6 +85,27 @@ impl From<glam::Vec4> for Vec4D {
     #[inline]
     fn from(v: glam::Vec4) -> Self {
         Self(v.to_array())
+    }
+}
+
+#[cfg(feature = "mint")]
+impl From<Vec4D> for mint::Vector4<f32> {
+    #[inline]
+    fn from(v: Vec4D) -> Self {
+        Self {
+            x: v[0],
+            y: v[1],
+            z: v[2],
+            w: v[3],
+        }
+    }
+}
+
+#[cfg(feature = "mint")]
+impl From<mint::Vector4<f32>> for Vec4D {
+    #[inline]
+    fn from(v: mint::Vector4<f32>) -> Self {
+        Self([v.x, v.y, v.z, v.w])
     }
 }
 

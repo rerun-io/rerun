@@ -1,9 +1,10 @@
 <!--[metadata]
 title = "Open Photogrammetry Format"
 tags = ["2d", "3d", "camera", "photogrammetry"]
+description = "Displays a photogrammetrically reconstructed 3D point cloud loaded from an Open Photogrammetry Format (OPF) file."
 thumbnail = "https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/480w.png"
 thumbnail_dimensions = [480, 310]
-channel = "nightly"
+channel = "release"
 build_args = ["--jpeg-quality=50"]
 -->
 

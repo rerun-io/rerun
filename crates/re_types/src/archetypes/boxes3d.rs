@@ -89,6 +89,32 @@ pub struct Boxes3D {
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
+impl ::re_types_core::SizeBytes for Boxes3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.half_sizes.heap_size_bytes()
+            + self.centers.heap_size_bytes()
+            + self.rotations.heap_size_bytes()
+            + self.colors.heap_size_bytes()
+            + self.radii.heap_size_bytes()
+            + self.labels.heap_size_bytes()
+            + self.class_ids.heap_size_bytes()
+            + self.instance_keys.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::components::HalfSizes3D>>::is_pod()
+            && <Option<Vec<crate::components::Position3D>>>::is_pod()
+            && <Option<Vec<crate::components::Rotation3D>>>::is_pod()
+            && <Option<Vec<crate::components::Color>>>::is_pod()
+            && <Option<Vec<crate::components::Radius>>>::is_pod()
+            && <Option<Vec<crate::components::Text>>>::is_pod()
+            && <Option<Vec<crate::components::ClassId>>>::is_pod()
+            && <Option<Vec<crate::components::InstanceKey>>>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.HalfSizes3D".into()]);
 

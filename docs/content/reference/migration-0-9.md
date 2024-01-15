@@ -31,16 +31,16 @@ best to keep these functions working as thin wrappers on top of the new logging 
 behavioral differences.
 
 ## The log module has become the log function
-This is one area where we were forced to make breaking changes.  Rerun previously had an internal `log` module where the
+This is one area where we were forced to make breaking changes. Rerun previously had an internal `log` module where the
 assorted log-functions and helper classes were implemented. In general, these symbols were all re-exported to the
-top-level `rerun` namespace.  However, in some cases these fully-qualified paths were used for imports. Because
+top-level `rerun` namespace. However, in some cases these fully-qualified paths were used for imports. Because
 `rerun.log` is now a function rather than a module, any such imports will result in an import error. Look for the
-corresponding symbol in the top-level `rerun` namespace instead.  For instance: `rr.log.text.LoggingHandler` → `rr.LoggingHandler`
+corresponding symbol in the top-level `rerun` namespace instead. For instance: `rr.log.text.LoggingHandler` → `rr.LoggingHandler`
 
 ## Updating to the log APIs
 
 In most cases migrating your code to the new APIs should be straightforward. The legacy functions have been marked as
-deprecated and the deprecation warning should point you to the correct Archetype to use instead.  Additionally, in most
+deprecated and the deprecation warning should point you to the correct Archetype to use instead. Additionally, in most
 cases, the old parameter names match the parameters taken by the new Archetype constructors, though exceptions are noted below.
 
 ### log_annotation_context

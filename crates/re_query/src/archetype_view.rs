@@ -68,13 +68,13 @@ impl ComponentWithInstances {
         }
         let arr = self
             .lookup_arrow(instance_key)
-            .map_or_else(|| Err(QueryError::ComponentNotFound), Ok)?;
+            .map_or_else(|| Err(crate::ComponentNotFoundError(C::name())), Ok)?;
 
         let mut iter = C::from_arrow(arr.as_ref())?.into_iter();
 
         let val = iter
             .next()
-            .map_or_else(|| Err(QueryError::ComponentNotFound), Ok)?;
+            .map_or_else(|| Err(crate::ComponentNotFoundError(C::name())), Ok)?;
         Ok(val)
     }
 
@@ -575,7 +575,7 @@ fn lookup_value() {
     let missing_value = component.lookup::<Position2D>(&InstanceKey(46));
     assert!(matches!(
         missing_value.err().unwrap(),
-        QueryError::ComponentNotFound
+        QueryError::ComponentNotFound(_)
     ));
 
     let missing_value = component.lookup::<Color>(&InstanceKey(99));

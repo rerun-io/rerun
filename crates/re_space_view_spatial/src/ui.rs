@@ -384,7 +384,11 @@ pub fn create_labels(
         };
 
         label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
-        label_shapes.push(egui::Shape::galley(text_rect.center_top(), galley));
+        label_shapes.push(egui::Shape::galley(
+            text_rect.center_top(),
+            galley,
+            label.color,
+        ));
 
         ui_rects.push(PickableUiRect {
             rect: ui_from_canvas.inverse().transform_rect(bg_rect),
@@ -623,6 +627,11 @@ pub fn picking(
                 instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
             })
         };
+    }
+
+    if hovered_items.is_empty() {
+        // If we hover nothing, we are hovering the space-view itself.
+        hovered_items.push(Item::SpaceView(query.space_view_id));
     }
 
     // Associate the hovered space with the first item in the hovered item list.

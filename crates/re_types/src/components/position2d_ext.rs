@@ -40,11 +40,21 @@ impl From<Position2D> for glam::Vec3 {
     }
 }
 
-// TODO(#4690): this should be codegen'd.
-impl crate::SizeBytes for Position2D {
+#[cfg(feature = "mint")]
+impl From<Position2D> for mint::Point2<f32> {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self(v) = self;
-        v.heap_size_bytes()
+    fn from(position: Position2D) -> Self {
+        Self {
+            x: position.x(),
+            y: position.y(),
+        }
+    }
+}
+
+#[cfg(feature = "mint")]
+impl From<mint::Point2<f32>> for Position2D {
+    #[inline]
+    fn from(position: mint::Point2<f32>) -> Self {
+        Self(Vec2D([position.x, position.y]))
     }
 }

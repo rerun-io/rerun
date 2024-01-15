@@ -3,7 +3,7 @@ title: Share a recording across multiple processes
 order: 2
 ---
 
-A common need is to log data from multiple processes  and then visualize all of that data as part of a single shared recording.
+A common need is to log data from multiple processes and then visualize all of that data as part of a single shared recording.
 
 Rerun has the notion of a [Recording ID](../concepts/apps-and-recordings.md) for that: any recorded datasets that share the same Recording ID will be visualized as one shared dataset.
 
@@ -31,7 +31,7 @@ Here's a simple example of such a workflow:
 rerun /tmp/recording*.rrd  # they share the same Recording ID!
 ```
 
-For more information, check out our [dedicated example](https://github.com/rerun-io/rerun/tree/main/examples/python/shared_recording?speculative-link).
+For more information, check out our [dedicated example](https://github.com/rerun-io/rerun/tree/main/examples/python/shared_recording).
 
 ### Caveats
 

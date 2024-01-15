@@ -59,6 +59,7 @@ impl PinholeProjection {
 }
 
 #[test]
+#[cfg(feature = "glam")]
 fn test_pinhole() {
     let fl = Vec2D::from([600.0, 600.0]);
     let pp = glam::Vec2::from([300.0, 240.0]);

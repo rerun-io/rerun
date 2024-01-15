@@ -6,8 +6,9 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewQuery, ViewerContext, VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
 };
 
 use crate::{
@@ -19,7 +20,9 @@ use crate::{
     },
 };
 
-use super::{picking_id_from_instance_key, SpatialViewVisualizerData};
+use super::{
+    filter_visualizable_3d_entities, picking_id_from_instance_key, SpatialViewVisualizerData,
+};
 
 pub struct Lines3DVisualizer {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
@@ -178,6 +181,14 @@ impl VisualizerSystem for Lines3DVisualizer {
 
     fn indicator_components(&self) -> ComponentNameSet {
         std::iter::once(LineStrips3D::indicator().name()).collect()
+    }
+
+    fn filter_visualizable_entities(
+        &self,
+        entities: ApplicableEntities,
+        context: &dyn VisualizableFilterContext,
+    ) -> VisualizableEntities {
+        filter_visualizable_3d_entities(entities, context)
     }
 
     fn execute(

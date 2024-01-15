@@ -26,6 +26,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct SpaceViewOrigin(pub crate::datatypes::EntityPath);
 
+impl ::re_types_core::SizeBytes for SpaceViewOrigin {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::EntityPath>::is_pod()
+    }
+}
+
 impl<T: Into<crate::datatypes::EntityPath>> From<T> for SpaceViewOrigin {
     fn from(v: T) -> Self {
         Self(v.into())

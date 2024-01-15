@@ -28,6 +28,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct HalfSizes2D(pub crate::datatypes::Vec2D);
 
+impl ::re_types_core::SizeBytes for HalfSizes2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Vec2D>::is_pod()
+    }
+}
+
 impl<T: Into<crate::datatypes::Vec2D>> From<T> for HalfSizes2D {
     fn from(v: T) -> Self {
         Self(v.into())

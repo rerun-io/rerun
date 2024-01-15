@@ -22,9 +22,24 @@ use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Component**: A unique numeric identifier for each individual instance within a batch.
-#[derive(Clone, Debug, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Debug, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, ::bytemuck::Pod, ::bytemuck::Zeroable,
+)]
+#[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct InstanceKey(pub u64);
+
+impl crate::SizeBytes for InstanceKey {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u64>::is_pod()
+    }
+}
 
 impl From<u64> for InstanceKey {
     #[inline]

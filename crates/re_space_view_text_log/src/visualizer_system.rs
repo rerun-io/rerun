@@ -1,7 +1,6 @@
 use re_data_store::TimeRange;
 use re_entity_db::EntityPath;
-use re_log_types::RowId;
-use re_query::range_archetype;
+use re_log_types::{RowId, TimeInt};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -66,28 +65,27 @@ impl VisualizerSystem for TextLogSystem {
             let timeline_query =
                 re_data_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
 
-            let arch_views = range_archetype::<TextLog, { TextLog::NUM_COMPONENTS }>(
+            re_query_cache::query_archetype_pov1_comp2::<TextLog, Text, TextLogLevel, Color, _>(
+                ctx.app_options.experimental_primary_caching_series,
                 store,
-                &timeline_query,
+                &timeline_query.clone().into(),
                 &data_result.entity_path,
-            );
-
-            for (time, arch_view) in arch_views {
-                let bodies = arch_view.iter_required_component::<Text>()?;
-                let levels = arch_view.iter_optional_component::<TextLogLevel>()?;
-                let colors = arch_view.iter_optional_component::<Color>()?;
-
-                for (body, level, color) in itertools::izip!(bodies, levels, colors) {
-                    self.entries.push(Entry {
-                        row_id: arch_view.primary_row_id(),
-                        entity_path: data_result.entity_path.clone(),
-                        time: time.map(|time| time.as_i64()),
-                        color,
-                        body,
-                        level,
-                    });
-                }
-            }
+                |((time, row_id), _, bodies, levels, colors)| {
+                    for (body, level, color) in
+                        itertools::izip!(bodies.iter(), levels.iter(), colors.iter())
+                    {
+                        self.entries.push(Entry {
+                            row_id,
+                            entity_path: data_result.entity_path.clone(),
+                            // TODO(cmc): real support for timeless data in caches.
+                            time: (time != TimeInt::MIN).then(|| time.as_i64()),
+                            color: *color,
+                            body: body.clone(),
+                            level: level.clone(),
+                        });
+                    }
+                },
+            )?;
         }
 
         {

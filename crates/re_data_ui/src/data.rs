@@ -151,8 +151,8 @@ impl DataUi for LineStrip2D {
                     .body(|mut body| {
                         re_ui::ReUi::setup_table_body(&mut body);
                         let row_height = re_ui::ReUi::table_line_height();
-                        body.rows(row_height, self.0.len(), |index, mut row| {
-                            if let Some(pos) = self.0.get(index) {
+                        body.rows(row_height, self.0.len(), |mut row| {
+                            if let Some(pos) = self.0.get(row.index()) {
                                 row.col(|ui| {
                                     ui.label(format_f32(pos.x()));
                                 });
@@ -200,8 +200,8 @@ impl DataUi for LineStrip3D {
                     .body(|mut body| {
                         re_ui::ReUi::setup_table_body(&mut body);
                         let row_height = re_ui::ReUi::table_line_height();
-                        body.rows(row_height, self.0.len(), |index, mut row| {
-                            if let Some(pos) = self.0.get(index) {
+                        body.rows(row_height, self.0.len(), |mut row| {
+                            if let Some(pos) = self.0.get(row.index()) {
                                 row.col(|ui| {
                                     ui.label(format_f32(pos.x()));
                                 });

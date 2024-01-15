@@ -126,7 +126,7 @@ fn entity_tree_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, tree: &EntityTre
     // Try to estimate data-rate
     if let Some(time_histogram) = tree.subtree.time_histogram.get(timeline) {
         // `num_events` is approximate - we could be logging a Tensor image and a transform
-        // at _almost_ approximately the same time, but it  should only count as one fence-post.
+        // at _almost_ approximately the same time, but it should only count as one fence-post.
         let num_events = time_histogram.total_count(); // TODO(emilk): we should ask the histogram to count the number of non-zero keys instead.
 
         if let (Some(min_time), Some(max_time)) =

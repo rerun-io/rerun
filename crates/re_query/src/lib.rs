@@ -23,6 +23,17 @@ pub use self::util::query_archetype_with_history;
 #[cfg(feature = "testing")]
 pub use self::query::__populate_example_store;
 
+#[derive(Debug, Clone, Copy)]
+pub struct ComponentNotFoundError(pub re_types_core::ComponentName);
+
+impl std::fmt::Display for ComponentNotFoundError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("Could not find component: {}", self.0))
+    }
+}
+
+impl std::error::Error for ComponentNotFoundError {}
+
 #[derive(thiserror::Error, Debug)]
 pub enum QueryError {
     #[error("Tried to access a column that doesn't exist")]
@@ -31,11 +42,8 @@ pub enum QueryError {
     #[error("Could not find primary component: {0}")]
     PrimaryNotFound(re_types_core::ComponentName),
 
-    #[error("Could not find required component: {0}")]
-    RequiredComponentNotFound(re_types_core::ComponentName),
-
-    #[error("Could not find component")]
-    ComponentNotFound,
+    #[error(transparent)]
+    ComponentNotFound(#[from] ComponentNotFoundError),
 
     #[error("Tried to access component of type '{actual:?}' using component '{requested:?}'")]
     TypeMismatch {

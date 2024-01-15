@@ -82,11 +82,11 @@ pub trait VecDequeInsertionExt<T> {
     /// at both ends of the added data.
     ///
     /// Panics if `index` is out of bounds.
-    fn insert_range(&mut self, index: usize, values: impl ExactSizeIterator<Item = T>);
+    fn insert_many(&mut self, index: usize, values: impl ExactSizeIterator<Item = T>);
 }
 
 impl<T> VecDequeInsertionExt<T> for VecDeque<T> {
-    fn insert_range(&mut self, index: usize, values: impl ExactSizeIterator<Item = T>) {
+    fn insert_many(&mut self, index: usize, values: impl ExactSizeIterator<Item = T>) {
         if index == self.len() {
             self.extend(values); // has a specialization fast-path builtin
         } else if index == 0 {
@@ -110,24 +110,24 @@ impl<T> VecDequeInsertionExt<T> for VecDeque<T> {
 }
 
 #[test]
-fn insert_range() {
+fn insert_many() {
     let mut v: VecDeque<i64> = vec![].into();
 
     assert!(v.is_empty());
 
-    v.insert_range(0, [1, 2, 3].into_iter());
+    v.insert_many(0, [1, 2, 3].into_iter());
     assert_deque_eq([1, 2, 3], v.clone());
 
-    v.insert_range(0, [4, 5].into_iter());
+    v.insert_many(0, [4, 5].into_iter());
     assert_deque_eq([4, 5, 1, 2, 3], v.clone());
 
-    v.insert_range(2, std::iter::once(6));
+    v.insert_many(2, std::iter::once(6));
     assert_deque_eq([4, 5, 6, 1, 2, 3], v.clone());
 
-    v.insert_range(v.len(), [7, 8, 9, 10].into_iter());
+    v.insert_many(v.len(), [7, 8, 9, 10].into_iter());
     assert_deque_eq([4, 5, 6, 1, 2, 3, 7, 8, 9, 10], v.clone());
 
-    v.insert_range(5, [11, 12].into_iter());
+    v.insert_many(5, [11, 12].into_iter());
     assert_deque_eq([4, 5, 6, 1, 2, 11, 12, 3, 7, 8, 9, 10], v.clone());
 }
 
@@ -262,7 +262,7 @@ fn remove_range() {
     assert!(v.is_empty());
     assert!(v.is_sorted());
 
-    v.insert_range(0, [1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter());
+    v.insert_many(0, [1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter());
     assert_deque_eq([1, 2, 3, 4, 5, 6, 7, 8, 9], v.clone());
     assert!(v.is_sorted());
 

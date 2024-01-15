@@ -31,6 +31,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct ClassId(pub crate::datatypes::ClassId);
 
+impl ::re_types_core::SizeBytes for ClassId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::ClassId>::is_pod()
+    }
+}
+
 impl<T: Into<crate::datatypes::ClassId>> From<T> for ClassId {
     fn from(v: T) -> Self {
         Self(v.into())

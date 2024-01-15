@@ -1,4 +1,5 @@
 use std::fmt;
+use std::io::IsTerminal;
 use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
@@ -35,6 +36,12 @@ const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 /// a race between file creation (and thus clearing) and pending file writes.
 fn forced_sink_path() -> Option<String> {
     std::env::var(ENV_FORCE_SAVE).ok()
+}
+
+/// Should we stream data to stdout when requested, or should we refrain because it's actually a
+/// terminal?
+fn is_stdout_listening() -> bool {
+    !std::io::stdout().is_terminal()
 }
 
 /// Errors that can occur when creating/manipulating a [`RecordingStream`].
@@ -299,7 +306,7 @@ impl RecordingStreamBuilder {
     /// remote Rerun instance.
     ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// ## Example
@@ -368,8 +375,7 @@ impl RecordingStreamBuilder {
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
     pub fn stdout(self) -> RecordingStreamResult<RecordingStream> {
-        let is_stdout_listening = !atty::is(atty::Stream::Stdout);
-        if !is_stdout_listening {
+        if !is_stdout_listening() {
             return self.buffered();
         }
 
@@ -416,7 +422,7 @@ impl RecordingStreamBuilder {
     /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
     ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// ## Example
@@ -1285,7 +1291,7 @@ impl RecordingStream {
     /// the specified address.
     ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
@@ -1332,7 +1338,7 @@ impl RecordingStream {
     /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
     ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
-    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
@@ -1409,8 +1415,7 @@ impl RecordingStream {
             return Ok(());
         }
 
-        let is_stdout_listening = !atty::is(atty::Stream::Stdout);
-        if !is_stdout_listening {
+        if !is_stdout_listening() {
             self.set_sink(Box::new(crate::log_sink::BufferedSink::new()));
             return Ok(());
         }

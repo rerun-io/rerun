@@ -17,6 +17,7 @@ mod keypoint_pair_ext;
 mod mat3x3;
 mod mat3x3_ext;
 mod mat4x4;
+mod mat4x4_ext;
 mod material;
 mod material_ext;
 mod mesh_properties;

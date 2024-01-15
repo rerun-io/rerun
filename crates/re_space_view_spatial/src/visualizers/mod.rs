@@ -1,5 +1,6 @@
 //! Responsible for populating `SceneSpatialPrimitives` and `SceneSpatialUiData`
 
+mod arrows2d;
 mod arrows3d;
 mod assets3d;
 mod boxes2d;
@@ -18,12 +19,11 @@ mod transform3d_arrows;
 pub use cameras::CamerasVisualizer;
 pub use images::ImageVisualizer;
 pub use images::ViewerImage;
-use re_viewer_context::ApplicableEntities;
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer};
 
 #[doc(hidden)] // Public for benchmarks
-pub use points3d::LoadedPoints;
+pub use points3d::{LoadedPoints, Points3DComponentData};
 
 use ahash::HashMap;
 
@@ -32,10 +32,12 @@ use re_types::components::{Color, InstanceKey, Text};
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
 use re_viewer_context::{
-    auto_color, Annotations, DefaultColor, ResolvedAnnotationInfos, SpaceViewClassRegistryError,
-    SpaceViewSystemRegistrator, ViewQuery, VisualizableEntities, VisualizerCollection,
+    auto_color, Annotations, ApplicableEntities, DefaultColor, ResolvedAnnotationInfos,
+    SpaceViewClassRegistryError, SpaceViewSystemRegistrator, ViewQuery, VisualizableEntities,
+    VisualizableFilterContext, VisualizerCollection,
 };
 
+use crate::space_view_2d::VisualizableFilterContext2D;
 use crate::space_view_3d::VisualizableFilterContext3D;
 
 use super::contexts::SpatialSceneEntityContext;
@@ -52,6 +54,7 @@ pub fn register_2d_spatial_visualizers(
     // Note: 2D spatial systems don't include cameras as this
     // visualizer only shows a 2D projection WITHIN a 3D view.
     system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
+    system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
@@ -69,6 +72,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry: &mut SpaceViewSystemRegistrator<'_>,
 ) -> Result<(), SpaceViewClassRegistryError> {
     system_registry.register_visualizer::<arrows3d::Arrows3DVisualizer>()?;
+    system_registry.register_visualizer::<arrows2d::Arrows2DVisualizer>()?;
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
@@ -126,7 +130,6 @@ pub fn picking_id_from_instance_key(
 }
 
 /// Process [`Color`] components using annotations and default colors.
-#[allow(dead_code)]
 pub fn process_colors<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
     ent_path: &'a EntityPath,
@@ -142,6 +145,20 @@ pub fn process_colors<'a, A: Archetype>(
     .map(move |(annotation_info, color)| {
         annotation_info.color(color.map(|c| c.to_array()), default_color)
     }))
+}
+
+/// Process [`Color`] components using annotations and default colors.
+pub fn process_color_slice<'a>(
+    colors: &'a [Option<Color>],
+    ent_path: &'a EntityPath,
+    annotation_infos: &'a ResolvedAnnotationInfos,
+) -> impl Iterator<Item = egui::Color32> + 'a {
+    re_tracing::profile_function!();
+    let default_color = DefaultColor::EntityPath(ent_path);
+
+    itertools::izip!(annotation_infos.iter(), colors).map(move |(annotation_info, color)| {
+        annotation_info.color(color.map(|c| c.to_array()), default_color)
+    })
 }
 
 /// Process [`Text`] components using annotations.
@@ -169,22 +186,40 @@ pub fn process_radii<'a, A: Archetype>(
     let ent_path = ent_path.clone();
     Ok(arch_view
         .iter_optional_component::<re_types::components::Radius>()?
-        .map(move |radius| {
-            radius.map_or(re_renderer::Size::AUTO, |r| {
-                if 0.0 <= r.0 && r.0.is_finite() {
-                    re_renderer::Size::new_scene(r.0)
-                } else {
-                    if r.0 < 0.0 {
-                        re_log::warn_once!("Found negative radius in entity {ent_path}");
-                    } else if r.0.is_infinite() {
-                        re_log::warn_once!("Found infinite radius in entity {ent_path}");
-                    } else {
-                        re_log::warn_once!("Found NaN radius in entity {ent_path}");
-                    }
-                    re_renderer::Size::AUTO
-                }
-            })
-        }))
+        .map(move |radius| process_radius(&ent_path, &radius)))
+}
+
+/// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
+/// where no radius is specified.
+pub fn process_radius_slice<'a>(
+    radii: &'a [Option<re_types::components::Radius>],
+    ent_path: &EntityPath,
+) -> impl Iterator<Item = re_renderer::Size> + 'a {
+    re_tracing::profile_function!();
+    let ent_path = ent_path.clone();
+    radii
+        .iter()
+        .map(move |radius| process_radius(&ent_path, radius))
+}
+
+fn process_radius(
+    entity_path: &EntityPath,
+    radius: &Option<re_types::components::Radius>,
+) -> re_renderer::Size {
+    radius.map_or(re_renderer::Size::AUTO, |r| {
+        if 0.0 <= r.0 && r.0.is_finite() {
+            re_renderer::Size::new_scene(r.0)
+        } else {
+            if r.0 < 0.0 {
+                re_log::warn_once!("Found negative radius in entity {entity_path}");
+            } else if r.0.is_infinite() {
+                re_log::warn_once!("Found infinite radius in entity {entity_path}");
+            } else {
+                re_log::warn_once!("Found NaN radius in entity {entity_path}");
+            }
+            re_renderer::Size::AUTO
+        }
+    })
 }
 
 /// Resolves all annotations for the given entity view.
@@ -251,6 +286,52 @@ where
     .collect();
 
     Ok((ResolvedAnnotationInfos::Many(annotation_info), keypoints))
+}
+
+/// Resolves all annotations and keypoints for the given entity view.
+fn process_annotation_and_keypoint_slices(
+    latest_at: re_log_types::TimeInt,
+    instance_keys: &[InstanceKey],
+    keypoint_ids: Option<&[Option<re_types::components::KeypointId>]>,
+    class_ids: Option<&[Option<re_types::components::ClassId>]>,
+    positions: impl Iterator<Item = glam::Vec3>,
+    annotations: &Annotations,
+) -> (ResolvedAnnotationInfos, Keypoints) {
+    re_tracing::profile_function!();
+
+    let mut keypoints: Keypoints = HashMap::default();
+
+    // No need to process annotations if we don't have keypoints or class-ids
+    let (Some(keypoint_ids), Some(class_ids)) = (keypoint_ids, class_ids) else {
+        let resolved_annotation = annotations
+            .resolved_class_description(None)
+            .annotation_info();
+
+        return (
+            ResolvedAnnotationInfos::Same(instance_keys.len(), resolved_annotation),
+            keypoints,
+        );
+    };
+
+    let annotation_info = itertools::izip!(positions, keypoint_ids, class_ids)
+        .map(|(positions, &keypoint_id, &class_id)| {
+            let class_description = annotations.resolved_class_description(class_id);
+
+            if let (Some(keypoint_id), Some(class_id), position) =
+                (keypoint_id, class_id, positions)
+            {
+                keypoints
+                    .entry((class_id, latest_at.as_i64()))
+                    .or_default()
+                    .insert(keypoint_id.0, position);
+                class_description.annotation_info_with_keypoint(keypoint_id.0)
+            } else {
+                class_description.annotation_info()
+            }
+        })
+        .collect();
+
+    (ResolvedAnnotationInfos::Many(annotation_info), keypoints)
 }
 
 #[derive(Clone)]
@@ -346,10 +427,13 @@ pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
 /// If 2d object is shown in a 3d space view, it is only then visualizable, if it is under a pinhole camera.
 fn filter_visualizable_2d_entities(
     entities: ApplicableEntities,
-    context: &dyn std::any::Any,
+    context: &dyn VisualizableFilterContext,
 ) -> VisualizableEntities {
     // `VisualizableFilterContext3D` will only be available if we're in a 3D space view.
-    if let Some(context) = context.downcast_ref::<VisualizableFilterContext3D>() {
+    if let Some(context) = context
+        .as_any()
+        .downcast_ref::<VisualizableFilterContext3D>()
+    {
         VisualizableEntities(
             entities
                 .0
@@ -357,7 +441,44 @@ fn filter_visualizable_2d_entities(
                 .filter(|ent_path| context.entities_under_pinhole.contains(&ent_path.hash()))
                 .collect(),
         )
+    } else if let Some(context) = context
+        .as_any()
+        .downcast_ref::<VisualizableFilterContext2D>()
+    {
+        if !context.invalid_subtrees.is_empty() {
+            VisualizableEntities(
+                entities
+                    .0
+                    .into_iter()
+                    .filter(|ent_path| {
+                        !context
+                            .invalid_subtrees
+                            .iter()
+                            .any(|invalid_subtree| ent_path.starts_with(invalid_subtree))
+                    })
+                    .collect(),
+            )
+        } else {
+            VisualizableEntities(entities.0)
+        }
     } else {
         VisualizableEntities(entities.0)
+    }
+}
+
+/// If 3d object is shown in a 2d space view, it is only visualizable, if the origin of the space view has a pinhole camera.
+fn filter_visualizable_3d_entities(
+    entities: ApplicableEntities,
+    context: &dyn VisualizableFilterContext,
+) -> VisualizableEntities {
+    // `VisualizableFilterContext2D` will only be available if we're in a 2D space view.
+    if context
+        .as_any()
+        .downcast_ref::<VisualizableFilterContext2D>()
+        .map_or(true, |c| c.has_pinhole_at_origin)
+    {
+        VisualizableEntities(entities.0)
+    } else {
+        VisualizableEntities::default()
     }
 }

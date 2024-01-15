@@ -655,13 +655,9 @@ fn paint_axis_names(
             } else {
                 rect.left_top() + egui::vec2(0.0, galley_size.x)
             };
-            painter.add(TextShape {
-                pos,
-                galley,
-                angle: -std::f32::consts::TAU / 4.0,
-                underline: Default::default(),
-                override_text_color: None,
-            });
+            painter.add(
+                TextShape::new(pos, galley, text_color).with_angle(-std::f32::consts::TAU / 4.0),
+            );
             egui::Rect::from_min_size(
                 pos - galley_size.x * egui::Vec2::Y,
                 egui::vec2(galley_size.y, galley_size.x),
@@ -675,13 +671,9 @@ fn paint_axis_names(
             } else {
                 rect.left_bottom()
             };
-            painter.add(TextShape {
-                pos,
-                galley,
-                angle: -std::f32::consts::TAU / 4.0,
-                underline: Default::default(),
-                override_text_color: None,
-            });
+            painter.add(
+                TextShape::new(pos, galley, text_color).with_angle(-std::f32::consts::TAU / 4.0),
+            );
             egui::Rect::from_min_size(
                 pos - galley_size.x * egui::Vec2::Y,
                 egui::vec2(galley_size.y, galley_size.x),

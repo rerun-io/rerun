@@ -45,6 +45,28 @@ pub struct ViewportBlueprint {
     pub auto_space_views: Option<crate::blueprint::components::AutoSpaceViews>,
 }
 
+impl ::re_types_core::SizeBytes for ViewportBlueprint {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.space_views.heap_size_bytes()
+            + self.layout.heap_size_bytes()
+            + self.root_container.heap_size_bytes()
+            + self.maximized.heap_size_bytes()
+            + self.auto_layout.heap_size_bytes()
+            + self.auto_space_views.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::components::IncludedSpaceViews>::is_pod()
+            && <Option<crate::blueprint::components::ViewportLayout>>::is_pod()
+            && <Option<crate::blueprint::components::RootContainer>>::is_pod()
+            && <Option<crate::blueprint::components::SpaceViewMaximized>>::is_pod()
+            && <Option<crate::blueprint::components::AutoLayout>>::is_pod()
+            && <Option<crate::blueprint::components::AutoSpaceViews>>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.IncludedSpaceViews".into()]);
 

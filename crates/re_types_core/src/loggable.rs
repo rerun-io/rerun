@@ -1,4 +1,6 @@
-use crate::{result::_Backtrace, DeserializationResult, ResultExt as _, SerializationResult};
+use crate::{
+    result::_Backtrace, DeserializationResult, ResultExt as _, SerializationResult, SizeBytes,
+};
 
 #[allow(unused_imports)] // used in docstrings
 use crate::{Archetype, ComponentBatch, DatatypeBatch, LoggableBatch};
@@ -17,7 +19,7 @@ use crate::{Archetype, ComponentBatch, DatatypeBatch, LoggableBatch};
 /// automatically derives the [`LoggableBatch`] implementation (and by extension
 /// [`DatatypeBatch`]/[`ComponentBatch`]), which makes it possible to work with lists' worth of data
 /// in a generic fashion.
-pub trait Loggable: Clone + Sized {
+pub trait Loggable: Clone + Sized + SizeBytes {
     type Name: std::fmt::Display;
 
     /// The fully-qualified name of this loggable, e.g. `rerun.datatypes.Vec2D`.

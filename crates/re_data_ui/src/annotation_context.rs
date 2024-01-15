@@ -214,31 +214,27 @@ fn class_description_ui(
                                     .collect()
                             };
 
-                            body.rows(
-                                row_height,
-                                class.keypoint_connections.len(),
-                                |row_idx, mut row| {
-                                    let pair = &class.keypoint_connections[row_idx];
-                                    let KeypointPair {
-                                        keypoint0,
-                                        keypoint1,
-                                    } = pair;
+                            body.rows(row_height, class.keypoint_connections.len(), |mut row| {
+                                let pair = &class.keypoint_connections[row.index()];
+                                let KeypointPair {
+                                    keypoint0,
+                                    keypoint1,
+                                } = pair;
 
-                                    for id in [keypoint0, keypoint1] {
-                                        row.col(|ui| {
-                                            ui.label(
-                                                keypoint_map
-                                                    .get(id)
-                                                    .and_then(|info| info.label.as_ref())
-                                                    .map_or_else(
-                                                        || format!("id {}", id.0),
-                                                        |label| label.to_string(),
-                                                    ),
-                                            );
-                                        });
-                                    }
-                                },
-                            );
+                                for id in [keypoint0, keypoint1] {
+                                    row.col(|ui| {
+                                        ui.label(
+                                            keypoint_map
+                                                .get(id)
+                                                .and_then(|info| info.label.as_ref())
+                                                .map_or_else(
+                                                    || format!("id {}", id.0),
+                                                    |label| label.to_string(),
+                                                ),
+                                        );
+                                    });
+                                }
+                            });
                         });
                 });
             },
@@ -281,8 +277,8 @@ fn annotation_info_table_ui(
         .body(|mut body| {
             re_ui::ReUi::setup_table_body(&mut body);
 
-            body.rows(row_height, annotation_infos.len(), |row_idx, mut row| {
-                let info = &annotation_infos[row_idx];
+            body.rows(row_height, annotation_infos.len(), |mut row| {
+                let info = &annotation_infos[row.index()];
                 row.col(|ui| {
                     ui.label(info.id.to_string());
                 });

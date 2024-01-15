@@ -43,6 +43,52 @@ pub struct AffixFuzzer4 {
     pub fuzz2118: Option<Vec<crate::testing::components::AffixFuzzer18>>,
 }
 
+impl ::re_types_core::SizeBytes for AffixFuzzer4 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.fuzz2101.heap_size_bytes()
+            + self.fuzz2102.heap_size_bytes()
+            + self.fuzz2103.heap_size_bytes()
+            + self.fuzz2104.heap_size_bytes()
+            + self.fuzz2105.heap_size_bytes()
+            + self.fuzz2106.heap_size_bytes()
+            + self.fuzz2107.heap_size_bytes()
+            + self.fuzz2108.heap_size_bytes()
+            + self.fuzz2109.heap_size_bytes()
+            + self.fuzz2110.heap_size_bytes()
+            + self.fuzz2111.heap_size_bytes()
+            + self.fuzz2112.heap_size_bytes()
+            + self.fuzz2113.heap_size_bytes()
+            + self.fuzz2114.heap_size_bytes()
+            + self.fuzz2115.heap_size_bytes()
+            + self.fuzz2116.heap_size_bytes()
+            + self.fuzz2117.heap_size_bytes()
+            + self.fuzz2118.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<Vec<crate::testing::components::AffixFuzzer1>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer2>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer3>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer4>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer5>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer6>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer7>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer8>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer9>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer10>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer11>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer12>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer13>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer14>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer15>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer16>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer17>>>::is_pod()
+            && <Option<Vec<crate::testing::components::AffixFuzzer18>>>::is_pod()
+    }
+}
+
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 

@@ -34,6 +34,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct TextLogLevel(pub crate::datatypes::Utf8);
 
+impl ::re_types_core::SizeBytes for TextLogLevel {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Utf8>::is_pod()
+    }
+}
+
 impl<T: Into<crate::datatypes::Utf8>> From<T> for TextLogLevel {
     fn from(v: T) -> Self {
         Self(v.into())

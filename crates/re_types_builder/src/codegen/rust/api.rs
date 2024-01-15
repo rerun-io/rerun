@@ -21,13 +21,18 @@ use crate::{
         },
         StringExt as _,
     },
-    format_path, ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind,
-    Objects, Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    format_path,
+    objects::ObjectType,
+    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
     ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
 
-use super::{arrow::quote_fqname_as_type_path, util::string_from_quoted};
+use super::{
+    arrow::quote_fqname_as_type_path, blueprint_validation::generate_blueprint_validation,
+    util::string_from_quoted,
+};
 
 // ---
 
@@ -35,6 +40,8 @@ use super::{arrow::quote_fqname_as_type_path, util::string_from_quoted};
 // once again at some point (`TokenStream` strips them)… nothing too urgent though.
 
 // ---
+
+type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 
 pub struct RustCodeGenerator {
     pub workspace_path: Utf8PathBuf,
@@ -65,6 +72,8 @@ impl CodeGenerator for RustCodeGenerator {
                 &mut files_to_write,
             );
         }
+
+        generate_blueprint_validation(reporter, objects, &mut files_to_write);
 
         files_to_write
     }
@@ -101,7 +110,14 @@ impl RustCodeGenerator {
 
             let filepath = module_path.join(filename);
 
-            let mut code = generate_object_file(reporter, objects, arrow_registry, obj);
+            let mut code = match generate_object_file(reporter, objects, arrow_registry, obj) {
+                Ok(code) => code,
+                Err(err) => {
+                    reporter.error(&obj.virtpath, &obj.fqname, err);
+                    continue;
+                }
+            };
+
             if crate_name == "re_types_core" {
                 code = code.replace("::re_types_core", "crate");
             }
@@ -135,7 +151,7 @@ fn generate_object_file(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
     obj: &Object,
-) -> String {
+) -> Result<String> {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = obj.relative_filepath() {
@@ -170,10 +186,10 @@ fn generate_object_file(
     // inject some of our own when writing to file… while making sure that don't inject
     // random spacing into doc comments that look like code!
 
-    let quoted_obj = if obj.is_struct() {
-        quote_struct(reporter, arrow_registry, objects, obj)
-    } else {
-        quote_union(reporter, arrow_registry, objects, obj)
+    let quoted_obj = match obj.typ() {
+        crate::objects::ObjectType::Struct => quote_struct(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectType::Union => quote_union(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectType::Enum => anyhow::bail!("Enums are not implemented in Rust"),
     };
 
     let mut tokens = quoted_obj.into_iter();
@@ -196,7 +212,7 @@ fn generate_object_file(
 
     code.push_text(string_from_quoted(&acc), 1, 0);
 
-    replace_doc_attrb_with_doc_comment(&code)
+    Ok(replace_doc_attrb_with_doc_comment(&code))
 }
 
 fn generate_mod_file(
@@ -350,6 +366,47 @@ fn quote_struct(
 
     let quoted_builder = quote_builder_from_obj(obj);
 
+    let quoted_heap_size_bytes = if obj
+        .fields
+        .iter()
+        .any(|field| field.has_attr(crate::ATTR_RUST_SERDE_TYPE))
+    {
+        // TODO(cmc): serde types are a temporary hack that's not worth worrying about.
+        quote!()
+    } else {
+        let heap_size_bytes_impl = if is_tuple_struct_from_obj(obj) {
+            quote!(self.0.heap_size_bytes())
+        } else {
+            let quoted_heap_size_bytes = obj.fields.iter().map(|obj_field| {
+                let field_name = format_ident!("{}", obj_field.name);
+                quote!(self.#field_name.heap_size_bytes())
+            });
+            quote!(#(#quoted_heap_size_bytes)+*)
+        };
+
+        let is_pod_impl = {
+            let quoted_is_pods = obj.fields.iter().map(|obj_field| {
+                let quoted_field_type = quote_field_type_from_object_field(obj_field);
+                quote!(<#quoted_field_type>::is_pod())
+            });
+            quote!(#(#quoted_is_pods)&&*)
+        };
+
+        quote! {
+            impl ::re_types_core::SizeBytes for #name {
+                #[inline]
+                fn heap_size_bytes(&self) -> u64 {
+                    #heap_size_bytes_impl
+                }
+
+                #[inline]
+                fn is_pod() -> bool {
+                    #is_pod_impl
+                }
+            }
+        }
+    };
+
     let tokens = quote! {
         #quoted_doc
         #quoted_derive_clone_debug
@@ -357,6 +414,8 @@ fn quote_struct(
         #quoted_repr_clause
         #quoted_custom_clause
         #quoted_struct
+
+        #quoted_heap_size_bytes
 
         #quoted_from_impl
 
@@ -374,7 +433,7 @@ fn quote_union(
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
-    assert!(!obj.is_struct());
+    assert_eq!(obj.typ(), ObjectType::Union);
 
     let Object { name, fields, .. } = obj;
 
@@ -409,6 +468,45 @@ fn quote_union(
 
     let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
 
+    let quoted_heap_size_bytes = if obj
+        .fields
+        .iter()
+        .any(|field| field.has_attr(crate::ATTR_RUST_SERDE_TYPE))
+    {
+        // TODO(cmc): serde types are a temporary hack that's not worth worrying about.
+        quote!()
+    } else {
+        let quoted_matches = fields.iter().map(|obj_field| {
+            let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
+            quote!(Self::#name(v) => v.heap_size_bytes())
+        });
+
+        let is_pod_impl = {
+            let quoted_is_pods = obj.fields.iter().map(|obj_field| {
+                let quoted_field_type = quote_field_type_from_object_field(obj_field);
+                quote!(<#quoted_field_type>::is_pod())
+            });
+            quote!(#(#quoted_is_pods)&&*)
+        };
+
+        quote! {
+            impl ::re_types_core::SizeBytes for #name {
+                #[allow(clippy::match_same_arms)]
+                #[inline]
+                fn heap_size_bytes(&self) -> u64 {
+                    match self {
+                        #(#quoted_matches),*
+                    }
+                }
+
+                #[inline]
+                fn is_pod() -> bool {
+                    #is_pod_impl
+                }
+            }
+        }
+    };
+
     let tokens = quote! {
         #quoted_doc
         #quoted_derive_clone_debug
@@ -418,6 +516,8 @@ fn quote_union(
         pub enum #name {
             #(#quoted_fields,)*
         }
+
+        #quoted_heap_size_bytes
 
         #quoted_trait_impls
     };

@@ -28,6 +28,18 @@ pub struct Rotation3D(
     pub crate::datatypes::Rotation3D,
 );
 
+impl ::re_types_core::SizeBytes for Rotation3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Rotation3D>::is_pod()
+    }
+}
+
 impl<T: Into<crate::datatypes::Rotation3D>> From<T> for Rotation3D {
     fn from(v: T) -> Self {
         Self(v.into())

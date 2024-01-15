@@ -55,7 +55,7 @@ In the future you will be able to specify the instance keys manually while loggi
 
 ## Splats
 
-As mentioned, Rerun has special handling for splats within batches.  This is what happens when you mix arrays and
+As mentioned, Rerun has special handling for splats within batches. This is what happens when you mix arrays and
 single values in an API call. The non-array value is instead logged as a splat. Behind the scenes, the splat is stored
 as a single value rather than a full array. Then, when doing the join at lookup time the splat is repeated across
 every instance in the batch.

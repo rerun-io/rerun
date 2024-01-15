@@ -31,6 +31,18 @@ pub struct KeypointPair {
     pub keypoint1: crate::datatypes::KeypointId,
 }
 
+impl ::re_types_core::SizeBytes for KeypointPair {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.keypoint0.heap_size_bytes() + self.keypoint1.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::KeypointId>::is_pod() && <crate::datatypes::KeypointId>::is_pod()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(KeypointPair);
 
 impl ::re_types_core::Loggable for KeypointPair {

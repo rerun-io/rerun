@@ -35,6 +35,9 @@ pub enum SystemCommand {
 
     /// Enable or disable the experimental dataframe space views.
     EnableExperimentalDataframeSpaceView(bool),
+
+    /// Set the selection in the recording config of the given recording.
+    SetSelection(StoreId, crate::Item),
 }
 
 /// Interface for sending [`SystemCommand`] messages.

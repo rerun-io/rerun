@@ -26,6 +26,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Name(pub ::re_types_core::ArrowString);
 
+impl ::re_types_core::SizeBytes for Name {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <::re_types_core::ArrowString>::is_pod()
+    }
+}
+
 impl From<::re_types_core::ArrowString> for Name {
     #[inline]
     fn from(value: ::re_types_core::ArrowString) -> Self {

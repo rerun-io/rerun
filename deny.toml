@@ -47,26 +47,30 @@ deny = [
 
 skip = [
   { name = "ahash" },                # Popular crate + fast release schedule = lots of crates still using old versions
+  { name = "async-fs" },             # Old version via accesskit
   { name = "base64" },               # Too popular
   { name = "cargo_metadata" },       # Older version used by ply-rs. It's small, and it's build-time only!
   { name = "cfg_aliases" },          # Tiny macro-only crate. Winit and other use older version than us.
+  { name = "core-graphics" },        # old version via arboard
   { name = "foreign-types-shared" }, # used for cocoa bindings. wgpu uses newer than eframe.
   { name = "foreign-types" },        # used for cocoa bindings. wgpu uses newer than eframe.
   { name = "hashbrown" },            # Old version used by polar-rs
   { name = "libloading" },           # Old version used by ash (vulkan binding), newer version used by khronos-egl
   { name = "memoffset" },            # Small crate
-  { name = "nix" },                  # difficult to avoid :(
   { name = "prettyplease" },         # Old version being used by prost
+  { name = "raw-window-handle" },    # Awaiting new wgpu release
   { name = "spin" },                 # Old version used by rusttls
-  { name = "time" },                 # Too popular
   { name = "windows" },              # Old version used by accesskit_windows, newer version used by wgpu
 ]
 skip-tree = [
+  { name = "async-io" },       # Old version via rfd
   { name = "cargo-run-wasm" }, # Dev-tool
   { name = "comfy-table" },    # arrow vs. polars use different major versions (polars' one is dev-dep only)
   { name = "criterion" },      # dev-dependency
+  { name = "objc2" },          # old version via accesskit
   { name = "prost-build" },    # only used in objectron example
   { name = "prost-derive" },   # only used in objectron example
+  { name = "x11rb" },          # old version via arboard
 ]
 
 

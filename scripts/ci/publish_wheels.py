@@ -56,11 +56,13 @@ def main() -> None:
     args = parser.parse_args()
 
     bucket = Gcs("rerun-open").bucket("rerun-builds")
-    wheel_blobs: list[Blob] = list(bucket.list_blobs(prefix=args.dir))
-    wheels = [blob.name.split("/")[-1] for blob in wheel_blobs if blob.name.endswith(".whl")]
+    wheel_blobs: list[Blob] = list(blob for blob in bucket.list_blobs(prefix=args.dir) if blob.name.endswith(".whl"))
+    wheels = [blob.name.split("/")[-1] for blob in wheel_blobs]
+    wheel_paths = [f"wheels/{wheel}" for wheel in wheels]
     wheel_utils.check_expected_wheels(wheels)
 
-    shutil.rmtree("wheels")
+    if os.path.exists("wheels"):
+        shutil.rmtree("wheels")
     os.mkdir("wheels")
     with ThreadPoolExecutor() as e:
         for blob in wheel_blobs:
@@ -69,7 +71,7 @@ def main() -> None:
     check_version(canonicalize_version(args.version))
 
     run(
-        "maturin upload --skip-existing wheels/*",
+        f"maturin upload --skip-existing {' '.join(wheel_paths)}",
         env={
             **os.environ,
             "MATURIN_REPOSITORY": args.repository,

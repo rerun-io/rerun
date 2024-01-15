@@ -157,6 +157,7 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Spatial Archetypes",
         class_list=[
             "archetypes.Arrows3D",
+            "archetypes.Arrows2D",
             "archetypes.Asset3D",
             "archetypes.Boxes2D",
             "archetypes.Boxes3D",

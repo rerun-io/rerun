@@ -25,6 +25,12 @@ pub struct AppOptions {
     /// Enable the experimental support for the container addition workflow.
     pub experimental_additive_workflow: bool,
 
+    /// Toggle primary caching for the 2D & 3D point cloud space views.
+    pub experimental_primary_caching_point_clouds: bool,
+
+    /// Toggle primary caching for the time series & text logs space views.
+    pub experimental_primary_caching_series: bool,
+
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -53,6 +59,14 @@ impl Default for AppOptions {
             experimental_entity_filter_editor: false,
 
             experimental_additive_workflow: cfg!(debug_assertions),
+
+            // TODO(cmc): default to true for debug/rerun-workspace once minimal features have been
+            // merged in.
+            experimental_primary_caching_point_clouds: false,
+
+            // TODO(cmc): default to true for debug/rerun-workspace once minimal features have been
+            // merged in.
+            experimental_primary_caching_series: false,
 
             show_picking_debug_overlay: false,
 

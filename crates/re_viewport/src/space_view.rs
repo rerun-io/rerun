@@ -343,10 +343,13 @@ impl SpaceViewBlueprint {
         }
 
         // Get next available file name.
+        fn is_safe_filename_char(c: char) -> bool {
+            c.is_alphanumeric() || matches!(c, ' ' | '-' | '_')
+        }
         let safe_display_name = self
             .display_name_or_default()
             .0
-            .replace(|c: char| !c.is_alphanumeric() && c != ' ', "");
+            .replace(|c: char| !is_safe_filename_char(c), "");
         let mut i = 1;
         let filename = loop {
             let filename = format!("Screenshot {safe_display_name} - {i}.png");

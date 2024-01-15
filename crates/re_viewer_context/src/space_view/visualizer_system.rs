@@ -5,7 +5,7 @@ use re_types::ComponentNameSet;
 use crate::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    VisualizerAdditionalApplicabilityFilter,
+    VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
 };
 
 /// Element of a scene derived from a single archetype query.
@@ -34,7 +34,7 @@ pub trait VisualizerSystem: Send + Sync + 'static {
     fn filter_visualizable_entities(
         &self,
         entities: ApplicableEntities,
-        _context: &dyn std::any::Any,
+        _context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         VisualizableEntities(entities.0)
     }

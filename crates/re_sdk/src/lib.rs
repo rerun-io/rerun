@@ -82,7 +82,7 @@ pub use time::{Time, TimePoint, Timeline};
 pub use re_types_core::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentName, Datatype,
     DatatypeBatch, DatatypeName, GenericIndicatorComponent, Loggable, LoggableBatch,
-    MaybeOwnedComponentBatch, NamedIndicatorComponent,
+    MaybeOwnedComponentBatch, NamedIndicatorComponent, SizeBytes,
 };
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.

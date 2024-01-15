@@ -15,7 +15,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 criterion_group!(
     benches,
-    insert_range,
+    insert_many,
     remove_range,
     remove,
     swap_remove,
@@ -43,7 +43,7 @@ use self::constants::*;
 
 // ---
 
-fn insert_range(c: &mut Criterion) {
+fn insert_many(c: &mut Criterion) {
     if std::env::var("CI").is_ok() {
         return;
     }
@@ -53,29 +53,29 @@ fn insert_range(c: &mut Criterion) {
     let mut group = c.benchmark_group("vec_deque");
     group.throughput(criterion::Throughput::Elements(inserted.len() as _));
 
-    group.bench_function("insert_range/prefilled/front", |b| {
+    group.bench_function("insert_many/prefilled/front", |b| {
         let base = create_prefilled();
         b.iter(|| {
             let mut v: VecDeque<i64> = base.clone();
-            v.insert_range(0, inserted.clone().into_iter());
+            v.insert_many(0, inserted.clone().into_iter());
             v
         });
     });
 
-    group.bench_function("insert_range/prefilled/middle", |b| {
+    group.bench_function("insert_many/prefilled/middle", |b| {
         let base = create_prefilled();
         b.iter(|| {
             let mut v: VecDeque<i64> = base.clone();
-            v.insert_range(INITIAL_NUM_ENTRIES / 2, inserted.clone().into_iter());
+            v.insert_many(INITIAL_NUM_ENTRIES / 2, inserted.clone().into_iter());
             v
         });
     });
 
-    group.bench_function("insert_range/prefilled/back", |b| {
+    group.bench_function("insert_many/prefilled/back", |b| {
         let base = create_prefilled();
         b.iter(|| {
             let mut v: VecDeque<i64> = base.clone();
-            v.insert_range(INITIAL_NUM_ENTRIES, inserted.clone().into_iter());
+            v.insert_many(INITIAL_NUM_ENTRIES, inserted.clone().into_iter());
             v
         });
     });

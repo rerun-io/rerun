@@ -11,6 +11,8 @@ use re_viewer_context::{
     SystemCommandSender as _, ViewerContext,
 };
 
+use crate::blueprint::components::GridColumns;
+
 #[derive(Clone, Debug)]
 pub enum Contents {
     Container(ContainerId),
@@ -94,10 +96,11 @@ pub struct ContainerBlueprint {
     pub container_kind: egui_tiles::ContainerKind,
     pub display_name: String,
     pub contents: Vec<Contents>,
-    pub primary_weights: Vec<f32>,
-    pub secondary_weights: Vec<f32>,
+    pub col_shares: Vec<f32>,
+    pub row_shares: Vec<f32>,
     pub active_tab: Option<Contents>,
     pub visible: bool,
+    pub grid_columns: Option<u32>,
 }
 
 impl ContainerBlueprint {
@@ -111,10 +114,11 @@ impl ContainerBlueprint {
             container_kind,
             display_name,
             contents,
-            primary_weights,
-            secondary_weights,
+            col_shares,
+            row_shares,
             active_tab,
             visible,
+            grid_columns,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
@@ -141,33 +145,26 @@ impl ContainerBlueprint {
             .filter_map(|id| Contents::try_from(&id.into()))
             .collect();
 
-        let primary_weights = primary_weights
-            .unwrap_or_default()
-            .0
-            .iter()
-            .cloned()
-            .collect();
+        let col_shares = col_shares.unwrap_or_default().0.iter().cloned().collect();
 
-        let secondary_weights = secondary_weights
-            .unwrap_or_default()
-            .0
-            .iter()
-            .cloned()
-            .collect();
+        let row_shares = row_shares.unwrap_or_default().0.iter().cloned().collect();
 
         let active_tab = active_tab.and_then(|id| Contents::try_from(&id.0.into()));
 
         let visible = visible.map_or(true, |v| v.0);
+
+        let grid_columns = grid_columns.map(|v| v.0);
 
         Some(Self {
             id,
             container_kind,
             display_name,
             contents,
-            primary_weights,
-            secondary_weights,
+            col_shares,
+            row_shares,
             active_tab,
             visible,
+            grid_columns,
         })
     }
 
@@ -189,28 +186,36 @@ impl ContainerBlueprint {
             container_kind,
             display_name,
             contents,
-            primary_weights,
-            secondary_weights,
+            col_shares,
+            row_shares,
             active_tab,
             visible,
+            grid_columns,
         } = self;
 
         let contents: Vec<_> = contents.iter().map(|item| item.to_entity_path()).collect();
 
-        let primary_weights: ArrowBuffer<_> = primary_weights.clone().into();
-        let secondary_weights: ArrowBuffer<_> = secondary_weights.clone().into();
+        let col_shares: ArrowBuffer<_> = col_shares.clone().into();
+        let row_shares: ArrowBuffer<_> = row_shares.clone().into();
 
         let mut arch = crate::blueprint::archetypes::ContainerBlueprint::new(*container_kind)
             .with_display_name(display_name.clone())
             .with_contents(&contents)
-            .with_primary_weights(primary_weights)
-            .with_secondary_weights(secondary_weights)
+            .with_col_shares(col_shares)
+            .with_row_shares(row_shares)
             .with_visible(*visible);
 
         // TODO(jleibs): The need for this pattern is annoying. Should codegen
         // a version of this that can take an Option.
         if let Some(active_tab) = &active_tab {
             arch = arch.with_active_tab(&active_tab.to_entity_path());
+        }
+
+        if let Some(cols) = grid_columns {
+            arch = arch.with_grid_columns(*cols);
+        } else {
+            // TODO(#3381): Archetypes should provide a convenience API for this
+            ctx.save_empty_blueprint_component::<GridColumns>(&id.as_entity_path());
         }
 
         let mut deltas = vec![];
@@ -258,42 +263,64 @@ impl ContainerBlueprint {
                     container_kind: egui_tiles::ContainerKind::Tabs,
                     display_name: format!("{:?}", egui_tiles::ContainerKind::Tabs),
                     contents,
-                    primary_weights: vec![],
-                    secondary_weights: vec![],
+                    col_shares: vec![],
+                    row_shares: vec![],
                     active_tab,
                     visible,
+                    grid_columns: None,
                 }
             }
-            egui_tiles::Container::Linear(linear) => {
-                // TODO(jleibs): This should be part of egui_tiles.
-                let kind = match linear.dir {
-                    egui_tiles::LinearDir::Horizontal => egui_tiles::ContainerKind::Horizontal,
-                    egui_tiles::LinearDir::Vertical => egui_tiles::ContainerKind::Vertical,
-                };
-                Self {
-                    id: container_id,
-                    container_kind: kind,
-                    display_name: format!("{kind:?}"),
-                    contents,
-                    primary_weights: linear
-                        .children
-                        .iter()
-                        .map(|child| linear.shares[*child])
-                        .collect(),
-                    secondary_weights: vec![],
-                    active_tab: None,
-                    visible,
+            egui_tiles::Container::Linear(linear) => match linear.dir {
+                egui_tiles::LinearDir::Horizontal => {
+                    let kind = egui_tiles::ContainerKind::Horizontal;
+                    Self {
+                        id: container_id,
+                        container_kind: kind,
+                        display_name: format!("{kind:?}"),
+                        contents,
+                        col_shares: linear
+                            .children
+                            .iter()
+                            .map(|child| linear.shares[*child])
+                            .collect(),
+                        row_shares: vec![],
+                        active_tab: None,
+                        visible,
+                        grid_columns: None,
+                    }
                 }
-            }
+                egui_tiles::LinearDir::Vertical => {
+                    let kind = egui_tiles::ContainerKind::Vertical;
+                    Self {
+                        id: container_id,
+                        container_kind: kind,
+                        display_name: format!("{kind:?}"),
+                        contents,
+                        col_shares: vec![],
+                        row_shares: linear
+                            .children
+                            .iter()
+                            .map(|child| linear.shares[*child])
+                            .collect(),
+                        active_tab: None,
+                        visible,
+                        grid_columns: None,
+                    }
+                }
+            },
             egui_tiles::Container::Grid(grid) => Self {
                 id: container_id,
                 container_kind: egui_tiles::ContainerKind::Grid,
                 display_name: format!("{:?}", egui_tiles::ContainerKind::Grid),
                 contents,
-                primary_weights: grid.col_shares.clone(),
-                secondary_weights: grid.row_shares.clone(),
+                col_shares: grid.col_shares.clone(),
+                row_shares: grid.row_shares.clone(),
                 active_tab: None,
                 visible,
+                grid_columns: match grid.layout {
+                    egui_tiles::GridLayout::Columns(cols) => Some(cols as u32),
+                    egui_tiles::GridLayout::Auto => None,
+                },
             },
         }
     }
@@ -323,24 +350,45 @@ impl ContainerBlueprint {
                 egui_tiles::Container::Tabs(tabs)
             }
             egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical => {
-                let linear_dir = match self.container_kind {
-                    egui_tiles::ContainerKind::Horizontal => egui_tiles::LinearDir::Horizontal,
-                    egui_tiles::ContainerKind::Vertical => egui_tiles::LinearDir::Vertical,
+                match self.container_kind {
+                    egui_tiles::ContainerKind::Horizontal => {
+                        let mut linear = egui_tiles::Linear::new(
+                            egui_tiles::LinearDir::Horizontal,
+                            children.clone(),
+                        );
+
+                        for (share, id) in self.col_shares.iter().zip(children.iter()) {
+                            linear.shares.set_share(*id, *share);
+                        }
+
+                        egui_tiles::Container::Linear(linear)
+                    }
+                    egui_tiles::ContainerKind::Vertical => {
+                        let mut linear = egui_tiles::Linear::new(
+                            egui_tiles::LinearDir::Vertical,
+                            children.clone(),
+                        );
+
+                        for (share, id) in self.row_shares.iter().zip(children.iter()) {
+                            linear.shares.set_share(*id, *share);
+                        }
+
+                        egui_tiles::Container::Linear(linear)
+                    }
                     _ => unreachable!(),
-                };
-                let mut linear = egui_tiles::Linear::new(linear_dir, children.clone());
-
-                for (share, id) in self.primary_weights.iter().zip(children.iter()) {
-                    linear.shares[*id] = *share;
                 }
-
-                egui_tiles::Container::Linear(linear)
             }
             egui_tiles::ContainerKind::Grid => {
                 let mut grid = egui_tiles::Grid::new(children);
 
-                grid.col_shares = self.primary_weights.clone();
-                grid.row_shares = self.secondary_weights.clone();
+                grid.col_shares = self.col_shares.clone();
+                grid.row_shares = self.row_shares.clone();
+
+                if let Some(cols) = self.grid_columns {
+                    grid.layout = egui_tiles::GridLayout::Columns(cols as usize);
+                } else {
+                    grid.layout = egui_tiles::GridLayout::Auto;
+                }
 
                 egui_tiles::Container::Grid(grid)
             }

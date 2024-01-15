@@ -4,7 +4,7 @@ use crate::path::EntityPath;
 
 /// A [`EntityPath`] plus a [`ComponentName`].
 ///
-/// Example: `camera / "left" / points / #42`.`color`
+/// Example: `camera/left/points:Color`
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ComponentPath {
@@ -38,7 +38,7 @@ impl ComponentPath {
 impl std::fmt::Display for ComponentPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.entity_path.fmt(f)?;
-        f.write_str(".")?;
+        f.write_str(":")?;
         self.component_name.fmt(f)?;
         Ok(())
     }

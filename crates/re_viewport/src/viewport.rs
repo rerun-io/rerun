@@ -249,6 +249,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 blueprint.set_auto_layout(false, ctx);
             }
 
+            // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
             self.edited |= tab_viewer.edited;
 
             state.space_views_displayed_last_frame = tab_viewer.space_views_displayed_current_frame;
@@ -326,6 +327,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         let mut reset = false;
 
+        // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
         for tree_action in self.tree_action_receiver.try_iter() {
             match tree_action {
                 TreeAction::AddSpaceView(space_view_id, parent_container) => {
@@ -436,6 +438,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
         if ctx.app_options.legacy_container_blueprint {
             self.blueprint.set_tree(&self.tree, ctx);
         } else if self.edited {
+            // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
+
             // Simplify before we save the tree. Normally additional simplification will
             // happen on the next render loop, but that's too late -- unsimplified
             // changes will be baked into the tree.
@@ -717,7 +721,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 /// which is either a Pane with a Space View, or a Container,
 /// e.g. a grid of tiles.
 struct TabWidget {
-    galley: egui::widget_text::WidgetTextGalley,
+    galley: std::sync::Arc<egui::Galley>,
     rect: egui::Rect,
     galley_rect: egui::Rect,
     icon: &'static Icon,
@@ -833,11 +837,11 @@ impl TabWidget {
             self.text_color
         };
 
-        ui.painter().galley_with_color(
+        ui.painter().galley(
             egui::Align2::CENTER_CENTER
                 .align_size_within_rect(self.galley.size(), self.galley_rect)
                 .min,
-            self.galley.galley,
+            self.galley,
             label_color,
         );
     }

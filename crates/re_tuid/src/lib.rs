@@ -17,6 +17,18 @@ pub struct Tuid {
     inc: u64,
 }
 
+impl Tuid {
+    /// Returns the total size of `self` on the heap, in bytes.
+    ///
+    /// NOTE: This crate cannot depend on `re_types_core`, therefore the actual implementation of
+    /// `SizeBytes for Tuid` lives in `re_types_core` and calls this method.
+    #[inline]
+    pub fn heap_size_bytes(&self) -> u64 {
+        let Self { time_ns: _, inc: _ } = self;
+        0
+    }
+}
+
 impl std::fmt::Display for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:032X}", self.as_u128())

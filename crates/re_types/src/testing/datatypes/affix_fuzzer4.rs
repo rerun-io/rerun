@@ -28,6 +28,25 @@ pub enum AffixFuzzer4 {
     ManyOptional(Option<Vec<crate::testing::datatypes::AffixFuzzer3>>),
 }
 
+impl ::re_types_core::SizeBytes for AffixFuzzer4 {
+    #[allow(clippy::match_same_arms)]
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::SingleRequired(v) => v.heap_size_bytes(),
+            Self::ManyRequired(v) => v.heap_size_bytes(),
+            Self::ManyOptional(v) => v.heap_size_bytes(),
+        }
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::testing::datatypes::AffixFuzzer3>::is_pod()
+            && <Vec<crate::testing::datatypes::AffixFuzzer3>>::is_pod()
+            && <Option<Vec<crate::testing::datatypes::AffixFuzzer3>>>::is_pod()
+    }
+}
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer4);
 
 impl ::re_types_core::Loggable for AffixFuzzer4 {

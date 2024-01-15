@@ -60,7 +60,7 @@ cpp-plot-dashboard *ARGS:
 
 ### Python
 
-py_folders := "docs/code-examples examples rerun_py scripts tests"
+py_folders := "."
 
 # Set up a Pythonvirtual environment for development
 py-dev-env:

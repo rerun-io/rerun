@@ -1,0 +1,19 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+
+/// How many columns a grid container should have.
+table GridColumns (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.override_crate": "re_viewport"
+) {
+    /// The number of columns.
+    columns: uint (order: 100);
+}

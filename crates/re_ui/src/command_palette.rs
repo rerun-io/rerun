@@ -30,11 +30,21 @@ impl CommandPalette {
         let max_height = 320.0.at_most(screen_rect.height());
 
         egui::Window::new("Command Palette")
-            .title_bar(false)
+            .fixed_pos(screen_rect.center() - 0.5 * max_height * egui::Vec2::Y)
             .fixed_size([width, max_height])
             .pivot(egui::Align2::CENTER_TOP)
-            .fixed_pos(screen_rect.center() - 0.5 * max_height * egui::Vec2::Y)
-            .show(egui_ctx, |ui| self.window_content_ui(ui))?
+            .resizable(false)
+            .scroll2(false)
+            .title_bar(false)
+            .show(egui_ctx, |ui| {
+                // We need an extra egui frame here because we set clip_rect_margin to zero.
+                egui::Frame {
+                    inner_margin: 2.0.into(),
+                    ..Default::default()
+                }
+                .show(ui, |ui| self.window_content_ui(ui))
+                .inner
+            })?
             .inner?
     }
 
@@ -124,17 +134,16 @@ impl CommandPalette {
             let text = format_match(fuzzy_match, ui, &font_id, style.text_color());
 
             // TODO(emilk): shorten long text using '…'
-            let galley = text
-                .into_galley(
-                    ui,
-                    Some(false),
-                    f32::INFINITY,
-                    egui::FontSelection::default(),
-                )
-                .galley;
+            let galley = text.into_galley(
+                ui,
+                Some(false),
+                f32::INFINITY,
+                egui::FontSelection::default(),
+            );
             let text_rect = Align2::LEFT_CENTER
                 .anchor_rect(egui::Rect::from_min_size(rect.left_center(), galley.size()));
-            ui.painter().galley(text_rect.min, galley);
+            ui.painter()
+                .galley(text_rect.min, galley, style.text_color());
 
             ui.painter().text(
                 rect.right_center(),
@@ -199,7 +208,7 @@ fn commands_that_match(query: &str) -> Vec<FuzzyMatch> {
                 })
             })
             .collect();
-        matches.sort_by_key(|m| -m.score);
+        matches.sort_by_key(|m| -m.score); // highest score first
         matches
     }
 }

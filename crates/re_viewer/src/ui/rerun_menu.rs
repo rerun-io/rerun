@@ -1,6 +1,6 @@
 //! The main Rerun drop-down menu found in the top panel.
 
-use egui::{NumExt as _, Widget};
+use egui::NumExt as _;
 
 use re_log_types::TimeZone;
 use re_ui::{ReUi, UICommand};
@@ -96,48 +96,8 @@ impl App {
 
             ui.add_space(SPACING);
 
-            // dont use `hyperlink_to` for styling reasons
-            const HELP_URL: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
-
-            if egui::Button::image_and_text(
-                re_ui::icons::EXTERNAL_LINK
-                    .as_image()
-                    .fit_to_exact_size(ReUi::small_icon_size()),
-                "Help",
-            )
-            .ui(ui)
-            .on_hover_cursor(egui::CursorIcon::PointingHand)
-            .on_hover_text(HELP_URL)
-            .clicked()
-            {
-                ui.ctx().output_mut(|o| {
-                    o.open_url = Some(egui::output::OpenUrl {
-                        url: HELP_URL.to_owned(),
-                        new_tab: true,
-                    });
-                });
-            }
-
-            if egui::Button::image_and_text(
-                re_ui::icons::DISCORD
-                    .as_image()
-                    .fit_to_exact_size(ReUi::small_icon_size()),
-                "Rerun Discord",
-            )
-            .ui(ui)
-            .on_hover_cursor(egui::CursorIcon::PointingHand)
-            .on_hover_text(
-                "Join the ReRun Discord server, where you can ask questions and get help.",
-            )
-            .clicked()
-            {
-                ui.ctx().output_mut(|o| {
-                    o.open_url = Some(egui::output::OpenUrl {
-                        url: "https://discord.gg/PXtCgFBSmH".to_owned(),
-                        new_tab: true,
-                    });
-                });
-            }
+            UICommand::OpenWebHelp.menu_button_ui(ui, &self.command_sender);
+            UICommand::OpenRerunDiscord.menu_button_ui(ui, &self.command_sender);
 
             #[cfg(not(target_arch = "wasm32"))]
             {
@@ -330,6 +290,22 @@ fn experimental_feature_ui(
                 - Add a 'Content' list in the selection panel when a container is selected.\n\
                 - Add the 'Add space view/container' modal, accessible from the selection panel.",
         );
+
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_primary_caching_point_clouds,
+            "Primary caching: 2D & 3D point clouds",
+        )
+        .on_hover_text("Toggle primary caching for the 2D & 3D point cloud space views.");
+
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_primary_caching_series,
+            "Primary caching: TextLogs & TimeSeries",
+        )
+        .on_hover_text("Toggle primary caching for the time series & text logs space views.");
 
     re_ui
         .checkbox(

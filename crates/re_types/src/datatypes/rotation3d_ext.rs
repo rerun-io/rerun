@@ -38,3 +38,22 @@ impl From<glam::Quat> for Rotation3D {
         Rotation3D::Quaternion(val.into())
     }
 }
+
+#[cfg(feature = "mint")]
+impl From<Rotation3D> for mint::Quaternion<f32> {
+    #[inline]
+    fn from(val: Rotation3D) -> Self {
+        match val {
+            Rotation3D::Quaternion(v) => v.into(),
+            Rotation3D::AxisAngle(a) => a.into(),
+        }
+    }
+}
+
+#[cfg(feature = "mint")]
+impl From<mint::Quaternion<f32>> for Rotation3D {
+    #[inline]
+    fn from(val: mint::Quaternion<f32>) -> Self {
+        Rotation3D::Quaternion(val.into())
+    }
+}

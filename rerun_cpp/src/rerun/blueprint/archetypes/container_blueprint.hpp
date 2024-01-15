@@ -4,11 +4,12 @@
 #pragma once
 
 #include "../../blueprint/components/active_tab.hpp"
+#include "../../blueprint/components/column_shares.hpp"
 #include "../../blueprint/components/container_kind.hpp"
+#include "../../blueprint/components/grid_columns.hpp"
 #include "../../blueprint/components/included_contents.hpp"
 #include "../../blueprint/components/name.hpp"
-#include "../../blueprint/components/primary_weights.hpp"
-#include "../../blueprint/components/secondary_weights.hpp"
+#include "../../blueprint/components/row_shares.hpp"
 #include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
@@ -33,13 +34,19 @@ namespace rerun::blueprint::archetypes {
         /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
         std::optional<rerun::blueprint::components::IncludedContents> contents;
 
-        /// The weights of the primary axis. For `Grid` this is the column weights.
+        /// The layout shares of each column in the container.
         ///
-        /// For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
-        std::optional<rerun::blueprint::components::PrimaryWeights> primary_weights;
+        /// For `Horizontal` containers, the length of this list should always match the number of contents.
+        ///
+        /// Ignored for `Vertical` containers.
+        std::optional<rerun::blueprint::components::ColumnShares> col_shares;
 
-        /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
-        std::optional<rerun::blueprint::components::SecondaryWeights> secondary_weights;
+        /// The layout shares of each row of the container.
+        ///
+        /// For `Vertical` containers, the length of this list should always match the number of contents.
+        ///
+        /// Ignored for `Horizontal` containers.
+        std::optional<rerun::blueprint::components::RowShares> row_shares;
 
         /// Which tab is active.
         ///
@@ -50,6 +57,13 @@ namespace rerun::blueprint::archetypes {
         ///
         /// Defaults to true if not specified.
         std::optional<rerun::blueprint::components::Visible> visible;
+
+        /// How many columns this grid should have.
+        ///
+        /// If unset, the grid layout will be auto.
+        ///
+        /// Ignored for `Horizontal`/`Vertical` containers.
+        std::optional<rerun::blueprint::components::GridColumns> grid_columns;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -80,22 +94,25 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// The weights of the primary axis. For `Grid` this is the column weights.
+        /// The layout shares of each column in the container.
         ///
-        /// For `Horizontal`/`Vertical` containers, the length of this list should always match the number of contents.
-        ContainerBlueprint with_primary_weights(
-            rerun::blueprint::components::PrimaryWeights _primary_weights
+        /// For `Horizontal` containers, the length of this list should always match the number of contents.
+        ///
+        /// Ignored for `Vertical` containers.
+        ContainerBlueprint with_col_shares(rerun::blueprint::components::ColumnShares _col_shares
         ) && {
-            primary_weights = std::move(_primary_weights);
+            col_shares = std::move(_col_shares);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// The weights of the secondary axis. For `Grid` this is the row weights. Ignored for `Horizontal`/`Vertical` containers.
-        ContainerBlueprint with_secondary_weights(
-            rerun::blueprint::components::SecondaryWeights _secondary_weights
-        ) && {
-            secondary_weights = std::move(_secondary_weights);
+        /// The layout shares of each row of the container.
+        ///
+        /// For `Vertical` containers, the length of this list should always match the number of contents.
+        ///
+        /// Ignored for `Horizontal` containers.
+        ContainerBlueprint with_row_shares(rerun::blueprint::components::RowShares _row_shares) && {
+            row_shares = std::move(_row_shares);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
@@ -114,6 +131,18 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to true if not specified.
         ContainerBlueprint with_visible(rerun::blueprint::components::Visible _visible) && {
             visible = std::move(_visible);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// How many columns this grid should have.
+        ///
+        /// If unset, the grid layout will be auto.
+        ///
+        /// Ignored for `Horizontal`/`Vertical` containers.
+        ContainerBlueprint with_grid_columns(rerun::blueprint::components::GridColumns _grid_columns
+        ) && {
+            grid_columns = std::move(_grid_columns);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

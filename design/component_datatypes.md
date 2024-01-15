@@ -10,14 +10,14 @@ In the store we can have multiple columns of datatypes for each component.
 
 Examples of `(component datatype)`:
 ```
-(point2     [f16; 2])
-(point3     [f32; 3])
-(label      utf8)
-(transform  mat4_f32)
-(box2       box2_min_max_f32)
-(box2       box2_min_size_u32)
-(tensor     tensor_dense_v1)
-(tensor     jpeg)
+(point2      [f16; 2])
+(point3      [f32; 3])
+(label       utf8)
+(transform   mat4_f32)
+(box2        box2_min_max_f32)
+(box2        box2_min_size_u32)
+(tensor      tensor_dense_v1)
+(tensor      jpeg)
 ```
 
 Both components and datatypes have namespaced names.

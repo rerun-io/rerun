@@ -13,7 +13,7 @@ For information on future plans to enable more native ROS support
 see [#1537](https://github.com/rerun-io/rerun/issues/1537)
 
 The following is primarily intended for existing ROS 2 users. It will not spend much time
-covering how to use ROS 2 itself.  If you are a Rerun user that is curious about ROS,
+covering how to use ROS 2 itself. If you are a Rerun user that is curious about ROS,
 please consult the [ROS 2 Documentation](https://docs.ros.org/en/humble/index.html) instead.
 
 All of the code for this guide can be found on GitHub in
@@ -68,7 +68,7 @@ In addition to the ROS dependencies, the Rerun node makes use of some dependenci
 [`requirements.txt`](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/requirements.txt).
 
 Rerun recommends using `venv` (or the equivalent) to create an environment for installing these
-dependencies.  Note that *after* setting up your virtualenv you will need to activate your ROS2
+dependencies. Note that *after* setting up your virtualenv you will need to activate your ROS2
 environment.
 ```bash
 $ python3 -m venv venv
@@ -166,7 +166,7 @@ self.path_to_frame = {
 
 Because we have chosen a Rerun path hierarchy that does not exactly match the TF graph topology
 the values for the transforms at these paths need to be derived using TF on the client logging
-side at log-time.  In the future, Rerun will support deriving these values in the viewer
+side at log-time. In the future, Rerun will support deriving these values in the viewer
 (see: [#1533](https://github.com/rerun-io/rerun/issues/1533) for more details), allowing all
 of this code to go away.
 
@@ -376,7 +376,7 @@ We then use `rerun_urdf.load_urdf_from_msg` from the URDF subscription callback.
 
 Note that when developing this guide, we noticed that the camera mesh URDF was not having
 its scale applied to it. This seems like a bug in either `yourdfpy` or `pycollada`
-not respecting the scale hint.  To accommodate this, we manually re-scale the
+not respecting the scale hint. To accommodate this, we manually re-scale the
 camera link.
 
 Once we have correctly re-scaled the camera component, we can send the whole scene to rerun with

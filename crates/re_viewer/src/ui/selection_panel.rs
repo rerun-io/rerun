@@ -148,9 +148,9 @@ impl SelectionPanel {
                     _ => {}
                 }
 
-                if has_data_section(item) {
+                if let Some(data_ui_item) = data_section_ui(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
-                        item.data_ui(ctx, ui, multi_selection_verbosity, &query);
+                        data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query);
                     });
                 }
 
@@ -233,11 +233,13 @@ impl SelectionPanel {
     }
 }
 
-fn has_data_section(item: &Item) -> bool {
+fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
     match item {
-        Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
+        Item::StoreId(store_id) => Some(Box::new(store_id.clone())),
+        Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
+        Item::InstancePath(_, instance_path) => Some(Box::new(instance_path.clone())),
         // Skip data ui since we don't know yet what to show for these.
-        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => false,
+        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => None,
     }
 }
 
@@ -273,6 +275,29 @@ fn what_is_selected_ui(
     item: &Item,
 ) {
     match item {
+        Item::StoreId(store_id) => {
+            let id_str = format!("{} ID: {}", store_id.kind, store_id);
+
+            let title = if let Some(entity_db) = ctx.store_context.recording(store_id) {
+                if let Some(info) = entity_db.store_info() {
+                    let time = info
+                        .started
+                        .format_time_custom(
+                            "[hour]:[minute]:[second]",
+                            ctx.app_options.time_zone_for_timestamps,
+                        )
+                        .unwrap_or("<unknown time>".to_owned());
+
+                    format!("{} - {}", info.application_id, time)
+                } else {
+                    id_str.clone()
+                }
+            } else {
+                id_str.clone()
+            };
+
+            item_title_ui(ctx.re_ui, ui, &title, Some(&re_ui::icons::STORE), &id_str);
+        }
         Item::Container(tile_id) => {
             if let Some(Tile::Container(container)) = viewport.tree.tiles.get(*tile_id) {
                 item_title_ui(
@@ -549,6 +574,8 @@ fn container_top_level_properties(
                         }
                     }
 
+                    let original_layout = grid.layout;
+
                     egui::ComboBox::from_id_source("container_grid_columns")
                         .selected_text(grid_layout_to_string(&grid.layout))
                         .show_ui(ui, |ui| {
@@ -571,6 +598,10 @@ fn container_top_level_properties(
                                 );
                             }
                         });
+
+                    // TODO(jleibs): Manually marking edited like this is way too error prone.
+                    // Need to detect this in a better way.
+                    viewport.edited |= original_layout != grid.layout;
 
                     ui.end_row();
                 }
@@ -869,7 +900,7 @@ fn blueprint_ui(
             }
         }
 
-        Item::ComponentPath(_) | Item::Container(_) => {}
+        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) => {}
     }
 }
 

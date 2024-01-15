@@ -82,21 +82,21 @@ Streams all logging data to standard output, which can then be loaded by the Rer
 
 #### C++
 
-Use [`RecordingStream::stdout`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#SOMEHASH?speculative-link).
+Use [`RecordingStream::stdout`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html).
 
-Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/stdio/main.cpp?speculative-link).
+Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/stdio/main.cpp).
 
 #### Python
 
-Use [`rr.stdout`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.stdout?speculative-link).
+Use [`rr.stdout`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.stdout).
 
-Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/python/stdio/main.py?speculative-link).
+Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/python/stdio/main.py).
 
 #### Rust
 
-Use [`RecordingStream::stdout`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.stdout?speculative-link).
+Use [`RecordingStream::stdout`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.stdout).
 
-Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/rust/stdio/src/main.rs?speculative-link).
+Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/rust/stdio/src/main.rs).
 
 
 ## Adding the standard flags to your programs

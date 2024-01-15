@@ -340,8 +340,8 @@ fn table_ui(
             body_clip_rect = Some(body.max_rect());
 
             let row_heights = entries.iter().map(|te| calc_row_height(te));
-            body.heterogeneous_rows(row_heights, |index, mut row| {
-                let entry = &entries[index];
+            body.heterogeneous_rows(row_heights, |mut row| {
+                let entry = &entries[row.index()];
 
                 // NOTE: `try_from_props` is where we actually fetch data from the underlying
                 // store, which is a costly operation.

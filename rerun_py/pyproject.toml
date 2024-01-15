@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "maturin"
-requires = ["maturin>=0.14.0,<0.15"]
+requires = ["maturin>=1.3.0"]
 
 [project]
 classifiers = [
@@ -16,13 +16,13 @@ dependencies = [
   "attrs>=23.1.0",
   "numpy>=1.23",
   "pillow",                 # Used for JPEG encoding
-  "pyarrow==10.0.1",
+  "pyarrow==14.0.2",
   "typing_extensions>=4.5", # Used for PEP-702 deprecated decorator
 ]
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
-requires-python = ">=3.8, <3.12" # TODO(#3699): Support Python 3.12
+requires-python = ">=3.8, <3.13"
 
 [[project.authors]]
 email = "opensource@rerun.io"
@@ -53,10 +53,10 @@ extend-exclude = [
   "target/",
 
   # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
-  "docs/code-examples/text_document.py",
+  "docs/code-examples/all/text_document.py",
 
   # TODO(#4047): incomplete example snippet
-  "docs/code-examples/timelines_example.py",
+  "docs/code-examples/all/timelines_example.py",
 
   # generated
   "examples/python/objectron/proto/objectron/proto.py",
@@ -108,7 +108,14 @@ select = [
 ]
 
 [tool.ruff.per-file-ignores]
-"docs/code-examples/*" = ["I002"]
+"docs/code-examples/all/*" = [
+  # Missing required import: `from __future__ import annotations`
+  "I002",
+]
+"crates/re_viewer/data/quick_start_guides/*" = [
+  # Missing required import: `from __future__ import annotations`
+  "I002",
+]
 "__init__.py" = ["F401", "F403"]
 
 [tool.ruff.isort]

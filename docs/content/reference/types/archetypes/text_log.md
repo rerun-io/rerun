@@ -10,6 +10,8 @@ A log entry in a text log, comprised of a text body and its log level.
 
 **Recommended**: [`TextLogLevel`](../components/text_log_level.md)
 
+**Optional**: [`Color`](../components/color.md)
+
 ## Links
  * 🌊 [C++ API docs for `TextLog`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TextLog.html)
  * 🐍 [Python API docs for `TextLog`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TextLog)
