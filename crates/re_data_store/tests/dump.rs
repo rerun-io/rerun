@@ -63,6 +63,9 @@ impl RowSet {
     fn insert_row(&mut self, row: re_log_types::DataRow) {
         match self.0.entry(row.row_id()) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
+                assert_eq!(entry.get().entity_path(), row.entity_path());
+                assert_eq!(entry.get().cells(), row.cells());
+                assert_eq!(entry.get().num_instances(), row.num_instances());
                 for (timeline, time) in row.timepoint() {
                     entry.get_mut().timepoint.insert(*timeline, *time);
                 }
