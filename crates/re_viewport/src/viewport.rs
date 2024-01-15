@@ -762,7 +762,7 @@ impl TabWidget {
         // tab icon
         let icon_size = ReUi::small_icon_size();
         let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
-        let icon = space_view.map_or(&re_ui::icons::CONTAINER, |space_view| {
+        let icon = space_view.map_or(&re_ui::icons::SPACE_VIEW_GENERIC, |space_view| {
             space_view
                 .class(tab_viewer.ctx.space_view_class_registry)
                 .icon()

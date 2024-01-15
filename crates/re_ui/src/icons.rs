@@ -133,7 +133,7 @@ pub const SPACE_VIEW_UNKNOWN: Icon = Icon::new(
     include_bytes!("../data/icons/spaceview_unknown.png"),
 );
 
-pub const CONTAINER: Icon = Icon::new("container", include_bytes!("../data/icons/container.png"));
+pub const GROUP: Icon = Icon::new("group", include_bytes!("../data/icons/group.png"));
 
 pub const STORE: Icon = Icon::new("store", include_bytes!("../data/icons/store.png"));
 
