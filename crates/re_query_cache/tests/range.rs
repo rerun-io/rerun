@@ -355,8 +355,8 @@ fn query_and_compare(store: &DataStore, query: &RangeQuery, ent_path: &EntityPat
         let expected = re_query::range_archetype::<MyPoints, { MyPoints::NUM_COMPONENTS }>(
             store, query, ent_path,
         );
-        for (data_time, arch_view) in expected {
-            expected_data_times.push(data_time);
+        for arch_view in expected {
+            expected_data_times.push(arch_view.data_time());
             expected_instance_keys.push(arch_view.iter_instance_keys().collect_vec());
             expected_positions.push(
                 arch_view

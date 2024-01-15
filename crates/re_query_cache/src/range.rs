@@ -72,7 +72,7 @@ macro_rules! impl_query_archetype_range {
             };
 
             fn upsert_results<'a, A, $($pov,)+ $($comp,)*>(
-                arch_views: impl Iterator<Item = (Option<TimeInt>, re_query::ArchetypeView<A>)>,
+                arch_views: impl Iterator<Item = re_query::ArchetypeView<A>>,
                 bucket: &mut crate::CacheBucket,
             ) -> crate::Result<u64>
             where
@@ -87,8 +87,8 @@ macro_rules! impl_query_archetype_range {
                 let mut added_entries = 0u64;
                 let mut added_size_bytes = 0u64;
 
-                for (data_time, arch_view) in arch_views {
-                    let data_time = data_time.unwrap_or(TimeInt::MIN); // TODO(cmc): timeless
+                for arch_view in arch_views {
+                    let data_time = arch_view.data_time().unwrap_or(TimeInt::MIN); // TODO(cmc): timeless
 
                     if bucket.contains_data_row(data_time, arch_view.primary_row_id()) {
                         continue;

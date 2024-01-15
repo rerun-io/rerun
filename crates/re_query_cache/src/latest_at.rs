@@ -90,6 +90,7 @@ macro_rules! impl_query_archetype_latest_at {
                     f(data);
                 }
 
+
                 Ok(())
             };
 
@@ -135,8 +136,9 @@ macro_rules! impl_query_archetype_latest_at {
                         re_log::trace!(query_time=?query.at, "cache hit (query time)");
                         return iter_results(false, &query_time_bucket_at_query_time.get().read());
                     }
-                    entry @ std::collections::btree_map::Entry::Vacant(_) => entry,
+                    entry => entry,
                 };
+
 
                 let arch_view = query_archetype::<A>(store, &query, entity_path)?;
                 let data_time = arch_view.data_time();
@@ -164,11 +166,14 @@ macro_rules! impl_query_archetype_latest_at {
                     }
                 }
 
-                let query_time_bucket_at_query_time = query_time_bucket_at_query_time.or_default();
 
                 // Slowest path: this is a complete cache miss.
                 if let Some(data_time) = data_time { // Reminder: `None` means timeless.
                     re_log::trace!(query_time=?query.at, ?data_time, "cache miss");
+
+                    // BEWARE: Do _not_ move this out of this scope, or a bucket would be created
+                    // even when taking the timeless path!
+                    let query_time_bucket_at_query_time = query_time_bucket_at_query_time.or_default();
 
                     {
                         let mut query_time_bucket_at_query_time = query_time_bucket_at_query_time.write();
@@ -188,6 +193,7 @@ macro_rules! impl_query_archetype_latest_at {
                     iter_results(true, &timeless_bucket)?;
 
                     *timeless = Some(timeless_bucket);
+
                     Ok(())
                 }
             };
