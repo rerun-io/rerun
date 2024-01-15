@@ -392,7 +392,7 @@ fn what_is_selected_ui(
                     ctx.re_ui,
                     ui,
                     &entity_path.to_string(),
-                    Some(&re_ui::icons::CONTAINER),
+                    Some(&re_ui::icons::GROUP),
                     &format!(
                         "Group {:?} as shown in Space View {:?}",
                         entity_path, space_view.display_name
