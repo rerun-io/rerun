@@ -475,6 +475,32 @@ impl ReUi {
         response
     }
 
+    /// Create a separator similar to [`egui::Separator`] but with the full span behavior.
+    ///
+    /// The span is determined by the current clip rectangle.
+    pub fn full_span_separator(ui: &mut egui::Ui) -> egui::Response {
+        let spacing = 6.0; // as is hardcoded in `egui::Separator`
+
+        let available_space = ui.available_size_before_wrap();
+        let size = egui::vec2(available_space.x, spacing);
+
+        let (rect, response) = ui.allocate_at_least(size, egui::Sense::hover());
+        let clip_rect = ui.clip_rect();
+
+        if ui.is_rect_visible(response.rect) {
+            let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
+            let painter = ui.painter();
+
+            painter.hline(
+                clip_rect.left()..=clip_rect.right(),
+                painter.round_to_pixel(rect.center().y),
+                stroke,
+            );
+        }
+
+        response
+    }
+
     pub fn panel_content<R>(
         &self,
         ui: &mut egui::Ui,

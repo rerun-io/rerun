@@ -95,6 +95,10 @@ pub struct ModalResponse<R> {
 /// └──────────────────▼─────────────────────┘
 /// ```
 ///
+/// The modal sets the clip rect such as to allow full-span highlighting behavior (e.g. with [`crate::ListItem`]).
+/// Consider using [`crate::ReUi::full_span_separator`] to draw a separator that spans the full width of the modal
+/// instead of the usual [`egui::Ui::separator`] method.
+///
 /// Note that [`Modal`] are typically used via the [`ModalHandler`] helper object to reduce boilerplate.
 pub struct Modal {
     title: String,
@@ -134,8 +138,6 @@ impl Modal {
         let modal_vertical_margins = (75.0).at_most(screen_height * 0.1);
 
         let mut window = egui::Window::new(&self.title)
-            //TODO(ab): workaround for https://github.com/emilk/egui/pull/3721 until we make a new egui release
-            .id(egui::Id::new(("modal", &self.title)))
             .pivot(egui::Align2::CENTER_TOP)
             .fixed_pos(
                 ui.ctx().screen_rect().center_top() + egui::vec2(0.0, modal_vertical_margins),
@@ -146,7 +148,7 @@ impl Modal {
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.visuals().panel_fill,
-                inner_margin: crate::ReUi::view_padding().into(),
+                //inner_margin: crate::ReUi::view_padding().into(),
                 ..Default::default()
             })
             .title_bar(false);
@@ -156,8 +158,15 @@ impl Modal {
         }
 
         let response = window.show(ui.ctx(), |ui| {
-            Self::title_bar(re_ui, ui, &self.title, &mut open);
-            content_ui(re_ui, ui, &mut open)
+            egui::Frame {
+                inner_margin: crate::ReUi::view_padding().into(),
+                ..Default::default()
+            }
+            .show(ui, |ui| {
+                Self::title_bar(re_ui, ui, &self.title, &mut open);
+                content_ui(re_ui, ui, &mut open)
+            })
+            .inner
         });
 
         // Any click outside causes the window to close.
@@ -211,6 +220,6 @@ impl Modal {
                 *open = false;
             }
         });
-        ui.separator();
+        crate::ReUi::full_span_separator(ui);
     }
 }
