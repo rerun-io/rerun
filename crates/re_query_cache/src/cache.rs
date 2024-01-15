@@ -332,13 +332,18 @@ impl CacheBucket {
 // which is notoriously painful in Rust (i.e., macros).
 // For this reason we move as much of the code as possible into the already existing macros in `query.rs`.
 
-/// Caches the results of `LatestAt` queries.
+/// Caches the results of `LatestAt` archetype queries (`ArchetypeView`).
+///
+/// There is one `LatestAtCache` for each unique [`CacheKey`].
+///
+/// All query steps are cached: index search, cluster key joins and deserialization.
 #[derive(Default)]
 pub struct LatestAtCache {
     /// Organized by _query_ time.
     ///
-    /// If the data you're looking for isn't in here, try partially running the query and check
-    /// if there is any data available for the resulting _data_ time in [`Self::per_data_time`].
+    /// If the data you're looking for isn't in here, try partially running the query (i.e. run the
+    /// index search in order to find a data time, but don't actually deserialize and join the data)
+    /// and check if there is any data available for the resulting _data_ time in [`Self::per_data_time`].
     pub per_query_time: BTreeMap<TimeInt, Arc<RwLock<CacheBucket>>>,
 
     /// Organized by _data_ time.
