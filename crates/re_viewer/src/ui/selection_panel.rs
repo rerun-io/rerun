@@ -13,6 +13,7 @@ use re_types::{
 };
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
+use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, HoverHighlight, Item, SpaceViewClass,
     SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity,
@@ -353,12 +354,14 @@ fn what_is_selected_ui(
                 "Entity instance"
             };
 
+            let name = instance_path.syntax_highlighted(ui.style());
+
             if let Some(space_view_id) = space_view_id {
                 if let Some(space_view) = viewport.space_view(space_view_id) {
                     item_title_ui(
                         ctx.re_ui,
                         ui,
-                        instance_path.to_string().as_str(),
+                        name,
                         None,
                         &format!(
                             "{typ} '{instance_path}' as shown in Space View {:?}",
@@ -375,7 +378,7 @@ fn what_is_selected_ui(
                 item_title_ui(
                     ctx.re_ui,
                     ui,
-                    instance_path.to_string().as_str(),
+                    name,
                     None,
                     &format!("{typ} '{instance_path}'"),
                 );
@@ -409,7 +412,7 @@ fn what_is_selected_ui(
 fn item_title_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
-    name: &str,
+    name: impl Into<egui::WidgetText>,
     icon: Option<&re_ui::Icon>,
     hover: &str,
 ) -> egui::Response {
