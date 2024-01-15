@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, marker::PhantomData};
 
 use arrow2::array::{Array, PrimitiveArray};
 use re_format::arrow;
-use re_log_types::{DataCell, DataCellRow, RowId};
+use re_log_types::{DataCell, DataCellRow, RowId, TimeInt};
 use re_types_core::{
     components::InstanceKey, Archetype, Component, ComponentName, DeserializationError,
     DeserializationResult, Loggable, SerializationResult,
@@ -234,15 +234,23 @@ where
 {
 }
 
-/// A view of an [`Archetype`] at a particular point in time returned by [`crate::get_component_with_instances`]
+/// A view of an [`Archetype`] at a particular point in time returned by [`crate::get_component_with_instances`].
 ///
 /// The required [`Component`]s of an [`ArchetypeView`] determines the length of an entity
 /// batch. When iterating over individual components, they will be implicitly joined onto
 /// the required [`Component`]s using [`InstanceKey`] values.
 #[derive(Clone, Debug)]
 pub struct ArchetypeView<A: Archetype> {
+    /// The _data_ time of the most recent component in the view (not necessarily the primary!).
+    ///
+    /// `None` if timeless.
+    pub(crate) data_time: Option<TimeInt>,
+
+    /// The [`RowId`] of the primary component in the view.
     pub(crate) primary_row_id: RowId,
+
     pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
+
     pub(crate) phantom: PhantomData<A>,
 }
 
@@ -266,6 +274,14 @@ impl<A: Archetype> ArchetypeView<A> {
     #[inline]
     pub fn num_instances(&self) -> usize {
         self.required_comp().len()
+    }
+
+    /// The _data_ time of the most recent component in the view (not necessarily the primary!).
+    ///
+    /// `None` if timeless.
+    #[inline]
+    pub fn data_time(&self) -> Option<TimeInt> {
+        self.data_time
     }
 
     /// Returns the [`RowId`] associated with the _primary_ component that was used to drive this
@@ -494,14 +510,16 @@ impl<A: Archetype> ArchetypeView<A> {
         }
     }
 
-    /// Helper function to produce an [`ArchetypeView`] from a collection of [`ComponentWithInstances`]
+    /// Helper function to produce an [`ArchetypeView`] from a collection of [`ComponentWithInstances`].
     #[inline]
     pub fn from_components(
-        row_id: RowId,
+        data_time: Option<TimeInt>,
+        primary_row_id: RowId,
         components: impl IntoIterator<Item = ComponentWithInstances>,
     ) -> Self {
         Self {
-            primary_row_id: row_id,
+            data_time,
+            primary_row_id,
             components: components
                 .into_iter()
                 .map(|comp| (comp.name(), comp))

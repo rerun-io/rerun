@@ -272,7 +272,7 @@ fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePo
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths {
-        let (_, arch_view) = query_archetype::<Points2D>(store, &query, path).unwrap();
+        let arch_view = query_archetype::<Points2D>(store, &query, path).unwrap();
         itertools::izip!(
             arch_view.iter_required_component::<Position2D>().unwrap(),
             arch_view.iter_optional_component::<Color>().unwrap()
@@ -299,7 +299,7 @@ fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveS
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);
 
     for path in paths {
-        let (_, arch_view) = query_archetype::<Points2D>(store, &query, path).unwrap();
+        let arch_view = query_archetype::<Points2D>(store, &query, path).unwrap();
         arch_view
             .iter_optional_component::<Text>()
             .unwrap()

@@ -122,7 +122,7 @@ pub fn query_archetype<A: Archetype>(
     store: &DataStore,
     query: &LatestAtQuery,
     ent_path: &EntityPath,
-) -> crate::Result<(Option<TimeInt>, ArchetypeView<A>)> {
+) -> crate::Result<ArchetypeView<A>> {
     re_tracing::profile_function!();
 
     let required_components: Vec<_> = A::required_components()
@@ -165,12 +165,14 @@ pub fn query_archetype<A: Archetype>(
             )
         });
 
-    let arch_view = ArchetypeView::from_components(
-        *row_id,
-        required_components.into_iter().chain(other_components),
-    );
+    // NOTE: Need to collect so we can compute `max_data_time`.
+    let cwis: Vec<_> = required_components
+        .into_iter()
+        .chain(other_components)
+        .collect();
+    let arch_view = ArchetypeView::from_components(max_data_time, *row_id, cwis);
 
-    Ok((max_data_time, arch_view))
+    Ok(arch_view)
 }
 
 /// Helper used to create an example store we can use for querying in doctests
@@ -266,7 +268,7 @@ fn simple_query_archetype() {
     let ent_path = "point";
     let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
-    let (_, arch_view) = query_archetype::<MyPoints>(&store, &query, &ent_path.into()).unwrap();
+    let arch_view = query_archetype::<MyPoints>(&store, &query, &ent_path.into()).unwrap();
 
     let expected_positions = [MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let expected_colors = [None, Some(MyColor::from(0xff000000))];

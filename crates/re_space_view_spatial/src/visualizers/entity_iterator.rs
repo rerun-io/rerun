@@ -81,7 +81,7 @@ where
             &data_result.entity_path,
         )
         .and_then(|arch_views| {
-            for (_, arch_view) in arch_views {
+            for arch_view in arch_views {
                 counter.num_primitives.fetch_add(
                     arch_view.num_instances(),
                     std::sync::atomic::Ordering::Relaxed,

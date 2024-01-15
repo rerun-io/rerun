@@ -61,7 +61,7 @@ impl VisualizerSystem for InstanceColorSystem {
         // For each entity in the space view that should be displayed with the `InstanceColorSystem`…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             // …gather all colors and their instance ids.
-            if let Ok((_, arch_view)) = query_archetype::<ColorArchetype>(
+            if let Ok(arch_view) = query_archetype::<ColorArchetype>(
                 ctx.entity_db.store(),
                 &ctx.current_query(),
                 &data_result.entity_path,

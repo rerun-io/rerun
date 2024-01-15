@@ -58,7 +58,7 @@ impl VisualizerSystem for TextDocumentSystem {
                 &timeline_query,
                 &data_result.entity_path,
             ) {
-                Ok((_, arch_view)) => {
+                Ok(arch_view) => {
                     let bodies = arch_view.iter_required_component::<components::Text>()?;
                     let media_types =
                         arch_view.iter_optional_component::<components::MediaType>()?;

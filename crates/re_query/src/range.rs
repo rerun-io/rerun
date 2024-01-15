@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use re_data_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
+use re_data_store::{DataStore, LatestAtQuery, RangeQuery};
 use re_log_types::EntityPath;
 use re_types_core::{Archetype, ComponentName};
 
@@ -26,7 +26,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     store: &'a DataStore,
     query: &RangeQuery,
     ent_path: &'a EntityPath,
-) -> impl Iterator<Item = (Option<TimeInt>, ArchetypeView<A>)> + 'a {
+) -> impl Iterator<Item = ArchetypeView<A>> + 'a {
     re_tracing::profile_function!();
 
     // TODO(jleibs) this shim is super gross
@@ -135,9 +135,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
                     .filter_map(|cwi| cwi.map(|(_, cwi)| cwi))
                     .collect();
 
-                let arch_view = ArchetypeView::from_components(row_id, components);
-
-                (data_time, arch_view)
+                ArchetypeView::from_components(data_time, row_id, components)
             })
         })
 }

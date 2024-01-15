@@ -98,7 +98,7 @@ impl SpaceViewBlueprint {
             contents,
             visible,
         } = query_archetype(blueprint_db.store(), &query, &id.as_entity_path())
-            .and_then(|(_, arch)| arch.to_archetype())
+            .and_then(|arch| arch.to_archetype())
             .map_err(|err| {
                 if !matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
                     if cfg!(debug_assertions) {
