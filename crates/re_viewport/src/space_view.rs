@@ -83,7 +83,7 @@ impl SpaceViewBlueprint {
             .rev()
             .fold_while(String::new(), |acc, path| {
                 if acc.len() > 10 {
-                    FoldWhile::Done(format!(".../{}", acc))
+                    FoldWhile::Done(format!("…/{}", acc))
                 } else {
                     FoldWhile::Continue(format!(
                         "{}{}{}",
