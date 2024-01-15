@@ -204,7 +204,6 @@ impl VisualizerSystem for Points3DVisualizer {
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            ctx.app_options.experimental_primary_caching_point_clouds,
             |_ctx,
              ent_path,
              _ent_props,

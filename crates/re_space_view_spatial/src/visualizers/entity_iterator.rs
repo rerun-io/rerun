@@ -124,7 +124,6 @@ macro_rules! impl_process_archetype {
             query: &ViewQuery<'_>,
             view_ctx: &ViewContextCollection,
             default_depth_offset: DepthOffset,
-            cached: bool,
             mut f: F,
         ) -> Result<(), SpaceViewSystemExecutionError>
         where
@@ -146,7 +145,7 @@ macro_rules! impl_process_archetype {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!(
                 "process_archetype",
-                format!("cached={cached} arch={} pov={} comp={}", A::name(), $N, $M)
+                format!("arch={} pov={} comp={}", A::name(), $N, $M)
             );
 
             let transforms = view_ctx.get::<TransformContext>()?;
@@ -185,7 +184,8 @@ macro_rules! impl_process_archetype {
                 };
 
                 ::re_query_cache::[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    cached,
+                    ctx.app_options.experimental_primary_caching_latest_at,
+                    ctx.app_options.experimental_primary_caching_range,
                     ctx.entity_db.store(),
                     &query.timeline,
                     &query.latest_at,

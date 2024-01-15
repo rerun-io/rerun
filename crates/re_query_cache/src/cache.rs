@@ -18,7 +18,7 @@ use re_types_core::{
     components::InstanceKey, Archetype, ArchetypeName, Component, ComponentName, SizeBytes as _,
 };
 
-use crate::{ErasedFlatVecDeque, FlatVecDeque};
+use crate::{ErasedFlatVecDeque, FlatVecDeque, LatestAtCache, RangeCache};
 
 // ---
 
@@ -66,6 +66,17 @@ pub struct CachesPerArchetype {
     // TODO(cmc): At some point we should probably just store the PoV and optional components rather
     // than an `ArchetypeName`: the query system doesn't care about archetypes.
     pub(crate) latest_at_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<LatestAtCache>>>>,
+
+    /// Which [`Archetype`] are we querying for?
+    ///
+    /// This is very important because of our data model: we not only query for components, but we
+    /// query for components from a specific point-of-view (the so-called primary component).
+    /// Different archetypes have different point-of-views, and therefore can end up with different
+    /// results, even from the same raw data.
+    //
+    // TODO(cmc): At some point we should probably just store the PoV and optional components rather
+    // than an `ArchetypeName`: the query system doesn't care about archetypes.
+    pub(crate) range_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<RangeCache>>>>,
 
     /// Everything greater than or equal to this timestamp has been asynchronously invalidated.
     ///
@@ -124,6 +135,42 @@ impl Caches {
                 let latest_at_cache = latest_at_per_archetype.entry(A::name()).or_default();
 
                 Arc::clone(latest_at_cache)
+
+                // Implicitly releasing all intermediary locks.
+            })
+            // NOTE: downcasting cannot fail, this is our own private handle.
+            .unwrap();
+
+        let mut cache = cache.write();
+        f(&mut cache)
+    }
+
+    /// Gives write access to the appropriate `RangeCache` according to the specified
+    /// query parameters.
+    #[inline]
+    pub fn with_range<A, F, R>(
+        store_id: StoreId,
+        entity_path: EntityPath,
+        query: &RangeQuery,
+        mut f: F,
+    ) -> R
+    where
+        A: Archetype,
+        F: FnMut(&mut RangeCache) -> R,
+    {
+        let key = CacheKey::new(store_id, entity_path, query.timeline);
+
+        let cache =
+            re_data_store::DataStore::with_subscriber_once(*CACHES, move |caches: &Caches| {
+                let mut caches = caches.0.write();
+
+                let caches_per_archetype = caches.entry(key.clone()).or_default();
+                caches_per_archetype.handle_pending_invalidation(&key);
+
+                let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
+                let range_cache = range_per_archetype.entry(A::name()).or_default();
+
+                Arc::clone(range_cache)
 
                 // Implicitly releasing all intermediary locks.
             })
@@ -347,6 +394,9 @@ pub struct CacheBucket {
     ///
     /// This corresponds to the data time and `RowId` returned by `re_query::query_archetype`.
     ///
+    /// This is guaranteed to always be sorted and dense (i.e. there cannot be a hole in the cached
+    /// data, unless the raw data itself in the store has a hole at that particular point in time).
+    ///
     /// Reminder: within a single timestamp, rows are sorted according to their [`RowId`]s.
     pub(crate) data_times: VecDeque<(TimeInt, RowId)>,
 
@@ -373,6 +423,18 @@ impl CacheBucket {
     #[inline]
     pub fn iter_data_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
         self.data_times.iter()
+    }
+
+    #[inline]
+    pub fn contains_data_time(&self, data_time: TimeInt) -> bool {
+        let first_time = self.data_times.front().map_or(&TimeInt::MAX, |(t, _)| t);
+        let last_time = self.data_times.back().map_or(&TimeInt::MIN, |(t, _)| t);
+        *first_time <= data_time && data_time <= *last_time
+    }
+
+    #[inline]
+    pub fn contains_data_row(&self, data_time: TimeInt, row_id: RowId) -> bool {
+        self.data_times.binary_search(&(data_time, row_id)).is_ok()
     }
 
     /// Iterate over the [`InstanceKey`] batches of the point-of-view components.
@@ -553,43 +615,4 @@ impl CacheBucket {
 
         Ok(added_size_bytes)
     }
-}
-
-// ---
-
-// NOTE: Because we're working with deserialized data, everything has to be done with metaprogramming,
-// which is notoriously painful in Rust (i.e., macros).
-// For this reason we move as much of the code as possible into the already existing macros in `query.rs`.
-
-/// Caches the results of `LatestAt` archetype queries (`ArchetypeView`).
-///
-/// There is one `LatestAtCache` for each unique [`CacheKey`].
-///
-/// All query steps are cached: index search, cluster key joins and deserialization.
-#[derive(Default)]
-pub struct LatestAtCache {
-    /// Organized by _query_ time.
-    ///
-    /// If the data you're looking for isn't in here, try partially running the query (i.e. run the
-    /// index search in order to find a data time, but don't actually deserialize and join the data)
-    /// and check if there is any data available for the resulting _data_ time in [`Self::per_data_time`].
-    pub per_query_time: BTreeMap<TimeInt, Arc<RwLock<CacheBucket>>>,
-
-    /// Organized by _data_ time.
-    ///
-    /// Due to how our latest-at semantics work, any number of queries at time `T+n` where `n >= 0`
-    /// can result in a data time of `T`.
-    pub per_data_time: BTreeMap<TimeInt, Arc<RwLock<CacheBucket>>>,
-
-    /// Dedicated bucket for timeless data, if any.
-    ///
-    /// Query time and data time are one and the same in the timeless case, therefore we only need
-    /// this one bucket.
-    //
-    // NOTE: Lives separately so we don't pay the extra `Option` cost in the much more common
-    // timeful case.
-    pub timeless: Option<CacheBucket>,
-
-    /// Total size of the data stored in this cache in bytes.
-    pub total_size_bytes: u64,
 }
