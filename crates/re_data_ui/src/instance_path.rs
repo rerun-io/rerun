@@ -60,7 +60,7 @@ impl DataUi for InstancePath {
                         UiVerbosity::LimitHeight | UiVerbosity::Full => {}
                     }
 
-                    let Some((_, component_data)) =
+                    let Some((_, _, component_data)) =
                         get_component_with_instances(store, query, entity_path, component_name)
                     else {
                         continue; // no need to show components that are unset at this point in time

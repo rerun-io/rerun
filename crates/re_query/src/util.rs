@@ -30,6 +30,6 @@ pub fn query_archetype_with_history<'a, A: Archetype + 'a, const N: usize>(
 
         let range = range_archetype::<A, N>(store, &range_query, ent_path);
 
-        Ok(itertools::Either::Right(range.map(|(_, entity)| entity)))
+        Ok(itertools::Either::Right(range))
     }
 }

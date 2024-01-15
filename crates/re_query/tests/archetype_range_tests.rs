@@ -105,8 +105,8 @@ fn simple_range() {
     {
         // Frame #123
 
-        let (time, arch_view) = &results[0];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -133,8 +133,8 @@ fn simple_range() {
     {
         // Frame #323
 
-        let (time, arch_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[1];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -196,8 +196,8 @@ fn simple_range() {
     {
         // Frame #123
 
-        let (time, arch_view) = &results[0];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -224,8 +224,8 @@ fn simple_range() {
     {
         // Frame #323
 
-        let (time, arch_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[1];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -400,8 +400,8 @@ fn timeless_range() {
     {
         // Frame #123
 
-        let (time, arch_view) = &results[0];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -428,8 +428,8 @@ fn timeless_range() {
     {
         // Frame #323
 
-        let (time, arch_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[1];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -500,8 +500,8 @@ fn timeless_range() {
     {
         // Frame #122 (all timeless)
 
-        let (time, arch_view) = &results[0];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -527,8 +527,8 @@ fn timeless_range() {
 
         // Frame #123 (partially timeless)
 
-        let (time, arch_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[1];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -555,8 +555,8 @@ fn timeless_range() {
     {
         // Frame #323
 
-        let (time, arch_view) = &results[2];
-        let time = time.unwrap();
+        let arch_view = &results[2];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -632,7 +632,8 @@ fn timeless_range() {
     {
         // Timeless #1
 
-        let (time, arch_view) = &results[0];
+        let arch_view = &results[0];
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -650,7 +651,7 @@ fn timeless_range() {
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        assert_eq!(&None, time);
+        assert_eq!(None, time);
         assert_eq!(
             &expected,
             &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
@@ -658,7 +659,8 @@ fn timeless_range() {
 
         // Timeless #2
 
-        let (time, arch_view) = &results[1];
+        let arch_view = &results[1];
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -676,7 +678,7 @@ fn timeless_range() {
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        assert_eq!(&None, time);
+        assert_eq!(None, time);
         assert_eq!(
             &expected,
             &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
@@ -684,8 +686,8 @@ fn timeless_range() {
 
         // Frame #123 (partially timeless)
 
-        let (time, arch_view) = &results[2];
-        let time = time.unwrap();
+        let arch_view = &results[2];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -712,8 +714,8 @@ fn timeless_range() {
     {
         // Frame #323
 
-        let (time, arch_view) = &results[3];
-        let time = time.unwrap();
+        let arch_view = &results[3];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -837,8 +839,8 @@ fn simple_splatted_range() {
     {
         // Frame #123
 
-        let (time, arch_view) = &results[0];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -866,8 +868,8 @@ fn simple_splatted_range() {
     {
         // Frame #323
 
-        let (time, arch_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[1];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -931,8 +933,8 @@ fn simple_splatted_range() {
     {
         // Frame #123
 
-        let (time, arch_view) = &results[0];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -959,8 +961,8 @@ fn simple_splatted_range() {
     {
         // Frame #323
 
-        let (time, arch_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[1];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];

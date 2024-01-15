@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use re_data_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
+use re_data_store::{DataStore, LatestAtQuery, RangeQuery};
 use re_log_types::EntityPath;
 use re_types_core::{Archetype, ComponentName};
 
@@ -26,7 +26,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     store: &'a DataStore,
     query: &RangeQuery,
     ent_path: &'a EntityPath,
-) -> impl Iterator<Item = (Option<TimeInt>, ArchetypeView<A>)> + 'a {
+) -> impl Iterator<Item = ArchetypeView<A>> + 'a {
     re_tracing::profile_function!();
 
     // TODO(jleibs) this shim is super gross
@@ -63,10 +63,10 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
 
     // NOTE: This will return none for `TimeInt::Min`, i.e. range queries that start infinitely far
     // into the past don't have a latest-at state!
-    let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
+    let query_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
 
     let mut cwis_latest = None;
-    if let Some(latest_time) = latest_time {
+    if let Some(query_time) = query_time {
         let mut cwis_latest_raw: Vec<_> = std::iter::repeat_with(|| None)
             .take(components.len())
             .collect();
@@ -77,10 +77,11 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
         for (i, primary) in components.iter().enumerate() {
             cwis_latest_raw[i] = get_component_with_instances(
                 store,
-                &LatestAtQuery::new(query.timeline, latest_time),
+                &LatestAtQuery::new(query.timeline, query_time),
                 ent_path,
                 *primary,
-            );
+            )
+            .map(|(_, row_id, cwi)| (row_id, cwi));
         }
 
         if cwis_latest_raw[primary_col].is_some() {
@@ -91,33 +92,31 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     // send the latest-at state before anything else
     cwis_latest
         .into_iter()
-        .map(move |cwis| (latest_time, true, cwis))
-        .chain(
-            store
-                .range(query, ent_path, components)
-                .map(move |(time, row_id, mut cells)| {
-                    // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
-                    // by the store.
-                    let instance_keys = cells[cluster_col].take().unwrap();
-                    let is_primary = cells[primary_col].is_some();
-                    let cwis = cells
-                        .into_iter()
-                        .map(|cell| {
-                            cell.map(|cell| {
-                                (
-                                    row_id,
-                                    ComponentWithInstances {
-                                        instance_keys: instance_keys.clone(), /* shallow */
-                                        values: cell,
-                                    },
-                                )
-                            })
+        .map(move |cwis| (query_time, true, cwis))
+        .chain(store.range(query, ent_path, components).map(
+            move |(data_time, row_id, mut cells)| {
+                // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
+                // by the store.
+                let instance_keys = cells[cluster_col].take().unwrap();
+                let is_primary = cells[primary_col].is_some();
+                let cwis = cells
+                    .into_iter()
+                    .map(|cell| {
+                        cell.map(|cell| {
+                            (
+                                row_id,
+                                ComponentWithInstances {
+                                    instance_keys: instance_keys.clone(), /* shallow */
+                                    values: cell,
+                                },
+                            )
                         })
-                        .collect::<Vec<_>>();
-                    (time, is_primary, cwis)
-                }),
-        )
-        .filter_map(move |(time, is_primary, cwis)| {
+                    })
+                    .collect::<Vec<_>>();
+                (data_time, is_primary, cwis)
+            },
+        ))
+        .filter_map(move |(data_time, is_primary, cwis)| {
             for (i, cwi) in cwis
                 .into_iter()
                 .enumerate()
@@ -136,9 +135,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
                     .filter_map(|cwi| cwi.map(|(_, cwi)| cwi))
                     .collect();
 
-                let arch_view = ArchetypeView::from_components(row_id, components);
-
-                (time, arch_view)
+                ArchetypeView::from_components(data_time, row_id, components)
             })
         })
 }
