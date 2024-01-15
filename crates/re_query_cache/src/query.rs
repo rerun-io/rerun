@@ -111,7 +111,7 @@ macro_rules! impl_query_archetype {
                 re_tracing::profile_scope!("iter");
 
                 let it = itertools::izip!(
-                    bucket.iter_pov_data_times(),
+                    bucket.iter_data_times(),
                     bucket.iter_pov_instance_keys(),
                     $(bucket.iter_component::<$pov>()
                         .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
@@ -132,7 +132,6 @@ macro_rules! impl_query_archetype {
 
                 Ok(())
             };
-
 
             let upsert_results = |
                     data_time: TimeInt,
