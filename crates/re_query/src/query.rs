@@ -209,9 +209,11 @@ pub fn __populate_example_store() -> DataStore {
 #[cfg(test)]
 #[cfg(feature = "testing")]
 fn simple_get_component() {
+    use smallvec::smallvec;
+
     use re_data_store::LatestAtQuery;
-    use re_log_types::example_components::MyPoint;
-    use re_log_types::Timeline;
+    use re_log_types::{example_components::MyPoint, DataCellRow};
+    use re_log_types::{DataCell, Timeline};
 
     let store = __populate_example_store();
 
@@ -221,21 +223,19 @@ fn simple_get_component() {
     let (_, component) =
         get_component_with_instances(&store, &query, &ent_path.into(), MyPoint::name()).unwrap();
 
-    #[cfg(feature = "polars")]
     {
-        let df = component.as_df::<MyPoint>().unwrap();
-        eprintln!("{df:?}");
+        let row = component.into_data_cell_row();
+        eprintln!("{row:?}");
 
         let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];
         let positions = vec![Some(MyPoint::new(1.0, 2.0)), Some(MyPoint::new(3.0, 4.0))];
 
-        let expected = crate::dataframe_util::df_builder2(&instances, &positions).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+        ]);
 
-        assert_eq!(expected, df);
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        let _used = component;
+        assert_eq!(row, expected);
     }
 }
 
@@ -271,9 +271,5 @@ fn simple_query_archetype() {
     assert_eq!(expected_positions, view_positions.as_slice());
     assert_eq!(expected_colors, view_colors.as_slice());
 
-    #[cfg(feature = "polars")]
-    {
-        let df = arch_view.as_df2::<MyPoint, MyColor>().unwrap();
-        eprintln!("{df:?}");
-    }
+    eprintln!("{arch_view:?}");
 }

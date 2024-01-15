@@ -552,11 +552,8 @@ fn gc_correct() {
     check_still_readable(&store);
 }
 
-fn check_still_readable(_store: &DataStore) {
-    #[cfg(feature = "polars")]
-    {
-        _ = _store.to_dataframe(); // simple way of checking that everything is still readable
-    }
+fn check_still_readable(store: &DataStore) {
+    store.to_data_table().unwrap(); // simple way of checking that everything is still readable
 }
 
 // This used to panic because the GC will decrement the metadata_registry size trackers before

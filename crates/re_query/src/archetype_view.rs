@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, marker::PhantomData};
 
 use arrow2::array::{Array, PrimitiveArray};
 use re_format::arrow;
-use re_log_types::{DataCell, RowId};
+use re_log_types::{DataCell, DataCellRow, RowId};
 use re_types_core::{
     components::InstanceKey, Archetype, Component, ComponentName, DeserializationError,
     DeserializationResult, Loggable, SerializationResult,
@@ -115,6 +115,15 @@ impl ComponentWithInstances {
             instance_keys: DataCell::from_arrow(InstanceKey::name(), instance_keys),
             values: DataCell::from_arrow(C::name(), values),
         })
+    }
+
+    #[inline]
+    pub fn into_data_cell_row(self) -> DataCellRow {
+        let Self {
+            instance_keys,
+            values,
+        } = self;
+        DataCellRow(smallvec::smallvec![instance_keys, values])
     }
 }
 
@@ -518,6 +527,32 @@ impl<A: Archetype> ArchetypeView<A> {
                 .values()
                 .map(|comp| (comp.name(), comp.values.to_arrow())),
         )?)
+    }
+
+    /// Useful for tests.
+    pub fn to_data_cell_row_1<
+        'a,
+        C1: re_types_core::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+    >(
+        &self,
+    ) -> crate::Result<DataCellRow> {
+        let cell0 = DataCell::from_native(self.iter_instance_keys());
+        let cell1 = DataCell::from_native_sparse(self.iter_optional_component::<C1>()?);
+        Ok(DataCellRow(smallvec::smallvec![cell0, cell1]))
+    }
+
+    /// Useful for tests.
+    pub fn to_data_cell_row_2<
+        'a,
+        C1: re_types_core::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+        C2: re_types_core::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
+    >(
+        &self,
+    ) -> crate::Result<DataCellRow> {
+        let cell0 = DataCell::from_native(self.iter_instance_keys());
+        let cell1 = DataCell::from_native_sparse(self.iter_optional_component::<C1>()?);
+        let cell2 = DataCell::from_native_sparse(self.iter_optional_component::<C2>()?);
+        Ok(DataCellRow(smallvec::smallvec![cell0, cell1, cell2]))
     }
 }
 

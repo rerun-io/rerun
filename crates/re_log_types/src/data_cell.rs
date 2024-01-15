@@ -138,7 +138,7 @@ impl PartialEq for DataCell {
 /// virtual calls.
 ///
 /// See #1746 for details.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct DataCellInner {
     /// Name of the component type used in this cell.
     //
@@ -161,6 +161,19 @@ pub struct DataCellInner {
     /// frequent boxing/unboxing down the line.
     /// Internally, this is most likely a slice of another, larger array (batching!).
     pub(crate) values: Box<dyn arrow2::array::Array>,
+}
+
+impl PartialEq for DataCellInner {
+    #[inline]
+    fn eq(&self, rhs: &Self) -> bool {
+        let Self {
+            name,
+            size_bytes: _, // we ignore the size (it may be 0 = uncomputed)
+            values,
+        } = self;
+
+        name == &rhs.name && values.eq(&rhs.values)
+    }
 }
 
 // TODO(#1696): We shouldn't have to specify the component name separately, this should be

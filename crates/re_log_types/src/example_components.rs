@@ -4,6 +4,7 @@ use re_types_core::{Loggable, SizeBytes};
 
 // ----------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct MyPoints;
 
 impl re_types_core::Archetype for MyPoints {
