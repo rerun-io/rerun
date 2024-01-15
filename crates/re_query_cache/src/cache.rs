@@ -279,7 +279,6 @@ impl CachesPerArchetype {
 
             if pending_timeless_invalidation {
                 latest_at_cache.timeless = None;
-                self.pending_timeless_invalidation = false;
             }
 
             if let Some(min_time) = self.pending_timeful_invalidation {
@@ -290,10 +289,11 @@ impl CachesPerArchetype {
                 latest_at_cache
                     .per_data_time
                     .retain(|&data_time, _| data_time < min_time);
-
-                self.pending_timeful_invalidation = None;
             }
         }
+
+        self.pending_timeful_invalidation = None;
+        self.pending_timeless_invalidation = false;
     }
 }
 
