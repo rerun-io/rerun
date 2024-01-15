@@ -16,6 +16,18 @@ pub trait ErasedFlatVecDeque: std::any::Any {
 
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any>;
 
+    /// Dynamically dispatches to [`FlatVecDeque::num_entries`].
+    ///
+    /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
+    /// avoid even with explicit syntax and that silently lead to infinite recursions.
+    fn dyn_num_entries(&self) -> usize;
+
+    /// Dynamically dispatches to [`FlatVecDeque::num_values`].
+    ///
+    /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
+    /// avoid even with explicit syntax and that silently lead to infinite recursions.
+    fn dyn_num_values(&self) -> usize;
+
     /// Dynamically dispatches to [`FlatVecDeque::remove`].
     ///
     /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
@@ -49,6 +61,16 @@ impl<T: 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
     #[inline]
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
         self
+    }
+
+    #[inline]
+    fn dyn_num_entries(&self) -> usize {
+        self.num_entries()
+    }
+
+    #[inline]
+    fn dyn_num_values(&self) -> usize {
+        self.num_values()
     }
 
     #[inline]
@@ -119,6 +141,17 @@ impl<T: SizeBytes> SizeBytes for FlatVecDeque<T> {
         let offsets_size_bytes = self.num_entries() * std::mem::size_of::<usize>();
 
         values_size_bytes + offsets_size_bytes as u64
+    }
+}
+
+impl<T> From<VecDeque<T>> for FlatVecDeque<T> {
+    #[inline]
+    fn from(values: VecDeque<T>) -> Self {
+        let num_values = values.len();
+        Self {
+            values,
+            offsets: std::iter::once(num_values).collect(),
+        }
     }
 }
 
@@ -284,11 +317,7 @@ impl<T> FlatVecDeque<T> {
     #[inline]
     pub fn insert(&mut self, entry_index: usize, values: impl IntoIterator<Item = T>) {
         let values: VecDeque<T> = values.into_iter().collect();
-        let num_values = values.len();
-        let deque = Self {
-            values,
-            offsets: std::iter::once(num_values).collect(),
-        };
+        let deque = values.into();
         self.insert_deque(entry_index, deque);
     }
 

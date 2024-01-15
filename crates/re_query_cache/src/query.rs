@@ -137,14 +137,15 @@ macro_rules! impl_query_archetype {
                     data_time: TimeInt,
                     arch_view: &::re_query::ArchetypeView<A>,
                     bucket: &mut crate::CacheBucket,
-                | -> crate::Result<()> {
+                | -> crate::Result<u64> {
                 re_log::trace!(data_time=?data_time, ?data_time, "fill");
 
                 // Grabbing the current time is quite costly on web.
                 #[cfg(not(target_arch = "wasm32"))]
                 let now = web_time::Instant::now();
 
-                bucket.[<insert_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)*>(data_time, &arch_view)?;
+                let mut added_size_bytes = 0u64;
+                added_size_bytes += bucket.[<insert_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)*>(data_time, &arch_view)?;
 
                 #[cfg(not(target_arch = "wasm32"))]
                 {
@@ -153,18 +154,19 @@ macro_rules! impl_query_archetype {
                         store_id=%store.id(),
                         %entity_path,
                         archetype=%A::name(),
+                        added_size_bytes,
                         "cached new entry in {elapsed:?} ({:0.3} entries/s)",
                         1f64 / elapsed.as_secs_f64()
                     );
                 }
 
-                Ok(())
+                Ok(added_size_bytes)
             };
 
             let mut latest_at_callback = |query: &LatestAtQuery, latest_at_cache: &mut crate::LatestAtCache| {
                 re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
-                let crate::LatestAtCache { per_query_time, per_data_time, timeless } = latest_at_cache;
+                let crate::LatestAtCache { per_query_time, per_data_time, timeless, total_size_bytes } = latest_at_cache;
 
                 let query_time_bucket_at_query_time = match per_query_time.entry(query.at) {
                     std::collections::btree_map::Entry::Occupied(query_time_bucket_at_query_time) => {
@@ -210,7 +212,7 @@ macro_rules! impl_query_archetype {
 
                     {
                         let mut query_time_bucket_at_query_time = query_time_bucket_at_query_time.write();
-                        upsert_results(data_time, &arch_view, &mut query_time_bucket_at_query_time)?;
+                        *total_size_bytes += upsert_results(data_time, &arch_view, &mut query_time_bucket_at_query_time)?;
                     }
 
                     let data_time_bucket_at_data_time = per_data_time.entry(data_time);
@@ -222,7 +224,7 @@ macro_rules! impl_query_archetype {
 
                     let mut timeless_bucket = crate::CacheBucket::default();
 
-                    upsert_results(TimeInt::MIN, &arch_view, &mut timeless_bucket)?;
+                    *total_size_bytes += upsert_results(TimeInt::MIN, &arch_view, &mut timeless_bucket)?;
                     iter_results(true, &timeless_bucket)?;
 
                     *timeless = Some(timeless_bucket);

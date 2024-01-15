@@ -667,6 +667,7 @@ impl App {
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &StoreHubStats,
+        caches_stats: &re_query_cache::CachesStats,
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
@@ -684,6 +685,7 @@ impl App {
                     &self.startup_options.memory_limit,
                     gpu_resource_stats,
                     store_stats,
+                    caches_stats,
                 );
             });
     }
@@ -703,6 +705,7 @@ impl App {
     /// Top-level ui function.
     ///
     /// Shows the viewer ui.
+    #[allow(clippy::too_many_arguments)]
     fn ui(
         &mut self,
         egui_ctx: &egui::Context,
@@ -711,6 +714,7 @@ impl App {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
         store_stats: &StoreHubStats,
+        caches_stats: &re_query_cache::CachesStats,
     ) {
         let mut main_panel_frame = egui::Frame::default();
         if re_ui::CUSTOM_WINDOW_DECORATIONS {
@@ -727,7 +731,7 @@ impl App {
 
                 crate::ui::top_panel(self, app_blueprint, store_context, gpu_resource_stats, ui);
 
-                self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
+                self.memory_panel_ui(ui, gpu_resource_stats, store_stats, caches_stats);
 
                 self.style_panel_ui(egui_ctx, ui);
 
@@ -1124,9 +1128,11 @@ impl eframe::App for App {
         };
 
         let store_stats = store_hub.stats();
+        let caches_stats = re_query_cache::Caches::stats();
 
         // do early, before doing too many allocations
-        self.memory_panel.update(&gpu_resource_stats, &store_stats);
+        self.memory_panel
+            .update(&gpu_resource_stats, &store_stats, &caches_stats);
 
         self.check_keyboard_shortcuts(egui_ctx);
 
@@ -1159,6 +1165,7 @@ impl eframe::App for App {
             &gpu_resource_stats,
             store_context.as_ref(),
             &store_stats,
+            &caches_stats,
         );
 
         if re_ui::CUSTOM_WINDOW_DECORATIONS {
