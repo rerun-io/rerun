@@ -240,7 +240,7 @@ impl Viewport<'_, '_> {
                 // to the blueprint directly. If we set it on the tree there are some
                 // edge-cases where visibility can get lost when we simplify out trivial
                 // tab-containers.
-                space_view.set_visible(visible, ctx);
+                space_view.set_visible(ctx, visible);
             }
         }
     }

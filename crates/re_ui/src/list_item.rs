@@ -457,7 +457,7 @@ impl<'a> ListItem<'a> {
             match self.label_style {
                 LabelStyle::Normal => {}
                 LabelStyle::Unnamed => {
-                    self.text = self.text.color(visuals.fg_stroke.color.gamma_multiply(0.5))
+                    self.text = self.text.color(visuals.fg_stroke.color.gamma_multiply(0.5));
                 }
             }
 

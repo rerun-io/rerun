@@ -250,7 +250,7 @@ impl SpaceViewBlueprint {
     }
 
     #[inline]
-    pub fn set_display_name(&self, name: Option<String>, ctx: &ViewerContext<'_>) {
+    pub fn set_display_name(&self, ctx: &ViewerContext<'_>, name: Option<String>) {
         if name != self.display_name {
             match name {
                 Some(name) => {
@@ -265,7 +265,7 @@ impl SpaceViewBlueprint {
     }
 
     #[inline]
-    pub fn set_origin(&self, origin: &EntityPath, ctx: &ViewerContext<'_>) {
+    pub fn set_origin(&self, ctx: &ViewerContext<'_>, origin: &EntityPath) {
         if origin != &self.space_origin {
             let component = SpaceViewOrigin(origin.into());
             ctx.save_blueprint_component(&self.entity_path(), component);
@@ -273,7 +273,7 @@ impl SpaceViewBlueprint {
     }
 
     #[inline]
-    pub fn set_visible(&self, visible: bool, ctx: &ViewerContext<'_>) {
+    pub fn set_visible(&self, ctx: &ViewerContext<'_>, visible: bool) {
         if visible != self.visible {
             let component = Visible(visible);
             ctx.save_blueprint_component(&self.entity_path(), component);

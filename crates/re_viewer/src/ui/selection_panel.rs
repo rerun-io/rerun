@@ -498,7 +498,7 @@ fn space_view_top_level_properties(
                 ui.text_edit_singleline(&mut name);
                 ui.end_row();
 
-                space_view.set_display_name(if name.is_empty() { None } else { Some(name) }, ctx);
+                space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
 
                 ui.label("Space origin").on_hover_text(
                     "The origin Entity for this Space View. For spatial Space Views, the Space \
