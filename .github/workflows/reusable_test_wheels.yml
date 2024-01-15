@@ -154,7 +154,7 @@ jobs:
         # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
         shell: bash
         run: |
-          pip install attrs>=23.1.0 numpy>=1.23 pillow pyarrow==14.0.2 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
+          pip install attrs>=23.1.0 "numpy>=1.23,<2" pillow pyarrow==14.0.2 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
 
       - name: Get version
         id: get-version
