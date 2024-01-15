@@ -259,7 +259,11 @@ fn space_view_button(
             space_view.class(ctx.space_view_class_registry).icon(),
             label,
             is_selected,
-            !named,
+            if named {
+                re_ui::LabelStyle::Normal
+            } else {
+                re_ui::LabelStyle::Unnamed
+            },
         )
         .on_hover_text("Space View");
     item_ui::cursor_interact_with_selectable(ctx, response, item)

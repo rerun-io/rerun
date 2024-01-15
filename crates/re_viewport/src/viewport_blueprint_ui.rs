@@ -446,7 +446,7 @@ impl Viewport<'_, '_> {
                                 space_view.class(ctx.space_view_class_registry).icon(),
                                 label,
                                 false,
-                                false,
+                                re_ui::LabelStyle::Normal,
                             )
                             .clicked()
                         {
