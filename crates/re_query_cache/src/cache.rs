@@ -12,7 +12,7 @@ use seq_macro::seq;
 use re_data_store::{
     LatestAtQuery, RangeQuery, StoreDiff, StoreEvent, StoreSubscriber, StoreSubscriberHandle,
 };
-use re_log_types::{EntityPath, RowId, StoreId, TimeInt, Timeline};
+use re_log_types::{EntityPath, RowId, StoreId, TimeInt, TimeRange, Timeline};
 use re_query::ArchetypeView;
 use re_types_core::{
     components::InstanceKey, Archetype, ArchetypeName, Component, ComponentName, SizeBytes as _,
@@ -423,6 +423,13 @@ impl CacheBucket {
     #[inline]
     pub fn iter_data_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
         self.data_times.iter()
+    }
+
+    #[inline]
+    pub fn time_range(&self) -> Option<TimeRange> {
+        let first_time = self.data_times.front().map(|(t, _)| *t)?;
+        let last_time = self.data_times.back().map(|(t, _)| *t)?;
+        Some(TimeRange::new(first_time, last_time))
     }
 
     #[inline]
