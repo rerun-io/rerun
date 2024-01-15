@@ -124,81 +124,91 @@ impl TimeSeriesSystem {
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let mut points = Vec::new();
-            let annotations = self.annotation_map.find(&data_result.entity_path);
-            let annotation_info = annotations
-                .resolved_class_description(None)
-                .annotation_info();
-            let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
-            let visible_history = match query.timeline.typ() {
-                re_log_types::TimeType::Time => {
-                    data_result.accumulated_properties().visible_history.nanos
-                }
-                re_log_types::TimeType::Sequence => {
-                    data_result
-                        .accumulated_properties()
-                        .visible_history
-                        .sequences
-                }
-            };
+            {
+                re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
-            let (from, to) = if data_result.accumulated_properties().visible_history.enabled {
-                (
-                    visible_history.from(query.latest_at),
-                    visible_history.to(query.latest_at),
-                )
-            } else {
-                (i64::MIN.into(), i64::MAX.into())
-            };
+                let annotations = self.annotation_map.find(&data_result.entity_path);
+                let annotation_info = annotations
+                    .resolved_class_description(None)
+                    .annotation_info();
+                let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
-            let query = re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
-
-            re_query_cache::query_archetype_pov1_comp4::<
-                TimeSeriesScalar,
-                Scalar,
-                ScalarScattering,
-                Color,
-                Radius,
-                Text,
-                _,
-            >(
-                ctx.app_options.experimental_primary_caching_series,
-                store,
-                &query.clone().into(),
-                &data_result.entity_path,
-                |((time, _row_id), _, scalars, scatterings, colors, radii, labels)| {
-                    re_tracing::profile_scope!("primary");
-
-                    for (scalar, scattered, color, radius, label) in itertools::izip!(
-                        scalars.iter(),
-                        scatterings.iter(),
-                        colors.iter(),
-                        radii.iter(),
-                        labels.iter()
-                    ) {
-                        let color =
-                            annotation_info.color(color.map(|c| c.to_array()), default_color);
-                        let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
-
-                        const DEFAULT_RADIUS: f32 = 0.75;
-
-                        points.push(PlotPoint {
-                            time: time.as_i64(),
-                            value: scalar.0,
-                            attrs: PlotPointAttrs {
-                                label,
-                                color,
-                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
-                                scattered: scattered.map_or(false, |s| s.0),
-                            },
-                        });
+                let visible_history = match query.timeline.typ() {
+                    re_log_types::TimeType::Time => {
+                        data_result.accumulated_properties().visible_history.nanos
                     }
-                },
-            )?;
+                    re_log_types::TimeType::Sequence => {
+                        data_result
+                            .accumulated_properties()
+                            .visible_history
+                            .sequences
+                    }
+                };
+
+                let (from, to) = if data_result.accumulated_properties().visible_history.enabled {
+                    (
+                        visible_history.from(query.latest_at),
+                        visible_history.to(query.latest_at),
+                    )
+                } else {
+                    (i64::MIN.into(), i64::MAX.into())
+                };
+
+                let query =
+                    re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
+
+                re_query_cache::query_archetype_pov1_comp4::<
+                    TimeSeriesScalar,
+                    Scalar,
+                    ScalarScattering,
+                    Color,
+                    Radius,
+                    Text,
+                    _,
+                >(
+                    ctx.app_options.experimental_primary_caching_series,
+                    store,
+                    &query.clone().into(),
+                    &data_result.entity_path,
+                    |((time, _row_id), _, scalars, scatterings, colors, radii, labels)| {
+                        let Some(time) = time else {
+                            return;
+                        }; // scalars cannot be timeless
+
+                        for (scalar, scattered, color, radius, label) in itertools::izip!(
+                            scalars.iter(),
+                            scatterings.iter(),
+                            colors.iter(),
+                            radii.iter(),
+                            labels.iter()
+                        ) {
+                            let color =
+                                annotation_info.color(color.map(|c| c.to_array()), default_color);
+                            let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+
+                            const DEFAULT_RADIUS: f32 = 0.75;
+
+                            points.push(PlotPoint {
+                                time: time.as_i64(),
+                                value: scalar.0,
+                                attrs: PlotPointAttrs {
+                                    label,
+                                    color,
+                                    radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
+                                    scattered: scattered.map_or(false, |s| s.0),
+                                },
+                            });
+                        }
+                    },
+                )?;
+            }
 
             if points.is_empty() {
                 continue;
             }
+
+            re_tracing::profile_scope!("secondary", &data_result.entity_path.to_string());
 
             let min_time = store
                 .entity_min_time(&query.timeline, &data_result.entity_path)
