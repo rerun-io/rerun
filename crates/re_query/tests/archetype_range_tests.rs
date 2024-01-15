@@ -82,15 +82,6 @@ fn simple_range() {
 
     // We expect this to generate the following `DataFrame`s:
     //
-    // Frame #123:
-    // ┌─────────────┬───────────┬──────────────┐
-    // │ InstanceKey ┆ Point2D   ┆ Color        │
-    // ╞═════════════╪═══════════╪══════════════╡
-    // │ 0           ┆ {1.0,2.0} ┆ null         │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1           ┆ {3.0,4.0} ┆ 4278190080   │
-    // └─────────────┴───────────┴──────────────┘
-    //
     // Frame #323:
     // ┌─────────────┬──────────────┬─────────────────┐
     // │ InstanceKey ┆ Point2D      ┆ Color           │
@@ -119,7 +110,6 @@ fn simple_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
@@ -180,7 +170,6 @@ fn simple_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
@@ -208,7 +197,6 @@ fn simple_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
@@ -375,7 +363,6 @@ fn timeless_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
@@ -436,7 +423,6 @@ fn timeless_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
@@ -464,7 +450,6 @@ fn timeless_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
@@ -541,7 +526,6 @@ fn timeless_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(None, time);
@@ -568,7 +552,6 @@ fn timeless_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(None, time);
@@ -595,7 +578,6 @@ fn timeless_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
@@ -623,7 +605,6 @@ fn timeless_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
@@ -742,7 +723,6 @@ fn simple_splatted_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
@@ -802,7 +782,6 @@ fn simple_splatted_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
@@ -833,7 +812,6 @@ fn simple_splatted_range() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);

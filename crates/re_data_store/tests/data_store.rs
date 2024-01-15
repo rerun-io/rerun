@@ -563,10 +563,7 @@ fn range_impl(store: &mut DataStore) {
         [Color::name(), Position2D::name()],
         &[(
             Some(frame1),
-            &[
-                (Color::name(), &row1),
-                // (Position2D::name(), &row4_4), // timeless
-            ],
+            &[(Color::name(), &row1)], //
         )],
     );
     assert_range_components(
