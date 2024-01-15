@@ -137,7 +137,7 @@ impl SpaceInfoCollection {
             let data_store = entity_db.data_store();
             let transform3d = data_store
                 .query_latest_component::<Transform3D>(&tree.path, query)
-                .map(|(_, c)| c.value);
+                .map(|c| c.value);
             let pinhole = query_pinhole(data_store, query, &tree.path);
 
             let connection = if transform3d.is_some() || pinhole.is_some() {
@@ -147,7 +147,7 @@ impl SpaceInfoCollection {
                 })
             } else if data_store
                 .query_latest_component::<DisconnectedSpace>(&tree.path, query)
-                .map_or(false, |(_, dp)| dp.0)
+                .map_or(false, |dp| dp.0)
             {
                 Some(SpaceInfoConnection::Disconnected)
             } else {

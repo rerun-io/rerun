@@ -87,8 +87,7 @@ fn annotation_info(
     let class_id = ctx
         .entity_db
         .store()
-        .query_latest_component::<re_types::components::ClassId>(entity_path, query)
-        .map(|(_, data)| data)?;
+        .query_latest_component::<re_types::components::ClassId>(entity_path, query)?;
     let annotations = crate::annotations(ctx, query, entity_path);
     let class = annotations.resolved_class_description(Some(*class_id));
     class.keypoint_map?.get(&keypoint_id).cloned()

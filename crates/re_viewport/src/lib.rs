@@ -51,14 +51,14 @@ fn query_pinhole(
 ) -> Option<re_types::archetypes::Pinhole> {
     store
         .query_latest_component(entity_path, query)
-        .map(|(_, image_from_camera)| re_types::archetypes::Pinhole {
+        .map(|image_from_camera| re_types::archetypes::Pinhole {
             image_from_camera: image_from_camera.value,
             resolution: store
                 .query_latest_component(entity_path, query)
-                .map(|(_, c)| c.value),
+                .map(|c| c.value),
             camera_xyz: store
                 .query_latest_component(entity_path, query)
-                .map(|(_, c)| c.value),
+                .map(|c| c.value),
         })
 }
 

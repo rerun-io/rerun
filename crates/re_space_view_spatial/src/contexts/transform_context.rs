@@ -267,7 +267,7 @@ impl TransformContext {
             self.reference_from_entity(&parent).map(|t| {
                 t * store
                     .query_latest_component::<Transform3D>(ent_path, query)
-                    .map_or(glam::Affine3A::IDENTITY, |(_, transform)| {
+                    .map_or(glam::Affine3A::IDENTITY, |transform| {
                         transform.value.into_parent_from_child_transform()
                     })
             })
@@ -315,7 +315,7 @@ fn transform_at(
 
     let transform3d = store
         .query_latest_component::<Transform3D>(entity_path, query)
-        .map(|(_, transform)| transform.value.into_parent_from_child_transform());
+        .map(|transform| transform.value.into_parent_from_child_transform());
 
     let pinhole = pinhole.map(|pinhole| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
@@ -365,7 +365,7 @@ fn transform_at(
         ))
     } else if store
         .query_latest_component::<DisconnectedSpace>(entity_path, query)
-        .map_or(false, |(_, dp)| dp.0)
+        .map_or(false, |dp| dp.0)
     {
         Err(UnreachableTransformReason::DisconnectedSpace)
     } else {

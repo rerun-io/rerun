@@ -60,7 +60,7 @@ impl VisualizerSystem for TensorSystem {
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some((_, tensor)) = store
+            if let Some(tensor) = store
                 .query_latest_component::<TensorData>(&data_result.entity_path, &timeline_query)
             {
                 self.load_tensor_entity(ctx, &data_result.entity_path, tensor);

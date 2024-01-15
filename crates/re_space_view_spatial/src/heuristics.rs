@@ -151,7 +151,7 @@ fn update_depth_cloud_property_heuristics(
         .unwrap_or(&BTreeSet::new())
     {
         let store = ctx.entity_db.store();
-        let Some((_, tensor)) =
+        let Some(tensor) =
             store.query_latest_component::<TensorData>(ent_path, &ctx.current_query())
         else {
             continue;
@@ -161,7 +161,7 @@ fn update_depth_cloud_property_heuristics(
 
         let meter = store
             .query_latest_component::<DepthMeter>(ent_path, &ctx.current_query())
-            .map(|(_, meter)| meter.value.0);
+            .map(|meter| meter.value.0);
 
         let mut properties = entity_properties.get(ent_path);
         if properties.backproject_depth.is_auto() {

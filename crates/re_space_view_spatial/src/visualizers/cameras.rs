@@ -237,7 +237,7 @@ impl VisualizerSystem for CamerasVisualizer {
                             &data_result.entity_path,
                             &time_query,
                         )
-                        .map(|(_, c)| c.value),
+                        .map(|c| c.value),
                     pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
                     entity_highlight,
                 );

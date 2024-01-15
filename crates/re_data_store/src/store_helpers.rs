@@ -6,7 +6,7 @@ use crate::{DataStore, LatestAtQuery};
 
 // --- Read ---
 
-/// A [`Component`] versioned with a specific [`RowId`].
+/// A [`Component`] at a specific _data_ time, versioned with a specific [`RowId`].
 ///
 /// This is not enough to globally, uniquely identify an instance of a component.
 /// For that you will need to combine the `InstancePath` that was used to query
@@ -14,14 +14,22 @@ use crate::{DataStore, LatestAtQuery};
 /// `VersionedInstancePath`.
 #[derive(Debug, Clone)]
 pub struct VersionedComponent<C: Component> {
+    /// `None` if timeless.
+    pub data_time: Option<TimeInt>,
+
     pub row_id: RowId,
+
     pub value: C,
 }
 
-impl<C: Component> From<(RowId, C)> for VersionedComponent<C> {
+impl<C: Component> VersionedComponent<C> {
     #[inline]
-    fn from((row_id, value): (RowId, C)) -> Self {
-        Self { row_id, value }
+    pub fn new(time: Option<TimeInt>, row_id: RowId, value: C) -> Self {
+        Self {
+            data_time: time,
+            row_id,
+            value,
+        }
     }
 }
 
@@ -49,7 +57,7 @@ impl DataStore {
         entity_path: &EntityPath,
         query: &LatestAtQuery,
         level: re_log::Level,
-    ) -> Option<(Option<TimeInt>, VersionedComponent<C>)> {
+    ) -> Option<VersionedComponent<C>> {
         re_tracing::profile_function!();
 
         let (data_time, row_id, cells) =
@@ -95,7 +103,7 @@ impl DataStore {
                 err
             })
             .ok()?
-            .map(|c| (data_time, (row_id, c).into()))
+            .map(|c| VersionedComponent::new(data_time, row_id, c))
     }
 
     /// Get the latest value for a given [`re_types_core::Component`], as well as the associated
@@ -112,7 +120,7 @@ impl DataStore {
         &self,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
-    ) -> Option<(Option<TimeInt>, VersionedComponent<C>)> {
+    ) -> Option<VersionedComponent<C>> {
         self.query_latest_component_with_log_level(entity_path, query, re_log::Level::Warn)
     }
 
@@ -130,7 +138,7 @@ impl DataStore {
         &self,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
-    ) -> Option<(Option<TimeInt>, VersionedComponent<C>)> {
+    ) -> Option<VersionedComponent<C>> {
         self.query_latest_component_with_log_level(entity_path, query, re_log::Level::Debug)
     }
 
@@ -139,13 +147,13 @@ impl DataStore {
         &self,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
-    ) -> Option<(EntityPath, Option<TimeInt>, VersionedComponent<C>)> {
+    ) -> Option<(EntityPath, VersionedComponent<C>)> {
         re_tracing::profile_function!();
 
         let mut cur_path = Some(entity_path.clone());
         while let Some(path) = cur_path {
-            if let Some((data_time, c)) = self.query_latest_component::<C>(&path, query) {
-                return Some((path, data_time, c));
+            if let Some(vc) = self.query_latest_component::<C>(&path, query) {
+                return Some((path, vc));
             }
             cur_path = path.parent();
         }
@@ -168,11 +176,10 @@ impl DataStore {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
-        self.query_latest_component(entity_path, &query)
-            .map(|(data_time, vc)| {
-                debug_assert!(data_time.is_none());
-                vc
-            })
+        self.query_latest_component(entity_path, &query).map(|vc| {
+            debug_assert!(vc.data_time.is_none());
+            vc
+        })
     }
 
     /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`],
@@ -192,8 +199,8 @@ impl DataStore {
 
         let query = LatestAtQuery::latest(Timeline::default());
         self.query_latest_component_quiet(entity_path, &query)
-            .map(|(data_time, vc)| {
-                debug_assert!(data_time.is_none());
+            .map(|vc| {
+                debug_assert!(vc.data_time.is_none());
                 vc
             })
     }
