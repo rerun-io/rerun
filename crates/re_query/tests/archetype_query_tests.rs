@@ -1,7 +1,7 @@
-mod common;
+use smallvec::smallvec;
 
 use re_data_store::DataStore;
-use re_log_types::{build_frame_nr, DataRow, RowId};
+use re_log_types::{build_frame_nr, DataCell, DataCellRow, DataRow, RowId};
 use re_query::query_archetype;
 use re_types::{
     archetypes::Points2D,
@@ -44,20 +44,17 @@ fn simple_query() {
     let arch_view = query_archetype::<Points2D>(&store, &timeline_query, &ent_path.into()).unwrap();
 
     // We expect this to generate the following `DataFrame`
-    // ┌──────────┬───────────┬────────────┐
-    // │ instance ┆ positions2D┆ colorrgba  │
-    // │ ---      ┆ ---       ┆ ---        │
-    // │ u64      ┆ struct[2] ┆ u32        │
-    // ╞══════════╪═══════════╪════════════╡
-    // │ 0        ┆ {1.0,2.0} ┆ null       │
-    // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1        ┆ {3.0,4.0} ┆ 4278190080 │
-    // └──────────┴───────────┴────────────┘
+    // ┌──────────┬─────────────┬────────────┐
+    // │ instance ┆ positions2D ┆ colorrgba  │
+    // │ ---      ┆ ---         ┆ ---        │
+    // │ u64      ┆ struct[2]   ┆ u32        │
+    // ╞══════════╪═════════════╪════════════╡
+    // │ 0        ┆ {1.0,2.0}   ┆ null       │
+    // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
+    // │ 1        ┆ {3.0,4.0}   ┆ 4278190080 │
+    // └──────────┴─────────────┴────────────┘
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let positions = vec![
@@ -65,17 +62,16 @@ fn simple_query() {
             Some(Position2D::new(3.0, 4.0)),
         ];
         let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
-        //eprintln!("{expected:?}");
-
-        common::compare_df(&expected, &arch_view.as_df2::<Position2D, Color>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        let _used = arch_view;
+        assert_eq!(
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+            &expected
+        );
     }
 }
 
@@ -118,10 +114,7 @@ fn timeless_query() {
     // │ 1        ┆ {3.0,4.0} ┆ 4278190080 │
     // └──────────┴───────────┴────────────┘
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let positions = vec![
@@ -129,17 +122,19 @@ fn timeless_query() {
             Some(Position2D::new(3.0, 4.0)),
         ];
         let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        common::compare_df(&expected, &arch_view.as_df2::<Position2D, Color>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        let _used = arch_view;
+        assert_eq!(
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+            &expected
+        );
     }
 }
 
@@ -180,10 +175,7 @@ fn no_instance_join_query() {
     // │ 1        ┆ {3.0,4.0} ┆ 16711680   │
     // └──────────┴───────────┴────────────┘
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let positions = vec![
@@ -194,17 +186,19 @@ fn no_instance_join_query() {
             Some(Color::from_rgb(255, 0, 0)),
             Some(Color::from_rgb(0, 255, 0)),
         ];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        common::compare_df(&expected, &arch_view.as_df2::<Position2D, Color>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        let _used = arch_view;
+        assert_eq!(
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+            &expected
+        );
     }
 }
 
@@ -240,27 +234,26 @@ fn missing_column_join_query() {
     // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┤
     // │ 1        ┆ {3.0,4.0} │
     // └──────────┴───────────┘
-    #[cfg(feature = "polars")]
-    {
-        use re_query::dataframe_util::df_builder2;
 
+    {
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let positions = vec![
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
-        let expected = df_builder2(&instances, &positions).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+        ]);
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        common::compare_df(&expected, &arch_view.as_df1::<Position2D>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        let _used = arch_view;
+        assert_eq!(
+            &arch_view.to_data_cell_row_1::<Position2D>().unwrap(),
+            &expected
+        );
     }
 }
 
@@ -309,10 +302,7 @@ fn splatted_query() {
     // │ 1        ┆ {3.0,4.0} ┆ 4278190080 │
     // └──────────┴───────────┴────────────┘
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
         let positions = vec![
@@ -323,16 +313,18 @@ fn splatted_query() {
             Some(Color::from_rgb(255, 0, 0)),
             Some(Color::from_rgb(255, 0, 0)),
         ];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
         //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        common::compare_df(&expected, &arch_view.as_df2::<Position2D, Color>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        let _used = arch_view;
+        assert_eq!(
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+            &expected
+        );
     }
 }

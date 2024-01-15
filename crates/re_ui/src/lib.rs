@@ -8,6 +8,7 @@ pub mod icons;
 mod layout_job_builder;
 pub mod list_item;
 pub mod modal;
+mod syntax_highlighting;
 pub mod toasts;
 mod toggle_switch;
 
@@ -16,6 +17,7 @@ pub use command_palette::CommandPalette;
 pub use design_tokens::DesignTokens;
 pub use icons::Icon;
 pub use layout_job_builder::LayoutJobBuilder;
+pub use syntax_highlighting::SyntaxHighlighting;
 pub use toggle_switch::toggle_switch;
 
 // ---------------------------------------------------------------------------

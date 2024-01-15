@@ -52,8 +52,7 @@ impl VisualizerSystem for TextDocumentSystem {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            // TODO(jleibs): this match can go away once we resolve:
-            // https://github.com/rerun-io/rerun/issues/3320
+            // TODO(#3320): this match can go away once the issue is resolved
             match query_archetype::<archetypes::TextDocument>(
                 store,
                 &timeline_query,

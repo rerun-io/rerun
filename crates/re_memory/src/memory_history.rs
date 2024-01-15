@@ -25,6 +25,9 @@ pub struct MemoryHistory {
     /// Bytes used by the datastore according to its own accounting.
     pub counted_store: History<i64>,
 
+    /// Bytes used by the primary caches according to their own accounting.
+    pub counted_primary_caches: History<i64>,
+
     /// Bytes used by the blueprint store according to its own accounting.
     pub counted_blueprint: History<i64>,
 }
@@ -38,6 +41,7 @@ impl Default for MemoryHistory {
             counted: History::new(0..max_elems, max_seconds),
             counted_gpu: History::new(0..max_elems, max_seconds),
             counted_store: History::new(0..max_elems, max_seconds),
+            counted_primary_caches: History::new(0..max_elems, max_seconds),
             counted_blueprint: History::new(0..max_elems, max_seconds),
         }
     }
@@ -50,39 +54,54 @@ impl MemoryHistory {
             counted,
             counted_gpu,
             counted_store,
+            counted_primary_caches,
             counted_blueprint,
         } = self;
         resident.is_empty()
             && counted.is_empty()
             && counted_gpu.is_empty()
             && counted_store.is_empty()
+            && counted_primary_caches.is_empty()
             && counted_blueprint.is_empty()
     }
 
     /// Add data to history
     pub fn capture(
         &mut self,
-        counted_gpu: Option<i64>,
-        counted_store: Option<i64>,
-        counted_blueprint: Option<i64>,
+        updated_counted_gpu: Option<i64>,
+        updated_counted_store: Option<i64>,
+        updated_counted_primary_caches: Option<i64>,
+        updated_counted_blueprint: Option<i64>,
     ) {
         let mem_use = crate::MemoryUse::capture();
         let now = crate::util::sec_since_start();
 
-        if let Some(resident) = mem_use.resident {
-            self.resident.add(now, resident);
+        let Self {
+            resident,
+            counted,
+            counted_gpu,
+            counted_store,
+            counted_primary_caches,
+            counted_blueprint,
+        } = self;
+
+        if let Some(updated_resident) = mem_use.resident {
+            resident.add(now, updated_resident);
         }
-        if let Some(counted) = mem_use.counted {
-            self.counted.add(now, counted);
+        if let Some(updated_counted) = mem_use.counted {
+            counted.add(now, updated_counted);
         }
-        if let Some(counted_gpu) = counted_gpu {
-            self.counted_gpu.add(now, counted_gpu);
+        if let Some(updated_counted_gpu) = updated_counted_gpu {
+            counted_gpu.add(now, updated_counted_gpu);
         }
-        if let Some(counted_store) = counted_store {
-            self.counted_store.add(now, counted_store);
+        if let Some(updated_counted_store) = updated_counted_store {
+            counted_store.add(now, updated_counted_store);
         }
-        if let Some(counted_blueprint) = counted_blueprint {
-            self.counted_blueprint.add(now, counted_blueprint);
+        if let Some(updated_counted_primary_caches) = updated_counted_primary_caches {
+            counted_primary_caches.add(now, updated_counted_primary_caches);
+        }
+        if let Some(updated_counted_blueprint) = updated_counted_blueprint {
+            counted_blueprint.add(now, updated_counted_blueprint);
         }
     }
 }

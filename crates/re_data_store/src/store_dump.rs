@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use arrow2::Either;
 use re_log_types::{
-    DataCellColumn, DataTable, ErasedTimeVec, RowIdVec, TableId, TimeRange, Timeline,
+    DataCellColumn, DataRow, DataTable, ErasedTimeVec, RowIdVec, TableId, TimeRange, Timeline,
 };
 
 use crate::{
@@ -13,13 +13,14 @@ use crate::{
 // ---
 
 impl DataStore {
-    /// Serializes the entire datastore into one big sorted [`DataTable`].
+    /// Serializes the entire datastore into one big sorted list of [`DataRow`].
     ///
     /// Individual [`re_log_types::DataRow`]s that were split apart due to bucketing are merged back together.
     ///
     /// Beware: this is extremely costly, don't use this in hot paths.
-    pub fn to_data_table(&self) -> re_log_types::DataReadResult<DataTable> {
-        use re_log_types::{DataRow, RowId};
+    pub fn to_rows(&self) -> re_log_types::DataReadResult<Vec<DataRow>> {
+        use re_log_types::RowId;
+        re_tracing::profile_function!();
 
         let mut rows = ahash::HashMap::<RowId, DataRow>::default();
         for table in self.to_data_tables(None) {
@@ -39,7 +40,23 @@ impl DataStore {
         }
 
         let mut rows = rows.into_values().collect::<Vec<_>>();
-        rows.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
+        {
+            re_tracing::profile_scope!("sort_rows");
+            rows.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
+        }
+
+        Ok(rows)
+    }
+
+    /// Serializes the entire datastore into one big sorted [`DataTable`].
+    ///
+    /// Individual [`re_log_types::DataRow`]s that were split apart due to bucketing are merged back together.
+    ///
+    /// Beware: this is extremely costly, don't use this in hot paths.
+    pub fn to_data_table(&self) -> re_log_types::DataReadResult<DataTable> {
+        re_tracing::profile_function!();
+
+        let rows = self.to_rows()?;
 
         Ok(re_log_types::DataTable::from_rows(
             re_log_types::TableId::new(),

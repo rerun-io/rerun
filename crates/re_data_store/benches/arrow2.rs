@@ -5,7 +5,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use std::sync::Arc;
 
-use arrow2::array::{Array, PrimitiveArray, StructArray, UnionArray};
+use arrow2::array::{Array, FixedSizeListArray, PrimitiveArray, StructArray};
 use criterion::Criterion;
 use itertools::Itertools;
 
@@ -277,8 +277,8 @@ fn estimated_size_bytes(c: &mut Criterion) {
                 ArrayKind::Primitive => {
                     bench_downcast_first::<PrimitiveArray<u64>>(&mut group, kind);
                 }
-                ArrayKind::Struct => bench_downcast_first::<StructArray>(&mut group, kind),
-                ArrayKind::StructLarge => bench_downcast_first::<UnionArray>(&mut group, kind),
+                ArrayKind::Struct => bench_downcast_first::<FixedSizeListArray>(&mut group, kind),
+                ArrayKind::StructLarge => bench_downcast_first::<StructArray>(&mut group, kind),
             }
 
             fn bench_downcast_first<T: arrow2::array::Array + Clone>(

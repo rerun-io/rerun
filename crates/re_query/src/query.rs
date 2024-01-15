@@ -1,5 +1,5 @@
 use re_data_store::{DataStore, LatestAtQuery};
-use re_log_types::{EntityPath, RowId};
+use re_log_types::{EntityPath, RowId, TimeInt};
 use re_types_core::{components::InstanceKey, Archetype, ComponentName, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
@@ -53,14 +53,16 @@ pub fn get_component_with_instances(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
     component: ComponentName,
-) -> Option<(RowId, ComponentWithInstances)> {
+) -> Option<(Option<TimeInt>, RowId, ComponentWithInstances)> {
     debug_assert_eq!(store.cluster_key(), InstanceKey::name());
 
     let components = [InstanceKey::name(), component];
 
-    let (row_id, mut cells) = store.latest_at(query, ent_path, component, &components)?;
+    let (data_time, row_id, mut cells) =
+        store.latest_at(query, ent_path, component, &components)?;
 
     Some((
+        data_time,
         row_id,
         ComponentWithInstances {
             // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
@@ -71,7 +73,8 @@ pub fn get_component_with_instances(
     ))
 }
 
-/// Retrieve an [`ArchetypeView`] from the `DataStore`
+/// Retrieve an [`ArchetypeView`] from the `DataStore`, as well as the associated _data_ time of
+/// its _most recent component_.
 ///
 /// If you expect only one instance (e.g. for mono-components like `Transform` `Tensor`]
 /// and have no additional components you can use [`DataStore::query_latest_component`] instead.
@@ -138,9 +141,13 @@ pub fn query_archetype<A: Archetype>(
         }
     }
 
-    let (row_ids, required_components): (Vec<_>, Vec<_>) =
-        required_components.into_iter().flatten().unzip();
+    use itertools::Itertools as _;
+    let (data_times, row_ids, required_components): (Vec<_>, Vec<_>, Vec<_>) =
+        required_components.into_iter().flatten().multiunzip();
 
+    // NOTE: Since this is a compound API that actually emits multiple queries, the data time of the
+    // final result is the most recent data time among all of its components.
+    let mut max_data_time = data_times.iter().max().copied().unwrap_or(None);
     let row_id = row_ids.first().unwrap_or(&RowId::ZERO);
 
     let recommended_components = A::recommended_components();
@@ -150,14 +157,22 @@ pub fn query_archetype<A: Archetype>(
         .iter()
         .chain(optional_components.iter())
         .filter_map(|component| {
-            get_component_with_instances(store, query, ent_path, *component)
-                .map(|(_, component_result)| component_result)
+            get_component_with_instances(store, query, ent_path, *component).map(
+                |(data_time, _, component_result)| {
+                    max_data_time = Option::max(max_data_time, data_time);
+                    component_result
+                },
+            )
         });
 
-    Ok(ArchetypeView::from_components(
-        *row_id,
-        required_components.into_iter().chain(other_components),
-    ))
+    // NOTE: Need to collect so we can compute `max_data_time`.
+    let cwis: Vec<_> = required_components
+        .into_iter()
+        .chain(other_components)
+        .collect();
+    let arch_view = ArchetypeView::from_components(max_data_time, *row_id, cwis);
+
+    Ok(arch_view)
 }
 
 /// Helper used to create an example store we can use for querying in doctests
@@ -209,33 +224,33 @@ pub fn __populate_example_store() -> DataStore {
 #[cfg(test)]
 #[cfg(feature = "testing")]
 fn simple_get_component() {
+    use smallvec::smallvec;
+
     use re_data_store::LatestAtQuery;
-    use re_log_types::example_components::MyPoint;
-    use re_log_types::Timeline;
+    use re_log_types::{example_components::MyPoint, DataCellRow};
+    use re_log_types::{DataCell, Timeline};
 
     let store = __populate_example_store();
 
     let ent_path = "point";
     let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
 
-    let (_, component) =
+    let (_, _, component) =
         get_component_with_instances(&store, &query, &ent_path.into(), MyPoint::name()).unwrap();
 
-    #[cfg(feature = "polars")]
     {
-        let df = component.as_df::<MyPoint>().unwrap();
-        eprintln!("{df:?}");
+        let row = component.into_data_cell_row();
+        eprintln!("{row:?}");
 
         let instances = vec![Some(InstanceKey(42)), Some(InstanceKey(96))];
         let positions = vec![Some(MyPoint::new(1.0, 2.0)), Some(MyPoint::new(3.0, 4.0))];
 
-        let expected = crate::dataframe_util::df_builder2(&instances, &positions).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+        ]);
 
-        assert_eq!(expected, df);
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        let _used = component;
+        assert_eq!(row, expected);
     }
 }
 
@@ -271,9 +286,5 @@ fn simple_query_archetype() {
     assert_eq!(expected_positions, view_positions.as_slice());
     assert_eq!(expected_colors, view_colors.as_slice());
 
-    #[cfg(feature = "polars")]
-    {
-        let df = arch_view.as_df2::<MyPoint, MyColor>().unwrap();
-        eprintln!("{df:?}");
-    }
+    eprintln!("{arch_view:?}");
 }

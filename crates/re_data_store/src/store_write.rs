@@ -384,10 +384,7 @@ impl IndexedTable {
             if 0 < config.indexed_bucket_num_rows {
                 let bucket_time_range = bucket.inner.read().time_range;
 
-                re_log::debug_once!(
-                    "Failed to split bucket on timeline {}",
-                    bucket.timeline.format_time_range_utc(&bucket_time_range)
-                );
+                re_log::debug_once!("Failed to split bucket on timeline {}", timeline.name());
 
                 if 1 < config.indexed_bucket_num_rows
                     && bucket_time_range.min == bucket_time_range.max

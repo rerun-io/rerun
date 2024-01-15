@@ -101,8 +101,7 @@ impl Timeline {
         time_zone_for_timestamps: TimeZone,
     ) -> String {
         format!(
-            "    - {}: from {} to {} (all inclusive)",
-            self.name,
+            "{}..={}",
             self.typ.format(time_range.min, time_zone_for_timestamps),
             self.typ.format(time_range.max, time_zone_for_timestamps),
         )

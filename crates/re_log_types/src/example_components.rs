@@ -1,16 +1,21 @@
 //! Example components to be used for tests and docs
 
-use re_types_core::{Loggable, SizeBytes};
+use re_types_core::{components::InstanceKey, Loggable, SizeBytes};
 
 // ----------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct MyPoints;
+
+impl MyPoints {
+    pub const NUM_COMPONENTS: usize = 5;
+}
 
 impl re_types_core::Archetype for MyPoints {
     type Indicator = re_types_core::GenericIndicatorComponent<Self>;
 
     fn name() -> re_types_core::ArchetypeName {
-        "test.MyPoints".into()
+        "example.MyPoints".into()
     }
 
     fn required_components() -> ::std::borrow::Cow<'static, [re_types_core::ComponentName]> {
@@ -18,7 +23,13 @@ impl re_types_core::Archetype for MyPoints {
     }
 
     fn recommended_components() -> std::borrow::Cow<'static, [re_types_core::ComponentName]> {
-        vec![MyColor::name(), MyLabel::name()].into()
+        vec![
+            re_types_core::LoggableBatch::name(&Self::Indicator::default()),
+            InstanceKey::name(),
+            MyColor::name(),
+            MyLabel::name(),
+        ]
+        .into()
     }
 }
 
@@ -31,6 +42,7 @@ pub struct MyPoint {
 }
 
 impl MyPoint {
+    #[inline]
     pub fn new(x: f32, y: f32) -> Self {
         Self { x, y }
     }
@@ -120,7 +132,15 @@ impl Loggable for MyPoint {
 #[repr(transparent)]
 pub struct MyColor(pub u32);
 
+impl MyColor {
+    #[inline]
+    pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
+        Self(u32::from_le_bytes([r, g, b, 255]))
+    }
+}
+
 impl From<u32> for MyColor {
+    #[inline]
     fn from(value: u32) -> Self {
         Self(value)
     }

@@ -2,9 +2,9 @@
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
-use egui::Ui;
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
+use re_ui::SyntaxHighlighting;
 use re_viewer_context::{
     DataQueryId, HoverHighlight, Item, Selection, SpaceViewId, UiVerbosity, ViewerContext,
 };
@@ -49,7 +49,7 @@ pub fn entity_path_button(
         ui,
         space_view_id,
         &InstancePath::entity_splat(entity_path.clone()),
-        entity_path.to_string(),
+        entity_path.syntax_highlighted(ui.style()),
     )
 }
 
@@ -82,7 +82,7 @@ pub fn instance_path_button(
         ui,
         space_view_id,
         instance_path,
-        instance_path.to_string(),
+        instance_path.syntax_highlighted(ui.style()),
     )
 }
 
@@ -352,14 +352,18 @@ pub fn select_hovered_on_click(
 /// Displays the "hover card" (i.e. big tooltip) for an instance or an entity.
 ///
 /// The entity hover card is displayed the provided instance path is a splat.
-pub fn instance_hover_card_ui(ui: &mut Ui, ctx: &ViewerContext<'_>, instance_path: &InstancePath) {
+pub fn instance_hover_card_ui(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    instance_path: &InstancePath,
+) {
     let subtype_string = if instance_path.instance_key.is_splat() {
         "Entity"
     } else {
         "Entity Instance"
     };
     ui.strong(subtype_string);
-    ui.label(format!("Path: {instance_path}"));
+    ui.label(instance_path.syntax_highlighted(ui.style()));
 
     // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
     // Then we can move the size view into `data_ui`.

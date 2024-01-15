@@ -39,6 +39,7 @@ arrow2.workspace = true
 backtrace.workspace = true
 document-features.workspace = true
 itertools = { workspace = true }
+smallvec.workspace = true
 thiserror.workspace = true
 
 # Optional dependencies:
