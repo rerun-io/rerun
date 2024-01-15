@@ -426,21 +426,13 @@ impl Viewport<'_, '_> {
 
                 let add_space_view_item =
                     |ui: &mut egui::Ui, space_view: SpaceViewBlueprint, empty: bool| {
+                        let display_name = space_view
+                            .class(ctx.space_view_class_registry)
+                            .display_name();
                         let label = if empty {
-                            format!(
-                                "Empty {} view",
-                                space_view
-                                    .class(ctx.space_view_class_registry)
-                                    .display_name()
-                            )
+                            format!("Empty {display_name} view",)
                         } else {
-                            format!(
-                                "{} view of {}",
-                                space_view
-                                    .class(ctx.space_view_class_registry)
-                                    .display_name(),
-                                space_view.space_origin
-                            )
+                            format!("{display_name} view of {}", space_view.space_origin)
                         };
 
                         if ctx

@@ -78,7 +78,6 @@ impl SpaceViewBlueprint {
     pub fn missing_name_placeholder(&self) -> String {
         let entity_path = self
             .space_origin
-            .as_slice()
             .iter()
             .rev()
             .fold_while(String::new(), |acc, path| {
