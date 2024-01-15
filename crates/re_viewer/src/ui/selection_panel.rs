@@ -355,7 +355,11 @@ fn what_is_selected_ui(
 
                 let (label, named) = space_view.display_name_or_default();
                 ListItem::new(ctx.re_ui, label)
-                    .unnamed_style(!named)
+                    .label_style(if named {
+                        re_ui::LabelStyle::Normal
+                    } else {
+                        re_ui::LabelStyle::Unnamed
+                    })
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_height(ReUi::title_bar_height())
                     .selected(true)
@@ -661,7 +665,11 @@ fn show_list_item_for_container_child(
             (
                 Item::SpaceView(*space_view_id),
                 ListItem::new(ctx.re_ui, label)
-                    .unnamed_style(!named)
+                    .label_style(if named {
+                        re_ui::LabelStyle::Normal
+                    } else {
+                        re_ui::LabelStyle::Unnamed
+                    })
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon()),
             )
         }

@@ -47,8 +47,10 @@ pub struct TopBarStyle {
 /// The style of a label.
 ///
 /// This should be used for all UI widgets that support these styles.
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub enum LabelStyle {
     /// Regular style for a label.
+    #[default]
     Normal,
 
     /// Label displaying the placeholder text for a yet unnamed item (e.g. an unnamed space view).

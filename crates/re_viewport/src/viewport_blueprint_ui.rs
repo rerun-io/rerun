@@ -179,7 +179,11 @@ impl Viewport<'_, '_> {
         let (label, named) = space_view.display_name_or_default();
 
         let response = ListItem::new(ctx.re_ui, label)
-            .unnamed_style(!named)
+            .label_style(if named {
+                re_ui::LabelStyle::Normal
+            } else {
+                re_ui::LabelStyle::Unnamed
+            })
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .selected(ctx.selection().contains_item(&item))
             .subdued(!space_view_visible)

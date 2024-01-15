@@ -1,4 +1,4 @@
-use crate::{Icon, ReUi};
+use crate::{Icon, LabelStyle, ReUi};
 use egui::epaint::text::TextWrapping;
 use egui::{Align, Align2, Response, Shape, Ui};
 use std::default::Default;
@@ -116,7 +116,7 @@ pub struct ListItem<'a> {
     subdued: bool,
     weak: bool,
     italics: bool,
-    unnamed_style: bool,
+    label_style: crate::LabelStyle,
     force_hovered: bool,
     collapse_openness: Option<f32>,
     height: f32,
@@ -137,7 +137,7 @@ impl<'a> ListItem<'a> {
             subdued: false,
             weak: false,
             italics: false,
-            unnamed_style: false,
+            label_style: crate::LabelStyle::default(),
             force_hovered: false,
             collapse_openness: None,
             height: ReUi::list_item_height(),
@@ -197,8 +197,8 @@ impl<'a> ListItem<'a> {
     /// The styling is applied on top of to [`Self::weak`] and [`Self::subdued`]. It also implies [`Self::italics`].
     // TODO(ab): should use design token instead
     #[inline]
-    pub fn unnamed_style(mut self, dim: bool) -> Self {
-        self.unnamed_style = dim;
+    pub fn label_style(mut self, style: crate::LabelStyle) -> Self {
+        self.label_style = style;
         self
     }
 
@@ -320,7 +320,14 @@ impl<'a> ListItem<'a> {
             0.0
         };
 
-        if self.italics || self.unnamed_style {
+        match self.label_style {
+            LabelStyle::Normal => {}
+            LabelStyle::Unnamed => {
+                self.italics = true;
+            }
+        }
+
+        if self.italics {
             self.text = self.text.italics();
         }
 
@@ -447,8 +454,11 @@ impl<'a> ListItem<'a> {
                 text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
             }
 
-            if self.unnamed_style {
-                self.text = self.text.color(visuals.fg_stroke.color.gamma_multiply(0.5));
+            match self.label_style {
+                LabelStyle::Normal => {}
+                LabelStyle::Unnamed => {
+                    self.text = self.text.color(visuals.fg_stroke.color.gamma_multiply(0.5))
+                }
             }
 
             let mut layout_job =
