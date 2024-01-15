@@ -1,6 +1,7 @@
 use re_data_store::{DataStoreConfig, DataStoreRowStats, DataStoreStats};
 use re_format::{format_bytes, format_number};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
+use re_query_cache::{CachedComponentStats, CachedEntityStats, CachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 
 use crate::{env_vars::RERUN_TRACK_ALLOCATIONS, store_hub::StoreHubStats};
@@ -19,6 +20,7 @@ impl MemoryPanel {
         &mut self,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &StoreHubStats,
+        caches_stats: &CachesStats,
     ) {
         re_tracing::profile_function!();
         self.history.capture(
@@ -27,6 +29,7 @@ impl MemoryPanel {
                     + gpu_resource_stats.total_texture_size_in_bytes) as _,
             ),
             Some(store_stats.recording_stats.total.num_bytes as _),
+            Some(caches_stats.total_size_bytes() as _),
             Some(store_stats.blueprint_stats.total.num_bytes as _),
         );
     }
@@ -44,6 +47,7 @@ impl MemoryPanel {
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &StoreHubStats,
+        caches_stats: &CachesStats,
     ) {
         re_tracing::profile_function!();
 
@@ -55,7 +59,14 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                Self::left_side(ui, re_ui, limit, gpu_resource_stats, store_stats);
+                Self::left_side(
+                    ui,
+                    re_ui,
+                    limit,
+                    gpu_resource_stats,
+                    store_stats,
+                    caches_stats,
+                );
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -70,6 +81,7 @@ impl MemoryPanel {
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &StoreHubStats,
+        caches_stats: &CachesStats,
     ) {
         ui.strong("Rerun Viewer resource usage");
 
@@ -90,6 +102,11 @@ impl MemoryPanel {
                 &store_stats.recording_config,
                 &store_stats.recording_stats,
             );
+        });
+
+        ui.separator();
+        ui.collapsing("Primary Cache Resources", |ui| {
+            Self::caches_stats(ui, re_ui, caches_stats);
         });
 
         ui.separator();
@@ -292,6 +309,77 @@ impl MemoryPanel {
             });
     }
 
+    fn caches_stats(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, caches_stats: &CachesStats) {
+        let mut detailed_stats = re_query_cache::detailed_stats();
+        re_ui
+            .checkbox(ui, &mut detailed_stats, "Detailed stats")
+            .on_hover_text("Show detailed statistics when hovering entity paths below.\nThis will slow down the program.");
+        re_query_cache::set_detailed_stats(detailed_stats);
+
+        let CachesStats { latest_at } = caches_stats;
+
+        // NOTE: This is a debug tool: do _not_ hide empty things. Empty things are a bug.
+
+        ui.separator();
+
+        ui.strong("LatestAt");
+        egui::Grid::new("latest_at cache stats grid")
+            .num_columns(3)
+            .show(ui, |ui| {
+                ui.label(egui::RichText::new("Entity").underline());
+                ui.label(egui::RichText::new("Rows").underline())
+                    .on_hover_text("How many distinct data timestamps have been cached?");
+                ui.label(egui::RichText::new("Size").underline());
+                ui.end_row();
+
+                for (entity_path, stats) in latest_at {
+                    let res = ui.label(entity_path.to_string());
+                    entity_stats_ui(ui, res, stats);
+                    ui.end_row();
+                }
+            });
+
+        fn entity_stats_ui(
+            ui: &mut egui::Ui,
+            hover_response: egui::Response,
+            entity_stats: &CachedEntityStats,
+        ) {
+            let CachedEntityStats {
+                total_size_bytes,
+                total_rows,
+                per_component,
+            } = entity_stats;
+
+            if let Some(per_component) = per_component.as_ref() {
+                hover_response.on_hover_ui_at_pointer(|ui| {
+                    egui::Grid::new("component cache stats grid")
+                        .num_columns(3)
+                        .show(ui, |ui| {
+                            ui.label(egui::RichText::new("Component").underline());
+                            ui.label(egui::RichText::new("Rows").underline());
+                            ui.label(egui::RichText::new("Instances").underline());
+                            ui.end_row();
+
+                            for (component_name, stats) in per_component {
+                                let &CachedComponentStats {
+                                    total_rows,
+                                    total_instances,
+                                } = stats;
+
+                                ui.label(component_name.to_string());
+                                ui.label(re_format::format_number(total_rows as _));
+                                ui.label(re_format::format_number(total_instances as _));
+                                ui.end_row();
+                            }
+                        });
+                });
+            }
+
+            ui.label(re_format::format_number(*total_rows as _));
+            ui.label(re_format::format_bytes(*total_size_bytes as _));
+        }
+    }
+
     fn tracking_stats(
         ui: &mut egui::Ui,
         tracking_stats: re_memory::accounting_allocator::TrackingStatistics,
@@ -411,6 +499,7 @@ impl MemoryPanel {
                     counted,
                     counted_gpu,
                     counted_store,
+                    counted_primary_caches,
                     counted_blueprint,
                 } = &self.history;
 
@@ -418,6 +507,11 @@ impl MemoryPanel {
                 plot_ui.line(to_line(counted).name("Counted").width(1.5));
                 plot_ui.line(to_line(counted_gpu).name("Counted GPU").width(1.5));
                 plot_ui.line(to_line(counted_store).name("Counted Store").width(1.5));
+                plot_ui.line(
+                    to_line(counted_primary_caches)
+                        .name("Counted Primary Caches")
+                        .width(1.5),
+                );
                 plot_ui.line(
                     to_line(counted_blueprint)
                         .name("Counted Blueprint")

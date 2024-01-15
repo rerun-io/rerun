@@ -5312,6 +5312,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
+ "re_query_cache",
  "re_renderer",
  "re_smart_channel",
  "re_space_view",
