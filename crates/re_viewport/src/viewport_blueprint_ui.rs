@@ -176,14 +176,10 @@ impl Viewport<'_, '_> {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let (label, named) = space_view.display_name_or_default();
+        let space_view_name = space_view.display_name_or_default();
 
-        let response = ListItem::new(ctx.re_ui, label)
-            .label_style(if named {
-                re_ui::LabelStyle::Normal
-            } else {
-                re_ui::LabelStyle::Unnamed
-            })
+        let response = ListItem::new(ctx.re_ui, space_view_name.as_ref())
+            .label_style(space_view_name.style())
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .selected(ctx.selection().contains_item(&item))
             .subdued(!space_view_visible)

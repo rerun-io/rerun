@@ -250,20 +250,16 @@ fn space_view_button(
 ) -> egui::Response {
     let item = Item::SpaceView(space_view.id);
     let is_selected = ctx.selection().contains_item(&item);
-    let (label, named) = space_view.display_name_or_default();
+    let space_view_name = space_view.display_name_or_default();
 
     let response = ctx
         .re_ui
         .selectable_label_with_icon(
             ui,
             space_view.class(ctx.space_view_class_registry).icon(),
-            label,
+            space_view_name.as_ref(),
             is_selected,
-            if named {
-                re_ui::LabelStyle::Normal
-            } else {
-                re_ui::LabelStyle::Unnamed
-            },
+            space_view_name.style(),
         )
         .on_hover_text("Space View");
     item_ui::cursor_interact_with_selectable(ctx, response, item)
@@ -353,13 +349,9 @@ fn what_is_selected_ui(
                     )
                 };
 
-                let (label, named) = space_view.display_name_or_default();
-                ListItem::new(ctx.re_ui, label)
-                    .label_style(if named {
-                        re_ui::LabelStyle::Normal
-                    } else {
-                        re_ui::LabelStyle::Unnamed
-                    })
+                let space_view_name = space_view.display_name_or_default();
+                ListItem::new(ctx.re_ui, space_view_name.as_ref())
+                    .label_style(space_view_name.style())
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_height(ReUi::title_bar_height())
                     .selected(true)
@@ -661,15 +653,11 @@ fn show_list_item_for_container_child(
                 return false;
             };
 
-            let (label, named) = space_view.display_name_or_default();
+            let space_view_name = space_view.display_name_or_default();
             (
                 Item::SpaceView(*space_view_id),
-                ListItem::new(ctx.re_ui, label)
-                    .label_style(if named {
-                        re_ui::LabelStyle::Normal
-                    } else {
-                        re_ui::LabelStyle::Unnamed
-                    })
+                ListItem::new(ctx.re_ui, space_view_name.as_ref())
+                    .label_style(space_view_name.style())
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon()),
             )
         }

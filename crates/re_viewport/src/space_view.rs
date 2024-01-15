@@ -21,6 +21,39 @@ use crate::system_execution::create_and_run_space_view_systems;
 
 // ----------------------------------------------------------------------------
 
+/// The name of a space view.
+///
+/// Space views are unnamed by default, but have a placeholder name to be used in the UI.
+#[derive(Clone, Debug)]
+pub enum SpaceViewName {
+    /// This space view has been given a name by the user.
+    Named(String),
+
+    /// This space view is unnamed and should be displayed with this placeholder name.
+    Placeholder(String),
+}
+
+impl SpaceViewName {
+    /// The style to use for displaying this space view name in the UI.
+    pub fn style(&self) -> re_ui::LabelStyle {
+        match self {
+            SpaceViewName::Named(_) => re_ui::LabelStyle::Normal,
+            SpaceViewName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
+        }
+    }
+}
+
+impl AsRef<str> for SpaceViewName {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        match self {
+            SpaceViewName::Named(name) | SpaceViewName::Placeholder(name) => name,
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// A view of a space.
 ///
 /// Note: [`SpaceViewBlueprint`] doesn't implement Clone because it stores an internal
@@ -101,15 +134,14 @@ impl SpaceViewBlueprint {
         }
     }
 
-    /// Returns this space view's display name, along with a flag indicating whether it has actually been set by the
-    /// user or not.
+    /// Returns this space view's display name
     ///
-    /// When the flag is `false`, the UI should display the resulting name in italics and with a gamma of 0.5 over the
-    /// text color.
-    pub fn display_name_or_default(&self) -> (String, bool) {
+    /// When returning [`SpaceViewName::Placeholder`], the UI should display the resulting name using
+    /// [`re_ui::LabelStyle::Unnamed`].
+    pub fn display_name_or_default(&self) -> SpaceViewName {
         self.display_name.clone().map_or_else(
-            || (self.missing_name_placeholder(), false),
-            |name| (name, true),
+            || SpaceViewName::Placeholder(self.missing_name_placeholder()),
+            SpaceViewName::Named,
         )
     }
 
@@ -347,7 +379,7 @@ impl SpaceViewBlueprint {
         }
         let safe_display_name = self
             .display_name_or_default()
-            .0
+            .as_ref()
             .replace(|c: char| !is_safe_filename_char(c), "");
         let mut i = 1;
         let filename = loop {

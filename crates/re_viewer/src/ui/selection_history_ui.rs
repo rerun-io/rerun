@@ -186,7 +186,7 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
         Item::SpaceView(sid) => {
             // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
             if let Some(space_view) = blueprint.space_view(sid) {
-                space_view.display_name_or_default().0
+                space_view.display_name_or_default().as_ref().to_owned()
             } else {
                 "<removed Space View>".to_owned()
             }
