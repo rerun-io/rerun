@@ -1,13 +1,13 @@
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
-use re_data_store::{StoreDiff, StoreSubscriber};
+use re_data_store::StoreSubscriber;
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{
     components::{DisconnectedSpace, PinholeProjection},
     Loggable,
 };
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SubSpaceDimensionality {
     /// We don't know if this space is in a 2D or 3D space.
     ///
@@ -29,10 +29,12 @@ pub enum SubSpaceDimensionality {
     ThreeD,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum SubSpaceConnection {
-    Disconnected,
-    Pinhole,
+bitflags::bitflags! {
+    #[derive(PartialEq, Eq, Debug, Copy, Clone)]
+    pub struct SubSpaceConnectionFlags: u8 {
+        const Disconnected = 0b0000001;
+        const Pinhole = 0b0000010;
+    }
 }
 
 /// Within a subspace all
@@ -52,10 +54,14 @@ pub struct SubSpace {
     /// This implies that there is a either an explicit disconnect or
     /// a projection at the origin of the child space.
     /// How it is connected is implied by `parent_space` in the child space.
+    ///
+    /// Any path in `child_spaces` is *not* contained in `entities`.
+    /// This implies that the camera itself is not part of its 3D space even when it may still have a 3D transform.
+    /// TODO: are we sure about this? why not have it be part of entities _and_ the child space?
     pub child_spaces: IntSet<EntityPath>,
 
     /// Origin of the parent space if any and how it's connected.
-    pub parent_space: Option<(EntityPathHash, SubSpaceConnection)>,
+    pub parent_space: Option<(EntityPathHash, SubSpaceConnectionFlags)>,
     //
     // TODO(andreas): We could (and should) add here additional transform hierarchy information within this space.
 }
@@ -70,17 +76,18 @@ impl SubSpace {
     fn split(
         &mut self,
         new_space_origin: &EntityPath,
-        connection: SubSpaceConnection,
+        connections: SubSpaceConnectionFlags,
         subspace_origin_per_entity: &mut IntMap<EntityPathHash, EntityPathHash>,
     ) -> SubSpace {
         debug_assert!(new_space_origin.is_descendant_of(&self.origin));
 
-        self.update_dimensionality(new_space_origin, connection);
+        self.update_dimensionality(new_space_origin, connections);
 
         // Determine the space type of the new space and update the current space's space type if necessary.
-        let new_space_type = match connection {
-            SubSpaceConnection::Pinhole => SubSpaceDimensionality::TwoD,
-            SubSpaceConnection::Disconnected => SubSpaceDimensionality::Unknown,
+        let new_space_type = if connections.contains(SubSpaceConnectionFlags::Pinhole) {
+            SubSpaceDimensionality::TwoD
+        } else {
+            SubSpaceDimensionality::Unknown
         };
 
         let mut new_space = SubSpace {
@@ -88,7 +95,7 @@ impl SubSpace {
             space_type: new_space_type,
             entities: std::iter::once(new_space_origin.clone()).collect(),
             child_spaces: Default::default(),
-            parent_space: Some((self.origin.hash(), connection)),
+            parent_space: Some((self.origin.hash(), connections)),
         };
 
         let is_new_child_space = self.child_spaces.insert(new_space_origin.clone());
@@ -96,7 +103,7 @@ impl SubSpace {
 
         // Transfer entities from self to the new space if they're children of the new space.
         self.entities.retain(|e| {
-            if e.is_child_of(new_space_origin) {
+            if e.is_descendant_of(new_space_origin) || e == new_space_origin {
                 subspace_origin_per_entity.insert(e.hash(), new_space.origin.hash());
                 new_space.entities.insert(e.clone());
                 false
@@ -112,30 +119,25 @@ impl SubSpace {
     fn update_dimensionality(
         &mut self,
         child_path: &EntityPath,
-        connection_to_child: SubSpaceConnection,
+        new_connections_to_child: SubSpaceConnectionFlags,
     ) {
-        match connection_to_child {
-            SubSpaceConnection::Pinhole => {
-                match self.space_type {
-                    SubSpaceDimensionality::Unknown => {
-                        self.space_type = SubSpaceDimensionality::ThreeD;
-                    }
-                    SubSpaceDimensionality::TwoD => {
-                        // For the moment the only way to get a 2D space is by defining a pinhole,
-                        // but in the future other projections may also cause a space to be defined as 2D space.
-                        re_log::warn_once!("There was already a pinhole logged at {:?}.
+        if new_connections_to_child.contains(SubSpaceConnectionFlags::Pinhole) {
+            match self.space_type {
+                SubSpaceDimensionality::Unknown => {
+                    self.space_type = SubSpaceDimensionality::ThreeD;
+                }
+                SubSpaceDimensionality::TwoD => {
+                    // For the moment the only way to get a 2D space is by defining a pinhole,
+                    // but in the future other projections may also cause a space to be defined as 2D space.
+                    re_log::warn_once!("There was already a pinhole logged at {:?}.
 The new pinhole at {:?} is nested under it, implying an invalid projection from a 2D space to a 2D space.", self.origin, child_path);
-                        // We keep 2D.
-                    }
-                    SubSpaceDimensionality::ThreeD => {
-                        // Already 3D.
-                    }
+                    // We keep 2D.
+                }
+                SubSpaceDimensionality::ThreeD => {
+                    // Already 3D.
                 }
             }
-            SubSpaceConnection::Disconnected => {
-                // Does not affect dimensionality.
-            }
-        };
+        }
     }
 }
 
@@ -165,10 +167,12 @@ impl StoreSubscriber for SpatialTopologyStoreSubscriber {
                 continue;
             }
 
+            // Possible optimization:
+            // only update topologies if an entity is logged the first time or a new relevant component was added.
             self.topologies
                 .entry(event.store_id.clone())
                 .or_default()
-                .on_store_diff(&event.diff);
+                .on_store_diff(&event.diff.entity_path, event.diff.cells.keys());
         }
     }
 }
@@ -210,41 +214,55 @@ impl Default for SpatialTopology {
 }
 
 impl SpatialTopology {
-    fn on_store_diff(&mut self, diff: &StoreDiff) {
+    /// Returns the subspace an entity belongs to.
+    ///
+    /// Returns `None` for unknown entities, even if they once logged would be a part of a space.
+    pub fn subspace(&self, entity: &EntityPath) -> Option<&SubSpace> {
+        self.subspace_origin_per_entity
+            .get(&entity.hash())
+            .and_then(|origin_hash| self.subspaces.get(origin_hash))
+    }
+
+    fn on_store_diff<'a>(
+        &mut self,
+        entity_path: &EntityPath,
+        added_components: impl Iterator<Item = &'a re_types::ComponentName>,
+    ) {
         re_tracing::profile_function!();
-        // Does this add a new space?
-        let subspace_connection = if diff.cells.keys().any(|c| c == &DisconnectedSpace::name()) {
-            Some(SubSpaceConnection::Pinhole)
-        } else if diff.cells.keys().any(|c| c == &PinholeProjection::name()) {
-            Some(SubSpaceConnection::Disconnected)
-        } else {
-            None
-        };
+
+        let mut new_subspace_connections = SubSpaceConnectionFlags::empty();
+        for added_component in added_components {
+            if added_component == &DisconnectedSpace::name() {
+                new_subspace_connections.insert(SubSpaceConnectionFlags::Disconnected);
+            } else if added_component == &PinholeProjection::name() {
+                new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
+            };
+        }
 
         // Is there already a space with this entity?
         if let Some(subspace_origin) = self
             .subspace_origin_per_entity
-            .get(&diff.entity_path.hash())
+            .get(&entity_path.hash())
             .cloned()
         {
             // In that case, this causes only changes if there's a change in connection.
-            if let Some(new_connection) = subspace_connection {
-                self.update_space_with_new_connection(
-                    &diff.entity_path,
+            if !new_subspace_connections.is_empty() {
+                self.update_space_with_new_connections(
+                    entity_path,
                     subspace_origin,
-                    new_connection,
+                    new_subspace_connections,
                 );
             }
         } else {
-            self.add_new_entity(&diff.entity_path, subspace_connection);
+            self.add_new_entity(entity_path, new_subspace_connections);
         };
     }
 
-    fn update_space_with_new_connection(
+    fn update_space_with_new_connections(
         &mut self,
         entity_path: &EntityPath,
         subspace_origin: EntityPathHash,
-        new_connection: SubSpaceConnection,
+        new_connections: SubSpaceConnectionFlags,
     ) {
         let subspace = self
             .subspaces
@@ -255,15 +273,7 @@ impl SpatialTopology {
             // If this is the origin of a space we can't split it.
             // Instead we have to update connectivity dimensionality.
             if let Some((parent_origin, connection_to_parent)) = subspace.parent_space.as_mut() {
-                // Disconnect is the most pervasive connection, so we always update to that.
-                match new_connection {
-                    SubSpaceConnection::Disconnected => {
-                        *connection_to_parent = SubSpaceConnection::Disconnected;
-                    }
-                    SubSpaceConnection::Pinhole => {
-                        // Keep disconnected spaces disconnected.
-                    }
-                }
+                connection_to_parent.insert(new_connections);
 
                 // Stop borrowing self.subspaces.
                 let parent_origin = *parent_origin;
@@ -271,13 +281,13 @@ impl SpatialTopology {
                 self.subspaces
                     .get_mut(&parent_origin)
                     .expect("Parent origin not part of origin->subspace map.")
-                    .update_dimensionality(entity_path, new_connection);
+                    .update_dimensionality(entity_path, new_connections);
             }
         } else {
             // Split the existing subspace.
             let new_subspace = subspace.split(
                 entity_path,
-                new_connection,
+                new_connections,
                 &mut self.subspace_origin_per_entity,
             );
             self.subspaces
@@ -289,26 +299,29 @@ impl SpatialTopology {
     fn add_new_entity(
         &mut self,
         entity_path: &EntityPath,
-        subspace_connection: Option<SubSpaceConnection>,
+        subspace_connections: SubSpaceConnectionFlags,
     ) {
         let subspace =
             Self::find_subspace_rec_mut(&mut self.subspaces, &EntityPath::root(), entity_path);
 
-        if let Some(connection) = subspace_connection {
-            let new_subspace = subspace.split(
-                entity_path,
-                connection,
-                &mut self.subspace_origin_per_entity,
-            );
-            self.subspaces
-                .insert(new_subspace.origin.hash(), new_subspace);
-        } else {
+        let space_origin_hash;
+        if subspace_connections.is_empty() {
             // Add entity to the existing space.
             subspace.entities.insert(entity_path.clone());
-            let origin_hash = subspace.origin.hash();
-            self.subspace_origin_per_entity
-                .insert(entity_path.hash(), origin_hash);
+            space_origin_hash = subspace.origin.hash();
+        } else {
+            let new_subspace = subspace.split(
+                entity_path,
+                subspace_connections,
+                &mut self.subspace_origin_per_entity,
+            );
+            space_origin_hash = new_subspace.origin.hash();
+            self.subspaces
+                .insert(new_subspace.origin.hash(), new_subspace);
         };
+
+        self.subspace_origin_per_entity
+            .insert(entity_path.hash(), space_origin_hash);
     }
 
     /// Finds subspace an entity path belongs to by recursively walking down the hierarchy.
@@ -319,7 +332,7 @@ impl SpatialTopology {
         subspace_origin: &EntityPath,
         path: &EntityPath,
     ) -> &'a mut SubSpace {
-        debug_assert!(path.is_child_of(subspace_origin));
+        debug_assert!(path.is_descendant_of(subspace_origin) || path == subspace_origin);
 
         let subspace = subspaces
             .get(&subspace_origin.hash())
@@ -337,5 +350,209 @@ impl SpatialTopology {
 
         // Need to query subspace again since otherwise we'd have a mutable borrow on self while trying to do a recursive call.
         return subspaces.get_mut(&subspace_origin.hash()).unwrap(); // Unwrap is safe since we succeeded ist just earlier.
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_log_types::EntityPath;
+    use re_types::{
+        components::{DisconnectedSpace, PinholeProjection},
+        ComponentName, Loggable as _,
+    };
+
+    use crate::spatial_topology::{SubSpaceConnectionFlags, SubSpaceDimensionality};
+
+    use super::SpatialTopology;
+
+    #[test]
+    fn no_splits() {
+        let mut topo = SpatialTopology::default();
+
+        // Initialized with root space.
+        assert_eq!(topo.subspaces.len(), 1);
+        assert_eq!(topo.subspace_origin_per_entity.len(), 0);
+
+        // Add a simple tree without any splits for now.
+        add_diff(&mut topo, "robo", &[]);
+        add_diff(&mut topo, "robo/arm", &[]);
+        add_diff(&mut topo, "robo/eyes/cam", &[]);
+
+        // Check that all entities are in the same space.
+        check_paths_in_space(&topo, &["robo", "robo/arm", "robo/eyes/cam"], "/");
+
+        // .. and that space has no children and no parent.
+        let subspace = topo.subspace(&"robo".into()).unwrap();
+        assert_eq!(subspace.child_spaces.len(), 0);
+        assert!(subspace.parent_space.is_none());
+
+        // If we make up entities that weren't logged we get None.
+        assert!(topo.subspace(&EntityPath::root()).is_none());
+        assert!(topo.subspace(&"robo/eyes".into()).is_none());
+    }
+
+    #[test]
+    fn valid_splits() {
+        let mut topo = SpatialTopology::default();
+
+        // Two cameras, one delayed for later.
+        add_diff(&mut topo, "robo", &[]);
+        add_diff(&mut topo, "robo/arm", &[]);
+        add_diff(
+            &mut topo,
+            "robo/eyes/left/cam",
+            &[PinholeProjection::name()],
+        );
+        add_diff(&mut topo, "robo/eyes/right/cam", &[]);
+        add_diff(&mut topo, "robo/eyes/left/cam/annotation", &[]);
+        add_diff(&mut topo, "robo/eyes/right/cam/annotation", &[]);
+        {
+            check_paths_in_space(
+                &topo,
+                &[
+                    "robo",
+                    "robo/arm",
+                    "robo/eyes/right/cam",
+                    "robo/eyes/right/cam/annotation",
+                ],
+                "/",
+            );
+            check_paths_in_space(
+                &topo,
+                &["robo/eyes/left/cam", "robo/eyes/left/cam/annotation"],
+                "robo/eyes/left/cam",
+            );
+            let root_space = topo.subspace(&"robo".into()).unwrap();
+            let left_camera_space = topo.subspace(&"robo/eyes/left/cam".into()).unwrap();
+            assert_eq!(left_camera_space.origin, "robo/eyes/left/cam".into());
+            assert_eq!(
+                left_camera_space.parent_space,
+                Some((root_space.origin.hash(), SubSpaceConnectionFlags::Pinhole))
+            );
+            assert_eq!(left_camera_space.space_type, SubSpaceDimensionality::TwoD);
+            assert_eq!(root_space.space_type, SubSpaceDimensionality::ThreeD);
+            assert!(root_space.parent_space.is_none());
+        }
+
+        // Introduce a third space at the right camera.
+        add_diff(
+            &mut topo,
+            "robo/eyes/right/cam",
+            &[PinholeProjection::name()],
+        );
+        {
+            check_paths_in_space(&topo, &["robo", "robo/arm"], "/");
+            check_paths_in_space(
+                &topo,
+                &["robo/eyes/right/cam", "robo/eyes/right/cam/annotation"],
+                "robo/eyes/right/cam",
+            );
+            let root_space = topo.subspace(&"robo".into()).unwrap();
+            let right_camera_space = topo.subspace(&"robo/eyes/right/cam".into()).unwrap();
+            assert_eq!(right_camera_space.origin, "robo/eyes/right/cam".into());
+            assert_eq!(
+                right_camera_space.parent_space,
+                Some((root_space.origin.hash(), SubSpaceConnectionFlags::Pinhole))
+            );
+            assert_eq!(right_camera_space.space_type, SubSpaceDimensionality::TwoD);
+        }
+
+        // Disconnect the left camera.
+        add_diff(
+            &mut topo,
+            "robo/eyes/left/cam",
+            &[DisconnectedSpace::name()],
+        );
+        {
+            let root_space = topo.subspace(&"robo".into()).unwrap();
+            let left_camera_space = topo.subspace(&"robo/eyes/left/cam".into()).unwrap();
+            assert_eq!(left_camera_space.origin, "robo/eyes/left/cam".into());
+            assert_eq!(
+                left_camera_space.parent_space,
+                Some((
+                    root_space.origin.hash(),
+                    SubSpaceConnectionFlags::Disconnected | SubSpaceConnectionFlags::Pinhole
+                ))
+            );
+            assert_eq!(left_camera_space.space_type, SubSpaceDimensionality::TwoD);
+            assert_eq!(root_space.space_type, SubSpaceDimensionality::ThreeD);
+            assert!(root_space.parent_space.is_none());
+        }
+    }
+
+    #[test]
+    fn handle_invalid_splits_gracefully() {
+        let mut topo = SpatialTopology::default();
+
+        // Two nested cameras.
+        add_diff(&mut topo, "cam0", &[PinholeProjection::name()]);
+        add_diff(&mut topo, "cam0/cam1", &[PinholeProjection::name()]);
+
+        check_paths_in_space(&topo, &["cam0"], "cam0");
+        check_paths_in_space(&topo, &["cam0/cam1"], "cam0/cam1");
+
+        let cam0 = topo.subspace(&"cam0".into()).unwrap();
+        let cam1 = topo.subspace(&"cam0/cam1".into()).unwrap();
+
+        assert_eq!(cam0.space_type, SubSpaceDimensionality::TwoD);
+        assert_eq!(cam1.space_type, SubSpaceDimensionality::TwoD);
+        assert_eq!(
+            cam0.parent_space,
+            Some((EntityPath::root().hash(), SubSpaceConnectionFlags::Pinhole))
+        );
+        assert_eq!(
+            cam1.parent_space,
+            Some((cam0.origin.hash(), SubSpaceConnectionFlags::Pinhole))
+        );
+    }
+
+    #[test]
+    fn disconnected_pinhole() {
+        let mut topo = SpatialTopology::default();
+
+        add_diff(&mut topo, "stuff", &[]);
+        add_diff(
+            &mut topo,
+            "camera",
+            &[PinholeProjection::name(), DisconnectedSpace::name()],
+        );
+        add_diff(&mut topo, "camera/image", &[]);
+
+        check_paths_in_space(&topo, &["stuff"], "/");
+        check_paths_in_space(&topo, &["camera", "camera/image"], "camera");
+
+        let camera = topo.subspace(&"camera".into()).unwrap();
+        assert_eq!(camera.space_type, SubSpaceDimensionality::TwoD);
+        assert_eq!(
+            camera.parent_space,
+            Some((
+                EntityPath::root().hash(),
+                SubSpaceConnectionFlags::Disconnected | SubSpaceConnectionFlags::Pinhole
+            ))
+        );
+
+        let root_space = topo.subspace(&"stuff".into()).unwrap();
+        assert_eq!(root_space.space_type, SubSpaceDimensionality::ThreeD);
+    }
+
+    fn add_diff(topo: &mut SpatialTopology, path: &str, components: &[ComponentName]) {
+        topo.on_store_diff(&path.into(), components.iter());
+    }
+
+    fn check_paths_in_space(topo: &SpatialTopology, paths: &[&str], expected_origin: &str) {
+        for path in paths {
+            let path = *path;
+            assert_eq!(
+                topo.subspace(&path.into()).unwrap().origin,
+                expected_origin.into()
+            );
+        }
+
+        let space = topo.subspace(&paths[0].into()).unwrap();
+        for path in paths {
+            let path = *path;
+            assert!(space.entities.contains(&path.into()));
+        }
+        assert_eq!(space.entities.len(), paths.len());
     }
 }

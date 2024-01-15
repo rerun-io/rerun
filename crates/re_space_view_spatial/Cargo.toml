@@ -34,6 +34,7 @@ re_space_view.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
+bitflags.workspace = true
 bytemuck.workspace = true
 egui = { workspace = true, features = ["serde"] }
 glam.workspace = true

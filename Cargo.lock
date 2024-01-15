@@ -5020,6 +5020,7 @@ version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
+ "bitflags 2.4.1",
  "bytemuck",
  "criterion",
  "egui",
