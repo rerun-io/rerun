@@ -1128,7 +1128,8 @@ impl eframe::App for App {
         };
 
         let store_stats = store_hub.stats();
-        let caches_stats = re_query_cache::Caches::stats();
+        let caches_stats =
+            re_query_cache::Caches::stats(self.memory_panel.primary_cache_detailed_stats_enabled());
 
         // do early, before doing too many allocations
         self.memory_panel

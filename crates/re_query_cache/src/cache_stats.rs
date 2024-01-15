@@ -1,37 +1,9 @@
-use std::{collections::BTreeMap, sync::atomic::AtomicBool};
+use std::collections::BTreeMap;
 
 use re_log_types::{EntityPath, TimeRange, Timeline};
 use re_types_core::ComponentName;
 
 use crate::{Caches, LatestAtCache, RangeCache};
-
-// ---
-
-/// If `true`, enables the much-more-costly-to-compute per-component stats.
-static ENABLE_DETAILED_STATS: AtomicBool = AtomicBool::new(false);
-
-#[inline]
-pub fn detailed_stats() -> bool {
-    ENABLE_DETAILED_STATS.load(std::sync::atomic::Ordering::Relaxed)
-}
-
-#[inline]
-pub fn set_detailed_stats(b: bool) {
-    ENABLE_DETAILED_STATS.store(b, std::sync::atomic::Ordering::Relaxed);
-}
-
-/// If `true`, will show stats about empty caches too, which likely indicates a bug (dangling bucket).
-static SHOW_EMPTY_CACHES: AtomicBool = AtomicBool::new(false);
-
-#[inline]
-pub fn show_empty_caches() -> bool {
-    SHOW_EMPTY_CACHES.load(std::sync::atomic::Ordering::Relaxed)
-}
-
-#[inline]
-pub fn set_show_empty_caches(b: bool) {
-    SHOW_EMPTY_CACHES.store(b, std::sync::atomic::Ordering::Relaxed);
-}
 
 // ---
 
@@ -72,7 +44,7 @@ pub struct CachedEntityStats {
     pub total_rows: u64,
     pub total_size_bytes: u64,
 
-    /// Only if [`detailed_stats`] returns `true` (see [`set_detailed_stats`]).
+    /// Only if `detailed_stats` is `true` (see [`Caches::stats`]).
     pub per_component: Option<BTreeMap<ComponentName, CachedComponentStats>>,
 }
 
@@ -96,7 +68,7 @@ impl Caches {
     /// Computes the stats for all primary caches.
     ///
     /// `per_component` toggles per-component stats.
-    pub fn stats() -> CachesStats {
+    pub fn stats(detailed_stats: bool) -> CachesStats {
         re_tracing::profile_function!();
 
         Self::with(|caches| {
@@ -108,7 +80,7 @@ impl Caches {
                     (key.entity_path.clone(), {
                         let mut total_size_bytes = 0u64;
                         let mut total_rows = 0u64;
-                        let mut per_component = detailed_stats().then(BTreeMap::default);
+                        let mut per_component = detailed_stats.then(BTreeMap::default);
 
                         for latest_at_cache in
                             caches_per_arch.latest_at_per_archetype.read().values()
@@ -124,6 +96,8 @@ impl Caches {
                             total_rows = per_data_time.len() as u64 + timeless.is_some() as u64;
 
                             if let Some(per_component) = per_component.as_mut() {
+                                re_tracing::profile_scope!("detailed");
+
                                 for bucket in per_data_time.values() {
                                     for (component_name, data) in &bucket.read().components {
                                         let stats: &mut CachedComponentStats =
@@ -172,8 +146,10 @@ impl Caches {
 
                                 let total_rows = bucket.data_times.len() as u64;
 
-                                let mut per_component = detailed_stats().then(BTreeMap::default);
+                                let mut per_component = detailed_stats.then(BTreeMap::default);
                                 if let Some(per_component) = per_component.as_mut() {
+                                    re_tracing::profile_scope!("detailed");
+
                                     for (component_name, data) in &bucket.components {
                                         let stats: &mut CachedComponentStats =
                                             per_component.entry(*component_name).or_default();
