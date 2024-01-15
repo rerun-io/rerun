@@ -25,7 +25,7 @@ pub enum SelectedSpaceContext {
         /// The point in 3D space that is hovered, if any.
         pos: Option<glam::Vec3>,
 
-        /// Path of a space camera, this 3D space is viewed through.
+        /// Path to an entity that is currently tracked by the eye-camera.
         /// (None for a free floating Eye)
         tracked_entity: Option<EntityPath>,
 

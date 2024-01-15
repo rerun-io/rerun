@@ -43,7 +43,7 @@ pub struct View3DState {
     /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
     pub tracked_entity: Option<EntityPath>,
 
-    /// Camera pose just before we started following an entity [Self::tracked_entity].
+    /// Eye pose just before we started following an entity [Self::tracked_entity].
     camera_before_tracked_entity: Option<Eye>,
 
     eye_interpolation: Option<EyeInterpolation>,
@@ -168,9 +168,10 @@ impl View3DState {
         // If we're tracking a camera right now, we want to make it slightly sticky,
         // so that a click on some entity doesn't immediately break the tracked state.
         // (Threshold is in amount of ui points the mouse was moved.)
-        let orbit_eye_drag_threshold = match &self.tracked_entity {
-            Some(_) => 4.0,
-            None => 0.0,
+        let orbit_eye_drag_threshold = if self.tracked_entity.is_some() {
+            4.0
+        } else {
+            0.0
         };
 
         if orbit_eye.update(
@@ -221,8 +222,8 @@ impl View3DState {
         // -> tracking instances over time may not be desired
         //    (this can happen with entities as well, but is less likely).
         //
-        // For future reference it's also worth pointing out that for interactions in the view we
-        // already nave the 3D position:
+        // For future reference, it's also worth pointing out that for interactions in the view we
+        // already have the 3D position:
         // if let Some(SelectedSpaceContext::ThreeD {
         //     pos: Some(clicked_point),
         //     ..
@@ -230,22 +231,22 @@ impl View3DState {
 
         if let Some(tracked_camera) = find_camera(space_cameras, entity_path) {
             self.interpolate_to_eye(tracked_camera);
-        } else if let Some(bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
+        } else if let Some(entity_bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
             let Some(mut new_orbit_eye) = self.orbit_eye else {
                 // Happens only the first frame when there's no eye set up yet.
                 return;
             };
 
-            let radius = bbox.centered_bounding_sphere_radius() * 1.5;
+            let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
             if radius < 0.0001 {
                 // Bounding box may be zero size.
                 new_orbit_eye.orbit_radius =
                     (bounding_boxes.accumulated.centered_bounding_sphere_radius() * 1.5)
-                        .at_least(1.0);
+                        .at_least(0.01);
             } else {
                 new_orbit_eye.orbit_radius = radius;
             }
-            new_orbit_eye.orbit_center = bbox.center();
+            new_orbit_eye.orbit_center = entity_bbox.center();
 
             self.interpolate_to_orbit_eye(new_orbit_eye);
         }
@@ -535,9 +536,9 @@ pub fn view_3d(
             }
         };
         if let Some(entity_path) = focused_entity {
-            // For the moment we only track cameras.
-            // We have everything in place to track arbitrary objects but it's a bit odd sometimes, so only focus on them instead.
-            if space_cameras.iter().any(|c| &c.ent_path == entity_path) {
+            // TODO(#4812): We currently only track cameras on double click since tracking arbitrary entities was deemed too surprising.
+            let is_camera = space_cameras.iter().any(|c| &c.ent_path == entity_path);
+            if is_camera {
                 state
                     .state_3d
                     .track_entity(entity_path, &state.bounding_boxes, space_cameras);

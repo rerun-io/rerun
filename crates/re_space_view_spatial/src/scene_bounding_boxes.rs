@@ -31,7 +31,7 @@ impl SceneBoundingBoxes {
         re_tracing::profile_function!();
 
         self.current = macaw::BoundingBox::nothing();
-        self.per_entity = IntMap::default();
+        self.per_entity.clear();
 
         for visualizer in visualizers.iter() {
             if let Some(data) = visualizer
