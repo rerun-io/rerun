@@ -95,7 +95,7 @@ jobs:
         run: |
           pixi run pip install -r scripts/ci/requirements.txt
           pixi run pip uninstall rerun-sdk -y
-          pixi run pip install deprecated 'numpy>=1.23,<2' pyarrow==14.0.2 pytest==7.1.2
+          pixi run pip install deprecated '"numpy>=1.23,<2"' pyarrow==14.0.2 pytest==7.1.2
           pixi run pip install rerun-sdk --no-index --find-links wheel
 
       - name: Installed wheel version
