@@ -144,7 +144,7 @@ pub use re_entity_db::external::re_data_store::{
 // NOTE: this constant is duplicated in `re_data_source` to avoid an extra dependency here.
 pub const EXTERNAL_DATA_LOADER_PREFIX: &str = "rerun-loader-";
 
-/// When an external [`crate::DataLoader`] is asked to load some data that it doesn't know
+/// When an external `DataLoader` is asked to load some data that it doesn't know
 /// how to load, it should exit with this exit code.
 // NOTE: Always keep in sync with other languages.
 // NOTE: this constant is duplicated in `re_data_source` to avoid an extra dependency here.
