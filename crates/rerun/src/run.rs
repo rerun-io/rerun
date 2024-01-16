@@ -20,12 +20,12 @@ const SHORT_ABOUT: &str = "The Rerun Viewer and Server";
 // Place the important help _last_, to make it most visible in the terminal.
 const EXAMPLES: &str = r#"
 Environment variables:
-    * RERUN_SHADER_PATH         The search path for shader/shader-imports. WARNING: Shaders are embedded in some build configurations.
-    * RERUN_TRACK_ALLOCATIONS   Track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
-    * RUST_LOG                  Change the log level of the viewer, e.g. `RUST_LOG=debug`.
-    * WGPU_BACKEND              Overwrites the graphics backend used, must be one of `vulkan`, `metal`, `dx12`, `dx11`, or `gl`.
-                                Default is `vulkan` everywhere except on Mac where we use `metal`. What is supported depends on your OS.
-    * WGPU_POWER_PREF           Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
+    RERUN_SHADER_PATH         The search path for shader/shader-imports. WARNING: Shaders are embedded in some build configurations.
+    RERUN_TRACK_ALLOCATIONS   Track memory allocations to diagnose memory leaks in the viewer. WARNING: slows down the viewer by a lot!
+    RUST_LOG                  Change the log level of the viewer, e.g. `RUST_LOG=debug`.
+    WGPU_BACKEND              Overwrites the graphics backend used, must be one of `vulkan`, `metal`, `dx12`, `dx11`, or `gl`.
+                              Default is `vulkan` everywhere except on Mac where we use `metal`. What is supported depends on your OS.
+    WGPU_POWER_PREF           Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
 
 
 Examples:
@@ -143,12 +143,13 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     skip_welcome_screen: bool,
 
-    /// Either: a path to `.rrd` file(s) to load,
-    /// some mesh or image files to show,
-    /// an http url to an `.rrd` file,
-    /// or a websocket url to a Rerun Server from which to read data
-    ///
-    /// If none is given, a server will be hosted which the Rerun SDK can connect to.
+    #[clap(long_help = r"Any combination of:
+- A WebSocket url to a Rerun Server
+- An HTTP(S) URL to an .rrd file to load
+- A path to an rerun .rrd recording
+- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/howto/open-any-file)
+
+If no arguments are given, a server will be hosted which a Rerun SDK can connect to.")]
     url_or_paths: Vec<String>,
 
     /// Print version and quit
