@@ -1,6 +1,8 @@
+use once_cell::sync::OnceCell;
+
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
-use re_data_store::StoreSubscriber;
+use re_data_store::{StoreSubscriber, StoreSubscriberHandle};
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{
     components::{DisconnectedSpace, PinholeProjection},
@@ -42,11 +44,15 @@ pub struct SubSpace {
     /// The transform root of this subspace.
     pub origin: EntityPath,
 
-    pub space_type: SubSpaceDimensionality,
+    pub dimensionality: SubSpaceDimensionality,
 
-    /// All entities that are part of this subspace.
+    /// All entities that were logged at any point in time and are part of this subspace.
     ///
     /// Contains the origin entity as well unless the origin is the root and nothing was logged to it directly.
+    ///
+    /// Note that we this is merely here to speed up queries.
+    /// Instead, we could check if an entity is equal to or a descendent of the
+    /// origin and not equal or descendent of any child space.
     pub entities: IntSet<EntityPath>,
 
     /// Origin paths of child spaces.
@@ -92,7 +98,7 @@ impl SubSpace {
 
         let mut new_space = SubSpace {
             origin: new_space_origin.clone(),
-            space_type: new_space_type,
+            dimensionality: new_space_type,
             entities: std::iter::once(new_space_origin.clone()).collect(),
             child_spaces: Default::default(),
             parent_space: Some((self.origin.hash(), connections)),
@@ -122,9 +128,9 @@ impl SubSpace {
         new_connections_to_child: SubSpaceConnectionFlags,
     ) {
         if new_connections_to_child.contains(SubSpaceConnectionFlags::Pinhole) {
-            match self.space_type {
+            match self.dimensionality {
                 SubSpaceDimensionality::Unknown => {
-                    self.space_type = SubSpaceDimensionality::ThreeD;
+                    self.dimensionality = SubSpaceDimensionality::ThreeD;
                 }
                 SubSpaceDimensionality::TwoD => {
                     // For the moment the only way to get a 2D space is by defining a pinhole,
@@ -141,8 +147,23 @@ The new pinhole at {:?} is nested under it, implying an invalid projection from 
     }
 }
 
-pub struct SpatialTopologyStoreSubscriber {
+#[derive(Default)]
+struct SpatialTopologyStoreSubscriber {
     topologies: HashMap<StoreId, SpatialTopology>,
+}
+
+impl SpatialTopologyStoreSubscriber {
+    /// Accesses the global store subscriber.
+    ///
+    /// Lazily registers the subscriber if it hasn't been registered yet.
+    pub fn subscription_handle() -> StoreSubscriberHandle {
+        static SUBSCRIPTION: OnceCell<re_data_store::StoreSubscriberHandle> = OnceCell::new();
+        *SUBSCRIPTION.get_or_init(|| {
+            re_data_store::DataStore::register_subscriber(
+                Box::<SpatialTopologyStoreSubscriber>::default(),
+            )
+        })
+    }
 }
 
 impl StoreSubscriber for SpatialTopologyStoreSubscriber {
@@ -200,7 +221,7 @@ impl Default for SpatialTopology {
                 EntityPath::root().hash(),
                 SubSpace {
                     origin: EntityPath::root(),
-                    space_type: SubSpaceDimensionality::Unknown,
+                    dimensionality: SubSpaceDimensionality::Unknown,
                     entities: IntSet::default(),
                     child_spaces: IntSet::default(),
                     parent_space: None,
@@ -214,13 +235,30 @@ impl Default for SpatialTopology {
 }
 
 impl SpatialTopology {
+    /// Accesses the spatial topology for a given store.
+    pub fn access<T>(store_id: &StoreId, f: impl FnOnce(&SpatialTopology) -> T) -> Option<T> {
+        re_data_store::DataStore::with_subscriber_once(
+            SpatialTopologyStoreSubscriber::subscription_handle(),
+            move |topology_subscriber: &SpatialTopologyStoreSubscriber| {
+                topology_subscriber.topologies.get(store_id).map(f)
+            },
+        )
+        .flatten()
+    }
+
     /// Returns the subspace an entity belongs to.
-    ///
-    /// Returns `None` for unknown entities, even if they once logged would be a part of a space.
-    pub fn subspace(&self, entity: &EntityPath) -> Option<&SubSpace> {
-        self.subspace_origin_per_entity
+    pub fn subspace(&self, entity: &EntityPath) -> &SubSpace {
+        // Try the fast track first - we ahve this for all entities that were ever logged.
+        if let Some(subspace) = self
+            .subspace_origin_per_entity
             .get(&entity.hash())
             .and_then(|origin_hash| self.subspaces.get(origin_hash))
+        {
+            subspace
+        } else {
+            // Otherwise, we have to walk the hierarchy.
+            self.find_subspace_rec(&EntityPath::root(), entity)
+        }
     }
 
     fn on_store_diff<'a>(
@@ -341,7 +379,7 @@ impl SpatialTopology {
         debug_assert!(&subspace.origin == subspace_origin);
 
         for child_space_origin in &subspace.child_spaces {
-            if path.is_child_of(child_space_origin) {
+            if path == child_space_origin || path.is_descendant_of(child_space_origin) {
                 // Clone to lift borrow on self.
                 let child_space_origin = child_space_origin.clone();
                 return Self::find_subspace_rec_mut(subspaces, &child_space_origin, path);
@@ -350,6 +388,22 @@ impl SpatialTopology {
 
         // Need to query subspace again since otherwise we'd have a mutable borrow on self while trying to do a recursive call.
         return subspaces.get_mut(&subspace_origin.hash()).unwrap(); // Unwrap is safe since we succeeded ist just earlier.
+    }
+
+    /// Finds subspace an entity path belongs to by recursively walking down the hierarchy.
+    fn find_subspace_rec(&self, subspace_origin: &EntityPath, path: &EntityPath) -> &SubSpace {
+        let subspace = self
+            .subspaces
+            .get(&subspace_origin.hash())
+            .expect("Subspace origin not part of origin->subspace map.");
+
+        for child_space_origin in &subspace.child_spaces {
+            if path == child_space_origin || path.is_descendant_of(child_space_origin) {
+                return self.find_subspace_rec(child_space_origin, path);
+            }
+        }
+
+        subspace
     }
 }
 
@@ -382,13 +436,19 @@ mod tests {
         check_paths_in_space(&topo, &["robo", "robo/arm", "robo/eyes/cam"], "/");
 
         // .. and that space has no children and no parent.
-        let subspace = topo.subspace(&"robo".into()).unwrap();
+        let subspace = topo.subspace(&"robo".into());
         assert_eq!(subspace.child_spaces.len(), 0);
         assert!(subspace.parent_space.is_none());
 
-        // If we make up entities that weren't logged we get None.
-        assert!(topo.subspace(&EntityPath::root()).is_none());
-        assert!(topo.subspace(&"robo/eyes".into()).is_none());
+        // If we make up entities that weren't logged we get the closest space
+        assert_eq!(
+            topo.subspace(&EntityPath::root()).origin,
+            EntityPath::root()
+        );
+        assert_eq!(
+            topo.subspace(&"robo/eyes".into()).origin,
+            EntityPath::root()
+        );
     }
 
     #[test]
@@ -422,15 +482,18 @@ mod tests {
                 &["robo/eyes/left/cam", "robo/eyes/left/cam/annotation"],
                 "robo/eyes/left/cam",
             );
-            let root_space = topo.subspace(&"robo".into()).unwrap();
-            let left_camera_space = topo.subspace(&"robo/eyes/left/cam".into()).unwrap();
+            let root_space = topo.subspace(&"robo".into());
+            let left_camera_space = topo.subspace(&"robo/eyes/left/cam".into());
             assert_eq!(left_camera_space.origin, "robo/eyes/left/cam".into());
             assert_eq!(
                 left_camera_space.parent_space,
                 Some((root_space.origin.hash(), SubSpaceConnectionFlags::Pinhole))
             );
-            assert_eq!(left_camera_space.space_type, SubSpaceDimensionality::TwoD);
-            assert_eq!(root_space.space_type, SubSpaceDimensionality::ThreeD);
+            assert_eq!(
+                left_camera_space.dimensionality,
+                SubSpaceDimensionality::TwoD
+            );
+            assert_eq!(root_space.dimensionality, SubSpaceDimensionality::ThreeD);
             assert!(root_space.parent_space.is_none());
         }
 
@@ -447,14 +510,24 @@ mod tests {
                 &["robo/eyes/right/cam", "robo/eyes/right/cam/annotation"],
                 "robo/eyes/right/cam",
             );
-            let root_space = topo.subspace(&"robo".into()).unwrap();
-            let right_camera_space = topo.subspace(&"robo/eyes/right/cam".into()).unwrap();
+            let root_space = topo.subspace(&"robo".into());
+            let right_camera_space = topo.subspace(&"robo/eyes/right/cam".into());
             assert_eq!(right_camera_space.origin, "robo/eyes/right/cam".into());
             assert_eq!(
                 right_camera_space.parent_space,
                 Some((root_space.origin.hash(), SubSpaceConnectionFlags::Pinhole))
             );
-            assert_eq!(right_camera_space.space_type, SubSpaceDimensionality::TwoD);
+            assert_eq!(
+                right_camera_space.dimensionality,
+                SubSpaceDimensionality::TwoD
+            );
+
+            // If we make up entities that weren't logged we get the closest space
+            assert_eq!(
+                topo.subspace(&"robo/eyes/right/cam/unheard".into()).origin,
+                "robo/eyes/right/cam".into()
+            );
+            assert_eq!(topo.subspace(&"bonkers".into()).origin, EntityPath::root());
         }
 
         // Disconnect the left camera.
@@ -464,8 +537,8 @@ mod tests {
             &[DisconnectedSpace::name()],
         );
         {
-            let root_space = topo.subspace(&"robo".into()).unwrap();
-            let left_camera_space = topo.subspace(&"robo/eyes/left/cam".into()).unwrap();
+            let root_space = topo.subspace(&"robo".into());
+            let left_camera_space = topo.subspace(&"robo/eyes/left/cam".into());
             assert_eq!(left_camera_space.origin, "robo/eyes/left/cam".into());
             assert_eq!(
                 left_camera_space.parent_space,
@@ -474,8 +547,11 @@ mod tests {
                     SubSpaceConnectionFlags::Disconnected | SubSpaceConnectionFlags::Pinhole
                 ))
             );
-            assert_eq!(left_camera_space.space_type, SubSpaceDimensionality::TwoD);
-            assert_eq!(root_space.space_type, SubSpaceDimensionality::ThreeD);
+            assert_eq!(
+                left_camera_space.dimensionality,
+                SubSpaceDimensionality::TwoD
+            );
+            assert_eq!(root_space.dimensionality, SubSpaceDimensionality::ThreeD);
             assert!(root_space.parent_space.is_none());
         }
     }
@@ -491,11 +567,11 @@ mod tests {
         check_paths_in_space(&topo, &["cam0"], "cam0");
         check_paths_in_space(&topo, &["cam0/cam1"], "cam0/cam1");
 
-        let cam0 = topo.subspace(&"cam0".into()).unwrap();
-        let cam1 = topo.subspace(&"cam0/cam1".into()).unwrap();
+        let cam0 = topo.subspace(&"cam0".into());
+        let cam1 = topo.subspace(&"cam0/cam1".into());
 
-        assert_eq!(cam0.space_type, SubSpaceDimensionality::TwoD);
-        assert_eq!(cam1.space_type, SubSpaceDimensionality::TwoD);
+        assert_eq!(cam0.dimensionality, SubSpaceDimensionality::TwoD);
+        assert_eq!(cam1.dimensionality, SubSpaceDimensionality::TwoD);
         assert_eq!(
             cam0.parent_space,
             Some((EntityPath::root().hash(), SubSpaceConnectionFlags::Pinhole))
@@ -521,8 +597,8 @@ mod tests {
         check_paths_in_space(&topo, &["stuff"], "/");
         check_paths_in_space(&topo, &["camera", "camera/image"], "camera");
 
-        let camera = topo.subspace(&"camera".into()).unwrap();
-        assert_eq!(camera.space_type, SubSpaceDimensionality::TwoD);
+        let camera = topo.subspace(&"camera".into());
+        assert_eq!(camera.dimensionality, SubSpaceDimensionality::TwoD);
         assert_eq!(
             camera.parent_space,
             Some((
@@ -531,8 +607,8 @@ mod tests {
             ))
         );
 
-        let root_space = topo.subspace(&"stuff".into()).unwrap();
-        assert_eq!(root_space.space_type, SubSpaceDimensionality::ThreeD);
+        let root_space = topo.subspace(&"stuff".into());
+        assert_eq!(root_space.dimensionality, SubSpaceDimensionality::ThreeD);
     }
 
     fn add_diff(topo: &mut SpatialTopology, path: &str, components: &[ComponentName]) {
@@ -542,13 +618,10 @@ mod tests {
     fn check_paths_in_space(topo: &SpatialTopology, paths: &[&str], expected_origin: &str) {
         for path in paths {
             let path = *path;
-            assert_eq!(
-                topo.subspace(&path.into()).unwrap().origin,
-                expected_origin.into()
-            );
+            assert_eq!(topo.subspace(&path.into()).origin, expected_origin.into());
         }
 
-        let space = topo.subspace(&paths[0].into()).unwrap();
+        let space = topo.subspace(&paths[0].into());
         for path in paths {
             let path = *path;
             assert!(space.entities.contains(&path.into()));
