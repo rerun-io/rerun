@@ -15,9 +15,9 @@ use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, HoverHighlight, Item, SpaceViewClass,
-    SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity,
-    ViewerContext,
+    blueprint_timepoint, gpu_bridge::colormap_dropdown_button_ui, HoverHighlight, Item,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender as _,
+    UiVerbosity, ViewerContext,
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
@@ -731,7 +731,7 @@ fn blueprint_ui(
                         if let Some(new_entity_path_filter) =
                             entity_path_filter_ui(ui, &query.entity_path_filter)
                         {
-                            let timepoint = TimePoint::timeless();
+                            let timepoint = blueprint_timepoint();
                             let expressions_component =
                                 QueryExpressions::from(&new_entity_path_filter);
 
