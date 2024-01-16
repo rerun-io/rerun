@@ -78,6 +78,38 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "rustls",
 ];
 
+/// Get `RUST_LOG` environment variable or `info`, if not set.
+///
+/// Also sets some other log levels on crates that are too loud.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn default_log_filter() -> String {
+    let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {
+        if cfg!(debug_assertions) {
+            "debug".to_owned()
+        } else {
+            "info".to_owned()
+        }
+    });
+
+    for crate_name in crate::CRATES_AT_ERROR_LEVEL {
+        if !rust_log.contains(&format!("{crate_name}=")) {
+            rust_log += &format!(",{crate_name}=error");
+        }
+    }
+    for crate_name in crate::CRATES_AT_WARN_LEVEL {
+        if !rust_log.contains(&format!("{crate_name}=")) {
+            rust_log += &format!(",{crate_name}=warn");
+        }
+    }
+    for crate_name in crate::CRATES_AT_INFO_LEVEL {
+        if !rust_log.contains(&format!("{crate_name}=")) {
+            rust_log += &format!(",{crate_name}=info");
+        }
+    }
+
+    rust_log
+}
+
 /// Should we log this message given the filter?
 fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> bool {
     if CRATES_AT_ERROR_LEVEL
