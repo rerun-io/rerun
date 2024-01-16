@@ -85,9 +85,6 @@ pub fn latest_components(
 /// Iterates over the rows of any number of components and their respective cluster keys, all from
 /// the single point-of-view of the `primary` component, returning an iterator of `DataFrame`s.
 ///
-/// An initial dataframe is yielded with the latest-at state at the start of the time range, if
-/// there is any.
-///
 /// The iterator only ever yields dataframes iff the `primary` component has changed.
 /// A change affecting only secondary components will not yield a dataframe.
 ///
@@ -126,51 +123,21 @@ pub fn range_components<'a, const N: usize>(
 
     let mut state = None;
 
-    // NOTE: This will return none for `TimeInt::Min`, i.e. range queries that start infinitely far
-    // into the past don't have a latest-at state!
-    let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
-
-    let mut df_latest = None;
-    if let Some(latest_time) = latest_time {
-        let df = latest_components(
-            store,
-            &LatestAtQuery::new(query.timeline, latest_time),
-            ent_path,
-            &components,
-            join_type,
-        );
-
-        if df.as_ref().map_or(false, |df| {
-            // We only care about the initial state if it A) isn't empty and B) contains any data
-            // at all for the primary component.
-            !df.is_empty() && df.column(primary.as_ref()).is_ok()
-        }) {
-            df_latest = Some(df);
-        }
-    }
-
     let primary_col = components
         .iter()
         .find_position(|component| **component == primary)
         .map(|(col, _)| col)
         .unwrap(); // asserted on entry
 
-    // send the latest-at state before anything else
-    df_latest
-        .into_iter()
-        .map(move |df| (latest_time, true, df))
-        // followed by the range
-        .chain(
-            store
-                .range(query, ent_path, components)
-                .map(move |(time, _, cells)| {
-                    (
-                        time,
-                        cells[primary_col].is_some(), // is_primary
-                        dataframe_from_cells(&cells),
-                    )
-                }),
-        )
+    store
+        .range(query, ent_path, components)
+        .map(move |(time, _, cells)| {
+            (
+                time,
+                cells[primary_col].is_some(), // is_primary
+                dataframe_from_cells(&cells),
+            )
+        })
         .filter_map(move |(time, is_primary, df)| {
             state = Some(join_dataframes(
                 cluster_key,

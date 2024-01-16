@@ -68,7 +68,7 @@ impl VisualizerSystem for TextLogSystem {
                 re_data_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
 
             re_query_cache::query_archetype_pov1_comp2::<TextLog, Text, TextLogLevel, Color, _>(
-                ctx.app_options.experimental_primary_caching_series,
+                ctx.app_options.experimental_primary_caching_range,
                 store,
                 &timeline_query.clone().into(),
                 &data_result.entity_path,

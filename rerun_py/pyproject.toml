@@ -14,7 +14,7 @@ classifiers = [
 dependencies = [
   # Must match list in `.github/workflows/reusable_test_wheels.yml`
   "attrs>=23.1.0",
-  "numpy>=1.23",
+  "numpy>=1.23,<2",
   "pillow",                 # Used for JPEG encoding
   "pyarrow==14.0.2",
   "typing_extensions>=4.5", # Used for PEP-702 deprecated decorator

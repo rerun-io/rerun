@@ -222,7 +222,7 @@ pub fn data_blueprint_group_button_to(
         .re_ui
         .selectable_label_with_icon(
             ui,
-            &re_ui::icons::CONTAINER,
+            &re_ui::icons::GROUP,
             text,
             ctx.selection().contains_item(&item),
         )
