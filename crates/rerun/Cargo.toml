@@ -54,7 +54,8 @@ log = ["dep:env_logger", "dep:log"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["dep:re_viewer"]
 
-## Add support for running the rerun-cli binary via a function call.
+## Add support for the [`run`] function, which acts like a CLI,
+## acting the same as [the `rerun` binary](https://crates.io/crates/rerun-cli).
 run = [
   "clap",
   "sdk",
