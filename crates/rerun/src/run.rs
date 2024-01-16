@@ -131,7 +131,7 @@ When persisted, the state will be stored at the following locations:
     /// Serve the recordings over WebSocket to one or more Rerun Viewers.
     ///
     /// This will also host a web-viewer over HTTP that can connect to the WebSocket address,
-    /// but you can also connect to with the native binary.
+    /// but you can also connect with the native binary.
     ///
     /// `rerun --serve` will act like a proxy,
     /// listening for incoming TCP connection from logging SDKs, and forwarding it to
