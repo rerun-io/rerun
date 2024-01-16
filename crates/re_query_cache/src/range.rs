@@ -13,7 +13,7 @@ use crate::{CacheBucket, Caches, MaybeCachedComponentData};
 #[derive(Default)]
 pub struct RangeCache {
     // TODO(cmc): bucketize
-    pub bucket: CacheBucket,
+    pub per_data_time: CacheBucket,
 
     /// Total size of the data stored in this cache in bytes.
     pub total_size_bytes: u64,
@@ -35,11 +35,11 @@ impl RangeCache {
     pub fn compute_front_query(&self, query: &RangeQuery) -> Option<RangeQuery> {
         let mut reduced_query = query.clone();
 
-        if self.bucket.is_empty() {
+        if self.per_data_time.is_empty() {
             return Some(reduced_query);
         }
 
-        if let Some(bucket_time_range) = self.bucket.time_range() {
+        if let Some(bucket_time_range) = self.per_data_time.time_range() {
             reduced_query.range.max = TimeInt::min(
                 reduced_query.range.max,
                 bucket_time_range.min.as_i64().saturating_sub(1).into(),
@@ -61,7 +61,7 @@ impl RangeCache {
     pub fn compute_back_query(&self, query: &RangeQuery) -> Option<RangeQuery> {
         let mut reduced_query = query.clone();
 
-        if let Some(bucket_time_range) = self.bucket.time_range() {
+        if let Some(bucket_time_range) = self.per_data_time.time_range() {
             reduced_query.range.min = TimeInt::max(
                 reduced_query.range.min,
                 bucket_time_range.max.as_i64().saturating_add(1).into(),
@@ -177,10 +177,10 @@ macro_rules! impl_query_archetype_range {
                     let arch_views =
                         ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, &reduced_query, entity_path);
                     range_cache.total_size_bytes +=
-                        upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.bucket)?;
+                        upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.per_data_time)?;
                 }
 
-                iter_results(&range_cache.bucket)
+                iter_results(&range_cache.per_data_time)
             };
 
 

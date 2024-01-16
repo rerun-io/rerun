@@ -140,17 +140,17 @@ impl Caches {
                             .values()
                             .map(|range_cache| {
                                 let RangeCache {
-                                    bucket,
+                                    per_data_time,
                                     total_size_bytes,
                                 } = &*range_cache.read();
 
-                                let total_rows = bucket.data_times.len() as u64;
+                                let total_rows = per_data_time.data_times.len() as u64;
 
                                 let mut per_component = detailed_stats.then(BTreeMap::default);
                                 if let Some(per_component) = per_component.as_mut() {
                                     re_tracing::profile_scope!("detailed");
 
-                                    for (component_name, data) in &bucket.components {
+                                    for (component_name, data) in &per_data_time.components {
                                         let stats: &mut CachedComponentStats =
                                             per_component.entry(*component_name).or_default();
                                         stats.total_rows += data.dyn_num_entries() as u64;
@@ -160,7 +160,7 @@ impl Caches {
 
                                 (
                                     key.timeline,
-                                    bucket.time_range().unwrap_or(TimeRange::EMPTY),
+                                    per_data_time.time_range().unwrap_or(TimeRange::EMPTY),
                                     CachedEntityStats {
                                         total_size_bytes: *total_size_bytes,
                                         total_rows,
