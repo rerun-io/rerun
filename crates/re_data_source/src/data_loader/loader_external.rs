@@ -37,10 +37,12 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
         .flat_map(|paths| paths.split(':').map(ToOwned::to_owned).collect::<Vec<_>>())
         .map(std::path::PathBuf::from);
 
-    let executables: ahash::HashSet<_> = dirpaths
-        .into_iter()
-        .flat_map(|dirpath| {
-            WalkDir::new(dirpath).into_iter().filter_map(|entry| {
+    let mut executables = HashMap::<String, Vec<std::path::PathBuf>>::default();
+    for dirpath in dirpaths {
+        let paths = WalkDir::new(dirpath)
+            .max_depth(1) // don't search recursively
+            .into_iter()
+            .filter_map(|entry| {
                 let Ok(entry) = entry else {
                     return None;
                 };
@@ -51,34 +53,29 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
                         .starts_with(EXTERNAL_DATA_LOADER_PREFIX)
                 });
                 (filepath.is_file() && is_rerun_loader).then(|| filepath.to_owned())
-            })
-        })
-        .collect();
+            });
 
-    // NOTE: We call all available loaders and do so in parallel: order is irrelevant here.
-    let executables = executables.into_iter().collect::<Vec<_>>();
-
-    // If the user has multiple data-loaders in their PATH with the same exact name, warn that
-    // something is very likely wrong.
-    // That can very easily happen with tools like `pip`/`pipx`.
-
-    let mut exe_names = HashMap::<String, Vec<std::path::PathBuf>>::default();
-    for path in &executables {
-        if let Some(filename) = path.file_name() {
-            let exe_paths = exe_names
-                .entry(filename.to_string_lossy().to_string())
-                .or_default();
-            exe_paths.push(path.clone());
-        }
-    }
-
-    for (name, paths) in exe_names {
-        if paths.len() > 1 {
-            re_log::warn!(name, ?paths, "Found duplicated data-loader in $PATH");
+        for path in paths {
+            if let Some(filename) = path.file_name() {
+                let exe_paths = executables
+                    .entry(filename.to_string_lossy().to_string())
+                    .or_default();
+                exe_paths.push(path.clone());
+            }
         }
     }
 
     executables
+        .into_iter()
+        .filter_map(|(name, paths)| {
+            if paths.len() > 1 {
+                re_log::debug!(name, ?paths, "Found duplicated data-loader in $PATH");
+            }
+
+            // Only keep the first entry according to PATH order.
+            paths.into_iter().next()
+        })
+        .collect()
 });
 
 /// Iterator over all registered external [`crate::DataLoader`]s.
