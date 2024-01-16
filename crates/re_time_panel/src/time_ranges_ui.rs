@@ -11,7 +11,7 @@ use egui::{lerp, remap, NumExt};
 use itertools::Itertools as _;
 
 use re_log_types::{TimeInt, TimeRange, TimeRangeF, TimeReal};
-use re_viewer_context::{PlayState, TimeView, ViewerContext};
+use re_viewer_context::{PlayState, TimeControl, TimeView};
 
 /// The ideal gap between time segments.
 ///
@@ -241,9 +241,7 @@ impl TimeRangesUi {
     }
 
     // Make sure playback time doesn't get stuck between non-continuous regions:
-    pub fn snap_time_control(&self, ctx: &ViewerContext<'_>) {
-        let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-
+    pub fn snap_time_control(&self, time_ctrl: &mut TimeControl) {
         if time_ctrl.play_state() != PlayState::Playing {
             return;
         }

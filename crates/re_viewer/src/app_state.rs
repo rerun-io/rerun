@@ -362,12 +362,25 @@ impl AppState {
                 false
             };
 
-            let needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
+            let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
                 entity_db.times_per_timeline(),
                 dt,
                 more_data_is_coming,
             );
-            if needs_repaint == re_viewer_context::NeedsRepaint::Yes {
+
+            let blueprint_needs_repaint = if ctx.app_options.show_blueprint_timeline {
+                ctx.blueprint_cfg.time_ctrl.write().update(
+                    ctx.store_context.blueprint.times_per_timeline(),
+                    dt,
+                    more_data_is_coming,
+                )
+            } else {
+                re_viewer_context::NeedsRepaint::No
+            };
+
+            if (recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes)
+                || (blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes)
+            {
                 ui.ctx().request_repaint();
             }
         }

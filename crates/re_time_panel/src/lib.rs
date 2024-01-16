@@ -430,7 +430,7 @@ impl TimePanel {
             &timeline_rect,
         );
 
-        self.time_ranges_ui.snap_time_control(ctx);
+        self.time_ranges_ui.snap_time_control(time_ctrl);
 
         // remember where to show the time for next frame:
         self.prev_col_width = self.next_col_right - ui.min_rect().left();
@@ -838,7 +838,7 @@ fn collapsed_time_marker_and_time(
         if time_range_rect.width() > 50.0 {
             let time_ranges_ui =
                 initialize_time_ranges_ui(entity_db, time_ctrl, time_range_rect.x_range(), None);
-            time_ranges_ui.snap_time_control(ctx);
+            time_ranges_ui.snap_time_control(time_ctrl);
 
             let painter = ui.painter_at(time_range_rect.expand(4.0));
 
