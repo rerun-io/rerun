@@ -60,6 +60,7 @@ run = [
   "sdk",
   "dep:re_data_source",
   "dep:re_log_encoding",
+  "dep:re_sdk_comms",
   "dep:re_ws_comms",
   "dep:tokio",
 ]
