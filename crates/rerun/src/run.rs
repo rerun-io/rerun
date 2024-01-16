@@ -17,44 +17,48 @@ use re_ws_comms::RerunServerPort;
 
 const SHORT_ABOUT: &str = "The Rerun Viewer and Server";
 
-const LONG_ABOUT: &str = r#"
-The Rerun Viewer and Server
+// Place the important help _last_, to make it most visible in the terminal.
+const EXAMPLES: &str = r#"
+Environment variables:
+----------------------
+    * RERUN_SHADER_PATH         The search path for shader/shader-imports. WARNING: Shaders are embedded in some build configurations.
+    * RERUN_TRACK_ALLOCATIONS   Track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
+    * RUST_LOG                  Change the log level of the viewer, e.g. `RUST_LOG=debug`.
+    * WGPU_BACKEND              Overwrites the graphics backend used, must be one of `vulkan`, `metal`, `dx12`, `dx11`, or `gl`.
+                                Default is `vulkan` everywhere except on Mac where we use `metal`. What is supported depends on your OS.
+    * WGPU_POWER_PREF           Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
 
-Examples
---------
-Open a Rerun Viewer that listens for incoming SDK connections:
-    rerun
 
-Load some files and show them in the Rerun Viewer:
-    rerun recording.rrd mesh.obj image.png https://example.com/recording.rrd
+Examples:
+---------
+    Open a Rerun Viewer that listens for incoming SDK connections:
+        rerun
 
-Open an .rrd file and stream it to a Web Viewer:
-    rerun recording.rrd --web-viewer
+    Load some files and show them in the Rerun Viewer:
+        rerun recording.rrd mesh.obj image.png https://example.com/recording.rrd
 
-Host a Rerun Server which listens for incoming TCP connections from the logging SDK, buffer the log messages, and host the results over WebSocket:
-    rerun --serve
+    Open an .rrd file and stream it to a Web Viewer:
+        rerun recording.rrd --web-viewer
 
-Host a Rerun Server which serves a recording over WebSocket to any connecting Rerun Viewers:
-    rerun --serve recording.rrd
+    Host a Rerun Server which listens for incoming TCP connections from the logging SDK, buffer the log messages, and host the results over WebSocket:
+        rerun --serve
 
-Connect to a Rerun Server:
-    rerun ws://localhost:9877
+    Host a Rerun Server which serves a recording over WebSocket to any connecting Rerun Viewers:
+        rerun --serve recording.rrd
 
-Listens for incoming TCP connections from the logging SDK and stream the results to disk:
-    rerun --save new_recording.rrd
+    Connect to a Rerun Server:
+        rerun ws://localhost:9877
 
-Environment variables
----------------------
-* RERUN_SHADER_PATH        The search path for shader/shader-imports. WARNING: Shaders are embedded in some build configurations.
-* RERUN_TRACK_ALLOCATIONS  Track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
-* RUST_LOG                 Change the log level of the viewer, e.g. `RUST_LOG=debug`.
-* WGPU_BACKEND             Overwrites the graphics backend used, must be one of `vulkan`, `metal`, `dx12`, `dx11`, or `gl`.
-                           Naturally, support depends on your OS. Default is `vulkan` everywhere except on Mac where we use `metal`.
-* WGPU_POWER_PREF          Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
+    Listens for incoming TCP connections from the logging SDK and stream the results to disk:
+        rerun --save new_recording.rrd
 "#;
 
 #[derive(Debug, clap::Parser)]
-#[clap(author, about = SHORT_ABOUT, long_about = LONG_ABOUT)]
+#[clap(
+    about = SHORT_ABOUT,
+    // Place most of the help last, as that is most visible in the terminal.
+    after_long_help = EXAMPLES
+)]
 struct Args {
     // Note: arguments are sorted lexicographically for nicer `--help` message.
     //
