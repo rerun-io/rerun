@@ -1,3 +1,4 @@
+use crate::ReUi;
 use egui::NumExt;
 
 /// Helper object to handle a [`Modal`] window.
@@ -102,6 +103,8 @@ pub struct ModalResponse<R> {
 /// Note that [`Modal`] are typically used via the [`ModalHandler`] helper object to reduce boilerplate.
 pub struct Modal {
     title: String,
+    min_width: Option<f32>,
+    min_height: Option<f32>,
     default_height: Option<f32>,
 }
 
@@ -110,8 +113,24 @@ impl Modal {
     pub fn new(title: &str) -> Self {
         Self {
             title: title.to_owned(),
+            min_width: None,
+            min_height: None,
             default_height: None,
         }
+    }
+
+    /// Set the minimum width of the modal window.
+    #[inline]
+    pub fn min_width(mut self, min_width: f32) -> Self {
+        self.min_width = Some(min_width);
+        self
+    }
+
+    /// Set the minimum height of the modal window.
+    #[inline]
+    pub fn min_height(mut self, min_height: f32) -> Self {
+        self.min_height = Some(min_height);
+        self
     }
 
     /// Set the default height of the modal window.
@@ -153,17 +172,32 @@ impl Modal {
             })
             .title_bar(false);
 
+        if let Some(min_width) = self.min_width {
+            window = window.min_width(min_width);
+        }
+
+        if let Some(min_height) = self.min_height {
+            window = window.min_height(min_height);
+        }
+
         if let Some(default_height) = self.default_height {
             window = window.default_height(default_height);
         }
 
         let response = window.show(ui.ctx(), |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+
             egui::Frame {
-                inner_margin: crate::ReUi::view_padding().into(),
+                inner_margin: egui::Margin::symmetric(ReUi::view_padding(), 0.0),
                 ..Default::default()
             }
             .show(ui, |ui| {
+                ui.add_space(ReUi::view_padding());
                 Self::title_bar(re_ui, ui, &self.title, &mut open);
+                ui.add_space(ReUi::view_padding());
+                crate::ReUi::full_span_separator(ui);
+
+                // no further spacing for the content UI
                 content_ui(re_ui, ui, &mut open)
             })
             .inner
@@ -220,6 +254,5 @@ impl Modal {
                 *open = false;
             }
         });
-        crate::ReUi::full_span_separator(ui);
     }
 }

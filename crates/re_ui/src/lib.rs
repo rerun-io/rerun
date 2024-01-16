@@ -477,12 +477,13 @@ impl ReUi {
 
     /// Create a separator similar to [`egui::Separator`] but with the full span behavior.
     ///
-    /// The span is determined by the current clip rectangle.
+    /// The span is determined by the current clip rectangle. Contrary to [`egui::Separator`], this separator allocates
+    /// a single pixel in height, as spacing is typically handled by content when full span highlighting is used.
     pub fn full_span_separator(ui: &mut egui::Ui) -> egui::Response {
-        let spacing = 6.0; // as is hardcoded in `egui::Separator`
+        let height = 1.0;
 
         let available_space = ui.available_size_before_wrap();
-        let size = egui::vec2(available_space.x, spacing);
+        let size = egui::vec2(available_space.x, height);
 
         let (rect, response) = ui.allocate_at_least(size, egui::Sense::hover());
         let clip_rect = ui.clip_rect();
