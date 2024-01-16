@@ -181,8 +181,9 @@ impl Modal {
             .collapsible(false)
             .resizable(true)
             .frame(egui::Frame {
+                // Note: inner margin are kept to zero so the clip rect is set to the same size as the modal itself,
+                // which is needed for the full-span highlighting behavior.
                 fill: ui.visuals().panel_fill,
-                //inner_margin: crate::ReUi::view_padding().into(),
                 ..Default::default()
             })
             .title_bar(false);
