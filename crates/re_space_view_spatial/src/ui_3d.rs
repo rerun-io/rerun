@@ -36,7 +36,7 @@ use super::eye::{Eye, OrbitEye};
 #[derive(Clone)]
 pub struct View3DState {
     pub orbit_eye: Option<OrbitEye>,
-    pub eye_interaction_this_frame: bool,
+    pub did_interact_with_eye: bool,
 
     /// Currently tracked entity.
     ///
@@ -62,7 +62,7 @@ impl Default for View3DState {
     fn default() -> Self {
         Self {
             orbit_eye: Default::default(),
-            eye_interaction_this_frame: false,
+            did_interact_with_eye: false,
             tracked_entity: None,
             camera_before_tracked_entity: None,
             eye_interpolation: Default::default(),
@@ -101,7 +101,7 @@ impl View3DState {
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
         // with scenes that grow over time.
-        if !self.eye_interaction_this_frame {
+        if !self.did_interact_with_eye {
             self.interpolate_to_orbit_eye(default_eye(
                 &bounding_boxes.accumulated,
                 &view_coordinates,
@@ -179,7 +179,7 @@ impl View3DState {
             orbit_eye_drag_threshold,
             &bounding_boxes.accumulated,
         ) {
-            self.eye_interaction_this_frame = true;
+            self.did_interact_with_eye = true;
             self.eye_interpolation = None;
             self.tracked_entity = None;
             self.camera_before_tracked_entity = None;
@@ -256,6 +256,13 @@ impl View3DState {
         // the user wants to move the camera somewhere, so stop spinning
         self.spin = false;
 
+        // Don't restart interpolation if we're already on it.
+        if let Some(eye_interpolation) = &self.eye_interpolation {
+            if eye_interpolation.target_orbit == Some(target) {
+                return;
+            }
+        }
+
         if let Some(start) = self.orbit_eye {
             if let Some(target_time) =
                 EyeInterpolation::target_time(&start.to_eye(), &target.to_eye())
@@ -281,6 +288,10 @@ impl View3DState {
         bounding_boxes: &SceneBoundingBoxes,
         space_cameras: &[SpaceCamera3D],
     ) {
+        if self.tracked_entity == Some(entity_path.clone()) {
+            return; // already tracking this entity.
+        }
+
         re_log::debug!("3D view tracks now {:?}", entity_path);
         self.tracked_entity = Some(entity_path.clone());
         self.camera_before_tracked_entity = self.orbit_eye.map(|eye| eye.to_eye());
@@ -294,7 +305,7 @@ impl View3DState {
 
     pub fn set_spin(&mut self, spin: bool) {
         self.spin = spin;
-        self.eye_interaction_this_frame = true;
+        self.did_interact_with_eye = true;
     }
 }
 
@@ -536,9 +547,10 @@ pub fn view_3d(
             }
         };
         if let Some(entity_path) = focused_entity {
+            state.state_3d.did_interact_with_eye = true;
+
             // TODO(#4812): We currently only track cameras on double click since tracking arbitrary entities was deemed too surprising.
-            let is_camera = space_cameras.iter().any(|c| &c.ent_path == entity_path);
-            if is_camera {
+            if find_camera(space_cameras, entity_path).is_some() {
                 state
                     .state_3d
                     .track_entity(entity_path, &state.bounding_boxes, space_cameras);
@@ -622,7 +634,7 @@ pub fn view_3d(
         // Scroll events from a mouse wheel often happen with some pause between meaning we either need a long delay for the center to show
         // or live with the flickering.
         let should_show_center_of_orbit_camera =
-            state.state_3d.eye_interaction_this_frame && any_mouse_button_down;
+            state.state_3d.did_interact_with_eye && any_mouse_button_down;
 
         if should_show_center_of_orbit_camera && !state.state_3d.eye_interact_fade_in {
             // Any interaction immediately causes fade in to start if it's not already on.
