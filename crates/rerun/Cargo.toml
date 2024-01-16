@@ -30,7 +30,7 @@ analytics = [
   "re_web_viewer_server?/analytics",
 ]
 
-## Integration with `clap`.
+## Integration with [`clap`].
 clap = ["dep:clap", "dep:tokio"]
 
 ## Demo helpers for examples.
@@ -57,7 +57,7 @@ native_viewer = ["dep:re_viewer"]
 ## Add support for the [`run()`] function, which acts like a main-function for a CLI,
 ## acting the same as [the `rerun` binary](https://crates.io/crates/rerun-cli).
 run = [
-  "clap",
+  "argh",
   "sdk",
   "dep:re_data_source",
   "dep:re_log_encoding",
@@ -114,6 +114,7 @@ re_viewer = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true, features = ["server"] }
 
+argh = { workspace = true, optional = true }
 env_logger = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 

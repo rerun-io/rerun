@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Context as _;
-use clap::Subcommand;
 use itertools::Itertools;
 
 use re_data_source::DataSource;
@@ -39,36 +38,36 @@ use re_ws_comms::RerunServerPort;
 ///     Naturally, support depends on your OS. Default is `vulkan` everywhere except on Mac where we use `metal`.
 ///
 /// * `WGPU_POWER_PREF`: overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
-#[derive(Debug, clap::Parser)]
-#[clap(author, about)]
+#[derive(Debug, argh::FromArgs)]
 struct Args {
     // Note: arguments are sorted lexicographically for nicer `--help` message:
-    #[command(subcommand)]
+    #[argh(subcommand)]
     command: Option<Command>,
 
-    /// What bind address IP to use.
-    #[clap(long, default_value = "0.0.0.0")]
+    /// what bind address IP to use.
+    ///
+    #[argh(option, default = "String::from(\"0.0.0.0\")")]
     bind: String,
 
-    /// Set a maximum input latency, e.g. "200ms" or "10s".
+    /// set a maximum input latency, e.g. "200ms" or "10s".
     ///
     /// If we go over this, we start dropping packets.
     ///
     /// The default is no limit, which means Rerun might eat more and more memory,
     /// and have longer and longer latency, if you are logging data faster
     /// than Rerun can index it.
-    #[clap(long)]
+    #[argh(option)]
     drop_at_latency: Option<String>,
 
-    /// An upper limit on how much memory the Rerun Viewer should use.
+    /// an upper limit on how much memory the Rerun Viewer should use.
     ///
     /// When this limit is reached, Rerun will drop the oldest data.
     ///
     /// Example: `16GB` or `50%` (of system total).
-    #[clap(long, default_value = "75%")]
+    #[argh(option, default = "String::from(\"75%\")")]
     memory_limit: String,
 
-    /// An upper limit on how much memory the WebSocket server should use.
+    /// an upper limit on how much memory the WebSocket server should use.
     ///
     /// The server buffers log messages for the benefit of late-arriving viewers.
     ///
@@ -76,10 +75,11 @@ struct Args {
     /// Example: `16GB` or `50%` (of system total).
     ///
     /// Defaults to `25%`.
-    #[clap(long, default_value = "25%")]
+    #[argh(option, default = "String::from(\"25%\")")]
+    #[cfg(feature = "web_viewer")]
     server_memory_limit: String,
 
-    /// Whether the Rerun Viewer should persist the state of the viewer to disk.
+    /// whether the Rerun Viewer should persist the state of the viewer to disk.
     ///
     /// When persisted, the state will be stored at the following locations:
     ///
@@ -88,131 +88,194 @@ struct Args {
     /// - macOS: /Users/UserName/Library/Application Support/rerun
     ///
     /// - Windows: C:\Users\UserName\AppData\Roaming\rerun
-    #[clap(long, default_value_t = true)]
+    #[argh(option, default = "true")]
     persist_state: bool,
 
-    /// What TCP port do we listen to (for SDKs to connect to)?
+    /// what TCP port do we listen to (for SDKs to connect to)?
+    ///
     #[cfg(feature = "server")]
-    #[clap(long, default_value_t = re_sdk_comms::DEFAULT_SERVER_PORT)]
+    #[argh(option, default = "re_sdk_comms::DEFAULT_SERVER_PORT")]
     port: u16,
 
-    /// Start with the puffin profiler running.
-    #[clap(long)]
+    /// start with the puffin profiler running.
+    ///
+    #[argh(switch)]
     profile: bool,
 
-    /// Stream incoming log events to an .rrd file at the given path.
-    #[clap(long)]
+    /// stream incoming log events to an .rrd file at the given path.
+    ///
+    #[argh(option)]
     save: Option<String>,
 
-    /// Take a screenshot of the app and quit.
+    /// take a screenshot of the app and quit.
+    ///
     /// We use this to generate screenshots of our exmples.
     /// Useful together with `--window-size`.
-    #[clap(long)]
+    #[argh(option)]
     screenshot_to: Option<std::path::PathBuf>,
 
-    /// Do not display the welcome screen.
-    #[clap(long)]
+    /// do not display the welcome screen.
+    ///
+    #[argh(switch)]
     skip_welcome_screen: bool,
 
-    /// Ingest data and then quit once the goodbye message has been received.
+    /// ingest data and then quit once the goodbye message has been received.
     ///
     /// Used for testing together with `RERUN_PANIC_ON_WARN=1`.
     ///
     /// Fails if no messages are received, or if no messages are received within a dozen or so seconds.
-    #[clap(long)]
+    #[argh(switch)]
     test_receive: bool,
 
-    /// Either: a path to `.rrd` file(s) to load,
+    /// either: a path to `.rrd` file(s) to load,
+    ///
     /// some mesh or image files to show,
     /// an http url to an `.rrd` file,
     /// or a websocket url to a Rerun Server from which to read data
     ///
     /// If none is given, a server will be hosted which the Rerun SDK can connect to.
+    #[argh(positional)]
     url_or_paths: Vec<String>,
 
-    /// Print version and quit
-    #[clap(long)]
+    /// print version and quit
+    ///
+    #[argh(switch)]
     version: bool,
 
-    /// Start the viewer in the browser (instead of locally).
+    /// start the viewer in the browser (instead of locally).
+    ///
     /// Requires Rerun to have been compiled with the 'web_viewer' feature.
-    #[clap(long)]
+    #[argh(switch)]
     web_viewer: bool,
 
-    /// What port do we listen to for hosting the web viewer over HTTP.
+    /// what port do we listen to for hosting the web viewer over HTTP.
+    ///
     /// A port of 0 will pick a random port.
     #[cfg(feature = "web_viewer")]
-    #[clap(long, default_value_t = Default::default())]
+    #[argh(option, default = "Default::default()")]
     web_viewer_port: WebViewerServerPort,
 
-    /// Set the screen resolution (in logical points), e.g. "1920x1080".
+    /// set the screen resolution (in logical points), e.g. "1920x1080".
+    ///
     /// Useful together with `--screenshot-to`.
-    #[clap(long)]
+    #[argh(option)]
     window_size: Option<String>,
 
-    /// What port do we listen to for incoming websocket connections from the viewer
+    /// what port do we listen to for incoming websocket connections from the viewer
+    ///
     /// A port of 0 will pick a random port.
     #[cfg(feature = "web_viewer")]
-    #[clap(long, default_value_t = Default::default())]
+    #[argh(option, default = "Default::default()")]
     ws_server_port: RerunServerPort,
 }
 
-#[derive(Debug, Clone, Subcommand)]
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand)]
 enum Command {
-    /// Configure the behavior of our analytics.
     #[cfg(feature = "analytics")]
-    #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
-    /// Compares the data between 2 .rrd files, returning a successful shell exit code if they
-    /// match.
-    ///
-    /// This ignores the `log_time` timeline.
-    Compare {
-        path_to_rrd1: String,
-        path_to_rrd2: String,
+    Compare(CompareCommand),
 
-        /// If specified, dumps both .rrd files as tables.
-        #[clap(long, default_value_t = false)]
-        full_dump: bool,
-    },
+    Print(PrintRrdCommand),
 
-    /// Print the contents of an .rrd file.
-    Print { rrd_path: String },
-
-    /// Reset the memory of the Rerun Viewer.
-    ///
-    /// Only run this if you're having trouble with the Viewer,
-    /// e.g. if it is crashing on startup.
-    ///
-    /// Rerun will forget all blueprints, as well as the native window's size, position and scale factor.
     #[cfg(feature = "native_viewer")]
-    Reset,
+    Reset(ResetCommand),
 }
 
-#[derive(Debug, Clone, Subcommand)]
-enum AnalyticsCommands {
-    /// Prints extra information about analytics.
-    Details,
+/// Reset the memory of the Rerun Viewer.
+///
+/// Only run this if you're having trouble with the Viewer,
+/// e.g. if it is crashing on startup.
+///
+/// Rerun will forget all blueprints, as well as the native window's size, position and scale factor.
+#[cfg(feature = "native_viewer")]
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand, name = "reset")]
+struct ResetCommand {}
 
-    /// Deletes everything related to analytics.
-    ///
-    /// This will remove all pending data that hasn't yet been sent to our servers, as well as
-    /// reset your analytics ID.
-    Clear,
-
-    /// Associate an email address with the current user.
-    Email { email: String },
-
-    /// Enable analytics.
-    Enable,
-
-    /// Disable analytics.
-    Disable,
-
-    /// Prints the current configuration.
-    Config,
+/// Print the contents of an .rrd file.
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand, name = "print")]
+struct PrintRrdCommand {
+    /// the path to the .rrd file to print.
+    #[argh(option)]
+    rrd_path: String,
 }
+
+/// Compares the data between 2 .rrd files, returning a successful shell exit code if they
+/// match.
+///
+/// This ignores the `log_time` timeline.
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand, name = "compare")]
+struct CompareCommand {
+    /// path to first .rrd file
+    #[argh(option)]
+    path_to_rrd1: String,
+
+    /// path to second .rrd file
+    #[argh(option)]
+    path_to_rrd2: String,
+
+    /// if specified, dumps both .rrd files as tables.
+    #[argh(option, default = "false")]
+    full_dump: bool,
+}
+
+/// Configure the behavior of our analytics.
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand, name = "analytics")]
+struct AnalyticsCommands {
+    #[argh(subcommand)]
+    analytics: AnalyticsSubCommands,
+}
+
+/// Configure the behavior of our analytics.
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand)]
+enum AnalyticsSubCommands {
+    Details(AnalyticsDetailsCommand),
+    Clear(AnalyticsClearCommand),
+    Email(AnalyticsEmailCommand),
+    Enable(AnalyticsEnableCommand),
+    Disable(AnalyticsDisableCommand),
+    Config(AnalyticsConfigCommand),
+}
+
+/// Prints extra information about analytics.
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand, name = "details")]
+struct AnalyticsDetailsCommand {}
+
+/// Reset your analytics ID.
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand, name = "clear")]
+struct AnalyticsClearCommand {}
+
+/// Associate an email address with the current user.
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand, name = "email")]
+struct AnalyticsEmailCommand {
+    /// your email address.
+    #[argh(option)]
+    email: String,
+}
+
+/// Enable analytics.
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand, name = "enable")]
+struct AnalyticsEnableCommand {}
+
+/// Disable analytics.
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand, name = "disable")]
+struct AnalyticsDisableCommand {}
+
+/// Prints the current configuration.
+#[derive(Debug, Clone, argh::FromArgs)]
+#[argh(subcommand, name = "config")]
+struct AnalyticsConfigCommand {}
 
 /// Where are we calling [`run`] from?
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -276,8 +339,26 @@ where
 
     re_crash_handler::install_crash_handlers(build_info);
 
-    use clap::Parser as _;
-    let args = Args::parse_from(args);
+    let args: Vec<String> = args
+        .into_iter()
+        .map(|s| s.into().to_string_lossy().to_string())
+        .collect_vec();
+    let args_str = args.iter().map(|s| s.as_str()).collect_vec();
+
+    use argh::FromArgs as _;
+    let args = match Args::from_args(&[], &args_str) {
+        Ok(args) => args,
+        Err(argh::EarlyExit { output, status }) => match status {
+            Ok(()) => {
+                println!("{output}");
+                return Ok(0);
+            }
+            Err(()) => {
+                eprintln!("{output}");
+                return Ok(1);
+            }
+        },
+    };
 
     if args.version {
         println!("{build_info}");
@@ -289,23 +370,23 @@ where
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => run_analytics(analytics).map_err(Into::into),
 
-            Command::Compare {
+            Command::Compare(CompareCommand {
                 path_to_rrd1,
                 path_to_rrd2,
                 full_dump,
-            } => {
+            }) => {
                 let path_to_rrd1 = PathBuf::from(path_to_rrd1);
                 let path_to_rrd2 = PathBuf::from(path_to_rrd2);
                 run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
             }
 
-            Command::Print { rrd_path } => {
+            Command::Print(PrintRrdCommand { rrd_path }) => {
                 let rrd_path = PathBuf::from(&rrd_path);
                 print_rrd(&rrd_path).with_context(|| format!("path: {rrd_path:?}"))
             }
 
             #[cfg(feature = "native_viewer")]
-            Command::Reset => reset_viewer(),
+            Command::Reset(ResetCommand {}) => reset_viewer(),
         }
     } else {
         run_impl(build_info, call_source, args).await
@@ -412,16 +493,21 @@ fn print_rrd(rrd_path: &Path) -> anyhow::Result<()> {
 
 #[cfg(feature = "analytics")]
 fn run_analytics(cmd: &AnalyticsCommands) -> Result<(), re_analytics::cli::CliError> {
-    match cmd {
+    let AnalyticsCommands { analytics } = cmd;
+    match analytics {
         #[allow(clippy::unit_arg)]
-        AnalyticsCommands::Details => Ok(re_analytics::cli::print_details()),
-        AnalyticsCommands::Clear => re_analytics::cli::clear(),
-        AnalyticsCommands::Email { email } => {
+        AnalyticsSubCommands::Details(AnalyticsDetailsCommand {}) => {
+            Ok(re_analytics::cli::print_details())
+        }
+        AnalyticsSubCommands::Clear(AnalyticsClearCommand {}) => re_analytics::cli::clear(),
+        AnalyticsSubCommands::Email(AnalyticsEmailCommand { email }) => {
             re_analytics::cli::set([("email".to_owned(), email.clone().into())])
         }
-        AnalyticsCommands::Enable => re_analytics::cli::opt(true),
-        AnalyticsCommands::Disable => re_analytics::cli::opt(false),
-        AnalyticsCommands::Config => re_analytics::cli::print_config(),
+        AnalyticsSubCommands::Enable(AnalyticsEnableCommand {}) => re_analytics::cli::opt(true),
+        AnalyticsSubCommands::Disable(AnalyticsDisableCommand {}) => re_analytics::cli::opt(false),
+        AnalyticsSubCommands::Config(AnalyticsConfigCommand {}) => {
+            re_analytics::cli::print_config()
+        }
     }
 }
 

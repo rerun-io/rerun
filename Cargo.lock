@@ -5530,6 +5530,7 @@ name = "rerun"
 version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "argh",
  "clap",
  "document-features",
  "env_logger",
