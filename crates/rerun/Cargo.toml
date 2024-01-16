@@ -31,7 +31,7 @@ analytics = [
 ]
 
 ## Integration with clap
-clap = ["dep:clap"]
+clap = ["dep:clap", "dep:tokio"]
 
 ## Demo helpers for examples.
 demo = []

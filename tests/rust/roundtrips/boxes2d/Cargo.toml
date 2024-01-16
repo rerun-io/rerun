@@ -8,7 +8,7 @@ version.workspace = true
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
-rerun = { path = "../../../../crates/rerun" }
+rerun = { path = "../../../../crates/rerun", features = ["clap"] }
 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
