@@ -1,7 +1,7 @@
 //! Demonstrates usage of [`re_data_store::polars_util::range_components`].
 //!
 //! ```text
-//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_data_store --all-features --example range_components
+//! POLARS_FMT_MAX_ROWS=100 cargo r -p re_data_store --example range_components
 //! ```
 
 use polars_core::prelude::JoinType;
