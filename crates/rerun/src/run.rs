@@ -110,6 +110,17 @@ struct Args {
     #[clap(long)]
     screenshot_to: Option<std::path::PathBuf>,
 
+    /// Serve the recordings over WebSocket to one or more Rerun Viewers.
+    ///
+    /// This will also host a web-viewer over HTTP that can connect to the WebSocket address,
+    /// but you can also connect to with with this native binary.
+    ///
+    /// `rerun --serve` will act like a proxy,
+    /// listening for incoming TCP connection from logging SDKs, and forwarding it to
+    /// Rerun viewers.
+    #[clap(long)]
+    serve: bool,
+
     /// Do not display the welcome screen.
     #[clap(long)]
     skip_welcome_screen: bool,
@@ -135,7 +146,10 @@ struct Args {
     version: bool,
 
     /// Start the viewer in the browser (instead of locally).
+    ///
     /// Requires Rerun to have been compiled with the 'web_viewer' feature.
+    ///
+    /// This implies `--serve`.
     #[clap(long)]
     web_viewer: bool,
 
@@ -277,7 +291,11 @@ where
     re_crash_handler::install_crash_handlers(build_info);
 
     use clap::Parser as _;
-    let args = Args::parse_from(args);
+    let mut args = Args::parse_from(args);
+
+    if args.web_viewer {
+        args.serve = true;
+    }
 
     if args.version {
         println!("{build_info}");
@@ -516,16 +534,28 @@ async fn run_impl(
     } else if let Some(rrd_path) = args.save {
         let rx = ReceiveSet::new(rx);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
-    } else if args.web_viewer {
-        #[cfg(feature = "web_viewer")]
+    } else if args.serve {
+        #[cfg(not(feature = "server"))]
         {
-            #[cfg(feature = "server")]
+            _ = (call_source, rx);
+            anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
+        }
+
+        #[cfg(not(feature = "web_viewer"))]
+        if args.web_viewer {
+            anyhow::bail!(
+                "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
+            );
+        }
+
+        #[cfg(feature = "server")]
+        {
             if args.url_or_paths.is_empty()
                 && (args.port == args.web_viewer_port.0 || args.port == args.ws_server_port.0)
             {
                 anyhow::bail!(
                     "Trying to spawn a websocket server on {}, but this port is \
-                already used by the server we're connecting to. Please specify a different port.",
+                    already used by the server we're connecting to. Please specify a different port.",
                     args.port
                 );
             }
@@ -544,25 +574,26 @@ async fn run_impl(
             let rx = ReceiveSet::new(rx);
             let ws_server_handle = tokio::spawn(ws_server.listen(rx));
 
-            // This is the server that serves the Wasm+HTML:
-            let web_server_handle = tokio::spawn(host_web_viewer(
-                args.bind.clone(),
-                args.web_viewer_port,
-                true,
-                ws_server_url,
-            ));
+            #[cfg(feature = "web_viewer")]
+            {
+                // We always host the web-viewer in case the users wants it,
+                // but we only open a browser automatically with the `--web-viewer` flag.
 
-            // Wait for both servers to shutdown.
-            web_server_handle.await?.map_err(anyhow::Error::from)?;
+                let open_browser = args.web_viewer;
+
+                // This is the server that serves the Wasm+HTML:
+                let web_server_handle = tokio::spawn(host_web_viewer(
+                    args.bind.clone(),
+                    args.web_viewer_port,
+                    open_browser,
+                    ws_server_url,
+                ));
+
+                // Wait for both servers to shutdown.
+                web_server_handle.await?.map_err(anyhow::Error::from)?;
+            }
+
             return ws_server_handle.await?.map_err(anyhow::Error::from);
-        }
-
-        #[cfg(not(feature = "web_viewer"))]
-        {
-            _ = (call_source, rx);
-            anyhow::bail!(
-                "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
-            );
         }
     } else {
         #[cfg(feature = "native_viewer")]
