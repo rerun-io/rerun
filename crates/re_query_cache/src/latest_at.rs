@@ -90,7 +90,6 @@ macro_rules! impl_query_archetype_latest_at {
                     f(data);
                 }
 
-
                 Ok(())
             };
 

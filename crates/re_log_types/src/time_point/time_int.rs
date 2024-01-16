@@ -29,7 +29,9 @@ impl TimeInt {
     // a bit of leeway.
     pub const BEGINNING: Self = Self(i64::MIN / 2);
 
-    pub const MIN: Self = Self(i64::MIN);
+    // TODO
+    // pub const MIN: Self = Self(i64::MIN);
+    pub const MIN: Self = Self::BEGINNING;
     pub const MAX: Self = Self(i64::MAX);
 
     /// For time timelines.

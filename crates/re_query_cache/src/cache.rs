@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, VecDeque},
+    ops::Range,
     sync::Arc,
 };
 
@@ -51,6 +52,9 @@ static CACHES: Lazy<StoreSubscriberHandle> =
     Lazy::new(|| re_data_store::DataStore::register_subscriber(Box::<Caches>::default()));
 
 /// Maintains the top-level cache mappings.
+//
+// TODO: since we have in cache key in there it means we're duplicating timeless data betweem each
+// and every cache of an entity raaaaaaaaaaaaaaah
 #[derive(Default)]
 pub struct Caches(pub(crate) RwLock<HashMap<CacheKey, CachesPerArchetype>>);
 
@@ -419,12 +423,6 @@ pub struct CacheBucket {
 }
 
 impl CacheBucket {
-    /// Iterate over the timestamps of the point-of-view components.
-    #[inline]
-    pub fn iter_data_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
-        self.data_times.iter()
-    }
-
     #[inline]
     pub fn time_range(&self) -> Option<TimeRange> {
         let first_time = self.data_times.front().map(|(t, _)| *t)?;
@@ -442,6 +440,25 @@ impl CacheBucket {
     #[inline]
     pub fn contains_data_row(&self, data_time: TimeInt, row_id: RowId) -> bool {
         self.data_times.binary_search(&(data_time, row_id)).is_ok()
+    }
+
+    /// How many timestamps' worth of data is stored in this bucket?
+    #[inline]
+    pub fn num_entries(&self) -> usize {
+        self.data_times.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.num_entries() == 0
+    }
+
+    // ---
+
+    /// Iterate over the timestamps of the point-of-view components.
+    #[inline]
+    pub fn iter_data_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
+        self.data_times.iter()
     }
 
     /// Iterate over the [`InstanceKey`] batches of the point-of-view components.
@@ -474,15 +491,73 @@ impl CacheBucket {
         Some(data.iter())
     }
 
-    /// How many timestamps' worth of data is stored in this bucket?
+    // ---
+
+    /// Returns the index range that corresponds to the specified `time_range`.
+    ///
+    /// Use the returned range with one of the range iteration methods:
+    /// - [`Self::range_data_times`]
+    /// - [`Self::range_pov_instance_keys`]
+    /// - [`Self::range_component`]
+    /// - [`Self::range_component_opt`]
+    ///
+    /// Make sure that the bucket hasn't been modified in-between!
+    ///
+    /// This is `O(2*log(n))`, so make sure to clone the returned range rather than calling this
+    /// multiple times.
     #[inline]
-    pub fn num_entries(&self) -> usize {
-        self.data_times.len()
+    pub fn entry_range(&self, time_range: TimeRange) -> Range<usize> {
+        let start_index = self
+            .data_times
+            .partition_point(|t| t < &(time_range.min, RowId::ZERO));
+        let end_index = self
+            .data_times
+            .partition_point(|t| t < &(time_range.max, RowId::MAX));
+        start_index..end_index
     }
 
+    /// Range over the timestamps of the point-of-view components.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.num_entries() == 0
+    pub fn range_data_times(
+        &self,
+        entry_range: Range<usize>,
+    ) -> impl Iterator<Item = &(TimeInt, RowId)> {
+        self.data_times.range(entry_range)
+    }
+
+    /// Range over the [`InstanceKey`] batches of the point-of-view components.
+    #[inline]
+    pub fn range_pov_instance_keys(
+        &self,
+        entry_range: Range<usize>,
+    ) -> impl Iterator<Item = &[InstanceKey]> {
+        self.pov_instance_keys.range(entry_range)
+    }
+
+    /// Range over the batches of the specified non-optional component.
+    #[inline]
+    pub fn range_component<C: Component + Send + Sync + 'static>(
+        &self,
+        entry_range: Range<usize>,
+    ) -> Option<impl Iterator<Item = &[C]>> {
+        let data = self
+            .components
+            .get(&C::name())
+            .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())?;
+        Some(data.range(entry_range))
+    }
+
+    /// Range over the batches of the specified optional component.
+    #[inline]
+    pub fn range_component_opt<C: Component + Send + Sync + 'static>(
+        &self,
+        entry_range: Range<usize>,
+    ) -> Option<impl Iterator<Item = &[Option<C>]>> {
+        let data = self
+            .components
+            .get(&C::name())
+            .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<Option<C>>>())?;
+        Some(data.range(entry_range))
     }
 }
 
