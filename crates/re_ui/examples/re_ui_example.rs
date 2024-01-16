@@ -1,3 +1,4 @@
+use re_ui::list_item::ListItem;
 use re_ui::{toasts, CommandPalette, ReUi, UICommand, UICommandSender};
 
 /// Sender that queues up the execution of a command.
@@ -68,7 +69,11 @@ pub struct ExampleApp {
 
     tree: egui_tiles::Tree<Tab>,
 
+    /// regular modal
     modal_handler: re_ui::modal::ModalHandler,
+
+    /// modal with full span mode
+    full_span_modal_handler: re_ui::modal::ModalHandler,
 
     left_panel: bool,
     right_panel: bool,
@@ -102,6 +107,7 @@ impl ExampleApp {
 
             tree,
             modal_handler: Default::default(),
+            full_span_modal_handler: Default::default(),
 
             left_panel: true,
             right_panel: true,
@@ -232,6 +238,23 @@ impl eframe::App for ExampleApp {
                                 ui,
                                 || re_ui::modal::Modal::new("Modal window"),
                                 |_, ui, _| ui.label("This is a modal window."),
+                            );
+
+                            // ---
+
+                            if ui.button("Open full span modal").clicked() {
+                                self.full_span_modal_handler.open();
+                            }
+
+                            self.full_span_modal_handler.ui(
+                                &self.re_ui,
+                                ui,
+                                || re_ui::modal::Modal::new("Modal window").full_span_content(true),
+                                |_, ui, _| {
+                                    for idx in 0..10 {
+                                        ListItem::new(&self.re_ui, format!("Item {idx}")).show(ui);
+                                    }
+                                },
                             );
 
                             // ---

@@ -4,6 +4,7 @@ use itertools::Itertools;
 
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_space_view::DataQueryBlueprint;
+use re_ui::ReUi;
 use re_viewer_context::ViewerContext;
 use re_viewport::{icon_for_container_kind, SpaceViewBlueprint, Viewport};
 
@@ -23,7 +24,11 @@ impl AddSpaceViewOrContainerModal {
         self.modal_handler.ui(
             ctx.re_ui,
             ui,
-            || re_ui::modal::Modal::new("Add Space View or Container"),
+            || {
+                re_ui::modal::Modal::new("Add Space View or Container")
+                    .min_width(500.0)
+                    .full_span_content(true)
+            },
             |_, ui, _| modal_ui(ui, ctx, viewport, self.target_container),
         );
     }
@@ -35,8 +40,6 @@ fn modal_ui(
     viewport: &Viewport<'_, '_>,
     target_container: Option<egui_tiles::TileId>,
 ) {
-    ui.spacing_mut().item_spacing = egui::vec2(14.0, 10.0);
-
     let container_data = [
         (
             "Tabs",
@@ -67,7 +70,7 @@ fn modal_ui(
         }
     }
 
-    ui.separator();
+    ReUi::full_span_separator(ui);
 
     // space view of any kind
     for space_view in ctx
@@ -98,68 +101,117 @@ fn modal_ui(
     }
 }
 
+/// Draw a single row.
+///
+/// Each row must ensure its own spacing. Here is the geometry we target:
+/// ```text
+///          available_width (defined by `Modal`)
+///      │◀───────────────────────────────────────▶│
+///      │                                         │
+/// ┌───────────────────────────────────────────────────┐──▲
+/// │                                                   │  │  row_space/2
+/// │    ╔══════╦══════════════════════════════════╗────│──▼▲
+/// │    ║      ║                            ┌───┐ ║    │   │
+/// │    ║ Icon ║  Title and Subtitles       │ + │ ║    │   │ row_height
+/// │    ║      ║                            └───┘ ║    │   │
+/// │    ╚══════╩══════════════════════════════════╝────│──▲▼
+/// │                                                   │  │  row_space/2
+/// └───────────────────────────────────────────────────┘──▼
+/// │                                                   │
+/// │◀─────────────────────────────────────────────────▶│
+///                       clip_rect
+/// ```
 fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) -> egui::Response {
+    //TODO(ab): use design tokens
+    let row_space = 14.0;
+    let row_height = 42.0;
+    let icon_size = egui::vec2(18.0, 18.0);
+    let thumbnail_rounding = 6.0;
+    let thumbnail_width = 62.0;
+
     let top_left_corner = ui.cursor().min;
 
-    ui.horizontal(|ui| {
-        //TODO(ab): move this to re_ui
-        //TODO(ab): use design token
-        let row_height = 42.0;
-        let icon_size = egui::vec2(18.0, 18.0);
-        let thumbnail_rounding = 6.0;
+    ui.add_space(row_space / 2.0);
 
-        let thumbnail_content = |ui: &mut egui::Ui| {
-            let (rect, _) = ui.allocate_exact_size(icon_size, egui::Sense::hover());
-            icon.as_image()
-                .tint(ui.visuals().widgets.active.fg_stroke.color)
-                .paint_at(ui, rect);
-        };
+    let resp = ui
+        .horizontal(|ui| {
+            ui.spacing_mut().item_spacing = egui::vec2(14.0, 10.0);
 
-        egui::Frame {
-            inner_margin: egui::Margin::symmetric(
-                (62. - icon_size.x) / 2.0,
-                (row_height - icon_size.y) / 2.0,
-            ), // should be 62x42 when combined with icon size
-            rounding: egui::Rounding::same(thumbnail_rounding),
-            fill: egui::Color32::from_gray(50),
-            ..Default::default()
-        }
-        .show(ui, thumbnail_content);
+            // placeholder for the hover background
+            let background_frame = ui.painter().add(egui::Shape::Noop);
 
-        ui.vertical(|ui| {
-            ui.strong(title);
-            ui.add_space(-5.0);
-
-            ui.add(egui::Label::new(subtitle).wrap(false));
-        });
-
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let right_coord = ui.cursor().max.x;
-
-            // interact with the entire row
-            let interact_rect = egui::Rect::from_min_max(
-                top_left_corner,
-                egui::pos2(right_coord, top_left_corner.y + row_height),
-            );
-
-            let response =
-                ui.interact(interact_rect, title.to_owned().into(), egui::Sense::click());
-            let tint = if response.hovered() {
-                ui.visuals().widgets.active.fg_stroke.color
-            } else {
-                ui.visuals().widgets.inactive.fg_stroke.color
+            let thumbnail_content = |ui: &mut egui::Ui| {
+                let (rect, _) = ui.allocate_exact_size(icon_size, egui::Sense::hover());
+                icon.as_image()
+                    .tint(ui.visuals().widgets.active.fg_stroke.color)
+                    .paint_at(ui, rect);
             };
 
-            ui.add(
-                re_ui::icons::ADD_BIG
-                    .as_image()
-                    .fit_to_exact_size(egui::vec2(24.0, 24.0))
-                    .tint(tint),
-            );
+            egui::Frame {
+                inner_margin: egui::Margin::symmetric(
+                    (thumbnail_width - icon_size.x) / 2.0,
+                    (row_height - icon_size.y) / 2.0,
+                ), // should be 62x42 when combined with icon size
+                rounding: egui::Rounding::same(thumbnail_rounding),
+                fill: egui::Color32::from_gray(50),
+                ..Default::default()
+            }
+            .show(ui, thumbnail_content);
 
-            response
+            ui.vertical(|ui| {
+                ui.strong(title);
+                ui.add_space(-5.0);
+                ui.add(egui::Label::new(subtitle).wrap(false));
+            });
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let right_coord = ui.cursor().max.x;
+
+                // interact with the entire row
+                let interact_rect = egui::Rect::from_min_max(
+                    top_left_corner,
+                    egui::pos2(right_coord, top_left_corner.y + row_height + row_space),
+                );
+
+                let response =
+                    ui.interact(interact_rect, title.to_owned().into(), egui::Sense::click());
+                let tint = if response.hovered() {
+                    ui.visuals().widgets.active.fg_stroke.color
+                } else {
+                    ui.visuals().widgets.inactive.fg_stroke.color
+                };
+
+                ui.add(
+                    re_ui::icons::ADD_BIG
+                        .as_image()
+                        .fit_to_exact_size(egui::vec2(24.0, 24.0))
+                        .tint(tint),
+                );
+
+                if response.hovered() {
+                    let clip_rect = ui.clip_rect();
+
+                    let bg_rect = interact_rect
+                        .with_min_x(clip_rect.min.x)
+                        .with_max_x(clip_rect.max.x);
+
+                    ui.painter().set(
+                        background_frame,
+                        egui::Shape::rect_filled(
+                            bg_rect,
+                            0.0,
+                            ui.visuals().widgets.hovered.weak_bg_fill,
+                        ),
+                    );
+                }
+
+                response
+            })
+            .inner
         })
-        .inner
-    })
-    .inner
+        .inner;
+
+    ui.add_space(row_space / 2.0);
+
+    resp
 }
