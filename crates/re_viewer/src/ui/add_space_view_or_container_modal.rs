@@ -99,8 +99,6 @@ fn modal_ui(
             viewport.blueprint.mark_user_interaction(ctx);
         }
     }
-
-    //ui.add_space(-5.0);
 }
 
 /// Draw a single row.
@@ -112,11 +110,11 @@ fn modal_ui(
 ///      │                                         │
 /// ┌───────────────────────────────────────────────────┐──▲
 /// │                                                   │  │  row_space/2
-/// │    ╔═════════════════════════════════════════╗────│──▼▲
-/// │    ║ ┌───┐                             ┌───┐ ║    │   │
-/// │    ║ │ I │  Title and Subtitles        │ + │ ║    │   │ row_height
-/// │    ║ └───┘                             └───┘ ║    │   │
-/// │    ╚═════════════════════════════════════════╝────│──▲▼
+/// │    ╔══════╦══════════════════════════════════╗────│──▼▲
+/// │    ║      ║                            ┌───┐ ║    │   │
+/// │    ║ Icon ║  Title and Subtitles       │ + │ ║    │   │ row_height
+/// │    ║      ║                            └───┘ ║    │   │
+/// │    ╚══════╩══════════════════════════════════╝────│──▲▼
 /// │                                                   │  │  row_space/2
 /// └───────────────────────────────────────────────────┘──▼
 /// │                                                   │
@@ -124,7 +122,13 @@ fn modal_ui(
 ///                       clip_rect
 /// ```
 fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) -> egui::Response {
+    //TODO(ab): use design tokens
     let row_space = 14.0;
+    let row_height = 42.0;
+    let icon_size = egui::vec2(18.0, 18.0);
+    let thumbnail_rounding = 6.0;
+    let thumbnail_width = 62.0;
+
     let top_left_corner = ui.cursor().min;
 
     ui.add_space(row_space / 2.0);
@@ -132,12 +136,6 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
     let resp = ui
         .horizontal(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(14.0, 10.0);
-
-            //TODO(ab): move this to re_ui
-            //TODO(ab): use design token
-            let row_height = 42.0;
-            let icon_size = egui::vec2(18.0, 18.0);
-            let thumbnail_rounding = 6.0;
 
             // placeholder for the hover background
             let background_frame = ui.painter().add(egui::Shape::Noop);
@@ -151,7 +149,7 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
 
             egui::Frame {
                 inner_margin: egui::Margin::symmetric(
-                    (62. - icon_size.x) / 2.0,
+                    (thumbnail_width - icon_size.x) / 2.0,
                     (row_height - icon_size.y) / 2.0,
                 ), // should be 62x42 when combined with icon size
                 rounding: egui::Rounding::same(thumbnail_rounding),
@@ -163,7 +161,6 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
             ui.vertical(|ui| {
                 ui.strong(title);
                 ui.add_space(-5.0);
-
                 ui.add(egui::Label::new(subtitle).wrap(false));
             });
 
