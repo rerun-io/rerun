@@ -46,7 +46,11 @@ re_entity_db = { workspace = true, features = ["serde"] }
 re_error.workspace = true
 re_format.workspace = true
 re_log.workspace = true
-re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
+re_log_encoding = { workspace = true, features = [
+  "decoder",
+  "encoder",
+  "stream_from_http",
+] }
 re_log_types.workspace = true
 re_memory.workspace = true
 re_query_cache.workspace = true

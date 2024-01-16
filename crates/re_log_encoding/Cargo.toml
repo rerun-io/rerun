@@ -22,9 +22,19 @@ default = []
 ## Enable loading data from an .rrd file.
 decoder = ["dep:rmp-serde", "dep:lz4_flex"]
 
-# Enable encoding of log messages to an .rrd file/stream:
+## Enable encoding of log messages to an .rrd file/stream.
 encoder = ["dep:rmp-serde", "dep:lz4_flex"]
 
+## Enable streaming of .rrd files from HTTP.
+stream_from_http = [
+  "decoder",
+  "dep:ehttp",
+  "dep:js-sys",
+  "dep:wasm-bindgen-futures",
+  "dep:wasm-bindgen",
+  "dep:web-sys",
+  "dep:web-time",
+]
 
 [dependencies]
 
@@ -36,21 +46,21 @@ re_smart_channel.workspace = true
 re_tracing.workspace = true
 
 # External:
-ehttp = { workspace = true, features = ["streaming"] }
 parking_lot.workspace = true
 thiserror.workspace = true
-web-time.workspace = true
 
 # Optional external dependencies:
+ehttp = { workspace = true, optional = true, features = ["streaming"] }
 lz4_flex = { workspace = true, optional = true }
 rmp-serde = { workspace = true, optional = true }
+web-time = { workspace = true, optional = true }
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-js-sys.workspace = true
-wasm-bindgen.workspace = true
-wasm-bindgen-futures.workspace = true
-web-sys = { workspace = true, features = ["Window"] }
+js-sys = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+wasm-bindgen-futures = { workspace = true, optional = true }
+web-sys = { workspace = true, optional = true, features = ["Window"] }
 
 [dev-dependencies]
 re_types = { workspace = true, features = ["datagen", "serde"] }

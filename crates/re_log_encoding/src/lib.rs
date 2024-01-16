@@ -10,7 +10,7 @@ pub mod encoder;
 #[cfg(not(target_arch = "wasm32"))]
 mod file_sink;
 
-#[cfg(feature = "decoder")]
+#[cfg(feature = "stream_from_http")]
 pub mod stream_rrd_from_http;
 
 // ---------------------------------------------------------------------
