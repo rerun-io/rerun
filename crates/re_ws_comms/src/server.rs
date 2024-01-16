@@ -114,8 +114,8 @@ impl RerunServer {
         };
 
         re_log::info!(
-            "Listening for WebSocket traffic on {}. Connect with a Rerun Web Viewer.",
-            slf.server_url()
+            "Hosting a WebSocket server on {wsurl}. You can connect to this with a native viewer (`rerun {wsurl}`) or the web viewer (https://app.rerun.io/?url={wsurl}).",
+            wsurl=slf.server_url()
         );
 
         Ok(slf)
