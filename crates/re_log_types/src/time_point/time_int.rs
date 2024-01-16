@@ -29,6 +29,7 @@ impl TimeInt {
     // a bit of leeway.
     pub const BEGINNING: Self = Self(i64::MIN / 2);
 
+    // TODO(#4832): `TimeInt::BEGINNING` vs. `TimeInt::MIN` vs. `Option<TimeInt>`…
     pub const MIN: Self = Self(i64::MIN);
     pub const MAX: Self = Self(i64::MAX);
 

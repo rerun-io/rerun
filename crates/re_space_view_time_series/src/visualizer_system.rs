@@ -1,4 +1,5 @@
 use re_data_store::TimeRange;
+use re_log_types::TimeInt;
 use re_query_cache::QueryError;
 use re_types::{
     archetypes::TimeSeriesScalar,
@@ -152,7 +153,7 @@ impl TimeSeriesSystem {
                         visible_history.to(query.latest_at),
                     )
                 } else {
-                    (i64::MIN.into(), i64::MAX.into())
+                    (TimeInt::MIN, TimeInt::MAX)
                 };
 
                 let query =
