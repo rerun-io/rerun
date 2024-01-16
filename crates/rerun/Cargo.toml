@@ -30,7 +30,7 @@ analytics = [
   "re_web_viewer_server?/analytics",
 ]
 
-## Integration with clap
+## Integration with `clap`.
 clap = ["dep:clap", "dep:tokio"]
 
 ## Demo helpers for examples.
