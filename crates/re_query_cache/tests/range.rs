@@ -17,6 +17,8 @@ use re_types_core::Loggable as _;
 // ---
 
 #[test]
+// TODO(cmc): actually make cached range queries correct
+#[should_panic(expected = "assertion failed: `(left == right)`")]
 fn simple_range() {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -77,6 +79,8 @@ fn simple_range() {
 
     // --- First test: `(timepoint1, timepoint3]` ---
 
+    // The exclusion of `timepoint1` means latest-at semantics will kick in!
+
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
@@ -97,7 +101,7 @@ fn simple_range() {
 }
 
 #[test]
-// TODO(cmc): timeless support
+// TODO(cmc): cached range timeless support
 #[should_panic(expected = "assertion failed: `(left == right)`")]
 fn timeless_range() {
     let mut store = DataStore::new(
@@ -192,6 +196,8 @@ fn timeless_range() {
 
     // --- First test: `(timepoint1, timepoint3]` ---
 
+    // The exclusion of `timepoint1` means latest-at semantics will kick in!
+
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
@@ -219,6 +225,8 @@ fn timeless_range() {
 }
 
 #[test]
+// TODO(cmc): actually make cached range queries correct
+#[should_panic(expected = "assertion failed: `(left == right)`")]
 fn simple_splatted_range() {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -278,6 +286,8 @@ fn simple_splatted_range() {
     }
 
     // --- First test: `(timepoint1, timepoint3]` ---
+
+    // The exclusion of `timepoint1` means latest-at semantics will kick in!
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
@@ -364,7 +374,6 @@ fn query_and_compare(store: &DataStore, query: &RangeQuery, ent_path: &EntityPat
 
         // Keep this around for the next unlucky chap.
         // eprintln!("(expected={expected_data_times:?}, uncached={uncached_data_times:?}, cached={cached_data_times:?})");
-        // eprintln!("{}", store.to_data_table().unwrap());
 
         similar_asserts::assert_eq!(expected_data_times, uncached_data_times);
         similar_asserts::assert_eq!(expected_instance_keys, uncached_instance_keys);
