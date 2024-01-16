@@ -12,37 +12,54 @@ use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 use re_sdk::web_viewer::host_web_viewer;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
-#[cfg(feature = "web_viewer")]
+#[cfg(feature = "server")]
 use re_ws_comms::RerunServerPort;
 
-// Note the extra blank lines between the point-lists below: it is required by `clap`.
+const SHORT_ABOUT: &str = "The Rerun Viewer and Server";
 
-/// The Rerun Viewer and Server
-///
-/// Features:
-///
-/// * Read `.rrd` (rerun recording files).
-///
-/// * Connect to a Rerun Server over web-sockets.
-///
-/// * Host a Rerun Server that Rerun SDK:s can connect to.
-///
-/// Environment variables:
-///
-/// * `RERUN`: force enable/disable logging with rerun (only relevant for the Rerun API, not the Viewer itself). Either `on`/`1`/`true` or `off`/`0`/`false`
-///
-/// * `RERUN_SHADER_PATH`: change the search path for shader/shader-imports. WARNING: Shaders are embedded in some build configurations.
-///
-/// * `RERUN_TRACK_ALLOCATIONS`: track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
-///
-/// * `WGPU_BACKEND`: overwrites the graphics backend used, must be one of `vulkan`, `metal`, `dx12`, `dx11`, or `gl`.
-///     Naturally, support depends on your OS. Default is `vulkan` everywhere except on Mac where we use `metal`.
-///
-/// * `WGPU_POWER_PREF`: overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
+const LONG_ABOUT: &str = r#"
+The Rerun Viewer and Server
+
+Examples
+--------
+Open a Rerun Viewer that listens for incoming SDK connections:
+    rerun
+
+Load some files and show them in the Rerun Viewer:
+    rerun recording.rrd mesh.obj image.png https://example.com/recording.rrd
+
+Open an .rrd file and stream it to a Web Viewer:
+    rerun recording.rrd --web-viewer
+
+Host a Rerun Server which listens for incoming TCP connections from the logging SDK, buffer the log messages, and host the results over WebSocket:
+    rerun --serve
+
+Host a Rerun Server which serves a recording over WebSocket to any connecting Rerun Viewers:
+    rerun --serve recording.rrd
+
+Connect to a Rerun Server:
+    rerun ws://localhost:9877
+
+Listens for incoming TCP connections from the logging SDK and stream the results to disk:
+    rerun --save new_recording.rrd
+
+Environment variables
+---------------------
+* RERUN_SHADER_PATH        The search path for shader/shader-imports. WARNING: Shaders are embedded in some build configurations.
+* RERUN_TRACK_ALLOCATIONS  Track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
+* RUST_LOG                 Change the log level of the viewer, e.g. `RUST_LOG=debug`.
+* WGPU_BACKEND             Overwrites the graphics backend used, must be one of `vulkan`, `metal`, `dx12`, `dx11`, or `gl`.
+                           Naturally, support depends on your OS. Default is `vulkan` everywhere except on Mac where we use `metal`.
+* WGPU_POWER_PREF          Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
+"#;
+
 #[derive(Debug, clap::Parser)]
-#[clap(author, about)]
+#[clap(author, about = SHORT_ABOUT, long_about = LONG_ABOUT)]
 struct Args {
-    // Note: arguments are sorted lexicographically for nicer `--help` message:
+    // Note: arguments are sorted lexicographically for nicer `--help` message.
+    //
+    // We also use `long_help` on some arguments for more compact formatting.
+    //
     #[command(subcommand)]
     command: Option<Command>,
 
@@ -54,41 +71,40 @@ struct Args {
     ///
     /// If we go over this, we start dropping packets.
     ///
-    /// The default is no limit, which means Rerun might eat more and more memory,
+    /// The default is no limit, which means Rerun might eat more and more memory
     /// and have longer and longer latency, if you are logging data faster
     /// than Rerun can index it.
     #[clap(long)]
     drop_at_latency: Option<String>,
 
-    /// An upper limit on how much memory the Rerun Viewer should use.
-    ///
-    /// When this limit is reached, Rerun will drop the oldest data.
-    ///
-    /// Example: `16GB` or `50%` (of system total).
-    #[clap(long, default_value = "75%")]
+    #[clap(
+        long,
+        default_value = "75%",
+        long_help = r"An upper limit on how much memory the Rerun Viewer should use.
+When this limit is reached, Rerun will drop the oldest data.
+Example: `16GB` or `50%` (of system total)."
+    )]
     memory_limit: String,
 
-    /// An upper limit on how much memory the WebSocket server should use.
-    ///
-    /// The server buffers log messages for the benefit of late-arriving viewers.
-    ///
-    /// When this limit is reached, Rerun will drop the oldest data.
-    /// Example: `16GB` or `50%` (of system total).
-    ///
-    /// Defaults to `25%`.
-    #[clap(long, default_value = "25%")]
+    #[clap(
+        long,
+        default_value = "25%",
+        long_help = r"An upper limit on how much memory the WebSocket server should use.
+The server buffers log messages for the benefit of late-arriving viewers.
+When this limit is reached, Rerun will drop the oldest data.
+Example: `16GB` or `50%` (of system total)."
+    )]
     server_memory_limit: String,
 
-    /// Whether the Rerun Viewer should persist the state of the viewer to disk.
-    ///
-    /// When persisted, the state will be stored at the following locations:
-    ///
-    /// - Linux: /home/UserName/.local/share/rerun
-    ///
-    /// - macOS: /Users/UserName/Library/Application Support/rerun
-    ///
-    /// - Windows: C:\Users\UserName\AppData\Roaming\rerun
-    #[clap(long, default_value_t = true)]
+    #[clap(
+        long,
+        default_value_t = true,
+        long_help = r"Whether the Rerun Viewer should persist the state of the viewer to disk.
+When persisted, the state will be stored at the following locations:
+- Linux: /home/UserName/.local/share/rerun
+- macOS: /Users/UserName/Library/Application Support/rerun
+- Windows: C:\Users\UserName\AppData\Roaming\rerun"
+    )]
     persist_state: bool,
 
     /// What TCP port do we listen to (for SDKs to connect to)?
@@ -125,14 +141,6 @@ struct Args {
     #[clap(long)]
     skip_welcome_screen: bool,
 
-    /// Ingest data and then quit once the goodbye message has been received.
-    ///
-    /// Used for testing together with `RERUN_PANIC_ON_WARN=1`.
-    ///
-    /// Fails if no messages are received, or if no messages are received within a dozen or so seconds.
-    #[clap(long)]
-    test_receive: bool,
-
     /// Either: a path to `.rrd` file(s) to load,
     /// some mesh or image files to show,
     /// an http url to an `.rrd` file,
@@ -166,9 +174,19 @@ struct Args {
 
     /// What port do we listen to for incoming websocket connections from the viewer
     /// A port of 0 will pick a random port.
-    #[cfg(feature = "web_viewer")]
+    #[cfg(feature = "server")]
     #[clap(long, default_value_t = Default::default())]
     ws_server_port: RerunServerPort,
+
+    // ----------------------------------------------------------------------------
+    // Debug-options:
+    /// Ingest data and then quit once the goodbye message has been received.
+    ///
+    /// Used for testing together with `RERUN_PANIC_ON_WARN=1`.
+    ///
+    /// Fails if no messages are received, or if no messages are received within a dozen or so seconds.
+    #[clap(long)]
+    test_receive: bool,
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -549,17 +567,19 @@ async fn run_impl(
         }
 
         #[cfg(feature = "server")]
+        #[cfg(feature = "web_viewer")]
+        if args.url_or_paths.is_empty()
+            && (args.port == args.web_viewer_port.0 || args.port == args.ws_server_port.0)
         {
-            if args.url_or_paths.is_empty()
-                && (args.port == args.web_viewer_port.0 || args.port == args.ws_server_port.0)
-            {
-                anyhow::bail!(
+            anyhow::bail!(
                     "Trying to spawn a websocket server on {}, but this port is \
                     already used by the server we're connecting to. Please specify a different port.",
                     args.port
                 );
-            }
+        }
 
+        #[cfg(feature = "server")]
+        {
             let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
                 .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
@@ -570,7 +590,7 @@ async fn run_impl(
                 server_memory_limit,
             )
             .await?;
-            let ws_server_url = ws_server.server_url();
+            let _ws_server_url = ws_server.server_url();
             let rx = ReceiveSet::new(rx);
             let ws_server_handle = tokio::spawn(ws_server.listen(rx));
 
@@ -586,7 +606,7 @@ async fn run_impl(
                     args.bind.clone(),
                     args.web_viewer_port,
                     open_browser,
-                    ws_server_url,
+                    _ws_server_url,
                 ));
 
                 // Wait for both servers to shutdown.
