@@ -155,6 +155,7 @@ impl std::fmt::Display for RowId {
 
 impl RowId {
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
+    pub const MAX: Self = Self(re_tuid::Tuid::MAX);
 
     /// Create a new unique [`RowId`] based on the current time.
     #[allow(clippy::new_without_default)]
