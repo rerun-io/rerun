@@ -1,6 +1,6 @@
-use re_entity_db::{EntityProperties, EntityTree};
+use nohash_hasher::IntSet;
+use re_entity_db::EntityProperties;
 use re_log_types::EntityPath;
-use re_types::{components::PinholeProjection, Loggable as _};
 use re_viewer_context::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
@@ -10,18 +10,16 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
+    spatial_topology::{SpatialTopology, SubSpaceConnectionFlags, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{register_2d_spatial_visualizers, SpatialViewVisualizerData},
 };
 
-// TODO(#4388): 2D/3D relationships should be solved via a "SpatialTopology" construct.
+#[derive(Default)]
 pub struct VisualizableFilterContext2D {
-    /// True if there's a pinhole camera at the origin, meaning we can display 3d content.
-    pub has_pinhole_at_origin: bool,
-
-    /// All subtrees that are invalid since they're behind a pinhole that's not at the origin.
-    pub invalid_subtrees: Vec<EntityPath>,
+    pub entities_in_main_2d_space: IntSet<EntityPath>,
+    pub reprojected_3d_entities: IntSet<EntityPath>,
 }
 
 impl VisualizableFilterContext for VisualizableFilterContext2D {
@@ -73,41 +71,43 @@ impl SpaceViewClass for SpatialSpaceView2D {
     ) -> Box<dyn VisualizableFilterContext> {
         re_tracing::profile_function!();
 
-        // See also `SpatialSpaceView3D::visualizable_filter_context`
+        let context = SpatialTopology::access(entity_db.store_id(), |topo| {
+            let subspace = topo.subspace_for_entity(space_origin);
+            match subspace.dimensionality {
+                SubSpaceDimensionality::TwoD | SubSpaceDimensionality::Unknown => {
+                    // All entities in the 2d space are visualizable + the parent space if it is connected via a pinhole.
+                    // For the moment we don't allow going down pinholes again.
+                    let reprojected_3d_entities = subspace
+                        .parent_space
+                        .and_then(|(parent_space_origin, connection)| {
+                            if connection.contains(SubSpaceConnectionFlags::Pinhole)
+                                && !connection.contains(SubSpaceConnectionFlags::Disconnected)
+                            {
+                                topo.subspace_for_origin(parent_space_origin)
+                                    .map(|parent_space| parent_space.entities.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or_default();
 
-        let origin_tree = entity_db.tree().subtree(space_origin);
-
-        let has_pinhole_at_origin = origin_tree.map_or(false, |tree| {
-            tree.entity
-                .components
-                .contains_key(&PinholeProjection::name())
-        });
-
-        fn visit_children_recursively(tree: &EntityTree, invalid_subtrees: &mut Vec<EntityPath>) {
-            if tree
-                .entity
-                .components
-                .contains_key(&PinholeProjection::name())
-            {
-                invalid_subtrees.push(tree.path.clone());
-            } else {
-                for child in tree.children.values() {
-                    visit_children_recursively(child, invalid_subtrees);
+                    VisualizableFilterContext2D {
+                        entities_in_main_2d_space: subspace.entities.clone(),
+                        reprojected_3d_entities,
+                    }
+                }
+                SubSpaceDimensionality::ThreeD => {
+                    // If this is 3D space, only display the origin entity itself.
+                    // Everything else we have to assume requires some form of transformation.
+                    VisualizableFilterContext2D {
+                        entities_in_main_2d_space: std::iter::once(space_origin.clone()).collect(),
+                        reprojected_3d_entities: Default::default(),
+                    }
                 }
             }
-        }
+        });
 
-        let mut invalid_subtrees = Vec::new();
-        if let Some(origin_tree) = origin_tree {
-            for child_tree in origin_tree.children.values() {
-                visit_children_recursively(child_tree, &mut invalid_subtrees);
-            }
-        };
-
-        Box::new(VisualizableFilterContext2D {
-            has_pinhole_at_origin,
-            invalid_subtrees,
-        })
+        Box::new(context.unwrap_or_default())
     }
 
     fn on_frame_start(

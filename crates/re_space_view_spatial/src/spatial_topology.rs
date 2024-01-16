@@ -247,7 +247,7 @@ impl SpatialTopology {
     }
 
     /// Returns the subspace an entity belongs to.
-    pub fn subspace(&self, entity: &EntityPath) -> &SubSpace {
+    pub fn subspace_for_entity(&self, entity: &EntityPath) -> &SubSpace {
         // Try the fast track first - we ahve this for all entities that were ever logged.
         if let Some(subspace) = self
             .subspace_origin_per_entity
@@ -259,6 +259,13 @@ impl SpatialTopology {
             // Otherwise, we have to walk the hierarchy.
             self.find_subspace_rec(&EntityPath::root(), entity)
         }
+    }
+
+    /// Returns the subspace for a given origin.
+    ///
+    /// None if the origin doesn't identify its own subspace.
+    pub fn subspace_for_origin(&self, origin: EntityPathHash) -> Option<&SubSpace> {
+        self.subspaces.get(&origin)
     }
 
     fn on_store_diff<'a>(
@@ -436,17 +443,17 @@ mod tests {
         check_paths_in_space(&topo, &["robo", "robo/arm", "robo/eyes/cam"], "/");
 
         // .. and that space has no children and no parent.
-        let subspace = topo.subspace(&"robo".into());
+        let subspace = topo.subspace_for_entity(&"robo".into());
         assert_eq!(subspace.child_spaces.len(), 0);
         assert!(subspace.parent_space.is_none());
 
         // If we make up entities that weren't logged we get the closest space
         assert_eq!(
-            topo.subspace(&EntityPath::root()).origin,
+            topo.subspace_for_entity(&EntityPath::root()).origin,
             EntityPath::root()
         );
         assert_eq!(
-            topo.subspace(&"robo/eyes".into()).origin,
+            topo.subspace_for_entity(&"robo/eyes".into()).origin,
             EntityPath::root()
         );
     }
@@ -482,8 +489,8 @@ mod tests {
                 &["robo/eyes/left/cam", "robo/eyes/left/cam/annotation"],
                 "robo/eyes/left/cam",
             );
-            let root_space = topo.subspace(&"robo".into());
-            let left_camera_space = topo.subspace(&"robo/eyes/left/cam".into());
+            let root_space = topo.subspace_for_entity(&"robo".into());
+            let left_camera_space = topo.subspace_for_entity(&"robo/eyes/left/cam".into());
             assert_eq!(left_camera_space.origin, "robo/eyes/left/cam".into());
             assert_eq!(
                 left_camera_space.parent_space,
@@ -510,8 +517,8 @@ mod tests {
                 &["robo/eyes/right/cam", "robo/eyes/right/cam/annotation"],
                 "robo/eyes/right/cam",
             );
-            let root_space = topo.subspace(&"robo".into());
-            let right_camera_space = topo.subspace(&"robo/eyes/right/cam".into());
+            let root_space = topo.subspace_for_entity(&"robo".into());
+            let right_camera_space = topo.subspace_for_entity(&"robo/eyes/right/cam".into());
             assert_eq!(right_camera_space.origin, "robo/eyes/right/cam".into());
             assert_eq!(
                 right_camera_space.parent_space,
@@ -524,10 +531,14 @@ mod tests {
 
             // If we make up entities that weren't logged we get the closest space
             assert_eq!(
-                topo.subspace(&"robo/eyes/right/cam/unheard".into()).origin,
+                topo.subspace_for_entity(&"robo/eyes/right/cam/unheard".into())
+                    .origin,
                 "robo/eyes/right/cam".into()
             );
-            assert_eq!(topo.subspace(&"bonkers".into()).origin, EntityPath::root());
+            assert_eq!(
+                topo.subspace_for_entity(&"bonkers".into()).origin,
+                EntityPath::root()
+            );
         }
 
         // Disconnect the left camera.
@@ -537,8 +548,8 @@ mod tests {
             &[DisconnectedSpace::name()],
         );
         {
-            let root_space = topo.subspace(&"robo".into());
-            let left_camera_space = topo.subspace(&"robo/eyes/left/cam".into());
+            let root_space = topo.subspace_for_entity(&"robo".into());
+            let left_camera_space = topo.subspace_for_entity(&"robo/eyes/left/cam".into());
             assert_eq!(left_camera_space.origin, "robo/eyes/left/cam".into());
             assert_eq!(
                 left_camera_space.parent_space,
@@ -567,8 +578,8 @@ mod tests {
         check_paths_in_space(&topo, &["cam0"], "cam0");
         check_paths_in_space(&topo, &["cam0/cam1"], "cam0/cam1");
 
-        let cam0 = topo.subspace(&"cam0".into());
-        let cam1 = topo.subspace(&"cam0/cam1".into());
+        let cam0 = topo.subspace_for_entity(&"cam0".into());
+        let cam1 = topo.subspace_for_entity(&"cam0/cam1".into());
 
         assert_eq!(cam0.dimensionality, SubSpaceDimensionality::TwoD);
         assert_eq!(cam1.dimensionality, SubSpaceDimensionality::TwoD);
@@ -597,7 +608,7 @@ mod tests {
         check_paths_in_space(&topo, &["stuff"], "/");
         check_paths_in_space(&topo, &["camera", "camera/image"], "camera");
 
-        let camera = topo.subspace(&"camera".into());
+        let camera = topo.subspace_for_entity(&"camera".into());
         assert_eq!(camera.dimensionality, SubSpaceDimensionality::TwoD);
         assert_eq!(
             camera.parent_space,
@@ -607,7 +618,7 @@ mod tests {
             ))
         );
 
-        let root_space = topo.subspace(&"stuff".into());
+        let root_space = topo.subspace_for_entity(&"stuff".into());
         assert_eq!(root_space.dimensionality, SubSpaceDimensionality::ThreeD);
     }
 
@@ -618,10 +629,13 @@ mod tests {
     fn check_paths_in_space(topo: &SpatialTopology, paths: &[&str], expected_origin: &str) {
         for path in paths {
             let path = *path;
-            assert_eq!(topo.subspace(&path.into()).origin, expected_origin.into());
+            assert_eq!(
+                topo.subspace_for_entity(&path.into()).origin,
+                expected_origin.into()
+            );
         }
 
-        let space = topo.subspace(&paths[0].into());
+        let space = topo.subspace_for_entity(&paths[0].into());
         for path in paths {
             let path = *path;
             assert!(space.entities.contains(&path.into()));

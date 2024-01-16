@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityProperties, EntityTree};
-use re_log_types::{EntityPath, EntityPathHash};
+use re_log_types::EntityPath;
 use re_types::{components::PinholeProjection, Loggable as _};
 use re_viewer_context::{
     AutoSpawnHeuristic, IdentifiedViewSystem as _, PerSystemEntities, SpaceViewClass,
@@ -20,7 +20,7 @@ use crate::{
 // and is thus visualizable. This should be expanded to cover any invalid transform as non-visualizable.
 pub struct VisualizableFilterContext3D {
     /// Set of all entities that are under a pinhole camera.
-    pub entities_under_pinhole: IntSet<EntityPathHash>,
+    pub entities_under_pinhole: IntSet<EntityPath>,
 }
 
 impl VisualizableFilterContext for VisualizableFilterContext3D {
@@ -81,7 +81,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         fn visit_children_recursively(
             tree: &EntityTree,
-            entities_under_pinhole: &mut IntSet<EntityPathHash>,
+            entities_under_pinhole: &mut IntSet<EntityPath>,
         ) {
             if tree
                 .entity
@@ -90,7 +90,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
             {
                 // This and all children under it are under a pinhole camera!
                 tree.visit_children_recursively(&mut |ent_path| {
-                    entities_under_pinhole.insert(ent_path.hash());
+                    entities_under_pinhole.insert(ent_path.clone());
                 });
             } else {
                 for child in tree.children.values() {
