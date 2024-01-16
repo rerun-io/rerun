@@ -51,6 +51,7 @@ pub fn colormapped_texture(
         color_mapper: re_renderer::renderer::ColorMapper::Function(color_mapping.map),
         shader_decoding: match &tensor.buffer {
             &TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
+            &TensorBuffer::Yuv422(_) => Some(ShaderDecoding::Yuv422),
             _ => None,
         },
     })

@@ -381,6 +381,11 @@ pub fn tensor_summary_ui_grid_contents(
             ui.label("NV12");
             ui.end_row();
         }
+        TensorBuffer::Yuv422(_) => {
+            re_ui.grid_left_hand_label(ui, "Encoding");
+            ui.label("YUV422");
+            ui.end_row();
+        }
     }
 
     let TensorStats {
@@ -713,6 +718,7 @@ fn tensor_pixel_value_ui(
                 // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                 if let Some([r, g, b]) = match &tensor.buffer {
                     TensorBuffer::Nv12(_) => tensor.get_nv12_pixel(x, y),
+                    TensorBuffer::Yuv422(_) => tensor.get_yuv422_pixel(x, y),
                     _ => {
                         if let [Some(r), Some(g), Some(b)] = [
                             tensor.get_with_image_coords(x, y, 0),

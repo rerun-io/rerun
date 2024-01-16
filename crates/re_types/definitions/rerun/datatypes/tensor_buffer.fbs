@@ -55,6 +55,9 @@ table JPEGBuffer(order: 100, transparent) {
 table NV12Buffer(order: 100, transparent) {
   data: [ubyte] (order: 100);
 }
+table YUV422Buffer(order: 100, transparent) {
+  data: [ubyte] (order: 100);
+}
 
 
 /// The underlying storage for a `Tensor`.
@@ -76,4 +79,5 @@ union TensorBuffer (
   F64: F64Buffer (transparent, order:1200),
   JPEG: JPEGBuffer (transparent, order:1300),
   NV12: NV12Buffer (transparent, order:1400),
+  YUV422: YUV422Buffer (transparent, order:1500),
 }

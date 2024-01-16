@@ -69,11 +69,13 @@ class TensorBuffer(TensorBufferExt):
     JPEG (npt.NDArray[np.uint8]):
 
     NV12 (npt.NDArray[np.uint8]):
+
+    YUV422 (npt.NDArray[np.uint8]):
     """
 
-    kind: Literal["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg", "nv12"] = field(
-        default="u8"
-    )
+    kind: Literal[
+        "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg", "nv12", "yuv422"
+    ] = field(default="u8")
 
 
 if TYPE_CHECKING:
@@ -194,6 +196,12 @@ class TensorBufferType(BaseExtensionType):
                     ),
                     pa.field(
                         "NV12",
+                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                        nullable=False,
+                        metadata={},
+                    ),
+                    pa.field(
+                        "YUV422",
                         pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
                         nullable=False,
                         metadata={},

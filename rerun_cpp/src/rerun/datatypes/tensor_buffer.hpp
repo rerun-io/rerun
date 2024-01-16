@@ -39,6 +39,7 @@ namespace rerun::datatypes {
             F64,
             JPEG,
             NV12,
+            YUV422,
         };
 
         /// \private
@@ -68,6 +69,8 @@ namespace rerun::datatypes {
             rerun::Collection<uint8_t> jpeg;
 
             rerun::Collection<uint8_t> nv12;
+
+            rerun::Collection<uint8_t> yuv422;
 
             TensorBufferData() {
                 std::memset(reinterpret_cast<void*>(this), 0, sizeof(TensorBufferData));
@@ -148,6 +151,10 @@ namespace rerun::datatypes {
                     using TypeAlias = rerun::Collection<uint8_t>;
                     new (&_data.nv12) TypeAlias(other._data.nv12);
                 } break;
+                case detail::TensorBufferTag::YUV422: {
+                    using TypeAlias = rerun::Collection<uint8_t>;
+                    new (&_data.yuv422) TypeAlias(other._data.yuv422);
+                } break;
                 case detail::TensorBufferTag::None: {
                 } break;
             }
@@ -224,6 +231,10 @@ namespace rerun::datatypes {
                 case detail::TensorBufferTag::NV12: {
                     using TypeAlias = rerun::Collection<uint8_t>;
                     _data.nv12.~TypeAlias();
+                } break;
+                case detail::TensorBufferTag::YUV422: {
+                    using TypeAlias = rerun::Collection<uint8_t>;
+                    _data.yuv422.~TypeAlias();
                 } break;
             }
         }
@@ -376,6 +387,13 @@ namespace rerun::datatypes {
             return self;
         }
 
+        static TensorBuffer yuv422(rerun::Collection<uint8_t> yuv422) {
+            TensorBuffer self;
+            self._tag = detail::TensorBufferTag::YUV422;
+            new (&self._data.yuv422) rerun::Collection<uint8_t>(std::move(yuv422));
+            return self;
+        }
+
         /// Return a pointer to u8 if the union is in that state, otherwise `nullptr`.
         const rerun::Collection<uint8_t>* get_u8() const {
             if (_tag == detail::TensorBufferTag::U8) {
@@ -488,6 +506,15 @@ namespace rerun::datatypes {
         const rerun::Collection<uint8_t>* get_nv12() const {
             if (_tag == detail::TensorBufferTag::NV12) {
                 return &_data.nv12;
+            } else {
+                return nullptr;
+            }
+        }
+
+        /// Return a pointer to yuv422 if the union is in that state, otherwise `nullptr`.
+        const rerun::Collection<uint8_t>* get_yuv422() const {
+            if (_tag == detail::TensorBufferTag::YUV422) {
+                return &_data.yuv422;
             } else {
                 return nullptr;
             }
