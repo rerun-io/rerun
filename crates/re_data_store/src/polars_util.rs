@@ -158,7 +158,16 @@ pub fn range_components<'a, const N: usize>(
     // send the latest-at state before anything else
     df_latest
         .into_iter()
-        .map(move |df| (latest_time, true, df))
+        // NOTE: `false` here means we will _not_ yield the latest-at state as an actual
+        // ArchetypeView!
+        // That is a very important detail: for overlapping range queries to be correct in a
+        // multi-tenant cache context, we need to make sure to inherit the latest-at state
+        // from T-1, while also making sure to _not_ yield the view that comes with that state.
+        //
+        // Consider e.g. what happens when one system queries for `range(10, 20)` while another
+        // queries for `range(9, 20)`: the data at timestamp `10` would differ because of the
+        // statefulness of range queries!
+        .map(move |df| (latest_time, false, df))
         // followed by the range
         .chain(
             store
