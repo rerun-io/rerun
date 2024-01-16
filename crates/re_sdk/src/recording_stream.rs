@@ -38,12 +38,6 @@ fn forced_sink_path() -> Option<String> {
     std::env::var(ENV_FORCE_SAVE).ok()
 }
 
-/// Should we stream data to stdout when requested, or should we refrain because it's actually a
-/// terminal?
-fn is_stdout_listening() -> bool {
-    !std::io::stdout().is_terminal()
-}
-
 /// Errors that can occur when creating/manipulating a [`RecordingStream`].
 #[derive(thiserror::Error, Debug)]
 pub enum RecordingStreamError {
@@ -375,7 +369,8 @@ impl RecordingStreamBuilder {
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
     pub fn stdout(self) -> RecordingStreamResult<RecordingStream> {
-        if !is_stdout_listening() {
+        if std::io::stdout().is_terminal() {
+            re_log::debug!("Ignored call to stdout() because stdout is a terminal");
             return self.buffered();
         }
 
@@ -1415,7 +1410,8 @@ impl RecordingStream {
             return Ok(());
         }
 
-        if !is_stdout_listening() {
+        if std::io::stdout().is_terminal() {
+            re_log::debug!("Ignored call to stdout() because stdout is a terminal");
             self.set_sink(Box::new(crate::log_sink::BufferedSink::new()));
             return Ok(());
         }
