@@ -24,7 +24,11 @@ impl AddSpaceViewOrContainerModal {
         self.modal_handler.ui(
             ctx.re_ui,
             ui,
-            || re_ui::modal::Modal::new("Add Space View or Container").min_width(500.0),
+            || {
+                re_ui::modal::Modal::new("Add Space View or Container")
+                    .min_width(500.0)
+                    .full_span_content(true)
+            },
             |_, ui, _| modal_ui(ui, ctx, viewport, self.target_container),
         );
     }
@@ -109,9 +113,9 @@ fn modal_ui(
 /// ┌───────────────────────────────────────────────────┐──▲                 
 /// │                                                   │  │  row_space/2    
 /// │    ╔═════════════════════════════════════════╗────│──▼▲                
-/// │    ║┌───┐                              ┌───┐ ║    │   │                
-/// │    ║│ I │  Title and Subtitles         │ + │ ║    │   │ row_height     
-/// │    ║└───┘                              └───┘ ║    │   │                
+/// │    ║ ┌───┐                             ┌───┐ ║    │   │                
+/// │    ║ │ I │  Title and Subtitles        │ + │ ║    │   │ row_height     
+/// │    ║ └───┘                             └───┘ ║    │   │                
 /// │    ╚═════════════════════════════════════════╝────│──▲▼                
 /// │                                                   │  │  row_space/2    
 /// └───────────────────────────────────────────────────┘──▼                 

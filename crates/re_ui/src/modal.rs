@@ -106,6 +106,7 @@ pub struct Modal {
     min_width: Option<f32>,
     min_height: Option<f32>,
     default_height: Option<f32>,
+    full_span_content: bool,
 }
 
 impl Modal {
@@ -116,6 +117,7 @@ impl Modal {
             min_width: None,
             min_height: None,
             default_height: None,
+            full_span_content: false,
         }
     }
 
@@ -137,6 +139,18 @@ impl Modal {
     #[inline]
     pub fn default_height(mut self, default_height: f32) -> Self {
         self.default_height = Some(default_height);
+        self
+    }
+
+    /// Configure the content area of the modal for full span highlighting.
+    ///
+    /// This includes:
+    /// - setting the vertical spacing to 0.0
+    /// - removing any padding at the bottom of the area
+    ///
+    /// In this mode, the user code is responsible for adding spacing between items.
+    pub fn full_span_content(mut self, full_span_content: bool) -> Self {
+        self.full_span_content = full_span_content;
         self
     }
 
@@ -185,6 +199,7 @@ impl Modal {
         }
 
         let response = window.show(ui.ctx(), |ui| {
+            let item_spacing_y = ui.spacing().item_spacing.y;
             ui.spacing_mut().item_spacing.y = 0.0;
 
             egui::Frame {
@@ -197,8 +212,26 @@ impl Modal {
                 ui.add_space(ReUi::view_padding());
                 crate::ReUi::full_span_separator(ui);
 
-                // no further spacing for the content UI
-                content_ui(re_ui, ui, &mut open)
+                if self.full_span_content {
+                    // no further spacing for the content UI
+                    content_ui(re_ui, ui, &mut open)
+                } else {
+                    // we must restore vertical spacing and add view padding at the bottom
+                    ui.add_space(item_spacing_y);
+
+                    egui::Frame {
+                        inner_margin: egui::Margin {
+                            bottom: ReUi::view_padding(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }
+                    .show(ui, |ui| {
+                        ui.spacing_mut().item_spacing.y = item_spacing_y;
+                        content_ui(re_ui, ui, &mut open)
+                    })
+                    .inner
+                }
             })
             .inner
         });
