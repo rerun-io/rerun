@@ -149,6 +149,7 @@ impl Modal {
     /// - removing any padding at the bottom of the area
     ///
     /// In this mode, the user code is responsible for adding spacing between items.
+    #[inline]
     pub fn full_span_content(mut self, full_span_content: bool) -> Self {
         self.full_span_content = full_span_content;
         self
