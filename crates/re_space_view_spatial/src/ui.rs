@@ -17,6 +17,7 @@ use re_viewer_context::{
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::heuristics::auto_size_world_heuristic;
+use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
     contexts::{AnnotationSceneContext, NonInteractiveEntities},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
@@ -48,15 +49,9 @@ impl From<AutoSizeUnit> for WidgetText {
 }
 
 /// TODO(andreas): Should turn this "inside out" - [`SpatialSpaceViewState`] should be used by [`View2DState`]/[`View3DState`], not the other way round.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SpatialSpaceViewState {
-    /// Estimated bounding box of all data. Accumulated over every time data is displayed.
-    ///
-    /// Specify default explicitly, otherwise it will be a box at 0.0 after deserialization.
-    pub scene_bbox_accum: BoundingBox,
-
-    /// Estimated bounding box of all data for the last scene query.
-    pub scene_bbox: BoundingBox,
+    pub bounding_boxes: SceneBoundingBoxes,
 
     /// Estimated number of primitives last frame. Used to inform some heuristics.
     pub scene_num_primitives: usize,
@@ -69,23 +64,6 @@ pub struct SpatialSpaceViewState {
 
     /// Size of automatically sized objects. None if it wasn't configured.
     auto_size_config: re_renderer::AutoSizeConfig,
-}
-
-impl Default for SpatialSpaceViewState {
-    fn default() -> Self {
-        Self {
-            scene_bbox_accum: BoundingBox::nothing(),
-            scene_bbox: BoundingBox::nothing(),
-            scene_num_primitives: 0,
-            state_2d: Default::default(),
-            state_3d: Default::default(),
-            auto_size_config: re_renderer::AutoSizeConfig {
-                point_radius: re_renderer::Size::AUTO, // let re_renderer decide
-                line_radius: re_renderer::Size::AUTO,  // let re_renderer decide
-            },
-            previous_picking_result: None,
-        }
-    }
 }
 
 impl SpaceViewState for SpatialSpaceViewState {
@@ -127,7 +105,7 @@ impl SpatialSpaceViewState {
 
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
-            let auto_size_world = auto_size_world_heuristic(&self.scene_bbox_accum, self.scene_num_primitives);
+            let auto_size_world = auto_size_world_heuristic(&self.bounding_boxes.accumulated, self.scene_num_primitives);
 
             ctx.re_ui.grid_left_hand_label(ui, "Default size");
             ui.vertical(|ui| {
@@ -166,8 +144,8 @@ impl SpatialSpaceViewState {
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
                     {
-                        self.scene_bbox_accum = self.scene_bbox;
-                        self.state_3d.reset_camera(&self.scene_bbox_accum, &view_coordinates);
+                        self.bounding_boxes.accumulated = self.bounding_boxes.current;
+                        self.state_3d.reset_camera(&self.bounding_boxes.accumulated, &view_coordinates);
                     }
                     let mut spin = self.state_3d.spin();
                     if re_ui.checkbox(ui, &mut spin, "Spin")
@@ -206,7 +184,7 @@ impl SpatialSpaceViewState {
                 .on_hover_text("The bounding box encompassing all Entities in the view right now");
             ui.vertical(|ui| {
                 ui.style_mut().wrap = Some(false);
-                let BoundingBox { min, max } = self.scene_bbox;
+                let BoundingBox { min, max } = self.bounding_boxes.current;
                 ui.label(format!(
                     "x [{} - {}]",
                     format_f32(min.x),
@@ -655,7 +633,7 @@ pub fn picking(
                 SelectedSpaceContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
-                    tracked_space_camera: state.state_3d.tracked_camera.clone(),
+                    tracked_entity: state.state_3d.tracked_entity.clone(),
                     point_in_space_cameras: visualizers
                         .get::<CamerasVisualizer>()?
                         .space_cameras

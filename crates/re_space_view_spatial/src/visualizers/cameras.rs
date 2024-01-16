@@ -180,7 +180,8 @@ impl CamerasVisualizer {
         }
 
         // world_from_camera is the transform to the pinhole origin
-        self.data.extend_bounding_box_with_points(
+        self.data.add_bounding_box_from_points(
+            ent_path.hash(),
             std::iter::once(glam::Vec3::ZERO),
             world_from_camera_rigid,
         );

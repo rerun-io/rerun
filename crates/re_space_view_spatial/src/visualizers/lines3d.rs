@@ -159,7 +159,7 @@ impl Lines3DVisualizer {
         }
 
         self.data
-            .extend_bounding_box(bounding_box, ent_context.world_from_entity);
+            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
 
         Ok(())
     }

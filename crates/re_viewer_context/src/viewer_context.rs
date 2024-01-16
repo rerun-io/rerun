@@ -54,6 +54,12 @@ pub struct ViewerContext<'a> {
 
     /// Interface for sending commands back to the app
     pub command_sender: &'a CommandSender,
+
+    /// Item that got focused on the last frame if any.
+    ///
+    /// The focused item is cleared every frame, but views may react with side-effects
+    /// that last several frames.
+    pub focused_item: &'a Option<crate::Item>,
 }
 
 impl<'a> ViewerContext<'a> {

@@ -408,6 +408,10 @@ impl App {
                     re_log::debug!("Failed to select item {item:?}");
                 }
             }
+
+            SystemCommand::SetFocus(item) => {
+                self.state.focused_item = Some(item);
+            }
         }
     }
 

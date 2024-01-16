@@ -204,7 +204,8 @@ impl OrbitEye {
         // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
         let distance = eye
             .forward_in_world()
-            .dot(self.orbit_center - eye.pos_in_world());
+            .dot(self.orbit_center - eye.pos_in_world())
+            .abs();
         self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
         self.orbit_center = eye.pos_in_world() + self.orbit_radius * eye.forward_in_world();
         self.world_from_view_rot = eye.world_from_rub_view.rotation();

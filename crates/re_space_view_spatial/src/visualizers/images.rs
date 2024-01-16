@@ -285,7 +285,11 @@ impl ImageVisualizer {
                 if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
-                    self.extend_bbox(&textured_rect);
+                    self.data.add_bounding_box(
+                        ent_path.hash(),
+                        Self::compute_bounding_box(&textured_rect),
+                        ent_context.world_from_entity,
+                    );
                 }
 
                 self.images.push(ViewerImage {
@@ -380,8 +384,11 @@ impl ImageVisualizer {
                         parent_pinhole_path,
                     ) {
                         Ok(cloud) => {
-                            self.data
-                                .extend_bounding_box(cloud.bbox(), cloud.world_from_rdf);
+                            self.data.add_bounding_box(
+                                ent_path.hash(),
+                                cloud.bbox(),
+                                cloud.world_from_rdf,
+                            );
                             self.depth_cloud_entities.insert(ent_path.hash());
                             depth_clouds.push(cloud);
                             return Ok(());
@@ -416,7 +423,11 @@ impl ImageVisualizer {
                 if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
-                    self.extend_bbox(&textured_rect);
+                    self.data.add_bounding_box(
+                        ent_path.hash(),
+                        Self::compute_bounding_box(&textured_rect),
+                        ent_context.world_from_entity,
+                    );
                 }
 
                 self.images.push(ViewerImage {
@@ -515,7 +526,11 @@ impl ImageVisualizer {
                 if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
-                    self.extend_bbox(&textured_rect);
+                    self.data.add_bounding_box(
+                        ent_path.hash(),
+                        Self::compute_bounding_box(&textured_rect),
+                        ent_context.world_from_entity,
+                    );
                 }
 
                 self.images.push(ViewerImage {
@@ -624,16 +639,20 @@ impl ImageVisualizer {
         })
     }
 
-    fn extend_bbox(&mut self, textured_rect: &TexturedRect) {
+    fn compute_bounding_box(textured_rect: &TexturedRect) -> macaw::BoundingBox {
         let left_top = textured_rect.top_left_corner_position;
         let extent_u = textured_rect.extent_u;
         let extent_v = textured_rect.extent_v;
-        self.data.bounding_box.extend(left_top);
-        self.data.bounding_box.extend(left_top + extent_u);
-        self.data.bounding_box.extend(left_top + extent_v);
-        self.data
-            .bounding_box
-            .extend(left_top + extent_v + extent_u);
+
+        macaw::BoundingBox::from_points(
+            [
+                left_top,
+                left_top + extent_u,
+                left_top + extent_v,
+                left_top + extent_v + extent_u,
+            ]
+            .into_iter(),
+        )
     }
 }
 
