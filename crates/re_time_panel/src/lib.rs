@@ -21,9 +21,10 @@ use re_log_types::{
 };
 use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{
-    HoverHighlight, Item, RecordingConfig, SystemCommand, SystemCommandSender, TimeControl,
-    TimeView, ViewerContext,
+    HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, ViewerContext,
 };
+#[cfg(debug_assertions)]
+use re_viewer_context::{SystemCommand, SystemCommandSender};
 
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
@@ -776,15 +777,17 @@ impl TimePanel {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
 
-                if cfg!(debug_assertions)
-                    && ui
+                #[cfg(debug_assertions)]
+                {
+                    if ui
                         .selectable_label(ctx.app_options.show_blueprint_timeline, "View Blueprint")
                         .clicked()
-                {
-                    ctx.command_sender
-                        .send_system(SystemCommand::ShowBlueprintTimeline(
-                            !ctx.app_options.show_blueprint_timeline,
-                        ));
+                    {
+                        ctx.command_sender
+                            .send_system(SystemCommand::ShowBlueprintTimeline(
+                                !ctx.app_options.show_blueprint_timeline,
+                            ));
+                    }
                 }
             });
         }
