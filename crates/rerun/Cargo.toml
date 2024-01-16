@@ -65,7 +65,7 @@ run = [
 ]
 
 ## Support for running a TCP server that listens to incoming log messages from a Rerun SDK.
-server = ["re_sdk_comms/server"]
+server = ["re_sdk_comms?/server"]
 
 ## Embed the Rerun SDK & built-in types and re-export all of their public symbols.
 sdk = ["dep:re_sdk", "dep:re_types"]
