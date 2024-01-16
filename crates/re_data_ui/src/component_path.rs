@@ -28,7 +28,7 @@ impl DataUi for ComponentPath {
             ui.label(format!(
                 "Indicator component for the {archetype_name} archetype"
             ));
-        } else if let Some((_, component_data)) =
+        } else if let Some((_, _, component_data)) =
             re_query::get_component_with_instances(store, query, entity_path, *component_name)
         {
             super::component::EntityComponentWithInstances {

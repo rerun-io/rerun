@@ -345,7 +345,7 @@ impl Viewport<'_, '_> {
                     .selected(is_selected)
                     .subdued(!properties.visible || !group_is_visible)
                     .force_hovered(is_item_hovered)
-                    .with_icon(&re_ui::icons::CONTAINER)
+                    .with_icon(&re_ui::icons::GROUP)
                     .with_buttons(|re_ui, ui| {
                         let vis_response = visibility_button_ui(
                             re_ui,

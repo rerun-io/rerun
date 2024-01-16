@@ -1,6 +1,6 @@
 use re_data_store::TimeRange;
 use re_entity_db::EntityPath;
-use re_log_types::{RowId, TimeInt};
+use re_log_types::RowId;
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -61,12 +61,14 @@ impl VisualizerSystem for TextLogSystem {
         let store = ctx.entity_db.store();
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
+            re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
+
             // We want everything, for all times:
             let timeline_query =
                 re_data_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
 
             re_query_cache::query_archetype_pov1_comp2::<TextLog, Text, TextLogLevel, Color, _>(
-                ctx.app_options.experimental_primary_caching_series,
+                ctx.app_options.experimental_primary_caching_range,
                 store,
                 &timeline_query.clone().into(),
                 &data_result.entity_path,
@@ -77,8 +79,7 @@ impl VisualizerSystem for TextLogSystem {
                         self.entries.push(Entry {
                             row_id,
                             entity_path: data_result.entity_path.clone(),
-                            // TODO(cmc): real support for timeless data in caches.
-                            time: (time != TimeInt::MIN).then(|| time.as_i64()),
+                            time: time.map(|time| time.as_i64()),
                             color: *color,
                             body: body.clone(),
                             level: level.clone(),
@@ -86,11 +87,6 @@ impl VisualizerSystem for TextLogSystem {
                     }
                 },
             )?;
-        }
-
-        {
-            re_tracing::profile_scope!("sort");
-            self.entries.sort_by_key(|entry| entry.time);
         }
 
         Ok(Vec::new())

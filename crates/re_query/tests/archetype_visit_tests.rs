@@ -45,8 +45,11 @@ fn directly_joined_iter() {
         ComponentWithInstances::from_native(instance_keys.clone(), positions).unwrap();
     let colors_comp = ComponentWithInstances::from_native(instance_keys, colors).unwrap();
 
-    let arch_view =
-        ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components(
+        None,
+        RowId::ZERO,
+        [positions_comp, colors_comp],
+    );
 
     let expected_colors = [
         Some(Color::from(0)),
@@ -87,8 +90,11 @@ fn joined_iter_dense_primary() {
     let positions_comp = ComponentWithInstances::from_native(point_ids, positions).unwrap();
     let colors_comp = ComponentWithInstances::from_native(color_ids, colors).unwrap();
 
-    let arch_view =
-        ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components(
+        None,
+        RowId::ZERO,
+        [positions_comp, colors_comp],
+    );
 
     let expected_colors = [None, Some(Color::from(1)), Some(Color::from(2))];
 
@@ -129,8 +135,11 @@ fn joined_iter_dense_secondary() {
     let positions_comp = ComponentWithInstances::from_native(point_ids, positions).unwrap();
     let colors_comp = ComponentWithInstances::from_native(color_ids, colors).unwrap();
 
-    let arch_view =
-        ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components(
+        None,
+        RowId::ZERO,
+        [positions_comp, colors_comp],
+    );
 
     let expected_colors = [
         Some(Color::from(0)), //
@@ -183,8 +192,11 @@ fn complex_joined_iter() {
     let positions_comp = ComponentWithInstances::from_native(point_ids, positions).unwrap();
     let colors_comp = ComponentWithInstances::from_native(color_ids, colors).unwrap();
 
-    let arch_view =
-        ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components(
+        None,
+        RowId::ZERO,
+        [positions_comp, colors_comp],
+    );
 
     let expected_colors = [
         None,
@@ -216,7 +228,7 @@ fn single_visit() {
     let positions_comp =
         ComponentWithInstances::from_native(instance_keys.clone(), positions).unwrap();
 
-    let arch_view = ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components(None, RowId::ZERO, [positions_comp]);
 
     let mut instance_key_out = Vec::<InstanceKey>::new();
     let mut positions_out = Vec::<Position2D>::new();
@@ -259,8 +271,11 @@ fn joint_visit() {
     let positions_comp = ComponentWithInstances::from_native(point_ids, positions.clone()).unwrap();
     let colors_comp = ComponentWithInstances::from_native(color_ids, colors).unwrap();
 
-    let arch_view =
-        ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components(
+        None,
+        RowId::ZERO,
+        [positions_comp, colors_comp],
+    );
 
     let mut positions_out = Vec::<Position2D>::new();
     let mut colors_out = Vec::<Option<Color>>::new();
@@ -304,8 +319,11 @@ fn joint_visit_with_empty() {
         ComponentWithInstances::from_native(shared_ids.clone(), positions.clone()).unwrap();
     let colors_comp = ComponentWithInstances::from_native(shared_ids, colors).unwrap();
 
-    let arch_view =
-        ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components(
+        None,
+        RowId::ZERO,
+        [positions_comp, colors_comp],
+    );
 
     let positions_out = arch_view
         .iter_required_component::<Position2D>()
@@ -344,8 +362,11 @@ fn joint_visit_with_splat() {
     let colors_comp =
         ComponentWithInstances::from_native(vec![InstanceKey::SPLAT], colors).unwrap();
 
-    let arch_view =
-        ArchetypeView::<Points2D>::from_components(RowId::ZERO, [positions_comp, colors_comp]);
+    let arch_view = ArchetypeView::<Points2D>::from_components(
+        None,
+        RowId::ZERO,
+        [positions_comp, colors_comp],
+    );
 
     let positions_out = arch_view
         .iter_required_component::<Position2D>()
