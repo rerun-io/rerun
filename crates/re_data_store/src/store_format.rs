@@ -1,4 +1,5 @@
 use re_format::{format_bytes, format_number};
+use re_log_types::TimeInt;
 use re_types_core::SizeBytes as _;
 
 use crate::{DataStore, IndexedBucket, IndexedTable, PersistentIndexedTable};
@@ -129,7 +130,7 @@ impl std::fmt::Display for IndexedBucket {
 
         let time_range = {
             let time_range = &self.inner.read().time_range;
-            if time_range.min.as_i64() != i64::MAX && time_range.max.as_i64() != i64::MIN {
+            if time_range.min != TimeInt::MAX && time_range.max != TimeInt::MIN {
                 format!(
                     "    - {}: {}",
                     self.timeline.name(),
