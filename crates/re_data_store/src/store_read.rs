@@ -65,7 +65,7 @@ impl std::fmt::Debug for RangeQuery {
             self.timeline.typ().format_utc(self.range.min),
             self.timeline.typ().format_utc(self.range.max),
             self.timeline.name(),
-            if self.range.min == TimeInt::MIN {
+            if self.range.min <= TimeInt::MIN {
                 "including"
             } else {
                 "excluding"
@@ -494,7 +494,7 @@ impl DataStore {
             .flatten()
             .map(|(time, row_id, cells)| (Some(time), row_id, cells));
 
-        if query.range.min == TimeInt::MIN {
+        if query.range.min <= TimeInt::MIN {
             let timeless = self
                 .timeless_tables
                 .get(&ent_path_hash)
