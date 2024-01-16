@@ -41,6 +41,82 @@ pub struct LatestAtCache {
     pub total_size_bytes: u64,
 }
 
+impl LatestAtCache {
+    /// Removes all timeless data.
+    ///
+    /// Returns the number of bytes removed.
+    #[inline]
+    pub fn truncate_timeless(&mut self) -> u64 {
+        let Self {
+            per_query_time: _,
+            per_data_time: _,
+            timeless,
+            total_size_bytes,
+        } = self;
+
+        let removed_bytes = timeless.take().map_or(0, |bucket| bucket.total_size_bytes);
+
+        *total_size_bytes = total_size_bytes
+            .checked_sub(removed_bytes)
+            .unwrap_or_else(|| {
+                re_log::debug!(
+                    current = *total_size_bytes,
+                    removed = removed_bytes,
+                    "book keeping underflowed"
+                );
+                u64::MIN
+            });
+
+        removed_bytes
+    }
+
+    /// Removes everything from the cache that corresponds to a time equal or greater than the
+    /// specified `threshold`.
+    ///
+    /// Returns the number of bytes removed.
+    #[inline]
+    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
+        let Self {
+            per_query_time,
+            per_data_time,
+            timeless: _,
+            total_size_bytes,
+        } = self;
+
+        let mut removed_bytes = 0u64;
+
+        per_query_time.retain(|&query_time, _| query_time < threshold);
+
+        // Buckets for latest-at queries are guaranteed to only ever contain a single entry, so
+        // just remove the buckets entirely directly.
+        per_data_time.retain(|&data_time, bucket| {
+            if data_time < threshold {
+                return true;
+            }
+
+            // Only if that bucket is about to be dropped.
+            if Arc::strong_count(bucket) == 1 {
+                removed_bytes += bucket.read().total_size_bytes;
+            }
+
+            false
+        });
+
+        *total_size_bytes = total_size_bytes
+            .checked_sub(removed_bytes)
+            .unwrap_or_else(|| {
+                re_log::debug!(
+                    current = *total_size_bytes,
+                    removed = removed_bytes,
+                    "book keeping underflowed"
+                );
+                u64::MIN
+            });
+
+        removed_bytes
+    }
+}
+
 // --- Queries ---
 
 macro_rules! impl_query_archetype_latest_at {

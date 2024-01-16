@@ -271,9 +271,9 @@ fn invalidation() {
     };
 
     let timeless = TimePoint::timeless();
-    let frame_122 = build_frame_nr(123.into());
+    let frame_122 = build_frame_nr(122.into());
     let frame_123 = build_frame_nr(123.into());
-    let frame_124 = build_frame_nr(123.into());
+    let frame_124 = build_frame_nr(124.into());
 
     test_invalidation(
         LatestAtQuery {

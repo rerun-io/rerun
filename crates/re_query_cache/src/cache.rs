@@ -128,7 +128,16 @@ impl Caches {
                 let mut caches = caches.0.write();
 
                 let caches_per_archetype = caches.entry(key.clone()).or_default();
-                caches_per_archetype.handle_pending_invalidation(&key);
+
+                let removed_bytes = caches_per_archetype.handle_pending_invalidation();
+                if removed_bytes > 0 {
+                    re_log::trace!(
+                        store_id = %key.store_id,
+                        entity_path = %key.entity_path,
+                        removed = removed_bytes,
+                        "invalidated latest-at caches"
+                    );
+                }
 
                 let mut latest_at_per_archetype =
                     caches_per_archetype.latest_at_per_archetype.write();
@@ -165,7 +174,16 @@ impl Caches {
                 let mut caches = caches.0.write();
 
                 let caches_per_archetype = caches.entry(key.clone()).or_default();
-                caches_per_archetype.handle_pending_invalidation(&key);
+
+                let removed_bytes = caches_per_archetype.handle_pending_invalidation();
+                if removed_bytes > 0 {
+                    re_log::trace!(
+                        store_id = %key.store_id,
+                        entity_path = %key.entity_path,
+                        removed = removed_bytes,
+                        "invalidated range caches"
+                    );
+                }
 
                 let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
                 let range_cache = range_per_archetype.entry(A::name()).or_default();
@@ -317,60 +335,48 @@ impl CachesPerArchetype {
     ///
     /// Invalidation is deferred to query time because it is far more efficient that way: the frame
     /// time effectively behaves as a natural micro-batching mechanism.
-    fn handle_pending_invalidation(&mut self, key: &CacheKey) {
+    ///
+    /// Returns the number of bytes removed.
+    fn handle_pending_invalidation(&mut self) -> u64 {
         let pending_timeless_invalidation = self.pending_timeless_invalidation;
         let pending_timeful_invalidation = self.pending_timeful_invalidation.is_some();
 
         if !pending_timeless_invalidation && !pending_timeful_invalidation {
-            return;
+            return 0;
         }
 
         re_tracing::profile_function!();
+
+        let mut removed_bytes = 0u64;
 
         for latest_at_cache in self.latest_at_per_archetype.read().values() {
             let mut latest_at_cache = latest_at_cache.write();
 
             if pending_timeless_invalidation {
-                latest_at_cache.timeless = None;
+                removed_bytes = removed_bytes.saturating_add(latest_at_cache.truncate_timeless());
             }
-
-            let mut removed_bytes = 0u64;
-            if let Some(min_time) = self.pending_timeful_invalidation {
-                latest_at_cache
-                    .per_query_time
-                    .retain(|&query_time, _| query_time < min_time);
-
-                latest_at_cache.per_data_time.retain(|&data_time, bucket| {
-                    if data_time < min_time {
-                        return true;
-                    }
-
-                    // Only if that bucket is about to be dropped.
-                    if Arc::strong_count(bucket) == 1 {
-                        removed_bytes += bucket.read().total_size_bytes;
-                    }
-
-                    false
-                });
+            if let Some(threshold) = self.pending_timeful_invalidation {
+                removed_bytes =
+                    removed_bytes.saturating_add(latest_at_cache.truncate_at_time(threshold));
             }
+        }
 
-            latest_at_cache.total_size_bytes = latest_at_cache
-                .total_size_bytes
-                .checked_sub(removed_bytes)
-                .unwrap_or_else(|| {
-                    re_log::debug!(
-                        store_id = %key.store_id,
-                        entity_path = %key.entity_path,
-                        current = latest_at_cache.total_size_bytes,
-                        removed = removed_bytes,
-                        "book keeping underflowed"
-                    );
-                    u64::MIN
-                });
+        for range_cache in self.range_per_archetype.read().values() {
+            let mut range_cache = range_cache.write();
+
+            if pending_timeless_invalidation {
+                removed_bytes = removed_bytes.saturating_add(range_cache.truncate_timeless());
+            }
+            if let Some(threshold) = self.pending_timeful_invalidation {
+                removed_bytes =
+                    removed_bytes.saturating_add(range_cache.truncate_at_time(threshold));
+            }
         }
 
         self.pending_timeful_invalidation = None;
         self.pending_timeless_invalidation = false;
+
+        removed_bytes
     }
 }
 
@@ -483,6 +489,33 @@ impl CacheBucket {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.num_entries() == 0
+    }
+
+    /// Removes everything from the bucket that corresponds to a time equal or greater than the
+    /// specified `threshold`.
+    ///
+    /// Returns the number of bytes removed.
+    #[inline]
+    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
+        let Self {
+            data_times,
+            pov_instance_keys,
+            components,
+            total_size_bytes, // TODO
+        } = self;
+
+        let threshold_idx = data_times
+            .partition_point(|(time, row_id)| (threshold, RowId::ZERO) < (*time, *row_id));
+
+        data_times.truncate(threshold_idx);
+        pov_instance_keys.truncate(threshold_idx);
+
+        // TODO: size?
+        for data in components.values_mut() {
+            data.dyn_truncate(threshold_idx);
+        }
+
+        0 // TODO
     }
 }
 

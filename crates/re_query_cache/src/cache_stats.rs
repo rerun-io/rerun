@@ -140,7 +140,7 @@ impl Caches {
                             .values()
                             .map(|range_cache| {
                                 let RangeCache {
-                                    bucket,
+                                    per_data_time: bucket,
                                     total_size_bytes,
                                 } = &*range_cache.read();
 
