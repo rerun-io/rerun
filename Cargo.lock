@@ -5029,6 +5029,7 @@ dependencies = [
  "macaw",
  "mimalloc",
  "nohash-hasher",
+ "once_cell",
  "parking_lot 0.12.1",
  "rayon",
  "re_data_store",
