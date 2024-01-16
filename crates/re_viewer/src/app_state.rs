@@ -263,7 +263,7 @@ impl AppState {
             focused_item,
         };
 
-        if app_options.show_blueprint_in_timeline {
+        if app_options.show_blueprint_timeline {
             blueprint_panel.show_panel(
                 &ctx,
                 ctx.store_context.blueprint,
@@ -395,7 +395,7 @@ impl AppState {
     }
 
     pub fn blueprint_query(&self) -> LatestAtQuery {
-        if self.app_options.show_blueprint_in_timeline {
+        if self.app_options.show_blueprint_timeline {
             self.blueprint_cfg.time_ctrl.read().current_query().clone()
         } else {
             LatestAtQuery::latest(blueprint_timeline())

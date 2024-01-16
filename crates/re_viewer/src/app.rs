@@ -374,7 +374,7 @@ impl App {
                 store_hub.clear_blueprint();
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
-                if !self.state.app_options.show_blueprint_in_timeline {
+                if !self.state.app_options.show_blueprint_timeline {
                     let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                     for row in updates {
                         match blueprint_db.add_data_row(row) {
@@ -386,8 +386,9 @@ impl App {
                     }
                 }
             }
-            SystemCommand::ShowBlueprintInTimeline(show) => {
-                self.app_options_mut().show_blueprint_in_timeline = show;
+            #[cfg(debug_assertions)]
+            SystemCommand::ShowBlueprintTimeline(show) => {
+                self.app_options_mut().show_blueprint_timeline = show;
             }
             SystemCommand::EnableExperimentalDataframeSpaceView(enabled) => {
                 let result = if enabled {

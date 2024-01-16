@@ -39,9 +39,9 @@ pub struct AppOptions {
     pub show_picking_debug_overlay: bool,
 
     /// Includes the blueprint in the timeline view.
-    pub show_blueprint_in_timeline: bool,
+    pub show_blueprint_timeline: bool,
 
-    /// Includes the blueprint in the timeline view.
+    /// Disable garbage collection of the blueprint.
     pub disable_blueprint_gc: bool,
 
     /// What time zone to display timestamps in.
@@ -72,7 +72,7 @@ impl Default for AppOptions {
 
             show_picking_debug_overlay: false,
 
-            show_blueprint_in_timeline: false,
+            show_blueprint_timeline: false,
 
             disable_blueprint_gc: false,
 

@@ -5,7 +5,7 @@ use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
-use re_log_types::{DataRow, EntityPathFilter, RowId, TimePoint};
+use re_log_types::{DataRow, EntityPathFilter, RowId};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},

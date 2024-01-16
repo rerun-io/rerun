@@ -778,15 +778,12 @@ impl TimePanel {
 
                 if cfg!(debug_assertions)
                     && ui
-                        .selectable_label(
-                            ctx.app_options.show_blueprint_in_timeline,
-                            "View Blueprint",
-                        )
+                        .selectable_label(ctx.app_options.show_blueprint_timeline, "View Blueprint")
                         .clicked()
                 {
                     ctx.command_sender
-                        .send_system(SystemCommand::ShowBlueprintInTimeline(
-                            !ctx.app_options.show_blueprint_in_timeline,
+                        .send_system(SystemCommand::ShowBlueprintTimeline(
+                            !ctx.app_options.show_blueprint_timeline,
                         ));
                 }
             });

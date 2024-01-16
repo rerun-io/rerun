@@ -314,18 +314,6 @@ fn experimental_feature_ui(
             "Use the legacy container blueprint storage for the viewport",
         )
         .on_hover_text("The legacy container blueprint storage is deprecated, but may be helpful if unexpected regressions are found in the new container blueprints.");
-
-    re_ui.checkbox(ui,
-        &mut app_options.show_blueprint_in_timeline,
-        "Show Blueprint in the Time Panel",
-    )
-    .on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
-
-    re_ui.checkbox(ui,
-        &mut app_options.disable_blueprint_gc,
-        "Disable the blueprint GC",
-    )
-    .on_hover_text("Don't GC the blueprint data. This is useful for debugging the internal blueprint state.");
 }
 
 #[cfg(debug_assertions)]
@@ -397,9 +385,16 @@ fn debug_menu_options_ui(
     ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
 
     re_ui.checkbox(ui,
-        &mut app_options.show_blueprint_in_timeline,
-        "Show Blueprint in the Time Panel",
-    ).on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
+        &mut app_options.show_blueprint_timeline,
+        "Show a timeline of the blueprint data.",
+    )
+    .on_hover_text("Show a timeline of the blueprint data. This is useful for debugging the internal blueprint state.");
+
+    re_ui.checkbox(ui,
+        &mut app_options.disable_blueprint_gc,
+        "Disable the blueprint garbage collector.",
+    )
+    .on_hover_text("Don't garbage collect the blueprint data. This is useful for debugging the internal blueprint state.");
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]
