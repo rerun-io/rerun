@@ -29,6 +29,14 @@ impl Viewport<'_, '_> {
                     if let Some(root) = self.tree.root() {
                         self.tile_ui(ctx, ui, root, true);
                     }
+
+                    // clear selection upon clicking on empty space
+                    if ui
+                        .allocate_response(ui.available_size(), egui::Sense::click())
+                        .clicked()
+                    {
+                        ctx.selection_state().clear_current();
+                    }
                 });
             });
     }
