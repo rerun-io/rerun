@@ -1077,7 +1077,7 @@ dependencies = [
 
 [[package]]
 name = "clock"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -1117,7 +1117,7 @@ dependencies = [
 
 [[package]]
 name = "code_examples"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "itertools 0.12.0",
  "ndarray",
@@ -1442,7 +1442,7 @@ checksum = "96a6ac251f4a2aca6b3f91340350eab87ae57c3f127ffeb585e92bd336717991"
 
 [[package]]
 name = "custom_data_loader"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "re_build_tools",
  "rerun",
@@ -1450,7 +1450,7 @@ dependencies = [
 
 [[package]]
 name = "custom_space_view"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
@@ -1461,7 +1461,7 @@ dependencies = [
 
 [[package]]
 name = "custom_store_subscriber"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "re_build_tools",
  "rerun",
@@ -1577,7 +1577,7 @@ dependencies = [
 
 [[package]]
 name = "dna"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "itertools 0.12.0",
  "rand",
@@ -2005,7 +2005,7 @@ dependencies = [
 
 [[package]]
 name = "extend_viewer_ui"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
@@ -3147,7 +3147,7 @@ dependencies = [
 
 [[package]]
 name = "log_benchmark"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -3290,14 +3290,14 @@ dependencies = [
 
 [[package]]
 name = "minimal"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "rerun",
 ]
 
 [[package]]
 name = "minimal_options"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -3307,7 +3307,7 @@ dependencies = [
 
 [[package]]
 name = "minimal_serve"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "rerun",
  "tokio",
@@ -3707,7 +3707,7 @@ dependencies = [
 
 [[package]]
 name = "objectron"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -3915,7 +3915,7 @@ dependencies = [
 
 [[package]]
 name = "plot_dashboard_stress"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -4425,7 +4425,7 @@ checksum = "42a9830a0e1b9fb145ebb365b8bc4ccd75f290f98c0247deafbbe2c75cefb544"
 
 [[package]]
 name = "raw_mesh"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "bytes",
@@ -4465,7 +4465,7 @@ dependencies = [
 
 [[package]]
 name = "re_analytics"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "crossbeam",
  "directories-next",
@@ -4484,7 +4484,7 @@ dependencies = [
 
 [[package]]
 name = "re_build_examples"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "argh",
@@ -4499,11 +4499,11 @@ dependencies = [
 
 [[package]]
 name = "re_build_info"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 
 [[package]]
 name = "re_build_tools"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "cargo_metadata 0.18.1",
@@ -4516,7 +4516,7 @@ dependencies = [
 
 [[package]]
 name = "re_build_web_viewer"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "cargo_metadata 0.18.1",
@@ -4526,7 +4526,7 @@ dependencies = [
 
 [[package]]
 name = "re_crash_handler"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "backtrace",
  "itertools 0.12.0",
@@ -4538,7 +4538,7 @@ dependencies = [
 
 [[package]]
 name = "re_data_source"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4561,7 +4561,7 @@ dependencies = [
 
 [[package]]
 name = "re_data_store"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4593,7 +4593,7 @@ dependencies = [
 
 [[package]]
 name = "re_data_ui"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4620,7 +4620,7 @@ dependencies = [
 
 [[package]]
 name = "re_entity_db"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4653,14 +4653,14 @@ dependencies = [
 
 [[package]]
 name = "re_error"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
 ]
 
 [[package]]
 name = "re_format"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "arrow2",
  "comfy-table",
@@ -4670,7 +4670,7 @@ dependencies = [
 
 [[package]]
 name = "re_int_histogram"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "criterion",
  "insta",
@@ -4681,7 +4681,7 @@ dependencies = [
 
 [[package]]
 name = "re_log"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "env_logger",
  "js-sys",
@@ -4694,7 +4694,7 @@ dependencies = [
 
 [[package]]
 name = "re_log_encoding"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "criterion",
  "ehttp",
@@ -4719,7 +4719,7 @@ dependencies = [
 
 [[package]]
 name = "re_log_types"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4757,7 +4757,7 @@ dependencies = [
 
 [[package]]
 name = "re_memory"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "backtrace",
@@ -4778,7 +4778,7 @@ dependencies = [
 
 [[package]]
 name = "re_query"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "arrow2",
  "backtrace",
@@ -4802,7 +4802,7 @@ dependencies = [
 
 [[package]]
 name = "re_query_cache"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "arrow2",
@@ -4833,7 +4833,7 @@ dependencies = [
 
 [[package]]
 name = "re_renderer"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4878,7 +4878,7 @@ dependencies = [
 
 [[package]]
 name = "re_renderer_examples"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4903,7 +4903,7 @@ dependencies = [
 
 [[package]]
 name = "re_sdk"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -4934,7 +4934,7 @@ dependencies = [
 
 [[package]]
 name = "re_sdk_comms"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "crossbeam",
@@ -4950,7 +4950,7 @@ dependencies = [
 
 [[package]]
 name = "re_smart_channel"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "crossbeam",
  "parking_lot 0.12.1",
@@ -4960,7 +4960,7 @@ dependencies = [
 
 [[package]]
 name = "re_space_view"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "egui",
  "itertools 0.12.0",
@@ -4978,7 +4978,7 @@ dependencies = [
 
 [[package]]
 name = "re_space_view_bar_chart"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "egui",
  "egui_plot",
@@ -4996,7 +4996,7 @@ dependencies = [
 
 [[package]]
 name = "re_space_view_dataframe"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "egui",
  "egui_extras",
@@ -5016,7 +5016,7 @@ dependencies = [
 
 [[package]]
 name = "re_space_view_spatial"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -5051,7 +5051,7 @@ dependencies = [
 
 [[package]]
 name = "re_space_view_tensor"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -5077,7 +5077,7 @@ dependencies = [
 
 [[package]]
 name = "re_space_view_text_document"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "egui",
  "egui_commonmark",
@@ -5094,7 +5094,7 @@ dependencies = [
 
 [[package]]
 name = "re_space_view_text_log"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "egui",
  "egui_extras",
@@ -5114,7 +5114,7 @@ dependencies = [
 
 [[package]]
 name = "re_space_view_time_series"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "egui",
  "egui_plot",
@@ -5133,7 +5133,7 @@ dependencies = [
 
 [[package]]
 name = "re_string_interner"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "nohash-hasher",
@@ -5144,7 +5144,7 @@ dependencies = [
 
 [[package]]
 name = "re_time_panel"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "egui",
  "itertools 0.12.0",
@@ -5162,7 +5162,7 @@ dependencies = [
 
 [[package]]
 name = "re_tracing"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "puffin",
  "puffin_http",
@@ -5172,7 +5172,7 @@ dependencies = [
 
 [[package]]
 name = "re_tuid"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "criterion",
  "document-features",
@@ -5184,7 +5184,7 @@ dependencies = [
 
 [[package]]
 name = "re_types"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "array-init",
@@ -5221,7 +5221,7 @@ dependencies = [
 
 [[package]]
 name = "re_types_builder"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "arrow2",
@@ -5247,7 +5247,7 @@ dependencies = [
 
 [[package]]
 name = "re_types_core"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "arrow2",
@@ -5267,7 +5267,7 @@ dependencies = [
 
 [[package]]
 name = "re_ui"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "eframe",
  "egui",
@@ -5287,7 +5287,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewer"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -5348,7 +5348,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewer_context"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -5387,7 +5387,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewport"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "arrow2",
@@ -5419,7 +5419,7 @@ dependencies = [
 
 [[package]]
 name = "re_web_viewer_server"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "clap",
  "document-features",
@@ -5437,7 +5437,7 @@ dependencies = [
 
 [[package]]
 name = "re_ws_comms"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "bincode",
@@ -5527,7 +5527,7 @@ checksum = "216080ab382b992234dda86873c18d4c48358f5cfcb70fd693d7f6f2131b628b"
 
 [[package]]
 name = "rerun"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5561,7 +5561,7 @@ dependencies = [
 
 [[package]]
 name = "rerun-cli"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "document-features",
@@ -5578,7 +5578,7 @@ dependencies = [
 
 [[package]]
 name = "rerun-loader-rust-file"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "argh",
@@ -5587,7 +5587,7 @@ dependencies = [
 
 [[package]]
 name = "rerun_c"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "arrow2",
@@ -5599,7 +5599,7 @@ dependencies = [
 
 [[package]]
 name = "rerun_py"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "arrow2",
  "crossbeam",
@@ -5701,7 +5701,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_annotation_context"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5711,7 +5711,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_arrows2d"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5721,7 +5721,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_arrows3d"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5731,7 +5731,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_boxes2d"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5741,7 +5741,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_boxes3d"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5751,7 +5751,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_depth_image"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5762,7 +5762,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_disconnected_space"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5772,7 +5772,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_image"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5785,7 +5785,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_line_strips2d"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5795,7 +5795,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_line_strips3d"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5805,7 +5805,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_pinhole"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5815,7 +5815,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_points2d"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5825,7 +5825,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_points3d"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5835,7 +5835,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_segmentation_image"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5846,7 +5846,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_tensor"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5857,7 +5857,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_text_document"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5867,7 +5867,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_text_log"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5877,7 +5877,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_transform3d"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5887,7 +5887,7 @@ dependencies = [
 
 [[package]]
 name = "roundtrip_view_coordinates"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -5897,7 +5897,7 @@ dependencies = [
 
 [[package]]
 name = "run_wasm"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "cargo-run-wasm",
  "pico-args",
@@ -6138,7 +6138,7 @@ dependencies = [
 
 [[package]]
 name = "shared_recording"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "rerun",
 ]
@@ -6316,7 +6316,7 @@ dependencies = [
 
 [[package]]
 name = "spawn_viewer"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "rerun",
 ]
@@ -6360,7 +6360,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "stdio"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "rerun",
 ]
@@ -6474,7 +6474,7 @@ dependencies = [
 
 [[package]]
 name = "template"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "rerun",
 ]
@@ -6490,7 +6490,7 @@ dependencies = [
 
 [[package]]
 name = "test_api"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -6505,7 +6505,7 @@ dependencies = [
 
 [[package]]
 name = "test_image_memory"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.2"
 dependencies = [
  "mimalloc",
  "re_format",
