@@ -21,7 +21,7 @@ all-features = true
 client = ["re_log_encoding/encoder"]
 
 ## Enable the server.
-server = ["re_log_encoding/decoder"]
+server = ["rand", "tokio", "re_log_encoding/decoder"]
 
 
 [dependencies]
@@ -33,6 +33,19 @@ re_smart_channel.workspace = true
 ahash.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
-rand = { workspace = true, features = ["std", "std_rng", "small_rng"] }
 thiserror.workspace = true
-tokio = { workspace = true, features = ["io-util", "net", "rt"] }
+
+# Optional dependencies:
+
+# We use rand for the congestion manager
+rand = { workspace = true, optional = true, features = [
+  "std",
+  "std_rng",
+  "small_rng",
+] }
+
+tokio = { workspace = true, optional = true, features = [
+  "io-util",
+  "net",
+  "rt",
+] }

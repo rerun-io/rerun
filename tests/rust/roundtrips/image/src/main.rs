@@ -3,7 +3,7 @@
 use half::f16;
 use image::{Rgb, RgbImage};
 use ndarray::{Array, ShapeBuilder};
-use rerun::{archetypes::Image, external::re_log, RecordingStream};
+use rerun::{archetypes::Image, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

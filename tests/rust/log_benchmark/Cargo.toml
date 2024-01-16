@@ -7,8 +7,9 @@ license.workspace = true
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/rerun" }
+re_log = { workspace = true, features = ["setup"] }
 re_tracing = { path = "../../../crates/re_tracing", features = ["server"] }
+rerun = { path = "../../../crates/rerun" }
 
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }

@@ -1,37 +1,5 @@
 //! Function to setup logging in binaries and web apps.
 
-/// Get `RUST_LOG` environment variable or `info`, if not set.
-///
-/// Also sets some other log levels on crates that are too loud.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn default_log_filter() -> String {
-    let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {
-        if cfg!(debug_assertions) {
-            "debug".to_owned()
-        } else {
-            "info".to_owned()
-        }
-    });
-
-    for crate_name in crate::CRATES_AT_ERROR_LEVEL {
-        if !rust_log.contains(&format!("{crate_name}=")) {
-            rust_log += &format!(",{crate_name}=error");
-        }
-    }
-    for crate_name in crate::CRATES_AT_WARN_LEVEL {
-        if !rust_log.contains(&format!("{crate_name}=")) {
-            rust_log += &format!(",{crate_name}=warn");
-        }
-    }
-    for crate_name in crate::CRATES_AT_INFO_LEVEL {
-        if !rust_log.contains(&format!("{crate_name}=")) {
-            rust_log += &format!(",{crate_name}=info");
-        }
-    }
-
-    rust_log
-}
-
 /// Directs [`log`] calls to stderr.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn setup_native_logging() {
@@ -49,7 +17,7 @@ pub fn setup_native_logging() {
 
     crate::multi_logger::init().expect("Failed to set logger");
 
-    let log_filter = default_log_filter();
+    let log_filter = crate::default_log_filter();
 
     if log_filter.contains("trace") {
         log::set_max_level(log::LevelFilter::Trace);

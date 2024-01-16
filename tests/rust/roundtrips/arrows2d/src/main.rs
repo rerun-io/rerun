@@ -1,6 +1,6 @@
 //! Logs a `Arrows2D` archetype for roundtrip checks.
 
-use rerun::{archetypes::Arrows2D, external::re_log, RecordingStream};
+use rerun::{archetypes::Arrows2D, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

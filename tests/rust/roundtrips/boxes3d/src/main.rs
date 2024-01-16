@@ -4,7 +4,6 @@ use rerun::{
     archetypes::Boxes3D,
     components::Rotation3D,
     datatypes::{Quaternion, RotationAxisAngle},
-    external::re_log,
     transform::Angle,
     RecordingStream,
 };

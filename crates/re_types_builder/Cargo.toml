@@ -19,7 +19,7 @@ all-features = true
 
 [dependencies]
 re_build_tools.workspace = true
-re_log.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 re_tracing = { workspace = true, features = ["server"] }
 
 # External

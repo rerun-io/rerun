@@ -10,11 +10,13 @@ use once_cell::sync::Lazy;
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name
 /// starts with this prefix.
+// NOTE: this constant is duplicated in `rerun` to avoid an extra dependency there.
 pub const EXTERNAL_DATA_LOADER_PREFIX: &str = "rerun-loader-";
 
 /// When an external [`crate::DataLoader`] is asked to load some data that it doesn't know
 /// how to load, it should exit with this exit code.
 // NOTE: Always keep in sync with other languages.
+// NOTE: this constant is duplicated in `rerun` to avoid an extra dependency there.
 pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 
 /// Keeps track of the paths all external executable [`crate::DataLoader`]s.

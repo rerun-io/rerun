@@ -8,7 +8,6 @@ use rerun::{
     datatypes::{
         Angle, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
     },
-    external::re_log,
     RecordingStream,
 };
 

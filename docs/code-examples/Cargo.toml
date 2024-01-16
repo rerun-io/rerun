@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 ndarray.workspace = true
-rand.workspace = true
+rand = { workspace = true, features = ["std", "std_rng"] }
 rerun = { path = "../../crates/rerun" }
 
 [build-dependencies]

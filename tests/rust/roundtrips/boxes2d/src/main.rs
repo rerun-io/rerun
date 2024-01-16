@@ -1,6 +1,6 @@
 //! Logs a `Box2D` archetype for roundtrip checks.
 
-use rerun::{archetypes::Boxes2D, external::re_log, RecordingStream};
+use rerun::{archetypes::Boxes2D, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

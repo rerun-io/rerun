@@ -60,6 +60,7 @@ rerun = { workspace = true, features = [
   "analytics",
   "glam",
   "image",
+  "run",
   "server",
 ] }
 

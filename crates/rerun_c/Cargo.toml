@@ -31,7 +31,7 @@ test = false
 
 
 [dependencies]
-re_log.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 re_sdk.workspace = true
 
 ahash.workspace = true

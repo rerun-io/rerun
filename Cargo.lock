@@ -3152,6 +3152,7 @@ dependencies = [
  "anyhow",
  "clap",
  "glam",
+ "re_log",
  "re_tracing",
  "rerun",
 ]
@@ -3919,6 +3920,7 @@ dependencies = [
  "anyhow",
  "clap",
  "rand",
+ "re_log",
  "rerun",
 ]
 
@@ -5703,6 +5705,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5712,6 +5715,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5721,6 +5725,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5730,6 +5735,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5739,6 +5745,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5749,6 +5756,7 @@ dependencies = [
  "anyhow",
  "clap",
  "image",
+ "re_log",
  "rerun",
 ]
 
@@ -5758,6 +5766,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5770,6 +5779,7 @@ dependencies = [
  "half 2.3.1",
  "image",
  "ndarray",
+ "re_log",
  "rerun",
 ]
 
@@ -5779,6 +5789,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5788,6 +5799,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5797,6 +5809,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5806,6 +5819,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5815,6 +5829,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5825,6 +5840,7 @@ dependencies = [
  "anyhow",
  "clap",
  "image",
+ "re_log",
  "rerun",
 ]
 
@@ -5835,6 +5851,7 @@ dependencies = [
  "anyhow",
  "clap",
  "ndarray",
+ "re_log",
  "rerun",
 ]
 
@@ -5844,6 +5861,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5853,6 +5871,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5862,6 +5881,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -5871,6 +5891,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
+ "re_log",
  "rerun",
 ]
 
@@ -6478,6 +6499,7 @@ dependencies = [
  "ndarray",
  "ndarray-rand",
  "rand",
+ "re_log",
  "rerun",
 ]
 
@@ -6487,6 +6509,7 @@ version = "0.13.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_format",
+ "re_log",
  "rerun",
 ]
 
