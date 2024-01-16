@@ -13,11 +13,15 @@
 //! logging of the exact same message.
 
 mod channel_logger;
-mod multi_logger;
 mod result_extensions;
+
+#[cfg(feature = "setup")]
+mod multi_logger;
+
+#[cfg(feature = "setup")]
 mod setup;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(feature = "setup", target_arch = "wasm32"))]
 mod web_logger;
 
 pub use log::{Level, LevelFilter};
@@ -32,11 +36,13 @@ pub use tracing::{debug, error, info, trace, warn};
 // similar to how the log console in a browser will automatically suppress duplicates.
 pub use log_once::{debug_once, error_once, info_once, log_once, trace_once, warn_once};
 
-pub use {
-    channel_logger::*,
-    multi_logger::{add_boxed_logger, add_logger, MultiLoggerNotSetupError},
-    setup::*,
-};
+pub use channel_logger::*;
+
+#[cfg(feature = "setup")]
+pub use multi_logger::{add_boxed_logger, add_logger, MultiLoggerNotSetupError};
+
+#[cfg(feature = "setup")]
+pub use setup::*;
 
 /// Re-exports of other crates.
 pub mod external {

@@ -2,7 +2,6 @@
 
 use rerun::{
     datatypes::{ClassDescription, KeypointPair},
-    external::re_log,
     AnnotationContext, RecordingStream, Rgba32,
 };
 

@@ -1,6 +1,6 @@
 //! Logs a `Pinhole` archetype for roundtrip checks.
 
-use rerun::{archetypes::Pinhole, datatypes::Mat3x3, external::re_log, RecordingStream};
+use rerun::{archetypes::Pinhole, datatypes::Mat3x3, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

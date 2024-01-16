@@ -45,7 +45,7 @@ re_data_ui.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }
 re_error.workspace = true
 re_format.workspace = true
-re_log.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 re_log_encoding = { workspace = true, features = [
   "decoder",
   "encoder",

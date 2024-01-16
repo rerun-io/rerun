@@ -1,6 +1,6 @@
 //! Logs a `LineStrips3D` archetype for roundtrip checks.
 
-use rerun::{archetypes::LineStrips3D, external::re_log, RecordingStream};
+use rerun::{archetypes::LineStrips3D, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

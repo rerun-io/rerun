@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
+re_log = { workspace = true, features = ["setup"] }
 rerun = { path = "../../../crates/rerun" }
 
 anyhow = "1.0"

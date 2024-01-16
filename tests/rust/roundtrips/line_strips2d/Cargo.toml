@@ -7,6 +7,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+re_log = { workspace = true, features = ["setup"] }
 rerun = { path = "../../../../crates/rerun" }
 
 anyhow.workspace = true

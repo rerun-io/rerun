@@ -1,6 +1,6 @@
 //! Logs a `ViewCoordinate` archetype for roundtrip checks.
 
-use rerun::{archetypes::ViewCoordinates, external::re_log, RecordingStream};
+use rerun::{archetypes::ViewCoordinates, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

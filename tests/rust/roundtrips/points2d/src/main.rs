@@ -2,7 +2,6 @@
 
 use rerun::{
     archetypes::{Boxes2D, Points2D},
-    external::re_log,
     RecordingStream,
 };
 

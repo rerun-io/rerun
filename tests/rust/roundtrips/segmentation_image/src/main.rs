@@ -1,7 +1,7 @@
 //! Logs a `SegmentationImage` archetype for roundtrip checks.
 
 use image::GrayImage;
-use rerun::{archetypes::SegmentationImage, external::re_log, RecordingStream};
+use rerun::{archetypes::SegmentationImage, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
