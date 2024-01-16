@@ -20,7 +20,6 @@ const SHORT_ABOUT: &str = "The Rerun Viewer and Server";
 // Place the important help _last_, to make it most visible in the terminal.
 const EXAMPLES: &str = r#"
 Environment variables:
-----------------------
     * RERUN_SHADER_PATH         The search path for shader/shader-imports. WARNING: Shaders are embedded in some build configurations.
     * RERUN_TRACK_ALLOCATIONS   Track all allocations in order to find memory leaks in the viewer. WARNING: slows down the viewer by a lot!
     * RUST_LOG                  Change the log level of the viewer, e.g. `RUST_LOG=debug`.
@@ -30,7 +29,6 @@ Environment variables:
 
 
 Examples:
----------
     Open a Rerun Viewer that listens for incoming SDK connections:
         rerun
 
