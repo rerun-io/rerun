@@ -133,16 +133,17 @@ fn default_manifest_url() -> String {
     let build_info = re_build_info::build_info!();
     let short_sha = build_info.short_git_hash();
 
-    if build_info.is_in_rerun_workspace {
-        // Always point to `version/main` for rerun devs,
-        // because the current commit's manifest is unlikely to be uploaded to GCS.
-        "https://app.rerun.io/version/main/examples_manifest.json".into()
-    } else if build_info.version.is_rc() || build_info.version.is_release() {
-        // Point to the current version's manifest
+    if build_info.version.is_rc() || build_info.version.is_release() {
+        // If this is versioned as a release or rc, always point to the versioned
+        // example manifest. This applies even if doing a local source build.
         format!(
             "https://app.rerun.io/version/{version}/examples_manifest.json",
             version = build_info.version,
         )
+    } else if build_info.is_in_rerun_workspace {
+        // Otherwise, always point to `version/main` for rerun devs,
+        // because the current commit's manifest is unlikely to be uploaded to GCS.
+        "https://app.rerun.io/version/main/examples_manifest.json".into()
     } else if !short_sha.is_empty() {
         // If we have a sha, try to point at it.
         format!("https://app.rerun.io/commit/{short_sha}/examples_manifest.json")
