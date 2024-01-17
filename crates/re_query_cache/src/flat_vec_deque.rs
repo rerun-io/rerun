@@ -45,9 +45,15 @@ pub trait ErasedFlatVecDeque: std::any::Any {
     /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
     /// avoid even with explicit syntax and that silently lead to infinite recursions.
     fn dyn_truncate(&mut self, at: usize);
+
+    /// Dynamically dispatches to [`<FlatVecDeque<T> as SizeBytes>::total_size_bytes(self)`].
+    ///
+    /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
+    /// avoid even with explicit syntax and that silently lead to infinite recursions.
+    fn dyn_total_size_bytes(&self) -> u64;
 }
 
-impl<T: 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
+impl<T: SizeBytes + 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
     #[inline]
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -86,6 +92,11 @@ impl<T: 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
     #[inline]
     fn dyn_truncate(&mut self, at: usize) {
         FlatVecDeque::<T>::truncate(self, at);
+    }
+
+    #[inline]
+    fn dyn_total_size_bytes(&self) -> u64 {
+        <FlatVecDeque<T> as SizeBytes>::total_size_bytes(self)
     }
 }
 
