@@ -119,7 +119,7 @@ impl Caches {
                                 }
 
                                 for bucket in per_data_time.values() {
-                                    upsert_bucket_stats(per_component, &bucket.read());
+                                    upsert_bucket_stats(per_component, bucket);
                                 }
                             }
                         }
