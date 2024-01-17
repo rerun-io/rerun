@@ -29,10 +29,21 @@ pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
     re_tracing::profile_function!();
 
+    let dir_separator = if cfg!(target_os = "windows") {
+        ';'
+    } else {
+        ':'
+    };
+
     let dirpaths = std::env::var("PATH")
         .ok()
         .into_iter()
-        .flat_map(|paths| paths.split(':').map(ToOwned::to_owned).collect::<Vec<_>>())
+        .flat_map(|paths| {
+            paths
+                .split(dir_separator)
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>()
+        })
         .map(std::path::PathBuf::from);
 
     let mut executables = HashMap::<String, Vec<std::path::PathBuf>>::default();
