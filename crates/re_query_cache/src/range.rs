@@ -3,7 +3,7 @@ use seq_macro::seq;
 
 use re_data_store::{DataStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, RowId, TimeRange};
-use re_types_core::{components::InstanceKey, Archetype, Component};
+use re_types_core::{components::InstanceKey, Archetype, Component, SizeBytes};
 
 use crate::{CacheBucket, Caches, MaybeCachedComponentData};
 
@@ -21,9 +21,18 @@ pub struct RangeCache {
 
     /// All timeless data.
     pub timeless: CacheBucket,
+}
 
-    /// Total size of the data stored in this cache in bytes.
-    pub total_size_bytes: u64,
+impl SizeBytes for RangeCache {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            per_data_time,
+            timeless,
+        } = self;
+
+        per_data_time.total_size_bytes + timeless.total_size_bytes
+    }
 }
 
 impl RangeCache {
@@ -39,23 +48,9 @@ impl RangeCache {
         let Self {
             per_data_time,
             timeless: _,
-            total_size_bytes,
         } = self;
 
-        let removed_bytes = per_data_time.truncate_at_time(threshold);
-
-        *total_size_bytes = total_size_bytes
-            .checked_sub(removed_bytes)
-            .unwrap_or_else(|| {
-                re_log::debug!(
-                    current = *total_size_bytes,
-                    removed = removed_bytes,
-                    "book keeping underflowed"
-                );
-                u64::MIN
-            });
-
-        removed_bytes
+        per_data_time.truncate_at_time(threshold)
     }
 }
 
@@ -223,8 +218,7 @@ macro_rules! impl_query_archetype_range {
                     // instance keys.
                     let arch_views =
                         ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, &reduced_query, entity_path);
-                    range_cache.total_size_bytes +=
-                        upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.timeless)?;
+                    upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.timeless)?;
 
                     if !range_cache.timeless.is_empty() {
                         range_results(true, &range_cache.timeless, reduced_query.range)?;
@@ -239,8 +233,7 @@ macro_rules! impl_query_archetype_range {
                     // instance keys.
                     let arch_views =
                         ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, &reduced_query, entity_path);
-                    range_cache.total_size_bytes +=
-                        upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.per_data_time)?;
+                    upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.per_data_time)?;
                 }
 
                 if !range_cache.per_data_time.is_empty() {
