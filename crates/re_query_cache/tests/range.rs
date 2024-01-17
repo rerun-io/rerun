@@ -4,13 +4,13 @@
 
 use itertools::Itertools as _;
 
-use re_data_store::{DataStore, RangeQuery};
+use re_data_store::{DataStore, RangeQuery, StoreSubscriber};
 use re_log_types::{
     build_frame_nr,
     example_components::{MyColor, MyLabel, MyPoint, MyPoints},
     DataRow, EntityPath, RowId, TimeInt, TimePoint, TimeRange,
 };
-use re_query_cache::query_archetype_pov1_comp2;
+use re_query_cache::Caches;
 use re_types::components::InstanceKey;
 use re_types_core::Loggable as _;
 
@@ -23,6 +23,7 @@ fn simple_range() {
         InstanceKey::name(),
         Default::default(),
     );
+    let mut caches = Caches::default();
 
     let ent_path: EntityPath = "point".into();
 
@@ -33,7 +34,7 @@ fn simple_range() {
         let row =
             DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), timepoint1, 2, positions)
                 .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
@@ -46,7 +47,7 @@ fn simple_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
     }
 
     let timepoint2 = [build_frame_nr(223.into())];
@@ -62,7 +63,7 @@ fn simple_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
     }
 
     let timepoint3 = [build_frame_nr(323.into())];
@@ -72,7 +73,7 @@ fn simple_range() {
         let row =
             DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), timepoint3, 2, positions)
                 .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
     }
 
     // --- First test: `(timepoint1, timepoint3]` ---
@@ -82,7 +83,7 @@ fn simple_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    query_and_compare(&store, &query, &ent_path);
+    query_and_compare(&caches, &store, &query, &ent_path);
 
     // --- Second test: `[timepoint1, timepoint3]` ---
 
@@ -93,7 +94,7 @@ fn simple_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    query_and_compare(&store, &query, &ent_path);
+    query_and_compare(&caches, &store, &query, &ent_path);
 }
 
 #[test]
@@ -103,6 +104,7 @@ fn timeless_range() {
         InstanceKey::name(),
         Default::default(),
     );
+    let mut caches = Caches::default();
 
     let ent_path: EntityPath = "point".into();
 
@@ -114,12 +116,12 @@ fn timeless_range() {
             DataRow::from_cells1(RowId::new(), ent_path.clone(), timepoint1, 2, &positions)
                 .unwrap();
         row.compute_all_size_bytes();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
         // Insert timelessly too!
         let row =
             DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), [], 2, &positions).unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
@@ -132,7 +134,7 @@ fn timeless_range() {
             (color_instances.clone(), colors.clone()),
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
         // Insert timelessly too!
         let row = DataRow::from_cells2_sized(
@@ -143,7 +145,7 @@ fn timeless_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
     }
 
     let timepoint2 = [build_frame_nr(223.into())];
@@ -159,7 +161,7 @@ fn timeless_range() {
             (color_instances.clone(), colors.clone()),
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
         // Insert timelessly too!
         let row = DataRow::from_cells2_sized(
@@ -170,7 +172,7 @@ fn timeless_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
     }
 
     let timepoint3 = [build_frame_nr(323.into())];
@@ -180,12 +182,12 @@ fn timeless_range() {
         let row =
             DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), timepoint3, 2, &positions)
                 .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
         // Insert timelessly too!
         let row =
             DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), [], 2, &positions).unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
     }
 
     // --- First test: `(timepoint1, timepoint3]` ---
@@ -195,7 +197,7 @@ fn timeless_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    query_and_compare(&store, &query, &ent_path);
+    query_and_compare(&caches, &store, &query, &ent_path);
 
     // --- Second test: `[timepoint1, timepoint3]` ---
 
@@ -206,14 +208,14 @@ fn timeless_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    query_and_compare(&store, &query, &ent_path);
+    query_and_compare(&caches, &store, &query, &ent_path);
 
     // --- Third test: `[-inf, +inf]` ---
 
     let query =
         re_data_store::RangeQuery::new(timepoint1[0].0, TimeRange::new(TimeInt::MIN, TimeInt::MAX));
 
-    query_and_compare(&store, &query, &ent_path);
+    query_and_compare(&caches, &store, &query, &ent_path);
 }
 
 #[test]
@@ -223,6 +225,7 @@ fn simple_splatted_range() {
         InstanceKey::name(),
         Default::default(),
     );
+    let mut caches = Caches::default();
 
     let ent_path: EntityPath = "point".into();
 
@@ -233,7 +236,7 @@ fn simple_splatted_range() {
         let row =
             DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), timepoint1, 2, positions)
                 .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
@@ -246,7 +249,7 @@ fn simple_splatted_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
     }
 
     let timepoint2 = [build_frame_nr(223.into())];
@@ -262,7 +265,7 @@ fn simple_splatted_range() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
     }
 
     let timepoint3 = [build_frame_nr(323.into())];
@@ -272,7 +275,7 @@ fn simple_splatted_range() {
         let row =
             DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), timepoint3, 2, positions)
                 .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
     }
 
     // --- First test: `(timepoint1, timepoint3]` ---
@@ -282,7 +285,7 @@ fn simple_splatted_range() {
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
     );
 
-    query_and_compare(&store, &query, &ent_path);
+    query_and_compare(&caches, &store, &query, &ent_path);
 
     // --- Second test: `[timepoint1, timepoint3]` ---
 
@@ -293,7 +296,7 @@ fn simple_splatted_range() {
         TimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
-    query_and_compare(&store, &query, &ent_path);
+    query_and_compare(&caches, &store, &query, &ent_path);
 }
 
 #[test]
@@ -309,6 +312,7 @@ fn invalidation() {
             InstanceKey::name(),
             Default::default(),
         );
+        let mut caches = Caches::default();
 
         // Create some positions with implicit instances
         let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -320,7 +324,7 @@ fn invalidation() {
             positions,
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(1)];
@@ -333,9 +337,9 @@ fn invalidation() {
             (color_instances, colors),
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
-        query_and_compare(&store, &query, &ent_path.into());
+        query_and_compare(&caches, &store, &query, &ent_path.into());
 
         // --- Modify present ---
 
@@ -349,18 +353,18 @@ fn invalidation() {
             positions,
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
-        query_and_compare(&store, &query, &ent_path.into());
+        query_and_compare(&caches, &store, &query, &ent_path.into());
 
         // Modify the optional component
         let colors = vec![MyColor::from_rgb(4, 5, 6), MyColor::from_rgb(7, 8, 9)];
         let row =
             DataRow::from_cells1_sized(RowId::new(), ent_path, present_data_timepoint, 2, colors)
                 .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
-        query_and_compare(&store, &query, &ent_path.into());
+        query_and_compare(&caches, &store, &query, &ent_path.into());
 
         // --- Modify past ---
 
@@ -374,9 +378,9 @@ fn invalidation() {
             positions,
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
-        query_and_compare(&store, &query, &ent_path.into());
+        query_and_compare(&caches, &store, &query, &ent_path.into());
 
         // Modify the optional component
         let colors = vec![MyColor::from_rgb(10, 11, 12), MyColor::from_rgb(13, 14, 15)];
@@ -388,9 +392,9 @@ fn invalidation() {
             colors,
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
-        query_and_compare(&store, &query, &ent_path.into());
+        query_and_compare(&caches, &store, &query, &ent_path.into());
 
         // --- Modify future ---
 
@@ -404,18 +408,18 @@ fn invalidation() {
             positions,
         )
         .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
-        query_and_compare(&store, &query, &ent_path.into());
+        query_and_compare(&caches, &store, &query, &ent_path.into());
 
         // Modify the optional component
         let colors = vec![MyColor::from_rgb(16, 17, 18)];
         let row =
             DataRow::from_cells1_sized(RowId::new(), ent_path, future_data_timepoint, 1, colors)
                 .unwrap();
-        store.insert_row(&row).unwrap();
+        insert_and_react(&mut store, &mut caches, &row);
 
-        query_and_compare(&store, &query, &ent_path.into());
+        query_and_compare(&caches, &store, &query, &ent_path.into());
     };
 
     let timeless = TimePoint::timeless();
@@ -470,6 +474,7 @@ fn invalidation_of_future_optionals() {
         InstanceKey::name(),
         Default::default(),
     );
+    let mut caches = Caches::default();
 
     let ent_path = "points";
 
@@ -481,36 +486,36 @@ fn invalidation_of_future_optionals() {
 
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::new(), ent_path, timeless, 2, positions).unwrap();
-    store.insert_row(&row).unwrap();
+    insert_and_react(&mut store, &mut caches, &row);
 
-    query_and_compare(&store, &query, &ent_path.into());
+    query_and_compare(&caches, &store, &query, &ent_path.into());
 
     let color_instances = vec![InstanceKey::SPLAT];
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
     let row =
         DataRow::from_cells2_sized(RowId::new(), ent_path, frame2, 1, (color_instances, colors))
             .unwrap();
-    store.insert_row(&row).unwrap();
+    insert_and_react(&mut store, &mut caches, &row);
 
-    query_and_compare(&store, &query, &ent_path.into());
+    query_and_compare(&caches, &store, &query, &ent_path.into());
 
     let color_instances = vec![InstanceKey::SPLAT];
     let colors = vec![MyColor::from_rgb(0, 0, 255)];
     let row =
         DataRow::from_cells2_sized(RowId::new(), ent_path, frame3, 1, (color_instances, colors))
             .unwrap();
-    store.insert_row(&row).unwrap();
+    insert_and_react(&mut store, &mut caches, &row);
 
-    query_and_compare(&store, &query, &ent_path.into());
+    query_and_compare(&caches, &store, &query, &ent_path.into());
 
     let color_instances = vec![InstanceKey::SPLAT];
     let colors = vec![MyColor::from_rgb(0, 255, 0)];
     let row =
         DataRow::from_cells2_sized(RowId::new(), ent_path, frame3, 1, (color_instances, colors))
             .unwrap();
-    store.insert_row(&row).unwrap();
+    insert_and_react(&mut store, &mut caches, &row);
 
-    query_and_compare(&store, &query, &ent_path.into());
+    query_and_compare(&caches, &store, &query, &ent_path.into());
 }
 
 #[test]
@@ -520,6 +525,7 @@ fn invalidation_timeless() {
         InstanceKey::name(),
         Default::default(),
     );
+    let mut caches = Caches::default();
 
     let ent_path = "points";
 
@@ -531,9 +537,9 @@ fn invalidation_timeless() {
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let row =
         DataRow::from_cells1_sized(RowId::new(), ent_path, timeless.clone(), 2, positions).unwrap();
-    store.insert_row(&row).unwrap();
+    insert_and_react(&mut store, &mut caches, &row);
 
-    query_and_compare(&store, &query, &ent_path.into());
+    query_and_compare(&caches, &store, &query, &ent_path.into());
 
     let color_instances = vec![InstanceKey::SPLAT];
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
@@ -545,9 +551,9 @@ fn invalidation_timeless() {
         (color_instances, colors),
     )
     .unwrap();
-    store.insert_row(&row).unwrap();
+    insert_and_react(&mut store, &mut caches, &row);
 
-    query_and_compare(&store, &query, &ent_path.into());
+    query_and_compare(&caches, &store, &query, &ent_path.into());
 
     let color_instances = vec![InstanceKey::SPLAT];
     let colors = vec![MyColor::from_rgb(0, 0, 255)];
@@ -559,50 +565,61 @@ fn invalidation_timeless() {
         (color_instances, colors),
     )
     .unwrap();
-    store.insert_row(&row).unwrap();
+    insert_and_react(&mut store, &mut caches, &row);
 
-    query_and_compare(&store, &query, &ent_path.into());
+    query_and_compare(&caches, &store, &query, &ent_path.into());
 }
 
 // ---
 
-fn query_and_compare(store: &DataStore, query: &RangeQuery, ent_path: &EntityPath) {
+fn insert_and_react(store: &mut DataStore, caches: &mut Caches, row: &DataRow) {
+    caches.on_events(&[store.insert_row(row).unwrap()]);
+}
+
+fn query_and_compare(
+    caches: &Caches,
+    store: &DataStore,
+    query: &RangeQuery,
+    ent_path: &EntityPath,
+) {
     for _ in 0..3 {
         let mut uncached_data_times = Vec::new();
         let mut uncached_instance_keys = Vec::new();
         let mut uncached_positions = Vec::new();
         let mut uncached_colors = Vec::new();
-        query_archetype_pov1_comp2::<MyPoints, MyPoint, MyColor, MyLabel, _>(
-            false, // cached?
-            store,
-            &query.clone().into(),
-            ent_path,
-            |((data_time, _), instance_keys, positions, colors, _)| {
-                uncached_data_times.push(data_time);
-                uncached_instance_keys.push(instance_keys.to_vec());
-                uncached_positions.push(positions.to_vec());
-                uncached_colors.push(colors.to_vec());
-            },
-        )
-        .unwrap();
+        caches
+            .query_archetype_pov1_comp2::<MyPoints, MyPoint, MyColor, MyLabel, _>(
+                false, // cached?
+                store,
+                &query.clone().into(),
+                ent_path,
+                |((data_time, _), instance_keys, positions, colors, _)| {
+                    uncached_data_times.push(data_time);
+                    uncached_instance_keys.push(instance_keys.to_vec());
+                    uncached_positions.push(positions.to_vec());
+                    uncached_colors.push(colors.to_vec());
+                },
+            )
+            .unwrap();
 
         let mut cached_data_times = Vec::new();
         let mut cached_instance_keys = Vec::new();
         let mut cached_positions = Vec::new();
         let mut cached_colors = Vec::new();
-        query_archetype_pov1_comp2::<MyPoints, MyPoint, MyColor, MyLabel, _>(
-            true, // cached?
-            store,
-            &query.clone().into(),
-            ent_path,
-            |((data_time, _), instance_keys, positions, colors, _)| {
-                cached_data_times.push(data_time);
-                cached_instance_keys.push(instance_keys.to_vec());
-                cached_positions.push(positions.to_vec());
-                cached_colors.push(colors.to_vec());
-            },
-        )
-        .unwrap();
+        caches
+            .query_archetype_pov1_comp2::<MyPoints, MyPoint, MyColor, MyLabel, _>(
+                true, // cached?
+                store,
+                &query.clone().into(),
+                ent_path,
+                |((data_time, _), instance_keys, positions, colors, _)| {
+                    cached_data_times.push(data_time);
+                    cached_instance_keys.push(instance_keys.to_vec());
+                    cached_positions.push(positions.to_vec());
+                    cached_colors.push(colors.to_vec());
+                },
+            )
+            .unwrap();
 
         let mut expected_data_times = Vec::new();
         let mut expected_instance_keys = Vec::new();
