@@ -141,9 +141,9 @@ class ImageEncoded(AsComponents):
             tensor_buffer = TensorBuffer(np.frombuffer(np_buffer, dtype=np.uint8))
             tensor_buffer.kind = "jpeg"
 
-            if img_data.mode == 'L':
+            if img_data.mode == "L":
                 depth = 1
-            elif img_data.mode == 'RGB':
+            elif img_data.mode == "RGB":
                 depth = 3
             else:
                 raise ValueError(f"Unsupported JPEG mode: {img_data.mode}")

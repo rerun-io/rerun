@@ -36,6 +36,7 @@ def test_image_encoded_jpg() -> None:
 
     assert img.data.buffer.kind == "jpeg"
 
+
 def test_image_encoded_mono_jpg() -> None:
     _, file_path = tempfile.mkstemp(suffix=".jpg")
 
@@ -73,6 +74,7 @@ def test_image_encoded_jpg_from_bytes() -> None:
     assert img.data.shape[1].size == 300
     assert img.data.shape[2].size == 3
     assert img.data.buffer.kind == "jpeg"
+
 
 def test_image_encoded_mono_jpg_from_bytes() -> None:
     bin = io.BytesIO()
