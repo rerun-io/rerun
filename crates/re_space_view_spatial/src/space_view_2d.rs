@@ -75,6 +75,10 @@ impl SpaceViewClass for SpatialSpaceView2D {
     ) -> Box<dyn VisualizableFilterContext> {
         re_tracing::profile_function!();
 
+        // TODO(andreas): The `VisualizableFilterContext` depends entirely on the spatial topology.
+        // If the topology hasn't changed, we don't need to recompute any of this.
+        // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
+
         let context = SpatialTopology::access(entity_db.store_id(), |topo| {
             let primary_space = topo.subspace_for_entity(space_origin);
             match primary_space.dimensionality {
