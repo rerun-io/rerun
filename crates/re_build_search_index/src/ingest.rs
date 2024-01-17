@@ -5,13 +5,15 @@ mod griffe;
 mod rustdoc;
 
 use camino::Utf8Path;
+use cargo_metadata::Package;
 use std::cell::Cell;
+use std::cell::RefCell;
 
 pub fn run() -> anyhow::Result<Vec<Document>> {
-    let ctx = &mut Context::new()?;
-    docs::ingest(ctx)?;
-    examples::ingest(ctx)?;
-    // rustdoc::ingest(ctx)?;
+    let ctx = Context::new()?;
+    docs::ingest(&ctx)?;
+    examples::ingest(&ctx)?;
+    rustdoc::ingest(&ctx)?;
     // griffe::ingest(ctx)?;
     // doxygen::ingest(ctx)?;
     Ok(ctx.finish())
@@ -20,16 +22,15 @@ pub fn run() -> anyhow::Result<Vec<Document>> {
 struct Context {
     metadata: cargo_metadata::Metadata,
     id_gen: IdGen,
-    documents: Vec<Document>,
+    documents: RefCell<Vec<Document>>,
 }
 
 impl Context {
     fn new() -> anyhow::Result<Self> {
-        let metadata = re_build_tools::cargo_metadata()?;
         Ok(Self {
-            metadata,
+            metadata: re_build_tools::cargo_metadata()?,
             id_gen: IdGen::new(),
-            documents: Vec::new(),
+            documents: RefCell::new(Vec::new()),
         })
     }
 
@@ -37,15 +38,24 @@ impl Context {
         &self.metadata.workspace_root
     }
 
-    fn push(&mut self, data: DocumentData) {
-        self.documents.push(Document {
+    fn rerun_pkg(&self) -> &Package {
+        self.metadata
+            .packages
+            .iter()
+            .find(|pkg| pkg.name == "rerun")
+            .unwrap()
+    }
+
+    fn push(&self, data: DocumentData) {
+        println!("indexed {} [{}]", data.title, data.url);
+        self.documents.borrow_mut().push(Document {
             id: self.id_gen.next(),
             data,
         });
     }
 
-    fn finish(&mut self) -> Vec<Document> {
-        std::mem::take(&mut self.documents)
+    fn finish(self) -> Vec<Document> {
+        self.documents.into_inner()
     }
 }
 

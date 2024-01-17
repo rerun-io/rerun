@@ -14,7 +14,8 @@ use tokio::sync::mpsc::error::TryRecvError;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let documents = ingest::run()?;
-    let search = meili::index(&documents).await?;
+    std::fs::write("documents.json", serde_json::to_string(&documents)?)?;
+    let mut search = meili::index(&documents).await?;
 
     let mut lines = Lines::spawn()?;
     loop {
@@ -32,6 +33,11 @@ async fn main() -> anyhow::Result<()> {
                 let line = line.as_str().trim();
                 match line {
                     "quit" | "q" | "" => break,
+                    "reindex" => {
+                        let documents = ingest::run()?;
+                        std::fs::write("documents.json", serde_json::to_string(&documents)?)?;
+                        search = meili::index(&documents).await?;
+                    }
                     _ => {
                         for result in search.query(line).await? {
                             println!("- {} [{}]", result.title(), result.url());

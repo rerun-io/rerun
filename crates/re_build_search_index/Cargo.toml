@@ -27,7 +27,10 @@ camino.workspace = true
 cargo_metadata.workspace = true
 glob.workspace = true
 indicatif.workspace = true
+meilisearch-sdk = "0.24.3"
 rayon.workspace = true
+rustdoc-json = "0.8.8"
+rustdoc-types = "0.24.0"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde_yaml.workspace = true
@@ -40,4 +43,3 @@ tokio = { workspace = true, features = [
   "sync",
 ] }
 toml = { workspace = true, features = ["parse", "preserve_order"] }
-meilisearch-sdk = "0.24.3"

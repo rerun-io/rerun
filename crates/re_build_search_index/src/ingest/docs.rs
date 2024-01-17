@@ -2,13 +2,13 @@ use std::path::Path;
 
 use super::{Context, DocumentData, DocumentKind};
 
-pub fn ingest(ctx: &mut Context) -> anyhow::Result<()> {
+pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let dir = ctx.workspace_root().join("docs").join("content");
     for entry in glob::glob(&format!("{dir}/**/*.md"))? {
         let entry = entry?;
         let url = format!(
             "https://rerun.io/docs/{}",
-            entry.strip_prefix(&dir)?.display()
+            entry.strip_prefix(&dir)?.with_extension("").display()
         );
         let (frontmatter, body) = parse_docs_frontmatter(&entry)?;
 
