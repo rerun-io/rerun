@@ -251,14 +251,16 @@ fn space_view_button(
 ) -> egui::Response {
     let item = Item::SpaceView(space_view.id);
     let is_selected = ctx.selection().contains_item(&item);
+    let space_view_name = space_view.display_name_or_default();
 
     let response = ctx
         .re_ui
         .selectable_label_with_icon(
             ui,
             space_view.class(ctx.space_view_class_registry).icon(),
-            space_view.display_name.clone(),
+            space_view_name.as_ref(),
             is_selected,
+            space_view_name.style(),
         )
         .on_hover_text("Space View");
     item_ui::cursor_interact_with_selectable(ctx, response, item)
@@ -334,17 +336,28 @@ fn what_is_selected_ui(
         Item::SpaceView(space_view_id) => {
             if let Some(space_view) = viewport.space_view(space_view_id) {
                 let space_view_class = space_view.class(ctx.space_view_class_registry);
-                item_title_ui(
-                    ctx.re_ui,
-                    ui,
-                    &space_view.display_name,
-                    Some(space_view_class.icon()),
-                    &format!(
+
+                let hover_text = if let Some(display_name) = space_view.display_name.as_ref() {
+                    format!(
                         "Space View {:?} of type {}",
-                        space_view.display_name,
-                        space_view_class.display_name(),
-                    ),
-                );
+                        display_name,
+                        space_view_class.display_name()
+                    )
+                } else {
+                    format!(
+                        "Unnamed Space View of type {}",
+                        space_view_class.display_name()
+                    )
+                };
+
+                let space_view_name = space_view.display_name_or_default();
+                ListItem::new(ctx.re_ui, space_view_name.as_ref())
+                    .label_style(space_view_name.style())
+                    .with_icon(space_view.class(ctx.space_view_class_registry).icon())
+                    .with_height(ReUi::title_bar_height())
+                    .selected(true)
+                    .show(ui)
+                    .on_hover_text(hover_text);
             }
         }
         Item::InstancePath(space_view_id, instance_path) => {
@@ -472,7 +485,7 @@ fn space_view_top_level_properties(
         egui::Grid::new("space_view_top_level_properties")
             .num_columns(2)
             .show(ui, |ui| {
-                let mut name = space_view.display_name.clone();
+                let mut name = space_view.display_name.clone().unwrap_or_default();
                 ui.label("Name").on_hover_text(
                     "The name of the Space View used for display purposes. This can be any text \
                     string.",
@@ -480,7 +493,7 @@ fn space_view_top_level_properties(
                 ui.text_edit_singleline(&mut name);
                 ui.end_row();
 
-                space_view.set_display_name(name, ctx);
+                space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
 
                 ui.label("Space origin").on_hover_text(
                     "The origin Entity for this Space View. For spatial Space Views, the Space \
@@ -643,9 +656,11 @@ fn show_list_item_for_container_child(
                 return false;
             };
 
+            let space_view_name = space_view.display_name_or_default();
             (
                 Item::SpaceView(*space_view_id),
-                ListItem::new(ctx.re_ui, space_view.display_name.clone())
+                ListItem::new(ctx.re_ui, space_view_name.as_ref())
+                    .label_style(space_view_name.style())
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon()),
             )
         }

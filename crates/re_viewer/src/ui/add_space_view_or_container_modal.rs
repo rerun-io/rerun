@@ -80,7 +80,6 @@ fn modal_ui(
         .map(|entry| {
             SpaceViewBlueprint::new(
                 entry.class.identifier(),
-                &format!("empty {}", entry.class.display_name()),
                 &EntityPath::root(),
                 DataQueryBlueprint::new(entry.class.identifier(), EntityPathFilter::default()),
             )
