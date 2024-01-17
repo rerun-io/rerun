@@ -141,10 +141,17 @@ class ImageEncoded(AsComponents):
             tensor_buffer = TensorBuffer(np.frombuffer(np_buffer, dtype=np.uint8))
             tensor_buffer.kind = "jpeg"
 
+            if img_data.mode == 'L':
+                depth = 1
+            elif img_data.mode == 'RGB':
+                depth = 3
+            else:
+                raise ValueError(f"Unsupported JPEG mode: {img_data.mode}")
+
             tensor_shape = (
                 TensorDimension(img_data.height, "height"),
                 TensorDimension(img_data.width, "width"),
-                TensorDimension(3, "depth"),
+                TensorDimension(depth, "depth"),
             )
             tensor_data = TensorData(buffer=tensor_buffer, shape=tensor_shape)
         else:
