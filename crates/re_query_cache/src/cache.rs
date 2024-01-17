@@ -129,7 +129,17 @@ impl Caches {
                 let mut caches = caches.0.write();
 
                 let caches_per_archetype = caches.entry(key.clone()).or_default();
-                caches_per_archetype.handle_pending_invalidation(&key);
+
+                // TODO: we cannot be holding `caches` when doing this.
+                let removed_bytes = caches_per_archetype.handle_pending_invalidation();
+                if removed_bytes > 0 {
+                    re_log::trace!(
+                        store_id = %key.store_id,
+                        entity_path = %key.entity_path,
+                        removed = removed_bytes,
+                        "invalidated latest-at caches"
+                    );
+                }
 
                 let mut latest_at_per_archetype =
                     caches_per_archetype.latest_at_per_archetype.write();
@@ -166,7 +176,17 @@ impl Caches {
                 let mut caches = caches.0.write();
 
                 let caches_per_archetype = caches.entry(key.clone()).or_default();
-                caches_per_archetype.handle_pending_invalidation(&key);
+
+                // TODO: we cannot be holding `caches` when doing this.
+                let removed_bytes = caches_per_archetype.handle_pending_invalidation();
+                if removed_bytes > 0 {
+                    re_log::trace!(
+                        store_id = %key.store_id,
+                        entity_path = %key.entity_path,
+                        removed = removed_bytes,
+                        "invalidated range caches"
+                    );
+                }
 
                 let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
                 let range_cache = range_per_archetype.entry(A::name()).or_default();
@@ -350,6 +370,10 @@ impl CachesPerArchetype {
                 removed_bytes.saturating_add(latest_at_cache.truncate_at_time(time_threshold));
         }
 
+        for range_cache in self.range_per_archetype.read().values() {
+            let mut range_cache = range_cache.write();
+            removed_bytes =
+                removed_bytes.saturating_add(range_cache.truncate_at_time(time_threshold));
         }
 
         removed_bytes

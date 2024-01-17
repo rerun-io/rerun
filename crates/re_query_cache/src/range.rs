@@ -13,6 +13,8 @@ use crate::{CacheBucket, Caches, MaybeCachedComponentData};
 #[derive(Default)]
 pub struct RangeCache {
     /// All timeful data, organized by _data_ time.
+    ///
+    /// Query time is irrelevant for range queries.
     //
     // TODO(cmc): bucketize
     pub per_data_time: CacheBucket,
@@ -22,6 +24,39 @@ pub struct RangeCache {
 
     /// Total size of the data stored in this cache in bytes.
     pub total_size_bytes: u64,
+}
+
+impl RangeCache {
+    /// Removes everything from the cache that corresponds to a time equal or greater than the
+    /// specified `threshold`.
+    ///
+    /// Reminder: invalidating timeless data is the same as invalidating everything, so just reset
+    /// the `RangeCache` entirely in that case.
+    ///
+    /// Returns the number of bytes removed.
+    #[inline]
+    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
+        let Self {
+            per_data_time,
+            timeless: _,
+            total_size_bytes,
+        } = self;
+
+        let removed_bytes = per_data_time.truncate_at_time(threshold);
+
+        *total_size_bytes = total_size_bytes
+            .checked_sub(removed_bytes)
+            .unwrap_or_else(|| {
+                re_log::debug!(
+                    current = *total_size_bytes,
+                    removed = removed_bytes,
+                    "book keeping underflowed"
+                );
+                u64::MIN
+            });
+
+        removed_bytes
+    }
 }
 
 impl RangeCache {
@@ -197,7 +232,6 @@ macro_rules! impl_query_archetype_range {
                         range_results(true, &range_cache.timeless, reduced_query.range)?;
                     }
                 }
-
 
                 let mut query = query.clone();
                 query.range.min = TimeInt::max((TimeInt::MIN.as_i64() + 1).into(), query.range.min);
