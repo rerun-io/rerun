@@ -1720,7 +1720,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "753c36d3e2f7a32425af5290af2e52efb3471ea3a263b87f003b5433351b0fd7"
 dependencies = [
  "egui",
- "ehttp",
+ "ehttp 0.3.1",
  "enum-map",
  "image",
  "log",
@@ -1773,6 +1773,20 @@ name = "ehttp"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f88f45662356f96afc7d9e2bc9910ad8352ee01417f7c69b8b16a53c8767a75d"
+dependencies = [
+ "document-features",
+ "js-sys",
+ "ureq",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "ehttp"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e598cc2bfc28612f26426259ed99a978270e9433d63ae6d2843e30fb0974cd02"
 dependencies = [
  "document-features",
  "futures-util",
@@ -4469,7 +4483,7 @@ version = "0.13.0-alpha.2"
 dependencies = [
  "crossbeam",
  "directories-next",
- "ehttp",
+ "ehttp 0.4.0",
  "re_build_info",
  "re_build_tools",
  "re_log",
@@ -4697,7 +4711,7 @@ name = "re_log_encoding"
 version = "0.13.0-alpha.2"
 dependencies = [
  "criterion",
- "ehttp",
+ "ehttp 0.4.0",
  "js-sys",
  "lz4_flex",
  "mimalloc",
@@ -5298,7 +5312,7 @@ dependencies = [
  "egui-wgpu",
  "egui_plot",
  "egui_tiles",
- "ehttp",
+ "ehttp 0.4.0",
  "image",
  "itertools 0.12.0",
  "once_cell",
@@ -7065,9 +7079,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-futures"
-version = "0.4.36"
+version = "0.4.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d1985d03709c53167ce907ff394f5316aa22cb4e12761295c5dc57dacb6297e"
+checksum = "c02dbc21516f9f1f04f187958890d7e6026df8d16540b7ad9492bc34a67cea03"
 dependencies = [
  "cfg-if",
  "js-sys",
@@ -7158,9 +7172,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-streams"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4609d447824375f43e1ffbc051b50ad8f4b3ae8219680c94452ea05eb240ac7"
+checksum = "b65dc4c90b63b118468cf747d8bf3566c1913ef60be765b5730ead9e0a3ba129"
 dependencies = [
  "futures-util",
  "js-sys",

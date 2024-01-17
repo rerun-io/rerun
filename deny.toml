@@ -52,6 +52,7 @@ skip = [
   { name = "cargo_metadata" },       # Older version used by ply-rs. It's small, and it's build-time only!
   { name = "cfg_aliases" },          # Tiny macro-only crate. Winit and other use older version than us.
   { name = "core-graphics" },        # old version via arboard
+  { name = "ehttp" },                # Will go away with next egui update
   { name = "foreign-types-shared" }, # used for cocoa bindings. wgpu uses newer than eframe.
   { name = "foreign-types" },        # used for cocoa bindings. wgpu uses newer than eframe.
   { name = "hashbrown" },            # Old version used by polar-rs

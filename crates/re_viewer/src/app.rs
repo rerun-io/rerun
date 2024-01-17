@@ -258,7 +258,8 @@ impl App {
     }
 
     pub fn set_examples_manifest_url(&mut self, url: String) {
-        self.state.set_examples_manifest_url(url);
+        self.state
+            .set_examples_manifest_url(&self.re_ui.egui_ctx, url);
     }
 
     pub fn build_info(&self) -> &re_build_info::BuildInfo {
