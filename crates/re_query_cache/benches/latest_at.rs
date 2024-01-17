@@ -4,9 +4,9 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use itertools::Itertools;
-use re_data_store::{DataStore, LatestAtQuery};
+use re_data_store::{DataStore, LatestAtQuery, StoreSubscriber};
 use re_log_types::{entity_path, DataRow, EntityPath, RowId, TimeInt, TimeType, Timeline};
-use re_query_cache::query_archetype_pov1_comp1;
+use re_query_cache::Caches;
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D, Text},
@@ -73,9 +73,9 @@ fn mono_points(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_mono_points2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let store = insert_rows(msgs.iter());
+        let (caches, store) = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_points(&store, &paths));
+            b.iter(|| query_and_visit_points(&caches, &store, &paths));
         });
     }
 }
@@ -101,9 +101,9 @@ fn mono_strings(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_mono_strings2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let store = insert_rows(msgs.iter());
+        let (caches, store) = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_strings(&store, &paths));
+            b.iter(|| query_and_visit_strings(&caches, &store, &paths));
         });
     }
 }
@@ -126,9 +126,9 @@ fn batch_points(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_batch_points2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let store = insert_rows(msgs.iter());
+        let (caches, store) = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_points(&store, &paths));
+            b.iter(|| query_and_visit_points(&caches, &store, &paths));
         });
     }
 }
@@ -151,9 +151,9 @@ fn batch_strings(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_batch_strings2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let store = insert_rows(msgs.iter());
+        let (caches, store) = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_strings(&store, &paths));
+            b.iter(|| query_and_visit_strings(&caches, &store, &paths));
         });
     }
 }
@@ -253,16 +253,19 @@ fn build_strings_rows(paths: &[EntityPath], num_strings: usize) -> Vec<DataRow> 
         .collect()
 }
 
-fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> DataStore {
+fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> (Caches, DataStore) {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         InstanceKey::name(),
         Default::default(),
     );
+
+    let mut caches = Caches::default();
     msgs.for_each(|row| {
-        store.insert_row(row).unwrap();
+        caches.on_events(&[store.insert_row(row).unwrap()]);
     });
-    store
+
+    (caches, store)
 }
 
 struct SavePoint {
@@ -270,7 +273,11 @@ struct SavePoint {
     _color: Option<Color>,
 }
 
-fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePoint> {
+fn query_and_visit_points(
+    caches: &Caches,
+    store: &DataStore,
+    paths: &[EntityPath],
+) -> Vec<SavePoint> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES_POINTS as i64 / 2).into());
 
@@ -278,21 +285,22 @@ fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePo
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for path in paths {
-        query_archetype_pov1_comp1::<Points2D, Position2D, Color, _>(
-            true, // cached?
-            store,
-            &query.clone().into(),
-            path,
-            |(_, _, positions, colors)| {
-                itertools::izip!(positions.iter(), colors.iter()).for_each(|(pos, color)| {
-                    points.push(SavePoint {
-                        _pos: *pos,
-                        _color: *color,
+        caches
+            .query_archetype_pov1_comp1::<Points2D, Position2D, Color, _>(
+                true, // cached?
+                store,
+                &query.clone().into(),
+                path,
+                |(_, _, positions, colors)| {
+                    itertools::izip!(positions.iter(), colors.iter()).for_each(|(pos, color)| {
+                        points.push(SavePoint {
+                            _pos: *pos,
+                            _color: *color,
+                        });
                     });
-                });
-            },
-        )
-        .unwrap();
+                },
+            )
+            .unwrap();
     }
     assert_eq!(NUM_POINTS as usize, points.len());
     points
@@ -302,27 +310,32 @@ struct SaveString {
     _label: Option<Text>,
 }
 
-fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveString> {
+fn query_and_visit_strings(
+    caches: &Caches,
+    store: &DataStore,
+    paths: &[EntityPath],
+) -> Vec<SaveString> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES_STRINGS as i64 / 2).into());
 
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);
 
     for path in paths {
-        query_archetype_pov1_comp1::<Points2D, Position2D, Text, _>(
-            true, // cached?
-            store,
-            &query.clone().into(),
-            path,
-            |(_, _, _, labels)| {
-                for label in labels.iter() {
-                    strings.push(SaveString {
-                        _label: label.clone(),
-                    });
-                }
-            },
-        )
-        .unwrap();
+        caches
+            .query_archetype_pov1_comp1::<Points2D, Position2D, Text, _>(
+                true, // cached?
+                store,
+                &query.clone().into(),
+                path,
+                |(_, _, _, labels)| {
+                    for label in labels.iter() {
+                        strings.push(SaveString {
+                            _label: label.clone(),
+                        });
+                    }
+                },
+            )
+            .unwrap();
     }
     assert_eq!(NUM_STRINGS as usize, strings.len());
 

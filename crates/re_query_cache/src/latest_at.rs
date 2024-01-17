@@ -110,6 +110,7 @@ macro_rules! impl_query_archetype_latest_at {
         #[doc = "(combined) for `" $N "` point-of-view components and `" $M "` optional components."]
         #[allow(non_snake_case)]
         pub fn [<query_archetype_latest_at_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
+            &self,
             store: &'a DataStore,
             query: &LatestAtQuery,
             entity_path: &'a EntityPath,
@@ -257,7 +258,7 @@ macro_rules! impl_query_archetype_latest_at {
             };
 
 
-            Caches::with_latest_at::<A, _, _>(
+            self.with_latest_at::<A, _, _>(
                 store.id().clone(),
                 entity_path.clone(),
                 query,
@@ -275,6 +276,8 @@ macro_rules! impl_query_archetype_latest_at {
     };
 }
 
-seq!(NUM_COMP in 0..10 {
-    impl_query_archetype_latest_at!(for N=1, M=NUM_COMP);
-});
+impl Caches {
+    seq!(NUM_COMP in 0..10 {
+        impl_query_archetype_latest_at!(for N=1, M=NUM_COMP);
+    });
+}
