@@ -145,7 +145,7 @@ impl SelectionPanel {
                     }
 
                     Item::SpaceView(space_view_id) => {
-                        self.space_view_top_level_properties(
+                        space_view_top_level_properties(
                             ui,
                             ctx,
                             viewport.blueprint,
@@ -240,70 +240,73 @@ impl SelectionPanel {
             ui.set_clip_rect(clip_rect);
         });
     }
+}
 
-    /// Display the top-level properties of a space view.
-    ///
-    /// This includes the name, space origin entity, and space view type. These properties are singled
-    /// out as needing to be edited in most case when creating a new Space View, which is why they are
-    /// shown at the very top.
-    fn space_view_top_level_properties(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &ViewerContext<'_>,
-        viewport: &ViewportBlueprint,
-        spaces_info: &SpaceInfoCollection,
-        space_view_id: &SpaceViewId,
-    ) {
-        if let Some(space_view) = viewport.space_view(space_view_id) {
-            egui::Grid::new("space_view_top_level_properties")
-                .num_columns(2)
-                .show(ui, |ui| {
-                    let mut name = space_view.display_name.clone().unwrap_or_default();
-                    ui.label("Name").on_hover_text(
-                        "The name of the Space View used for display purposes. This can be any text \
+/// Display the top-level properties of a space view.
+///
+/// This includes the name, space origin entity, and space view type. These properties are singled
+/// out as needing to be edited in most case when creating a new Space View, which is why they are
+/// shown at the very top.
+fn space_view_top_level_properties(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    spaces_info: &SpaceInfoCollection,
+    space_view_id: &SpaceViewId,
+) {
+    if let Some(space_view) = viewport.space_view(space_view_id) {
+        egui::Grid::new("space_view_top_level_properties")
+            .num_columns(2)
+            .show(ui, |ui| {
+                let mut name = space_view.display_name.clone().unwrap_or_default();
+                ui.label("Name").on_hover_text(
+                    "The name of the Space View used for display purposes. This can be any text \
                     string.",
-                    );
-                    ui.text_edit_singleline(&mut name);
-                    space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+                );
+                ui.text_edit_singleline(&mut name);
+                space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
 
-                    ui.end_row();
+                ui.end_row();
 
-                    ui.label("Space origin").on_hover_text(
-                        "The origin Entity for this Space View. For spatial Space Views, the Space \
+                ui.label("Space origin").on_hover_text(
+                    "The origin Entity for this Space View. For spatial Space Views, the Space \
                     View's origin is the same as this Entity's origin and all transforms are \
                     relative to it.",
-                    );
-                    space_view_space_origin_widget(ui, ctx, spaces_info, space_view);
+                );
+                space_view_space_origin_widget_ui(ui, ctx, spaces_info, space_view);
 
-                    ui.end_row();
+                ui.end_row();
 
-                    ui.label("Type")
-                        .on_hover_text("The type of this Space View");
-                    ui.label(
-                        space_view
-                            .class(ctx.space_view_class_registry)
-                            .display_name(),
-                    );
+                ui.label("Type")
+                    .on_hover_text("The type of this Space View");
+                ui.label(
+                    space_view
+                        .class(ctx.space_view_class_registry)
+                        .display_name(),
+                );
 
-                    ui.end_row();
-                });
-        }
+                ui.end_row();
+            });
     }
 }
 
+/// State of the space origin widget.
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
-struct SpaceOriginEditState {
-    /// Are we in editing mode?
-    is_editing: bool,
+enum SpaceOriginEditState {
+    #[default]
+    NotEditing,
 
-    /// The string currently entered by the user.
-    origin_string: String,
+    Editing {
+        /// The string currently entered by the user.
+        origin_string: String,
 
-    /// Did we just enter editing mode?
-    entered_editing: bool,
+        /// Did we just enter editing mode?
+        entered_editing: bool,
+    },
 }
 
-fn space_view_space_origin_widget(
+/// Display the space origin of a space view.
+fn space_view_space_origin_widget_ui(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
     spaces_info: &SpaceInfoCollection,
@@ -313,91 +316,126 @@ fn space_view_space_origin_widget(
     let mut state: SpaceOriginEditState =
         ui.memory_mut(|mem| mem.data.get_persisted(is_editing_id).unwrap_or_default());
 
-    if state.is_editing {
-        let mut output = egui::TextEdit::singleline(&mut state.origin_string).show(ui);
-
-        if state.entered_editing {
-            state.entered_editing = false;
-
-            output.response.request_focus();
-            let min = egui::text::CCursor::new(0);
-            let max = egui::text::CCursor::new(state.origin_string.len());
-            let new_range = egui::text::CCursorRange::two(min, max);
-            output.state.set_ccursor_range(Some(new_range));
-            output.state.store(ui.ctx(), output.response.id);
-        }
-
-        if output.response.changed() {
-            space_view.set_origin(ctx, &state.origin_string.clone().into());
-        }
-
-        if output.response.lost_focus() {
-            if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                space_view.set_origin(ctx, &state.origin_string.clone().into());
-            }
-            state.is_editing = false;
-        }
-
-        let popup_id = ui.make_persistent_id("suggestions");
-        if output.response.has_focus() {
-            ui.memory_mut(|mem| mem.open_popup(popup_id));
-        }
-
-        let suggestions_ui = |ui: &mut egui::Ui| {
-            let mut excluded_count = 0;
-            for suggested_space_view in
-                re_viewport::space_view_heuristics::all_possible_space_views(ctx, spaces_info)
-                    .into_iter()
-                    .map(|(space_view, _)| space_view)
-                    .filter(|this_space_view| {
-                        this_space_view.class_identifier() == space_view.class_identifier()
-                    })
-            {
-                let suggested_space_origin_string = suggested_space_view.space_origin.to_string();
-
-                if suggested_space_origin_string.contains(&state.origin_string) {
-                    let response =
-                        re_ui::list_item::ListItem::new(ctx.re_ui, &suggested_space_origin_string)
-                            .show(ui);
-
-                    if response.clicked() {
-                        state.origin_string = suggested_space_origin_string;
-                        space_view.set_origin(ctx, &state.origin_string.clone().into());
-                    }
-                } else {
-                    excluded_count += 1;
+    match &mut state {
+        SpaceOriginEditState::NotEditing => {
+            ui.horizontal(|ui| {
+                item_ui::entity_path_button(ctx, ui, Some(space_view.id), &space_view.space_origin);
+                if ctx
+                    .re_ui
+                    .small_icon_button(ui, &re_ui::icons::EDIT)
+                    .clicked()
+                {
+                    state = SpaceOriginEditState::Editing {
+                        origin_string: space_view.space_origin.to_string(),
+                        entered_editing: true,
+                    };
                 }
-            }
+            });
+        }
+        SpaceOriginEditState::Editing {
+            origin_string,
+            entered_editing,
+        } => {
+            let keep_editing = space_view_space_origin_widget_editing_ui(
+                ui,
+                ctx,
+                spaces_info,
+                origin_string,
+                *entered_editing,
+                space_view,
+            );
 
-            if excluded_count > 0 {
-                re_ui::list_item::ListItem::new(
-                    ctx.re_ui,
-                    format!("{excluded_count} hidden suggestions"),
-                )
-                .weak(true)
-                .italics(true)
-                .active(false)
-                .show(ui);
+            if keep_editing {
+                *entered_editing = false;
+            } else {
+                state = SpaceOriginEditState::NotEditing;
             }
-        };
-
-        ReUi::list_item_popup(ui, popup_id, &output.response, 4.0, suggestions_ui);
-    } else {
-        ui.horizontal(|ui| {
-            item_ui::entity_path_button(ctx, ui, Some(space_view.id), &space_view.space_origin);
-            if ctx
-                .re_ui
-                .small_icon_button(ui, &re_ui::icons::EDIT)
-                .clicked()
-            {
-                state.is_editing = true;
-                state.entered_editing = true;
-                state.origin_string = space_view.space_origin.to_string();
-            }
-        });
+        }
     }
 
     ui.memory_mut(|mem| mem.data.insert_persisted(is_editing_id, state));
+}
+
+/// Display the space origin of a space view with it is in edit mode.
+fn space_view_space_origin_widget_editing_ui(
+    ui: &mut Ui,
+    ctx: &ViewerContext<'_>,
+    spaces_info: &SpaceInfoCollection,
+    space_origin_string: &mut String,
+    entered_editing: bool,
+    space_view: &SpaceViewBlueprint,
+) -> bool {
+    let mut keep_editing = true;
+    let mut output = egui::TextEdit::singleline(space_origin_string).show(ui);
+
+    if entered_editing {
+        output.response.request_focus();
+        let min = egui::text::CCursor::new(0);
+        let max = egui::text::CCursor::new(space_origin_string.len());
+        let new_range = egui::text::CCursorRange::two(min, max);
+        output.state.set_ccursor_range(Some(new_range));
+        output.state.store(ui.ctx(), output.response.id);
+    }
+
+    if output.response.changed() {
+        space_view.set_origin(ctx, &space_origin_string.clone().into());
+    }
+
+    if output.response.lost_focus() {
+        if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+            space_view.set_origin(ctx, &space_origin_string.clone().into());
+        }
+        keep_editing = false;
+    }
+
+    let popup_id = ui.make_persistent_id("suggestions");
+    if output.response.has_focus() {
+        ui.memory_mut(|mem| mem.open_popup(popup_id));
+    }
+
+    let suggestions_ui = |ui: &mut egui::Ui| {
+        ui.spacing_mut().item_spacing.y = 0.0;
+
+        let mut excluded_count = 0;
+        for suggested_space_view in
+            re_viewport::space_view_heuristics::all_possible_space_views(ctx, spaces_info)
+                .into_iter()
+                .map(|(space_view, _)| space_view)
+                .filter(|this_space_view| {
+                    this_space_view.class_identifier() == space_view.class_identifier()
+                })
+        {
+            let suggested_space_origin_string = suggested_space_view.space_origin.to_string();
+
+            if suggested_space_origin_string.contains(&*space_origin_string) {
+                let response =
+                    re_ui::list_item::ListItem::new(ctx.re_ui, &suggested_space_origin_string)
+                        .show(ui);
+
+                if response.clicked() {
+                    *space_origin_string = suggested_space_origin_string;
+                    space_view.set_origin(ctx, &space_origin_string.clone().into());
+                }
+            } else {
+                excluded_count += 1;
+            }
+        }
+
+        if excluded_count > 0 {
+            re_ui::list_item::ListItem::new(
+                ctx.re_ui,
+                format!("{excluded_count} hidden suggestions"),
+            )
+            .weak(true)
+            .italics(true)
+            .active(false)
+            .show(ui);
+        }
+    };
+
+    ReUi::list_item_popup(ui, popup_id, &output.response, 4.0, suggestions_ui);
+
+    keep_editing
 }
 
 fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
