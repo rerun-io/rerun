@@ -47,7 +47,7 @@ Examples:
     Connect to a Rerun Server:
         rerun ws://localhost:9877
 
-    Listens for incoming TCP connections from the logging SDK and stream the results to disk:
+    Listen for incoming TCP connections from the logging SDK and stream the results to disk:
         rerun --save new_recording.rrd
 "#;
 
