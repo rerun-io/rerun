@@ -13,6 +13,8 @@ use crate::{CacheBucket, Caches, MaybeCachedComponentData};
 #[derive(Default)]
 pub struct RangeCache {
     /// All timeful data, organized by _data_ time.
+    ///
+    /// Query time is irrelevant for range queries.
     //
     // TODO(cmc): bucketize
     pub per_data_time: CacheBucket,
@@ -22,6 +24,39 @@ pub struct RangeCache {
 
     /// Total size of the data stored in this cache in bytes.
     pub total_size_bytes: u64,
+}
+
+impl RangeCache {
+    /// Removes everything from the cache that corresponds to a time equal or greater than the
+    /// specified `threshold`.
+    ///
+    /// Reminder: invalidating timeless data is the same as invalidating everything, so just reset
+    /// the `RangeCache` entirely in that case.
+    ///
+    /// Returns the number of bytes removed.
+    #[inline]
+    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
+        let Self {
+            per_data_time,
+            timeless: _,
+            total_size_bytes,
+        } = self;
+
+        let removed_bytes = per_data_time.truncate_at_time(threshold);
+
+        *total_size_bytes = total_size_bytes
+            .checked_sub(removed_bytes)
+            .unwrap_or_else(|| {
+                re_log::debug!(
+                    current = *total_size_bytes,
+                    removed = removed_bytes,
+                    "book keeping underflowed"
+                );
+                u64::MIN
+            });
+
+        removed_bytes
+    }
 }
 
 impl RangeCache {
@@ -114,7 +149,6 @@ macro_rules! impl_query_archetype_range {
                 re_tracing::profile_scope!("iter");
 
                 let entry_range = bucket.entry_range(time_range);
-        dbg!(&entry_range);
 
                 let it = itertools::izip!(
                     bucket.range_data_times(entry_range.clone()),
@@ -180,14 +214,10 @@ macro_rules! impl_query_archetype_range {
             let mut range_callback = |query: &RangeQuery, range_cache: &mut crate::RangeCache| {
                 re_tracing::profile_scope!("range", format!("{query:?}"));
 
-                eprintln!("query 1: {query:?}");
-
                 // NOTE: Same logic as what the store does.
                 if query.range.min <= TimeInt::MIN {
                     let mut reduced_query = query.clone();
                     reduced_query.range.max = TimeInt::MIN; // inclusive
-
-                    eprintln!("query timeless: {reduced_query:?}");
 
                     // NOTE: `+ 2` because we always grab the indicator component as well as the
                     // instance keys.
@@ -201,14 +231,10 @@ macro_rules! impl_query_archetype_range {
                     }
                 }
 
-
                 let mut query = query.clone();
                 query.range.min = TimeInt::max((TimeInt::MIN.as_i64() + 1).into(), query.range.min);
 
-                eprintln!("query 2: {query:?}");
-
                 for reduced_query in range_cache.compute_queries(&query) {
-                    eprintln!("query 2: {reduced_query:?}");
                     // NOTE: `+ 2` because we always grab the indicator component as well as the
                     // instance keys.
                     let arch_views =
