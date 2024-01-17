@@ -110,6 +110,9 @@ pub struct EntityDb {
     /// Stores all components for all entities for all timelines.
     data_store: DataStore,
 
+    /// Query caches for the data in [`Self::data_store`].
+    query_caches: re_query_cache::Caches,
+
     stats: IngestionStatistics,
 }
 
@@ -128,6 +131,7 @@ impl EntityDb {
                 InstanceKey::name(),
                 DataStoreConfig::default(),
             ),
+            query_caches: re_query_cache::Caches::default(),
             stats: IngestionStatistics::new(store_id),
         }
     }
@@ -173,6 +177,11 @@ impl EntityDb {
 
     pub fn app_id(&self) -> Option<&ApplicationId> {
         self.store_info().map(|ri| &ri.application_id)
+    }
+
+    #[inline]
+    pub fn query_caches(&self) -> &re_query_cache::Caches {
+        &self.query_caches
     }
 
     #[inline]
@@ -315,6 +324,7 @@ impl EntityDb {
         // and/or pending clears.
         let original_store_events = &[store_event];
         self.times_per_timeline.on_events(original_store_events);
+        self.query_caches.on_events(original_store_events);
         let clear_cascade = self.tree.on_store_additions(original_store_events);
 
         // Second-pass: update the [`DataStore`] by applying the [`ClearCascade`].
@@ -323,6 +333,7 @@ impl EntityDb {
         // notified of, again!
         let new_store_events = self.on_clear_cascade(clear_cascade);
         self.times_per_timeline.on_events(&new_store_events);
+        self.query_caches.on_events(&new_store_events);
         let clear_cascade = self.tree.on_store_additions(&new_store_events);
 
         // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
@@ -476,10 +487,12 @@ impl EntityDb {
             times_per_timeline,
             tree,
             data_store: _,
+            query_caches,
             stats: _,
         } = self;
 
         times_per_timeline.on_events(store_events);
+        query_caches.on_events(store_events);
 
         let store_events = store_events.iter().collect_vec();
         let compacted = CompactedStoreEvents::new(&store_events);
