@@ -7,7 +7,7 @@ use seq_macro::seq;
 use re_data_store::{DataStore, LatestAtQuery, TimeInt};
 use re_log_types::{EntityPath, RowId};
 use re_query::query_archetype;
-use re_types_core::{components::InstanceKey, Archetype, Component};
+use re_types_core::{components::InstanceKey, Archetype, Component, SizeBytes};
 
 use crate::{CacheBucket, Caches, MaybeCachedComponentData};
 
@@ -38,7 +38,14 @@ pub struct LatestAtCache {
     pub timeless: Option<CacheBucket>,
 
     /// Total size of the data stored in this cache in bytes.
-    pub total_size_bytes: u64,
+    total_size_bytes: u64,
+}
+
+impl SizeBytes for LatestAtCache {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.total_size_bytes
+    }
 }
 
 impl LatestAtCache {
