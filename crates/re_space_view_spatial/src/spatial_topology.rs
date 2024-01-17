@@ -16,8 +16,8 @@ pub enum SubSpaceDimensionality {
     /// This is the most common case and happens whenever there's no projection that
     /// establishes a clear distinction between 2D and 3D spaces.
     ///
-    /// Note that this can both mean "there are both 2D and 3D relationships" as well as
-    /// "there are not spatial relationships at all".
+    /// Note that this can both mean "there are both 2D and 3D relationships within the space"
+    /// as well as "there are not spatial relationships at all within the space".
     Unknown,
 
     /// The space is definitively a 2D space.
@@ -48,16 +48,27 @@ impl SubSpaceConnectionFlags {
     }
 }
 
-/// Within a subspace all
+/// Spatial subspace within we typically expect a homogenous dimensionality without any projections & disconnects.
+///
+/// Subspaces are separated by projections or explicit disconnects.
+///
+/// A subspace may contain internal transforms, but any such transforms must be invertible such
+/// that all data can be represented regardless of choice of origin.
+///
+/// Within the tree of all subspaces, every entity is contained in exactly one subspace.
+/// The subtree at (and including) the `origin` minus the
+/// subtrees of all child spaces are considered to be contained in a subspace.
 pub struct SubSpace {
     /// The transform root of this subspace.
+    ///
+    /// This is also used to uniquely identify the space.
     pub origin: EntityPath,
 
     pub dimensionality: SubSpaceDimensionality,
 
     /// All entities that were logged at any point in time and are part of this subspace.
     ///
-    /// Contains the origin entity as well unless the origin is the root and nothing was logged to it directly.
+    /// Contains the origin entity as well, unless the origin is the `EntityPath::root()` and nothing was logged to it directly.
     ///
     /// Note that we this is merely here to speed up queries.
     /// Instead, we could check if an entity is equal to or a descendent of the
@@ -79,7 +90,9 @@ pub struct SubSpace {
     /// Origin of the parent space if any.
     pub parent_space: Option<EntityPathHash>,
     //
-    // TODO(andreas): We could (and should) add here additional transform hierarchy information within this space.
+    // TODO(andreas):
+    // We could (and should) add here additional transform hierarchy information within this space.
+    // This would be useful in order to speed up determining the transforms for a given frame.
 }
 
 impl SubSpace {
@@ -97,6 +110,7 @@ impl SubSpace {
                 SubSpaceDimensionality::TwoD => {
                     // For the moment the only way to get a 2D space is by defining a pinhole,
                     // but in the future other projections may also cause a space to be defined as 2D space.
+                    // TODO(#3849, #4301): We should be able to tag the source entity as having an invalid transform so we can display a permanent warning in the ui.
                     re_log::warn_once!("There was already a pinhole logged at {:?}.
 The new pinhole at {:?} is nested under it, implying an invalid projection from a 2D space to a 2D space.", self.origin, child_path);
                     // We keep 2D.
@@ -165,7 +179,7 @@ impl StoreSubscriber for SpatialTopologyStoreSubscriber {
     }
 }
 
-/// Topological information about a store.
+/// Spatial toopological information about a store.
 ///
 /// Describes how 2D & 3D spaces are connected/disconnected.
 ///
@@ -175,9 +189,12 @@ impl StoreSubscriber for SpatialTopologyStoreSubscriber {
 /// Spatial topology is time independent but may change as new data comes in.
 /// Generally, the assumption is that topological cuts stay constant over time.
 pub struct SpatialTopology {
+    /// All subspaces, identified by their origin-hash.
     subspaces: IntMap<EntityPathHash, SubSpace>,
 
-    /// Maps each entity to the origin of a subspace.
+    /// Maps each logged entity to the origin of a subspace.
+    ///
+    /// This is purely an optimization to speed up searching for `subspaces`.
     subspace_origin_per_logged_entity: IntMap<EntityPathHash, EntityPathHash>,
 }
 
@@ -189,7 +206,7 @@ impl Default for SpatialTopology {
                 SubSpace {
                     origin: EntityPath::root(),
                     dimensionality: SubSpaceDimensionality::Unknown,
-                    entities: IntSet::default(),
+                    entities: IntSet::default(), // Note that this doesn't contain the root entity.
                     child_spaces: IntMap::default(),
                     parent_space: None,
                 },
@@ -215,7 +232,7 @@ impl SpatialTopology {
 
     /// Returns the subspace an entity belongs to.
     pub fn subspace_for_entity(&self, entity: &EntityPath) -> &SubSpace {
-        // Try the fast track first - we ahve this for all entities that were ever logged.
+        // Try the fast track first - we have this for all entities that were ever logged.
         if let Some(subspace) = self
             .subspace_origin_per_logged_entity
             .get(&entity.hash())
@@ -224,6 +241,7 @@ impl SpatialTopology {
             subspace
         } else {
             // Otherwise, we have to walk the hierarchy.
+            // TODO: We could incrementally strip the entity path to the last known entity.
             self.find_subspace_rec(&EntityPath::root(), entity)
         }
     }
@@ -285,6 +303,7 @@ impl SpatialTopology {
                 .get_mut(&subspace_origin_hash)
                 .expect("Subspace origin not part of origin->subspace map.");
 
+            // (see also `split_subspace`)`
             if new_connections.contains(SubSpaceConnectionFlags::Pinhole) {
                 subspace.dimensionality = SubSpaceDimensionality::TwoD;
             }
@@ -307,20 +326,25 @@ impl SpatialTopology {
         entity_path: &EntityPath,
         subspace_connections: SubSpaceConnectionFlags,
     ) {
-        let space_origin_hash = if subspace_connections.is_empty() {
+        let target_space_origin_hash = if subspace_connections.is_empty() {
             // Add entity to the existing space.
             let subspace =
                 Self::find_subspace_rec_mut(&mut self.subspaces, &EntityPath::root(), entity_path);
             subspace.entities.insert(entity_path.clone());
             subspace.origin.hash()
         } else {
-            let subspace = self.find_subspace_rec(&EntityPath::root(), entity_path);
-            self.split_subspace(subspace.origin.hash(), entity_path, subspace_connections);
+            // Create a new subspace with this entity as its origin & containing this entity.
+            let parent_subspace = self.find_subspace_rec(&EntityPath::root(), entity_path);
+            self.split_subspace(
+                parent_subspace.origin.hash(),
+                entity_path,
+                subspace_connections,
+            );
             entity_path.hash()
         };
 
         self.subspace_origin_per_logged_entity
-            .insert(entity_path.hash(), space_origin_hash);
+            .insert(entity_path.hash(), target_space_origin_hash);
     }
 
     fn split_subspace(
@@ -335,10 +359,8 @@ impl SpatialTopology {
             .expect("Subspace origin not part of origin->subspace map.");
         debug_assert!(new_space_origin.is_descendant_of(&split_subspace.origin));
 
-        // The new connection information may change the known dimensionality of the space that we're splitting.
-        split_subspace.add_or_update_child_connection(new_space_origin, connections);
-
         // Determine the space dimensionality of the new space and update the current space's space type if necessary.
+        // (see also `update_space_with_new_connections`)
         let space_dimensionality = if connections.contains(SubSpaceConnectionFlags::Pinhole) {
             SubSpaceDimensionality::TwoD
         } else {
@@ -381,6 +403,9 @@ impl SpatialTopology {
                 }
             });
 
+        // Note that the new connection information may change the known dimensionality of the space that we're splitting.
+        split_subspace.add_or_update_child_connection(new_space_origin, connections);
+
         // Patch parents of the child spaces that were moved to the new space.
         for child_origin in new_space.child_spaces.keys() {
             let child_space = self
@@ -396,6 +421,8 @@ impl SpatialTopology {
     /// Finds subspace an entity path belongs to by recursively walking down the hierarchy.
     ///
     /// Only use this when we haven't yet established a subspace for this entity path.
+    ///
+    // TODO: do what jeremy suggested
     fn find_subspace_rec_mut<'a>(
         subspaces: &'a mut IntMap<EntityPathHash, SubSpace>,
         subspace_origin: &EntityPath,
@@ -422,6 +449,7 @@ impl SpatialTopology {
     }
 
     /// Finds subspace an entity path belongs to by recursively walking down the hierarchy.
+    // TODO: do what jeremy suggested
     fn find_subspace_rec(&self, subspace_origin: &EntityPath, path: &EntityPath) -> &SubSpace {
         let subspace = self
             .subspaces
