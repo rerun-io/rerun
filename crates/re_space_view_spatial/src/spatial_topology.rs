@@ -109,7 +109,7 @@ The new pinhole at {:?} is nested under it, implying an invalid projection from 
 }
 
 #[derive(Default)]
-struct SpatialTopologyStoreSubscriber {
+pub struct SpatialTopologyStoreSubscriber {
     topologies: HashMap<StoreId, SpatialTopology>,
 }
 
@@ -496,13 +496,13 @@ mod tests {
 
         // Two cameras, one delayed for later.
         add_diff(&mut topo, "robo", &[]);
+        add_diff(&mut topo, "robo/eyes/left/cam/annotation", &[]);
         add_diff(&mut topo, "robo/arm", &[]);
         add_diff(
             &mut topo,
             "robo/eyes/left/cam",
             &[PinholeProjection::name()],
         );
-        add_diff(&mut topo, "robo/eyes/left/cam/annotation", &[]);
         add_diff(&mut topo, "robo/eyes/right/cam/annotation", &[]);
         add_diff(&mut topo, "robo/eyes/right/cam", &[]);
         {
