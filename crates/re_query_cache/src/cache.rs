@@ -318,62 +318,41 @@ impl CachesPerArchetype {
     ///
     /// Invalidation is deferred to query time because it is far more efficient that way: the frame
     /// time effectively behaves as a natural micro-batching mechanism.
-    fn handle_pending_invalidation(&mut self, key: &CacheKey) {
+    ///
+    /// Returns the number of bytes removed.
+    fn handle_pending_invalidation(&mut self) -> u64 {
         let pending_timeless_invalidation = self.pending_timeless_invalidation;
         let pending_timeful_invalidation = self.pending_timeful_invalidation.is_some();
 
         if !pending_timeless_invalidation && !pending_timeful_invalidation {
-            return;
+            return 0;
         }
 
         re_tracing::profile_function!();
 
-        // TODO(cmc): range invalidation
-
-        for latest_at_cache in self.latest_at_per_archetype.read().values() {
-            let mut latest_at_cache = latest_at_cache.write();
-
-            if pending_timeless_invalidation {
-                latest_at_cache.timeless = None;
-            }
-
-            let mut removed_bytes = 0u64;
-            if let Some(min_time) = self.pending_timeful_invalidation {
-                latest_at_cache
-                    .per_query_time
-                    .retain(|&query_time, _| query_time < min_time);
-
-                latest_at_cache.per_data_time.retain(|&data_time, bucket| {
-                    if data_time < min_time {
-                        return true;
-                    }
-
-                    // Only if that bucket is about to be dropped.
-                    if Arc::strong_count(bucket) == 1 {
-                        removed_bytes += bucket.read().total_size_bytes;
-                    }
-
-                    false
-                });
-            }
-
-            latest_at_cache.total_size_bytes = latest_at_cache
-                .total_size_bytes
-                .checked_sub(removed_bytes)
-                .unwrap_or_else(|| {
-                    re_log::debug!(
-                        store_id = %key.store_id,
-                        entity_path = %key.entity_path,
-                        current = latest_at_cache.total_size_bytes,
-                        removed = removed_bytes,
-                        "book keeping underflowed"
-                    );
-                    u64::MIN
-                });
-        }
+        let time_threshold = self.pending_timeful_invalidation.unwrap_or(TimeInt::MAX);
 
         self.pending_timeful_invalidation = None;
         self.pending_timeless_invalidation = false;
+
+        // Timeless being infinitely into the past, this effectively invalidates _everything_ with
+        // the current coarse-grained / archetype-level caching strategy.
+        if pending_timeless_invalidation {
+            // TODO: size tracking
+            *self = CachesPerArchetype::default();
+        }
+
+        let mut removed_bytes = 0u64;
+
+        for latest_at_cache in self.latest_at_per_archetype.read().values() {
+            let mut latest_at_cache = latest_at_cache.write();
+            removed_bytes =
+                removed_bytes.saturating_add(latest_at_cache.truncate_at_time(time_threshold));
+        }
+
+        }
+
+        removed_bytes
     }
 }
 
@@ -557,6 +536,41 @@ impl CacheBucket {
             .get(&C::name())
             .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<Option<C>>>())?;
         Some(data.range(entry_range))
+    }
+
+    /// Removes everything from the bucket that corresponds to a time equal or greater than the
+    /// specified `threshold`.
+    ///
+    /// Returns the number of bytes removed.
+    #[inline]
+    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
+        let Self {
+            data_times,
+            pov_instance_keys,
+            components,
+            total_size_bytes, // TODO
+        } = self;
+
+        let threshold_idx = data_times.partition_point(|(data_time, _)| data_time < &threshold);
+
+        data_times.truncate(threshold_idx);
+        pov_instance_keys.truncate(threshold_idx);
+
+        // TODO: size?
+        for data in components.values_mut() {
+            data.dyn_truncate(threshold_idx);
+        }
+
+        debug_assert!({
+            let expected_num_entries = data_times.len();
+            data_times.len() == expected_num_entries
+                && pov_instance_keys.num_entries() == expected_num_entries
+                && components
+                    .values()
+                    .all(|data| data.dyn_num_entries() == expected_num_entries)
+        });
+
+        0 // TODO
     }
 }
 
