@@ -1,6 +1,6 @@
 [package]
 name = "clock"
-version = "0.12.1-rc.1"
+version = "0.12.1-rc.2"
 edition = "2021"
 rust-version = "1.72"
 license = "MIT OR Apache-2.0"
