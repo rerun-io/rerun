@@ -6,7 +6,7 @@ use re_log_types::{EntityPath, RowId};
 use re_query::{ExtraQueryHistory, VisibleHistory};
 use re_types_core::{components::InstanceKey, Archetype, Component};
 
-use crate::AnyQuery;
+use crate::{AnyQuery, Caches};
 
 // ---
 
@@ -51,27 +51,30 @@ impl<'a, C> MaybeCachedComponentData<'a, C> {
 /// Cached implementation of [`re_query::query_archetype`] and [`re_query::range_archetype`]
 /// (combined) for 1 point-of-view component and no optional components.
 ///
-/// Alias for [`query_archetype_pov1_comp0`].
-#[inline]
-pub fn query_archetype_pov1<'a, A, R1, F>(
-    cached: bool,
-    store: &'a DataStore,
-    query: &AnyQuery,
-    entity_path: &'a EntityPath,
-    f: F,
-) -> ::re_query::Result<()>
-where
-    A: Archetype + 'a,
-    R1: Component + Send + Sync + 'static,
-    F: FnMut(
-        (
-            (Option<TimeInt>, RowId),
-            MaybeCachedComponentData<'_, InstanceKey>,
-            MaybeCachedComponentData<'_, R1>,
+/// Alias for [`Self::query_archetype_pov1_comp0`].
+impl Caches {
+    #[inline]
+    pub fn query_archetype_pov1<'a, A, R1, F>(
+        &self,
+        cached: bool,
+        store: &'a DataStore,
+        query: &AnyQuery,
+        entity_path: &'a EntityPath,
+        f: F,
+    ) -> ::re_query::Result<()>
+    where
+        A: Archetype + 'a,
+        R1: Component + Send + Sync + 'static,
+        F: FnMut(
+            (
+                (Option<TimeInt>, RowId),
+                MaybeCachedComponentData<'_, InstanceKey>,
+                MaybeCachedComponentData<'_, R1>,
+            ),
         ),
-    ),
-{
-    query_archetype_pov1_comp0::<A, R1, F>(cached, store, query, entity_path, f)
+    {
+        self.query_archetype_pov1_comp0::<A, R1, F>(cached, store, query, entity_path, f)
+    }
 }
 
 macro_rules! impl_query_archetype {
@@ -80,6 +83,7 @@ macro_rules! impl_query_archetype {
         #[doc = "(combined) for `" $N "` point-of-view components and `" $M "` optional components."]
         #[allow(non_snake_case)]
         pub fn [<query_archetype_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
+            &self,
             cached: bool,
             store: &'a DataStore,
             query: &AnyQuery,
@@ -126,7 +130,7 @@ macro_rules! impl_query_archetype {
                 AnyQuery::LatestAt(query) => {
                     re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
-                    crate::[<query_archetype_latest_at_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* F>(
+                    self.[<query_archetype_latest_at_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* F>(
                         store,
                         query,
                         entity_path,
@@ -158,7 +162,7 @@ macro_rules! impl_query_archetype {
                 AnyQuery::Range(query) => {
                     re_tracing::profile_scope!("range", format!("{query:?}"));
 
-                    crate::[<query_archetype_range_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* F>(
+                    self.[<query_archetype_range_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* F>(
                         store,
                         query,
                         entity_path,
@@ -178,49 +182,54 @@ macro_rules! impl_query_archetype {
     };
 }
 
-seq!(NUM_COMP in 0..10 {
-    impl_query_archetype!(for N=1, M=NUM_COMP);
-});
+impl Caches {
+    seq!(NUM_COMP in 0..10 {
+        impl_query_archetype!(for N=1, M=NUM_COMP);
+    });
+}
 
 // ---
 
 /// Cached implementation of [`re_query::query_archetype_with_history`] for 1 point-of-view component
 /// and no optional components.
 ///
-/// Alias for [`query_archetype_with_history_pov1_comp0`].
-#[allow(clippy::too_many_arguments)]
-#[inline]
-pub fn query_archetype_with_history_pov1<'a, A, R1, F>(
-    cached_latest_at: bool,
-    cached_range: bool,
-    store: &'a DataStore,
-    timeline: &'a Timeline,
-    time: &'a TimeInt,
-    history: &ExtraQueryHistory,
-    ent_path: &'a EntityPath,
-    f: F,
-) -> ::re_query::Result<()>
-where
-    A: Archetype + 'a,
-    R1: Component + Send + Sync + 'static,
-    F: FnMut(
-        (
-            (Option<TimeInt>, RowId),
-            MaybeCachedComponentData<'_, InstanceKey>,
-            MaybeCachedComponentData<'_, R1>,
+/// Alias for [`Self::query_archetype_with_history_pov1_comp0`].
+impl Caches {
+    #[allow(clippy::too_many_arguments)]
+    #[inline]
+    pub fn query_archetype_with_history_pov1<'a, A, R1, F>(
+        &self,
+        cached_latest_at: bool,
+        cached_range: bool,
+        store: &'a DataStore,
+        timeline: &'a Timeline,
+        time: &'a TimeInt,
+        history: &ExtraQueryHistory,
+        ent_path: &'a EntityPath,
+        f: F,
+    ) -> ::re_query::Result<()>
+    where
+        A: Archetype + 'a,
+        R1: Component + Send + Sync + 'static,
+        F: FnMut(
+            (
+                (Option<TimeInt>, RowId),
+                MaybeCachedComponentData<'_, InstanceKey>,
+                MaybeCachedComponentData<'_, R1>,
+            ),
         ),
-    ),
-{
-    query_archetype_with_history_pov1_comp0::<A, R1, F>(
-        cached_latest_at,
-        cached_range,
-        store,
-        timeline,
-        time,
-        history,
-        ent_path,
-        f,
-    )
+    {
+        self.query_archetype_with_history_pov1_comp0::<A, R1, F>(
+            cached_latest_at,
+            cached_range,
+            store,
+            timeline,
+            time,
+            history,
+            ent_path,
+            f,
+        )
+    }
 }
 
 /// Generates a function to cache a (potentially historical) query with N point-of-view components and M
@@ -231,6 +240,7 @@ macro_rules! impl_query_archetype_with_history {
         #[doc = "components and `" $M "` optional components."]
         #[allow(clippy::too_many_arguments)]
         pub fn [<query_archetype_with_history_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
+            &self,
             cached_latest_at: bool,
             cached_range: bool,
             store: &'a DataStore,
@@ -267,7 +277,7 @@ macro_rules! impl_query_archetype_with_history {
                 );
 
                 let query = LatestAtQuery::new(*timeline, *time);
-                $crate::[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
+                self.[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
                     cached_latest_at,
                     store,
                     &query.clone().into(),
@@ -284,7 +294,7 @@ macro_rules! impl_query_archetype_with_history {
                 let min_time = visible_history.from(*time);
                 let max_time = visible_history.to(*time);
                 let query = RangeQuery::new(*timeline, TimeRange::new(min_time, max_time));
-                $crate::[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
+                self.[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
                     cached_range,
                     store,
                     &query.clone().into(),
@@ -304,6 +314,8 @@ macro_rules! impl_query_archetype_with_history {
     };
 }
 
-seq!(NUM_COMP in 0..10 {
-    impl_query_archetype_with_history!(for N=1, M=NUM_COMP);
-});
+impl Caches {
+    seq!(NUM_COMP in 0..10 {
+        impl_query_archetype_with_history!(for N=1, M=NUM_COMP);
+    });
+}

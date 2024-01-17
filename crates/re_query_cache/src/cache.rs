@@ -5,14 +5,11 @@ use std::{
 };
 
 use ahash::{HashMap, HashSet};
-use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use paste::paste;
 use seq_macro::seq;
 
-use re_data_store::{
-    LatestAtQuery, RangeQuery, StoreDiff, StoreEvent, StoreSubscriber, StoreSubscriberHandle,
-};
+use re_data_store::{LatestAtQuery, RangeQuery, StoreDiff, StoreEvent, StoreSubscriber};
 use re_log_types::{EntityPath, RowId, StoreId, TimeInt, TimeRange, Timeline};
 use re_query::ArchetypeView;
 use re_types_core::{
@@ -44,12 +41,6 @@ impl From<RangeQuery> for AnyQuery {
 }
 
 // ---
-
-/// All primary caches (all stores, all entities, everything).
-//
-// TODO(cmc): Centralize and harmonize all caches (query, jpeg, mesh).
-static CACHES: Lazy<StoreSubscriberHandle> =
-    Lazy::new(|| re_data_store::DataStore::register_subscriber(Box::<Caches>::default()));
 
 /// Maintains the top-level cache mappings.
 //
@@ -109,16 +100,15 @@ impl Caches {
     //
     // TODO(#4731): expose palette command.
     #[inline]
-    pub fn clear() {
-        re_data_store::DataStore::with_subscriber_once(*CACHES, |caches: &Caches| {
-            caches.0.write().clear();
-        });
+    pub fn clear(&self) {
+        self.0.write().clear();
     }
 
     /// Gives write access to the appropriate `LatestAtCache` according to the specified
     /// query parameters.
     #[inline]
     pub fn with_latest_at<A, F, R>(
+        &self,
         store_id: StoreId,
         entity_path: EntityPath,
         query: &LatestAtQuery,
@@ -130,33 +120,28 @@ impl Caches {
     {
         let key = CacheKey::new(store_id, entity_path, query.timeline);
 
-        let cache =
-            re_data_store::DataStore::with_subscriber_once(*CACHES, move |caches: &Caches| {
-                let caches_per_archetype =
-                    Arc::clone(caches.0.write().entry(key.clone()).or_default());
-                // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
+        let cache = {
+            let caches_per_archetype = Arc::clone(self.0.write().entry(key.clone()).or_default());
+            // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
-                let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
-                // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
-                // same `CacheKey` but a different `ArchetypeName` can run once again.
-                if removed_bytes > 0 {
-                    re_log::trace!(
-                        store_id = %key.store_id,
-                        entity_path = %key.entity_path,
-                        removed = removed_bytes,
-                        "invalidated latest-at caches"
-                    );
-                }
+            let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
+            // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
+            // same `CacheKey` but a different `ArchetypeName` can run once again.
+            if removed_bytes > 0 {
+                re_log::trace!(
+                    store_id = %key.store_id,
+                    entity_path = %key.entity_path,
+                    removed = removed_bytes,
+                    "invalidated latest-at caches"
+                );
+            }
 
-                let caches_per_archetype = caches_per_archetype.read();
-                let mut latest_at_per_archetype =
-                    caches_per_archetype.latest_at_per_archetype.write();
-                Arc::clone(latest_at_per_archetype.entry(A::name()).or_default())
-                // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
-                // can run once again.
-            })
-            // NOTE: downcasting cannot fail, this is our own private handle.
-            .unwrap();
+            let caches_per_archetype = caches_per_archetype.read();
+            let mut latest_at_per_archetype = caches_per_archetype.latest_at_per_archetype.write();
+            Arc::clone(latest_at_per_archetype.entry(A::name()).or_default())
+            // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
+            // can run once again.
+        };
 
         let mut cache = cache.write();
         f(&mut cache)
@@ -166,6 +151,7 @@ impl Caches {
     /// query parameters.
     #[inline]
     pub fn with_range<A, F, R>(
+        &self,
         store_id: StoreId,
         entity_path: EntityPath,
         query: &RangeQuery,
@@ -177,41 +163,31 @@ impl Caches {
     {
         let key = CacheKey::new(store_id, entity_path, query.timeline);
 
-        let cache =
-            re_data_store::DataStore::with_subscriber_once(*CACHES, move |caches: &Caches| {
-                let caches_per_archetype =
-                    Arc::clone(caches.0.write().entry(key.clone()).or_default());
-                // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
+        let cache = {
+            let caches_per_archetype = Arc::clone(self.0.write().entry(key.clone()).or_default());
+            // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
-                let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
-                // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
-                // same `CacheKey` but a different `ArchetypeName` can run once again.
-                if removed_bytes > 0 {
-                    re_log::trace!(
-                        store_id = %key.store_id,
-                        entity_path = %key.entity_path,
-                        removed = removed_bytes,
-                        "invalidated latest-at caches"
-                    );
-                }
+            let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
+            // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
+            // same `CacheKey` but a different `ArchetypeName` can run once again.
+            if removed_bytes > 0 {
+                re_log::trace!(
+                    store_id = %key.store_id,
+                    entity_path = %key.entity_path,
+                    removed = removed_bytes,
+                    "invalidated latest-at caches"
+                );
+            }
 
-                let caches_per_archetype = caches_per_archetype.read();
-                let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
-                Arc::clone(range_per_archetype.entry(A::name()).or_default())
-                // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
-                // can run once again.
-            })
-            // NOTE: downcasting cannot fail, this is our own private handle.
-            .unwrap();
+            let caches_per_archetype = caches_per_archetype.read();
+            let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
+            Arc::clone(range_per_archetype.entry(A::name()).or_default())
+            // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
+            // can run once again.
+        };
 
         let mut cache = cache.write();
         f(&mut cache)
-    }
-
-    #[inline]
-    pub(crate) fn with<F: FnMut(&Caches) -> R, R>(f: F) -> R {
-        // NOTE: downcasting cannot fail, this is our own private handle.
-        re_data_store::DataStore::with_subscriber(*CACHES, f).unwrap()
     }
 }
 
