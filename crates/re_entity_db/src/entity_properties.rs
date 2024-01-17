@@ -1,7 +1,9 @@
+use std::fmt::Formatter;
+
+use re_query_cache::external::re_query::ExtraQueryHistory;
+
 #[cfg(feature = "serde")]
 use re_log_types::EntityPath;
-use re_log_types::TimeInt;
-use std::fmt::Formatter;
 
 #[cfg(feature = "serde")]
 use crate::EditableAutoValue;
@@ -264,105 +266,6 @@ impl EntityProperties {
             || transform_3d_size.has_edits(&other.transform_3d_size)
             || show_legend.has_edits(&other.show_legend)
             || *legend_location != other.legend_location
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// One of the boundaries of the visible history.
-///
-/// For [`VisibleHistoryBoundary::RelativeToTimeCursor`] and [`VisibleHistoryBoundary::Absolute`],
-/// the value are either nanos or frames, depending on the type of timeline.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum VisibleHistoryBoundary {
-    /// Boundary is a value relative to the time cursor
-    RelativeToTimeCursor(i64),
-
-    /// Boundary is an absolute value
-    Absolute(i64),
-
-    /// The boundary extends to infinity.
-    Infinite,
-}
-
-impl VisibleHistoryBoundary {
-    /// Value when the boundary is set to the current time cursor.
-    pub const AT_CURSOR: Self = Self::RelativeToTimeCursor(0);
-}
-
-impl Default for VisibleHistoryBoundary {
-    fn default() -> Self {
-        Self::AT_CURSOR
-    }
-}
-
-/// Visible history bounds.
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct VisibleHistory {
-    /// Low time boundary.
-    pub from: VisibleHistoryBoundary,
-
-    /// High time boundary.
-    pub to: VisibleHistoryBoundary,
-}
-
-impl VisibleHistory {
-    /// Value with the visible history feature is disabled.
-    pub const OFF: Self = Self {
-        from: VisibleHistoryBoundary::AT_CURSOR,
-        to: VisibleHistoryBoundary::AT_CURSOR,
-    };
-
-    pub const ALL: Self = Self {
-        from: VisibleHistoryBoundary::Infinite,
-        to: VisibleHistoryBoundary::Infinite,
-    };
-
-    pub fn from(&self, cursor: TimeInt) -> TimeInt {
-        match self.from {
-            VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
-            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
-            VisibleHistoryBoundary::Infinite => TimeInt::MIN,
-        }
-    }
-
-    pub fn to(&self, cursor: TimeInt) -> TimeInt {
-        match self.to {
-            VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
-            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
-            VisibleHistoryBoundary::Infinite => TimeInt::MAX,
-        }
-    }
-}
-
-/// When showing an entity in the history view, add this much history to it.
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(default))]
-pub struct ExtraQueryHistory {
-    /// Is the feature enabled?
-    pub enabled: bool,
-
-    /// Visible history settings for time timelines
-    pub nanos: VisibleHistory,
-
-    /// Visible history settings for frame timelines
-    pub sequences: VisibleHistory,
-}
-
-impl ExtraQueryHistory {
-    /// Multiply/and these together.
-    #[allow(dead_code)]
-    fn with_child(&self, child: &Self) -> Self {
-        if child.enabled {
-            *child
-        } else if self.enabled {
-            *self
-        } else {
-            Self::default()
-        }
     }
 }
 

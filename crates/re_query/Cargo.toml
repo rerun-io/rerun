@@ -22,12 +22,14 @@ default = []
 ## Polars support
 polars = ["dep:polars-core", "re_data_store/polars"]
 
+## Enable (de)serialization using serde.
+serde = ["dep:serde", "dep:rmp-serde"]
+
 testing = ["re_log_types/testing"]
 
 [dependencies]
 # Rerun dependencies:
 re_data_store.workspace = true
-re_entity_db.workspace = true
 re_format = { workspace = true, features = ["arrow"] }
 re_log_types.workspace = true
 re_types_core.workspace = true
@@ -39,6 +41,8 @@ arrow2.workspace = true
 backtrace.workspace = true
 document-features.workspace = true
 itertools = { workspace = true }
+rmp-serde = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive", "rc"], optional = true }
 smallvec.workspace = true
 thiserror.workspace = true
 
