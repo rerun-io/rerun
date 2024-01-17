@@ -55,7 +55,7 @@ impl WebViewerSink {
         let ws_server_url = rerun_server.server_url();
         let viewer_url = format!("{http_web_viewer_url}?url={ws_server_url}");
 
-        re_log::info!("Web server is running - view it at {viewer_url}");
+        re_log::info!("Hosting a web-viewer at {viewer_url}");
         if open_browser {
             webbrowser::open(&viewer_url).ok();
         }
@@ -88,8 +88,7 @@ pub async fn host_web_viewer(
 
     let viewer_url = format!("{http_web_viewer_url}?url={source_url}");
 
-    re_log::info!("Web server is running - view it at {viewer_url}");
-
+    re_log::info!("Hosting a web-viewer at {viewer_url}");
     if open_browser {
         webbrowser::open(&viewer_url).ok();
     }

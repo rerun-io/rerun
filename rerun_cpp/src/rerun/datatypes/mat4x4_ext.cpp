@@ -34,7 +34,7 @@ namespace rerun {
                   columns[3].w(),
               } {}
 
-        /// Construct a new 4x4 matrix from a pointer to 16 floats (in row major order).
+        /// Construct a new 4x4 matrix from a pointer to 16 floats (in column major order).
         explicit Mat4x4(const float* elements)
             : flat_columns{
                   elements[0],
