@@ -84,9 +84,10 @@ impl Caches {
         }
 
         Self::with(|caches| {
+            let caches = caches.0.read().clone();
+            // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
+
             let latest_at = caches
-                .0
-                .read()
                 .iter()
                 .map(|(key, caches_per_arch)| {
                     (key.entity_path.clone(), {
@@ -94,8 +95,11 @@ impl Caches {
                         let mut total_rows = 0u64;
                         let mut per_component = detailed_stats.then(BTreeMap::default);
 
-                        for latest_at_cache in
-                            caches_per_arch.latest_at_per_archetype.read().values()
+                        for latest_at_cache in caches_per_arch
+                            .read()
+                            .latest_at_per_archetype
+                            .read()
+                            .values()
                         {
                             let latest_at_cache @ LatestAtCache {
                                 per_query_time: _,
@@ -131,12 +135,11 @@ impl Caches {
                 .collect();
 
             let range = caches
-                .0
-                .read()
                 .iter()
                 .map(|(key, caches_per_arch)| {
                     (key.entity_path.clone(), {
                         caches_per_arch
+                            .read()
                             .range_per_archetype
                             .read()
                             .values()

@@ -53,7 +53,7 @@ static CACHES: Lazy<StoreSubscriberHandle> =
 
 /// Maintains the top-level cache mappings.
 #[derive(Default)]
-pub struct Caches(pub(crate) RwLock<HashMap<CacheKey, CachesPerArchetype>>);
+pub struct Caches(pub(crate) RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>);
 
 #[derive(Default)]
 pub struct CachesPerArchetype {
@@ -126,12 +126,13 @@ impl Caches {
 
         let cache =
             re_data_store::DataStore::with_subscriber_once(*CACHES, move |caches: &Caches| {
-                let mut caches = caches.0.write();
+                let caches_per_archetype =
+                    Arc::clone(caches.0.write().entry(key.clone()).or_default());
+                // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
-                let caches_per_archetype = caches.entry(key.clone()).or_default();
-
-                // TODO: we cannot be holding `caches` when doing this.
-                let removed_bytes = caches_per_archetype.handle_pending_invalidation();
+                let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
+                // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
+                // same `CacheKey` but a different `ArchetypeName` can run once again.
                 if removed_bytes > 0 {
                     re_log::trace!(
                         store_id = %key.store_id,
@@ -141,13 +142,12 @@ impl Caches {
                     );
                 }
 
+                let caches_per_archetype = caches_per_archetype.read();
                 let mut latest_at_per_archetype =
                     caches_per_archetype.latest_at_per_archetype.write();
-                let latest_at_cache = latest_at_per_archetype.entry(A::name()).or_default();
-
-                Arc::clone(latest_at_cache)
-
-                // Implicitly releasing all intermediary locks.
+                Arc::clone(latest_at_per_archetype.entry(A::name()).or_default())
+                // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
+                // can run once again.
             })
             // NOTE: downcasting cannot fail, this is our own private handle.
             .unwrap();
@@ -173,27 +173,27 @@ impl Caches {
 
         let cache =
             re_data_store::DataStore::with_subscriber_once(*CACHES, move |caches: &Caches| {
-                let mut caches = caches.0.write();
+                let caches_per_archetype =
+                    Arc::clone(caches.0.write().entry(key.clone()).or_default());
+                // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
-                let caches_per_archetype = caches.entry(key.clone()).or_default();
-
-                // TODO: we cannot be holding `caches` when doing this.
-                let removed_bytes = caches_per_archetype.handle_pending_invalidation();
+                let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
+                // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
+                // same `CacheKey` but a different `ArchetypeName` can run once again.
                 if removed_bytes > 0 {
                     re_log::trace!(
                         store_id = %key.store_id,
                         entity_path = %key.entity_path,
                         removed = removed_bytes,
-                        "invalidated range caches"
+                        "invalidated latest-at caches"
                     );
                 }
 
+                let caches_per_archetype = caches_per_archetype.read();
                 let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
-                let range_cache = range_per_archetype.entry(A::name()).or_default();
-
-                Arc::clone(range_cache)
-
-                // Implicitly releasing all intermediary locks.
+                Arc::clone(range_per_archetype.entry(A::name()).or_default())
+                // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
+                // can run once again.
             })
             // NOTE: downcasting cannot fail, this is our own private handle.
             .unwrap();
@@ -298,6 +298,11 @@ impl StoreSubscriber for Caches {
                 }
             }
 
+            let caches = self.0.write();
+            // NOTE: Don't release the top-level lock -- even though this cannot happen yet with
+            // our current macro-architecture, we want to prevent queries from concurrently
+            // running while we're updating the invalidation flags.
+
             // TODO(cmc): This is horribly stupid and slow and can easily be made faster by adding
             // yet another layer of caching indirection.
             // But since this pretty much never happens in practice, let's not go there until we
@@ -306,9 +311,9 @@ impl StoreSubscriber for Caches {
                 re_tracing::profile_scope!("timeless");
 
                 for (store_id, entity_path) in compacted.timeless {
-                    for (key, caches_per_archetype) in self.0.write().iter_mut() {
+                    for (key, caches_per_archetype) in caches.iter() {
                         if key.store_id == store_id && key.entity_path == entity_path {
-                            caches_per_archetype.pending_timeless_invalidation = true;
+                            caches_per_archetype.write().pending_timeless_invalidation = true;
                         }
                     }
                 }
@@ -318,7 +323,12 @@ impl StoreSubscriber for Caches {
                 re_tracing::profile_scope!("timeful");
 
                 for (key, time) in compacted.timeful {
-                    if let Some(caches_per_archetype) = self.0.write().get_mut(&key) {
+                    if let Some(caches_per_archetype) = caches.get(&key) {
+                        // NOTE: Do _NOT_ lock from within the if clause itself or the guard will live
+                        // for the remainder of the if statement and hell will ensue.
+                        // <https://rust-lang.github.io/rust-clippy/master/#if_let_mutex> is
+                        // supposed to catch but it didn't, I don't know why.
+                        let mut caches_per_archetype = caches_per_archetype.write();
                         if let Some(min_time) =
                             caches_per_archetype.pending_timeful_invalidation.as_mut()
                         {
