@@ -5,6 +5,7 @@ use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::EntityDb;
 use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
+use re_query_cache::CachesStats;
 use re_viewer_context::StoreContext;
 
 use re_data_store::StoreGeneration;
@@ -41,7 +42,9 @@ pub struct StoreHub {
 pub struct StoreHubStats {
     pub blueprint_stats: DataStoreStats,
     pub blueprint_config: DataStoreConfig,
+
     pub recording_stats: DataStoreStats,
+    pub recording_cached_stats: CachesStats,
     pub recording_config: DataStoreConfig,
 }
 
@@ -381,9 +384,10 @@ impl StoreHub {
     }
 
     /// Populate a [`StoreHubStats`] based on the selected app.
+    //
     // TODO(jleibs): We probably want stats for all recordings, not just
     // the currently selected recording.
-    pub fn stats(&self) -> StoreHubStats {
+    pub fn stats(&self, detailed_cache_stats: bool) -> StoreHubStats {
         // If we have an app-id, then use it to look up the blueprint.
         let blueprint = self
             .selected_application_id
@@ -408,6 +412,10 @@ impl StoreHub {
             .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
             .unwrap_or_default();
 
+        let recording_cached_stats = recording
+            .map(|entity_db| entity_db.query_caches().stats(detailed_cache_stats))
+            .unwrap_or_default();
+
         let recording_config = recording
             .map(|entity_db| entity_db.store().config().clone())
             .unwrap_or_default();
@@ -416,6 +424,7 @@ impl StoreHub {
             blueprint_stats,
             blueprint_config,
             recording_stats,
+            recording_cached_stats,
             recording_config,
         }
     }
