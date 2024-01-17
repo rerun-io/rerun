@@ -18,4 +18,9 @@ thumbnail_dimensions: [480, 302]
 This is an example executable data-loader plugin for the Rerun Viewer.
 
 It will log Python source code files as markdown documents.
-To try it out, copy it in your $PATH as `rerun-loader-python-file`, then open a Python source file with Rerun (`rerun file.py`).
+
+On Linux & Mac you can simply copy it in your $PATH as `rerun-loader-python-file.py`, then open a Python source file with Rerun (`rerun file.py`).
+Make sure the file has a shebang (`#!/usr/bin/env python3`) and is executable (`chmod +x`).
+
+On Windows you have to install the script as an executable first and then put the executable under %PATH%.
+One way to do this is to use `pyinstaller`: `pyinstaller .\examples\python\external_data_loader\main.py -n rerun-loader-python-file --onefile`
