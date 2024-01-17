@@ -78,13 +78,28 @@ impl SpaceViewClass for SpatialSpaceView2D {
         let context = SpatialTopology::access(entity_db.store_id(), |topo| {
             let primary_space = topo.subspace_for_entity(space_origin);
             match primary_space.dimensionality {
-                SubSpaceDimensionality::TwoD | SubSpaceDimensionality::Unknown => {
+                SubSpaceDimensionality::Unknown => VisualizableFilterContext2D {
+                    entities_in_main_2d_space: primary_space.entities.clone(),
+                    reprojected_3d_entities: Default::default(),
+                },
+
+                SubSpaceDimensionality::TwoD => {
                     // All entities in the 2d space are visualizable + the parent space if it is connected via a pinhole.
                     // For the moment we don't allow going down pinholes again.
                     let reprojected_3d_entities = primary_space
                         .parent_space
-                        .and_then(|(parent_space_origin, connection)| {
-                            if connection.is_connected_pinhole() {
+                        .and_then(|parent_space_origin| {
+                            let is_connected_pinhole = topo
+                                .subspace_for_subspace_origin(parent_space_origin)
+                                .and_then(|parent_space| {
+                                    parent_space
+                                        .child_spaces
+                                        .get(&primary_space.origin)
+                                        .map(|connection| connection.is_connected_pinhole())
+                                })
+                                .unwrap_or(false);
+
+                            if is_connected_pinhole {
                                 topo.subspace_for_subspace_origin(parent_space_origin)
                                     .map(|parent_space| parent_space.entities.clone())
                             } else {

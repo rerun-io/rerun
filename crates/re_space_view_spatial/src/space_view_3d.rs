@@ -77,26 +77,30 @@ impl SpaceViewClass for SpatialSpaceView3D {
         let context = SpatialTopology::access(entity_db.store_id(), |topo| {
             let primary_space = topo.subspace_for_entity(space_origin);
             match primary_space.dimensionality {
-                SubSpaceDimensionality::ThreeD | SubSpaceDimensionality::Unknown => {
+                SubSpaceDimensionality::Unknown => VisualizableFilterContext3D {
+                    entities_in_main_3d_space: primary_space.entities.clone(),
+                    entities_under_pinholes: Default::default(),
+                },
+
+                SubSpaceDimensionality::ThreeD => {
                     // All entities in the 3d space are visualizable + everything under pinholes.
                     let mut entities_in_main_3d_space = primary_space.entities.clone();
+                    let mut entities_under_pinholes = IntSet::<EntityPath>::default();
 
-                    let entities_under_pinholes = topo
-                        .iter_child_spaces(primary_space)
-                        .filter_map(|child_space| {
-                            child_space.parent_space.and_then(|(_, connection)| {
-                                if connection.is_connected_pinhole() {
-                                    // Entities _at_ pinholes are a special case: we display both 3d and 2d visualizers for them.
-                                    entities_in_main_3d_space.insert(child_space.origin.clone());
-                                    Some(child_space.entities.iter())
-                                } else {
-                                    None
-                                }
-                            })
-                        })
-                        .flatten()
-                        .cloned()
-                        .collect();
+                    for (child_origin, connection) in &primary_space.child_spaces {
+                        if connection.is_connected_pinhole() {
+                            let Some(child_space) =
+                                topo.subspace_for_subspace_origin(child_origin.hash())
+                            else {
+                                // Should never happen, implies that a child space is not in the list of subspaces.
+                                continue;
+                            };
+
+                            // Entities _at_ pinholes are a special case: we display both 3d and 2d visualizers for them.
+                            entities_in_main_3d_space.insert(child_space.origin.clone());
+                            entities_under_pinholes.extend(child_space.entities.iter().cloned());
+                        }
+                    }
 
                     VisualizableFilterContext3D {
                         entities_in_main_3d_space,
