@@ -131,7 +131,7 @@ fn load_manifest(egui_ctx: &egui::Context, url: String) -> ManifestPromise {
 
 /// Do a HEAD request to get the size of a file.
 ///
-/// In case of an erorr, it is logged as DEBUG and
+/// In case of an error, it is logged as DEBUG and
 /// the promise is resolved to `None`.
 fn load_file_size(egui_ctx: &egui::Context, url: String) -> Promise<Option<u64>> {
     let (sender, promise) = Promise::new();
