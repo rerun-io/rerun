@@ -121,6 +121,7 @@ impl TimeSeriesSystem {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
+        let query_caches = ctx.entity_db.query_caches();
         let store = ctx.entity_db.store();
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
@@ -159,7 +160,7 @@ impl TimeSeriesSystem {
                 let query =
                     re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
-                re_query_cache::query_archetype_pov1_comp4::<
+                query_caches.query_archetype_pov1_comp4::<
                     TimeSeriesScalar,
                     Scalar,
                     ScalarScattering,

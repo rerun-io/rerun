@@ -58,6 +58,7 @@ impl VisualizerSystem for TextLogSystem {
         query: &ViewQuery<'_>,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        let query_caches = ctx.entity_db.query_caches();
         let store = ctx.entity_db.store();
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
@@ -67,7 +68,7 @@ impl VisualizerSystem for TextLogSystem {
             let timeline_query =
                 re_data_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
 
-            re_query_cache::query_archetype_pov1_comp2::<TextLog, Text, TextLogLevel, Color, _>(
+            query_caches.query_archetype_pov1_comp2::<TextLog, Text, TextLogLevel, Color, _>(
                 ctx.app_options.experimental_primary_caching_range,
                 store,
                 &timeline_query.clone().into(),
