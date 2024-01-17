@@ -52,6 +52,8 @@ static CACHES: Lazy<StoreSubscriberHandle> =
     Lazy::new(|| re_data_store::DataStore::register_subscriber(Box::<Caches>::default()));
 
 /// Maintains the top-level cache mappings.
+//
+// NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
 #[derive(Default)]
 pub struct Caches(pub(crate) RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>);
 
@@ -64,6 +66,8 @@ pub struct CachesPerArchetype {
     /// Different archetypes have different point-of-views, and therefore can end up with different
     /// results, even from the same raw data.
     //
+    // NOTE: `Arc` so we can cheaply free the archetype-level lock early when needed.
+    //
     // TODO(cmc): At some point we should probably just store the PoV and optional components rather
     // than an `ArchetypeName`: the query system doesn't care about archetypes.
     pub(crate) latest_at_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<LatestAtCache>>>>,
@@ -74,6 +78,8 @@ pub struct CachesPerArchetype {
     /// query for components from a specific point-of-view (the so-called primary component).
     /// Different archetypes have different point-of-views, and therefore can end up with different
     /// results, even from the same raw data.
+    //
+    // NOTE: `Arc` so we can cheaply free the archetype-level lock early when needed.
     //
     // TODO(cmc): At some point we should probably just store the PoV and optional components rather
     // than an `ArchetypeName`: the query system doesn't care about archetypes.
