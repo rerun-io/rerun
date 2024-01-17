@@ -405,25 +405,24 @@ fn filter_visualizable_2d_entities(
     entities: ApplicableEntities,
     context: &dyn VisualizableFilterContext,
 ) -> VisualizableEntities {
-    // `VisualizableFilterContext3D` will only be available if we're in a 3D space view.
     if let Some(context) = context
-        .as_any()
-        .downcast_ref::<VisualizableFilterContext3D>()
-    {
-        VisualizableEntities(
-            context
-                .entities_under_pinhole
-                .intersection(&entities.0)
-                .cloned()
-                .collect(),
-        )
-    } else if let Some(context) = context
         .as_any()
         .downcast_ref::<VisualizableFilterContext2D>()
     {
         VisualizableEntities(
             context
                 .entities_in_main_2d_space
+                .intersection(&entities.0)
+                .cloned()
+                .collect(),
+        )
+    } else if let Some(context) = context
+        .as_any()
+        .downcast_ref::<VisualizableFilterContext3D>()
+    {
+        VisualizableEntities(
+            context
+                .entities_under_pinholes
                 .intersection(&entities.0)
                 .cloned()
                 .collect(),
@@ -437,7 +436,6 @@ fn filter_visualizable_3d_entities(
     entities: ApplicableEntities,
     context: &dyn VisualizableFilterContext,
 ) -> VisualizableEntities {
-    // `VisualizableFilterContext2D` will only be available if we're in a 2D space view.
     if let Some(context) = context
         .as_any()
         .downcast_ref::<VisualizableFilterContext2D>()
@@ -445,6 +443,17 @@ fn filter_visualizable_3d_entities(
         VisualizableEntities(
             context
                 .reprojected_3d_entities
+                .intersection(&entities.0)
+                .cloned()
+                .collect(),
+        )
+    } else if let Some(context) = context
+        .as_any()
+        .downcast_ref::<VisualizableFilterContext3D>()
+    {
+        VisualizableEntities(
+            context
+                .entities_in_main_3d_space
                 .intersection(&entities.0)
                 .cloned()
                 .collect(),

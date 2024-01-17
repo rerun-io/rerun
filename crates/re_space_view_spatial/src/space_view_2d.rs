@@ -10,7 +10,7 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
-    spatial_topology::{SpatialTopology, SubSpaceConnectionFlags, SubSpaceDimensionality},
+    spatial_topology::{SpatialTopology, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{register_2d_spatial_visualizers, SpatialViewVisualizerData},
@@ -18,6 +18,7 @@ use crate::{
 
 #[derive(Default)]
 pub struct VisualizableFilterContext2D {
+    // TODO(andreas): Would be nice to use `EntityPathHash` in order to avoid bumping reference counters.
     pub entities_in_main_2d_space: IntSet<EntityPath>,
     pub reprojected_3d_entities: IntSet<EntityPath>,
 }
@@ -49,6 +50,9 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
+        // Ensure spatial topology is registered.
+        crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
+
         register_spatial_contexts(system_registry)?;
         register_2d_spatial_visualizers(system_registry)?;
 
@@ -72,18 +76,16 @@ impl SpaceViewClass for SpatialSpaceView2D {
         re_tracing::profile_function!();
 
         let context = SpatialTopology::access(entity_db.store_id(), |topo| {
-            let subspace = topo.subspace_for_entity(space_origin);
-            match subspace.dimensionality {
+            let primary_space = topo.subspace_for_entity(space_origin);
+            match primary_space.dimensionality {
                 SubSpaceDimensionality::TwoD | SubSpaceDimensionality::Unknown => {
                     // All entities in the 2d space are visualizable + the parent space if it is connected via a pinhole.
                     // For the moment we don't allow going down pinholes again.
-                    let reprojected_3d_entities = subspace
+                    let reprojected_3d_entities = primary_space
                         .parent_space
                         .and_then(|(parent_space_origin, connection)| {
-                            if connection.contains(SubSpaceConnectionFlags::Pinhole)
-                                && !connection.contains(SubSpaceConnectionFlags::Disconnected)
-                            {
-                                topo.subspace_for_origin(parent_space_origin)
+                            if connection.is_connected_pinhole() {
+                                topo.subspace_for_subspace_origin(parent_space_origin)
                                     .map(|parent_space| parent_space.entities.clone())
                             } else {
                                 None
@@ -92,10 +94,11 @@ impl SpaceViewClass for SpatialSpaceView2D {
                         .unwrap_or_default();
 
                     VisualizableFilterContext2D {
-                        entities_in_main_2d_space: subspace.entities.clone(),
+                        entities_in_main_2d_space: primary_space.entities.clone(),
                         reprojected_3d_entities,
                     }
                 }
+
                 SubSpaceDimensionality::ThreeD => {
                     // If this is 3D space, only display the origin entity itself.
                     // Everything else we have to assume requires some form of transformation.

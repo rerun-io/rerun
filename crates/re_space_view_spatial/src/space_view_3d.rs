@@ -1,7 +1,6 @@
 use nohash_hasher::IntSet;
-use re_entity_db::{EntityProperties, EntityTree};
+use re_entity_db::EntityProperties;
 use re_log_types::EntityPath;
-use re_types::{components::PinholeProjection, Loggable as _};
 use re_viewer_context::{
     AutoSpawnHeuristic, IdentifiedViewSystem as _, PerSystemEntities, SpaceViewClass,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError, ViewQuery,
@@ -11,16 +10,17 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
+    spatial_topology::{SpatialTopology, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{register_3d_spatial_visualizers, CamerasVisualizer},
 };
 
-// TODO(andreas): This context is used to determine whether a 2D entity has a valid transform
-// and is thus visualizable. This should be expanded to cover any invalid transform as non-visualizable.
+#[derive(Default)]
 pub struct VisualizableFilterContext3D {
-    /// Set of all entities that are under a pinhole camera.
-    pub entities_under_pinhole: IntSet<EntityPath>,
+    // TODO(andreas): Would be nice to use `EntityPathHash` in order to avoid bumping reference counters.
+    pub entities_in_main_3d_space: IntSet<EntityPath>,
+    pub entities_under_pinholes: IntSet<EntityPath>,
 }
 
 impl VisualizableFilterContext for VisualizableFilterContext3D {
@@ -50,6 +50,9 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
+        // Ensure spatial topology is registered.
+        crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
+
         register_spatial_contexts(system_registry)?;
         register_3d_spatial_visualizers(system_registry)?;
 
@@ -71,46 +74,48 @@ impl SpaceViewClass for SpatialSpaceView3D {
     ) -> Box<dyn VisualizableFilterContext> {
         re_tracing::profile_function!();
 
-        // TODO(andreas): Potential optimization:
-        // We already know all the entities that have a pinhole camera - indirectly today through visualizers, but could also be directly.
-        // Meaning we don't need to walk until we find a pinhole camera!
-        // Obviously should skip the whole thing if there are no pinhole cameras under space_origin!
-        // TODO(jleibs): Component prefix tree on EntityTree would fix this problem nicely.
+        let context = SpatialTopology::access(entity_db.store_id(), |topo| {
+            let primary_space = topo.subspace_for_entity(space_origin);
+            match primary_space.dimensionality {
+                SubSpaceDimensionality::ThreeD | SubSpaceDimensionality::Unknown => {
+                    // All entities in the 3d space are visualizable + everything under pinholes.
+                    let mut entities_in_main_3d_space = primary_space.entities.clone();
 
-        let mut entities_under_pinhole = IntSet::default();
+                    let entities_under_pinholes = topo
+                        .iter_child_spaces(primary_space)
+                        .filter_map(|child_space| {
+                            child_space.parent_space.and_then(|(_, connection)| {
+                                if connection.is_connected_pinhole() {
+                                    // Entities _at_ pinholes are a special case: we display both 3d and 2d visualizers for them.
+                                    entities_in_main_3d_space.insert(child_space.origin.clone());
+                                    Some(child_space.entities.iter())
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                        .flatten()
+                        .cloned()
+                        .collect();
 
-        fn visit_children_recursively(
-            tree: &EntityTree,
-            entities_under_pinhole: &mut IntSet<EntityPath>,
-        ) {
-            if tree
-                .entity
-                .components
-                .contains_key(&PinholeProjection::name())
-            {
-                // This and all children under it are under a pinhole camera!
-                tree.visit_children_recursively(&mut |ent_path| {
-                    entities_under_pinhole.insert(ent_path.clone());
-                });
-            } else {
-                for child in tree.children.values() {
-                    visit_children_recursively(child, entities_under_pinhole);
+                    VisualizableFilterContext3D {
+                        entities_in_main_3d_space,
+                        entities_under_pinholes,
+                    }
+                }
+
+                SubSpaceDimensionality::TwoD => {
+                    // If this is 2D space, only display the origin entity itself.
+                    // Everything else we have to assume requires some form of transformation.
+                    VisualizableFilterContext3D {
+                        entities_in_main_3d_space: std::iter::once(space_origin.clone()).collect(),
+                        entities_under_pinholes: Default::default(),
+                    }
                 }
             }
-        }
+        });
 
-        let entity_tree = &entity_db.tree();
-
-        // Walk down the tree from the space_origin.
-        // Note that if there's no subtree, we still have to return a `VisualizerFilterContext3D` to
-        // indicate to all visualizable-filters that we're in a 3D space view.
-        if let Some(current_tree) = &entity_tree.subtree(space_origin) {
-            visit_children_recursively(current_tree, &mut entities_under_pinhole);
-        };
-
-        Box::new(VisualizableFilterContext3D {
-            entities_under_pinhole,
-        })
+        Box::new(context.unwrap_or_default())
     }
 
     fn auto_spawn_heuristic(
