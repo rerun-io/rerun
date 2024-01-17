@@ -29,8 +29,6 @@ pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
     re_tracing::profile_function!();
 
-    use walkdir::WalkDir;
-
     let dirpaths = std::env::var("PATH")
         .ok()
         .into_iter()
@@ -39,21 +37,21 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
 
     let mut executables = HashMap::<String, Vec<std::path::PathBuf>>::default();
     for dirpath in dirpaths {
-        let paths = WalkDir::new(dirpath)
-            .max_depth(1) // don't search recursively
-            .into_iter()
-            .filter_map(|entry| {
-                let Ok(entry) = entry else {
-                    return None;
-                };
-                let filepath = entry.path();
-                let is_rerun_loader = filepath.file_name().map_or(false, |filename| {
-                    filename
-                        .to_string_lossy()
-                        .starts_with(EXTERNAL_DATA_LOADER_PREFIX)
-                });
-                (filepath.is_file() && is_rerun_loader).then(|| filepath.to_owned())
+        let Ok(dir) = std::fs::read_dir(dirpath) else {
+            continue;
+        };
+        let paths = dir.into_iter().filter_map(|entry| {
+            let Ok(entry) = entry else {
+                return None;
+            };
+            let filepath = entry.path();
+            let is_rerun_loader = filepath.file_name().map_or(false, |filename| {
+                filename
+                    .to_string_lossy()
+                    .starts_with(EXTERNAL_DATA_LOADER_PREFIX)
             });
+            (filepath.is_file() && is_rerun_loader).then_some(filepath)
+        });
 
         for path in paths {
             if let Some(filename) = path.file_name() {
