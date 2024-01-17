@@ -231,18 +231,34 @@ impl SpatialTopology {
     }
 
     /// Returns the subspace an entity belongs to.
+    #[inline]
     pub fn subspace_for_entity(&self, entity: &EntityPath) -> &SubSpace {
-        // Try the fast track first - we have this for all entities that were ever logged.
-        if let Some(subspace) = self
-            .subspace_origin_per_logged_entity
-            .get(&entity.hash())
-            .and_then(|origin_hash| self.subspaces.get(origin_hash))
-        {
-            subspace
-        } else {
-            // Otherwise, we have to walk the hierarchy.
-            // TODO: We could incrementally strip the entity path to the last known entity.
-            self.find_subspace_rec(&EntityPath::root(), entity)
+        self.subspaces
+            .get(&self.subspace_origin_hash_for_entity(entity))
+            .expect("unknown subspace origin, `SpatialTopology` is in an invalid state")
+    }
+
+    fn subspace_origin_hash_for_entity(&self, entity: &EntityPath) -> EntityPathHash {
+        let mut entity_reference = entity;
+        let mut entity_storage: EntityPath; // Only needed if we actually have to walk up the tree. Unused on the happy path.
+
+        loop {
+            // It's enough to check in`self.subspace_origin_per_logged_entity`, we don't have to check `self.subspaces`
+            // since every origin of a subspace is also a logged entity (except the root which we checked initially),
+            // making the keys of `self.subspace_origin_per_logged_entity` a superset of the keys of `self.subspaces`.
+            if let Some(origin_hash) = self
+                .subspace_origin_per_logged_entity
+                .get(&entity_reference.hash())
+            {
+                return *origin_hash;
+            }
+
+            if let Some(parent) = entity_reference.parent() {
+                entity_storage = parent;
+                entity_reference = &entity_storage;
+            } else {
+                return EntityPath::root().hash();
+            };
         }
     }
 
@@ -270,17 +286,16 @@ impl SpatialTopology {
             };
         }
 
-        // Is there already a space with this entity?
+        // Do we already know about this entity in general?
         if let Some(subspace_origin_hash) = self
             .subspace_origin_per_logged_entity
             .get(&entity_path.hash())
-            .cloned()
         {
             // In that case, this causes only changes if there's a change in connection.
             if !new_subspace_connections.is_empty() {
                 self.update_space_with_new_connections(
                     entity_path,
-                    subspace_origin_hash,
+                    *subspace_origin_hash,
                     new_subspace_connections,
                 );
             }
@@ -326,20 +341,19 @@ impl SpatialTopology {
         entity_path: &EntityPath,
         subspace_connections: SubSpaceConnectionFlags,
     ) {
+        let subspace_origin_hash = self.subspace_origin_hash_for_entity(entity_path);
+
         let target_space_origin_hash = if subspace_connections.is_empty() {
             // Add entity to the existing space.
-            let subspace =
-                Self::find_subspace_rec_mut(&mut self.subspaces, &EntityPath::root(), entity_path);
+            let subspace = self
+                .subspaces
+                .get_mut(&subspace_origin_hash)
+                .expect("Subspace origin not part of origin->subspace map.");
             subspace.entities.insert(entity_path.clone());
             subspace.origin.hash()
         } else {
             // Create a new subspace with this entity as its origin & containing this entity.
-            let parent_subspace = self.find_subspace_rec(&EntityPath::root(), entity_path);
-            self.split_subspace(
-                parent_subspace.origin.hash(),
-                entity_path,
-                subspace_connections,
-            );
+            self.split_subspace(subspace_origin_hash, entity_path, subspace_connections);
             entity_path.hash()
         };
 
@@ -416,53 +430,6 @@ impl SpatialTopology {
         }
 
         self.subspaces.insert(new_space.origin.hash(), new_space);
-    }
-
-    /// Finds subspace an entity path belongs to by recursively walking down the hierarchy.
-    ///
-    /// Only use this when we haven't yet established a subspace for this entity path.
-    ///
-    // TODO: do what jeremy suggested
-    fn find_subspace_rec_mut<'a>(
-        subspaces: &'a mut IntMap<EntityPathHash, SubSpace>,
-        subspace_origin: &EntityPath,
-        path: &EntityPath,
-    ) -> &'a mut SubSpace {
-        debug_assert!(path.is_descendant_of(subspace_origin) || path == subspace_origin);
-
-        let subspace = subspaces
-            .get(&subspace_origin.hash())
-            .expect("Subspace origin not part of origin->subspace map.");
-
-        debug_assert!(&subspace.origin == subspace_origin);
-
-        for child_space_origin in subspace.child_spaces.keys() {
-            if path == child_space_origin || path.is_descendant_of(child_space_origin) {
-                // Clone to lift borrow on self.
-                let child_space_origin = child_space_origin.clone();
-                return Self::find_subspace_rec_mut(subspaces, &child_space_origin, path);
-            }
-        }
-
-        // Need to query subspace again since otherwise we'd have a mutable borrow on self while trying to do a recursive call.
-        return subspaces.get_mut(&subspace_origin.hash()).unwrap(); // Unwrap is safe since we succeeded ist just earlier.
-    }
-
-    /// Finds subspace an entity path belongs to by recursively walking down the hierarchy.
-    // TODO: do what jeremy suggested
-    fn find_subspace_rec(&self, subspace_origin: &EntityPath, path: &EntityPath) -> &SubSpace {
-        let subspace = self
-            .subspaces
-            .get(&subspace_origin.hash())
-            .expect("Subspace origin not part of origin->subspace map.");
-
-        for child_space_origin in subspace.child_spaces.keys() {
-            if path == child_space_origin || path.is_descendant_of(child_space_origin) {
-                return self.find_subspace_rec(child_space_origin, path);
-            }
-        }
-
-        subspace
     }
 }
 
