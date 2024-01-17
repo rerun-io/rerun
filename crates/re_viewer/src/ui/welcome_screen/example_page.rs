@@ -56,9 +56,9 @@ struct ExampleDescLayout {
 }
 
 impl ExampleDescLayout {
-    fn new(desc: ExampleDesc) -> Self {
+    fn new(egui_ctx: &egui::Context, desc: ExampleDesc) -> Self {
         ExampleDescLayout {
-            rrd_byte_size_promise: load_file_size(desc.rrd_url.clone()),
+            rrd_byte_size_promise: load_file_size(egui_ctx, desc.rrd_url.clone()),
             desc,
             rect: egui::Rect::NOTHING,
         }
@@ -105,16 +105,25 @@ impl std::fmt::Display for LoadError {
     }
 }
 
-fn load_manifest(url: String) -> ManifestPromise {
+fn load_manifest(egui_ctx: &egui::Context, url: String) -> ManifestPromise {
     let (sender, promise) = Promise::new();
+    let egui_ctx = egui_ctx.clone(); // So we can wake up the ui thread
 
-    fetch(Request::get(url), move |response| match response {
-        Ok(response) => sender.send(
-            serde_json::from_slice::<ManifestJson>(&response.bytes)
-                .map(|examples| examples.into_iter().map(ExampleDescLayout::new).collect())
-                .map_err(LoadError::Deserialize),
-        ),
-        Err(err) => sender.send(Err(LoadError::Fetch(err))),
+    fetch(Request::get(url), move |response| {
+        match response {
+            Ok(response) => sender.send(
+                serde_json::from_slice::<ManifestJson>(&response.bytes)
+                    .map(|examples| {
+                        examples
+                            .into_iter()
+                            .map(|example| ExampleDescLayout::new(&egui_ctx, example))
+                            .collect()
+                    })
+                    .map_err(LoadError::Deserialize),
+            ),
+            Err(err) => sender.send(Err(LoadError::Fetch(err))),
+        }
+        egui_ctx.request_repaint();
     });
 
     promise
@@ -124,35 +133,39 @@ fn load_manifest(url: String) -> ManifestPromise {
 ///
 /// In case of an erorr, it is logged as DEBUG and
 /// the promise is resolved to `None`.
-fn load_file_size(url: String) -> Promise<Option<u64>> {
+fn load_file_size(egui_ctx: &egui::Context, url: String) -> Promise<Option<u64>> {
     let (sender, promise) = Promise::new();
+    let egui_ctx = egui_ctx.clone(); // So we can wake up the ui thread
 
     let request = Request {
         method: "HEAD".into(),
         ..Request::get(url.clone())
     };
 
-    fetch(request, move |response| match response {
-        Ok(response) => {
-            if response.ok {
-                let headers = &response.headers;
-                let content_length = headers
-                    .get("content-length")
-                    .or_else(|| headers.get("x-goog-stored-content-length"))
-                    .and_then(|s| s.parse::<u64>().ok());
-                sender.send(content_length);
-            } else {
-                re_log::debug!(
-                    "Failed to load file size of {url:?}: {} {}",
-                    response.status,
-                    response.status_text
-                );
+    fetch(request, move |response| {
+        match response {
+            Ok(response) => {
+                if response.ok {
+                    let headers = &response.headers;
+                    let content_length = headers
+                        .get("content-length")
+                        .or_else(|| headers.get("x-goog-stored-content-length"))
+                        .and_then(|s| s.parse::<u64>().ok());
+                    sender.send(content_length);
+                } else {
+                    re_log::debug!(
+                        "Failed to load file size of {url:?}: {} {}",
+                        response.status,
+                        response.status_text
+                    );
+                }
+            }
+            Err(err) => {
+                re_log::debug!("Failed to load file size of {url:?}: {err}");
+                sender.send(None);
             }
         }
-        Err(err) => {
-            re_log::debug!("Failed to load file size of {url:?}: {err}");
-            sender.send(None);
-        }
+        egui_ctx.request_repaint();
     });
 
     promise
@@ -206,10 +219,10 @@ impl Default for ExamplePage {
 }
 
 impl ExamplePage {
-    pub fn set_manifest_url(&mut self, url: String) {
+    pub fn set_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
         if self.manifest_url != url {
             self.manifest_url = url.clone();
-            self.examples = Some(load_manifest(url));
+            self.examples = Some(load_manifest(egui_ctx, url));
         }
     }
 
@@ -222,7 +235,7 @@ impl ExamplePage {
     ) -> WelcomeScreenResponse {
         let examples = self
             .examples
-            .get_or_insert_with(|| load_manifest(self.manifest_url.clone()));
+            .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
 
         let Some(examples) = examples.ready_mut() else {
             ui.spinner();
