@@ -392,8 +392,8 @@ fn debug_menu_options_ui(
 
     ui.horizontal(|ui| {
         ui.label("Blueprint GC:");
-        ui.radio_value(&mut app_options.blueprint_gc, true, "Enabled");
-        ui.radio_value(&mut app_options.blueprint_gc, false, "Disabled");
+        re_ui.radio_value(ui, &mut app_options.blueprint_gc, true, "Enabled");
+        re_ui.radio_value(ui, &mut app_options.blueprint_gc, false, "Disabled");
     });
 
     re_ui.checkbox(ui,
