@@ -299,7 +299,7 @@ impl StoreHub {
 
     pub fn gc_blueprints(&mut self, app_options: &AppOptions) {
         re_tracing::profile_function!();
-        if !app_options.disable_blueprint_gc {
+        if app_options.blueprint_gc {
             for blueprint_id in self.blueprint_by_app_id.values() {
                 if let Some(blueprint) = self.store_bundle.blueprint_mut(blueprint_id) {
                     // TODO(jleibs): Decide a better tuning for this. Would like to save a
@@ -325,7 +325,7 @@ impl StoreHub {
         for (app_id, blueprint_id) in &self.blueprint_by_app_id {
             if let Some(blueprint) = self.store_bundle.blueprint_mut(blueprint_id) {
                 if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
-                    if !app_options.disable_blueprint_gc {
+                    if app_options.blueprint_gc {
                         blueprint.gc_everything_but_the_latest_row();
                     }
 

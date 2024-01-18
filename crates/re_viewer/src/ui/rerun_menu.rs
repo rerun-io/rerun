@@ -388,19 +388,18 @@ fn debug_menu_options_ui(
         re_log::info!("Logging some info");
     }
 
-    #[cfg(debug_assertions)]
     UICommand::ToggleBlueprintInspectionPanel.menu_button_ui(ui, command_sender);
+
+    ui.horizontal(|ui| {
+        ui.label("Blueprint GC:");
+        ui.radio_value(&mut app_options.blueprint_gc, true, "Enabled");
+        ui.radio_value(&mut app_options.blueprint_gc, false, "Disabled");
+    });
 
     re_ui.checkbox(ui,
         &mut app_options.show_picking_debug_overlay,
         "Picking Debug Overlay",
     ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
-
-    re_ui.checkbox(ui,
-        &mut app_options.disable_blueprint_gc,
-        "Disable the blueprint garbage collector.",
-    )
-    .on_hover_text("Don't garbage collect the blueprint data. This is useful for debugging the internal blueprint state.");
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]

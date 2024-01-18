@@ -42,7 +42,7 @@ pub struct AppOptions {
     pub inspect_blueprint_timeline: bool,
 
     /// Disable garbage collection of the blueprint.
-    pub disable_blueprint_gc: bool,
+    pub blueprint_gc: bool,
 
     /// What time zone to display timestamps in.
     pub time_zone_for_timestamps: TimeZone,
@@ -74,7 +74,7 @@ impl Default for AppOptions {
 
             inspect_blueprint_timeline: false,
 
-            disable_blueprint_gc: false,
+            blueprint_gc: true,
 
             time_zone_for_timestamps: TimeZone::Utc,
         }
