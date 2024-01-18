@@ -543,6 +543,8 @@ fn show_row_ids_tooltip(
         }
 
         let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max);
+        let store = ctx.choose_store_for_query(&query);
+
         let verbosity = UiVerbosity::Reduced;
 
         let TimePanelItem {
@@ -554,12 +556,12 @@ fn show_row_ids_tooltip(
             let component_path = ComponentPath::new(entity_path.clone(), *component_name);
             item_ui::component_path_button(ctx, ui, &component_path);
             ui.add_space(8.0);
-            component_path.data_ui(ctx, ui, verbosity, &query);
+            component_path.data_ui(ctx, ui, verbosity, &query, store);
         } else {
             let instance_path = re_entity_db::InstancePath::entity_splat(entity_path.clone());
             item_ui::instance_path_button(ctx, ui, None, &instance_path);
             ui.add_space(8.0);
-            instance_path.data_ui(ctx, ui, verbosity, &query);
+            instance_path.data_ui(ctx, ui, verbosity, &query, store);
         }
     });
 }

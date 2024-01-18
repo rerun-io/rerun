@@ -13,13 +13,12 @@ impl DataUi for InstancePath {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         let Self {
             entity_path,
             instance_key,
         } = self;
-
-        let store = ctx.choose_store_for_query(query);
 
         let Some(components) = store.all_components(&query.timeline, entity_path) else {
             if ctx.entity_db.is_known_entity(entity_path) {
@@ -77,13 +76,14 @@ impl DataUi for InstancePath {
                             entity_path: entity_path.clone(),
                             component_data,
                         }
-                        .data_ui(ctx, ui, UiVerbosity::Small, query);
+                        .data_ui(ctx, ui, UiVerbosity::Small, query, store);
                     } else {
                         ctx.component_ui_registry.ui(
                             ctx,
                             ui,
                             UiVerbosity::Small,
                             query,
+                            store,
                             entity_path,
                             &component_data,
                             instance_key,

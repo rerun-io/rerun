@@ -10,13 +10,12 @@ impl DataUi for ComponentPath {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         let Self {
             entity_path,
             component_name,
         } = self;
-
-        let store = ctx.choose_store_for_query(query);
 
         if let Some(archetype_name) = component_name.indicator_component_archetype() {
             ui.label(format!(
@@ -29,7 +28,7 @@ impl DataUi for ComponentPath {
                 entity_path: self.entity_path.clone(),
                 component_data,
             }
-            .data_ui(ctx, ui, verbosity, query);
+            .data_ui(ctx, ui, verbosity, query, store);
         } else if let Some(entity_tree) = ctx.entity_db.tree().subtree(entity_path) {
             if entity_tree.entity.components.contains_key(component_name) {
                 ui.label("<unset>");

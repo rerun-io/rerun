@@ -11,10 +11,11 @@ impl DataUi for LogMsg {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         match self {
-            LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
+            LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query, store),
+            LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query, store),
         }
     }
 }
@@ -26,6 +27,7 @@ impl DataUi for SetStoreInfo {
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
     ) {
         ui.code("SetStoreInfo");
         let SetStoreInfo { row_id: _, info } = self;
@@ -73,6 +75,7 @@ impl DataUi for ArrowMsg {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         let table = match DataTable::from_arrow_msg(self) {
             Ok(table) => table,
@@ -95,11 +98,11 @@ impl DataUi for ArrowMsg {
                         ui.end_row();
 
                         ui.monospace("time_point:");
-                        row.timepoint().data_ui(ctx, ui, verbosity, query);
+                        row.timepoint().data_ui(ctx, ui, verbosity, query, store);
                         ui.end_row();
 
                         ui.monospace("components:");
-                        row.cells().data_ui(ctx, ui, verbosity, query);
+                        row.cells().data_ui(ctx, ui, verbosity, query, store);
                         ui.end_row();
                     });
                 }

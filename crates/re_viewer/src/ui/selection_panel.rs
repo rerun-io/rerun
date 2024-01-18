@@ -154,7 +154,8 @@ impl SelectionPanel {
                         } else {
                             ctx.current_query()
                         };
-                        data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query);
+                        let store = ctx.choose_store_for_query(&query);
+                        data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, store);
                     });
                 }
 

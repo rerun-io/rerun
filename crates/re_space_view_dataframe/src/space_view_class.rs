@@ -177,6 +177,7 @@ impl SpaceViewClass for DataframeSpaceView {
                             ui,
                             UiVerbosity::Small,
                             &latest_at_query,
+                            store,
                             &instance.entity_path,
                             &comp_inst,
                             &instance.instance_key,

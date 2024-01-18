@@ -243,7 +243,13 @@ fn color_space_ui(
             let instance = InstancePath::instance(ent_path.clone(), *instance_key);
             let interact = interact.on_hover_ui_at_pointer(|ui| {
                 item_ui::instance_path_button(ctx, ui, Some(query.space_view_id), &instance);
-                instance.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
+                instance.data_ui(
+                    ctx,
+                    ui,
+                    UiVerbosity::Reduced,
+                    &ctx.current_query(),
+                    ctx.entity_db.store(),
+                );
             });
             item_ui::select_hovered_on_click(
                 ctx,

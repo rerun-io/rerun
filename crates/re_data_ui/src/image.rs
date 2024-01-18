@@ -28,6 +28,7 @@ impl EntityDataUi for re_types::components::TensorData {
         verbosity: UiVerbosity,
         entity_path: &re_log_types::EntityPath,
         query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
     ) {
         re_tracing::profile_function!();
 
