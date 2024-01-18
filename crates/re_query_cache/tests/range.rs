@@ -210,8 +210,6 @@ fn timeless_range() {
 
     // --- Third test: `[-inf, +inf]` ---
 
-    eprintln!("XXXXXXXXXXXXXXXXXXXXXXXX");
-
     let query =
         re_data_store::RangeQuery::new(timepoint1[0].0, TimeRange::new(TimeInt::MIN, TimeInt::MAX));
 
@@ -363,7 +361,7 @@ fn query_and_compare(store: &DataStore, query: &RangeQuery, ent_path: &EntityPat
         }
 
         // Keep this around for the next unlucky chap.
-        eprintln!("(expected={expected_data_times:?}, uncached={uncached_data_times:?}, cached={cached_data_times:?})");
+        // eprintln!("(expected={expected_data_times:?}, uncached={uncached_data_times:?}, cached={cached_data_times:?})");
         // eprintln!("{}", store.to_data_table().unwrap());
 
         similar_asserts::assert_eq!(expected_data_times, uncached_data_times);
