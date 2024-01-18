@@ -130,7 +130,6 @@ impl Caches {
 
                 let caches_per_archetype = caches.entry(key.clone()).or_default();
 
-                // TODO: we cannot be holding `caches` when doing this.
                 let removed_bytes = caches_per_archetype.handle_pending_invalidation();
                 if removed_bytes > 0 {
                     re_log::trace!(
@@ -177,7 +176,6 @@ impl Caches {
 
                 let caches_per_archetype = caches.entry(key.clone()).or_default();
 
-                // TODO: we cannot be holding `caches` when doing this.
                 let removed_bytes = caches_per_archetype.handle_pending_invalidation();
                 if removed_bytes > 0 {
                     re_log::trace!(
