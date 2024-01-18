@@ -46,7 +46,7 @@ pub trait ErasedFlatVecDeque: std::any::Any {
     /// avoid even with explicit syntax and that silently lead to infinite recursions.
     fn dyn_truncate(&mut self, at: usize);
 
-    /// Dynamically dispatches to [`<FlatVecDeque<T> as SizeBytes>::total_size_bytes`].
+    /// Dynamically dispatches to [`<FlatVecDeque<T> as SizeBytes>::total_size_bytes(self)`].
     ///
     /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
     /// avoid even with explicit syntax and that silently lead to infinite recursions.
