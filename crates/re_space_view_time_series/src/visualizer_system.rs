@@ -7,9 +7,14 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery,
-    ViewerContext, VisualizerSystem,
+    external::re_entity_db::TimeSeriesAggregator, AnnotationMap, DefaultColor,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    VisualizerSystem,
 };
+
+use crate::space_view_class::TimeSeriesSpaceViewFeedback;
+
+// ---
 
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {
@@ -124,6 +129,13 @@ impl TimeSeriesSystem {
         let query_caches = ctx.entity_db.query_caches();
         let store = ctx.entity_db.store();
 
+        let ui_feedback = TimeSeriesSpaceViewFeedback::remove(&query.space_view_id);
+        // How many ticks does a single point/pixel on the X axis cover?
+        let x_tick_size = ui_feedback.map_or(1.0, |feedback| {
+            feedback.plot_bounds.width() / feedback.plot_canvas_size.x.max(0.001) as f64
+        });
+
+        // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let mut points = Vec::new();
 
@@ -210,6 +222,30 @@ impl TimeSeriesSystem {
                 continue;
             }
 
+            let (agg_range, points) = {
+                let agg_mode = data_result
+                    .accumulated_properties()
+                    .time_series_aggregator
+                    .get();
+
+                re_tracing::profile_scope!("aggregate", agg_mode.to_string());
+
+                match agg_mode {
+                    TimeSeriesAggregator::None => (1.0, points),
+                    TimeSeriesAggregator::Average => {
+                        AverageAggregator.aggregate(x_tick_size, points)
+                    }
+                    TimeSeriesAggregator::Min => {
+                        MinMaxAggregator::Min.aggregate(x_tick_size, points)
+                    }
+                    TimeSeriesAggregator::Max => {
+                        MinMaxAggregator::Max.aggregate(x_tick_size, points)
+                    }
+                    TimeSeriesAggregator::MinMax => {
+                        MinMaxAggregator::MinMax.aggregate(x_tick_size, points)
+                    }
+                }
+            };
             re_tracing::profile_scope!("secondary", &data_result.entity_path.to_string());
 
             let min_time = store
@@ -313,5 +349,154 @@ impl TimeSeriesSystem {
         if !line.points.is_empty() {
             self.lines.push(line);
         }
+    }
+}
+// ---
+
+trait Aggregator {
+    fn aggregate(&self, x_tick_size: f64, points: Vec<PlotPoint>) -> (f64, Vec<PlotPoint>);
+}
+
+struct AverageAggregator;
+
+impl Aggregator for AverageAggregator {
+    #[inline]
+    fn aggregate(&self, x_tick_size: f64, points: Vec<PlotPoint>) -> (f64, Vec<PlotPoint>) {
+        if x_tick_size <= 1.0 {
+            return (1.0, points);
+        }
+
+        let min_time = points.first().map_or(i64::MIN, |p| p.time);
+        let max_time = points.last().map_or(i64::MAX, |p| p.time);
+
+        let mut aggregated = Vec::with_capacity((points.len() as f64 / x_tick_size) as _);
+
+        let windowsz = usize::max(1, x_tick_size.floor() as usize);
+        let x_tick_size_fract = x_tick_size.fract();
+
+        let mut i = 0;
+        while i < points.len() {
+            let mut j = 0;
+
+            let mut acc = points[i + j].clone();
+            j += 1;
+
+            while j < windowsz && i + j < points.len() {
+                let point = &points[i + j];
+                acc.value += point.value;
+                acc.attrs.radius += point.attrs.radius;
+                j += 1;
+            }
+
+            // Do a weighted average for the fractional tail.
+            if x_tick_size_fract > 0.0 && i + j < points.len() {
+                let point = &points[i + j];
+                let w = x_tick_size_fract;
+                acc.value += point.value * w;
+                acc.attrs.radius += (point.attrs.radius as f64 * w) as f32;
+            }
+
+            acc.value /= x_tick_size;
+            acc.attrs.radius = (acc.attrs.radius as f64 / x_tick_size) as _;
+
+            aggregated.push(acc);
+
+            i += windowsz;
+        }
+
+        if let Some(p) = aggregated.first_mut() {
+            p.time = min_time;
+        }
+        if let Some(p) = aggregated.last_mut() {
+            p.time = max_time;
+        }
+
+        (x_tick_size, aggregated)
+    }
+}
+
+enum MinMaxAggregator {
+    MinMax,
+    Min,
+    Max,
+}
+
+impl Aggregator for MinMaxAggregator {
+    #[inline]
+    fn aggregate(&self, x_tick_size: f64, points: Vec<PlotPoint>) -> (f64, Vec<PlotPoint>) {
+        if x_tick_size <= 1.0 {
+            return (1.0, points);
+        }
+
+        let min_time = points.first().map_or(i64::MIN, |p| p.time);
+        let max_time = points.last().map_or(i64::MAX, |p| p.time);
+
+        let mut aggregated = match self {
+            MinMaxAggregator::MinMax => {
+                Vec::with_capacity(((points.len() as f64 / x_tick_size) * 2.0) as _)
+            }
+            MinMaxAggregator::Min | MinMaxAggregator::Max => {
+                Vec::with_capacity((points.len() as f64 / x_tick_size) as _)
+            }
+        };
+
+        let windowsz = usize::max(1, x_tick_size.floor() as usize);
+        let aggsz = usize::max(1, x_tick_size.round() as usize);
+
+        let mut i = 0;
+        while i < points.len() {
+            let mut j = 0;
+
+            let mut acc_min = points[i + j].clone();
+            let mut acc_max = points[i + j].clone();
+            j += 1;
+
+            while j < aggsz && i + j < points.len() {
+                let point = &points[i + j];
+
+                match self {
+                    MinMaxAggregator::MinMax => {
+                        acc_min.value = f64::min(acc_min.value, point.value);
+                        acc_min.attrs.radius = f32::min(acc_min.attrs.radius, point.attrs.radius);
+                        acc_max.value = f64::max(acc_min.value, point.value);
+                        acc_max.attrs.radius = f32::max(acc_min.attrs.radius, point.attrs.radius);
+                    }
+                    MinMaxAggregator::Min => {
+                        acc_min.value = f64::min(acc_min.value, point.value);
+                        acc_min.attrs.radius = f32::min(acc_min.attrs.radius, point.attrs.radius);
+                    }
+                    MinMaxAggregator::Max => {
+                        acc_max.value = f64::max(acc_min.value, point.value);
+                        acc_max.attrs.radius = f32::max(acc_min.attrs.radius, point.attrs.radius);
+                    }
+                }
+
+                j += 1;
+            }
+
+            match self {
+                MinMaxAggregator::MinMax => {
+                    aggregated.push(acc_min);
+                    aggregated.push(acc_max);
+                }
+                MinMaxAggregator::Min => {
+                    aggregated.push(acc_min);
+                }
+                MinMaxAggregator::Max => {
+                    aggregated.push(acc_max);
+                }
+            }
+
+            i += windowsz;
+        }
+
+        if let Some(p) = aggregated.first_mut() {
+            p.time = min_time;
+        }
+        if let Some(p) = aggregated.last_mut() {
+            p.time = max_time;
+        }
+
+        (aggsz as f64, aggregated)
     }
 }
