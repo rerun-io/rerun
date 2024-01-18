@@ -2,7 +2,30 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-## [0.12.0](https://github.com/rerun-io/rerun/compare/0.11.0...0.12.0)
+
+## [0.12.1](https://github.com/rerun-io/rerun/compare/0.12.0...0.12.1) - 2024-01-17 - Data loader bug fixes
+
+#### 🌊 C++ API
+- Fix CMake trying to pick up test folders outside of the Rerun project/zip [#4770](https://github.com/rerun-io/rerun/pull/4770) (thanks [@KevinGliewe](https://github.com/KevinGliewe)!)
+- Document that `Mat3x3` and `Mat4x4` constructors are column major [#4842](https://github.com/rerun-io/rerun/pull/4842)
+
+#### 🦀 Rust API
+- Fix `entity_path_vec!` and `entity_path!` depending on `ToString` being in scope [#4766](https://github.com/rerun-io/rerun/pull/4766) (thanks [@kpreid](https://github.com/kpreid)!)
+
+#### 🪳 Bug Fixes
+- Fix external data loader plugins on Windows [#4840](https://github.com/rerun-io/rerun/pull/4840)
+- Reduce latency when loading data from external loaders [#4797](https://github.com/rerun-io/rerun/pull/4797)
+- Always point to versioned manifest when building a versioned binary [#4781](https://github.com/rerun-io/rerun/pull/4781)
+
+#### 🧑‍💻 Dev-experience
+- External loaders: remove warnings on duplicated binary on `$PATH` [#4833](https://github.com/rerun-io/rerun/pull/4833)
+
+#### 🤷‍♂️ Other
+- Include `Cargo.lock` in `rerun-cli` crate [#4750](https://github.com/rerun-io/rerun/pull/4750)
+- Replace `atty` dependency with `std::io::IsTerminal` [#4790](https://github.com/rerun-io/rerun/pull/4790) (thanks [@kpreid](https://github.com/kpreid)!)
+
+
+## [0.12.0](https://github.com/rerun-io/rerun/compare/0.11.0...0.12.0) - Data Loaders, Container-editing, Python-3.12 - 2024-01-09
 
 ### Overview & Highlights
 - 🌁 The Rerun Viewer now supports a plugin system for creating [arbitrary external data loaders](https://www.rerun.io/docs/howto/open-any-file).
@@ -142,7 +165,8 @@
 - File-like entity paths [#4476](https://github.com/rerun-io/rerun/pull/4476)
 - Make the new container blueprints the default behavior [#4642](https://github.com/rerun-io/rerun/pull/4642)
 
-## [0.11.0](https://github.com/rerun-io/rerun/compare/0.10.1...0.11.0)
+
+## [0.11.0](https://github.com/rerun-io/rerun/compare/0.10.1...0.11.0) - C++ improvements & better Visible History - 2023-11-28
 
 ### Overview & Highlights
 
@@ -226,7 +250,8 @@ Special thanks to @dvad & @dangush for contributing!
 - `DataStore` introduce `StoreEvent`s [#4203](https://github.com/rerun-io/rerun/pull/4203)
 - `DataStore` introduce `StoreView`s [#4205](https://github.com/rerun-io/rerun/pull/4205)
 
-## [0.10.1](https://github.com/rerun-io/rerun/compare/0.10.0...0.10.1)
+
+## [0.10.1](https://github.com/rerun-io/rerun/compare/0.10.0...0.10.1) - 2023-11-02
 
 ### Overview & Highlights
 This is a small release primarily to tie up some loose ends for our C++ SDK.
@@ -240,6 +265,7 @@ This is a small release primarily to tie up some loose ends for our C++ SDK.
 #### 🧑‍💻 Dev-experience
 - C++ Windows CI [#4110](https://github.com/rerun-io/rerun/pull/4110)
 - Add MacOS C++ CI, add Linux C++20 CI [#4120](https://github.com/rerun-io/rerun/pull/4120)
+
 
 ## [0.10.0](https://github.com/rerun-io/rerun/compare/0.9.1...0.10.0) - C++ SDK - 2023-10-30
 
