@@ -554,19 +554,15 @@ fn space_view_space_origin_widget_ui(
 
     match &mut state {
         SpaceOriginEditState::NotEditing => {
-            ui.horizontal(|ui| {
-                item_ui::entity_path_button(ctx, ui, Some(space_view.id), &space_view.space_origin);
-                if ctx
-                    .re_ui
-                    .small_icon_button(ui, &re_ui::icons::EDIT)
-                    .clicked()
-                {
-                    state = SpaceOriginEditState::Editing {
-                        origin_string: space_view.space_origin.to_string(),
-                        entered_editing: true,
-                    };
-                }
-            });
+            let mut space_origin_string = space_view.space_origin.to_string();
+            let output = egui::TextEdit::singleline(&mut space_origin_string).show(ui);
+
+            if output.response.gained_focus() {
+                state = SpaceOriginEditState::Editing {
+                    origin_string: space_origin_string,
+                    entered_editing: true,
+                };
+            }
         }
         SpaceOriginEditState::Editing {
             origin_string,
