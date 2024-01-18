@@ -401,61 +401,64 @@ pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
     re_types::components::ViewCoordinates::RDF
 }
 
-/// If 2d object is shown in a 3d space view, it is only then visualizable, if it is under a pinhole camera.
 fn filter_visualizable_2d_entities(
     entities: ApplicableEntities,
     context: &dyn VisualizableFilterContext,
 ) -> VisualizableEntities {
-    // `VisualizableFilterContext3D` will only be available if we're in a 3D space view.
     if let Some(context) = context
         .as_any()
-        .downcast_ref::<VisualizableFilterContext3D>()
+        .downcast_ref::<VisualizableFilterContext2D>()
     {
         VisualizableEntities(
-            entities
-                .0
-                .into_iter()
-                .filter(|ent_path| context.entities_under_pinhole.contains(&ent_path.hash()))
+            context
+                .entities_in_main_2d_space
+                .intersection(&entities.0)
+                .cloned()
                 .collect(),
         )
     } else if let Some(context) = context
         .as_any()
-        .downcast_ref::<VisualizableFilterContext2D>()
+        .downcast_ref::<VisualizableFilterContext3D>()
     {
-        if !context.invalid_subtrees.is_empty() {
-            VisualizableEntities(
-                entities
-                    .0
-                    .into_iter()
-                    .filter(|ent_path| {
-                        !context
-                            .invalid_subtrees
-                            .iter()
-                            .any(|invalid_subtree| ent_path.starts_with(invalid_subtree))
-                    })
-                    .collect(),
-            )
-        } else {
-            VisualizableEntities(entities.0)
-        }
+        VisualizableEntities(
+            context
+                .entities_under_pinholes
+                .intersection(&entities.0)
+                .cloned()
+                .collect(),
+        )
     } else {
         VisualizableEntities(entities.0)
     }
 }
 
-/// If 3d object is shown in a 2d space view, it is only visualizable, if the origin of the space view has a pinhole camera.
 fn filter_visualizable_3d_entities(
     entities: ApplicableEntities,
     context: &dyn VisualizableFilterContext,
 ) -> VisualizableEntities {
-    // `VisualizableFilterContext2D` will only be available if we're in a 2D space view.
-    if context
+    if let Some(context) = context
         .as_any()
         .downcast_ref::<VisualizableFilterContext2D>()
-        .map_or(true, |c| c.has_pinhole_at_origin)
     {
-        VisualizableEntities(entities.0)
+        VisualizableEntities(
+            context
+                .reprojectable_3d_entities
+                .intersection(&entities.0)
+                .cloned()
+                .collect(),
+        )
+    } else if let Some(context) = context
+        .as_any()
+        .downcast_ref::<VisualizableFilterContext3D>()
+    {
+        VisualizableEntities(
+            context
+                .entities_in_main_3d_space
+                .intersection(&entities.0)
+                .cloned()
+                .collect(),
+        )
     } else {
-        VisualizableEntities::default()
+        VisualizableEntities(entities.0)
     }
 }
