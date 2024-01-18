@@ -188,6 +188,7 @@ impl VisualizerSystem for Lines3DVisualizer {
         entities: ApplicableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
+        re_tracing::profile_function!();
         filter_visualizable_3d_entities(entities, context)
     }
 

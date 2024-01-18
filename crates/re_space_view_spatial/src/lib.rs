@@ -13,6 +13,7 @@ mod scene_bounding_boxes;
 mod space_camera_3d;
 mod space_view_2d;
 mod space_view_3d;
+mod spatial_topology;
 mod ui;
 mod ui_2d;
 mod ui_3d;
