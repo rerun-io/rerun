@@ -618,10 +618,16 @@ impl TimePanel {
                     .get(time_ctrl.timeline())
                     .unwrap_or(&empty);
 
+                let store = match self.source {
+                    TimePanelSource::Recording => ctx.entity_db.store(),
+                    TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
+                };
+
                 data_density_graph::data_density_graph_ui(
                     &mut self.data_density_graph_painter,
                     ctx,
                     time_ctrl,
+                    store,
                     time_area_response,
                     time_area_painter,
                     ui,
@@ -736,10 +742,16 @@ impl TimePanel {
 
                     highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
 
+                    let store = match self.source {
+                        TimePanelSource::Recording => ctx.entity_db.store(),
+                        TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
+                    };
+
                     data_density_graph::data_density_graph_ui(
                         &mut self.data_density_graph_painter,
                         ctx,
                         time_ctrl,
+                        store,
                         time_area_response,
                         time_area_painter,
                         ui,
