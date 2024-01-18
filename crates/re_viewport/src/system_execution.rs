@@ -60,7 +60,7 @@ pub fn create_and_run_space_view_systems(
 
 pub fn execute_systems_for_space_views<'a>(
     ctx: &'a ViewerContext<'a>,
-    mut space_views_to_execute: Vec<SpaceViewId>,
+    tree: &egui_tiles::Tree<SpaceViewId>,
     space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
     let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
@@ -69,13 +69,20 @@ pub fn execute_systems_for_space_views<'a>(
 
     re_tracing::profile_wait!("execute_systems");
 
-    space_views_to_execute
-        .par_drain(..)
-        .filter_map(|space_view_id| {
-            let space_view_blueprint = space_views.get(&space_view_id)?;
-            let highlights = highlights_for_space_view(ctx, space_view_id);
-            let output = space_view_blueprint.execute_systems(ctx, time_int, highlights);
-            Some((space_view_id, output))
+    tree.active_tiles()
+        .into_par_iter()
+        .filter_map(|tile_id| {
+            tree.tiles.get(tile_id).and_then(|tile| match tile {
+                egui_tiles::Tile::Pane(space_view_id) => {
+                    space_views.get(space_view_id).map(|space_view_blueprint| {
+                        let highlights = highlights_for_space_view(ctx, *space_view_id);
+                        let output =
+                            space_view_blueprint.execute_systems(ctx, time_int, highlights);
+                        (*space_view_id, output)
+                    })
+                }
+                egui_tiles::Tile::Container(_) => None,
+            })
         })
         .collect::<HashMap<_, _>>()
 }
