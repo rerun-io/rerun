@@ -2,12 +2,13 @@ use re_entity_db::EntityProperties;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_log_types::{EntityPath, EntityPathFilter, TimePoint, Timeline};
 use re_types::components::TextLogLevel;
 use re_viewer_context::{
-    level_to_rich_text, AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    ViewQuery, ViewerContext,
+    level_to_rich_text, AutoSpawnHeuristic, IdentifiedViewSystem as _, PerSystemEntities,
+    RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError, ViewQuery,
+    ViewerContext,
 };
 
 use super::visualizer_system::{Entry, TextLogSystem};
@@ -79,6 +80,27 @@ impl SpaceViewClass for TextSpaceView {
             AutoSpawnHeuristic::AlwaysSpawn
         } else {
             AutoSpawnHeuristic::NeverSpawn
+        }
+    }
+
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        // Spawn a single log view at the root if there's any text logs around anywhere.
+        if ctx
+            .applicable_entities_per_visualizer
+            .get(&TextLogSystem::identifier())
+            .map_or(true, |entities| entities.is_empty())
+        {
+            SpaceViewSpawnHeuristics::default()
+        } else {
+            SpaceViewSpawnHeuristics {
+                recommended_space_views: vec![RecommendedSpaceView {
+                    root: EntityPath::root(),
+                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
+                }],
+            }
         }
     }
 

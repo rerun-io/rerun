@@ -1,7 +1,7 @@
 use egui::util::hash;
 use re_entity_db::{EditableAutoValue, EntityProperties, LegendCorner};
 use re_log_types::EntityPath;
-use re_space_view::controls;
+use re_space_view::{controls, recommend_space_view_for_each_visualizable_entity};
 use re_types::datatypes::TensorBuffer;
 use re_viewer_context::{
     auto_color, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
@@ -57,6 +57,13 @@ impl SpaceViewClass for BarChartSpaceView {
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         None
+    }
+
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        recommend_space_view_for_each_visualizable_entity::<BarChartVisualizerSystem>(ctx, self)
     }
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {

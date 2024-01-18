@@ -6,11 +6,13 @@ pub mod blueprint;
 pub mod controls;
 mod data_query;
 mod data_query_blueprint;
+mod heuristics;
 mod screenshot;
 mod unreachable_transform_reason;
 
 pub use data_query::{DataQuery, EntityOverrideContext, PropertyResolver};
 pub use data_query_blueprint::DataQueryBlueprint;
+pub use heuristics::recommend_space_view_for_each_visualizable_entity;
 pub use screenshot::ScreenshotMode;
 pub use unreachable_transform_reason::UnreachableTransformReason;
 

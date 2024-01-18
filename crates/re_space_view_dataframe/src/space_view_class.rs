@@ -62,6 +62,14 @@ impl SpaceViewClass for DataframeSpaceView {
         AutoSpawnHeuristic::NeverSpawn
     }
 
+    fn spawn_heuristics(
+        &self,
+        _ctx: &ViewerContext<'_>,
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        // Doesn't spawn anything by default.
+        Default::default()
+    }
+
     fn selection_ui(
         &self,
         _ctx: &ViewerContext<'_>,

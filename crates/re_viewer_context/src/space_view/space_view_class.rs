@@ -4,9 +4,9 @@ use re_types::ComponentName;
 
 use crate::{
     AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
-    VisualizableFilterContext,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
+    ViewerContext, VisualizableFilterContext,
 };
 
 /// Defines a class of space view.
@@ -85,6 +85,9 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     ) -> AutoSpawnHeuristic {
         AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(ent_paths.len() as f32)
     }
+
+    /// TODO: doc
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
     /// Optional archetype of the Space View's blueprint properties.
     ///
@@ -202,6 +205,11 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         ent_paths: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         self.auto_spawn_heuristic(ctx, space_origin, ent_paths)
+    }
+
+    #[inline]
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+        self.spawn_heuristics(ctx)
     }
 
     #[inline]

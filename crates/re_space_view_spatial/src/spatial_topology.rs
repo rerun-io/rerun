@@ -238,6 +238,12 @@ impl SpatialTopology {
             .expect("unknown subspace origin, `SpatialTopology` is in an invalid state")
     }
 
+    /// Iterates over all subspaces.
+    #[inline]
+    pub fn iter_subspaces(&self) -> impl Iterator<Item = &SubSpace> {
+        self.subspaces.values()
+    }
+
     fn subspace_origin_hash_for_entity(&self, entity: &EntityPath) -> EntityPathHash {
         let mut entity_reference = entity;
         let mut entity_storage: EntityPath; // Only needed if we actually have to walk up the tree. Unused on the happy path.

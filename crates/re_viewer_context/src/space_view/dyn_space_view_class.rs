@@ -4,7 +4,8 @@ use re_types::ComponentName;
 
 use crate::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SpaceViewSpawnHeuristics, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 
 re_string_interner::declare_new_type!(
@@ -121,6 +122,9 @@ pub trait DynSpaceViewClass: Send + Sync {
         space_origin: &EntityPath,
         ent_paths: &PerSystemEntities,
     ) -> AutoSpawnHeuristic;
+
+    /// TODO: doc
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
     /// Executed for all active space views on frame start (before any ui is drawn),
     /// can be use for heuristic & state updates before populating the scene.

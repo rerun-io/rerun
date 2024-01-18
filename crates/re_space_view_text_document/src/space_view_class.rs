@@ -1,14 +1,14 @@
 use egui::Label;
 
+use re_space_view::recommend_space_view_for_each_visualizable_entity;
 use re_viewer_context::external::re_entity_db::EntityProperties;
+use re_viewer_context::IdentifiedViewSystem as _;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewState, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
-use crate::visualizer_system::TextDocumentEntry;
-
-use super::visualizer_system::TextDocumentSystem;
+use crate::visualizer_system::{TextDocumentEntry, TextDocumentSystem};
 
 // TODO(andreas): This should be a blueprint component.
 
@@ -90,6 +90,14 @@ impl SpaceViewClass for TextDocumentSpaceView {
             });
             ui.end_row();
         });
+    }
+
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        // By default spawn a space view for every text document.
+        recommend_space_view_for_each_visualizable_entity::<TextDocumentSystem>(ctx, self)
     }
 
     fn ui(

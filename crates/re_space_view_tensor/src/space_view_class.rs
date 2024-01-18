@@ -3,6 +3,7 @@ use std::{collections::BTreeMap, fmt::Display};
 use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 use re_entity_db::EntityProperties;
+use re_space_view::recommend_space_view_for_each_visualizable_entity;
 
 use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_data_ui::tensor_summary_ui_grid_contents;
@@ -176,6 +177,14 @@ impl SpaceViewClass for TensorSpaceView {
                 state_tensor.ui(ctx, ui);
             }
         }
+    }
+
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        // For tensors create one space view for each tensor (even though we're able to stack them in one view)
+        recommend_space_view_for_each_visualizable_entity::<TensorSystem>(ctx, self)
     }
 
     fn ui(

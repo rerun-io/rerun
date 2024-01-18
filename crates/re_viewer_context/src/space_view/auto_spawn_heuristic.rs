@@ -2,6 +2,7 @@
 ///
 /// The details of how this is interpreted are up to the code determining candidates and performing
 /// Space View spawning.
+#[deprecated(note = "Use `SpaceViewSpawnHeuristics` instead")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AutoSpawnHeuristic {
     /// Always spawn the Space View if it is a candidate.

@@ -9,7 +9,7 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
-    heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
+    heuristics::{auto_spawn_heuristic, spawn_heuristics, update_object_property_heuristics},
     spatial_topology::{SpatialTopology, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
@@ -124,6 +124,14 @@ impl SpaceViewClass for SpatialSpaceView3D {
         });
 
         Box::new(context.unwrap_or_default())
+    }
+
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
+        spawn_heuristics(ctx, self.identifier(), SpatialSpaceViewKind::TwoD)
     }
 
     fn auto_spawn_heuristic(
