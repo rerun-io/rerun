@@ -1160,6 +1160,8 @@ impl eframe::App for App {
         self.show_text_logs_as_notifications();
         self.receive_messages(&mut store_hub, egui_ctx);
 
+        store_hub.gc_blueprints(self.app_options());
+
         store_hub.purge_empty();
         self.state.cleanup(&store_hub);
 
