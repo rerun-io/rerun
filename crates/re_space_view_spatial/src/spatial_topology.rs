@@ -11,7 +11,7 @@ use re_types::{
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SubSpaceDimensionality {
-    /// We don't know if this space is in a 2D or 3D space.
+    /// We don't know if this space is a 2D or 3D space.
     ///
     /// This is the most common case and happens whenever there's no projection that
     /// establishes a clear distinction between 2D and 3D spaces.
@@ -375,7 +375,7 @@ impl SpatialTopology {
 
         // Determine the space dimensionality of the new space and update the current space's space type if necessary.
         // (see also `update_space_with_new_connections`)
-        let space_dimensionality = if connections.contains(SubSpaceConnectionFlags::Pinhole) {
+        let new_space_dimensionality = if connections.contains(SubSpaceConnectionFlags::Pinhole) {
             SubSpaceDimensionality::TwoD
         } else {
             SubSpaceDimensionality::Unknown
@@ -383,7 +383,7 @@ impl SpatialTopology {
 
         let mut new_space = SubSpace {
             origin: new_space_origin.clone(),
-            dimensionality: space_dimensionality,
+            dimensionality: new_space_dimensionality,
             entities: std::iter::once(new_space_origin.clone()).collect(),
             child_spaces: Default::default(),
             parent_space: Some(split_subspace_origin_hash),
@@ -391,7 +391,7 @@ impl SpatialTopology {
 
         // Transfer entities from self to the new space if they're children of the new space.
         split_subspace.entities.retain(|e| {
-            if e.is_descendant_of(new_space_origin) || e == new_space_origin {
+            if e.starts_with(new_space_origin) {
                 self.subspace_origin_per_logged_entity
                     .insert(e.hash(), new_space.origin.hash());
                 new_space.entities.insert(e.clone());
@@ -473,6 +473,10 @@ mod tests {
         );
         assert_eq!(
             topo.subspace_for_entity(&"robo/eyes".into()).origin,
+            EntityPath::root()
+        );
+        assert_eq!(
+            topo.subspace_for_entity(&"robo/leg".into()).origin,
             EntityPath::root()
         );
     }

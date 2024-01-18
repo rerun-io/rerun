@@ -442,7 +442,7 @@ fn filter_visualizable_3d_entities(
     {
         VisualizableEntities(
             context
-                .reprojected_3d_entities
+                .reprojectable_3d_entities
                 .intersection(&entities.0)
                 .cloned()
                 .collect(),

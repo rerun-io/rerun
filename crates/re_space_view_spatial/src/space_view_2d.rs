@@ -20,7 +20,7 @@ use crate::{
 pub struct VisualizableFilterContext2D {
     // TODO(andreas): Would be nice to use `EntityPathHash` in order to avoid bumping reference counters.
     pub entities_in_main_2d_space: IntSet<EntityPath>,
-    pub reprojected_3d_entities: IntSet<EntityPath>,
+    pub reprojectable_3d_entities: IntSet<EntityPath>,
 }
 
 impl VisualizableFilterContext for VisualizableFilterContext2D {
@@ -84,7 +84,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
             match primary_space.dimensionality {
                 SubSpaceDimensionality::Unknown => VisualizableFilterContext2D {
                     entities_in_main_2d_space: primary_space.entities.clone(),
-                    reprojected_3d_entities: Default::default(),
+                    reprojectable_3d_entities: Default::default(),
                 },
 
                 SubSpaceDimensionality::TwoD => {
@@ -114,7 +114,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
                     VisualizableFilterContext2D {
                         entities_in_main_2d_space: primary_space.entities.clone(),
-                        reprojected_3d_entities,
+                        reprojectable_3d_entities: reprojected_3d_entities,
                     }
                 }
 
@@ -123,7 +123,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                     // Everything else we have to assume requires some form of transformation.
                     VisualizableFilterContext2D {
                         entities_in_main_2d_space: std::iter::once(space_origin.clone()).collect(),
-                        reprojected_3d_entities: Default::default(),
+                        reprojectable_3d_entities: Default::default(),
                     }
                 }
             }
