@@ -644,9 +644,13 @@ fn space_view_space_origin_widget_editing_ui(
             let suggested_space_origin_string = suggested_space_view.space_origin.to_string();
 
             if suggested_space_origin_string.contains(&*space_origin_string) {
-                let response =
-                    re_ui::list_item::ListItem::new(ctx.re_ui, &suggested_space_origin_string)
-                        .show(ui);
+                let response = re_ui::list_item::ListItem::new(
+                    ctx.re_ui,
+                    suggested_space_view
+                        .space_origin
+                        .syntax_highlighted(ui.style()),
+                )
+                .show(ui);
 
                 if response.clicked() {
                     *space_origin_string = suggested_space_origin_string;
