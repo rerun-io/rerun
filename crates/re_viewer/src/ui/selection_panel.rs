@@ -290,6 +290,16 @@ fn space_view_top_level_properties(
     }
 }
 
+fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
+    match item {
+        Item::StoreId(store_id) => Some(Box::new(store_id.clone())),
+        Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
+        Item::InstancePath(_, instance_path) => Some(Box::new(instance_path.clone())),
+        // Skip data ui since we don't know yet what to show for these.
+        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => None,
+    }
+}
+
 /// State of the space origin widget.
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 enum SpaceOriginEditState {
@@ -436,16 +446,6 @@ fn space_view_space_origin_widget_editing_ui(
     ReUi::list_item_popup(ui, popup_id, &output.response, 4.0, suggestions_ui);
 
     keep_editing
-}
-
-fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
-    match item {
-        Item::StoreId(store_id) => Some(Box::new(store_id.clone())),
-        Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
-        Item::InstancePath(_, instance_path) => Some(Box::new(instance_path.clone())),
-        // Skip data ui since we don't know yet what to show for these.
-        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => None,
-    }
 }
 
 fn space_view_button(
