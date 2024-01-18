@@ -23,7 +23,7 @@ fn simple_range() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path: EntityPath = "point".into();
 
@@ -104,7 +104,7 @@ fn timeless_range() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path: EntityPath = "point".into();
 
@@ -225,7 +225,7 @@ fn simple_splatted_range() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path: EntityPath = "point".into();
 
@@ -312,7 +312,7 @@ fn invalidation() {
             InstanceKey::name(),
             Default::default(),
         );
-        let mut caches = Caches::default();
+        let mut caches = Caches::new(&store);
 
         // Create some positions with implicit instances
         let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -474,7 +474,7 @@ fn invalidation_of_future_optionals() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path = "points";
 
@@ -525,7 +525,7 @@ fn invalidation_timeless() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path = "points";
 

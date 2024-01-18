@@ -259,7 +259,7 @@ macro_rules! impl_query_archetype_latest_at {
 
 
             self.with_latest_at::<A, _, _>(
-                store.id().clone(),
+                store,
                 entity_path.clone(),
                 query,
                 |latest_at_cache| latest_at_callback(query, latest_at_cache),

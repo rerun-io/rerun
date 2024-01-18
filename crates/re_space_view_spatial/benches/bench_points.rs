@@ -59,7 +59,7 @@ fn bench_points(c: &mut criterion::Criterion) {
         store.insert_row(&data_row).unwrap();
         store
     };
-    let caches = Caches::default();
+    let caches = Caches::new(&store);
 
     let latest_at = LatestAtQuery::latest(timeline);
     let at = latest_at.at;

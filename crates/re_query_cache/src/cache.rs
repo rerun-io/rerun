@@ -9,7 +9,7 @@ use parking_lot::RwLock;
 use paste::paste;
 use seq_macro::seq;
 
-use re_data_store::{LatestAtQuery, RangeQuery, StoreDiff, StoreEvent, StoreSubscriber};
+use re_data_store::{DataStore, LatestAtQuery, RangeQuery, StoreDiff, StoreEvent, StoreSubscriber};
 use re_log_types::{EntityPath, RowId, StoreId, TimeInt, TimeRange, Timeline};
 use re_query::ArchetypeView;
 use re_types_core::{
@@ -44,9 +44,32 @@ impl From<RangeQuery> for AnyQuery {
 
 /// Maintains the top-level cache mappings.
 //
-// NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
-#[derive(Default)]
-pub struct Caches(pub(crate) RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>);
+pub struct Caches {
+    /// The [`StoreId`] of the associated [`DataStore`].
+    store_id: StoreId,
+
+    // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
+    per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>,
+}
+
+impl std::ops::Deref for Caches {
+    type Target = RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.per_cache_key
+    }
+}
+
+impl Caches {
+    #[inline]
+    pub fn new(store: &DataStore) -> Self {
+        Self {
+            store_id: store.id().clone(),
+            per_cache_key: Default::default(),
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct CachesPerArchetype {
@@ -101,7 +124,7 @@ impl Caches {
     // TODO(#4731): expose palette command.
     #[inline]
     pub fn clear(&self) {
-        self.0.write().clear();
+        self.write().clear();
     }
 
     /// Gives write access to the appropriate `LatestAtCache` according to the specified
@@ -109,7 +132,7 @@ impl Caches {
     #[inline]
     pub fn with_latest_at<A, F, R>(
         &self,
-        store_id: StoreId,
+        store: &DataStore,
         entity_path: EntityPath,
         query: &LatestAtQuery,
         mut f: F,
@@ -118,10 +141,17 @@ impl Caches {
         A: Archetype,
         F: FnMut(&mut LatestAtCache) -> R,
     {
-        let key = CacheKey::new(store_id, entity_path, query.timeline);
+        assert!(
+            self.store_id == *store.id(),
+            "attempted to use a query cache {} with the wrong datastore ({})",
+            self.store_id,
+            store.id(),
+        );
+
+        let key = CacheKey::new(entity_path, query.timeline);
 
         let cache = {
-            let caches_per_archetype = Arc::clone(self.0.write().entry(key.clone()).or_default());
+            let caches_per_archetype = Arc::clone(self.write().entry(key.clone()).or_default());
             // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
             let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
@@ -129,7 +159,7 @@ impl Caches {
             // same `CacheKey` but a different `ArchetypeName` can run once again.
             if removed_bytes > 0 {
                 re_log::trace!(
-                    store_id = %key.store_id,
+                    store_id=%self.store_id,
                     entity_path = %key.entity_path,
                     removed = removed_bytes,
                     "invalidated latest-at caches"
@@ -152,7 +182,7 @@ impl Caches {
     #[inline]
     pub fn with_range<A, F, R>(
         &self,
-        store_id: StoreId,
+        store: &DataStore,
         entity_path: EntityPath,
         query: &RangeQuery,
         mut f: F,
@@ -161,10 +191,17 @@ impl Caches {
         A: Archetype,
         F: FnMut(&mut RangeCache) -> R,
     {
-        let key = CacheKey::new(store_id, entity_path, query.timeline);
+        assert!(
+            self.store_id == *store.id(),
+            "attempted to use a query cache {} with the wrong datastore ({})",
+            self.store_id,
+            store.id(),
+        );
+
+        let key = CacheKey::new(entity_path, query.timeline);
 
         let cache = {
-            let caches_per_archetype = Arc::clone(self.0.write().entry(key.clone()).or_default());
+            let caches_per_archetype = Arc::clone(self.write().entry(key.clone()).or_default());
             // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
             let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
@@ -172,7 +209,7 @@ impl Caches {
             // same `CacheKey` but a different `ArchetypeName` can run once again.
             if removed_bytes > 0 {
                 re_log::trace!(
-                    store_id = %key.store_id,
+                    store_id=%self.store_id,
                     entity_path = %key.entity_path,
                     removed = removed_bytes,
                     "invalidated latest-at caches"
@@ -194,9 +231,6 @@ impl Caches {
 /// Uniquely identifies cached query results in the [`Caches`].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CacheKey {
-    /// Which [`re_data_store::DataStore`] is the query targeting?
-    pub store_id: StoreId,
-
     /// Which [`EntityPath`] is the query targeting?
     pub entity_path: EntityPath,
 
@@ -206,13 +240,8 @@ pub struct CacheKey {
 
 impl CacheKey {
     #[inline]
-    pub fn new(
-        store_id: impl Into<StoreId>,
-        entity_path: impl Into<EntityPath>,
-        timeline: impl Into<Timeline>,
-    ) -> Self {
+    pub fn new(entity_path: impl Into<EntityPath>, timeline: impl Into<Timeline>) -> Self {
         Self {
-            store_id: store_id.into(),
             entity_path: entity_path.into(),
             timeline: timeline.into(),
         }
@@ -237,7 +266,6 @@ impl StoreSubscriber for Caches {
         self
     }
 
-    // TODO(cmc): support dropped recordings.
     fn on_events(&mut self, events: &[StoreEvent]) {
         re_tracing::profile_function!(format!("num_events={}", events.len()));
 
@@ -249,6 +277,13 @@ impl StoreSubscriber for Caches {
                 diff,
             } = event;
 
+            assert!(
+                self.store_id == *store_id,
+                "attempted to use a query cache {} with the wrong datastore ({})",
+                self.store_id,
+                store_id,
+            );
+
             let StoreDiff {
                 kind: _, // Don't care: both additions and deletions invalidate query results.
                 row_id: _,
@@ -259,7 +294,7 @@ impl StoreSubscriber for Caches {
 
             #[derive(Default, Debug)]
             struct CompactedEvents {
-                timeless: HashSet<(StoreId, EntityPath)>,
+                timeless: HashSet<EntityPath>,
                 timeful: HashMap<CacheKey, TimeInt>,
             }
 
@@ -268,19 +303,17 @@ impl StoreSubscriber for Caches {
                 re_tracing::profile_scope!("compact events");
 
                 if times.is_empty() {
-                    compacted
-                        .timeless
-                        .insert((store_id.clone(), entity_path.clone()));
+                    compacted.timeless.insert(entity_path.clone());
                 }
 
                 for &(timeline, time) in times {
-                    let key = CacheKey::new(store_id.clone(), entity_path.clone(), timeline);
+                    let key = CacheKey::new(entity_path.clone(), timeline);
                     let min_time = compacted.timeful.entry(key).or_insert(TimeInt::MAX);
                     *min_time = TimeInt::min(*min_time, time);
                 }
             }
 
-            let caches = self.0.write();
+            let caches = self.write();
             // NOTE: Don't release the top-level lock -- even though this cannot happen yet with
             // our current macro-architecture, we want to prevent queries from concurrently
             // running while we're updating the invalidation flags.
@@ -292,9 +325,9 @@ impl StoreSubscriber for Caches {
             {
                 re_tracing::profile_scope!("timeless");
 
-                for (store_id, entity_path) in compacted.timeless {
+                for entity_path in compacted.timeless {
                     for (key, caches_per_archetype) in caches.iter() {
-                        if key.store_id == store_id && key.entity_path == entity_path {
+                        if key.entity_path == entity_path {
                             caches_per_archetype.write().pending_timeless_invalidation = true;
                         }
                     }
