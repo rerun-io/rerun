@@ -123,7 +123,7 @@ impl AppState {
     ) {
         re_tracing::profile_function!();
 
-        let blueprint_query = self.blueprint_query();
+        let blueprint_query = self.blueprint_query_for_viewer();
 
         let Self {
             app_options,
@@ -417,7 +417,12 @@ impl AppState {
             .retain(|store_id, _| store_hub.contains_recording(store_id));
     }
 
-    pub fn blueprint_query(&self) -> LatestAtQuery {
+    /// Returns the blueprint query that should be used for generating the current
+    /// layout of the viewer.
+    ///
+    /// If `inspect_blueprint_timeline` is enabled, we use the time selection from the
+    /// blueprint `time_ctrl`. Otherwise, we use a latest query from the blueprint timeline.
+    pub fn blueprint_query_for_viewer(&self) -> LatestAtQuery {
         if self.app_options.inspect_blueprint_timeline {
             self.blueprint_cfg.time_ctrl.read().current_query().clone()
         } else {

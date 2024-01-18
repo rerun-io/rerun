@@ -3,7 +3,7 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
 use re_viewer_context::{
-    blueprint_timepoint, CommandSender, StoreContext, SystemCommand, SystemCommandSender,
+    blueprint_timepoint_for_writes, CommandSender, StoreContext, SystemCommand, SystemCommandSender,
 };
 
 /// Blueprint for top-level application
@@ -116,7 +116,7 @@ impl<'a> AppBlueprint<'a> {
         if let Some(blueprint_db) = self.blueprint_db {
             let entity_path = EntityPath::from(panel_name);
 
-            let timepoint = blueprint_timepoint();
+            let timepoint = blueprint_timepoint_for_writes();
 
             let component = PanelView(is_expanded);
 

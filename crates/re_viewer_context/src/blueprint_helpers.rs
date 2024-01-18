@@ -7,8 +7,9 @@ pub fn blueprint_timeline() -> Timeline {
     Timeline::new_temporal("blueprint")
 }
 
+/// The timepoint to use when writing an update to the blueprint.
 #[inline]
-pub fn blueprint_timepoint() -> TimePoint {
+pub fn blueprint_timepoint_for_writes() -> TimePoint {
     TimePoint::from([(blueprint_timeline(), Time::now().into())])
 }
 
@@ -19,7 +20,7 @@ impl ViewerContext<'_> {
         C: re_types::Component + Clone + 'a,
         std::borrow::Cow<'a, C>: std::convert::From<C>,
     {
-        let timepoint = blueprint_timepoint();
+        let timepoint = blueprint_timepoint_for_writes();
 
         match DataRow::from_cells1_sized(
             RowId::new(),
@@ -46,7 +47,7 @@ impl ViewerContext<'_> {
     where
         C: re_types::Component + 'a,
     {
-        let timepoint = blueprint_timepoint();
+        let timepoint = blueprint_timepoint_for_writes();
 
         let datatype = C::arrow_datatype();
 

@@ -15,7 +15,7 @@ use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{
-    blueprint_timepoint, gpu_bridge::colormap_dropdown_button_ui, HoverHighlight, Item,
+    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, HoverHighlight, Item,
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender as _,
     UiVerbosity, ViewerContext,
 };
@@ -781,7 +781,7 @@ fn blueprint_ui(
                         if let Some(new_entity_path_filter) =
                             entity_path_filter_ui(ui, &query.entity_path_filter)
                         {
-                            let timepoint = blueprint_timepoint();
+                            let timepoint = blueprint_timepoint_for_writes();
                             let expressions_component =
                                 QueryExpressions::from(&new_entity_path_filter);
 

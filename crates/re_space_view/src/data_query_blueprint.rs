@@ -11,7 +11,7 @@ use re_log_types::{
 };
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-    blueprint_timepoint, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
+    blueprint_timepoint_for_writes, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
     DataResultNode, DataResultTree, IndicatorMatchingEntities, PerVisualizer, PropertyOverrides,
     SpaceViewClassIdentifier, SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _,
     ViewSystemIdentifier, ViewerContext, VisualizableEntities,
@@ -130,7 +130,7 @@ impl DataQueryBlueprint {
     }
 
     fn save_expressions(&self, ctx: &ViewerContext<'_>, entity_path_filter: &EntityPathFilter) {
-        let timepoint = blueprint_timepoint();
+        let timepoint = blueprint_timepoint_for_writes();
 
         let expressions_component = QueryExpressions::from(entity_path_filter);
 

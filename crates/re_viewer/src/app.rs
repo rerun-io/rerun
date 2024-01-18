@@ -1185,7 +1185,7 @@ impl eframe::App for App {
 
         let app_blueprint = AppBlueprint::new(
             store_context.as_ref(),
-            &self.state.blueprint_query(),
+            &self.state.blueprint_query_for_viewer(),
             egui_ctx,
         );
 

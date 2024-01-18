@@ -11,10 +11,10 @@ use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin, Visible};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-    blueprint_timepoint, DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults,
-    PerSystemEntities, PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier,
-    SpaceViewHighlights, SpaceViewId, SpaceViewState, StoreContext, SystemCommand,
-    SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
+    blueprint_timepoint_for_writes, DataQueryId, DataResult, DynSpaceViewClass,
+    PerSystemDataResults, PerSystemEntities, PropertyOverrides, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState, StoreContext,
+    SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::system_execution::create_and_run_space_view_systems;
@@ -211,7 +211,7 @@ impl SpaceViewBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        let timepoint = blueprint_timepoint();
+        let timepoint = blueprint_timepoint_for_writes();
 
         let Self {
             id,

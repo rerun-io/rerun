@@ -9,8 +9,8 @@ use re_types::Loggable;
 use smallvec::SmallVec;
 
 use crate::{
-    blueprint_timepoint, SpaceViewHighlights, SpaceViewId, SystemCommand, SystemCommandSender as _,
-    ViewSystemIdentifier, ViewerContext,
+    blueprint_timepoint_for_writes, SpaceViewHighlights, SpaceViewId, SystemCommand,
+    SystemCommandSender as _, ViewSystemIdentifier, ViewerContext,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -119,7 +119,7 @@ impl DataResult {
             return;
         };
 
-        let timepoint = blueprint_timepoint();
+        let timepoint = blueprint_timepoint_for_writes();
 
         let row =
             DataRow::from_cells1_sized(RowId::new(), override_path.clone(), timepoint, 1, cell)
