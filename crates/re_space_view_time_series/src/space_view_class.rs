@@ -112,7 +112,31 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         .unwrap_or_default();
 
         ctx.re_ui
-            .selection_grid(ui, "time_series_selection_ui")
+            .selection_grid(ui, "time_series_selection_ui_aggregation")
+            .show(ui, |ui| {
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Aggregation")
+                    .on_hover_text("Configures the aggregation behavior of the plot when the zoom-level on the X axis goes below 1.0, i.e. a single pixel covers more than one tick worth of data.\nThis can greatly improve performance (and readability) in such situations as it prevents overdraw.");
+
+                let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
+
+                egui::ComboBox::from_id_source("aggregation_mode")
+                    .selected_text(agg_mode.to_string())
+                    .show_ui(ui, |ui| {
+                        ui.style_mut().wrap = Some(false);
+                        ui.set_min_width(64.0);
+
+                        for variant in TimeSeriesAggregator::variants() {
+                            ui.selectable_value(&mut agg_mode, variant, variant.to_string());
+                        }
+                    });
+
+                root_entity_properties.time_series_aggregator =
+                    EditableAutoValue::UserEdited(agg_mode);
+            });
+
+        ctx.re_ui
+            .selection_grid(ui, "time_series_selection_ui_legend")
             .show(ui, |ui| {
                 ctx.re_ui.grid_left_hand_label(ui, "Legend");
 
@@ -166,6 +190,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                         ctx.save_blueprint_component(&space_view_id.as_entity_path(), edit_legend);
                     }
                 });
+
                 ui.end_row();
             });
     }
