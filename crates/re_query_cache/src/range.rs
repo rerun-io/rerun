@@ -114,7 +114,6 @@ macro_rules! impl_query_archetype_range {
                 re_tracing::profile_scope!("iter");
 
                 let entry_range = bucket.entry_range(time_range);
-        dbg!(&entry_range);
 
                 let it = itertools::izip!(
                     bucket.range_data_times(entry_range.clone()),
@@ -180,14 +179,10 @@ macro_rules! impl_query_archetype_range {
             let mut range_callback = |query: &RangeQuery, range_cache: &mut crate::RangeCache| {
                 re_tracing::profile_scope!("range", format!("{query:?}"));
 
-                eprintln!("query 1: {query:?}");
-
                 // NOTE: Same logic as what the store does.
                 if query.range.min <= TimeInt::MIN {
                     let mut reduced_query = query.clone();
                     reduced_query.range.max = TimeInt::MIN; // inclusive
-
-                    eprintln!("query timeless: {reduced_query:?}");
 
                     // NOTE: `+ 2` because we always grab the indicator component as well as the
                     // instance keys.
@@ -205,10 +200,7 @@ macro_rules! impl_query_archetype_range {
                 let mut query = query.clone();
                 query.range.min = TimeInt::max((TimeInt::MIN.as_i64() + 1).into(), query.range.min);
 
-                eprintln!("query 2: {query:?}");
-
                 for reduced_query in range_cache.compute_queries(&query) {
-                    eprintln!("query 2: {reduced_query:?}");
                     // NOTE: `+ 2` because we always grab the indicator component as well as the
                     // instance keys.
                     let arch_views =
