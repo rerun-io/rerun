@@ -71,6 +71,12 @@ pub struct TimeSeriesSystem {
 
     /// Earliest time an entity was recorded at on the current timeline.
     pub min_time: Option<i64>,
+
+    /// What kind of aggregation was used to compute the graph?
+    pub agg_mode: TimeSeriesAggregator,
+
+    /// How many X ticks does each final value represent?
+    pub agg_range: f64,
 }
 
 impl IdentifiedViewSystem for TimeSeriesSystem {
@@ -228,6 +234,8 @@ impl TimeSeriesSystem {
                     .time_series_aggregator
                     .get();
 
+                self.agg_mode = *agg_mode;
+
                 re_tracing::profile_scope!("aggregate", agg_mode.to_string());
 
                 match agg_mode {
@@ -246,6 +254,8 @@ impl TimeSeriesSystem {
                     }
                 }
             };
+            self.agg_range = agg_range;
+
             re_tracing::profile_scope!("secondary", &data_result.entity_path.to_string());
 
             let min_time = store
@@ -351,6 +361,7 @@ impl TimeSeriesSystem {
         }
     }
 }
+
 // ---
 
 trait Aggregator {
