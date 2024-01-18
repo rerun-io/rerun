@@ -112,6 +112,7 @@ impl Viewport<'_, '_> {
         let response = ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
             .subdued(!container_visible)
             .selected(ctx.selection().contains_item(&item))
+            .label_style(re_ui::LabelStyle::Container)
             .with_icon(crate::icon_for_container_kind(&container.kind()))
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, parent_visible, &mut visible);

@@ -675,6 +675,7 @@ fn show_list_item_for_container_child(
             (
                 Item::Container(child_tile_id),
                 ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
+                    .label_style(re_ui::LabelStyle::Container)
                     .with_icon(icon_for_container_kind(&container.kind())),
             )
         }

@@ -57,6 +57,9 @@ pub enum LabelStyle {
 
     /// Label displaying the placeholder text for a yet unnamed item (e.g. an unnamed space view).
     Unnamed,
+
+    /// Label for containers, which are subdued compared to space views to make them distinctive
+    Container,
 }
 
 // ----------------------------------------------------------------------------
@@ -925,7 +928,7 @@ impl ReUi {
 
         let mut text: egui::WidgetText = text.into();
         match style {
-            LabelStyle::Normal => {}
+            LabelStyle::Normal | LabelStyle::Container => {}
             LabelStyle::Unnamed => {
                 // TODO(ab): use design tokens
                 text = text.italics();
@@ -990,6 +993,10 @@ impl ReUi {
                 LabelStyle::Unnamed => {
                     // TODO(ab): use design tokens
                     text_color = text_color.gamma_multiply(0.5);
+                }
+                LabelStyle::Container => {
+                    // TODO(ab): use design tokens
+                    text_color = ui.visuals().widgets.noninteractive.text_color();
                 }
             }
             ui.painter()

@@ -325,6 +325,11 @@ impl<'a> ListItem<'a> {
             LabelStyle::Unnamed => {
                 self.italics = true;
             }
+            LabelStyle::Container => {
+                self.text = self
+                    .text
+                    .color(ui.visuals().widgets.noninteractive.text_color());
+            }
         }
 
         if self.italics {
@@ -455,7 +460,7 @@ impl<'a> ListItem<'a> {
             }
 
             match self.label_style {
-                LabelStyle::Normal => {}
+                LabelStyle::Normal | LabelStyle::Container => {}
                 LabelStyle::Unnamed => {
                     self.text = self.text.color(visuals.fg_stroke.color.gamma_multiply(0.5));
                 }
