@@ -99,7 +99,7 @@ impl<'a> ViewerContext<'a> {
         &self,
         entity_path: &EntityPath,
     ) -> re_data_store::LatestAtQuery {
-        if self.app_options.show_blueprint_timeline
+        if self.app_options.inspect_blueprint_timeline
             && self.store_context.blueprint.is_logged_entity(entity_path)
         {
             self.blueprint_cfg.time_ctrl.read().current_query()

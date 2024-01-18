@@ -35,7 +35,7 @@ pub enum SystemCommand {
 
     /// Show a timeline of the blueprint data.
     #[cfg(debug_assertions)]
-    ShowBlueprintTimeline(bool),
+    EnableInspectBlueprintTimeline(bool),
 
     /// Enable or disable the experimental dataframe space views.
     EnableExperimentalDataframeSpaceView(bool),

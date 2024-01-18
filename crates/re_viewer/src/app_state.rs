@@ -20,7 +20,7 @@ use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_pane
 
 const WATERMARK: bool = false; // Nice for recording media material
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppState {
     /// Global options for the whole viewer.
@@ -52,6 +52,23 @@ pub struct AppState {
     /// that last several frames.
     #[serde(skip)]
     pub(crate) focused_item: Option<re_viewer_context::Item>,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            app_options: Default::default(),
+            cache: Default::default(),
+            recording_configs: Default::default(),
+            blueprint_cfg: Default::default(),
+            selection_panel: Default::default(),
+            time_panel: Default::default(),
+            blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
+            welcome_screen: Default::default(),
+            viewport_state: Default::default(),
+            focused_item: Default::default(),
+        }
+    }
 }
 
 impl AppState {
@@ -263,23 +280,16 @@ impl AppState {
             focused_item,
         };
 
-        if app_options.show_blueprint_timeline {
-            blueprint_panel.show_panel(
-                &ctx,
-                ctx.store_context.blueprint,
-                blueprint_cfg,
-                ui,
-                app_blueprint.time_panel_expanded,
-            );
-        } else {
-            time_panel.show_panel(
-                &ctx,
-                ctx.entity_db,
-                ctx.rec_cfg,
-                ui,
-                app_blueprint.time_panel_expanded,
-            );
+        if app_options.inspect_blueprint_timeline {
+            blueprint_panel.show_panel(&ctx, ctx.store_context.blueprint, blueprint_cfg, ui, true);
         }
+        time_panel.show_panel(
+            &ctx,
+            ctx.entity_db,
+            ctx.rec_cfg,
+            ui,
+            app_blueprint.time_panel_expanded,
+        );
         selection_panel.show_panel(
             &ctx,
             ui,
@@ -368,7 +378,7 @@ impl AppState {
                 more_data_is_coming,
             );
 
-            let blueprint_needs_repaint = if ctx.app_options.show_blueprint_timeline {
+            let blueprint_needs_repaint = if ctx.app_options.inspect_blueprint_timeline {
                 ctx.blueprint_cfg.time_ctrl.write().update(
                     ctx.store_context.blueprint.times_per_timeline(),
                     dt,
@@ -408,7 +418,7 @@ impl AppState {
     }
 
     pub fn blueprint_query(&self) -> LatestAtQuery {
-        if self.app_options.show_blueprint_timeline {
+        if self.app_options.inspect_blueprint_timeline {
             self.blueprint_cfg.time_ctrl.read().current_query().clone()
         } else {
             LatestAtQuery::latest(blueprint_timeline())

@@ -23,8 +23,6 @@ use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{
     HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, ViewerContext,
 };
-#[cfg(debug_assertions)]
-use re_viewer_context::{SystemCommand, SystemCommandSender};
 
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
@@ -69,6 +67,22 @@ impl TimePanelItem {
     }
 }
 
+#[derive(Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+enum TimePanelSource {
+    #[default]
+    Recording,
+    Blueprint,
+}
+
+impl From<TimePanelSource> for egui::Id {
+    fn from(source: TimePanelSource) -> Self {
+        match source {
+            TimePanelSource::Recording => "recording".into(),
+            TimePanelSource::Blueprint => "blueprint".into(),
+        }
+    }
+}
+
 /// A panel that shows entity names to the left, time on the top.
 ///
 /// This includes the timeline controls and streams view.
@@ -90,6 +104,9 @@ pub struct TimePanel {
 
     /// Ui elements for controlling time.
     time_control_ui: TimeControlUi,
+
+    /// Which source is the time panel controlling
+    source: TimePanelSource,
 }
 
 impl Default for TimePanel {
@@ -100,11 +117,19 @@ impl Default for TimePanel {
             next_col_right: 0.0,
             time_ranges_ui: Default::default(),
             time_control_ui: TimeControlUi,
+            source: TimePanelSource::Recording,
         }
     }
 }
 
 impl TimePanel {
+    pub fn new_blueprint_panel() -> Self {
+        TimePanel {
+            source: TimePanelSource::Blueprint,
+            ..Default::default()
+        }
+    }
+
     pub fn show_panel(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -136,7 +161,9 @@ impl TimePanel {
 
         let window_height = ui.ctx().screen_rect().height();
 
-        let collapsed = egui::TopBottomPanel::bottom("time_panel_collapsed")
+        let id: egui::Id = self.source.into();
+
+        let collapsed = egui::TopBottomPanel::bottom(id.with("time_panel_collapsed"))
             .resizable(false)
             .show_separator_line(false)
             .frame(panel_frame)
@@ -144,7 +171,7 @@ impl TimePanel {
 
         let min_height = 150.0;
         let min_top_space = 150.0 + screen_header_height;
-        let expanded = egui::TopBottomPanel::bottom("time_panel_expanded")
+        let expanded = egui::TopBottomPanel::bottom(id.with("time_panel_expanded"))
             .resizable(true)
             .show_separator_line(false)
             .frame(panel_frame)
@@ -777,17 +804,12 @@ impl TimePanel {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
 
-                #[cfg(debug_assertions)]
+                if self.source == TimePanelSource::Blueprint
+                    && ctx.app_options.inspect_blueprint_timeline
                 {
-                    if ui
-                        .selectable_label(ctx.app_options.show_blueprint_timeline, "View Blueprint")
-                        .clicked()
-                    {
-                        ctx.command_sender
-                            .send_system(SystemCommand::ShowBlueprintTimeline(
-                                !ctx.app_options.show_blueprint_timeline,
-                            ));
-                    }
+                    // TODO(jleibs): Once we can edit blueprint while in follow mode, show
+                    // this conditionally.
+                    ui.label(ctx.re_ui.warning_text("Blueprint Editing is Disabled"));
                 }
             });
         }

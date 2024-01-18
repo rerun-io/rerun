@@ -38,8 +38,8 @@ pub struct AppOptions {
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
-    /// Includes the blueprint in the timeline view.
-    pub show_blueprint_timeline: bool,
+    /// Inspect the blueprint timeline.
+    pub inspect_blueprint_timeline: bool,
 
     /// Disable garbage collection of the blueprint.
     pub disable_blueprint_gc: bool,
@@ -72,7 +72,7 @@ impl Default for AppOptions {
 
             show_picking_debug_overlay: false,
 
-            show_blueprint_timeline: false,
+            inspect_blueprint_timeline: false,
 
             disable_blueprint_gc: false,
 
