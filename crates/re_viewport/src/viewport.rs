@@ -494,6 +494,10 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         else {
             // The space view's systems haven't been executed.
             // This should never happen, but if it does anyways we can't display the space view.
+            re_log::error_once!(
+                "Visualizers for space view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
+                space_view_blueprint.display_name_or_default()
+            ); // TODO(#4433): This should go to analytics
             return Default::default();
         };
 
