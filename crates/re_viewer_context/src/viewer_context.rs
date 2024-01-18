@@ -3,7 +3,6 @@ use parking_lot::RwLock;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
-use re_log_types::EntityPath;
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
@@ -88,24 +87,6 @@ impl<'a> ViewerContext<'a> {
     /// The current time query, based on the current time control.
     pub fn current_query(&self) -> re_data_store::LatestAtQuery {
         self.rec_cfg.time_ctrl.read().current_query()
-    }
-
-    /// The current time query, based on the current time control and an `entity_path`
-    ///
-    /// If the blueprint timeline is visible, and the `entity_path` is on the blueprint
-    /// timeline, then the blueprint timeline is used. Otherwise, return the regular
-    /// timeline.
-    pub fn current_query_for_entity_path(
-        &self,
-        entity_path: &EntityPath,
-    ) -> re_data_store::LatestAtQuery {
-        if self.app_options.inspect_blueprint_timeline
-            && self.store_context.blueprint.is_logged_entity(entity_path)
-        {
-            self.blueprint_cfg.time_ctrl.read().current_query()
-        } else {
-            self.rec_cfg.time_ctrl.read().current_query()
-        }
     }
 }
 

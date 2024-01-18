@@ -1,4 +1,3 @@
-use re_data_store::DataStore;
 use re_log_types::{DataCell, DataRow, EntityPath, RowId, Time, TimePoint, Timeline};
 
 use crate::{SystemCommand, SystemCommandSender as _, ViewerContext};
@@ -70,14 +69,6 @@ impl ViewerContext<'_> {
                 // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
                 re_log::error_once!("Failed to create DataRow for blueprint component: {}", err);
             }
-        }
-    }
-
-    pub fn choose_store_for_query(&self, query: &re_data_store::LatestAtQuery) -> &DataStore {
-        if query.timeline == blueprint_timeline() {
-            self.store_context.blueprint.store()
-        } else {
-            self.entity_db.store()
         }
     }
 }

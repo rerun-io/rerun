@@ -514,7 +514,11 @@ pub fn picking(
             .contains(&instance_path.entity_path.hash());
         let picked_image_with_coords =
             if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-                let meaning = image_meaning_for_entity(&instance_path.entity_path, ctx);
+                let meaning = image_meaning_for_entity(
+                    &instance_path.entity_path,
+                    &query.latest_at_query(),
+                    store,
+                );
 
                 store
                     .query_latest_component::<TensorData>(

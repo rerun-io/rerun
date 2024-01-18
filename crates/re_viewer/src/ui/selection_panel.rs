@@ -41,6 +41,31 @@ pub(crate) struct SelectionPanel {
     add_space_view_or_container_modal: AddSpaceViewOrContainerModal,
 }
 
+/// The current time query, based on the current time control and an `entity_path`
+///
+/// If the user is inspecting the blueprint, and the `entity_path` is on the blueprint
+/// timeline, then use the blueprint. Otherwise use the recording.
+// TODO(jleibs): Ideally this wouldn't be necessary and we could make the assessment
+// directly from the entity_path.
+fn guess_query_and_store_for_selected_entity<'a>(
+    ctx: &'a ViewerContext<'_>,
+    entity_path: &EntityPath,
+) -> (re_data_store::LatestAtQuery, &'a re_data_store::DataStore) {
+    if ctx.app_options.inspect_blueprint_timeline
+        && ctx.store_context.blueprint.is_logged_entity(entity_path)
+    {
+        (
+            ctx.blueprint_cfg.time_ctrl.read().current_query(),
+            &ctx.store_context.blueprint.store(),
+        )
+    } else {
+        (
+            ctx.rec_cfg.time_ctrl.read().current_query(),
+            ctx.entity_db.store(),
+        )
+    }
+}
+
 impl SelectionPanel {
     pub fn show_panel(
         &mut self,
@@ -149,12 +174,11 @@ impl SelectionPanel {
 
                 if let Some(data_ui_item) = data_section_ui(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
-                        let query = if let Some(entity_path) = item.entity_path() {
-                            ctx.current_query_for_entity_path(entity_path)
+                        let (query, store) = if let Some(entity_path) = item.entity_path() {
+                            guess_query_and_store_for_selected_entity(ctx, entity_path)
                         } else {
-                            ctx.current_query()
+                            (ctx.current_query(), ctx.entity_db.store())
                         };
-                        let store = ctx.choose_store_for_query(&query);
                         data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, store);
                     });
                 }
@@ -330,8 +354,7 @@ fn what_is_selected_ui(
                 ),
             );
 
-            let query = ctx.current_query_for_entity_path(entity_path);
-            let store = ctx.choose_store_for_query(&query);
+            let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
 
             ui.horizontal(|ui| {
                 ui.label("component of");
@@ -456,8 +479,7 @@ fn list_existing_data_blueprints(
 ) {
     let space_views_with_path = blueprint.space_views_containing_entity_path(ctx, entity_path);
 
-    let query = ctx.current_query_for_entity_path(entity_path);
-    let store = ctx.choose_store_for_query(&query);
+    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
 
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any Space View)");
@@ -512,8 +534,8 @@ fn space_view_top_level_properties(
                     View's origin is the same as this Entity's origin and all transforms are \
                     relative to it.",
                 );
-                let query = ctx.current_query_for_entity_path(&space_view.space_origin);
-                let store = ctx.choose_store_for_query(&query);
+                let (query, store) =
+                    guess_query_and_store_for_selected_entity(ctx, &space_view.space_origin);
                 item_ui::entity_path_button(
                     ctx,
                     &query,
@@ -848,8 +870,10 @@ fn blueprint_ui(
             if let Some(space_view_id) = space_view_id {
                 if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                     if instance_path.instance_key.is_specific() {
-                        let query = ctx.current_query_for_entity_path(&instance_path.entity_path);
-                        let store = ctx.choose_store_for_query(&query);
+                        let (query, store) = guess_query_and_store_for_selected_entity(
+                            ctx,
+                            &instance_path.entity_path,
+                        );
                         ui.horizontal(|ui| {
                             ui.label("Part of");
                             item_ui::entity_path_button(
@@ -1115,8 +1139,7 @@ fn pinhole_props_ui(
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
 ) {
-    let query = ctx.current_query_for_entity_path(entity_path);
-    let store = ctx.entity_db.store();
+    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
     if store
         .query_latest_component::<PinholeProjection>(entity_path, &query)
         .is_some()
@@ -1147,10 +1170,9 @@ fn depth_props_ui(
 ) -> Option<()> {
     re_tracing::profile_function!();
 
-    let query = ctx.current_query_for_entity_path(entity_path);
-    let store = ctx.choose_store_for_query(&query);
+    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
 
-    let meaning = image_meaning_for_entity(entity_path, ctx);
+    let meaning = image_meaning_for_entity(entity_path, &query, store);
 
     if meaning != TensorDataMeaning::Depth {
         return Some(());
@@ -1249,10 +1271,9 @@ fn transform3d_visualization_ui(
 ) {
     re_tracing::profile_function!();
 
-    let query = ctx.current_query_for_entity_path(entity_path);
-    if ctx
-        .entity_db
-        .store()
+    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
+
+    if store
         .query_latest_component::<Transform3D>(entity_path, &query)
         .is_none()
     {
