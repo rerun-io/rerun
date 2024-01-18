@@ -1,7 +1,7 @@
 use egui::{NumExt as _, Ui};
-
 use ehttp::{fetch, Request};
 use poll_promise::Promise;
+
 use re_log_types::LogMsg;
 use re_smart_channel::ReceiveSet;
 use re_viewer_context::SystemCommandSender;
@@ -46,13 +46,24 @@ const THUMBNAIL_RADIUS: f32 = 4.0;
 /// For layout purposes, each example spans multiple cells in the grid. This structure is used to
 /// track the rectangle that spans the block of cells used for the corresponding example, so hover/
 /// click can be detected.
-#[derive(Debug)]
 struct ExampleDescLayout {
     desc: ExampleDesc,
     rect: egui::Rect,
+
+    /// We do an async HEAD request to get the size of the RRD file
+    /// so we can show it to the user.
+    rrd_byte_size_promise: Promise<Option<u64>>,
 }
 
 impl ExampleDescLayout {
+    fn new(egui_ctx: &egui::Context, desc: ExampleDesc) -> Self {
+        ExampleDescLayout {
+            rrd_byte_size_promise: load_file_size(egui_ctx, desc.rrd_url.clone()),
+            desc,
+            rect: egui::Rect::NOTHING,
+        }
+    }
+
     /// Saves the top left corner of the hover/click area for this example.
     fn set_top_left(&mut self, pos: egui::Pos2) {
         self.rect.min = pos;
@@ -71,15 +82,6 @@ impl ExampleDescLayout {
     fn hovered(&self, ui: &egui::Ui, id: egui::Id) -> bool {
         ui.interact(self.rect, id.with(&self.desc.name), egui::Sense::hover())
             .hovered()
-    }
-}
-
-impl From<ExampleDesc> for ExampleDescLayout {
-    fn from(desc: ExampleDesc) -> Self {
-        ExampleDescLayout {
-            desc,
-            rect: egui::Rect::NOTHING,
-        }
     }
 }
 
@@ -103,16 +105,67 @@ impl std::fmt::Display for LoadError {
     }
 }
 
-fn load_manifest(url: String) -> ManifestPromise {
+fn load_manifest(egui_ctx: &egui::Context, url: String) -> ManifestPromise {
     let (sender, promise) = Promise::new();
+    let egui_ctx = egui_ctx.clone(); // So we can wake up the ui thread
 
-    fetch(Request::get(url), move |response| match response {
-        Ok(response) => sender.send(
-            serde_json::from_slice::<ManifestJson>(&response.bytes)
-                .map(|examples| examples.into_iter().map(ExampleDescLayout::from).collect())
-                .map_err(LoadError::Deserialize),
-        ),
-        Err(err) => sender.send(Err(LoadError::Fetch(err))),
+    fetch(Request::get(url), move |response| {
+        match response {
+            Ok(response) => sender.send(
+                serde_json::from_slice::<ManifestJson>(&response.bytes)
+                    .map(|examples| {
+                        examples
+                            .into_iter()
+                            .map(|example| ExampleDescLayout::new(&egui_ctx, example))
+                            .collect()
+                    })
+                    .map_err(LoadError::Deserialize),
+            ),
+            Err(err) => sender.send(Err(LoadError::Fetch(err))),
+        }
+        egui_ctx.request_repaint();
+    });
+
+    promise
+}
+
+/// Do a HEAD request to get the size of a file.
+///
+/// In case of an error, it is logged as DEBUG and
+/// the promise is resolved to `None`.
+fn load_file_size(egui_ctx: &egui::Context, url: String) -> Promise<Option<u64>> {
+    let (sender, promise) = Promise::new();
+    let egui_ctx = egui_ctx.clone(); // So we can wake up the ui thread
+
+    let request = Request {
+        method: "HEAD".into(),
+        ..Request::get(url.clone())
+    };
+
+    fetch(request, move |response| {
+        match response {
+            Ok(response) => {
+                if response.ok {
+                    let headers = &response.headers;
+                    let content_length = headers
+                        .get("content-length")
+                        .or_else(|| headers.get("x-goog-stored-content-length"))
+                        .and_then(|s| s.parse::<u64>().ok());
+                    sender.send(content_length);
+                } else {
+                    re_log::debug!(
+                        "Failed to load file size of {url:?}: {} {}",
+                        response.status,
+                        response.status_text
+                    );
+                }
+            }
+            Err(err) => {
+                re_log::debug!("Failed to load file size of {url:?}: {err}");
+                sender.send(None);
+            }
+        }
+        egui_ctx.request_repaint();
     });
 
     promise
@@ -166,10 +219,10 @@ impl Default for ExamplePage {
 }
 
 impl ExamplePage {
-    pub fn set_manifest_url(&mut self, url: String) {
+    pub fn set_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
         if self.manifest_url != url {
             self.manifest_url = url.clone();
-            self.examples = Some(load_manifest(url));
+            self.examples = Some(load_manifest(egui_ctx, url));
         }
     }
 
@@ -182,7 +235,7 @@ impl ExamplePage {
     ) -> WelcomeScreenResponse {
         let examples = self
             .examples
-            .get_or_insert_with(|| load_manifest(self.manifest_url.clone()));
+            .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
 
         let Some(examples) = examples.ready_mut() else {
             ui.spinner();
@@ -278,7 +331,7 @@ impl ExamplePage {
                                     ui.vertical(|ui| {
                                         example_description(
                                             ui,
-                                            &example.desc,
+                                            example,
                                             example.hovered(ui, self.id),
                                         );
 
@@ -374,17 +427,27 @@ fn example_thumbnail(
     }
 }
 
-fn example_description(ui: &mut Ui, example: &ExampleDesc, hovered: bool) {
-    ui.label(
-        egui::RichText::new(example.title.clone())
-            .strong()
-            .line_height(Some(22.0))
-            .text_style(re_ui::ReUi::welcome_screen_body()),
-    );
+fn example_description(ui: &mut Ui, example: &ExampleDescLayout, hovered: bool) {
+    let desc = &example.desc;
+
+    let title = egui::RichText::new(desc.title.clone())
+        .strong()
+        .line_height(Some(22.0))
+        .text_style(re_ui::ReUi::welcome_screen_body());
+
+    ui.horizontal(|ui| {
+        ui.label(title);
+
+        if let Some(Some(size)) = example.rrd_byte_size_promise.ready().cloned() {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.label(re_format::format_bytes(size as f64));
+            });
+        }
+    });
 
     ui.add_space(4.0);
 
-    let mut desc_text = egui::RichText::new(example.description.clone()).line_height(Some(19.0));
+    let mut desc_text = egui::RichText::new(desc.description.clone()).line_height(Some(19.0));
     if hovered {
         desc_text = desc_text.strong();
     }

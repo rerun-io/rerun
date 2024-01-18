@@ -38,8 +38,8 @@ impl Default for WelcomeScreen {
 }
 
 impl WelcomeScreen {
-    pub fn set_examples_manifest_url(&mut self, url: String) {
-        self.example_page.set_manifest_url(url);
+    pub fn set_examples_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
+        self.example_page.set_manifest_url(egui_ctx, url);
     }
 
     /// Welcome screen shown in place of the viewport when no data is loaded.
