@@ -1,7 +1,5 @@
 use std::fmt::Formatter;
 
-use re_query_cache::external::re_query::ExtraQueryHistory;
-
 #[cfg(feature = "serde")]
 use re_log_types::EntityPath;
 
@@ -97,7 +95,7 @@ impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct EntityProperties {
     pub visible: bool,
-    pub visible_history: ExtraQueryHistory,
+    pub visible_history: re_query::ExtraQueryHistory,
     pub interactive: bool,
 
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
@@ -144,7 +142,7 @@ impl Default for EntityProperties {
     fn default() -> Self {
         Self {
             visible: true,
-            visible_history: ExtraQueryHistory::default(),
+            visible_history: re_query::ExtraQueryHistory::default(),
             interactive: true,
             color_mapper: EditableAutoValue::default(),
             pinhole_image_plane_distance: EditableAutoValue::default(),
