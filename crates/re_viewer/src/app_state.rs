@@ -388,8 +388,8 @@ impl AppState {
                 re_viewer_context::NeedsRepaint::No
             };
 
-            if (recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes)
-                || (blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes)
+            if recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+                || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
             {
                 ui.ctx().request_repaint();
             }
