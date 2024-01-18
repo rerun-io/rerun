@@ -269,6 +269,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let time_series = system_output.view_systems.get::<TimeSeriesSystem>()?;
 
+        let agg_mode = time_series.agg_mode;
+        let agg_range = time_series.agg_range;
+
         // Get the minimum time/X value for the entire plot…
         let min_time = time_series.min_time.unwrap_or(0);
 
@@ -299,17 +302,37 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             })
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
+
                 let is_integer = value.y.round() == value.y;
                 let decimals = if is_integer { 0 } else { 5 };
-                format!(
-                    "{timeline_name}: {}\n{name}: {:.*}",
-                    time_type.format(
-                        (value.x as i64 + time_offset).into(),
-                        time_zone_for_timestamps
-                    ),
-                    decimals,
-                    value.y,
-                )
+
+                let agg_range_is_integer = agg_range.round() == agg_range;
+                let agg_range_decimals = if agg_range_is_integer { 0 } else { 5 };
+
+                if agg_mode == TimeSeriesAggregator::None || agg_range <= 1.0 {
+                    format!(
+                        "{timeline_name}: {}\n{name}: {:.*}",
+                        time_type.format(
+                            (value.x as i64 + time_offset).into(),
+                            time_zone_for_timestamps
+                        ),
+                        decimals,
+                        value.y,
+                    )
+                } else {
+                    format!(
+                        "{timeline_name}: {}\n{name}: {:.*}\nValue aggregated using {} over {:.*} ticks",
+                        time_type.format(
+                            (value.x as i64 + time_offset).into(),
+                            time_zone_for_timestamps
+                        ),
+                        decimals,
+                        value.y,
+                        agg_mode,
+                        agg_range_decimals,
+                        agg_range,
+                    )
+                }
             });
 
         if legend.visible {
