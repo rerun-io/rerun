@@ -3,3 +3,4 @@
 .gitattributes linguist-generated=true
 mod.rs linguist-generated=true
 space_view_blueprint.rs linguist-generated=true
+time_series.rs linguist-generated=true
