@@ -85,9 +85,6 @@ pub fn latest_components(
 /// Iterates over the rows of any number of components and their respective cluster keys, all from
 /// the single point-of-view of the `primary` component, returning an iterator of `DataFrame`s.
 ///
-/// An initial dataframe is yielded with the latest-at state at the start of the time range, if
-/// there is any.
-///
 /// The iterator only ever yields dataframes iff the `primary` component has changed.
 /// A change affecting only secondary components will not yield a dataframe.
 ///
@@ -140,13 +137,7 @@ pub fn range_components<'a, const N: usize>(
             join_type,
         );
 
-        if df.as_ref().map_or(false, |df| {
-            // We only care about the initial state if it A) isn't empty and B) contains any data
-            // at all for the primary component.
-            !df.is_empty() && df.column(primary.as_ref()).is_ok()
-        }) {
-            df_latest = Some(df);
-        }
+        df_latest = Some(df);
     }
 
     let primary_col = components

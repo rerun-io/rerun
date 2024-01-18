@@ -84,9 +84,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
             .map(|(_, row_id, cwi)| (row_id, cwi));
         }
 
-        if cwis_latest_raw[primary_col].is_some() {
-            cwis_latest = Some(cwis_latest_raw);
-        }
+        cwis_latest = Some(cwis_latest_raw);
     }
 
     // send the latest-at state before anything else
