@@ -6,6 +6,7 @@ mod entities_determined_by_user;
 mod included_contents;
 mod included_queries;
 mod legend;
+mod legend_ext;
 mod name;
 mod name_ext;
 mod row_shares;

@@ -5208,6 +5208,7 @@ dependencies = [
  "bytemuck",
  "document-features",
  "ecolor",
+ "egui_plot",
  "glam",
  "half 2.3.1",
  "image",
