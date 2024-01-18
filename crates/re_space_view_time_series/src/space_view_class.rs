@@ -1,17 +1,59 @@
+use std::collections::BTreeMap;
+
 use egui_plot::{Legend, Line, Plot, Points};
+use parking_lot::Mutex;
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
 use re_query::query_archetype;
 use re_space_view::controls;
-use re_viewer_context::external::re_entity_db::EntityProperties;
+use re_viewer_context::external::re_entity_db::{
+    EditableAutoValue, EntityProperties, TimeSeriesAggregator,
+};
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::visualizer_system::{PlotSeriesKind, TimeSeriesSystem};
+
+// ---
+
+#[derive(Debug, Clone)]
+pub struct TimeSeriesSpaceViewFeedback {
+    /// What was the size of the plot canvas in the last frame?
+    pub plot_canvas_size: egui::Vec2,
+
+    /// What were the plot bounds in the last frame?
+    pub plot_bounds: egui_plot::PlotBounds,
+}
+
+impl Default for TimeSeriesSpaceViewFeedback {
+    fn default() -> Self {
+        Self {
+            plot_canvas_size: Default::default(),
+            plot_bounds: egui_plot::PlotBounds::NOTHING,
+        }
+    }
+}
+
+static TIME_SERIES_SPACE_VIEW_FEEDBACK: Mutex<BTreeMap<SpaceViewId, TimeSeriesSpaceViewFeedback>> =
+    Mutex::new(BTreeMap::new());
+
+impl TimeSeriesSpaceViewFeedback {
+    pub fn insert(space_view_id: SpaceViewId, feedback: TimeSeriesSpaceViewFeedback) {
+        TIME_SERIES_SPACE_VIEW_FEEDBACK
+            .lock()
+            .insert(space_view_id, feedback);
+    }
+
+    pub fn remove(space_view_id: &SpaceViewId) -> Option<TimeSeriesSpaceViewFeedback> {
+        TIME_SERIES_SPACE_VIEW_FEEDBACK.lock().remove(space_view_id)
+    }
+}
+
+// ---
 
 #[derive(Clone, Default)]
 pub struct TimeSeriesSpaceViewState {
@@ -101,7 +143,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         _state: &mut Self::State,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
+        root_entity_properties: &mut EntityProperties,
     ) {
         let re_types::blueprint::archetypes::TimeSeries { legend } = query_archetype(
             ctx.store_context.blueprint.store(),
@@ -201,7 +243,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
-        _query: &ViewQuery<'_>,
+        query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
@@ -209,7 +251,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let re_types::blueprint::archetypes::TimeSeries { legend } = query_archetype(
             ctx.store_context.blueprint.store(),
             ctx.blueprint_query,
-            &_query.space_view_id.as_entity_path(),
+            &query.space_view_id.as_entity_path(),
         )
         .and_then(|arch| arch.to_archetype())
         .unwrap_or_default();
@@ -279,11 +321,18 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
         }
 
+        let mut feedback = TimeSeriesSpaceViewFeedback {
+            plot_canvas_size: ui.available_size(),
+            ..Default::default()
+        };
+
         let egui_plot::PlotResponse {
             inner: time_x,
             response,
             transform,
         } = plot.show(ui, |plot_ui| {
+            feedback.plot_bounds = plot_ui.plot_bounds();
+
             if plot_ui.response().secondary_clicked() {
                 let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
                 let timeline = *time_ctrl_write.timeline();
@@ -341,6 +390,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 })
                 .map(|x| plot_ui.screen_from_plot([x, 0.0].into()).x)
         });
+
+        TimeSeriesSpaceViewFeedback::insert(query.space_view_id, feedback);
 
         if let Some(time_x) = time_x {
             let interact_radius = ui.style().interaction.resize_grab_radius_side;
