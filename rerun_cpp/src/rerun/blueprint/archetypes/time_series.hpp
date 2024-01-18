@@ -14,7 +14,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: The top-level description of the Viewport.
+    /// **Archetype**: The configuration options for a `TimeSeries` `SpaceView`.
     struct TimeSeries {
         /// Configuration information for the legend
         rerun::blueprint::components::Legend legend;

@@ -21,7 +21,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: The top-level description of the Viewport.
+/// **Archetype**: The configuration options for a `TimeSeries` `SpaceView`.
 #[derive(Clone, Debug, Default)]
 pub struct TimeSeries {
     /// Configuration information for the legend

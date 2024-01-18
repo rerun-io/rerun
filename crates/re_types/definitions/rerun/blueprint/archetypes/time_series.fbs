@@ -7,7 +7,7 @@ namespace rerun.blueprint.archetypes;
 
 // ---
 
-/// The top-level description of the Viewport.
+/// The configuration options for a `TimeSeries` `SpaceView`.
 table TimeSeries (
     "attr.docs.unreleased",
     "attr.rerun.scope": "blueprint",

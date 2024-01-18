@@ -18,7 +18,7 @@ __all__ = ["TimeSeries"]
 
 @define(str=False, repr=False, init=False)
 class TimeSeries(Archetype):
-    """**Archetype**: The top-level description of the Viewport."""
+    """**Archetype**: The configuration options for a `TimeSeries` `SpaceView`."""
 
     def __init__(self: Any, legend: datatypes.LegendLike):
         """
