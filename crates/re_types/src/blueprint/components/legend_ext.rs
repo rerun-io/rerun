@@ -45,4 +45,13 @@ impl Legend {
     pub fn set_corner(&mut self, corner: egui_plot::Corner) {
         self.0.location = Some(egui_to_u8(corner));
     }
+
+    pub fn to_str(corner: egui_plot::Corner) -> &'static str {
+        match corner {
+            egui_plot::Corner::LeftTop => "Left Top",
+            egui_plot::Corner::RightTop => "Right Top",
+            egui_plot::Corner::LeftBottom => "Left Bottom",
+            egui_plot::Corner::RightBottom => "Right Bottom",
+        }
+    }
 }

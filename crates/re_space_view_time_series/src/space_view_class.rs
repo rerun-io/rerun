@@ -3,10 +3,9 @@ use egui_plot::{Legend, Line, Plot, Points};
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
+use re_query::query_archetype;
 use re_space_view::controls;
-use re_viewer_context::external::re_entity_db::{
-    EditableAutoValue, EntityProperties, LegendCorner,
-};
+use re_viewer_context::external::re_entity_db::EntityProperties;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
@@ -99,54 +98,71 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
-        root_entity_properties: &mut EntityProperties,
+        space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
+        let re_types::blueprint::archetypes::TimeSeries { legend } = query_archetype(
+            ctx.store_context.blueprint.store(),
+            ctx.blueprint_query,
+            &space_view_id.as_entity_path(),
+        )
+        .and_then(|arch| arch.to_archetype())
+        .unwrap_or_default();
+
         ctx.re_ui
             .selection_grid(ui, "time_series_selection_ui")
             .show(ui, |ui| {
                 ctx.re_ui.grid_left_hand_label(ui, "Legend");
 
                 ui.vertical(|ui| {
-                    let mut selected = *root_entity_properties.show_legend.get();
-                    if ctx.re_ui.checkbox(ui, &mut selected, "Visible").changed() {
-                        root_entity_properties.show_legend =
-                            EditableAutoValue::UserEdited(selected);
-                    }
+                    let mut edit_legend = legend.clone();
 
-                    let mut corner = root_entity_properties
-                        .legend_location
-                        .unwrap_or(LegendCorner::RightBottom);
+                    ctx.re_ui
+                        .checkbox(ui, &mut edit_legend.0.visible, "Visible");
+
+                    let mut corner = legend.corner();
 
                     egui::ComboBox::from_id_source("legend_corner")
-                        .selected_text(corner.to_string())
+                        .selected_text(re_types::blueprint::components::Legend::to_str(corner))
                         .show_ui(ui, |ui| {
                             ui.style_mut().wrap = Some(false);
                             ui.set_min_width(64.0);
 
                             ui.selectable_value(
                                 &mut corner,
-                                LegendCorner::LeftTop,
-                                LegendCorner::LeftTop.to_string(),
+                                egui_plot::Corner::LeftTop,
+                                re_types::blueprint::components::Legend::to_str(
+                                    egui_plot::Corner::LeftTop,
+                                ),
                             );
                             ui.selectable_value(
                                 &mut corner,
-                                LegendCorner::RightTop,
-                                LegendCorner::RightTop.to_string(),
+                                egui_plot::Corner::RightTop,
+                                re_types::blueprint::components::Legend::to_str(
+                                    egui_plot::Corner::RightTop,
+                                ),
                             );
                             ui.selectable_value(
                                 &mut corner,
-                                LegendCorner::LeftBottom,
-                                LegendCorner::LeftBottom.to_string(),
+                                egui_plot::Corner::LeftBottom,
+                                re_types::blueprint::components::Legend::to_str(
+                                    egui_plot::Corner::LeftBottom,
+                                ),
                             );
                             ui.selectable_value(
                                 &mut corner,
-                                LegendCorner::RightBottom,
-                                LegendCorner::RightBottom.to_string(),
+                                egui_plot::Corner::RightBottom,
+                                re_types::blueprint::components::Legend::to_str(
+                                    egui_plot::Corner::RightBottom,
+                                ),
                             );
                         });
 
-                    root_entity_properties.legend_location = Some(corner);
+                    edit_legend.set_corner(corner);
+
+                    if legend != edit_legend {
+                        ctx.save_blueprint_component(&space_view_id.as_entity_path(), edit_legend);
+                    }
                 });
                 ui.end_row();
             });
@@ -157,11 +173,19 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        root_entity_properties: &EntityProperties,
+        _root_entity_properties: &EntityProperties,
         _query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let re_types::blueprint::archetypes::TimeSeries { legend } = query_archetype(
+            ctx.store_context.blueprint.store(),
+            ctx.blueprint_query,
+            &_query.space_view_id.as_entity_path(),
+        )
+        .and_then(|arch| arch.to_archetype())
+        .unwrap_or_default();
 
         let (current_time, time_type, timeline) = {
             // Avoid holding the lock for long
@@ -219,15 +243,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 )
             });
 
-        if *root_entity_properties.show_legend {
-            plot = plot.legend(
-                Legend::default().position(
-                    root_entity_properties
-                        .legend_location
-                        .unwrap_or(LegendCorner::RightBottom)
-                        .into(),
-                ),
-            );
+        if legend.visible {
+            plot = plot.legend(Legend::default().position(legend.corner()));
         }
 
         if timeline.typ() == TimeType::Time {

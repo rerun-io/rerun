@@ -19,6 +19,7 @@ all-features = true
 re_data_store.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
+re_query.workspace = true
 re_query_cache.workspace = true
 re_renderer.workspace = true
 re_space_view.workspace = true
