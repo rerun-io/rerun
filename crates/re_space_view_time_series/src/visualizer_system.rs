@@ -469,16 +469,16 @@ impl Aggregator for MinMaxAggregator {
                     MinMaxAggregator::MinMax => {
                         acc_min.value = f64::min(acc_min.value, point.value);
                         acc_min.attrs.radius = f32::min(acc_min.attrs.radius, point.attrs.radius);
-                        acc_max.value = f64::max(acc_min.value, point.value);
-                        acc_max.attrs.radius = f32::max(acc_min.attrs.radius, point.attrs.radius);
+                        acc_max.value = f64::max(acc_max.value, point.value);
+                        acc_max.attrs.radius = f32::max(acc_max.attrs.radius, point.attrs.radius);
                     }
                     MinMaxAggregator::Min => {
                         acc_min.value = f64::min(acc_min.value, point.value);
                         acc_min.attrs.radius = f32::min(acc_min.attrs.radius, point.attrs.radius);
                     }
                     MinMaxAggregator::Max => {
-                        acc_max.value = f64::max(acc_min.value, point.value);
-                        acc_max.attrs.radius = f32::max(acc_min.attrs.radius, point.attrs.radius);
+                        acc_max.value = f64::max(acc_max.value, point.value);
+                        acc_max.attrs.radius = f32::max(acc_max.attrs.radius, point.attrs.radius);
                     }
                 }
 
