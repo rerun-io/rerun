@@ -6,8 +6,12 @@ mod rustdoc;
 
 use camino::Utf8Path;
 use cargo_metadata::Package;
+use indicatif::MultiProgress;
+use indicatif::ProgressBar;
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::cell::RefCell;
+use std::time::Duration;
 
 pub fn run() -> anyhow::Result<Vec<Document>> {
     let ctx = Context::new()?;
@@ -20,6 +24,7 @@ pub fn run() -> anyhow::Result<Vec<Document>> {
 }
 
 struct Context {
+    progress: MultiProgress,
     metadata: cargo_metadata::Metadata,
     id_gen: IdGen,
     documents: RefCell<Vec<Document>>,
@@ -28,10 +33,26 @@ struct Context {
 impl Context {
     fn new() -> anyhow::Result<Self> {
         Ok(Self {
+            progress: MultiProgress::new(),
             metadata: re_build_tools::cargo_metadata()?,
             id_gen: IdGen::new(),
             documents: RefCell::new(Vec::new()),
         })
+    }
+
+    fn progress_bar(&self, prefix: impl Into<Cow<'static, str>>) -> ProgressBar {
+        let bar = ProgressBar::new_spinner().with_prefix(prefix);
+        bar.enable_steady_tick(Duration::from_millis(100));
+        bar.set_style(bar.style().template("{spinner} {prefix}: {msg}").unwrap());
+        self.progress.add(bar)
+    }
+
+    #[allow(clippy::needless_pass_by_value)]
+    fn finish_progress_bar(&self, bar: ProgressBar) {
+        bar.disable_steady_tick();
+        bar.finish_and_clear();
+        self.progress.remove(&bar);
+        let _ = bar;
     }
 
     fn workspace_root(&self) -> &Utf8Path {
@@ -47,7 +68,6 @@ impl Context {
     }
 
     fn push(&self, data: DocumentData) {
-        println!("indexed {} [{}]", data.title, data.url);
         self.documents.borrow_mut().push(Document {
             id: self.id_gen.next(),
             data,
@@ -55,7 +75,9 @@ impl Context {
     }
 
     fn finish(self) -> Vec<Document> {
-        self.documents.into_inner()
+        let documents = self.documents.into_inner();
+        println!("indexed {} documents", documents.len());
+        documents
     }
 }
 

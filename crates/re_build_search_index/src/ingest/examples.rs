@@ -10,9 +10,10 @@ use super::Context;
 const LANGUAGES: &[Language] = &[Language::Python, Language::Rust, Language::Cpp];
 
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
+    let progress = ctx.progress_bar("examples");
+
     let manifest = ExamplesManifest::load(ctx.workspace_root())?;
 
-    // TODO: also generate a document for each category
     for (category_name, category) in &manifest.categories {
         ctx.push(DocumentData {
             kind: DocumentKind::Examples,
@@ -24,6 +25,11 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
         for example_name in &category.examples {
             for language in LANGUAGES.iter().copied() {
+                progress.set_message(format!(
+                    "{category_name}/{example_name}.{}",
+                    language.extension()
+                ));
+
                 let Some(example) = Example::load(ctx.workspace_root(), example_name, language)?
                 else {
                     continue;
@@ -41,6 +47,8 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             }
         }
     }
+
+    ctx.finish_progress_bar(progress);
 
     Ok(())
 }

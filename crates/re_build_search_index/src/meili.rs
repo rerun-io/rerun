@@ -2,15 +2,8 @@ use meilisearch_sdk::{Client, Error, ErrorCode, MeilisearchError, Task};
 
 use crate::ingest::Document;
 
-const INDEX_KEY: &str = "temp";
-
-pub async fn index(documents: &[Document]) -> anyhow::Result<SearchClient> {
-    let client = connect();
-    if index_exists(&client).await? {
-        delete_index(&client).await?; // delete existing index
-    }
-    create_index(&client, documents).await?;
-    Ok(SearchClient { client })
+pub async fn connect(url: &str, master_key: &str) -> anyhow::Result<SearchClient> {
+    SearchClient::connect(url, master_key).await
 }
 
 pub struct SearchClient {
@@ -18,50 +11,72 @@ pub struct SearchClient {
 }
 
 impl SearchClient {
-    pub async fn query(&self, q: &str) -> anyhow::Result<impl Iterator<Item = Document>> {
+    /// Connect to Meilisearch.
+    ///
+    /// `master_key` can be obtained via the Meilisearch could console,
+    /// or set via the `--master-key` option when running a local instance.
+    pub async fn connect(url: &str, master_key: &str) -> anyhow::Result<Self> {
+        let client = Client::new(url, Some(master_key));
+        // this call can only be done with a valid master key
+        let _ = client.get_keys().await?;
+        Ok(Self { client })
+    }
+
+    /// Create an index from `documents`.
+    ///
+    /// If an index with the same name already exists, it is deleted first.
+    pub async fn index(&self, index: &str, documents: &[Document]) -> anyhow::Result<()> {
+        if self.index_exists(index).await? {
+            self.delete_index(index).await?; // delete existing index
+        }
+        self.create_index(index, documents).await
+    }
+
+    /// Query a specific index in the database.
+    pub async fn query(
+        &self,
+        index: &str,
+        q: &str,
+    ) -> anyhow::Result<impl Iterator<Item = Document>> {
         let results = self
             .client
-            .index(INDEX_KEY)
+            .index(index)
             .search()
             .with_query(q)
             .execute()
             .await?;
         Ok(results.hits.into_iter().map(|hit| hit.result))
     }
-}
 
-fn connect() -> Client {
-    Client::new("http://localhost:7700", Some("test"))
-}
-
-async fn index_exists(client: &Client) -> anyhow::Result<bool> {
-    match client.get_index(INDEX_KEY).await {
-        Ok(_) => Ok(true),
-        Err(Error::Meilisearch(MeilisearchError {
-            error_code: ErrorCode::IndexNotFound,
-            ..
-        })) => Ok(false),
-        Err(err) => Err(err.into()),
+    async fn index_exists(&self, index: &str) -> anyhow::Result<bool> {
+        match self.client.get_index(index).await {
+            Ok(_) => Ok(true),
+            Err(Error::Meilisearch(MeilisearchError {
+                error_code: ErrorCode::IndexNotFound,
+                ..
+            })) => Ok(false),
+            Err(err) => Err(err.into()),
+        }
     }
-}
 
-async fn create_index(client: &Client, documents: &[Document]) -> anyhow::Result<()> {
-    client
-        .index(INDEX_KEY)
-        .add_or_update(documents, Some("id"))
-        .await?
-        .wait_for_completion(client, None, None)
-        .await?
-        .to_result()
-}
+    async fn create_index(&self, index: &str, documents: &[Document]) -> anyhow::Result<()> {
+        self.client
+            .index(index)
+            .add_or_update(documents, Some("id"))
+            .await?
+            .wait_for_completion(&self.client, None, None)
+            .await?
+            .to_result()
+    }
 
-async fn delete_index(client: &Client) -> anyhow::Result<()> {
-    client
-        .delete_index(INDEX_KEY)
-        .await?
-        .wait_for_completion(client, None, None)
-        .await?
-        .to_result()
+    async fn delete_index(&self, index: &str) -> anyhow::Result<()> {
+        self.client
+            .delete_index(index)
+            .await?
+            .wait_for_completion(&self.client, None, None)
+            .await?
+            .to_result()
+    }
 }
 
 trait ToResult {

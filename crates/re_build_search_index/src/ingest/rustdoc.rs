@@ -1,6 +1,7 @@
 use super::{Context, DocumentData, DocumentKind};
 use anyhow::Context as _;
 use cargo_metadata::semver::Version;
+use indicatif::ProgressBar;
 use rayon::prelude::IntoParallelIterator;
 use rayon::prelude::ParallelIterator;
 use rustdoc_types::Crate;
@@ -33,9 +34,13 @@ use std::sync::mpsc;
 /// - associated `type`
 /// - associated `fn`
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
+    let progress = ctx.progress_bar("rustdoc (generating json)");
+
     let mut crates = Vec::new();
 
     for pkg in ctx.metadata.workspace_packages() {
+        progress.set_message(pkg.name.clone());
+
         let publish = match pkg.publish.as_deref() {
             Some([]) => false,      // explicitly set to `false`
             Some(_) | None => true, // omitted, set to `true`, or set to specific registry
@@ -58,6 +63,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             .toolchain("nightly")
             .all_features(true)
             .manifest_path(&pkg.manifest_path)
+            .silent(true)
             .build()?;
 
         let file = File::open(&path)
@@ -71,9 +77,23 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let (tx, rx) = mpsc::channel();
     let version = ctx.rerun_pkg().version.clone();
 
+    ctx.finish_progress_bar(progress);
+
     crates
         .into_iter()
-        .for_each(|krate| Visitor::new(&version, &tx, &krate).visit_root());
+        .map(|krate| {
+            (
+                ctx.progress_bar(format!("rustdoc ({})", krate.name())),
+                krate,
+            )
+        })
+        .collect::<Vec<_>>()
+        .into_par_iter()
+        .for_each(|(progress, krate)| {
+            let mut visitor = Visitor::new(progress, &version, &tx, &krate);
+            visitor.visit_root();
+            visitor.progress.finish_and_clear();
+        });
 
     drop(tx);
     for data in rx {
@@ -84,6 +104,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 }
 
 struct Visitor<'a> {
+    progress: ProgressBar,
     visited: HashSet<ItemId>,
     documents: &'a mpsc::Sender<DocumentData>,
     module_path: Vec<String>,
@@ -92,10 +113,16 @@ struct Visitor<'a> {
 }
 
 impl<'a> Visitor<'a> {
-    fn new(version: &Version, documents: &'a mpsc::Sender<DocumentData>, krate: &'a Crate) -> Self {
-        let crate_name = krate.index[&krate.root].name.as_ref().unwrap().clone();
+    fn new(
+        progress: ProgressBar,
+        version: &Version,
+        documents: &'a mpsc::Sender<DocumentData>,
+        krate: &'a Crate,
+    ) -> Self {
+        let crate_name = krate.name();
 
         Self {
+            progress,
             visited: HashSet::new(),
             documents,
             krate,
@@ -146,7 +173,7 @@ impl<'a> Visitor<'a> {
         ));
     }
 
-    fn visit_root(mut self) {
+    fn visit_root(&mut self) {
         let root_module_item = &self.krate.index[&self.krate.root];
 
         let ItemEnum::Module(root_module) = &root_module_item.inner else {
@@ -340,9 +367,8 @@ impl<'a> Visitor<'a> {
 }
 
 fn base_url(version: &Version, krate: &Crate) -> String {
-    let krate_name = krate.index[&krate.root].name.as_ref().unwrap();
     // format!("https://docs.rs/{krate_name}/{version}")
-    format!("https://docs.rs/{krate_name}/latest")
+    format!("https://docs.rs/{}/latest", krate.name())
 }
 
 fn document(path: String, kind: ItemKind, url: String) -> DocumentData {
@@ -414,6 +440,16 @@ impl Display for ParentItemKind {
             ParentItemKind::Trait => "trait",
         };
         f.write_str(s)
+    }
+}
+
+trait CrateExt {
+    fn name(&self) -> String;
+}
+
+impl CrateExt for Crate {
+    fn name(&self) -> String {
+        self.index[&self.root].name.as_ref().unwrap().clone()
     }
 }
 

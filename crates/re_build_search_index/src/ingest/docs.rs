@@ -3,13 +3,18 @@ use std::path::Path;
 use super::{Context, DocumentData, DocumentKind};
 
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
+    let progress = ctx.progress_bar("docs");
+
     let dir = ctx.workspace_root().join("docs").join("content");
     for entry in glob::glob(&format!("{dir}/**/*.md"))? {
         let entry = entry?;
-        let url = format!(
-            "https://rerun.io/docs/{}",
-            entry.strip_prefix(&dir)?.with_extension("").display()
-        );
+        let path = entry
+            .strip_prefix(&dir)?
+            .with_extension("")
+            .display()
+            .to_string();
+        progress.set_message(path.clone());
+        let url = format!("https://rerun.io/docs/{path}");
         let (frontmatter, body) = parse_docs_frontmatter(&entry)?;
 
         ctx.push(DocumentData {
@@ -20,6 +25,8 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             url,
         });
     }
+
+    ctx.finish_progress_bar(progress);
 
     Ok(())
 }

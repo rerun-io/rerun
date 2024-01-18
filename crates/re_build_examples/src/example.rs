@@ -95,6 +95,16 @@ impl Language {
         }
     }
 
+    /// Extension without the leading dot, e.g. `rs`.
+    pub fn extension(&self) -> &'static str {
+        match self {
+            Language::Rust => "rs",
+            Language::Python => "py",
+            Language::C => "c",
+            Language::Cpp => "cpp",
+        }
+    }
+
     /// Path of the file which contains the entrypoint,
     /// relative to `{workspace_root}/examples/{example_name}`.
     ///
