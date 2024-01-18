@@ -1,7 +1,9 @@
-use crate::{Icon, LabelStyle, ReUi};
-use egui::epaint::text::TextWrapping;
-use egui::{Align, Align2, Response, Shape, Ui};
 use std::default::Default;
+
+use egui::epaint::text::TextWrapping;
+use egui::{Align, Align2, NumExt, Response, Shape, Ui};
+
+use crate::{Icon, LabelStyle, ReUi};
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -117,6 +119,7 @@ pub struct ListItem<'a> {
     weak: bool,
     italics: bool,
     label_style: crate::LabelStyle,
+    vertical_line: bool,
     force_hovered: bool,
     collapse_openness: Option<f32>,
     height: f32,
@@ -138,6 +141,7 @@ impl<'a> ListItem<'a> {
             weak: false,
             italics: false,
             label_style: crate::LabelStyle::default(),
+            vertical_line: false,
             force_hovered: false,
             collapse_openness: None,
             height: ReUi::list_item_height(),
@@ -199,6 +203,15 @@ impl<'a> ListItem<'a> {
     #[inline]
     pub fn label_style(mut self, style: crate::LabelStyle) -> Self {
         self.label_style = style;
+        self
+    }
+
+    /// Draw a vertical guide line along the body content.
+    ///
+    /// Used only with [`Self::show_collapsing`].
+    #[inline]
+    pub fn vertical_line(mut self, vertical_line: bool) -> Self {
+        self.vertical_line = vertical_line;
         self
     }
 
@@ -288,6 +301,7 @@ impl<'a> ListItem<'a> {
         self.collapse_openness = Some(state.openness(ui.ctx()));
 
         let re_ui = self.re_ui;
+        let vertical_line = self.vertical_line;
         let response = self.ui(ui, Some(id));
 
         if let Some(collapse_response) = response.collapse_response {
@@ -301,6 +315,21 @@ impl<'a> ListItem<'a> {
 
         let body_response =
             state.show_body_indented(&response.response, ui, |ui| add_body(re_ui, ui));
+
+        if vertical_line {
+            if let Some(body_response) = &body_response {
+                let body_rect = body_response.response.rect;
+                let height_span = egui::Rangef::new(
+                    body_rect.top(),
+                    (body_rect.bottom() - 4.0).at_least(body_rect.top()),
+                );
+                ui.painter().vline(
+                    body_rect.left() + ui.spacing().icon_width_inner / 2.0,
+                    height_span,
+                    ui.visuals().widgets.noninteractive.bg_stroke,
+                );
+            }
+        }
 
         ShowCollapsingResponse {
             item_response: response.response,
