@@ -20,7 +20,6 @@ use re_viewer_context::{
 use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
-    space_view_highlights::highlights_for_space_view,
     system_execution::execute_systems_for_space_views, SpaceInfoCollection, SpaceViewBlueprint,
     ViewportBlueprint,
 };
@@ -39,11 +38,6 @@ pub struct PerSpaceViewState {
 pub struct ViewportState {
     space_view_entity_window: SpaceViewEntityPicker,
     space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
-
-    /// List of all space views that were visible *on screen* (excluding e.g. unselected tabs) the last frame.
-    ///
-    /// TODO(rerun-io/egui_tiles#34): This is needed because we don't know which space views will be visible until we have drawn them.
-    space_views_displayed_last_frame: Vec<SpaceViewId>,
 }
 
 static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);
@@ -213,11 +207,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
             &mut self.tree
         };
 
-        let executed_systems_per_space_view = execute_systems_for_space_views(
-            ctx,
-            std::mem::take(&mut state.space_views_displayed_last_frame),
-            &blueprint.space_views,
-        );
+        let executed_systems_per_space_view =
+            execute_systems_for_space_views(ctx, tree, &blueprint.space_views);
 
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
@@ -230,7 +221,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 space_views: &blueprint.space_views,
                 maximized: &mut maximized,
                 edited: false,
-                space_views_displayed_current_frame: Vec::new(),
                 executed_systems_per_space_view,
             };
 
@@ -251,8 +241,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
             // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
             self.edited |= tab_viewer.edited;
-
-            state.space_views_displayed_last_frame = tab_viewer.space_views_displayed_current_frame;
         });
 
         self.blueprint.set_maximized(maximized, ctx);
@@ -472,11 +460,6 @@ struct TabViewer<'a, 'b> {
     /// List of query & system execution results for each space view.
     executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
 
-    /// List of all space views drawn this frame.
-    ///
-    /// TODO(rerun-io/egui_tiles#34): It should be possible to predict which space views will be drawn.
-    space_views_displayed_current_frame: Vec<SpaceViewId>,
-
     /// The user edited the tree.
     edited: bool,
 }
@@ -499,22 +482,24 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             return Default::default();
         }
 
-        let Some(latest_at) = self.ctx.rec_cfg.time_ctrl.read().time_int() else {
+        if self.ctx.rec_cfg.time_ctrl.read().time_int().is_none() {
             ui.centered_and_justified(|ui| {
                 ui.weak("No time selected");
             });
             return Default::default();
         };
 
-        // TODO(rerun-io/egui_tiles#34): If we haven't executed the system yet ahead of time, we should do so now.
-        // This is needed because we merely "guess" which systems we are going to need.
-        let (query, system_output) =
-            if let Some(result) = self.executed_systems_per_space_view.remove(space_view_id) {
-                result
-            } else {
-                let highlights = highlights_for_space_view(self.ctx, *space_view_id);
-                space_view_blueprint.execute_systems(self.ctx, latest_at, highlights)
-            };
+        let Some((query, system_output)) =
+            self.executed_systems_per_space_view.remove(space_view_id)
+        else {
+            // The space view's systems haven't been executed.
+            // This should never happen, but if it does anyways we can't display the space view.
+            re_log::error_once!(
+                "Visualizers for space view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
+                space_view_blueprint.display_name_or_default()
+            ); // TODO(#4433): This should go to analytics
+            return Default::default();
+        };
 
         let PerSpaceViewState {
             auto_properties: _,
@@ -524,9 +509,6 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             space_view_blueprint.id,
             space_view_blueprint.class_identifier(),
         );
-
-        self.space_views_displayed_current_frame
-            .push(space_view_blueprint.id);
 
         space_view_blueprint.scene_ui(
             space_view_state.as_mut(),
