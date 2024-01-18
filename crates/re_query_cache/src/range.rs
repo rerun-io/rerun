@@ -248,7 +248,7 @@ macro_rules! impl_query_archetype_range {
 
 
             self.with_range::<A, _, _>(
-                store.id().clone(),
+                store,
                 entity_path.clone(),
                 query,
                 |range_cache| range_callback(query, range_cache),

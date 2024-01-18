@@ -22,7 +22,7 @@ fn simple_query() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -56,7 +56,7 @@ fn timeless_query() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -84,7 +84,7 @@ fn no_instance_join_query() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -110,7 +110,7 @@ fn missing_column_join_query() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -131,7 +131,7 @@ fn splatted_query() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -171,7 +171,7 @@ fn invalidation() {
             InstanceKey::name(),
             Default::default(),
         );
-        let mut caches = Caches::default();
+        let mut caches = Caches::new(&store);
 
         // Create some positions with implicit instances
         let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -334,7 +334,7 @@ fn invalidation_of_future_optionals() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path = "points";
 
@@ -389,7 +389,7 @@ fn invalidation_timeless() {
         InstanceKey::name(),
         Default::default(),
     );
-    let mut caches = Caches::default();
+    let mut caches = Caches::new(&store);
 
     let ent_path = "points";
 

@@ -83,7 +83,7 @@ impl Caches {
             }
         }
 
-        let caches = self.0.read().clone();
+        let caches = self.read().clone();
         // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
         let latest_at = caches

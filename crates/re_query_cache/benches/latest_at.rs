@@ -259,8 +259,8 @@ fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> (Caches, DataStor
         InstanceKey::name(),
         Default::default(),
     );
+    let mut caches = Caches::new(&store);
 
-    let mut caches = Caches::default();
     msgs.for_each(|row| {
         caches.on_events(&[store.insert_row(row).unwrap()]);
     });

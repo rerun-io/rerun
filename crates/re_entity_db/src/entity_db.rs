@@ -118,6 +118,12 @@ pub struct EntityDb {
 
 impl EntityDb {
     pub fn new(store_id: StoreId) -> Self {
+        let data_store = re_data_store::DataStore::new(
+            store_id.clone(),
+            InstanceKey::name(),
+            DataStoreConfig::default(),
+        );
+        let query_caches = re_query_cache::Caches::new(&data_store);
         Self {
             store_id: store_id.clone(),
             data_source: None,
@@ -126,12 +132,8 @@ impl EntityDb {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
-            data_store: re_data_store::DataStore::new(
-                store_id.clone(),
-                InstanceKey::name(),
-                DataStoreConfig::default(),
-            ),
-            query_caches: re_query_cache::Caches::default(),
+            data_store,
+            query_caches,
             stats: IngestionStatistics::new(store_id),
         }
     }
