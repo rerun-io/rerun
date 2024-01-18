@@ -4835,6 +4835,7 @@ dependencies = [
  "egui",
  "egui_plot",
  "itertools 0.12.0",
+ "parking_lot 0.12.1",
  "re_data_store",
  "re_format",
  "re_log_types",
