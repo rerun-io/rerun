@@ -48,7 +48,7 @@ impl SubSpaceConnectionFlags {
     }
 }
 
-/// Spatial subspace within we typically expect a homogenous dimensionality without any projections & disconnects.
+/// Spatial subspace within we typically expect a homogeneous dimensionality without any projections & disconnects.
 ///
 /// Subspaces are separated by projections or explicit disconnects.
 ///
