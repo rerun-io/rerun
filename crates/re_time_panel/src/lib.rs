@@ -339,7 +339,11 @@ impl TimePanel {
                 ui.set_min_size(size);
                 ui.style_mut().wrap = Some(false);
                 ui.add_space(4.0); // hack to vertically center the text
-                ui.strong("Streams");
+                if self.source == TimePanelSource::Blueprint {
+                    ui.strong("Blueprint Streams");
+                } else {
+                    ui.strong("Streams");
+                }
             })
             .response
             .on_hover_text(
