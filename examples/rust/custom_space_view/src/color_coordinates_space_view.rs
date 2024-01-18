@@ -242,7 +242,14 @@ fn color_space_ui(
             // Update the global selection state if the user interacts with a point and show hover ui for the entire keypoint.
             let instance = InstancePath::instance(ent_path.clone(), *instance_key);
             let interact = interact.on_hover_ui_at_pointer(|ui| {
-                item_ui::instance_path_button(ctx, ui, Some(query.space_view_id), &instance);
+                item_ui::instance_path_button(
+                    ctx,
+                    &ctx.current_query(),
+                    ctx.entity_db.store(),
+                    ui,
+                    Some(query.space_view_id),
+                    &instance,
+                );
                 instance.data_ui(
                     ctx,
                     ui,

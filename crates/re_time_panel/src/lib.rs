@@ -535,6 +535,11 @@ impl TimePanel {
     ) {
         let tree_has_data_in_current_timeline = time_ctrl.tree_has_data_in_current_timeline(tree);
 
+        let store = match self.source {
+            TimePanelSource::Recording => ctx.entity_db.store(),
+            TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
+        };
+
         // The last part of the path component
         let text = if let Some(last_path_part) = last_path_part {
             let stem = last_path_part.ui_string();
@@ -583,8 +588,15 @@ impl TimePanel {
 
         ui.set_clip_rect(clip_rect_save);
 
-        let response = response
-            .on_hover_ui(|ui| re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, &tree.path));
+        let response = response.on_hover_ui(|ui| {
+            re_data_ui::item_ui::entity_hover_card_ui(
+                ui,
+                ctx,
+                &time_ctrl.current_query(),
+                store,
+                &tree.path,
+            );
+        });
 
         item_ui::select_hovered_on_click(ctx, &response, item.to_item());
 
@@ -617,11 +629,6 @@ impl TimePanel {
                     .time_histogram
                     .get(time_ctrl.timeline())
                     .unwrap_or(&empty);
-
-                let store = match self.source {
-                    TimePanelSource::Recording => ctx.entity_db.store(),
-                    TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
-                };
 
                 data_density_graph::data_density_graph_ui(
                     &mut self.data_density_graph_painter,

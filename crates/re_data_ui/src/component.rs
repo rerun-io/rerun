@@ -122,6 +122,8 @@ impl DataUi for EntityComponentWithInstances {
                                     InstancePath::instance(self.entity_path.clone(), *instance_key);
                                 item_ui::instance_path_button_to(
                                     ctx,
+                                    query,
+                                    store,
                                     ui,
                                     None,
                                     &instance_path,

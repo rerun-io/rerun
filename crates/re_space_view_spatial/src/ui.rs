@@ -601,7 +601,14 @@ pub fn picking(
             // Hover ui for everything else
             response.on_hover_ui_at_pointer(|ui| {
                 hit_ui(ui, hit);
-                item_ui::instance_path_button(ctx, ui, Some(query.space_view_id), &instance_path);
+                item_ui::instance_path_button(
+                    ctx,
+                    &query.latest_at_query(),
+                    store,
+                    ui,
+                    Some(query.space_view_id),
+                    &instance_path,
+                );
                 instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query(), store);
             })
         };

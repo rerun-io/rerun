@@ -330,9 +330,12 @@ fn what_is_selected_ui(
                 ),
             );
 
+            let query = ctx.current_query_for_entity_path(entity_path);
+            let store = ctx.choose_store_for_query(&query);
+
             ui.horizontal(|ui| {
                 ui.label("component of");
-                item_ui::entity_path_button(ctx, ui, None, entity_path);
+                item_ui::entity_path_button(ctx, &query, store, ui, None, entity_path);
             });
 
             list_existing_data_blueprints(ui, ctx, entity_path, viewport);
@@ -453,6 +456,9 @@ fn list_existing_data_blueprints(
 ) {
     let space_views_with_path = blueprint.space_views_containing_entity_path(ctx, entity_path);
 
+    let query = ctx.current_query_for_entity_path(entity_path);
+    let store = ctx.choose_store_for_query(&query);
+
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any Space View)");
     } else {
@@ -461,6 +467,8 @@ fn list_existing_data_blueprints(
                 ui.horizontal(|ui| {
                     item_ui::entity_path_button_to(
                         ctx,
+                        &query,
+                        store,
                         ui,
                         Some(*space_view_id),
                         entity_path,
@@ -504,8 +512,12 @@ fn space_view_top_level_properties(
                     View's origin is the same as this Entity's origin and all transforms are \
                     relative to it.",
                 );
+                let query = ctx.current_query_for_entity_path(&space_view.space_origin);
+                let store = ctx.choose_store_for_query(&query);
                 item_ui::entity_path_button(
                     ctx,
+                    &query,
+                    store,
                     ui,
                     Some(*space_view_id),
                     &space_view.space_origin,
@@ -836,10 +848,14 @@ fn blueprint_ui(
             if let Some(space_view_id) = space_view_id {
                 if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                     if instance_path.instance_key.is_specific() {
+                        let query = ctx.current_query_for_entity_path(&instance_path.entity_path);
+                        let store = ctx.choose_store_for_query(&query);
                         ui.horizontal(|ui| {
                             ui.label("Part of");
                             item_ui::entity_path_button(
                                 ctx,
+                                &query,
+                                store,
                                 ui,
                                 Some(*space_view_id),
                                 &instance_path.entity_path,
@@ -1132,7 +1148,7 @@ fn depth_props_ui(
     re_tracing::profile_function!();
 
     let query = ctx.current_query_for_entity_path(entity_path);
-    let store = ctx.entity_db.store();
+    let store = ctx.choose_store_for_query(&query);
 
     let meaning = image_meaning_for_entity(entity_path, ctx);
 
@@ -1160,9 +1176,10 @@ fn depth_props_ui(
 
     if backproject_depth {
         ui.label("Pinhole");
-        item_ui::entity_path_button(ctx, ui, None, &image_projection_ent_path).on_hover_text(
-            "The entity path of the pinhole transform being used to do the backprojection.",
-        );
+        item_ui::entity_path_button(ctx, &query, store, ui, None, &image_projection_ent_path)
+            .on_hover_text(
+                "The entity path of the pinhole transform being used to do the backprojection.",
+            );
         ui.end_row();
 
         depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);

@@ -94,7 +94,7 @@ impl DataUi for ArrowMsg {
                 Ok(row) => {
                     egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
                         ui.monospace("entity_path:");
-                        item_ui::entity_path_button(ctx, ui, None, row.entity_path());
+                        item_ui::entity_path_button(ctx, query, store, ui, None, row.entity_path());
                         ui.end_row();
 
                         ui.monospace("time_point:");
