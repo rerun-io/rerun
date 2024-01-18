@@ -184,8 +184,9 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
     match item {
         Item::StoreId(store_id) => store_id.to_string(),
         Item::SpaceView(sid) => {
+            // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
             if let Some(space_view) = blueprint.space_view(sid) {
-                space_view.display_name.clone()
+                space_view.display_name_or_default().as_ref().to_owned()
             } else {
                 "<removed Space View>".to_owned()
             }
@@ -201,7 +202,13 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
                     Tile::Pane(sid) => {
                         // This case shouldn't happen really.
                         if let Some(space_view) = blueprint.space_view(sid) {
-                            format!("Tile showing {}", space_view.display_name)
+                            format!(
+                                "Tile showing {}",
+                                space_view
+                                    .display_name
+                                    .as_ref()
+                                    .unwrap_or(&space_view.missing_name_placeholder())
+                            )
                         } else {
                             "Tile containing unknown Space View".to_owned()
                         }

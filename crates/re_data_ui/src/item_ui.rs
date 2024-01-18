@@ -226,6 +226,7 @@ pub fn data_blueprint_group_button_to(
             &re_ui::icons::GROUP,
             text,
             ctx.selection().contains_item(&item),
+            re_ui::LabelStyle::Normal,
         )
         .on_hover_text("Group");
     cursor_interact_with_selectable(ctx, response, item)

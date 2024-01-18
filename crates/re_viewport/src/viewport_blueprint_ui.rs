@@ -184,11 +184,14 @@ impl Viewport<'_, '_> {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let response = ListItem::new(ctx.re_ui, space_view.display_name.clone())
+        let space_view_name = space_view.display_name_or_default();
+
+        let response = ListItem::new(ctx.re_ui, space_view_name.as_ref())
+            .label_style(space_view_name.style())
+            .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .selected(ctx.selection().contains_item(&item))
             .subdued(!space_view_visible)
             .force_hovered(is_item_hovered)
-            .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, container_visible, &mut visible);
                 visibility_changed = vis_response.changed();
@@ -241,7 +244,7 @@ impl Viewport<'_, '_> {
                 // to the blueprint directly. If we set it on the tree there are some
                 // edge-cases where visibility can get lost when we simplify out trivial
                 // tab-containers.
-                space_view.set_visible(visible, ctx);
+                space_view.set_visible(ctx, visible);
             }
         }
     }
@@ -425,35 +428,42 @@ impl Viewport<'_, '_> {
             |ui| {
                 ui.style_mut().wrap = Some(false);
 
-                let add_space_view_item = |ui: &mut egui::Ui, space_view: SpaceViewBlueprint| {
-                    if ctx
-                        .re_ui
-                        .selectable_label_with_icon(
-                            ui,
-                            space_view.class(ctx.space_view_class_registry).icon(),
-                            if space_view.space_origin.is_root() {
-                                space_view.display_name.clone()
-                            } else {
-                                space_view.space_origin.to_string()
-                            },
-                            false,
-                        )
-                        .clicked()
-                    {
-                        ui.close_menu();
-                        ctx.selection_state()
-                            .set_selection(Item::SpaceView(space_view.id));
+                let add_space_view_item =
+                    |ui: &mut egui::Ui, space_view: SpaceViewBlueprint, empty: bool| {
+                        let display_name = space_view
+                            .class(ctx.space_view_class_registry)
+                            .display_name();
+                        let label = if empty {
+                            format!("Empty {display_name} view",)
+                        } else {
+                            format!("{display_name} view of {}", space_view.space_origin)
+                        };
 
-                        let new_ids = self.blueprint.add_space_views(
-                            std::iter::once(space_view),
-                            ctx,
-                            None, //TODO(ab): maybe add to the currently selected container instead?
-                        );
-                        if let Some(new_id) = new_ids.first() {
-                            self.blueprint.focus_tab(*new_id);
+                        if ctx
+                            .re_ui
+                            .selectable_label_with_icon(
+                                ui,
+                                space_view.class(ctx.space_view_class_registry).icon(),
+                                label,
+                                false,
+                                re_ui::LabelStyle::Normal,
+                            )
+                            .clicked()
+                        {
+                            ui.close_menu();
+                            ctx.selection_state()
+                                .set_selection(Item::SpaceView(space_view.id));
+
+                            let new_ids = self.blueprint.add_space_views(
+                                std::iter::once(space_view),
+                                ctx,
+                                None, //TODO(ab): maybe add to the currently selected container instead?
+                            );
+                            if let Some(new_id) = new_ids.first() {
+                                self.blueprint.focus_tab(*new_id);
+                            }
                         }
-                    }
-                };
+                    };
 
                 // Space view options proposed by heuristics
                 let mut possible_space_views = all_possible_space_views(ctx, spaces_info);
@@ -462,7 +472,7 @@ impl Viewport<'_, '_> {
 
                 let has_possible_space_views = !possible_space_views.is_empty();
                 for (space_view, _) in possible_space_views {
-                    add_space_view_item(ui, space_view);
+                    add_space_view_item(ui, space_view, false);
                 }
 
                 if has_possible_space_views {
@@ -477,13 +487,12 @@ impl Viewport<'_, '_> {
                     .map(|entry| {
                         SpaceViewBlueprint::new(
                             entry.class.identifier(),
-                            &format!("empty {}", entry.class.display_name()),
                             &EntityPath::root(),
                             DataQueryBlueprint::new(entry.class.identifier(), Default::default()),
                         )
                     })
                 {
-                    add_space_view_item(ui, space_view);
+                    add_space_view_item(ui, space_view, true);
                 }
             },
         )

@@ -46,6 +46,19 @@ pub struct TopBarStyle {
     pub indent: f32,
 }
 
+/// The style of a label.
+///
+/// This should be used for all UI widgets that support these styles.
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LabelStyle {
+    /// Regular style for a label.
+    #[default]
+    Normal,
+
+    /// Label displaying the placeholder text for a yet unnamed item (e.g. an unnamed space view).
+    Unnamed,
+}
+
 // ----------------------------------------------------------------------------
 
 use crate::list_item::ListItem;
@@ -903,14 +916,23 @@ impl ReUi {
         icon: &Icon,
         text: impl Into<egui::WidgetText>,
         selected: bool,
+        style: LabelStyle,
     ) -> egui::Response {
         let button_padding = ui.spacing().button_padding;
         let total_extra = button_padding + button_padding;
 
         let wrap_width = ui.available_width() - total_extra.x;
-        let galley = text
-            .into()
-            .into_galley(ui, None, wrap_width, egui::TextStyle::Button);
+
+        let mut text: egui::WidgetText = text.into();
+        match style {
+            LabelStyle::Normal => {}
+            LabelStyle::Unnamed => {
+                // TODO(ab): use design tokens
+                text = text.italics();
+            }
+        }
+
+        let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
         let icon_width_plus_padding = Self::small_icon_size().x + ReUi::text_to_icon_padding();
 
@@ -961,7 +983,17 @@ impl ReUi {
                 .layout()
                 .align_size_within_rect(galley.size(), text_rect)
                 .min;
-            ui.painter().galley(text_pos, galley, visuals.text_color());
+
+            let mut text_color = visuals.text_color();
+            match style {
+                LabelStyle::Normal => {}
+                LabelStyle::Unnamed => {
+                    // TODO(ab): use design tokens
+                    text_color = text_color.gamma_multiply(0.5);
+                }
+            }
+            ui.painter()
+                .galley_with_override_text_color(text_pos, galley, text_color);
         }
 
         response

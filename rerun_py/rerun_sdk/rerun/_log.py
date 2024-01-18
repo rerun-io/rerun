@@ -94,6 +94,8 @@ def log(
     )
     ```
 
+    See also: [`rerun.log_components`][].
+
     Parameters
     ----------
     entity_path:
@@ -125,8 +127,6 @@ def log(
         If True, raise exceptions on non-loggable data.
         If False, warn on non-loggable data.
         if None, use the global default from `rerun.strict_mode()`
-
-    See also: [`rerun.log_components`][].
     """
     # TODO(jleibs): Profile is_instance with runtime_checkable vs has_attr
     # Note from: https://docs.python.org/3/library/typing.html#typing.runtime_checkable
@@ -187,6 +187,8 @@ def log_components(
     `num_instances`, or length 1 if the component is a splat., or 0 if the
     component is being cleared.
 
+    See also: [`rerun.log`][].
+
     Parameters
     ----------
     entity_path:
@@ -215,8 +217,6 @@ def log_components(
         If True, raise exceptions on non-loggable data.
         If False, warn on non-loggable data.
         if None, use the global default from `rerun.strict_mode()`
-
-    See also: [`rerun.log`][].
     """
     instanced: dict[str, pa.Array] = {}
     splats: dict[str, pa.Array] = {}

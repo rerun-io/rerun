@@ -10,12 +10,11 @@ pub fn viewer_to_server(
     url: String,
     on_binary_msg: impl Fn(Vec<u8>) -> ControlFlow<()> + Send + 'static,
 ) -> Result<()> {
-    re_log::info!("Connecting to {url:?}…");
     ewebsock::ws_receive(
-        url,
+        url.clone(),
         Box::new(move |event: WsEvent| match event {
             WsEvent::Opened => {
-                re_log::info!("Connection established");
+                re_log::info!("Connection to {url} established");
                 ControlFlow::Continue(())
             }
             WsEvent::Message(message) => match message {
@@ -42,7 +41,7 @@ pub fn viewer_to_server(
                 ControlFlow::Break(())
             }
             WsEvent::Closed => {
-                re_log::info!("Connection to server closed.");
+                re_log::info!("Connection to {url} closed.");
                 ControlFlow::Break(())
             }
         }),

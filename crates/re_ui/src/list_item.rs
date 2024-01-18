@@ -1,4 +1,4 @@
-use crate::{Icon, ReUi};
+use crate::{Icon, LabelStyle, ReUi};
 use egui::epaint::text::TextWrapping;
 use egui::{Align, Align2, Response, Shape, Ui};
 use std::default::Default;
@@ -116,6 +116,7 @@ pub struct ListItem<'a> {
     subdued: bool,
     weak: bool,
     italics: bool,
+    label_style: crate::LabelStyle,
     force_hovered: bool,
     collapse_openness: Option<f32>,
     height: f32,
@@ -136,6 +137,7 @@ impl<'a> ListItem<'a> {
             subdued: false,
             weak: false,
             italics: false,
+            label_style: crate::LabelStyle::default(),
             force_hovered: false,
             collapse_openness: None,
             height: ReUi::list_item_height(),
@@ -160,6 +162,8 @@ impl<'a> ListItem<'a> {
     }
 
     /// Set the subdued state of the item.
+    ///
+    /// Note: takes precedence over [`Self::weak`] if set.
     // TODO(ab): this is a hack to implement the behavior of the blueprint tree UI, where active
     // widget are displayed in a subdued state (container, hidden space views/entities). One
     // slightly more correct way would be to override the color using a (color, index) pair
@@ -171,6 +175,8 @@ impl<'a> ListItem<'a> {
     }
 
     /// Set the weak state of the item.
+    ///
+    /// Note: [`Self::subdued`] takes precedence if set.
     // TODO(ab): should use design token instead
     #[inline]
     pub fn weak(mut self, weak: bool) -> Self {
@@ -183,6 +189,16 @@ impl<'a> ListItem<'a> {
     #[inline]
     pub fn italics(mut self, italics: bool) -> Self {
         self.italics = italics;
+        self
+    }
+
+    /// Style the label for an unnamed items.
+    ///
+    /// The styling is applied on top of to [`Self::weak`] and [`Self::subdued`]. It also implies [`Self::italics`].
+    // TODO(ab): should use design token instead
+    #[inline]
+    pub fn label_style(mut self, style: crate::LabelStyle) -> Self {
+        self.label_style = style;
         self
     }
 
@@ -303,6 +319,13 @@ impl<'a> ListItem<'a> {
         } else {
             0.0
         };
+
+        match self.label_style {
+            LabelStyle::Normal => {}
+            LabelStyle::Unnamed => {
+                self.italics = true;
+            }
+        }
 
         if self.italics {
             self.text = self.text.italics();
@@ -429,6 +452,13 @@ impl<'a> ListItem<'a> {
             text_rect.min.x += collapse_extra + icon_extra;
             if let Some(button_response) = &button_response {
                 text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
+            }
+
+            match self.label_style {
+                LabelStyle::Normal => {}
+                LabelStyle::Unnamed => {
+                    self.text = self.text.color(visuals.fg_stroke.color.gamma_multiply(0.5));
+                }
             }
 
             let mut layout_job =
