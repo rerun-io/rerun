@@ -64,6 +64,10 @@ bench = false
 name = "latest_component"
 path = "examples/latest_component.rs"
 
+[[example]]
+name = "latest_components"
+path = "examples/latest_components.rs"
+
 
 [[bench]]
 name = "arrow2"

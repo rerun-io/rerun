@@ -1,5 +1,3 @@
-#![cfg(feature = "polars")]
-
 //! Straightforward high-level API tests.
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
@@ -7,14 +5,12 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use nohash_hasher::IntMap;
-use polars_core::{prelude::*, series::Series};
-use polars_ops::prelude::DataFrameJoinOps;
 use rand::Rng;
 use re_data_store::WriteError;
 use re_data_store::{
-    polars_util, test_row, test_util::sanity_unwrap, ArrayExt as _, DataStore, DataStoreConfig,
-    DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery, RangeQuery,
-    TimeInt, TimeRange,
+    test_row, test_util::sanity_unwrap, ArrayExt as _, DataStore, DataStoreConfig, DataStoreStats,
+    GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt,
+    TimeRange,
 };
 use re_log_types::{
     build_frame_nr, DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline,
@@ -27,6 +23,11 @@ use re_types::{
     testing::{build_some_large_structs, LargeStruct},
 };
 use re_types_core::{ComponentName, Loggable as _};
+
+#[cfg(feature = "polars")]
+use polars_core::{prelude::*, series::Series};
+#[cfg(feature = "polars")]
+use polars_ops::prelude::DataFrameJoinOps;
 
 // ---
 
@@ -278,6 +279,7 @@ fn all_components() {
 
 // --- LatestAt ---
 
+#[cfg(feature = "polars")]
 #[test]
 fn latest_at() {
     init_logs();
@@ -292,6 +294,7 @@ fn latest_at() {
     }
 }
 
+#[cfg(feature = "polars")]
 fn latest_at_impl(store: &mut DataStore) {
     init_logs();
 
@@ -400,6 +403,7 @@ fn latest_at_impl(store: &mut DataStore) {
 
 // --- Range ---
 
+#[cfg(feature = "polars")]
 #[test]
 fn range() {
     init_logs();
@@ -414,6 +418,7 @@ fn range() {
     }
 }
 
+#[cfg(feature = "polars")]
 fn range_impl(store: &mut DataStore) {
     init_logs();
 
@@ -779,6 +784,7 @@ fn range_impl(store: &mut DataStore) {
 
 // --- Common helpers ---
 
+#[cfg(feature = "polars")]
 /// Given a list of rows, crafts a `latest_components`-looking dataframe.
 fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> DataFrame {
     let df = rows
@@ -862,7 +868,10 @@ fn gc_impl(store: &mut DataStore) {
         }
 
         sanity_unwrap(store);
-        _ = store.to_dataframe(); // simple way of checking that everything is still readable
+        #[cfg(feature = "polars")]
+        {
+            _ = store.to_dataframe(); // simple way of checking that everything is still readable
+        }
 
         let stats = DataStoreStats::from_store(store);
 
@@ -897,6 +906,7 @@ fn gc_impl(store: &mut DataStore) {
     }
 }
 
+#[cfg(feature = "polars")]
 #[test]
 fn protected_gc() {
     init_logs();
@@ -911,6 +921,7 @@ fn protected_gc() {
     }
 }
 
+#[cfg(feature = "polars")]
 fn protected_gc_impl(store: &mut DataStore) {
     init_logs();
 
@@ -998,6 +1009,7 @@ fn protected_gc_impl(store: &mut DataStore) {
     );
 }
 
+#[cfg(feature = "polars")]
 #[test]
 fn protected_gc_clear() {
     init_logs();
@@ -1012,6 +1024,7 @@ fn protected_gc_clear() {
     }
 }
 
+#[cfg(feature = "polars")]
 fn protected_gc_clear_impl(store: &mut DataStore) {
     init_logs();
 

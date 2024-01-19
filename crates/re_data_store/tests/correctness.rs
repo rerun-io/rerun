@@ -416,6 +416,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 // also make sure that, if all else if equal, the primary iterator comes last so that it gathers as
 // much state as possible!
 
+// TODO: this is about testing joins, and therefore belongs in re_query instead.
+
 #[cfg(feature = "polars")]
 #[test]
 fn range_join_across_single_row() {
