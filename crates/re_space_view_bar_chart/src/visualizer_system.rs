@@ -45,12 +45,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        // TODO(#3342): For now, we relax the indicator component heuristics on bar charts so that
-        // logging a 1D tensor also results in a bar chart view, rather than a broken viewer (see #3709).
-        // Ideally though, this should be implemented using an heuristic fallback mechanism.
-        [BarChart::indicator().name(), Tensor::indicator().name()]
-            .into_iter()
-            .collect()
+        std::iter::once(BarChart::indicator().name()).collect()
     }
 
     fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
