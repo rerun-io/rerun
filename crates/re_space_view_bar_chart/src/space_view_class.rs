@@ -63,6 +63,7 @@ impl SpaceViewClass for BarChartSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
         recommend_space_view_for_each_matching_indicator::<BarChartVisualizerSystem>(ctx, self)
     }
 

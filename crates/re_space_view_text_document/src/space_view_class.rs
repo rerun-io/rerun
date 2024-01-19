@@ -95,6 +95,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
         // By default spawn a space view for every text document.
         recommend_space_view_for_each_matching_indicator::<TextDocumentSystem>(ctx, self)
     }

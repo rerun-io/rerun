@@ -155,6 +155,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
+
         // For all following lookups, checking indicators is enough, since we know
         // that there's no space view instance dependent visibility restrictions.
         let Some(indicated_entities) = ctx

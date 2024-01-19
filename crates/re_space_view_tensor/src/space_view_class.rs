@@ -183,6 +183,7 @@ impl SpaceViewClass for TensorSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
         // For tensors create one space view for each tensor (even though we're able to stack them in one view)
         recommend_space_view_for_each_matching_indicator::<TensorSystem>(ctx, self)
     }

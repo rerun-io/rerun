@@ -87,6 +87,8 @@ impl SpaceViewClass for TextSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
+
         // Spawn a single log view at the root if there's any text logs around anywhere.
         if ctx
             .indicator_matching_entities_per_visualizer
