@@ -718,6 +718,10 @@ fn space_view_space_origin_widget_editing_ui(
             .force_hovered(*selected_suggestion == Some(idx))
             .show(ui);
 
+            if response.hovered() {
+                *selected_suggestion = None;
+            }
+
             if response.clicked() {
                 *space_origin_string = suggested_space_view.space_origin.to_string();
                 space_view.set_origin(ctx, &space_origin_string.clone().into());
