@@ -1,10 +1,4 @@
 //! Provide query-centric access to the [`re_data_store`].
-//!
-//! ## Feature flags
-#![doc = document_features::document_features!()]
-//!
-
-// TODO(jleibs) better crate documentation.
 
 mod archetype_view;
 mod query;

@@ -28,10 +28,7 @@ use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 /// )
 /// .unwrap();
 ///
-/// # #[cfg(feature = "polars")]
-/// let df = component.as_df::<MyPoint>().unwrap();
-///
-/// //println!("{df:?}");
+/// //println!("{component}");
 /// ```
 ///
 /// Outputs:
@@ -99,10 +96,7 @@ pub fn get_component_with_instances(
 /// )
 /// .unwrap();
 ///
-/// # #[cfg(feature = "polars")]
-/// let df = arch_view.as_df2::<MyPoint, MyColor>().unwrap();
-///
-/// //println!("{df:?}");
+/// //println!("{arch_view:?}");
 /// ```
 ///
 /// Outputs:
