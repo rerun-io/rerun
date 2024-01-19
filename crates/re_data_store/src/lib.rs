@@ -14,6 +14,7 @@
 #![doc = document_features::document_features!()]
 //!
 
+pub mod api; // TODO: maybe not the best name
 mod arrow_util;
 mod store;
 mod store_arrow;

@@ -60,6 +60,11 @@ tinyvec.workspace = true
 bench = false
 
 
+[[example]]
+name = "latest_component"
+path = "examples/latest_component.rs"
+
+
 [[bench]]
 name = "arrow2"
 harness = false
