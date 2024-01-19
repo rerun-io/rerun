@@ -1,18 +1,9 @@
 //! Provide query-centric access to the [`re_data_store`].
-//!
-//! ## Feature flags
-#![doc = document_features::document_features!()]
-//!
-
-// TODO(jleibs) better crate documentation.
 
 mod archetype_view;
 mod query;
 mod range;
 mod util;
-
-#[cfg(feature = "polars")]
-pub mod dataframe_util;
 
 pub use self::archetype_view::{ArchetypeView, ComponentWithInstances};
 pub use self::query::{get_component_with_instances, query_archetype};
@@ -22,7 +13,7 @@ pub use self::util::{
 };
 
 // Used for doc-tests
-#[cfg(feature = "testing")]
+#[doc(hidden)]
 pub use self::query::__populate_example_store;
 
 #[derive(Debug, Clone, Copy)]
@@ -64,10 +55,6 @@ pub enum QueryError {
 
     #[error("Error converting arrow data: {0}")]
     ArrowError(#[from] arrow2::error::Error),
-
-    #[cfg(feature = "polars")]
-    #[error("Error from within Polars")]
-    PolarsError(#[from] polars_core::prelude::PolarsError),
 
     #[error("Not implemented")]
     NotImplemented,

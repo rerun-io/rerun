@@ -19,13 +19,6 @@ all-features = true
 [features]
 default = []
 
-## Polars support
-polars = ["dep:polars-core", "re_data_store/polars"]
-
-## Enable (de)serialization using serde.
-serde = ["dep:serde", "dep:rmp-serde"]
-
-testing = ["re_log_types/testing"]
 
 [dependencies]
 # Rerun dependencies:
@@ -46,13 +39,6 @@ serde = { workspace = true, features = ["derive", "rc"], optional = true }
 smallvec.workspace = true
 thiserror.workspace = true
 
-# Optional dependencies:
-polars-core = { workspace = true, optional = true, features = [
-  "dtype-date",
-  "dtype-time",
-  "dtype-struct",
-] }
-
 
 [dev-dependencies]
 re_types = { workspace = true, features = ["datagen"] }
@@ -60,16 +46,12 @@ re_types = { workspace = true, features = ["datagen"] }
 criterion.workspace = true
 itertools = { workspace = true }
 mimalloc.workspace = true
-polars-core = { workspace = true, features = [
-  "dtype-date",
-  "dtype-time",
-  "dtype-struct",
-  "fmt",
-] }
 rand = { workspace = true, features = ["std", "std_rng"] }
+
 
 [lib]
 bench = false
+
 
 [[bench]]
 name = "query_benchmark"
