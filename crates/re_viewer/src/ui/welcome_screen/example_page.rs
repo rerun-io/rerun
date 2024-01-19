@@ -158,6 +158,7 @@ fn load_file_size(egui_ctx: &egui::Context, url: String) -> Promise<Option<u64>>
                         response.status,
                         response.status_text
                     );
+                    sender.send(None);
                 }
             }
             Err(err) => {
