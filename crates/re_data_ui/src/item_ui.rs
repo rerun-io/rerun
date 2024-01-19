@@ -41,12 +41,16 @@ use super::DataUi;
 /// Show an entity path and make it selectable.
 pub fn entity_path_button(
     ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
     entity_path: &EntityPath,
 ) -> egui::Response {
     instance_path_button_to(
         ctx,
+        query,
+        store,
         ui,
         space_view_id,
         &InstancePath::entity_splat(entity_path.clone()),
@@ -57,6 +61,8 @@ pub fn entity_path_button(
 /// Show an entity path and make it selectable.
 pub fn entity_path_button_to(
     ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
     entity_path: &EntityPath,
@@ -64,6 +70,8 @@ pub fn entity_path_button_to(
 ) -> egui::Response {
     instance_path_button_to(
         ctx,
+        query,
+        store,
         ui,
         space_view_id,
         &InstancePath::entity_splat(entity_path.clone()),
@@ -74,12 +82,16 @@ pub fn entity_path_button_to(
 /// Show an instance id and make it selectable.
 pub fn instance_path_button(
     ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
     instance_path: &InstancePath,
 ) -> egui::Response {
     instance_path_button_to(
         ctx,
+        query,
+        store,
         ui,
         space_view_id,
         instance_path,
@@ -90,6 +102,8 @@ pub fn instance_path_button(
 /// Show an instance id and make it selectable.
 pub fn instance_path_button_to(
     ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
     instance_path: &InstancePath,
@@ -100,7 +114,7 @@ pub fn instance_path_button_to(
     let response = ui
         .selectable_label(ctx.selection().contains_item(&item), text)
         .on_hover_ui(|ui| {
-            instance_hover_card_ui(ui, ctx, instance_path);
+            instance_hover_card_ui(ui, ctx, query, store, instance_path);
         });
 
     cursor_interact_with_selectable(ctx, response, item)
@@ -234,6 +248,8 @@ pub fn data_blueprint_group_button_to(
 
 pub fn data_blueprint_button_to(
     ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     space_view_id: SpaceViewId,
@@ -246,7 +262,7 @@ pub fn data_blueprint_button_to(
     let response = ui
         .selectable_label(ctx.selection().contains_item(&item), text)
         .on_hover_ui(|ui| {
-            entity_hover_card_ui(ui, ctx, entity_path);
+            entity_hover_card_ui(ui, ctx, query, store, entity_path);
         });
     cursor_interact_with_selectable(ctx, response, item)
 }
@@ -363,6 +379,8 @@ pub fn select_hovered_on_click(
 pub fn instance_hover_card_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
     instance_path: &InstancePath,
 ) {
     let subtype_string = if instance_path.instance_key.is_splat() {
@@ -375,7 +393,6 @@ pub fn instance_hover_card_ui(
 
     // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
     // Then we can move the size view into `data_ui`.
-    let query = ctx.current_query();
 
     if instance_path.instance_key.is_splat() {
         if let Some(subtree) = ctx.entity_db.tree().subtree(&instance_path.entity_path) {
@@ -385,11 +402,17 @@ pub fn instance_hover_card_ui(
         // TODO(emilk): per-component stats
     }
 
-    instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &query);
+    instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, query, store);
 }
 
 /// Displays the "hover card" (i.e. big tooltip) for an entity.
-pub fn entity_hover_card_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, entity_path: &EntityPath) {
+pub fn entity_hover_card_ui(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
+    entity_path: &EntityPath,
+) {
     let instance_path = InstancePath::entity_splat(entity_path.clone());
-    instance_hover_card_ui(ui, ctx, &instance_path);
+    instance_hover_card_ui(ui, ctx, query, store, &instance_path);
 }

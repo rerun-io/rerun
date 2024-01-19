@@ -157,7 +157,7 @@ fn update_depth_cloud_property_heuristics(
             continue;
         };
 
-        let meaning = image_meaning_for_entity(ent_path, ctx);
+        let meaning = image_meaning_for_entity(ent_path, &ctx.current_query(), store);
 
         let meter = store
             .query_latest_component::<DepthMeter>(ent_path, &ctx.current_query())

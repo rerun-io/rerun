@@ -1,6 +1,17 @@
-use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimePoint};
+use re_log_types::{DataCell, DataRow, EntityPath, RowId, Time, TimePoint, Timeline};
 
 use crate::{SystemCommand, SystemCommandSender as _, ViewerContext};
+
+#[inline]
+pub fn blueprint_timeline() -> Timeline {
+    Timeline::new_temporal("blueprint")
+}
+
+/// The timepoint to use when writing an update to the blueprint.
+#[inline]
+pub fn blueprint_timepoint_for_writes() -> TimePoint {
+    TimePoint::from([(blueprint_timeline(), Time::now().into())])
+}
 
 impl ViewerContext<'_> {
     /// Helper to save a component to the blueprint store.
@@ -9,7 +20,7 @@ impl ViewerContext<'_> {
         C: re_types::Component + Clone + 'a,
         std::borrow::Cow<'a, C>: std::convert::From<C>,
     {
-        let timepoint = TimePoint::timeless();
+        let timepoint = blueprint_timepoint_for_writes();
 
         match DataRow::from_cells1_sized(
             RowId::new(),
@@ -36,7 +47,7 @@ impl ViewerContext<'_> {
     where
         C: re_types::Component + 'a,
     {
-        let timepoint = TimePoint::timeless();
+        let timepoint = blueprint_timepoint_for_writes();
 
         let datatype = C::arrow_datatype();
 

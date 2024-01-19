@@ -514,7 +514,11 @@ pub fn picking(
             .contains(&instance_path.entity_path.hash());
         let picked_image_with_coords =
             if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-                let meaning = image_meaning_for_entity(&instance_path.entity_path, ctx);
+                let meaning = image_meaning_for_entity(
+                    &instance_path.entity_path,
+                    &query.latest_at_query(),
+                    store,
+                );
 
                 store
                     .query_latest_component::<TensorData>(
@@ -601,8 +605,15 @@ pub fn picking(
             // Hover ui for everything else
             response.on_hover_ui_at_pointer(|ui| {
                 hit_ui(ui, hit);
-                item_ui::instance_path_button(ctx, ui, Some(query.space_view_id), &instance_path);
-                instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
+                item_ui::instance_path_button(
+                    ctx,
+                    &query.latest_at_query(),
+                    store,
+                    ui,
+                    Some(query.space_view_id),
+                    &instance_path,
+                );
+                instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query(), store);
             })
         };
     }
@@ -678,10 +689,22 @@ fn image_hover_ui(
             instance_path.entity_path.clone(),
             re_types::components::TensorData::name(),
         );
-        component_path.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+        component_path.data_ui(
+            ctx,
+            ui,
+            UiVerbosity::Small,
+            &ctx.current_query(),
+            ctx.entity_db.store(),
+        );
     } else {
         // Show it all, like we do for any other thing we hover
-        instance_path.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+        instance_path.data_ui(
+            ctx,
+            ui,
+            UiVerbosity::Small,
+            &ctx.current_query(),
+            ctx.entity_db.store(),
+        );
     }
 
     if let Some([h, w, ..]) = tensor.image_height_width_channels() {

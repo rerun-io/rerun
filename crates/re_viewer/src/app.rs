@@ -375,15 +375,29 @@ impl App {
                 store_hub.clear_blueprint();
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
-                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-                for row in updates {
-                    match blueprint_db.add_data_row(row) {
-                        Ok(()) => {}
-                        Err(err) => {
-                            re_log::warn_once!("Failed to store blueprint delta: {err}");
+                // We only want to update the blueprint if the "inspect blueprint timeline" mode is
+                // disabled. This is because the blueprint inspector allows you to change the
+                // blueprint query time, which in turn updates the displayed state of the UI itself.
+                // This means any updates we receive while in this mode may be relative to a historical
+                // blueprint state and would conflict with the current true blueprint state.
+
+                // TODO(jleibs): When the blueprint is in "follow-mode" we should actually be able
+                // to apply updates here, but this needs more validation and testing to be safe.
+                if !self.state.app_options.inspect_blueprint_timeline {
+                    let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                    for row in updates {
+                        match blueprint_db.add_data_row(row) {
+                            Ok(()) => {}
+                            Err(err) => {
+                                re_log::warn_once!("Failed to store blueprint delta: {err}");
+                            }
                         }
                     }
                 }
+            }
+            #[cfg(debug_assertions)]
+            SystemCommand::EnableInspectBlueprintTimeline(show) => {
+                self.app_options_mut().inspect_blueprint_timeline = show;
             }
             SystemCommand::EnableExperimentalDataframeSpaceView(enabled) => {
                 let result = if enabled {
@@ -501,6 +515,11 @@ impl App {
                 app_blueprint.toggle_selection_panel(&self.command_sender);
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
+
+            #[cfg(debug_assertions)]
+            UICommand::ToggleBlueprintInspectionPanel => {
+                self.app_options_mut().inspect_blueprint_timeline ^= true;
+            }
 
             #[cfg(debug_assertions)]
             UICommand::ToggleStylePanel => {
@@ -1069,7 +1088,7 @@ impl eframe::App for App {
             // Save the blueprints
             // TODO(#2579): implement web-storage for blueprints as well
             if let Some(hub) = &mut self.store_hub {
-                match hub.gc_and_persist_app_blueprints() {
+                match hub.gc_and_persist_app_blueprints(&self.state.app_options) {
                     Ok(f) => f,
                     Err(err) => {
                         re_log::error!("Saving blueprints failed: {err}");
@@ -1149,6 +1168,8 @@ impl eframe::App for App {
         self.show_text_logs_as_notifications();
         self.receive_messages(&mut store_hub, egui_ctx);
 
+        store_hub.gc_blueprints(self.app_options());
+
         store_hub.purge_empty();
         self.state.cleanup(&store_hub);
 
@@ -1162,7 +1183,11 @@ impl eframe::App for App {
 
         let store_context = store_hub.read_context();
 
-        let app_blueprint = AppBlueprint::new(store_context.as_ref(), egui_ctx);
+        let app_blueprint = AppBlueprint::new(
+            store_context.as_ref(),
+            &self.state.blueprint_query_for_viewer(),
+            egui_ctx,
+        );
 
         self.ui(
             egui_ctx,

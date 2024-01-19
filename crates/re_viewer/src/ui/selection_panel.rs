@@ -5,7 +5,7 @@ use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
-use re_log_types::{DataRow, EntityPathFilter, RowId, TimePoint};
+use re_log_types::{DataRow, EntityPathFilter, RowId};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
@@ -15,9 +15,9 @@ use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, HoverHighlight, Item, SpaceViewClass,
-    SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity,
-    ViewerContext,
+    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, HoverHighlight, Item,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender as _,
+    UiVerbosity, ViewerContext,
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
@@ -39,6 +39,31 @@ pub(crate) struct SelectionPanel {
 
     #[serde(skip)]
     add_space_view_or_container_modal: AddSpaceViewOrContainerModal,
+}
+
+/// The current time query, based on the current time control and an `entity_path`
+///
+/// If the user is inspecting the blueprint, and the `entity_path` is on the blueprint
+/// timeline, then use the blueprint. Otherwise use the recording.
+// TODO(jleibs): Ideally this wouldn't be necessary and we could make the assessment
+// directly from the entity_path.
+fn guess_query_and_store_for_selected_entity<'a>(
+    ctx: &'a ViewerContext<'_>,
+    entity_path: &EntityPath,
+) -> (re_data_store::LatestAtQuery, &'a re_data_store::DataStore) {
+    if ctx.app_options.inspect_blueprint_timeline
+        && ctx.store_context.blueprint.is_logged_entity(entity_path)
+    {
+        (
+            ctx.blueprint_cfg.time_ctrl.read().current_query(),
+            &ctx.store_context.blueprint.store(),
+        )
+    } else {
+        (
+            ctx.rec_cfg.time_ctrl.read().current_query(),
+            ctx.entity_db.store(),
+        )
+    }
 }
 
 impl SelectionPanel {
@@ -111,8 +136,6 @@ impl SelectionPanel {
     ) {
         re_tracing::profile_function!();
 
-        let query = ctx.current_query();
-
         if ctx.selection().is_empty() {
             return;
         }
@@ -151,7 +174,12 @@ impl SelectionPanel {
 
                 if let Some(data_ui_item) = data_section_ui(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
-                        data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query);
+                        let (query, store) = if let Some(entity_path) = item.entity_path() {
+                            guess_query_and_store_for_selected_entity(ctx, entity_path)
+                        } else {
+                            (ctx.current_query(), ctx.entity_db.store())
+                        };
+                        data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, store);
                     });
                 }
 
@@ -326,9 +354,11 @@ fn what_is_selected_ui(
                 ),
             );
 
+            let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
+
             ui.horizontal(|ui| {
                 ui.label("component of");
-                item_ui::entity_path_button(ctx, ui, None, entity_path);
+                item_ui::entity_path_button(ctx, &query, store, ui, None, entity_path);
             });
 
             list_existing_data_blueprints(ui, ctx, entity_path, viewport);
@@ -449,6 +479,8 @@ fn list_existing_data_blueprints(
 ) {
     let space_views_with_path = blueprint.space_views_containing_entity_path(ctx, entity_path);
 
+    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
+
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any Space View)");
     } else {
@@ -457,6 +489,8 @@ fn list_existing_data_blueprints(
                 ui.horizontal(|ui| {
                     item_ui::entity_path_button_to(
                         ctx,
+                        &query,
+                        store,
                         ui,
                         Some(*space_view_id),
                         entity_path,
@@ -500,8 +534,12 @@ fn space_view_top_level_properties(
                     View's origin is the same as this Entity's origin and all transforms are \
                     relative to it.",
                 );
+                let (query, store) =
+                    guess_query_and_store_for_selected_entity(ctx, &space_view.space_origin);
                 item_ui::entity_path_button(
                     ctx,
+                    &query,
+                    store,
                     ui,
                     Some(*space_view_id),
                     &space_view.space_origin,
@@ -743,7 +781,7 @@ fn blueprint_ui(
                         if let Some(new_entity_path_filter) =
                             entity_path_filter_ui(ui, &query.entity_path_filter)
                         {
-                            let timepoint = TimePoint::timeless();
+                            let timepoint = blueprint_timepoint_for_writes();
                             let expressions_component =
                                 QueryExpressions::from(&new_entity_path_filter);
 
@@ -788,7 +826,8 @@ fn blueprint_ui(
                     resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
                 }
 
-                let root_data_result = space_view.root_data_result(ctx.store_context);
+                let root_data_result =
+                    space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
                 let mut props = root_data_result
                     .individual_properties()
                     .cloned()
@@ -831,10 +870,16 @@ fn blueprint_ui(
             if let Some(space_view_id) = space_view_id {
                 if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                     if instance_path.instance_key.is_specific() {
+                        let (query, store) = guess_query_and_store_for_selected_entity(
+                            ctx,
+                            &instance_path.entity_path,
+                        );
                         ui.horizontal(|ui| {
                             ui.label("Part of");
                             item_ui::entity_path_button(
                                 ctx,
+                                &query,
+                                store,
                                 ui,
                                 Some(*space_view_id),
                                 &instance_path.entity_path,
@@ -1094,8 +1139,7 @@ fn pinhole_props_ui(
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
 ) {
-    let query = ctx.current_query();
-    let store = ctx.entity_db.store();
+    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
     if store
         .query_latest_component::<PinholeProjection>(entity_path, &query)
         .is_some()
@@ -1126,10 +1170,9 @@ fn depth_props_ui(
 ) -> Option<()> {
     re_tracing::profile_function!();
 
-    let query = ctx.current_query();
-    let store = ctx.entity_db.store();
+    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
 
-    let meaning = image_meaning_for_entity(entity_path, ctx);
+    let meaning = image_meaning_for_entity(entity_path, &query, store);
 
     if meaning != TensorDataMeaning::Depth {
         return Some(());
@@ -1155,9 +1198,10 @@ fn depth_props_ui(
 
     if backproject_depth {
         ui.label("Pinhole");
-        item_ui::entity_path_button(ctx, ui, None, &image_projection_ent_path).on_hover_text(
-            "The entity path of the pinhole transform being used to do the backprojection.",
-        );
+        item_ui::entity_path_button(ctx, &query, store, ui, None, &image_projection_ent_path)
+            .on_hover_text(
+                "The entity path of the pinhole transform being used to do the backprojection.",
+            );
         ui.end_row();
 
         depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);
@@ -1227,10 +1271,9 @@ fn transform3d_visualization_ui(
 ) {
     re_tracing::profile_function!();
 
-    let query = ctx.current_query();
-    if ctx
-        .entity_db
-        .store()
+    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
+
+    if store
         .query_latest_component::<Transform3D>(entity_path, &query)
         .is_none()
     {

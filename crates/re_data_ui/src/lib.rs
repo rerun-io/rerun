@@ -86,6 +86,7 @@ pub trait DataUi {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     );
 }
 
@@ -101,6 +102,7 @@ pub trait EntityDataUi {
         verbosity: UiVerbosity,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     );
 }
 
@@ -115,11 +117,12 @@ where
         verbosity: UiVerbosity,
         entity: &EntityPath,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         // This ensures that UI state is maintained per entity. For example, the collapsed state for
         // `AnnotationContext` component is not saved by all instances of the component.
         ui.push_id(entity.hash(), |ui| {
-            self.data_ui(ctx, ui, verbosity, query);
+            self.data_ui(ctx, ui, verbosity, query, store);
         });
     }
 }
@@ -133,6 +136,7 @@ impl DataUi for TimePoint {
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
     ) {
         ui.vertical(|ui| {
             egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
@@ -154,6 +158,7 @@ impl DataUi for [DataCell] {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
     ) {
         let mut sorted = self.to_vec();
         sorted.sort_by_key(|cb| cb.component_name());
