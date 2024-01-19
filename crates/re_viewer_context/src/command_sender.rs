@@ -33,6 +33,10 @@ pub enum SystemCommand {
     /// is both modified and changed in the same frame.
     UpdateBlueprint(StoreId, Vec<DataRow>),
 
+    /// Show a timeline of the blueprint data.
+    #[cfg(debug_assertions)]
+    EnableInspectBlueprintTimeline(bool),
+
     /// Enable or disable the experimental dataframe space views.
     EnableExperimentalDataframeSpaceView(bool),
 

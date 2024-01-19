@@ -19,11 +19,6 @@ all-features = true
 [features]
 default = []
 
-## Polars support
-polars = ["dep:polars-core", "re_data_store/polars"]
-
-testing = ["re_log_types/testing"]
-
 [dependencies]
 # Rerun dependencies:
 re_data_store.workspace = true
@@ -42,13 +37,6 @@ itertools = { workspace = true }
 smallvec.workspace = true
 thiserror.workspace = true
 
-# Optional dependencies:
-polars-core = { workspace = true, optional = true, features = [
-  "dtype-date",
-  "dtype-time",
-  "dtype-struct",
-] }
-
 
 [dev-dependencies]
 re_types = { workspace = true, features = ["datagen"] }
@@ -56,12 +44,6 @@ re_types = { workspace = true, features = ["datagen"] }
 criterion.workspace = true
 itertools = { workspace = true }
 mimalloc.workspace = true
-polars-core = { workspace = true, features = [
-  "dtype-date",
-  "dtype-time",
-  "dtype-struct",
-  "fmt",
-] }
 rand = { workspace = true, features = ["std", "std_rng"] }
 
 [lib]

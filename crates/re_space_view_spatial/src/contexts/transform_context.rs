@@ -114,7 +114,7 @@ impl ViewContextSystem for TransformContext {
             return;
         };
 
-        let time_query = ctx.rec_cfg.time_ctrl.read().current_query();
+        let time_query = ctx.current_query();
 
         // Child transforms of this space
         self.gather_descendants_transforms(

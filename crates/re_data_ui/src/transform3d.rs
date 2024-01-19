@@ -11,12 +11,13 @@ impl DataUi for re_types::components::Transform3D {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         match verbosity {
             UiVerbosity::Small => {
                 // TODO(andreas): Preview some information instead of just a label with hover ui.
                 ui.label("3D transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::LimitHeight, query);
+                    self.data_ui(ctx, ui, UiVerbosity::LimitHeight, query, store);
                 });
             }
 
@@ -35,7 +36,7 @@ impl DataUi for re_types::components::Transform3D {
                     ui.label("3D transform");
                     ui.indent("transform_repr", |ui| {
                         ui.label(dir_string);
-                        self.0.data_ui(ctx, ui, verbosity, query);
+                        self.0.data_ui(ctx, ui, verbosity, query, store);
                     });
                 });
             }
@@ -51,8 +52,9 @@ impl DataUi for re_types::components::OutOfTreeTransform3D {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
-        re_types::components::Transform3D(self.0).data_ui(ctx, ui, verbosity, query);
+        re_types::components::Transform3D(self.0).data_ui(ctx, ui, verbosity, query, store);
     }
 }
 
@@ -64,20 +66,21 @@ impl DataUi for Transform3D {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         match verbosity {
             UiVerbosity::Small => {
                 ui.label("3D transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::LimitHeight, query);
+                    self.data_ui(ctx, ui, UiVerbosity::LimitHeight, query, store);
                 });
             }
 
             UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => match self {
                 Transform3D::TranslationAndMat3x3(translation_matrix) => {
-                    translation_matrix.data_ui(ctx, ui, verbosity, query);
+                    translation_matrix.data_ui(ctx, ui, verbosity, query, store);
                 }
                 Transform3D::TranslationRotationScale(translation_rotation_scale) => {
-                    translation_rotation_scale.data_ui(ctx, ui, verbosity, query);
+                    translation_rotation_scale.data_ui(ctx, ui, verbosity, query, store);
                 }
             },
         }
@@ -91,6 +94,7 @@ impl DataUi for TranslationRotationScale3D {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         let TranslationRotationScale3D {
             translation,
@@ -106,19 +110,19 @@ impl DataUi for TranslationRotationScale3D {
                 // We still skip zero translations though since they are typically not logged explicitly.
                 if let Some(translation) = translation {
                     ui.label("translation");
-                    translation.data_ui(ctx, ui, verbosity, query);
+                    translation.data_ui(ctx, ui, verbosity, query, store);
                     ui.end_row();
                 }
 
                 if let Some(rotation) = rotation {
                     ui.label("rotation");
-                    rotation.data_ui(ctx, ui, verbosity, query);
+                    rotation.data_ui(ctx, ui, verbosity, query, store);
                     ui.end_row();
                 }
 
                 if let Some(scale) = scale {
                     ui.label("scale");
-                    scale.data_ui(ctx, ui, verbosity, query);
+                    scale.data_ui(ctx, ui, verbosity, query, store);
                     ui.end_row();
                 }
             });
@@ -132,13 +136,14 @@ impl DataUi for Scale3D {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         match self {
             Scale3D::Uniform(scale) => {
                 ui.label(re_format::format_f32(*scale));
             }
             Scale3D::ThreeD(v) => {
-                v.data_ui(ctx, ui, verbosity, query);
+                v.data_ui(ctx, ui, verbosity, query, store);
             }
         }
     }
@@ -151,6 +156,7 @@ impl DataUi for TranslationAndMat3x3 {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         let TranslationAndMat3x3 {
             translation,
@@ -163,13 +169,13 @@ impl DataUi for TranslationAndMat3x3 {
             .show(ui, |ui| {
                 if let Some(translation) = translation {
                     ui.label("translation");
-                    translation.data_ui(ctx, ui, verbosity, query);
+                    translation.data_ui(ctx, ui, verbosity, query, store);
                     ui.end_row();
                 }
 
                 if let Some(matrix) = mat3x3 {
                     ui.label("matrix");
-                    matrix.data_ui(ctx, ui, verbosity, query);
+                    matrix.data_ui(ctx, ui, verbosity, query, store);
                     ui.end_row();
                 }
             });

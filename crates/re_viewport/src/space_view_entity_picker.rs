@@ -157,6 +157,9 @@ fn add_entities_line_ui(
 ) {
     re_tracing::profile_function!();
 
+    let query = ctx.current_query();
+    let store = ctx.entity_db.store();
+
     ui.horizontal(|ui| {
         let entity_path = &entity_tree.path;
 
@@ -177,6 +180,8 @@ fn add_entities_line_ui(
             };
             let response = item_ui::instance_path_button_to(
                 ctx,
+                &query,
+                store,
                 ui,
                 Some(space_view.id),
                 &InstancePath::entity_splat(entity_path.clone()),

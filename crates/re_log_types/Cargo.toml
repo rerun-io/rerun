@@ -28,8 +28,6 @@ serde = [
   "re_types_core/serde",
 ]
 
-testing = []
-
 [dependencies]
 
 # Rerun
