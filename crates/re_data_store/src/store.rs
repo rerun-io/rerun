@@ -168,9 +168,6 @@ pub struct StoreGeneration {
 /// know what's going on internally.
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
-///
-/// Additionally, if the `polars` feature is enabled, you can dump the entire datastore as a
-/// flat denormalized dataframe using [`Self::to_dataframe`].
 pub struct DataStore {
     pub(crate) id: StoreId,
 

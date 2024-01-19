@@ -28,12 +28,6 @@ mod store_stats;
 mod store_subscriber;
 mod store_write;
 
-#[cfg(feature = "polars")]
-mod store_polars;
-
-#[cfg(feature = "polars")]
-pub mod polars_util;
-
 #[doc(hidden)]
 pub mod test_util;
 
