@@ -1073,58 +1073,64 @@ fn entity_overrides_ui(
     data_result: &DataResult,
 ) {
     egui::Grid::new("component_overrides")
-        .num_columns(2)
+        .num_columns(3)
         .show(ui, |ui| {
             // TODO(jleibs): We want to filter which component overrides are shown based on the
             // the space-view class / visualizers
             if data_result.visualizers.contains(&("TimeSeries".into())) {
-                // TODO(jleibs) This whole thing should go into `re_data_ui`.
-                ui.label("Color");
+                if let Some(override_path) = data_result.override_path() {
+                    // TODO(jleibs) This whole thing should go into `re_data_ui`.
+                    ui.label("Color");
 
-                // TODO(jleibs) Need a helper to do this
-                let current_color = (if let Some((store_kind, path)) = data_result
-                    .property_overrides
-                    .as_ref()
-                    .and_then(|p| p.component_overrides.get(&Color::name()))
-                {
-                    match store_kind {
-                        StoreKind::Blueprint => ctx
-                            .store_context
-                            .blueprint
-                            .store()
-                            .query_latest_component::<Color>(path, ctx.blueprint_query),
-                        StoreKind::Recording => ctx
-                            .entity_db
-                            .store()
-                            .query_latest_component::<Color>(path, &ctx.current_query()),
-                    }
-                } else {
-                    ctx.entity_db
-                        .store()
-                        .query_latest_component(&data_result.entity_path, &ctx.current_query())
-                })
-                .map_or(Color::from_unmultiplied_rgba(0, 0, 0, 0), |c| c.value);
+                    // TODO(jleibs) Need a helper to do this
+                    let current_color = data_result
+                        .property_overrides
+                        .as_ref()
+                        .and_then(|p| p.component_overrides.get(&Color::name()))
+                        .and_then(|(store_kind, path)| match store_kind {
+                            StoreKind::Blueprint => ctx
+                                .store_context
+                                .blueprint
+                                .store()
+                                .query_latest_component::<Color>(path, ctx.blueprint_query),
+                            StoreKind::Recording => ctx
+                                .entity_db
+                                .store()
+                                .query_latest_component::<Color>(path, &ctx.current_query()),
+                        })
+                        .or_else(|| {
+                            ctx.entity_db.store().query_latest_component(
+                                &data_result.entity_path,
+                                &ctx.current_query(),
+                            )
+                        })
+                        .map_or(Color::from_unmultiplied_rgba(0, 0, 0, 0), |c| c.value);
 
-                let [r, g, b, a] = current_color.to_array();
-                let mut egui_color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
+                    let [r, g, b, a] = current_color.to_array();
+                    let mut egui_color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
 
-                egui::color_picker::color_edit_button_srgba(
-                    ui,
-                    &mut egui_color,
-                    egui::color_picker::Alpha::Opaque,
-                );
+                    egui::color_picker::color_edit_button_srgba(
+                        ui,
+                        &mut egui_color,
+                        egui::color_picker::Alpha::Opaque,
+                    );
 
-                let [r, g, b, a] = egui_color.to_array();
+                    let [r, g, b, a] = egui_color.to_array();
 
-                let final_color = Color::from_unmultiplied_rgba(r, g, b, a);
+                    let final_color = Color::from_unmultiplied_rgba(r, g, b, a);
 
-                if final_color != current_color {
-                    if let Some(override_path) = data_result.override_path() {
+                    if final_color != current_color {
                         ctx.save_blueprint_component(override_path, final_color);
                     }
-                }
 
-                ui.end_row();
+                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
+
+                    if response.clicked() {
+                        ctx.save_empty_blueprint_component::<Color>(override_path);
+                    }
+
+                    ui.end_row();
+                }
             }
         });
 }
