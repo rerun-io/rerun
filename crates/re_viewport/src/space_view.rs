@@ -631,7 +631,7 @@ mod tests {
                 .map(|(id, entities)| {
                     (
                         *id,
-                        IndicatorMatchingEntities(entities.iter().map(|e| e.hash()).collect()),
+                        IndicatorMatchingEntities(entities.iter().cloned().collect()),
                     )
                 })
                 .collect(),

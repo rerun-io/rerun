@@ -1,6 +1,6 @@
 use egui::Label;
 
-use re_space_view::recommend_space_view_for_each_visualizable_entity;
+use re_space_view::recommend_space_view_for_each_matching_indicator;
 use re_viewer_context::external::re_entity_db::EntityProperties;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
@@ -96,7 +96,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
         // By default spawn a space view for every text document.
-        recommend_space_view_for_each_visualizable_entity::<TextDocumentSystem>(ctx, self)
+        recommend_space_view_for_each_matching_indicator::<TextDocumentSystem>(ctx, self)
     }
 
     fn ui(

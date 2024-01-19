@@ -269,25 +269,26 @@ pub fn spawn_heuristics(
 ) -> SpaceViewSpawnHeuristics {
     re_tracing::profile_function!();
 
-    // First, create a list of all entities that are applicable to *any* 2D/3D visualizer.
+    // First, create a list of all entities that have a matching indicator for *any* 2D/3D visualizer.
     let visualizers = ctx
         .space_view_class_registry
         .new_visualizer_collection(space_view_class_identifier);
-    let applicable_entities: IntSet<EntityPath> = visualizers
+    let indicated_entities: IntSet<EntityPath> = visualizers
         .iter_with_identifiers()
         .filter_map(|(id, visualizer)| {
-            visualizer
-                .data()
-                .and_then(|data| data.downcast_ref::<SpatialViewVisualizerData>())
-                .and_then(|data| {
-                    if data.preferred_view_kind == Some(visualizer_kind) {
-                        ctx.applicable_entities_per_visualizer
-                            .get(&id)
-                            .map(|entities| entities.0.iter())
-                    } else {
-                        None
-                    }
-                })
+            let data = visualizer
+                .data()?
+                .downcast_ref::<SpatialViewVisualizerData>()?;
+
+            if data.preferred_view_kind == Some(visualizer_kind) {
+                Some(
+                    ctx.indicator_matching_entities_per_visualizer
+                        .get(&id)?
+                        .iter(),
+                )
+            } else {
+                None
+            }
         })
         .flatten()
         .cloned()
@@ -300,7 +301,7 @@ pub fn spawn_heuristics(
 
     // Spawn a space view at each subspace that has any potential 2D/3D content.
     // Note that visualizability filtering is all about being in the right subspace,
-    // so we only need to check applicability here.
+    // so we only need to check visualizability here.
     SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
         let recommended_space_views = topo
             .iter_subspaces()
@@ -308,7 +309,7 @@ pub fn spawn_heuristics(
                 if subspace.dimensionality == SubSpaceDimensionality::Unknown
                     || subspace.dimensionality == preferred_dimensionality
                 {
-                    if applicable_entities.is_disjoint(&subspace.entities) {
+                    if indicated_entities.is_disjoint(&subspace.entities) {
                         None
                     } else {
                         Some(RecommendedSpaceView {

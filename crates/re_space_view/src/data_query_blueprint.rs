@@ -272,9 +272,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                         if self
                             .indicator_matching_entities_per_visualizer
                             .get(visualizer)
-                            .map_or(false, |matching_list| {
-                                matching_list.contains(&entity_path.hash())
-                            })
+                            .map_or(false, |matching_list| matching_list.contains(&entity_path))
                         {
                             Some(*visualizer)
                         } else {
@@ -647,9 +645,7 @@ mod tests {
                         .map(|(id, entities)| {
                             (
                                 *id,
-                                IndicatorMatchingEntities(
-                                    entities.0.iter().map(|path| path.hash()).collect(),
-                                ),
+                                IndicatorMatchingEntities(entities.0.iter().cloned().collect()),
                             )
                         })
                         .collect(),

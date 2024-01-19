@@ -89,7 +89,7 @@ impl SpaceViewClass for TextSpaceView {
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
         // Spawn a single log view at the root if there's any text logs around anywhere.
         if ctx
-            .applicable_entities_per_visualizer
+            .indicator_matching_entities_per_visualizer
             .get(&TextLogSystem::identifier())
             .map_or(true, |entities| entities.is_empty())
         {
