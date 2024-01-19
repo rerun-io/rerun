@@ -19,9 +19,6 @@ all-features = true
 [features]
 default = []
 
-# TODO: let's get rid of that too while we're here
-testing = ["re_log_types/testing"]
-
 [dependencies]
 # Rerun dependencies:
 re_data_store.workspace = true
@@ -42,6 +39,7 @@ thiserror.workspace = true
 
 
 [dev-dependencies]
+re_log_types = { workspace = true, features = ["testing"] }
 re_types = { workspace = true, features = ["datagen"] }
 
 criterion.workspace = true

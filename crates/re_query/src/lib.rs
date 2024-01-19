@@ -11,7 +11,7 @@ pub use self::range::range_archetype;
 pub use self::util::query_archetype_with_history;
 
 // Used for doc-tests
-#[cfg(feature = "testing")]
+#[doc(hidden)]
 pub use self::query::__populate_example_store;
 
 #[derive(Debug, Clone, Copy)]
