@@ -296,6 +296,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ needs.version.outputs.release-commit }}
 
       - name: Update latest branch
@@ -303,7 +304,7 @@ jobs:
         run: |
           git fetch
           git checkout ${{ github.ref_name }}
-          git push --force origin ${{ github.ref_name }}:latest
+          git push --force origin refs/heads${{ github.ref_name }}:refs/heads/latest
 
   post-release-version-bump:
     name: "Post-Release Version Bump"
