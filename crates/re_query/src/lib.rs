@@ -11,9 +11,6 @@ mod query;
 mod range;
 mod util;
 
-#[cfg(feature = "polars")]
-pub mod dataframe_util;
-
 pub use self::archetype_view::{ArchetypeView, ComponentWithInstances};
 pub use self::query::{get_component_with_instances, query_archetype};
 pub use self::range::range_archetype;
@@ -62,10 +59,6 @@ pub enum QueryError {
 
     #[error("Error converting arrow data: {0}")]
     ArrowError(#[from] arrow2::error::Error),
-
-    #[cfg(feature = "polars")]
-    #[error("Error from within Polars")]
-    PolarsError(#[from] polars_core::prelude::PolarsError),
 
     #[error("Not implemented")]
     NotImplemented,
