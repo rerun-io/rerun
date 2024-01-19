@@ -51,8 +51,10 @@ itertools = { workspace = true }
 mimalloc.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 
+
 [lib]
 bench = false
+
 
 [[bench]]
 name = "query_benchmark"
