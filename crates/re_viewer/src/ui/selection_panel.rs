@@ -4,17 +4,18 @@ use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
-use re_log_types::{DataRow, EntityPathFilter, RowId};
+use re_log_types::{DataRow, EntityPathFilter, RowId, StoreKind};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
-    components::{PinholeProjection, Transform3D},
+    components::{Color, PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
+use re_types_core::Loggable;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId,
+    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId, DataResult
     HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand,
     SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
@@ -909,6 +910,7 @@ fn blueprint_ui(
                                 data_result.accumulated_properties(),
                             );
                             data_result.save_override(Some(props), ctx);
+                            entity_overrides_ui(ctx, ui, &space_view_class, &data_result);
                         }
                     }
                 }
@@ -1062,6 +1064,69 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     } else {
         Some(new_filter)
     }
+}
+
+fn entity_overrides_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _space_view_class: &SpaceViewClassIdentifier,
+    data_result: &DataResult,
+) {
+    egui::Grid::new("component_overrides")
+        .num_columns(2)
+        .show(ui, |ui| {
+            // TODO(jleibs): We want to filter which component overrides are shown based on the
+            // the space-view class / visualizers
+            if data_result.visualizers.contains(&("TimeSeries".into())) {
+                // TODO(jleibs) This whole thing should go into `re_data_ui`.
+                ui.label("Color");
+
+                // TODO(jleibs) Need a helper to do this
+                let current_color = (if let Some((store_kind, path)) = data_result
+                    .property_overrides
+                    .as_ref()
+                    .and_then(|p| p.component_overrides.get(&Color::name()))
+                {
+                    match store_kind {
+                        StoreKind::Blueprint => ctx
+                            .store_context
+                            .blueprint
+                            .store()
+                            .query_latest_component::<Color>(path, ctx.blueprint_query),
+                        StoreKind::Recording => ctx
+                            .entity_db
+                            .store()
+                            .query_latest_component::<Color>(path, &ctx.current_query()),
+                    }
+                } else {
+                    ctx.entity_db
+                        .store()
+                        .query_latest_component(&data_result.entity_path, &ctx.current_query())
+                })
+                .map_or(Color::from_unmultiplied_rgba(0, 0, 0, 0), |c| c.value);
+
+                let [r, g, b, a] = current_color.to_array();
+                let mut egui_color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
+
+                egui::color_picker::color_edit_button_srgba(
+                    ui,
+                    &mut egui_color,
+                    egui::color_picker::Alpha::Opaque,
+                );
+
+                let [r, g, b, a] = egui_color.to_array();
+
+                let final_color = Color::from_unmultiplied_rgba(r, g, b, a);
+
+                if final_color != current_color {
+                    if let Some(override_path) = data_result.override_path() {
+                        ctx.save_blueprint_component(override_path, final_color);
+                    }
+                }
+
+                ui.end_row();
+            }
+        });
 }
 
 fn entity_props_ui(

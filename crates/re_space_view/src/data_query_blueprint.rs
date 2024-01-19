@@ -477,6 +477,8 @@ impl DataQueryPropertyResolver<'_> {
                     // TODO(jleibs): This information needs to come from the Visualizer.
                     let color_component = ComponentName::from("rerun.components.Color");
 
+                    // TODO(jleibs): To handle clears properly, need to check that the component
+                    // isn't empty.
                     if ctx.blueprint.store().entity_has_component(
                         &query.timeline,
                         &override_path,
