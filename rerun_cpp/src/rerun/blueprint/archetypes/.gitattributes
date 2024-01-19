@@ -5,5 +5,7 @@ container_blueprint.cpp linguist-generated=true
 container_blueprint.hpp linguist-generated=true
 space_view_blueprint.cpp linguist-generated=true
 space_view_blueprint.hpp linguist-generated=true
+time_series.cpp linguist-generated=true
+time_series.hpp linguist-generated=true
 viewport_blueprint.cpp linguist-generated=true
 viewport_blueprint.hpp linguist-generated=true
