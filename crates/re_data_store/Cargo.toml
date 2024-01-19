@@ -22,9 +22,6 @@ default = []
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
 
-## Integration with `polars`, to efficiently use the datastore with dataframes.
-polars = ["dep:polars-core", "dep:polars-ops"]
-
 
 [dependencies]
 # Rerun dependencies:
@@ -48,22 +45,6 @@ smallvec.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 
-# Optional dependencies:
-polars-core = { workspace = true, optional = true, features = [
-  "diagonal_concat",
-  "dtype-date",
-  "dtype-datetime",
-  "dtype-time",
-  "dtype-struct",
-  "sort_multiple",
-] }
-polars-ops = { workspace = true, optional = true, features = [
-  "dtype-date",
-  "dtype-datetime",
-  "dtype-time",
-  "dtype-struct",
-] }
-
 
 [dev-dependencies]
 re_types = { workspace = true, features = ["datagen", "testing"] }
@@ -71,42 +52,12 @@ re_types = { workspace = true, features = ["datagen", "testing"] }
 anyhow.workspace = true
 criterion.workspace = true
 mimalloc.workspace = true
-polars-core = { workspace = true, features = [
-  "diagonal_concat",
-  "dtype-date",
-  "dtype-datetime",
-  "dtype-struct",
-  "dtype-time",
-  "fmt",
-  "sort_multiple",
-] }
 rand.workspace = true
 similar-asserts.workspace = true
 tinyvec.workspace = true
 
 [lib]
 bench = false
-
-
-[[example]]
-name = "dump_dataframe"
-path = "examples/dump_dataframe.rs"
-required-features = ["polars"]
-
-[[example]]
-name = "latest_component"
-path = "examples/latest_component.rs"
-required-features = ["polars"]
-
-[[example]]
-name = "latest_components"
-path = "examples/latest_components.rs"
-required-features = ["polars"]
-
-[[example]]
-name = "range_components"
-path = "examples/range_components.rs"
-required-features = ["polars"]
 
 
 [[bench]]
