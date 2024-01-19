@@ -306,6 +306,51 @@ jobs:
           git checkout ${{ github.ref_name }}
           git push --force origin refs/heads${{ github.ref_name }}:refs/heads/latest
 
+  github-release:
+    name: "GitHub Release"
+    if: inputs.release-type == 'final'
+    needs:
+      [
+        version,
+        update-docs,
+        publish-crates,
+        publish-wheels,
+        publish-web,
+        publish-rerun_c,
+        publish-rerun-cli,
+        publish-npm,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.version.outputs.release-commit }}
+          token: ${{ secrets.RERUN_BOT_TOKEN }}
+
+      - name: Release tag
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          version="${{ needs.version.outputs.final }}"
+          git tag $version
+          git push origin $version
+          gh release create $version --verify-tag --draft --title $version
+
+      - name: Create comment
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          pr_number=$(gh pr view --json number | jq '.number')
+          version="${{ needs.version.outputs.final }}"
+
+          cat <<EOF > comment-body.txt
+          GitHub release draft: [$version](https://github.com/rerun-io/rerun/releases/tag/$version)
+          EOF
+
+          gh pr comment $pr_number --body-file comment-body.txt
+
   post-release-version-bump:
     name: "Post-Release Version Bump"
     if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
@@ -319,6 +364,7 @@ jobs:
         publish-rerun_c,
         publish-rerun-cli,
         publish-npm,
+        github-release,
       ]
     runs-on: ubuntu-latest
     steps:
