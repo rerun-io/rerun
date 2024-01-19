@@ -3,10 +3,10 @@ use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
-    AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
-    ViewerContext, VisualizableFilterContext,
+    DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    VisualizableFilterContext,
 };
 
 /// Defines a class of space view.
@@ -74,16 +74,6 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
         _entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext> {
         Box::new(())
-    }
-
-    /// Heuristic used to determine which space view is the best fit for a set of paths.
-    fn auto_spawn_heuristic(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
-    ) -> AutoSpawnHeuristic {
-        AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(ent_paths.len() as f32)
     }
 
     /// TODO: doc
@@ -195,16 +185,6 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext> {
         self.visualizable_filter_context(space_origin, entity_db)
-    }
-
-    #[inline]
-    fn auto_spawn_heuristic(
-        &self,
-        ctx: &ViewerContext<'_>,
-        space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
-    ) -> AutoSpawnHeuristic {
-        self.auto_spawn_heuristic(ctx, space_origin, ent_paths)
     }
 
     #[inline]

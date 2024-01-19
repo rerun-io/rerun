@@ -4,7 +4,6 @@
 //! Does not implement any concrete space view.
 
 // TODO(andreas): Can we move some of these to the `re_space_view` crate?
-mod auto_spawn_heuristic;
 mod dyn_space_view_class;
 mod highlights;
 mod named_system;
@@ -18,7 +17,6 @@ mod view_query;
 mod visualizer_entity_subscriber;
 mod visualizer_system;
 
-pub use auto_spawn_heuristic::AutoSpawnHeuristic;
 pub use dyn_space_view_class::{
     DynSpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewState,
     VisualizableFilterContext,

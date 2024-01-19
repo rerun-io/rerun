@@ -2,18 +2,17 @@ use nohash_hasher::IntSet;
 use re_entity_db::EntityProperties;
 use re_log_types::EntityPath;
 use re_viewer_context::{
-    AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
-    VisualizableFilterContext,
+    PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
 };
 
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
-    heuristics::{auto_spawn_heuristic, spawn_heuristics, update_object_property_heuristics},
+    heuristics::{spawn_heuristics, update_object_property_heuristics},
     spatial_topology::{SpatialTopology, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{register_2d_spatial_visualizers, SpatialViewVisualizerData},
+    visualizers::register_2d_spatial_visualizers,
 };
 
 #[derive(Default)]
@@ -154,62 +153,6 @@ impl SpaceViewClass for SpatialSpaceView2D {
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
         re_tracing::profile_function!();
         spawn_heuristics(ctx, self.identifier(), SpatialSpaceViewKind::TwoD)
-    }
-
-    fn auto_spawn_heuristic(
-        &self,
-        ctx: &ViewerContext<'_>,
-        space_origin: &EntityPath,
-        per_system_entities: &PerSystemEntities,
-    ) -> AutoSpawnHeuristic {
-        let mut score = auto_spawn_heuristic(
-            self.identifier(),
-            ctx,
-            per_system_entities,
-            SpatialSpaceViewKind::TwoD,
-        );
-
-        // If this is the root space view, and it contains a part that would
-        // prefer to be 3D, don't spawn the 2D view.
-        //
-        // Since pinhole projections provide a mapping between a 2D child space and a 3D
-        // parent space, it means that for any 3D content to be projected into a 2D space,
-        // there must exist a common 3D ancestor-space which has a *child* which is a 2D space
-        // (and contains a pinhole.) But if this space origin is at the root itself, that common
-        // ancestor would need to be a parent of the root, which doesn't exist. As such, it's
-        // impossible that this space would be able to correctly account for the required
-        // content. By not spawning a 2D space in this case we ensure the 3D version gets chosen
-        // by the heuristics instead.
-        if space_origin.is_root() {
-            let parts = ctx
-                .space_view_class_registry
-                .new_visualizer_collection(self.identifier());
-
-            for part in per_system_entities.keys() {
-                if let Ok(part) = parts.get_by_identifier(*part) {
-                    if let Some(part_data) = part
-                        .data()
-                        .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
-                    {
-                        if part_data.preferred_view_kind == Some(SpatialSpaceViewKind::ThreeD) {
-                            return AutoSpawnHeuristic::NeverSpawn;
-                        }
-                    }
-                }
-            }
-        }
-
-        if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score) = &mut score {
-            // If a 2D view contains nothing inherently 2D in nature, don't
-            // spawn it, though in all other cases default to 2D over 3D as a tie-breaker.
-            if *score == 0.0 {
-                return AutoSpawnHeuristic::NeverSpawn;
-            } else {
-                *score += 0.1;
-            }
-        }
-
-        score
     }
 
     fn selection_ui(

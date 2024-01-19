@@ -272,7 +272,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                         if self
                             .indicator_matching_entities_per_visualizer
                             .get(visualizer)
-                            .map_or(false, |matching_list| matching_list.contains(&entity_path))
+                            .map_or(false, |matching_list| matching_list.contains(entity_path))
                         {
                             Some(*visualizer)
                         } else {

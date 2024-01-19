@@ -12,8 +12,8 @@ use re_types::{
     Archetype as _,
 };
 use re_viewer_context::{
-    AutoSpawnHeuristic, IdentifiedViewSystem, PerSystemEntities, RecommendedSpaceView,
-    SpaceViewClassIdentifier, SpaceViewSpawnHeuristics, ViewerContext,
+    IdentifiedViewSystem, PerSystemEntities, RecommendedSpaceView, SpaceViewClassIdentifier,
+    SpaceViewSpawnHeuristics, ViewerContext,
 };
 
 use crate::{
@@ -24,45 +24,6 @@ use crate::{
         CamerasVisualizer, ImageVisualizer, SpatialViewVisualizerData, Transform3DArrowsVisualizer,
     },
 };
-
-pub fn auto_spawn_heuristic(
-    class: SpaceViewClassIdentifier,
-    ctx: &ViewerContext<'_>,
-    per_system_entities: &PerSystemEntities,
-    view_kind: SpatialSpaceViewKind,
-) -> AutoSpawnHeuristic {
-    re_tracing::profile_function!();
-
-    let mut score = 0.0;
-
-    let parts = ctx
-        .space_view_class_registry
-        .new_visualizer_collection(class);
-
-    // Gather all systems that advertise a "preferred view kind" matching the passed in kind.
-    let system_names_with_matching_view_kind = parts
-        .iter_with_identifiers()
-        .filter_map(|(name, part)| {
-            part.data()
-                .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
-                .map_or(false, |data| data.preferred_view_kind == Some(view_kind))
-                .then_some(name)
-        })
-        .collect::<Vec<_>>();
-
-    // For each of the system with the matching "preferred view kind", count the entities involved.
-    // We tally this up for scoring.
-    for system_name in system_names_with_matching_view_kind {
-        if per_system_entities
-            .get(&system_name)
-            .map_or(false, |c| !c.is_empty())
-        {
-            score += 1.0;
-        }
-    }
-
-    AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score)
-}
 
 pub fn update_object_property_heuristics(
     ctx: &ViewerContext<'_>,

@@ -5,10 +5,9 @@ use re_data_ui::item_ui;
 use re_log_types::{EntityPath, EntityPathFilter, TimePoint, Timeline};
 use re_types::components::TextLogLevel;
 use re_viewer_context::{
-    level_to_rich_text, AutoSpawnHeuristic, IdentifiedViewSystem as _, PerSystemEntities,
-    RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError, ViewQuery,
-    ViewerContext,
+    level_to_rich_text, IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
 use super::visualizer_system::{Entry, TextLogSystem};
@@ -67,20 +66,6 @@ impl SpaceViewClass for TextSpaceView {
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
-    }
-
-    fn auto_spawn_heuristic(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
-    ) -> re_viewer_context::AutoSpawnHeuristic {
-        // Always spawn a single text view for the root and nothing else.
-        if space_origin.is_root() && !ent_paths.is_empty() {
-            AutoSpawnHeuristic::AlwaysSpawn
-        } else {
-            AutoSpawnHeuristic::NeverSpawn
-        }
     }
 
     fn spawn_heuristics(

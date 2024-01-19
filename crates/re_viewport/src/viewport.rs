@@ -20,8 +20,7 @@ use re_viewer_context::{
 use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
-    system_execution::execute_systems_for_space_views, SpaceInfoCollection, SpaceViewBlueprint,
-    ViewportBlueprint,
+    system_execution::execute_systems_for_space_views, SpaceViewBlueprint, ViewportBlueprint,
 };
 
 // State for each `SpaceView` including both the auto properties and
