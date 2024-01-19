@@ -1,5 +1,6 @@
 use re_ui::list_item::ListItem;
 use re_ui::{toasts, CommandPalette, ReUi, UICommand, UICommandSender};
+use std::collections::HashSet;
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -60,6 +61,162 @@ fn main() -> eframe::Result<()> {
     )
 }
 
+struct ExampleDragAndDrop {
+    items: Vec<(u32, String)>,
+
+    /// currently selected items
+    selected_items: HashSet<usize>,
+}
+
+impl Default for ExampleDragAndDrop {
+    fn default() -> Self {
+        Self {
+            items: (0..10)
+                .into_iter()
+                .map(|i| (i, format!("Item {i}")))
+                .collect(),
+            selected_items: HashSet::new(),
+        }
+    }
+}
+
+impl ExampleDragAndDrop {
+    fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
+        ui.scope(|ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+
+            re_ui.panel_content(ui, |re_ui, ui| {
+                re_ui.panel_title_bar(ui, "Drag-and-drop demo", None);
+
+                let anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
+
+                let mut source_item_pos = None;
+                let mut target_item_pos = None;
+
+                for (i, (idx, label)) in self.items.iter_mut().enumerate() {
+                    let item = re_ui
+                        .list_item(label.as_str())
+                        .selected(self.selected_items.contains(&i));
+
+                    let response = item.show(ui);
+
+                    // trigger drag
+                    let id = egui::Id::new("drag_Demo").with(idx);
+
+                    //TODO: this kills the hover on listitem
+                    let response = ui.interact(response.rect, id, egui::Sense::drag());
+                    if response.dragged() {
+                        ui.ctx()
+                            .debug_painter()
+                            .debug_rect(response.rect, egui::Color32::RED, "");
+                    }
+
+                    // item selection
+                    if response.clicked() {
+                        if ui.input(|i| i.modifiers.command) {
+                            if self.selected_items.contains(&i) {
+                                self.selected_items.remove(&i);
+                            } else {
+                                self.selected_items.insert(i);
+                            }
+                        } else {
+                            self.selected_items.clear();
+                            self.selected_items.insert(i);
+                        }
+                    }
+
+                    // Here, we support dragging a single item at a time, so we set the selection to the dragged item
+                    // if/when we're dragging it proper.
+                    if ui.input(|i| i.pointer.is_decidedly_dragging()) {
+                        self.selected_items.clear();
+                        self.selected_items.insert(i);
+                    }
+
+                    // TODO(emilk/egui#3841): very tempting to use `response.dragged()` here, but it
+                    // doesn't work. By the time `i.pointer.any_released()` is true, `response.dragged()`
+                    // is false. So both condition never happen at the same time.
+                    if ui.memory(|mem| mem.is_being_dragged(response.id)) {
+                        source_item_pos = Some(i);
+                    }
+
+                    // TODO(emilk/egui#3841): very tempting to use `response.hovered()`here, but widgets
+                    // that sense more than hover never get `response.hovered() == true` while another
+                    // widget is being dragged.
+                    if anything_being_dragged {
+                        let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
+
+                        let (insert_y, target) = if ui.rect_contains_pointer(top) {
+                            (Some(top.top()), Some(i))
+                        } else if ui.rect_contains_pointer(bottom) {
+                            (Some(bottom.bottom()), Some(i + 1))
+                        } else {
+                            (None, None)
+                        };
+
+                        if let Some(insert_y) = insert_y {
+                            ui.painter().hline(
+                                ui.cursor().x_range(),
+                                insert_y,
+                                (2.0, egui::Color32::WHITE),
+                            );
+
+                            // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
+                            if ui.input(|i| i.pointer.any_released()) {
+                                dbg!(target);
+                                target_item_pos = target;
+                            }
+                        }
+
+                        // Alternative: blank item to show where the dragged item lands
+                        //re_ui.list_item("").active(false).show(ui);
+                    }
+
+                    // if anything_being_dragged && ui.rect_contains_pointer(response.rect) {
+                    //     ui.painter().hline(
+                    //         ui.cursor().x_range(),
+                    //         ui.cursor().top(),
+                    //         (2.0, egui::Color32::WHITE),
+                    //     );
+                    //
+                    //
+                    //
+                    //     // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
+                    //     if ui.input(|i| i.pointer.any_released()) {
+                    //         target_item_pos = Some(i);
+                    //     }
+                    // }
+                }
+
+                // println!(
+                //     "RES:    {}    {}",
+                //     if let Some(source) = source_item_pos {
+                //         source.to_string()
+                //     } else {
+                //         "X".to_string()
+                //     },
+                //     if let Some(target) = target_item_pos {
+                //         target.to_string()
+                //     } else {
+                //         "X".to_string()
+                //     }
+                // );
+
+                if let (Some(source), Some(target)) = (source_item_pos, target_item_pos) {
+                    println!("Moving {} to {}", source, target);
+
+                    let item = self.items.remove(source);
+
+                    if source < target {
+                        self.items.insert(target - 1, item);
+                    } else {
+                        self.items.insert(target, item);
+                    }
+                }
+            });
+        });
+    }
+}
+
 pub struct ExampleApp {
     re_ui: re_ui::ReUi,
     toasts: toasts::Toasts,
@@ -89,6 +246,8 @@ pub struct ExampleApp {
     pub command_sender: CommandSender,
     command_receiver: CommandReceiver,
     latest_cmd: String,
+
+    drag_and_drop: ExampleDragAndDrop,
 }
 
 impl ExampleApp {
@@ -121,6 +280,8 @@ impl ExampleApp {
             command_sender,
             command_receiver,
             latest_cmd: Default::default(),
+
+            drag_and_drop: Default::default(),
         }
     }
 
@@ -308,7 +469,10 @@ impl eframe::App for ExampleApp {
             .show_animated(egui_ctx, self.right_panel, |ui| {
                 ui.set_clip_rect(ui.max_rect());
 
-                // first section - no scroll area, so a single outer "panel_content" can be used.
+                //
+                // First section - no scroll area, so a single outer "panel_content" can be used.
+                //
+
                 self.re_ui.panel_content(ui, |re_ui, ui| {
                     re_ui.panel_title_bar(
                         ui,
@@ -323,10 +487,20 @@ impl eframe::App for ExampleApp {
                     });
                 });
 
-                // Second section. It's a list of `list_items`, so we need to remove the default
-                // spacing. Also, it uses a scroll area, so we must use several "panel_content".
+                // From now on, it's only `list_items`, so we need to remove the default
+                // spacing.
                 ui.scope(|ui| {
                     ui.spacing_mut().item_spacing.y = 0.0;
+
+                    //
+                    // Drag and drop demo
+                    //
+
+                    self.drag_and_drop.ui(&self.re_ui, ui);
+
+                    //
+                    // Nested scroll area demo. Multiple `panel_content` must be used.
+                    //
 
                     self.re_ui.panel_content(ui, |re_ui, ui| {
                         re_ui.panel_title_bar(ui, "Another section", None);
@@ -373,6 +547,10 @@ impl eframe::App for ExampleApp {
                                 }
                             });
                         });
+
+                    //
+                    // Demo of `ListItem` features.
+                    //
 
                     self.re_ui.panel_content(ui, |re_ui, ui| {
                         re_ui.panel_title_bar(ui, "Another section", None);
