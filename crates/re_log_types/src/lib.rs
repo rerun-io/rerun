@@ -21,7 +21,6 @@ pub mod arrow_msg;
 mod data_cell;
 mod data_row;
 mod data_table;
-#[cfg(feature = "testing")]
 pub mod example_components;
 pub mod hash;
 mod num_instances;

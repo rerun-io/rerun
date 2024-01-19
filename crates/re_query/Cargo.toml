@@ -39,7 +39,6 @@ thiserror.workspace = true
 
 
 [dev-dependencies]
-re_log_types = { workspace = true, features = ["testing"] }
 re_types = { workspace = true, features = ["datagen"] }
 
 criterion.workspace = true

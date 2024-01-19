@@ -17,7 +17,6 @@ all-features = true
 
 [features]
 default = []
-testing = ["re_log_types/testing"]
 
 [dependencies]
 re_entity_db.workspace = true
