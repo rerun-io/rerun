@@ -1,6 +1,7 @@
 use ahash::HashMap;
 use itertools::Itertools;
 
+use rayon::spawn;
 use re_data_store::{LatestAtQuery, Timeline};
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathFilter;
@@ -153,247 +154,28 @@ fn is_interesting_space_view_at_root(
     true
 }
 
-fn is_interesting_space_view_not_at_root(
-    store: &re_data_store::DataStore,
-    candidate: &SpaceViewBlueprint,
-    classes_with_interesting_roots: &[SpaceViewClassIdentifier],
-    query: &LatestAtQuery,
-) -> bool {
-    // TODO(andreas): Can we express this with [`AutoSpawnHeuristic`] instead?
-
-    // Consider children of the root interesting, *unless* a root with the same category was already considered interesting!
-    if candidate.space_origin.len() == 1
-        && !classes_with_interesting_roots.contains(candidate.class_identifier())
-    {
-        return true;
-    }
-
-    // .. otherwise, spatial views are considered only interesting if they have an interesting transform.
-    // -> If there is ..
-    //    .. a disconnect transform, the children can't be shown otherwise
-    //    .. an pinhole transform, we'd like to see the world from this camera's pov as well!
-    if is_spatial_class(candidate.class_identifier())
-        && (query_pinhole(store, query, &candidate.space_origin).is_some()
-            || store
-                .query_latest_component::<DisconnectedSpace>(&candidate.space_origin, query)
-                .map_or(false, |dp| dp.0))
-    {
-        return true;
-    }
-
-    // Not interesting!
-    false
-}
-
 /// List out all space views we generate by default for the available data.
-pub fn default_created_space_views(
-    ctx: &ViewerContext<'_>,
-    spaces_info: &SpaceInfoCollection,
-) -> Vec<SpaceViewBlueprint> {
+///
+/// TODO(andreas): This is transitional. We want to pass on the space view spawn heuristics
+/// directly and make more high level decisions with it.
+pub fn default_created_space_views(ctx: &ViewerContext<'_>) -> Vec<SpaceViewBlueprint> {
     re_tracing::profile_function!();
 
-    let store = ctx.entity_db.store();
-    let candidates = all_possible_space_views(ctx, spaces_info);
-
-    // All queries are "right most" on the log timeline.
-    let query = LatestAtQuery::latest(Timeline::log_time());
-
-    // First pass to look for interesting roots, as their existence influences the heuristic for non-roots!
-    let classes_with_interesting_roots = candidates
-        .iter()
-        .filter_map(|(space_view_candidate, query_results)| {
-            (space_view_candidate.space_origin.is_root()
-                && is_interesting_space_view_at_root(store, query_results))
-            .then_some(*space_view_candidate.class_identifier())
+    ctx.space_view_class_registry
+        .iter_registry()
+        .flat_map(|entry| {
+            let class_id = entry.class.identifier();
+            let spawn_heuristics = entry.class.spawn_heuristics(ctx);
+            spawn_heuristics
+                .recommended_space_views
+                .into_iter()
+                .map(move |recommendation| {
+                    SpaceViewBlueprint::new(
+                        class_id,
+                        &recommendation.root,
+                        DataQueryBlueprint::new(class_id, recommendation.query_filter),
+                    )
+                })
         })
-        .collect::<Vec<_>>();
-
-    let mut space_views: Vec<(SpaceViewBlueprint, AutoSpawnHeuristic)> = Vec::new();
-
-    // Main pass through all candidates.
-    // We first check if a candidate is "interesting" and then split it up/modify it further if required.
-    for (candidate, query_result) in candidates {
-        let mut per_system_entities = PerSystemEntities::default();
-        {
-            re_tracing::profile_scope!("per_system_data_results");
-
-            query_result.tree.visit(&mut |handle| {
-                if let Some(result) = query_result.tree.lookup_result(handle) {
-                    for system in &result.visualizers {
-                        per_system_entities
-                            .entry(*system)
-                            .or_default()
-                            .insert(result.entity_path.clone());
-                    }
-                }
-            });
-        }
-
-        let spawn_heuristic = candidate
-            .class(ctx.space_view_class_registry)
-            .auto_spawn_heuristic(ctx, &candidate.space_origin, &per_system_entities);
-
-        if spawn_heuristic == AutoSpawnHeuristic::NeverSpawn {
-            continue;
-        }
-        if spawn_heuristic != AutoSpawnHeuristic::AlwaysSpawn {
-            if candidate.space_origin.is_root() {
-                if !classes_with_interesting_roots.contains(candidate.class_identifier()) {
-                    continue;
-                }
-            } else if !is_interesting_space_view_not_at_root(
-                store,
-                &candidate,
-                &classes_with_interesting_roots,
-                &query,
-            ) {
-                continue;
-            }
-        }
-
-        if spawn_one_space_view_per_entity(candidate.class_identifier()) {
-            query_result.tree.visit(&mut |handle| {
-                if let Some(result) = query_result.tree.lookup_result(handle) {
-                    if !result.visualizers.is_empty() {
-                        let mut entity_path_filter = EntityPathFilter::default();
-                        entity_path_filter.add_exact(result.entity_path.clone());
-                        let query = DataQueryBlueprint::new(
-                            *candidate.class_identifier(),
-                            entity_path_filter,
-                        );
-                        let mut space_view = SpaceViewBlueprint::new(
-                            *candidate.class_identifier(),
-                            &result.entity_path,
-                            query,
-                        );
-                        space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
-                        space_views.push((space_view, AutoSpawnHeuristic::AlwaysSpawn));
-                    }
-                }
-            });
-            continue;
-        }
-
-        // TODO(andreas): Interaction of [`AutoSpawnHeuristic`] with above hardcoded heuristics is a bit wonky.
-
-        // `AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot` means we're competing with other candidates for the same root.
-        if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score) = spawn_heuristic {
-            // [`SpaceViewBlueprint`]s don't implement clone so wrap in an option so we can
-            // track whether or not we've consumed it.
-            let mut candidate_still_considered = Some(candidate);
-
-            for (prev_candidate, prev_spawn_heuristic) in &mut space_views {
-                if let Some(candidate) = candidate_still_considered.take() {
-                    if prev_candidate.space_origin == candidate.space_origin {
-                        #[allow(clippy::match_same_arms)]
-                        match prev_spawn_heuristic {
-                            AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(prev_score) => {
-                                // If we're competing with a candidate for the same root, we either replace a lower score, or we yield.
-                                if *prev_score < score {
-                                    // Replace the previous candidate with this one.
-                                    *prev_candidate = candidate;
-                                    *prev_spawn_heuristic = spawn_heuristic;
-                                }
-
-                                // Either way we're done with this candidate.
-                                break;
-                            }
-                            AutoSpawnHeuristic::AlwaysSpawn => {
-                                // We can live side by side with always-spawn candidates.
-                            }
-                            AutoSpawnHeuristic::NeverSpawn => {
-                                // Never spawn candidates should not be in the list, this is weird!
-                                // But let's not fail on this since our heuristics are not perfect anyways.
-                            }
-                        }
-                    }
-
-                    // If we didn't hit the break condition, continue to consider the candidate
-                    candidate_still_considered = Some(candidate);
-                }
-            }
-
-            if let Some(candidate) = candidate_still_considered {
-                // Spatial views with images get extra treatment as well.
-                if is_spatial_2d_class(candidate.class_identifier()) {
-                    #[derive(Hash, PartialEq, Eq)]
-                    enum ImageBucketing {
-                        BySize((u64, u64)),
-                        ExplicitDrawOrder,
-                    }
-
-                    let mut images_by_bucket: HashMap<ImageBucketing, Vec<EntityPath>> =
-                        HashMap::default();
-
-                    if let Some(root) = query_result.tree.root_node() {
-                        // For this we're only interested in the direct children.
-                        for child in &root.children {
-                            if let Some(node) = query_result.tree.lookup_node(*child) {
-                                if !node.data_result.visualizers.is_empty() {
-                                    let entity_path = &node.data_result.entity_path;
-                                    if let Some(tensor) = store
-                                        .query_latest_component::<TensorData>(entity_path, &query)
-                                    {
-                                        if let Some([height, width, _]) =
-                                            tensor.image_height_width_channels()
-                                        {
-                                            if store
-                                                .query_latest_component::<re_types::components::DrawOrder>(
-                                                    entity_path,
-                                                    &query,
-                                                )
-                                                .is_some()
-                                            {
-                                                // Put everything in the same bucket if it has a draw order.
-                                                images_by_bucket
-                                                    .entry(ImageBucketing::ExplicitDrawOrder)
-                                                    .or_default()
-                                                    .push(entity_path.clone());
-                                            } else {
-                                                // Otherwise, distinguish buckets by image size.
-                                                images_by_bucket
-                                                    .entry(ImageBucketing::BySize((height, width)))
-                                                    .or_default()
-                                                    .push(entity_path.clone());
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if images_by_bucket.len() > 1 {
-                        // If all images end up in the same bucket, proceed as normal. Otherwise stack images as instructed.
-                        for bucket in images_by_bucket.values() {
-                            let mut entity_path_filter = EntityPathFilter::default();
-                            for path in bucket {
-                                entity_path_filter.add_exact(path.clone());
-                            }
-
-                            let query = DataQueryBlueprint::new(
-                                *candidate.class_identifier(),
-                                entity_path_filter,
-                            );
-
-                            let mut space_view = SpaceViewBlueprint::new(
-                                *candidate.class_identifier(),
-                                &candidate.space_origin,
-                                query,
-                            );
-                            space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
-                            space_views.push((space_view, AutoSpawnHeuristic::AlwaysSpawn));
-                        }
-                        continue;
-                    }
-                }
-
-                space_views.push((candidate, spawn_heuristic));
-            }
-        } else {
-            space_views.push((candidate, spawn_heuristic));
-        }
-    }
-
-    space_views.into_iter().map(|(s, _)| s).collect()
+        .collect()
 }

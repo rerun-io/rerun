@@ -246,7 +246,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         self.blueprint.set_maximized(maximized, ctx);
     }
 
-    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
+    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>) {
         re_tracing::profile_function!();
 
         for space_view in self.blueprint.space_views.values() {
@@ -264,7 +264,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         if self.blueprint.auto_space_views {
             let mut new_space_views = vec![];
-            for space_view_candidate in default_created_space_views(ctx, spaces_info) {
+            for space_view_candidate in default_created_space_views(ctx) {
                 if self.should_auto_add_space_view(&new_space_views, &space_view_candidate) {
                     new_space_views.push(space_view_candidate);
                 }

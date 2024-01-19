@@ -212,7 +212,7 @@ impl AppState {
         // have the latest information.
         let spaces_info = SpaceInfoCollection::new(ctx.entity_db);
 
-        viewport.on_frame_start(&ctx, &spaces_info);
+        viewport.on_frame_start(&ctx);
 
         {
             re_tracing::profile_scope!("updated_query_results");
