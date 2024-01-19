@@ -111,7 +111,6 @@ impl Viewport<'_, '_> {
 
         let response = ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
             .subdued(!container_visible)
-            .vertical_line(true)
             .selected(ctx.selection().contains_item(&item))
             .with_icon(crate::icon_for_container_kind(&container.kind()))
             .with_buttons(|re_ui, ui| {
