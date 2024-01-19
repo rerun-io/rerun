@@ -2,7 +2,6 @@ use egui::Label;
 
 use re_space_view::recommend_space_view_for_each_visualizable_entity;
 use re_viewer_context::external::re_entity_db::EntityProperties;
-use re_viewer_context::IdentifiedViewSystem as _;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewState, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,

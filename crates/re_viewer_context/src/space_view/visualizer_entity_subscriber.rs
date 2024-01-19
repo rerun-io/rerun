@@ -198,7 +198,9 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
             }
 
             if required_components_bitmap.all() {
-                re_log::trace!(
+                dbg!(&self.required_components_indices);
+
+                re_log::debug!(
                     "Entity {:?} in store {:?} is now applicable to visualizer {:?}",
                     entity_path,
                     event.store_id,
