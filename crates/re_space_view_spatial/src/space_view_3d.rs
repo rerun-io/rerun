@@ -131,7 +131,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
         re_tracing::profile_function!();
-        spawn_heuristics(ctx, self.identifier(), SpatialSpaceViewKind::TwoD)
+        spawn_heuristics(ctx, self.identifier(), SpatialSpaceViewKind::ThreeD)
     }
 
     fn auto_spawn_heuristic(
