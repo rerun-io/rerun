@@ -38,6 +38,8 @@ impl SpaceViewState for TimeSeriesSpaceViewState {
 #[derive(Default)]
 pub struct TimeSeriesSpaceView;
 
+const DEFAULT_LEGEND_CORNER: egui_plot::Corner = egui_plot::Corner::RightBottom;
+
 impl SpaceViewClass for TimeSeriesSpaceView {
     type State = TimeSeriesSpaceViewState;
 
@@ -120,7 +122,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                     ctx.re_ui
                         .checkbox(ui, &mut edit_legend.0.visible, "Visible");
 
-                    let mut corner = legend.corner();
+                    let mut corner = legend.corner().unwrap_or(DEFAULT_LEGEND_CORNER);
 
                     egui::ComboBox::from_id_source("legend_corner")
                         .selected_text(re_types::blueprint::components::Legend::to_str(corner))
@@ -244,7 +246,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             });
 
         if legend.visible {
-            plot = plot.legend(Legend::default().position(legend.corner()));
+            plot = plot.legend(Legend::default().position(DEFAULT_LEGEND_CORNER));
         }
 
         if timeline.typ() == TimeType::Time {
