@@ -15,9 +15,9 @@ use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId, DataResult
-    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand,
-    SystemCommandSender as _, UiVerbosity, ViewerContext,
+    auto_color, blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui,
+    ContainerId, DataResult, HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier,
+    SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
@@ -1080,7 +1080,7 @@ fn entity_overrides_ui(
             if data_result.visualizers.contains(&("TimeSeries".into())) {
                 if let Some(override_path) = data_result.override_path() {
                     // TODO(jleibs) This whole thing should go into `re_data_ui`.
-                    ui.label("Color");
+                    ui.label("Override Color");
 
                     // TODO(jleibs) Need a helper to do this
                     let current_color = data_result
@@ -1104,23 +1104,30 @@ fn entity_overrides_ui(
                                 &ctx.current_query(),
                             )
                         })
-                        .map_or(Color::from_unmultiplied_rgba(0, 0, 0, 0), |c| c.value);
+                        .map_or(
+                            // TODO(jleibs): How do we pull annotation info machinery in here?
+                            auto_color(
+                                (data_result.entity_path.hash64() % std::u16::MAX as u64) as u16,
+                            ),
+                            |c| {
+                                let [r, g, b, a] = c.value.to_array();
+                                egui::Color32::from_rgba_unmultiplied(r, g, b, a)
+                            },
+                        );
 
-                    let [r, g, b, a] = current_color.to_array();
-                    let mut egui_color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
+                    let mut edit_color = current_color;
 
                     egui::color_picker::color_edit_button_srgba(
                         ui,
-                        &mut egui_color,
+                        &mut edit_color,
                         egui::color_picker::Alpha::Opaque,
                     );
 
-                    let [r, g, b, a] = egui_color.to_array();
+                    if edit_color != current_color {
+                        let [r, g, b, a] = edit_color.to_array();
+                        let new_color = Color::from_unmultiplied_rgba(r, g, b, a);
 
-                    let final_color = Color::from_unmultiplied_rgba(r, g, b, a);
-
-                    if final_color != current_color {
-                        ctx.save_blueprint_component(override_path, final_color);
+                        ctx.save_blueprint_component(override_path, new_color);
                     }
 
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
