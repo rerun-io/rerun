@@ -88,37 +88,27 @@ impl ExampleDragAndDrop {
             re_ui.panel_content(ui, |re_ui, ui| {
                 re_ui.panel_title_bar(ui, "Drag-and-drop demo", None);
 
-                let anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
-
                 let mut source_item_pos = None;
                 let mut target_item_pos = None;
 
                 for (i, (idx, label)) in self.items.iter_mut().enumerate() {
-                    let item = re_ui
+                    //
+                    // Draw the item
+                    //
+
+                    let id = egui::Id::new("drag_demo").with(*idx);
+
+                    let response = re_ui
                         .list_item(label.as_str())
-                        .selected(self.selected_items.contains(&idx));
+                        .selected(self.selected_items.contains(&idx))
+                        .drag_id(id)
+                        .show(ui);
 
-                    let response = item.show(ui);
+                    //
+                    // Handle item selection
+                    //
 
-                    // trigger drag
-                    let id = egui::Id::new("drag_Demo").with(*idx);
-
-                    //TODO: this kills the hover on listitem
-                    let response = ui.interact(response.rect, id, egui::Sense::drag());
-                    if response.dragged() {
-                        ui.ctx()
-                            .debug_painter()
-                            .debug_rect(response.rect, egui::Color32::RED, "");
-
-                        // Here, we support dragging a single item at a time, so we set the selection to the dragged item
-                        // if/when we're dragging it proper.
-                        if ui.input(|i| i.pointer.is_decidedly_dragging()) {
-                            self.selected_items.clear();
-                            self.selected_items.insert(*idx);
-                        }
-                    }
-
-                    // item selection
+                    // Basic click and cmd/ctr-click
                     if response.clicked() {
                         if ui.input(|i| i.modifiers.command) {
                             if self.selected_items.contains(&idx) {
@@ -132,6 +122,21 @@ impl ExampleDragAndDrop {
                         }
                     }
 
+                    // Multi-selection dragging not (yet?) supported, so dragging resets selection to single item.
+                    // TODO(emilk/egui#3841): it would be nice to have response.decidedly_dragged()
+                    if response.dragged() {
+                        // Here, we support dragging a single item at a time, so we set the selection to the dragged item
+                        // if/when we're dragging it proper.
+                        if ui.input(|i| i.pointer.is_decidedly_dragging()) {
+                            self.selected_items.clear();
+                            self.selected_items.insert(*idx);
+                        }
+                    }
+
+                    //
+                    // Detect end-of-drag situation and prepare the swap command.
+                    //
+
                     // TODO(emilk/egui#3841): very tempting to use `response.dragged()` here, but it
                     // doesn't work. By the time `i.pointer.any_released()` is true, `response.dragged()`
                     // is false. So both condition never happen at the same time.
@@ -139,10 +144,11 @@ impl ExampleDragAndDrop {
                         source_item_pos = Some(i);
                     }
 
-                    // TODO(emilk/egui#3841): very tempting to use `response.hovered()`here, but widgets
-                    // that sense more than hover never get `response.hovered() == true` while another
-                    // widget is being dragged.
-                    if anything_being_dragged {
+                    // TODO(emilk/egui#3841): this feels like a common enough pattern that is should deserve its own API.
+                    let anything_being_decidedly_dragged = ui
+                        .memory(|mem| mem.is_anything_being_dragged())
+                        && ui.input(|i| i.pointer.is_decidedly_dragging());
+                    if anything_being_decidedly_dragged {
                         let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
 
                         let (insert_y, target) = if ui.rect_contains_pointer(top) {
@@ -162,39 +168,25 @@ impl ExampleDragAndDrop {
 
                             // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
                             if ui.input(|i| i.pointer.any_released()) {
-                                dbg!(target);
                                 target_item_pos = target;
                             }
                         }
-
-                        // Alternative: blank item to show where the dragged item lands
-                        //re_ui.list_item("").active(false).show(ui);
                     }
                 }
 
-                // println!(
-                //     "RES:    {}    {}",
-                //     if let Some(source) = source_item_pos {
-                //         source.to_string()
-                //     } else {
-                //         "X".to_string()
-                //     },
-                //     if let Some(target) = target_item_pos {
-                //         target.to_string()
-                //     } else {
-                //         "X".to_string()
-                //     }
-                // );
+                //
+                // Handle the swap command (if any)
+                //
 
                 if let (Some(source), Some(target)) = (source_item_pos, target_item_pos) {
-                    println!("Moving {} to {}", source, target);
+                    if source != target {
+                        let item = self.items.remove(source);
 
-                    let item = self.items.remove(source);
-
-                    if source < target {
-                        self.items.insert(target - 1, item);
-                    } else if source > target {
-                        self.items.insert(target, item);
+                        if source < target {
+                            self.items.insert(target - 1, item);
+                        } else {
+                            self.items.insert(target, item);
+                        }
                     }
                 }
             });

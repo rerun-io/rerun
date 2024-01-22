@@ -113,6 +113,7 @@ pub struct ListItem<'a> {
     re_ui: &'a ReUi,
     active: bool,
     selected: bool,
+    drag_id: Option<egui::Id>,
     subdued: bool,
     weak: bool,
     italics: bool,
@@ -134,6 +135,7 @@ impl<'a> ListItem<'a> {
             re_ui,
             active: true,
             selected: false,
+            drag_id: None,
             subdued: false,
             weak: false,
             italics: false,
@@ -158,6 +160,13 @@ impl<'a> ListItem<'a> {
     #[inline]
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = selected;
+        self
+    }
+
+    /// Make the item draggable and set its persistent ID.
+    #[inline]
+    pub fn drag_id(mut self, drag_id: egui::Id) -> Self {
+        self.drag_id = Some(drag_id);
         self
     }
 
@@ -363,6 +372,18 @@ impl<'a> ListItem<'a> {
         let desired_size = egui::vec2(desired_width, self.height);
         let (rect, mut response) = ui.allocate_at_least(desired_size, egui::Sense::click());
 
+        // handle dragging
+        let mut is_being_dragged = false;
+        if let Some(drag_id) = self.drag_id {
+            response = ui.interact(response.rect, drag_id, egui::Sense::drag());
+
+            if response.dragged() {
+                if ui.input(|i| i.pointer.is_decidedly_dragging()) {
+                    is_being_dragged = true;
+                }
+            }
+        }
+
         // compute the full-span background rect
         let mut bg_rect = rect;
         bg_rect.extend_with_x(ui.clip_rect().right());
@@ -497,8 +518,13 @@ impl<'a> ListItem<'a> {
             };
 
             if let Some(bg_fill) = bg_fill {
-                ui.painter()
-                    .set(background_frame, Shape::rect_filled(bg_rect, 0.0, bg_fill));
+                let shape = if is_being_dragged {
+                    Shape::rect_stroke(bg_rect.shrink(1.0), 0.0, (2.0, bg_fill))
+                } else {
+                    Shape::rect_filled(bg_rect, 0.0, bg_fill)
+                };
+
+                ui.painter().set(background_frame, shape);
             }
         }
 
