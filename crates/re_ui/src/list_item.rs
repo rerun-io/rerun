@@ -377,10 +377,8 @@ impl<'a> ListItem<'a> {
         if let Some(drag_id) = self.drag_id {
             response = ui.interact(response.rect, drag_id, egui::Sense::drag());
 
-            if response.dragged() {
-                if ui.input(|i| i.pointer.is_decidedly_dragging()) {
-                    is_being_dragged = true;
-                }
+            if response.dragged() && ui.input(|i| i.pointer.is_decidedly_dragging()) {
+                is_being_dragged = true;
             }
         }
 
