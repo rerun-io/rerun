@@ -43,7 +43,6 @@ deny = [
   { name = "openssl" },     # We prefer rustls
   { name = "reqwest" },     # We prefer ureq - less dependencies
 ]
-
 skip = [
   { name = "ahash" },             # Popular crate + fast release schedule = lots of crates still using old versions
   { name = "async-fs" },          # Old version via accesskit
@@ -55,6 +54,7 @@ skip = [
   { name = "memoffset" },         # Small crate
   { name = "prettyplease" },      # Old version being used by prost
   { name = "raw-window-handle" }, # Pretty small crate; some crates still on old version
+  { name = "redox_syscall" },        # Plenty of versions in the wild
   { name = "spin" },              # Old version used by rusttls
   { name = "windows" },           # Old version used by accesskit_windows, newer version used by wgpu
 ]

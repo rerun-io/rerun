@@ -28,7 +28,7 @@ deadlock_detection = ["parking_lot/deadlock_detection"]
 re_error.workspace = true
 re_format = { workspace = true, features = ["arrow"] }
 re_log_types.workspace = true
-re_log.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 re_tracing.workspace = true
 re_types_core.workspace = true
 

@@ -1,5 +1,3 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use re_log_types::DataTable;
 
 use crate::{DataStore, DataStoreConfig, WriteError};
@@ -82,7 +80,10 @@ pub fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn init_logs() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
     static INIT: AtomicBool = AtomicBool::new(false);
 
     if INIT
