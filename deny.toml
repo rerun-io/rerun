@@ -27,7 +27,6 @@ vulnerability = "deny"
 unmaintained = "warn"
 yanked = "deny"
 ignore = [
-  "RUSTSEC-2020-0071", # https://rustsec.org/advisories/RUSTSEC-2020-0071 - Potential segfault in the time crate. Remove once a new polars is released with https://github.com/pola-rs/polars/pull/6979
   "RUSTSEC-2023-0052", # https://rustsec.org/advisories/RUSTSEC-2023-0052 - webpki: CPU denial of service in certificate path building - can be fixed by `cargo update -p ureq`, but then we run into duplicate crates: https://github.com/algesten/ureq/issues/653
   "RUSTSEC-2023-0065", # https://rustsec.org/advisories/RUSTSEC-2023-0065 - Tungstenite WebSocket server can be DOS-attacked by malicious clients
 ]
@@ -62,7 +61,6 @@ skip = [
 skip-tree = [
   { name = "async-io" },       # Old version via rfd
   { name = "cargo-run-wasm" }, # Dev-tool
-  { name = "comfy-table" },    # arrow vs. polars use different major versions (polars' one is dev-dep only)
   { name = "core-graphics" },  # old version via arboard
   { name = "criterion" },      # dev-dependency
   { name = "objc2" },          # old version via accesskit
