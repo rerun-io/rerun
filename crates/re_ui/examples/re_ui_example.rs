@@ -813,7 +813,7 @@ enum Command {
 }
 
 struct HierarchicalDragAndDrop {
-    /// flat hash table  of items
+    /// flat hash table of items
     items: HashMap<ItemId, Item>,
 
     /// id of the root item (not displayed in the UI)
