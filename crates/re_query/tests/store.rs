@@ -2,10 +2,13 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 
-use re_data_store::{test_row, DataStore, GarbageCollectionOptions, LatestAtQuery};
-use re_log_types::{
-    build_frame_nr, DataRow, DataTable, EntityPath, TableId, TimeInt, TimeType, Timeline,
+use re_data_store::{
+    test_row,
+    test_util::{insert_table_with_retries, sanity_unwrap},
+    DataStore, GarbageCollectionOptions, LatestAtQuery,
 };
+use re_log_types::EntityPath;
+use re_log_types::{build_frame_nr, DataRow, DataTable, TableId, TimeInt, TimeType, Timeline};
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D},
@@ -14,6 +17,8 @@ use re_types::{
 use re_types_core::{Archetype, Component, ComponentName, Loggable as _};
 
 // --- LatestAt ---
+
+// TODO: at this point, why is this even here?
 
 #[test]
 fn latest_at() {
@@ -28,8 +33,6 @@ fn latest_at() {
 }
 
 fn latest_at_impl(store: &mut DataStore) {
-    use re_data_store::test_util::{insert_table_with_retries, sanity_unwrap};
-
     let ent_path = EntityPath::from("this/that");
 
     let frame0 = TimeInt::from(0);
