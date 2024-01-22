@@ -4509,6 +4509,7 @@ dependencies = [
  "re_types_core",
  "rmp-serde",
  "serde",
+ "similar-asserts",
  "smallvec",
  "thiserror",
 ]

@@ -278,6 +278,8 @@ fn all_components() {
 
 // --- LatestAt ---
 
+// TODO: requires join semantics -> re_query
+
 #[test]
 fn latest_at() {
     init_logs();
@@ -399,6 +401,8 @@ fn latest_at_impl(store: &mut DataStore) {
 }
 
 // --- Range ---
+
+// TODO: requires join semantics -> re_query
 
 #[test]
 fn range() {
@@ -911,6 +915,8 @@ fn protected_gc() {
     }
 }
 
+// TODO: rewrite that one so it doesn't require join semantics
+
 fn protected_gc_impl(store: &mut DataStore) {
     init_logs();
 
@@ -1011,6 +1017,8 @@ fn protected_gc_clear() {
         protected_gc_clear_impl(&mut store);
     }
 }
+
+// TODO: rewrite that one so it doesn't require join semantics
 
 fn protected_gc_clear_impl(store: &mut DataStore) {
     init_logs();
