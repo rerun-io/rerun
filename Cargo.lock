@@ -313,28 +313,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arrow2"
-version = "0.17.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0f73029049896b3d70ba17756afef171ceef3569016cfa9dbca58d29e0e16f9"
-dependencies = [
- "ahash",
- "arrow-format",
- "bytemuck",
- "chrono",
- "comfy-table",
- "dyn-clone",
- "either",
- "ethnum",
- "foreign_vec",
- "getrandom",
- "hash_hasher",
- "num-traits",
- "rustc_version",
- "simdutf8",
-]
-
-[[package]]
 name = "as-raw-xcb-connection"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -960,11 +938,10 @@ checksum = "77e53693616d3075149f4ead59bdeecd204ac6b8192d8969757601b74bddf00f"
 
 [[package]]
 name = "chrono"
-version = "0.4.24"
+version = "0.4.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e3c5919066adf22df73762e50cffcde3a758f2a848b113b586d1f86728b673b"
+checksum = "7f2c685bad3eb3d45a01354cedb7d5faa66194d1d58ba6e267a8de788f79db38"
 dependencies = [
- "num-integer",
  "num-traits",
 ]
 
@@ -1183,8 +1160,19 @@ version = "6.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e7b787b0dc42e8111badfdbe4c3059158ccb2db8780352fa1b01e8ccf45cc4d"
 dependencies = [
- "strum",
- "strum_macros",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
+ "unicode-width",
+]
+
+[[package]]
+name = "comfy-table"
+version = "7.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c64043d6c7b7a4c58e39e7efccfdea7b93d885a795d0c054a69dbbf4dd52686"
+dependencies = [
+ "strum 0.25.0",
+ "strum_macros 0.25.3",
  "unicode-width",
 ]
 
@@ -1764,9 +1752,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.8.1"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
+checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 
 [[package]]
 name = "emath"
@@ -4196,6 +4184,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_arrow2"
+version = "0.17.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1285f33f03e2faf9f77b06c19f32f8c54792a4cbb19df762b9ea70b79e0773d"
+dependencies = [
+ "ahash",
+ "arrow-format",
+ "bytemuck",
+ "chrono",
+ "comfy-table 7.1.0",
+ "dyn-clone",
+ "either",
+ "ethnum",
+ "foreign_vec",
+ "getrandom",
+ "hash_hasher",
+ "hashbrown 0.14.2",
+ "num-traits",
+ "rustc_version",
+ "simdutf8",
+]
+
+[[package]]
 name = "re_build_examples"
 version = "0.13.0-alpha.2"
 dependencies = [
@@ -4278,7 +4289,6 @@ version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
- "arrow2",
  "criterion",
  "document-features",
  "indent",
@@ -4288,6 +4298,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rand",
+ "re_arrow2",
  "re_error",
  "re_format",
  "re_log",
@@ -4375,8 +4386,8 @@ dependencies = [
 name = "re_format"
 version = "0.13.0-alpha.2"
 dependencies = [
- "arrow2",
- "comfy-table",
+ "comfy-table 6.1.4",
+ "re_arrow2",
  "re_tuid",
  "re_types_core",
 ]
@@ -4436,7 +4447,6 @@ version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
- "arrow2",
  "backtrace",
  "bytemuck",
  "clean-path",
@@ -4451,6 +4461,7 @@ dependencies = [
  "nohash-hasher",
  "num-derive",
  "num-traits",
+ "re_arrow2",
  "re_format",
  "re_log",
  "re_string_interner",
@@ -4493,13 +4504,13 @@ dependencies = [
 name = "re_query"
 version = "0.13.0-alpha.2"
 dependencies = [
- "arrow2",
  "backtrace",
  "criterion",
  "document-features",
  "itertools 0.12.0",
  "mimalloc",
  "rand",
+ "re_arrow2",
  "re_data_store",
  "re_format",
  "re_log",
@@ -4519,7 +4530,6 @@ name = "re_query_cache"
 version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
- "arrow2",
  "backtrace",
  "criterion",
  "document-features",
@@ -4530,6 +4540,7 @@ dependencies = [
  "parking_lot",
  "paste",
  "rand",
+ "re_arrow2",
  "re_data_store",
  "re_format",
  "re_log",
@@ -4550,7 +4561,6 @@ version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
- "arrow2",
  "bitflags 2.4.1",
  "bytemuck",
  "cfg-if",
@@ -4572,6 +4582,7 @@ dependencies = [
  "parking_lot",
  "pathdiff",
  "profiling",
+ "re_arrow2",
  "re_build_tools",
  "re_error",
  "re_log",
@@ -4905,7 +4916,6 @@ version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
  "array-init",
- "arrow2",
  "bytemuck",
  "document-features",
  "ecolor",
@@ -4923,6 +4933,7 @@ dependencies = [
  "ply-rs",
  "rand",
  "rayon",
+ "re_arrow2",
  "re_build_tools",
  "re_log",
  "re_tracing",
@@ -4942,7 +4953,6 @@ name = "re_types_builder"
 version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
- "arrow2",
  "camino",
  "clang-format",
  "convert_case",
@@ -4953,6 +4963,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rayon",
+ "re_arrow2",
  "re_build_tools",
  "re_log",
  "re_tracing",
@@ -4968,12 +4979,12 @@ name = "re_types_core"
 version = "0.13.0-alpha.2"
 dependencies = [
  "anyhow",
- "arrow2",
  "backtrace",
  "bytemuck",
  "criterion",
  "document-features",
  "once_cell",
+ "re_arrow2",
  "re_error",
  "re_string_interner",
  "re_tracing",
@@ -4998,8 +5009,8 @@ dependencies = [
  "re_log_types",
  "serde",
  "serde_json",
- "strum",
- "strum_macros",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
  "sublime_fuzzy",
 ]
 
@@ -5108,7 +5119,6 @@ name = "re_viewport"
 version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
- "arrow2",
  "egui",
  "egui_tiles",
  "glam",
@@ -5117,6 +5127,7 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "rayon",
+ "re_arrow2",
  "re_data_store",
  "re_data_ui",
  "re_entity_db",
@@ -5308,9 +5319,9 @@ name = "rerun_c"
 version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
- "arrow2",
  "once_cell",
  "parking_lot",
+ "re_arrow2",
  "re_log",
  "re_sdk",
 ]
@@ -5319,7 +5330,6 @@ dependencies = [
 name = "rerun_py"
 version = "0.13.0-alpha.2"
 dependencies = [
- "arrow2",
  "crossbeam",
  "document-features",
  "itertools 0.12.0",
@@ -5329,6 +5339,7 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "rand",
+ "re_arrow2",
  "re_build_info",
  "re_build_tools",
  "re_error",
@@ -6059,8 +6070,14 @@ version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
 dependencies = [
- "strum_macros",
+ "strum_macros 0.24.3",
 ]
+
+[[package]]
+name = "strum"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
 
 [[package]]
 name = "strum_macros"
@@ -6073,6 +6090,19 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.25.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23dc1fa9ac9c169a78ba62f0b841814b7abae11bdd047b9c58f893439e309ea0"
+dependencies = [
+ "heck 0.4.1",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.32",
 ]
 
 [[package]]

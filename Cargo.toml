@@ -101,8 +101,7 @@ anyhow = { version = "1.0", default-features = false }
 arboard = { version = "3.2", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
-arrow2 = "0.17"
-arrow2_convert = "0.5.0"
+arrow2 = { package = "re_arrow2", version = "0.17" }
 async-executor = "1.0"
 backtrace = "0.3"
 bincode = "1.3"
