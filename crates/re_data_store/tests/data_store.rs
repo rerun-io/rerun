@@ -758,53 +758,6 @@ fn range_impl(store: &mut DataStore) {
     );
 }
 
-// --- Common helpers ---
-
-// /// Given a list of rows, crafts a `latest_components`-looking dataframe.
-// fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> DataFrame {
-//     let df = rows
-//         .iter()
-//         .map(|(component, row)| {
-//             let cluster_comp = if let Some(idx) = row.find_cell(&cluster_key) {
-//                 Series::try_from((cluster_key.as_ref(), row.cells[idx].to_arrow_monolist()))
-//                     .unwrap()
-//             } else {
-//                 let num_instances = row.num_instances();
-//                 Series::try_from((
-//                     cluster_key.as_ref(),
-//                     DataCell::from_component::<InstanceKey>(0..num_instances.get() as u64)
-//                         .to_arrow_monolist(),
-//                 ))
-//                 .unwrap()
-//             };
-//
-//             let comp_idx = row.find_cell(component).unwrap();
-//             let df = DataFrame::new(vec![
-//                 cluster_comp,
-//                 Series::try_from((
-//                     component.as_ref(),
-//                     row.cells[comp_idx]
-//                         .to_arrow_monolist()
-//                         .as_ref()
-//                         .clean_for_polars(),
-//                 ))
-//                 .unwrap(),
-//             ])
-//             .unwrap();
-//
-//             df.explode(df.get_column_names()).unwrap()
-//         })
-//         .reduce(|left, right| {
-//             left.outer_join(&right, [cluster_key.as_ref()], [cluster_key.as_ref()])
-//                 .unwrap()
-//         })
-//         .unwrap_or_default();
-//
-//     let df = polars_util::drop_all_nulls(&df, &cluster_key).unwrap();
-//
-//     df.sort([cluster_key.as_ref()], false).unwrap_or(df)
-// }
-
 // --- GC ---
 
 #[test]
@@ -893,8 +846,6 @@ fn protected_gc() {
     }
 }
 
-// TODO: rewrite that one so it doesn't require join semantics
-
 fn protected_gc_impl(store: &mut DataStore) {
     init_logs();
 
@@ -941,22 +892,25 @@ fn protected_gc_impl(store: &mut DataStore) {
 
     let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-        let components_all = &[Color::name(), Position2D::name()];
 
-        // TODO
-        // let df = polars_util::latest_components(
-        //     store,
-        //     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
-        //     &ent_path,
-        //     components_all,
-        //     &JoinType::Outer,
-        // )
-        // .unwrap();
-        //
-        // let df_expected = joint_df(store.cluster_key(), rows);
-        //
-        // store.sort_indices_if_needed();
-        // assert_eq!(df_expected, df, "{store}");
+        for (component_name, expected) in rows {
+            let (_, _, cells) = store
+                .latest_at::<1>(
+                    &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+                    &ent_path,
+                    *component_name,
+                    &[*component_name],
+                )
+                .unwrap();
+
+            let expected = expected
+                .cells
+                .iter()
+                .filter(|cell| cell.component_name() == *component_name)
+                .collect_vec();
+            let actual = cells.iter().flatten().collect_vec();
+            assert_eq!(expected, actual);
+        }
     };
 
     // The timeless data was preserved
