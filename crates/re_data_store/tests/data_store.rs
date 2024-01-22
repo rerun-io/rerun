@@ -8,7 +8,7 @@ use re_data_store::{
     test_row,
     test_util::{init_logs, insert_table_with_retries, sanity_unwrap},
     DataStore, DataStoreConfig, DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget,
-    LatestAtQuery, TimeInt, TimeRange,
+    LatestAtQuery, RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{build_frame_nr, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
 use re_types::datagen::{
@@ -378,8 +378,6 @@ fn latest_at_impl(store: &mut DataStore) {
 
 // --- Range ---
 
-// TODO: requires join semantics -> re_query
-
 #[test]
 fn range() {
     init_logs();
@@ -478,101 +476,70 @@ fn range_impl(store: &mut DataStore) {
             }
             let store = store2;
 
-            // TODO
-            // let mut expected_timeless = Vec::<DataFrame>::new();
-            // let mut expected_at_times: IntMap<TimeInt, Vec<DataFrame>> = Default::default();
-            //
-            // for (time, rows) in rows_at_times {
-            //     if let Some(time) = time {
-            //         let dfs = expected_at_times.entry(*time).or_default();
-            //         dfs.push(joint_df(store.cluster_key(), rows));
-            //     } else {
-            //         expected_timeless.push(joint_df(store.cluster_key(), rows));
-            //     }
-            // }
-            //
-            // let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-            //
-            // store.sort_indices_if_needed(); // for assertions below
-            //
-            // let components = [InstanceKey::name(), components[0], components[1]];
-            // let query = RangeQuery::new(timeline_frame_nr, time_range);
-            // let dfs = polars_util::range_components(
-            //     &store,
-            //     &query,
-            //     &ent_path,
-            //     components[1],
-            //     components,
-            //     &JoinType::Outer,
-            // );
-            //
-            // let mut dfs_processed = 0usize;
-            // let mut timeless_count = 0usize;
-            // let mut time_counters: IntMap<i64, usize> = Default::default();
-            // for (time, df) in dfs.map(Result::unwrap) {
-            //     let df_expected = if let Some(time) = time {
-            //         let time_count = time_counters.entry(time.as_i64()).or_default();
-            //         let df_expected = &expected_at_times[&time][*time_count];
-            //         *time_count += 1;
-            //         df_expected
-            //     } else {
-            //         let df_expected = &expected_timeless[timeless_count];
-            //         timeless_count += 1;
-            //         df_expected
-            //     };
-            //
-            //     assert_eq!(*df_expected, df, "{store}");
-            //
-            //     dfs_processed += 1;
-            // }
-            //
-            // let dfs_processed_expected = rows_at_times.len();
-            // assert_eq!(dfs_processed_expected, dfs_processed);
+            let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+
+            store.sort_indices_if_needed(); // for assertions below
+
+            let components = [components[0], components[1]];
+            let query = RangeQuery::new(timeline_frame_nr, time_range);
+            let results = store.range(&query, &ent_path, components);
+
+            let mut results_processed = 0usize;
+            for (i, (time, _, cells)) in results.enumerate() {
+                let (expected_time, expected_rows) = rows_at_times[i];
+                assert_eq!(expected_time, time);
+
+                for (component_name, expected) in expected_rows {
+                    let expected = expected
+                        .cells
+                        .iter()
+                        .filter(|cell| cell.component_name() == *component_name)
+                        .collect_vec();
+                    let actual = cells.iter().flatten().collect_vec();
+                    assert_eq!(expected, actual);
+
+                    results_processed += 1;
+                }
+            }
+
+            let results_processed_expected = rows_at_times.len();
+            assert_eq!(results_processed_expected, results_processed);
         };
 
     // TODO(cmc): bring back some log_time scenarios
 
-    // Unit ranges (Color's PoV)
+    // Unit ranges (multi-PoV)
 
     assert_range_components(
         TimeRange::new(frame1, frame1),
         [Color::name(), Position2D::name()],
         &[
-            (
-                Some(frame1),
-                &[
-                    (Color::name(), &row1),
-                    (Position2D::name(), &row4_4), // timeless
-                ],
-            ), //
+            (Some(frame1), &[(Color::name(), &row1)]), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
         [Color::name(), Position2D::name()],
-        &[],
+        &[
+            (Some(frame2), &[(Position2D::name(), &row2)]), //
+        ],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
         [Color::name(), Position2D::name()],
-        &[],
+        &[
+            (Some(frame3), &[(Position2D::name(), &row3)]), //
+        ],
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
         [Color::name(), Position2D::name()],
         &[
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_1), (Position2D::name(), &row3)],
-            ),
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_2), (Position2D::name(), &row3)],
-            ),
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_3), (Position2D::name(), &row4_25)], // !!!
-            ),
+            (Some(frame4), &[(Color::name(), &row4_1)]),
+            (Some(frame4), &[(Color::name(), &row4_2)]),
+            (Some(frame4), &[(Position2D::name(), &row4_25)]),
+            (Some(frame4), &[(Color::name(), &row4_3)]),
+            (Some(frame4), &[(Position2D::name(), &row4_4)]),
         ],
     );
     assert_range_components(
@@ -581,179 +548,45 @@ fn range_impl(store: &mut DataStore) {
         &[],
     );
 
-    // Unit ranges (Position2D's PoV)
-
-    assert_range_components(
-        TimeRange::new(frame1, frame1),
-        [Position2D::name(), Color::name()],
-        &[],
-    );
-    assert_range_components(
-        TimeRange::new(frame2, frame2),
-        [Position2D::name(), Color::name()],
-        &[
-            (
-                Some(frame2),
-                &[(Position2D::name(), &row2), (Color::name(), &row1)],
-            ), //
-        ],
-    );
-    assert_range_components(
-        TimeRange::new(frame3, frame3),
-        [Position2D::name(), Color::name()],
-        &[
-            (
-                Some(frame3),
-                &[(Position2D::name(), &row3), (Color::name(), &row1)],
-            ), //
-        ],
-    );
-    assert_range_components(
-        TimeRange::new(frame4, frame4),
-        [Position2D::name(), Color::name()],
-        &[
-            (
-                Some(frame4),
-                &[(Position2D::name(), &row4_25), (Color::name(), &row4_2)],
-            ),
-            (
-                Some(frame4),
-                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
-            ),
-        ],
-    );
-    assert_range_components(
-        TimeRange::new(frame5, frame5),
-        [Position2D::name(), Color::name()],
-        &[],
-    );
-
-    // Full range (Color's PoV)
+    // Full range (multi-PoV)
 
     assert_range_components(
         TimeRange::new(frame1, frame5),
         [Color::name(), Position2D::name()],
         &[
-            (
-                Some(frame1),
-                &[
-                    (Color::name(), &row1),
-                    (Position2D::name(), &row4_4), // timeless
-                ],
-            ),
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_1), (Position2D::name(), &row3)],
-            ),
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_2), (Position2D::name(), &row3)],
-            ),
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_3), (Position2D::name(), &row4_25)], // !!!
-            ),
+            (Some(frame1), &[(Color::name(), &row1)]),      //
+            (Some(frame2), &[(Position2D::name(), &row2)]), //
+            (Some(frame3), &[(Position2D::name(), &row3)]), //
+            (Some(frame4), &[(Color::name(), &row4_1)]),
+            (Some(frame4), &[(Color::name(), &row4_2)]),
+            (Some(frame4), &[(Position2D::name(), &row4_25)]),
+            (Some(frame4), &[(Color::name(), &row4_3)]),
+            (Some(frame4), &[(Position2D::name(), &row4_4)]),
         ],
     );
 
-    // Full range (Position2D's PoV)
-
-    assert_range_components(
-        TimeRange::new(frame1, frame5),
-        [Position2D::name(), Color::name()],
-        &[
-            (
-                Some(frame2),
-                &[(Position2D::name(), &row2), (Color::name(), &row1)],
-            ),
-            (
-                Some(frame3),
-                &[(Position2D::name(), &row3), (Color::name(), &row1)],
-            ),
-            (
-                Some(frame4),
-                &[(Position2D::name(), &row4_25), (Color::name(), &row4_2)],
-            ),
-            (
-                Some(frame4),
-                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
-            ),
-        ],
-    );
-
-    // Infinite range (Color's PoV)
+    // Infinite range (multi-PoV)
 
     assert_range_components(
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
         [Color::name(), Position2D::name()],
         &[
-            (None, &[(Color::name(), &row1)]),
-            (
-                None,
-                &[(Color::name(), &row4_1), (Position2D::name(), &row3)],
-            ),
-            (
-                None,
-                &[(Color::name(), &row4_2), (Position2D::name(), &row3)],
-            ),
-            (
-                None,
-                &[(Color::name(), &row4_3), (Position2D::name(), &row4_25)], // !!!
-            ),
-            (
-                Some(frame1),
-                &[
-                    (Color::name(), &row1),
-                    (Position2D::name(), &row4_4), // timeless
-                ],
-            ),
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_1), (Position2D::name(), &row3)],
-            ),
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_2), (Position2D::name(), &row3)],
-            ),
-            (
-                Some(frame4),
-                &[(Color::name(), &row4_3), (Position2D::name(), &row4_25)], // !!!
-            ),
-        ],
-    );
-
-    // Infinite range (Position2D's PoV)
-
-    assert_range_components(
-        TimeRange::new(TimeInt::MIN, TimeInt::MAX),
-        [Position2D::name(), Color::name()],
-        &[
-            (None, &[(Position2D::name(), &row2), (Color::name(), &row1)]),
-            (None, &[(Position2D::name(), &row3), (Color::name(), &row1)]),
-            (
-                None,
-                &[(Position2D::name(), &row4_25), (Color::name(), &row4_2)],
-            ),
-            (
-                None,
-                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
-            ),
-            (
-                Some(frame2),
-                &[(Position2D::name(), &row2), (Color::name(), &row1)],
-            ),
-            (
-                Some(frame3),
-                &[(Position2D::name(), &row3), (Color::name(), &row1)],
-            ),
-            (
-                Some(frame4),
-                &[(Position2D::name(), &row4_25), (Color::name(), &row4_2)],
-            ),
-            (
-                Some(frame4),
-                &[(Position2D::name(), &row4_4), (Color::name(), &row4_3)],
-            ),
+            (None, &[(Color::name(), &row1)]),      //
+            (None, &[(Position2D::name(), &row2)]), //
+            (None, &[(Position2D::name(), &row3)]), //
+            (None, &[(Color::name(), &row4_1)]),
+            (None, &[(Color::name(), &row4_2)]),
+            (None, &[(Position2D::name(), &row4_25)]),
+            (None, &[(Color::name(), &row4_3)]),
+            (None, &[(Position2D::name(), &row4_4)]),
+            (Some(frame1), &[(Color::name(), &row1)]), //
+            (Some(frame2), &[(Position2D::name(), &row2)]), //
+            (Some(frame3), &[(Position2D::name(), &row3)]), //
+            (Some(frame4), &[(Color::name(), &row4_1)]),
+            (Some(frame4), &[(Color::name(), &row4_2)]),
+            (Some(frame4), &[(Position2D::name(), &row4_25)]),
+            (Some(frame4), &[(Color::name(), &row4_3)]),
+            (Some(frame4), &[(Position2D::name(), &row4_4)]),
         ],
     );
 }
