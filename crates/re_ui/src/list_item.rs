@@ -17,7 +17,7 @@ pub struct ShowCollapsingResponse<R> {
     pub item_response: Response,
 
     /// Response from the body, if it was displayed.
-    pub body_response: Option<R>,
+    pub body_response: Option<egui::InnerResponse<R>>,
 }
 
 /// Specification of how the width of the [`ListItem`] must be allocated.
@@ -313,7 +313,7 @@ impl<'a> ListItem<'a> {
 
         ShowCollapsingResponse {
             item_response: response.response,
-            body_response: body_response.map(|r| r.inner),
+            body_response,
         }
     }
 

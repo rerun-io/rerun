@@ -1,6 +1,6 @@
 use re_ui::list_item::ListItem;
 use re_ui::{toasts, CommandPalette, ReUi, UICommand, UICommandSender};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Sender that queues up the execution of a command.
 pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
@@ -91,7 +91,9 @@ pub struct ExampleApp {
     command_receiver: CommandReceiver,
     latest_cmd: String,
 
+    show_hierarchical_demo: bool,
     drag_and_drop: ExampleDragAndDrop,
+    hierarchical_drag_and_drop: HierarchicalDragAndDrop,
 }
 
 impl ExampleApp {
@@ -125,7 +127,9 @@ impl ExampleApp {
             command_receiver,
             latest_cmd: Default::default(),
 
+            show_hierarchical_demo: true,
             drag_and_drop: Default::default(),
+            hierarchical_drag_and_drop: Default::default(),
         }
     }
 
@@ -340,7 +344,27 @@ impl eframe::App for ExampleApp {
                     // Drag and drop demo
                     //
 
-                    self.drag_and_drop.ui(&self.re_ui, ui);
+                    ui.scope(|ui| {
+                        ui.spacing_mut().item_spacing.y = 0.0;
+
+                        self.re_ui.panel_content(ui, |re_ui, ui| {
+                            re_ui.panel_title_bar_with_buttons(
+                                ui,
+                                "Drag-and-drop demo",
+                                None,
+                                |ui| {
+                                    ui.add(re_ui::toggle_switch(&mut self.show_hierarchical_demo));
+                                    ui.label("Hierarchical:");
+                                },
+                            );
+
+                            if self.show_hierarchical_demo {
+                                self.hierarchical_drag_and_drop.ui(re_ui, ui);
+                            } else {
+                                self.drag_and_drop.ui(re_ui, ui);
+                            }
+                        });
+                    });
 
                     //
                     // Nested scroll area demo. Multiple `panel_content` must be used.
@@ -644,114 +668,458 @@ impl Default for ExampleDragAndDrop {
 
 impl ExampleDragAndDrop {
     fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
-        ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.y = 0.0;
+        let mut source_item_pos = None;
+        let mut target_item_pos = None;
 
-            re_ui.panel_content(ui, |re_ui, ui| {
-                re_ui.panel_title_bar(ui, "Drag-and-drop demo", None);
+        for (i, (idx, label)) in self.items.iter_mut().enumerate() {
+            //
+            // Draw the item
+            //
 
-                let mut source_item_pos = None;
-                let mut target_item_pos = None;
+            let id = egui::Id::new("drag_demo").with(*idx);
 
-                for (i, (idx, label)) in self.items.iter_mut().enumerate() {
-                    //
-                    // Draw the item
-                    //
+            let response = re_ui
+                .list_item(label.as_str())
+                .selected(self.selected_items.contains(idx))
+                .drag_id(id)
+                .show(ui);
 
-                    let id = egui::Id::new("drag_demo").with(*idx);
+            //
+            // Handle item selection
+            //
 
-                    let response = re_ui
-                        .list_item(label.as_str())
-                        .selected(self.selected_items.contains(idx))
-                        .drag_id(id)
-                        .show(ui);
-
-                    //
-                    // Handle item selection
-                    //
-
-                    // Basic click and cmd/ctr-click
-                    if response.clicked() {
-                        if ui.input(|i| i.modifiers.command) {
-                            if self.selected_items.contains(idx) {
-                                self.selected_items.remove(idx);
-                            } else {
-                                self.selected_items.insert(*idx);
-                            }
-                        } else {
-                            self.selected_items.clear();
-                            self.selected_items.insert(*idx);
-                        }
+            // Basic click and cmd/ctr-click
+            if response.clicked() {
+                if ui.input(|i| i.modifiers.command) {
+                    if self.selected_items.contains(idx) {
+                        self.selected_items.remove(idx);
+                    } else {
+                        self.selected_items.insert(*idx);
                     }
+                } else {
+                    self.selected_items.clear();
+                    self.selected_items.insert(*idx);
+                }
+            }
 
-                    // Multi-selection dragging not (yet?) supported, so dragging resets selection to single item.
-                    // TODO(emilk/egui#3841): it would be nice to have response.decidedly_dragged()
-                    if response.dragged() {
-                        // Here, we support dragging a single item at a time, so we set the selection to the dragged item
-                        // if/when we're dragging it proper.
-                        if ui.input(|i| i.pointer.is_decidedly_dragging()) {
-                            self.selected_items.clear();
-                            self.selected_items.insert(*idx);
-                        }
+            // Multi-selection dragging not (yet?) supported, so dragging resets selection to single item.
+            // TODO(emilk/egui#3841): it would be nice to have response.decidedly_dragged()
+            if response.dragged() {
+                // Here, we support dragging a single item at a time, so we set the selection to the dragged item
+                // if/when we're dragging it proper.
+                if ui.input(|i| i.pointer.is_decidedly_dragging()) {
+                    self.selected_items.clear();
+                    self.selected_items.insert(*idx);
+                }
+            }
+
+            //
+            // Detect end-of-drag situation and prepare the swap command.
+            //
+
+            // TODO(emilk/egui#3841): very tempting to use `response.dragged()` here, but it
+            // doesn't work. By the time `i.pointer.any_released()` is true, `response.dragged()`
+            // is false. So both condition never happen at the same time.
+            if ui.memory(|mem| mem.is_being_dragged(response.id)) {
+                source_item_pos = Some(i);
+            }
+
+            // TODO(emilk/egui#3841): this feels like a common enough pattern that is should deserve its own API.
+            let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
+                && ui.input(|i| i.pointer.is_decidedly_dragging());
+            if anything_being_decidedly_dragged {
+                let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
+
+                let (insert_y, target) = if ui.rect_contains_pointer(top) {
+                    (Some(top.top()), Some(i))
+                } else if ui.rect_contains_pointer(bottom) {
+                    (Some(bottom.bottom()), Some(i + 1))
+                } else {
+                    (None, None)
+                };
+
+                if let Some(insert_y) = insert_y {
+                    ui.painter().hline(
+                        ui.cursor().x_range(),
+                        insert_y,
+                        (2.0, egui::Color32::WHITE),
+                    );
+
+                    // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
+                    if ui.input(|i| i.pointer.any_released()) {
+                        target_item_pos = target;
                     }
+                }
+            }
+        }
 
-                    //
-                    // Detect end-of-drag situation and prepare the swap command.
-                    //
+        //
+        // Handle the swap command (if any)
+        //
 
-                    // TODO(emilk/egui#3841): very tempting to use `response.dragged()` here, but it
-                    // doesn't work. By the time `i.pointer.any_released()` is true, `response.dragged()`
-                    // is false. So both condition never happen at the same time.
-                    if ui.memory(|mem| mem.is_being_dragged(response.id)) {
-                        source_item_pos = Some(i);
+        if let (Some(source), Some(target)) = (source_item_pos, target_item_pos) {
+            if source != target {
+                let item = self.items.remove(source);
+
+                if source < target {
+                    self.items.insert(target - 1, item);
+                } else {
+                    self.items.insert(target, item);
+                }
+            }
+        }
+    }
+}
+
+// ==============================================================================
+// HIERARCHICAL DRAG AND DROP DEMO
+
+#[derive(Hash, Clone, Copy, PartialEq, Eq)]
+struct ItemId(u32);
+
+impl ItemId {
+    fn new() -> Self {
+        Self(rand::random())
+    }
+}
+
+impl std::fmt::Debug for ItemId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#{:04x}", self.0)
+    }
+}
+
+impl From<ItemId> for egui::Id {
+    fn from(id: ItemId) -> Self {
+        Self::new(id)
+    }
+}
+
+enum Item {
+    Container(Vec<ItemId>),
+    Leaf(String),
+}
+
+#[derive(Debug)]
+enum Command {
+    // selection handling commands
+    SetSelection(ItemId),
+    ToggleSelected(ItemId),
+
+    // drag and drop handling commands
+    //SourceItem(ItemId),
+    TargetItemBefore(ItemId),
+    TargetItemAfter(ItemId),
+}
+
+struct HierarchicalDragAndDrop {
+    /// flat hash table  of items
+    items: HashMap<ItemId, Item>,
+
+    /// id of the root item (not displayed in the UI)
+    root_id: ItemId,
+
+    /// set of all selected items
+    selected_items: HashSet<ItemId>,
+
+    /// channel to receive commands from the UI
+    command_receiver: std::sync::mpsc::Receiver<Command>,
+
+    /// channel to send commands from the UI
+    command_sender: std::sync::mpsc::Sender<Command>,
+}
+
+impl Default for HierarchicalDragAndDrop {
+    fn default() -> Self {
+        let root_item = Item::Container(Vec::new());
+        let root_id = ItemId::new();
+
+        let (command_sender, command_receiver) = std::sync::mpsc::channel();
+
+        let mut res = Self {
+            items: std::iter::once((root_id, root_item)).collect(),
+            root_id,
+            selected_items: HashSet::new(),
+            command_receiver,
+            command_sender,
+        };
+
+        res.populate();
+
+        res
+    }
+}
+
+//
+// Data stuff
+//
+impl HierarchicalDragAndDrop {
+    /// Add a bunch of items in the hierarchy.
+    fn populate(&mut self) {
+        let c1 = self.add_container(self.root_id);
+        let c2 = self.add_container(self.root_id);
+        let c3 = self.add_container(self.root_id);
+        self.add_leaf(self.root_id);
+        self.add_leaf(self.root_id);
+
+        let c11 = self.add_container(c1);
+        let c12 = self.add_container(c1);
+        self.add_leaf(c11);
+        self.add_leaf(c11);
+        self.add_leaf(c12);
+        self.add_leaf(c12);
+
+        self.add_leaf(c2);
+        self.add_leaf(c2);
+
+        self.add_leaf(c3);
+    }
+
+    fn container(&self, id: ItemId) -> Option<&Vec<ItemId>> {
+        match self.items.get(&id) {
+            Some(Item::Container(children)) => Some(children),
+            _ => None,
+        }
+    }
+
+    /// Find the parent of an item, and the index of that item in the parent's children.
+    fn parent_and_pos(&self, id: ItemId) -> Option<(ItemId, usize)> {
+        if id == self.root_id {
+            None
+        } else {
+            self.parent_and_pos_impl(id, self.root_id)
+        }
+    }
+
+    fn parent_and_pos_impl(&self, id: ItemId, container_id: ItemId) -> Option<(ItemId, usize)> {
+        if let Some(children) = self.container(container_id) {
+            for (idx, child_id) in children.iter().enumerate() {
+                if child_id == &id {
+                    return Some((container_id, idx));
+                } else if self.container(*child_id).is_some() {
+                    let res = self.parent_and_pos_impl(id, *child_id);
+                    if res.is_some() {
+                        return res;
                     }
+                }
+            }
+        }
 
-                    // TODO(emilk/egui#3841): this feels like a common enough pattern that is should deserve its own API.
-                    let anything_being_decidedly_dragged = ui
-                        .memory(|mem| mem.is_anything_being_dragged())
-                        && ui.input(|i| i.pointer.is_decidedly_dragging());
-                    if anything_being_decidedly_dragged {
-                        let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
+        None
+    }
 
-                        let (insert_y, target) = if ui.rect_contains_pointer(top) {
-                            (Some(top.top()), Some(i))
-                        } else if ui.rect_contains_pointer(bottom) {
-                            (Some(bottom.bottom()), Some(i + 1))
-                        } else {
-                            (None, None)
-                        };
+    fn add_container(&mut self, parent_id: ItemId) -> ItemId {
+        let id = ItemId::new();
+        let item = Item::Container(Vec::new());
 
-                        if let Some(insert_y) = insert_y {
-                            ui.painter().hline(
-                                ui.cursor().x_range(),
-                                insert_y,
-                                (2.0, egui::Color32::WHITE),
-                            );
+        self.items.insert(id, item);
 
-                            // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
-                            if ui.input(|i| i.pointer.any_released()) {
-                                target_item_pos = target;
-                            }
-                        }
+        if let Some(Item::Container(children)) = self.items.get_mut(&parent_id) {
+            children.push(id);
+        }
+
+        id
+    }
+
+    fn add_leaf(&mut self, parent_id: ItemId) {
+        let id = ItemId::new();
+        let item = Item::Leaf(format!("Item {id:?}"));
+
+        self.items.insert(id, item);
+
+        if let Some(Item::Container(children)) = self.items.get_mut(&parent_id) {
+            children.push(id);
+        }
+    }
+
+    fn selected(&self, id: ItemId) -> bool {
+        self.selected_items.contains(&id)
+    }
+
+    fn send_command(&self, command: Command) {
+        // The only way this can fail is if the receiver has been dropped.
+        self.command_sender.send(command).ok();
+    }
+
+    fn move_item(&mut self, item_id: ItemId, container_id: ItemId, mut pos: usize) {
+        println!("Moving {item_id:?} to {container_id:?} at position {pos:?}");
+
+        // Remove the item from its current location. Note: we must adjust the target position if the item is
+        // moved within the same container, as the removal might shift the positions by one.
+        if let Some((source_parent_id, source_pos)) = self.parent_and_pos(item_id) {
+            if let Some(Item::Container(children)) = self.items.get_mut(&source_parent_id) {
+                children.remove(source_pos);
+            }
+
+            if source_parent_id == container_id && source_pos < pos {
+                pos -= 1;
+            }
+        }
+
+        if let Some(Item::Container(children)) = self.items.get_mut(&container_id) {
+            children.insert(pos, item_id);
+        }
+    }
+}
+
+//
+// UI stuff
+//
+impl HierarchicalDragAndDrop {
+    fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
+        if let Some(top_level_items) = self.container(self.root_id) {
+            self.container_children_ui(re_ui, ui, top_level_items);
+        }
+
+        while let Ok(command) = self.command_receiver.try_recv() {
+            println!("Received command: {command:?}");
+            match command {
+                Command::SetSelection(item_id) => {
+                    self.selected_items.clear();
+                    self.selected_items.insert(item_id);
+                }
+                Command::ToggleSelected(item_id) => {
+                    if self.selected_items.contains(&item_id) {
+                        self.selected_items.remove(&item_id);
+                    } else {
+                        self.selected_items.insert(item_id);
                     }
                 }
 
-                //
-                // Handle the swap command (if any)
-                //
-
-                if let (Some(source), Some(target)) = (source_item_pos, target_item_pos) {
-                    if source != target {
-                        let item = self.items.remove(source);
-
-                        if source < target {
-                            self.items.insert(target - 1, item);
-                        } else {
-                            self.items.insert(target, item);
+                Command::TargetItemBefore(item_id) => {
+                    if let Some((parent_id, pos)) = self.parent_and_pos(item_id) {
+                        if let Some(source_id) = self.dragged_id(ui) {
+                            self.move_item(source_id, parent_id, pos);
                         }
                     }
                 }
+                Command::TargetItemAfter(item_id) => {
+                    if let Some((parent_id, pos)) = self.parent_and_pos(item_id) {
+                        if let Some(source_id) = self.dragged_id(ui) {
+                            self.move_item(source_id, parent_id, pos + 1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn dragged_id(&self, ui: &egui::Ui) -> Option<ItemId> {
+        // TODO(emilk/egui#3841): `ui.memory()` should really let us get the `dragged_id` directly.
+        ui.memory(|mem| {
+            self.items
+                .keys()
+                .find(|item_id| mem.is_being_dragged((**item_id).into()))
+                .copied()
+        })
+    }
+
+    fn container_ui(
+        &self,
+        re_ui: &crate::ReUi,
+        ui: &mut egui::Ui,
+        item_id: ItemId,
+        children: &Vec<ItemId>,
+    ) {
+        let response = re_ui
+            .list_item(format!("Container {item_id:?}"))
+            .subdued(true)
+            .selected(self.selected(item_id))
+            .drag_id(item_id.into())
+            .show_collapsing(ui, item_id.into(), true, |re_ui, ui| {
+                self.container_children_ui(re_ui, ui, children);
             });
-        });
+
+        self.handle_interaction(
+            ui,
+            item_id,
+            &response.item_response,
+            response.body_response.as_ref().map(|r| &r.response),
+        );
+    }
+
+    fn container_children_ui(
+        &self,
+        re_ui: &crate::ReUi,
+        ui: &mut egui::Ui,
+        children: &Vec<ItemId>,
+    ) {
+        for child_id in children {
+            match self.items.get(child_id) {
+                Some(Item::Container(children)) => {
+                    self.container_ui(re_ui, ui, *child_id, children);
+                }
+                Some(Item::Leaf(label)) => {
+                    self.leaf_ui(re_ui, ui, *child_id, label);
+                }
+                None => {}
+            }
+        }
+    }
+
+    fn leaf_ui(&self, re_ui: &crate::ReUi, ui: &mut egui::Ui, item_id: ItemId, label: &String) {
+        let response = re_ui
+            .list_item(label)
+            .selected(self.selected(item_id))
+            .drag_id(item_id.into())
+            .show(ui);
+
+        self.handle_interaction(ui, item_id, &response, None);
+    }
+
+    fn handle_interaction(
+        &self,
+        ui: &egui::Ui,
+        item_id: ItemId,
+        response: &egui::Response,
+        body_response: Option<&egui::Response>,
+    ) {
+        // basic selection management
+        if response.clicked() {
+            if ui.input(|i| i.modifiers.command) {
+                self.send_command(Command::ToggleSelected(item_id));
+            } else {
+                self.send_command(Command::SetSelection(item_id));
+            }
+        }
+
+        // handle drag
+        if response.dragged() {
+            // Here, we support dragging a single item at a time, so we set the selection to the dragged item
+            // if/when we're dragging it proper.
+            if ui.input(|i| i.pointer.is_decidedly_dragging()) {
+                self.send_command(Command::SetSelection(item_id));
+            }
+        }
+
+        let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
+            && ui.input(|i| i.pointer.is_decidedly_dragging());
+        if anything_being_decidedly_dragged {
+            let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
+
+            let target_info = if ui.rect_contains_pointer(top) {
+                Some((top.top(), Command::TargetItemBefore(item_id)))
+            } else if ui.rect_contains_pointer(bottom) {
+                let insert_y = if let Some(body_response) = body_response {
+                    body_response.rect.bottom()
+                } else {
+                    bottom.bottom()
+                };
+
+                Some((insert_y, Command::TargetItemAfter(item_id)))
+            } else {
+                None
+            };
+
+            if let Some((insert_y, command)) = target_info {
+                ui.painter()
+                    .hline(ui.cursor().x_range(), insert_y, (2.0, egui::Color32::WHITE));
+
+                // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
+                if ui.input(|i| i.pointer.any_released()) {
+                    self.send_command(command);
+                }
+            }
+        }
     }
 }
