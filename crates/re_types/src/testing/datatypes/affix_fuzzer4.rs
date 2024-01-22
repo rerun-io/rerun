@@ -62,7 +62,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Union(
-            vec![
+            std::sync::Arc::new(vec![
                 Field {
                     name: "_null_markers".to_owned(),
                     data_type: DataType::Null,
@@ -77,7 +77,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                 },
                 Field {
                     name: "many_required".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                         is_nullable: false,
@@ -88,7 +88,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                 },
                 Field {
                     name: "many_optional".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                         is_nullable: false,
@@ -97,8 +97,8 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     is_nullable: false,
                     metadata: [].into(),
                 },
-            ],
-            Some(vec![0i32, 1i32, 2i32, 3i32]),
+            ]),
+            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32])),
             UnionMode::Dense,
         )
     }
@@ -192,7 +192,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type:
                                         <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
@@ -248,7 +248,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type:
                                         <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
@@ -319,25 +319,26 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
                         DataType::Union(
-                            vec![
-                            Field { name : "_null_markers".to_owned(), data_type :
-                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                            Field { name : "single_required".to_owned(), data_type : <
-                            crate ::testing::datatypes::AffixFuzzer3 >
-                            ::arrow_datatype(), is_nullable : false, metadata : []
-                            .into(), }, Field { name : "many_required".to_owned(),
-                            data_type : DataType::List(Box::new(Field { name : "item"
-                            .to_owned(), data_type : < crate
-                            ::testing::datatypes::AffixFuzzer3 > ::arrow_datatype(),
-                            is_nullable : false, metadata : [].into(), })), is_nullable :
-                            false, metadata : [].into(), }, Field { name :
-                            "many_optional".to_owned(), data_type :
-                            DataType::List(Box::new(Field { name : "item".to_owned(),
-                            data_type : < crate ::testing::datatypes::AffixFuzzer3 >
-                            ::arrow_datatype(), is_nullable : false, metadata : []
-                            .into(), })), is_nullable : false, metadata : [].into(), },
-                        ],
-                            Some(vec![0i32, 1i32, 2i32, 3i32]),
+                            std::sync::Arc::new(vec![
+                                Field { name : "_null_markers".to_owned(), data_type :
+                                DataType::Null, is_nullable : true, metadata : [].into(), },
+                                Field { name : "single_required".to_owned(), data_type : <
+                                crate ::testing::datatypes::AffixFuzzer3 >
+                                ::arrow_datatype(), is_nullable : false, metadata : []
+                                .into(), }, Field { name : "many_required".to_owned(),
+                                data_type : DataType::List(std::sync::Arc::new(Field { name
+                                : "item".to_owned(), data_type : < crate
+                                ::testing::datatypes::AffixFuzzer3 > ::arrow_datatype(),
+                                is_nullable : false, metadata : [].into(), })), is_nullable
+                                : false, metadata : [].into(), }, Field { name :
+                                "many_optional".to_owned(), data_type :
+                                DataType::List(std::sync::Arc::new(Field { name : "item"
+                                .to_owned(), data_type : < crate
+                                ::testing::datatypes::AffixFuzzer3 > ::arrow_datatype(),
+                                is_nullable : false, metadata : [].into(), })), is_nullable
+                                : false, metadata : [].into(), },
+                            ]),
+                            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32])),
                             UnionMode::Dense,
                         ),
                         arrow_data.data_type().clone(),
@@ -386,7 +387,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| DeserializationError::datatype_mismatch(
                                 DataType::List(
-                                    Box::new(Field {
+                                    std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                                         is_nullable: false,
@@ -461,7 +462,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| DeserializationError::datatype_mismatch(
                                 DataType::List(
-                                    Box::new(Field {
+                                    std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                                         is_nullable: false,

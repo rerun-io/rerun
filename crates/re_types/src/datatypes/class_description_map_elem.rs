@@ -59,7 +59,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "class_id".to_owned(),
                 data_type: <crate::datatypes::ClassId>::arrow_datatype(),
@@ -72,7 +72,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                 is_nullable: false,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -175,7 +175,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::Struct(vec![
+                        DataType::Struct(std::sync::Arc::new(vec![
                             Field {
                                 name: "class_id".to_owned(),
                                 data_type: <crate::datatypes::ClassId>::arrow_datatype(),
@@ -188,7 +188,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
-                        ]),
+                        ])),
                         arrow_data.data_type().clone(),
                     )
                 })

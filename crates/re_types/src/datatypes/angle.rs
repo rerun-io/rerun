@@ -59,7 +59,7 @@ impl ::re_types_core::Loggable for Angle {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Union(
-            vec![
+            std::sync::Arc::new(vec![
                 Field {
                     name: "_null_markers".to_owned(),
                     data_type: DataType::Null,
@@ -78,8 +78,8 @@ impl ::re_types_core::Loggable for Angle {
                     is_nullable: false,
                     metadata: [].into(),
                 },
-            ],
-            Some(vec![0i32, 1i32, 2i32]),
+            ]),
+            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
             UnionMode::Dense,
         )
     }
@@ -205,7 +205,7 @@ impl ::re_types_core::Loggable for Angle {
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
                         DataType::Union(
-                            vec![
+                            std::sync::Arc::new(vec![
                                 Field {
                                     name: "_null_markers".to_owned(),
                                     data_type: DataType::Null,
@@ -224,8 +224,8 @@ impl ::re_types_core::Loggable for Angle {
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
-                            ],
-                            Some(vec![0i32, 1i32, 2i32]),
+                            ]),
+                            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
                             UnionMode::Dense,
                         ),
                         arrow_data.data_type().clone(),
