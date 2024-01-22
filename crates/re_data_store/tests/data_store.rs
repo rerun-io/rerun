@@ -796,8 +796,7 @@ fn gc_impl(store: &mut DataStore) {
         }
 
         sanity_unwrap(store);
-        // TODO
-        // _ = store.to_dataframe(); // simple way of checking that everything is still readable
+        _ = store.to_data_table(); // simple way of checking that everything is still readable
 
         let stats = DataStoreStats::from_store(store);
 
@@ -951,8 +950,6 @@ fn protected_gc_clear() {
     }
 }
 
-// TODO: rewrite that one so it doesn't require join semantics
-
 fn protected_gc_clear_impl(store: &mut DataStore) {
     init_logs();
 
@@ -994,22 +991,25 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-        let components_all = &[Color::name(), Position2D::name()];
 
-        // TODO
-        // let df = polars_util::latest_components(
-        //     store,
-        //     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
-        //     &ent_path,
-        //     components_all,
-        //     &JoinType::Outer,
-        // )
-        // .unwrap();
-        //
-        // let df_expected = joint_df(store.cluster_key(), rows);
-        //
-        // store.sort_indices_if_needed();
-        // assert_eq!(df_expected, df, "{store}");
+        for (component_name, expected) in rows {
+            let (_, _, cells) = store
+                .latest_at::<1>(
+                    &LatestAtQuery::new(timeline_frame_nr, frame_nr),
+                    &ent_path,
+                    *component_name,
+                    &[*component_name],
+                )
+                .unwrap();
+
+            let expected = expected
+                .cells
+                .iter()
+                .filter(|cell| cell.component_name() == *component_name)
+                .collect_vec();
+            let actual = cells.iter().flatten().collect_vec();
+            assert_eq!(expected, actual);
+        }
     };
 
     // Only points are preserved, since colors were cleared and then GC'd
