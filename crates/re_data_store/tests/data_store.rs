@@ -4,17 +4,16 @@
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
 
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
 use rand::Rng;
 use re_data_store::WriteError;
 use re_data_store::{
-    polars_util, test_row, test_util::sanity_unwrap, ArrayExt as _, DataStore, DataStoreConfig,
-    DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery, RangeQuery,
-    TimeInt, TimeRange,
+    polars_util, test_row,
+    test_util::{init_logs, insert_table_with_retries, sanity_unwrap},
+    ArrayExt as _, DataStore, DataStoreConfig, DataStoreStats, GarbageCollectionOptions,
+    GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
     build_frame_nr, DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline,
@@ -27,24 +26,6 @@ use re_types::{
     testing::{build_some_large_structs, LargeStruct},
 };
 use re_types_core::{ComponentName, Loggable as _};
-
-// ---
-
-// We very often re-use RowIds when generating test data.
-fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
-    for row in table.to_rows() {
-        let mut row = row.unwrap();
-        loop {
-            match store.insert_row(&row) {
-                Ok(_) => break,
-                Err(WriteError::ReusedRowId(_)) => {
-                    row.row_id = row.row_id.next();
-                }
-                err @ Err(_) => err.map(|_| ()).unwrap(),
-            }
-        }
-    }
-}
 
 // --- LatestComponentsAt ---
 
@@ -274,130 +255,6 @@ fn all_components() {
 
         sanity_unwrap(&store);
     }
-}
-
-// --- LatestAt ---
-
-// TODO: requires join semantics -> re_query
-
-#[test]
-fn latest_at() {
-    init_logs();
-
-    for config in re_data_store::test_util::all_configs() {
-        let mut store = DataStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
-            config.clone(),
-        );
-        latest_at_impl(&mut store);
-    }
-}
-
-fn latest_at_impl(store: &mut DataStore) {
-    init_logs();
-
-    let ent_path = EntityPath::from("this/that");
-
-    let frame0 = TimeInt::from(0);
-    let frame1 = TimeInt::from(1);
-    let frame2 = TimeInt::from(2);
-    let frame3 = TimeInt::from(3);
-    let frame4 = TimeInt::from(4);
-
-    // helper to insert a table both as a temporal and timeless payload
-    let insert_table = |store: &mut DataStore, table: &DataTable| {
-        // insert temporal
-        insert_table_with_retries(store, table);
-
-        // insert timeless
-        let mut table_timeless = table.clone();
-        table_timeless.col_timelines = Default::default();
-        insert_table_with_retries(store, &table_timeless);
-    };
-
-    let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-    let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
-
-    let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
-
-    let points3 = build_some_positions2d(10);
-    let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
-
-    let colors4 = build_some_colors(5);
-    let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [colors4]);
-
-    insert_table(
-        store,
-        &DataTable::from_rows(
-            TableId::new(),
-            [row1.clone(), row2.clone(), row3.clone(), row4.clone()],
-        ),
-    );
-
-    // Stress test save-to-disk & load-from-disk
-    let mut store2 = DataStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        store.cluster_key(),
-        store.config().clone(),
-    );
-    for table in store.to_data_tables(None) {
-        insert_table(&mut store2, &table);
-    }
-    // Stress test GC
-    store2.gc(&GarbageCollectionOptions::gc_everything());
-    for table in store.to_data_tables(None) {
-        insert_table(&mut store2, &table);
-    }
-    let store = store2;
-
-    sanity_unwrap(&store);
-
-    let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
-        let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-        let components_all = &[Color::name(), Position2D::name()];
-
-        let df = polars_util::latest_components(
-            &store,
-            &LatestAtQuery::new(timeline_frame_nr, frame_nr),
-            &ent_path,
-            components_all,
-            &JoinType::Outer,
-        )
-        .unwrap();
-
-        let df_expected = joint_df(store.cluster_key(), rows);
-
-        store.sort_indices_if_needed();
-        assert_eq!(df_expected, df, "{store}");
-    };
-
-    // TODO(cmc): bring back some log_time scenarios
-
-    assert_latest_components(
-        frame0,
-        &[(Color::name(), &row4), (Position2D::name(), &row3)], // timeless
-    );
-    assert_latest_components(
-        frame1,
-        &[
-            (Color::name(), &row1),
-            (Position2D::name(), &row3), // timeless
-        ],
-    );
-    assert_latest_components(
-        frame2,
-        &[(Color::name(), &row1), (Position2D::name(), &row2)],
-    );
-    assert_latest_components(
-        frame3,
-        &[(Color::name(), &row1), (Position2D::name(), &row3)],
-    );
-    assert_latest_components(
-        frame4,
-        &[(Color::name(), &row4), (Position2D::name(), &row3)],
-    );
 }
 
 // --- Range ---
@@ -1106,17 +963,4 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     // No rows should remain because the table should have been purged
     let stats = DataStoreStats::from_store(store);
     assert_eq!(stats.timeless.num_rows, 0);
-}
-
-// ---
-
-pub fn init_logs() {
-    static INIT: AtomicBool = AtomicBool::new(false);
-
-    if INIT
-        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        .is_ok()
-    {
-        re_log::setup_native_logging();
-    }
 }
