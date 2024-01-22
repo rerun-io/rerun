@@ -61,139 +61,6 @@ fn main() -> eframe::Result<()> {
     )
 }
 
-struct ExampleDragAndDrop {
-    items: Vec<(u32, String)>,
-
-    /// currently selected items
-    selected_items: HashSet<u32>,
-}
-
-impl Default for ExampleDragAndDrop {
-    fn default() -> Self {
-        Self {
-            items: (0..10)
-                .into_iter()
-                .map(|i| (i, format!("Item {i}")))
-                .collect(),
-            selected_items: HashSet::new(),
-        }
-    }
-}
-
-impl ExampleDragAndDrop {
-    fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
-        ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.y = 0.0;
-
-            re_ui.panel_content(ui, |re_ui, ui| {
-                re_ui.panel_title_bar(ui, "Drag-and-drop demo", None);
-
-                let mut source_item_pos = None;
-                let mut target_item_pos = None;
-
-                for (i, (idx, label)) in self.items.iter_mut().enumerate() {
-                    //
-                    // Draw the item
-                    //
-
-                    let id = egui::Id::new("drag_demo").with(*idx);
-
-                    let response = re_ui
-                        .list_item(label.as_str())
-                        .selected(self.selected_items.contains(&idx))
-                        .drag_id(id)
-                        .show(ui);
-
-                    //
-                    // Handle item selection
-                    //
-
-                    // Basic click and cmd/ctr-click
-                    if response.clicked() {
-                        if ui.input(|i| i.modifiers.command) {
-                            if self.selected_items.contains(&idx) {
-                                self.selected_items.remove(&idx);
-                            } else {
-                                self.selected_items.insert(*idx);
-                            }
-                        } else {
-                            self.selected_items.clear();
-                            self.selected_items.insert(*idx);
-                        }
-                    }
-
-                    // Multi-selection dragging not (yet?) supported, so dragging resets selection to single item.
-                    // TODO(emilk/egui#3841): it would be nice to have response.decidedly_dragged()
-                    if response.dragged() {
-                        // Here, we support dragging a single item at a time, so we set the selection to the dragged item
-                        // if/when we're dragging it proper.
-                        if ui.input(|i| i.pointer.is_decidedly_dragging()) {
-                            self.selected_items.clear();
-                            self.selected_items.insert(*idx);
-                        }
-                    }
-
-                    //
-                    // Detect end-of-drag situation and prepare the swap command.
-                    //
-
-                    // TODO(emilk/egui#3841): very tempting to use `response.dragged()` here, but it
-                    // doesn't work. By the time `i.pointer.any_released()` is true, `response.dragged()`
-                    // is false. So both condition never happen at the same time.
-                    if ui.memory(|mem| mem.is_being_dragged(response.id)) {
-                        source_item_pos = Some(i);
-                    }
-
-                    // TODO(emilk/egui#3841): this feels like a common enough pattern that is should deserve its own API.
-                    let anything_being_decidedly_dragged = ui
-                        .memory(|mem| mem.is_anything_being_dragged())
-                        && ui.input(|i| i.pointer.is_decidedly_dragging());
-                    if anything_being_decidedly_dragged {
-                        let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
-
-                        let (insert_y, target) = if ui.rect_contains_pointer(top) {
-                            (Some(top.top()), Some(i))
-                        } else if ui.rect_contains_pointer(bottom) {
-                            (Some(bottom.bottom()), Some(i + 1))
-                        } else {
-                            (None, None)
-                        };
-
-                        if let Some(insert_y) = insert_y {
-                            ui.painter().hline(
-                                ui.cursor().x_range(),
-                                insert_y,
-                                (2.0, egui::Color32::WHITE),
-                            );
-
-                            // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
-                            if ui.input(|i| i.pointer.any_released()) {
-                                target_item_pos = target;
-                            }
-                        }
-                    }
-                }
-
-                //
-                // Handle the swap command (if any)
-                //
-
-                if let (Some(source), Some(target)) = (source_item_pos, target_item_pos) {
-                    if source != target {
-                        let item = self.items.remove(source);
-
-                        if source < target {
-                            self.items.insert(target - 1, item);
-                        } else {
-                            self.items.insert(target, item);
-                        }
-                    }
-                }
-            });
-        });
-    }
-}
-
 pub struct ExampleApp {
     re_ui: re_ui::ReUi,
     toasts: toasts::Toasts,
@@ -753,5 +620,138 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             all_panes_must_have_tabs: true,
             ..Default::default()
         }
+    }
+}
+
+// ==============================================================================
+// DRAG AND DROP DEMO
+
+struct ExampleDragAndDrop {
+    items: Vec<(u32, String)>,
+
+    /// currently selected items
+    selected_items: HashSet<u32>,
+}
+
+impl Default for ExampleDragAndDrop {
+    fn default() -> Self {
+        Self {
+            items: (0..10).map(|i| (i, format!("Item {i}"))).collect(),
+            selected_items: HashSet::new(),
+        }
+    }
+}
+
+impl ExampleDragAndDrop {
+    fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
+        ui.scope(|ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+
+            re_ui.panel_content(ui, |re_ui, ui| {
+                re_ui.panel_title_bar(ui, "Drag-and-drop demo", None);
+
+                let mut source_item_pos = None;
+                let mut target_item_pos = None;
+
+                for (i, (idx, label)) in self.items.iter_mut().enumerate() {
+                    //
+                    // Draw the item
+                    //
+
+                    let id = egui::Id::new("drag_demo").with(*idx);
+
+                    let response = re_ui
+                        .list_item(label.as_str())
+                        .selected(self.selected_items.contains(idx))
+                        .drag_id(id)
+                        .show(ui);
+
+                    //
+                    // Handle item selection
+                    //
+
+                    // Basic click and cmd/ctr-click
+                    if response.clicked() {
+                        if ui.input(|i| i.modifiers.command) {
+                            if self.selected_items.contains(idx) {
+                                self.selected_items.remove(idx);
+                            } else {
+                                self.selected_items.insert(*idx);
+                            }
+                        } else {
+                            self.selected_items.clear();
+                            self.selected_items.insert(*idx);
+                        }
+                    }
+
+                    // Multi-selection dragging not (yet?) supported, so dragging resets selection to single item.
+                    // TODO(emilk/egui#3841): it would be nice to have response.decidedly_dragged()
+                    if response.dragged() {
+                        // Here, we support dragging a single item at a time, so we set the selection to the dragged item
+                        // if/when we're dragging it proper.
+                        if ui.input(|i| i.pointer.is_decidedly_dragging()) {
+                            self.selected_items.clear();
+                            self.selected_items.insert(*idx);
+                        }
+                    }
+
+                    //
+                    // Detect end-of-drag situation and prepare the swap command.
+                    //
+
+                    // TODO(emilk/egui#3841): very tempting to use `response.dragged()` here, but it
+                    // doesn't work. By the time `i.pointer.any_released()` is true, `response.dragged()`
+                    // is false. So both condition never happen at the same time.
+                    if ui.memory(|mem| mem.is_being_dragged(response.id)) {
+                        source_item_pos = Some(i);
+                    }
+
+                    // TODO(emilk/egui#3841): this feels like a common enough pattern that is should deserve its own API.
+                    let anything_being_decidedly_dragged = ui
+                        .memory(|mem| mem.is_anything_being_dragged())
+                        && ui.input(|i| i.pointer.is_decidedly_dragging());
+                    if anything_being_decidedly_dragged {
+                        let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
+
+                        let (insert_y, target) = if ui.rect_contains_pointer(top) {
+                            (Some(top.top()), Some(i))
+                        } else if ui.rect_contains_pointer(bottom) {
+                            (Some(bottom.bottom()), Some(i + 1))
+                        } else {
+                            (None, None)
+                        };
+
+                        if let Some(insert_y) = insert_y {
+                            ui.painter().hline(
+                                ui.cursor().x_range(),
+                                insert_y,
+                                (2.0, egui::Color32::WHITE),
+                            );
+
+                            // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
+                            if ui.input(|i| i.pointer.any_released()) {
+                                target_item_pos = target;
+                            }
+                        }
+                    }
+                }
+
+                //
+                // Handle the swap command (if any)
+                //
+
+                if let (Some(source), Some(target)) = (source_item_pos, target_item_pos) {
+                    if source != target {
+                        let item = self.items.remove(source);
+
+                        if source < target {
+                            self.items.insert(target - 1, item);
+                        } else {
+                            self.items.insert(target, item);
+                        }
+                    }
+                }
+            });
+        });
     }
 }
