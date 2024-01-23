@@ -4,4 +4,5 @@
 __init__.py linguist-generated=true
 container_blueprint.py linguist-generated=true
 space_view_blueprint.py linguist-generated=true
+time_series.py linguist-generated=true
 viewport_blueprint.py linguist-generated=true

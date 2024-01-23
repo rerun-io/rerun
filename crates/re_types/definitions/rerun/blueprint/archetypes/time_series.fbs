@@ -1,0 +1,24 @@
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+// ---
+
+/// The configuration options for a `TimeSeries` `SpaceView`.
+table TimeSeries (
+    "attr.docs.unreleased",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    // --- Required ---
+
+    /// Configuration information for the legend
+    // TODO(jleibs): This should be optional, but we need at least one required component
+    legend: rerun.blueprint.components.Legend ("attr.rerun.component_required", order: 1000);
+
+    // --- Optional ---
+
+}

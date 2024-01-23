@@ -1,7 +1,8 @@
 use ahash::HashMap;
 use parking_lot::RwLock;
 
-use re_entity_db::{entity_db::EntityDb, EntityTree, TimeHistogramPerTimeline};
+use re_data_store::LatestAtQuery;
+use re_entity_db::entity_db::EntityDb;
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
@@ -46,6 +47,12 @@ pub struct ViewerContext<'a> {
     /// UI config for the current recording (found in [`EntityDb`]).
     pub rec_cfg: &'a RecordingConfig,
 
+    /// UI config for the current blueprint.
+    pub blueprint_cfg: &'a RecordingConfig,
+
+    /// The blueprint query used for resolving blueprint in this frame
+    pub blueprint_query: &'a LatestAtQuery,
+
     /// The look and feel of the UI.
     pub re_ui: &'a re_ui::ReUi,
 
@@ -80,23 +87,6 @@ impl<'a> ViewerContext<'a> {
     /// The current time query, based on the current time control.
     pub fn current_query(&self) -> re_data_store::LatestAtQuery {
         self.rec_cfg.time_ctrl.read().current_query()
-    }
-
-    /// Returns whether the given tree has any data logged in the current timeline,
-    /// or has any timeless messages.
-    pub fn tree_has_data_in_current_timeline(&self, tree: &EntityTree) -> bool {
-        let top_time_histogram = &tree.subtree.time_histogram;
-        top_time_histogram.has_timeline(self.rec_cfg.time_ctrl.read().timeline())
-            || top_time_histogram.num_timeless_messages() > 0
-    }
-
-    /// Returns whether the given component has any data logged in the current timeline.
-    pub fn component_has_data_in_current_timeline(
-        &self,
-        component_stat: &TimeHistogramPerTimeline,
-    ) -> bool {
-        component_stat.has_timeline(self.rec_cfg.time_ctrl.read().timeline())
-            || component_stat.num_timeless_messages() > 0
     }
 }
 

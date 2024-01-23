@@ -19,6 +19,20 @@ pub struct ComponentWithInstances {
     pub(crate) values: DataCell,
 }
 
+impl std::fmt::Display for ComponentWithInstances {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let table = arrow::format_table(
+            [
+                self.instance_keys.as_arrow_ref(),
+                self.values.as_arrow_ref(),
+            ],
+            ["InstanceKey", self.values.component_name().as_ref()],
+        );
+
+        f.write_fmt(format_args!("ComponentWithInstances:\n{table}"))
+    }
+}
+
 impl ComponentWithInstances {
     /// Name of the [`Component`]
     #[inline]

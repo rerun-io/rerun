@@ -28,6 +28,7 @@ impl EntityDataUi for re_types::components::TensorData {
         verbosity: UiVerbosity,
         entity_path: &re_log_types::EntityPath,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         re_tracing::profile_function!();
 
@@ -45,6 +46,8 @@ impl EntityDataUi for re_types::components::TensorData {
                 let annotations = crate::annotations(ctx, query, entity_path);
                 tensor_ui(
                     ctx,
+                    query,
+                    store,
                     ui,
                     verbosity,
                     entity_path,
@@ -64,6 +67,8 @@ impl EntityDataUi for re_types::components::TensorData {
 #[allow(clippy::too_many_arguments)]
 fn tensor_ui(
     ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
     entity_path: &re_entity_db::EntityPath,
@@ -79,12 +84,12 @@ fn tensor_ui(
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
     let debug_name = entity_path.to_string();
 
-    let meaning = image_meaning_for_entity(entity_path, ctx);
+    let meaning = image_meaning_for_entity(entity_path, query, store);
 
     let meter = if meaning == TensorDataMeaning::Depth {
         ctx.entity_db
             .store()
-            .query_latest_component::<DepthMeter>(entity_path, &ctx.current_query())
+            .query_latest_component::<DepthMeter>(entity_path, query)
             .map(|meter| meter.value.0)
     } else {
         None

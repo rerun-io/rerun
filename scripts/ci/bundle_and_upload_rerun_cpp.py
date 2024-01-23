@@ -135,6 +135,10 @@ def main() -> None:
             src="rerun_cpp/", dst=package_dir + "/", ignore=shutil.ignore_patterns("tests"), dirs_exist_ok=True
         )
 
+        logging.info("Copying LICENSE files…")
+        shutil.copy(src="LICENSE-APACHE", dst=package_dir + "/")
+        shutil.copy(src="LICENSE-MIT", dst=package_dir + "/")
+
         logging.info(f"Packaging {package_dir}.zip…")
         rerun_zip = shutil.make_archive(
             scratch_dir + "/" + package_name, "zip", root_dir=scratch_dir, base_dir=package_name
