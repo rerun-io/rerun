@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_log_types::{EntityPath, TimeRange, Timeline};
-use re_types_core::{ComponentName, SizeBytes as _};
+use re_types_core::{components::InstanceKey, ComponentName, Loggable as _, SizeBytes as _};
 
 use crate::{cache::CacheBucket, Caches, LatestAtCache, RangeCache};
 
@@ -76,7 +76,30 @@ impl Caches {
             per_component: &mut BTreeMap<ComponentName, CachedComponentStats>,
             bucket: &CacheBucket,
         ) {
-            for (component_name, data) in &bucket.components {
+            let CacheBucket {
+                data_times,
+                pov_instance_keys,
+                components,
+                total_size_bytes: _,
+            } = bucket;
+
+            {
+                let stats: &mut CachedComponentStats =
+                    per_component.entry("<timepoints>".into()).or_default();
+                stats.total_rows += data_times.len() as u64;
+                stats.total_instances += data_times.len() as u64;
+                stats.total_size_bytes += data_times.total_size_bytes();
+            }
+
+            {
+                let stats: &mut CachedComponentStats =
+                    per_component.entry(InstanceKey::name()).or_default();
+                stats.total_rows += pov_instance_keys.num_entries() as u64;
+                stats.total_instances += pov_instance_keys.num_values() as u64;
+                stats.total_size_bytes += pov_instance_keys.total_size_bytes();
+            }
+
+            for (component_name, data) in components {
                 let stats: &mut CachedComponentStats =
                     per_component.entry(*component_name).or_default();
                 stats.total_rows += data.dyn_num_entries() as u64;
