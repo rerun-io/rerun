@@ -1088,19 +1088,23 @@ impl HierarchicalDragAndDrop {
         let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
             && ui.input(|i| i.pointer.is_decidedly_dragging());
         if anything_being_decidedly_dragged {
-            let (mut top, mut bottom) = response.rect.split_top_bottom_at_fraction(0.5);
-            let (mut left_top, mut left_bottom) = (egui::Rect::NOTHING, egui::Rect::NOTHING);
             let indent = ui.spacing().indent;
 
-            (left_top, top) = top.split_left_right_at_x(top.left() + indent);
+            // For both leaf and containers we have two drag zones on the upper half of the item.
+            let (top, mut bottom) = response.rect.split_top_bottom_at_fraction(0.5);
+            let (left_top, top) = top.split_left_right_at_x(top.left() + indent);
 
+            // For the lower part of the item, the story is more complicated:
+            // - for leaf item, we have a single drag zone on the entire lower half
+            // - for container item, we must distinguish between the indent and the rest + BODY TODO
+            let mut left_bottom = egui::Rect::NOTHING;
             if is_container {
                 (left_bottom, bottom) = bottom.split_left_right_at_x(bottom.left() + indent);
             }
 
-            let mut content_left_bot = egui::Rect::NOTHING;
+            let mut content_left_bottom = egui::Rect::NOTHING;
             if let Some(body_response) = body_response {
-                content_left_bot = egui::Rect::from_two_pos(
+                content_left_bottom = egui::Rect::from_two_pos(
                     body_response.rect.left_bottom()
                         + egui::vec2(indent, -ReUi::list_item_height() / 2.0),
                     body_response.rect.left_bottom(),
@@ -1134,38 +1138,38 @@ impl HierarchicalDragAndDrop {
                 return;
             };
 
-            let target_info = if !is_container {
-                if ui.rect_contains_pointer(left_top) {
-                    // insert before me
+            let target_info = if ui.rect_contains_pointer(left_top) {
+                // insert before me
+                Some((
+                    top.top(),
+                    response.rect.x_range(),
+                    Command::MoveDraggedItemTo(parent_id, pos_in_parent),
+                ))
+            } else if ui.rect_contains_pointer(top) {
+                // insert last in the previous container if any, else insert before me
+                let previous_container_id = if pos_in_parent > 0 {
+                    self.container(parent_id)
+                        .map(|c| c[pos_in_parent - 1])
+                        .filter(|id| self.container(*id).is_some())
+                } else {
+                    None
+                };
+
+                if let Some(previous_container_id) = previous_container_id {
+                    Some((
+                        top.top(),
+                        (response.rect.left() + indent..=response.rect.right()).into(),
+                        Command::MoveDraggedItemTo(previous_container_id, usize::MAX),
+                    ))
+                } else {
                     Some((
                         top.top(),
                         response.rect.x_range(),
                         Command::MoveDraggedItemTo(parent_id, pos_in_parent),
                     ))
-                } else if ui.rect_contains_pointer(top) {
-                    // insert last in the previous container if any, else insert before me
-                    let previous_container_id = if pos_in_parent > 0 {
-                        self.container(parent_id)
-                            .map(|c| c[pos_in_parent - 1])
-                            .filter(|id| self.container(*id).is_some())
-                    } else {
-                        None
-                    };
-
-                    if let Some(previous_container_id) = previous_container_id {
-                        Some((
-                            top.top(),
-                            (response.rect.left() + indent..=response.rect.right()).into(),
-                            Command::MoveDraggedItemTo(previous_container_id, usize::MAX),
-                        ))
-                    } else {
-                        Some((
-                            top.top(),
-                            response.rect.x_range(),
-                            Command::MoveDraggedItemTo(parent_id, pos_in_parent),
-                        ))
-                    }
-                } else if ui.rect_contains_pointer(bottom) {
+                }
+            } else if !is_container {
+                if ui.rect_contains_pointer(bottom) {
                     // insert after me
                     Some((
                         bottom.bottom(),
@@ -1176,103 +1180,50 @@ impl HierarchicalDragAndDrop {
                     None
                 }
             } else {
-                if ui.rect_contains_pointer(left_top) {
-                    // insert before me
-                    Some((
-                        left_top.top(),
-                        response.rect.x_range(),
-                        Command::MoveDraggedItemTo(parent_id, pos_in_parent),
-                    ))
-                } else if ui.rect_contains_pointer(top) {
-                    // insert last in the previous container if any, else insert before me
-                    let previous_container_id = if pos_in_parent > 0 {
-                        self.container(parent_id)
-                            .map(|c| c[pos_in_parent - 1])
-                            .filter(|id| self.container(*id).is_some())
+                let body_rect = body_response.map(|r| r.rect).filter(|r| r.width() > 0.0);
+                if let Some(body_rect) = body_rect {
+                    if ui.rect_contains_pointer(left_bottom) {
+                        // insert at pos = 0 inside me
+                        Some((
+                            left_bottom.bottom(),
+                            (body_rect.left() + indent..=body_rect.right()).into(),
+                            Command::MoveDraggedItemTo(item_id, 0),
+                        ))
+                    } else if ui.rect_contains_pointer(bottom) {
+                        // insert at pos = 0 inside me
+                        Some((
+                            bottom.bottom(),
+                            (body_rect.left() + indent..=body_rect.right()).into(),
+                            Command::MoveDraggedItemTo(item_id, 0),
+                        ))
+                    } else if ui.rect_contains_pointer(content_left_bottom) {
+                        // insert after me in my parent
+                        Some((
+                            content_left_bottom.bottom(),
+                            response.rect.x_range(),
+                            Command::MoveDraggedItemTo(parent_id, pos_in_parent + 1),
+                        ))
                     } else {
                         None
-                    };
-
-                    if let Some(previous_container_id) = previous_container_id {
-                        Some((
-                            top.top(),
-                            (response.rect.left() + indent..=response.rect.right()).into(),
-                            Command::MoveDraggedItemTo(previous_container_id, usize::MAX),
-                        ))
-                    } else {
-                        Some((
-                            top.top(),
-                            response.rect.x_range(),
-                            Command::MoveDraggedItemTo(parent_id, pos_in_parent),
-                        ))
                     }
+                } else if ui.rect_contains_pointer(left_bottom) {
+                    // insert after me in my parent
+                    Some((
+                        left_bottom.bottom(),
+                        response.rect.x_range(),
+                        Command::MoveDraggedItemTo(parent_id, pos_in_parent + 1),
+                    ))
+                } else if ui.rect_contains_pointer(bottom) {
+                    // insert at pos = 0 inside me
+                    Some((
+                        bottom.bottom(),
+                        (response.rect.left() + indent..=response.rect.right()).into(),
+                        Command::MoveDraggedItemTo(item_id, 0),
+                    ))
                 } else {
-                    let body_rect = body_response.map(|r| r.rect).filter(|r| r.width() > 0.0);
-                    if let Some(body_rect) = body_rect {
-                        if ui.rect_contains_pointer(left_bottom) {
-                            // insert at pos = 0 inside me
-                            Some((
-                                left_bottom.bottom(),
-                                (body_rect.left() + indent..=body_rect.right()).into(),
-                                Command::MoveDraggedItemTo(item_id, 0),
-                            ))
-                        } else if ui.rect_contains_pointer(bottom) {
-                            // insert at pos = 0 inside me
-                            Some((
-                                bottom.bottom(),
-                                (body_rect.left() + indent..=body_rect.right()).into(),
-                                Command::MoveDraggedItemTo(item_id, 0),
-                            ))
-                        } else if ui.rect_contains_pointer(content_left_bot) {
-                            // insert after me in my parent
-                            Some((
-                                content_left_bot.bottom(),
-                                response.rect.x_range(),
-                                Command::MoveDraggedItemTo(parent_id, pos_in_parent + 1),
-                            ))
-                        } else {
-                            None
-                        }
-                    } else {
-                        if ui.rect_contains_pointer(left_bottom) {
-                            // insert after me in my parent
-                            Some((
-                                left_bottom.bottom(),
-                                response.rect.x_range(),
-                                Command::MoveDraggedItemTo(parent_id, pos_in_parent + 1),
-                            ))
-                        } else if ui.rect_contains_pointer(bottom) {
-                            // insert at pos = 0 inside me
-                            Some((
-                                bottom.bottom(),
-                                (response.rect.left() + indent..=response.rect.right()).into(),
-                                Command::MoveDraggedItemTo(item_id, 0),
-                            ))
-                        } else {
-                            None
-                        }
-                    }
+                    None
                 }
             };
-
-            /*
-            if !container:
-                top -> insert before me in my parent
-                bottom -> insert after me in my parent
-            else:  # container case
-                if first:
-                    top + left_top -> insert before me in my parent (which must be root)
-                else:
-                    top -> insert last in the previous container (if any)
-                    left_top -> insert before me in my parent
-
-                if !body:  # could be collapsed or empty!
-                    left_bottom -> insert after me in my parent
-                    bottom -> insert at pos = 0 inside me
-                else:
-                    bottom + left_bottom -> insert at pos = 0 inside me
-                    body_left_bottom -> insert after me in my parent
-             */
 
             if let Some((insert_y, range_x, command)) = target_info {
                 ui.painter()
