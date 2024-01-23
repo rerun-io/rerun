@@ -427,15 +427,7 @@ impl<'a> ListItem<'a> {
             }
 
             // Handle buttons
-            let button_response = if self.active
-                && ui
-                    .interact(
-                        rect,
-                        id.unwrap_or(ui.id()).with("buttons"),
-                        egui::Sense::hover(),
-                    )
-                    .hovered()
-            {
+            let button_response = if self.active && ui.rect_contains_pointer(rect) {
                 if let Some(buttons) = self.buttons_fn {
                     let mut ui =
                         ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::Center));
