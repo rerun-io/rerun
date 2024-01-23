@@ -306,26 +306,6 @@
       function on_wasm_loaded() {
         window.set_email = (value) => wasm_bindgen.set_email(value);
 
-        // WebGPU version is currently only supported on browsers with WebGPU support, there is no dynamic fallback to WebGL.
-        if (
-          wasm_bindgen.is_webgpu_build() &&
-          typeof navigator.gpu === "undefined"
-        ) {
-          console.debug(
-            "`navigator.gpu` is undefined. This indicates lack of WebGPU support.",
-          );
-          show_center_html(`
-            <p class="strong">
-                Missing WebGPU support.
-            </p>
-            <p class="subdued">
-                This version of Rerun requires WebGPU support which is not available in your browser.
-                Either try a different browser or use the WebGL version of Rerun.
-            </p>
-          `);
-          return;
-        }
-
         console.debug("Wasm loaded. Starting app…");
 
         let handle = new wasm_bindgen.WebHandle();
@@ -375,15 +355,6 @@
       function on_wasm_error(error) {
         console.error("Failed to start: " + error);
 
-        let render_backend_name = "WebGPU/WebGL";
-        try {
-          render_backend_name = wasm_bindgen.is_webgpu_build()
-            ? "WebGPU"
-            : "WebGL";
-        } catch (e) {
-          // loading the wasm probably failed.
-        }
-
         hide_canvas();
         show_center_html(`
           <p>
@@ -393,7 +364,7 @@
               ${error}
           </p>
           <p style="font-size:14px">
-                  Make sure you use a modern browser with ${render_backend_name} and Wasm enabled.
+                  Make sure you use a modern browser with either WebGL or WebGPU support enabled.
           </p>
         `);
       }
