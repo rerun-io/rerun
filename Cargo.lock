@@ -4837,6 +4837,7 @@ dependencies = [
  "document-features",
  "ecolor",
  "enumset",
+ "getrandom",
  "glam",
  "gltf",
  "half 2.3.1",

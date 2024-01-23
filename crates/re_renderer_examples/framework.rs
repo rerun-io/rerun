@@ -83,10 +83,9 @@ impl Time {
 }
 
 struct Application<E> {
-    event_loop: EventLoop<()>,
     window: Arc<Window>,
+    adapter: wgpu::Adapter,
     surface: wgpu::Surface<'static>,
-    surface_config: wgpu::SurfaceConfiguration,
     time: Time,
 
     example: E,
@@ -108,9 +107,8 @@ fn preferred_framebuffer_format(formats: &[wgpu::TextureFormat]) -> wgpu::Textur
 }
 
 impl<E: Example + 'static> Application<E> {
-    async fn new(event_loop: EventLoop<()>, window: Window) -> anyhow::Result<Self> {
+    async fn new(window: Window) -> anyhow::Result<Self> {
         let window = Arc::new(window);
-        let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: supported_backends(),
             flags: wgpu::InstanceFlags::default(),
@@ -144,31 +142,15 @@ impl<E: Example + 'static> Application<E> {
         let device = Arc::new(device);
         let queue = Arc::new(queue);
 
-        let swapchain_format =
+        let output_format_color =
             preferred_framebuffer_format(&surface.get_capabilities(&adapter).formats);
-        let surface_config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: swapchain_format,
-            // Not the best setting in general, but nice for quick & easy performance checking.
-            // TODO(andreas): It seems at least on Metal M1 this still does not discard command buffers that come in too fast (even when using `Immediate` explicitly).
-            //                  Quick look into wgpu looks like it does it correctly there. OS limitation? iOS has this limitation, so wouldn't be surprising!
-            present_mode: wgpu::PresentMode::AutoNoVsync,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-            view_formats: [swapchain_format].to_vec(),
-            ..surface
-                .get_default_config(&adapter, size.width, size.height)
-                .ok_or(anyhow::format_err!(
-                    "The surface isn't supported by this adapter"
-                ))?
-        };
-        surface.configure(&device, &surface_config);
 
         let re_ctx = RenderContext::new(
             &adapter,
             device,
             queue,
             RenderContextConfig {
-                output_format_color: swapchain_format,
+                output_format_color,
                 device_caps,
             },
         );
@@ -176,10 +158,9 @@ impl<E: Example + 'static> Application<E> {
         let example = E::new(&re_ctx);
 
         Ok(Self {
-            event_loop,
             window,
+            adapter,
             surface,
-            surface_config,
             re_ctx,
             time: Time {
                 start_time: Instant::now(),
@@ -191,8 +172,29 @@ impl<E: Example + 'static> Application<E> {
         })
     }
 
-    fn run(mut self) {
-        self.event_loop
+    fn configure_surface(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+        if size.width == 0 || size.height == 0 {
+            return;
+        }
+
+        let surface_config = wgpu::SurfaceConfiguration {
+            // Not the best setting in general, but nice for quick & easy performance checking.
+            // TODO(andreas): It seems at least on Metal M1 this still does not discard command buffers that come in too fast (even when using `Immediate` explicitly).
+            //                  Quick look into wgpu looks like it does it correctly there. OS limitation? iOS has this limitation, so wouldn't be surprising!
+            present_mode: wgpu::PresentMode::AutoNoVsync,
+            format: self.re_ctx.config.output_format_color,
+            view_formats: vec![self.re_ctx.config.output_format_color],
+            ..self
+                .surface
+                .get_default_config(&self.adapter, size.width, size.height)
+                .expect("The surface isn't supported by this adapter")
+        };
+        self.surface.configure(&self.re_ctx.device, &surface_config);
+        self.window.request_redraw();
+    }
+
+    fn run(mut self, event_loop: EventLoop<()>) {
+        event_loop
             .run(move |event, event_loop_window_target| {
                 // Keep our example busy.
                 // Not how one should generally do it, but great for animated content and
@@ -200,15 +202,15 @@ impl<E: Example + 'static> Application<E> {
                 event_loop_window_target.set_control_flow(ControlFlow::Poll);
 
                 match event {
+                    Event::NewEvents(winit::event::StartCause::Init) => {
+                        self.configure_surface(self.window.inner_size());
+                    }
+
                     Event::WindowEvent {
                         event: WindowEvent::Resized(size),
                         ..
                     } => {
-                        self.surface_config.width = size.width;
-                        self.surface_config.height = size.height;
-                        self.surface
-                            .configure(&self.re_ctx.device, &self.surface_config);
-                        self.window.request_redraw();
+                        self.configure_surface(size);
                     }
 
                     Event::WindowEvent {
@@ -239,8 +241,7 @@ impl<E: Example + 'static> Application<E> {
                                 // a while, because the pipeline is poisoned.
                                 // Recreate a sane surface to restart the cycle and see if the
                                 // user has fixed the issue.
-                                self.surface
-                                    .configure(&self.re_ctx.device, &self.surface_config);
+                                self.configure_surface(self.window.inner_size());
                                 return;
                             }
                             Err(err) => {
@@ -260,7 +261,7 @@ impl<E: Example + 'static> Application<E> {
 
                         let draw_results = self.example.draw(
                             &self.re_ctx,
-                            [self.surface_config.width, self.surface_config.height],
+                            [frame.texture.width(), frame.texture.height()],
                             &self.time,
                             self.window.scale_factor() as f32,
                         );
@@ -368,8 +369,8 @@ pub fn load_rerun_mesh(re_ctx: &RenderContext) -> Vec<re_renderer::renderer::Mes
 }
 
 async fn run<E: Example + 'static>(event_loop: EventLoop<()>, window: Window) {
-    let app = Application::<E>::new(event_loop, window).await.unwrap();
-    app.run();
+    let app = Application::<E>::new(window).await.unwrap();
+    app.run(event_loop);
 }
 
 pub fn start<E: Example + 'static>() {
@@ -397,14 +398,12 @@ pub fn start<E: Example + 'static>() {
         re_log::setup_web_logging();
 
         use winit::platform::web::WindowExtWebSys;
-        // On wasm, append the canvas to the document body
+        let canvas = window.canvas().expect("Couldn't get canvas");
+        canvas.style().set_css_text("height: 100%; width: 100%;");
         web_sys::window()
             .and_then(|win| win.document())
             .and_then(|doc| doc.body())
-            .and_then(|body| {
-                body.append_child(&web_sys::Element::from(window.canvas().unwrap()))
-                    .ok()
-            })
+            .and_then(|body| body.append_child(&canvas).ok())
             .expect("couldn't append canvas to document body");
         wasm_bindgen_futures::spawn_local(run::<E>(event_loop, window));
     }

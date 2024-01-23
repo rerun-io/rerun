@@ -235,7 +235,19 @@ webbrowser = "0.8"
 winit = { version = "0.29.9", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
-wgpu = { version = "0.19.1", features = ["fragile-send-sync-non-atomic-wasm"] }
+wgpu = { version = "0.19.1", default-features = false, features = [
+  # Backends:
+  "webgl",
+  "metal",
+  "webgpu",
+  "webgl",
+  #"vulkan", # Not yet opt-in, wgpu enables this automatically on Linux & Windows.
+  #"gl", # Not yet opt-in, wgpu enables this automatically on Linux & Windows.
+  # Shader options:
+  "wgsl",
+  # Other:
+  "fragile-send-sync-non-atomic-wasm",
+] }
 wgpu-core = "0.19.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false }
