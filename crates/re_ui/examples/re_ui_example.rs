@@ -723,8 +723,8 @@ mod drag_and_drop {
                 //
 
                 // TODO(emilk/egui#3841): very tempting to use `response.dragged()` here, but it
-                // doesn't work. By the time `i.pointer.any_released()` is true, `response.dragged()`
-                // is false. So both condition never happen at the same time.
+                // doesn't work. We must introduce `response.drag_stopped()` and use
+                // `response.dragged() || response.drag_stopped()` here.
                 if ui.memory(|mem| mem.is_being_dragged(response.id)) {
                     source_item_pos = Some(i);
                 }
