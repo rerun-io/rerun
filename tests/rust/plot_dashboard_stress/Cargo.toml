@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
-rerun = { path = "../../../crates/rerun" }
+rerun = { path = "../../../crates/rerun", features = ["clap"] }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
