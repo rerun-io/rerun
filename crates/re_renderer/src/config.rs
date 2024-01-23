@@ -36,6 +36,7 @@ pub enum WgpuBackendType {
     ///
     /// This includes all native backends and WebGL.
     WgpuCore,
+
     /// Backend implemented by the browser's WebGPU javascript api.
     #[cfg(web)]
     WebGpu,
