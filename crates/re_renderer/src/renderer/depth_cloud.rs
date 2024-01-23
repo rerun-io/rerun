@@ -100,7 +100,7 @@ mod gpu_data {
             } = depth_cloud;
 
             let texture_format = depth_texture.texture.format();
-            let sample_type = match texture_format.sample_type(None) {
+            let sample_type = match texture_format.sample_type(None, None) {
                 Some(wgpu::TextureSampleType::Float { .. }) => SAMPLE_TYPE_FLOAT,
                 Some(wgpu::TextureSampleType::Sint) => SAMPLE_TYPE_SINT,
                 Some(wgpu::TextureSampleType::Uint) => SAMPLE_TYPE_UINT,
@@ -278,7 +278,7 @@ impl DepthCloudDrawData {
             let mut texture_uint = ctx.texture_manager_2d.zeroed_texture_uint().handle;
 
             let texture_format = depth_cloud.depth_texture.format();
-            match texture_format.sample_type(None) {
+            match texture_format.sample_type(None, None) {
                 Some(wgpu::TextureSampleType::Float { .. }) => {
                     texture_float = depth_cloud.depth_texture.handle;
                 }

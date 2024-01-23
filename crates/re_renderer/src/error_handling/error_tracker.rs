@@ -1,6 +1,8 @@
 use ahash::HashMap;
 use parking_lot::Mutex;
 
+use crate::config::WgpuBackendType;
+
 use super::handle_async_error;
 
 #[cfg(not(webgpu))]
@@ -55,6 +57,7 @@ impl ErrorTracker {
     /// (by the time the scope finishes, the active frame index may have changed)
     pub fn handle_error_future(
         self: &std::sync::Arc<Self>,
+        backend_type: WgpuBackendType,
         error_scope_result: impl IntoIterator<
             Item = impl std::future::Future<Output = Option<wgpu::Error>> + Send + 'static,
         >,
@@ -66,6 +69,7 @@ impl ErrorTracker {
             if error_scope_result.peek().is_none() {
                 let err_tracker = self.clone();
                 handle_async_error(
+                    backend_type,
                     move |error| {
                         if let Some(error) = error {
                             err_tracker.handle_error(error, frame_index);
@@ -79,6 +83,7 @@ impl ErrorTracker {
 
             let err_tracker = self.clone();
             handle_async_error(
+                backend_type,
                 move |error| {
                     if let Some(error) = error {
                         err_tracker.handle_error(error, frame_index);

@@ -753,7 +753,14 @@ impl App {
 
                 crate::ui::mobile_warning_ui(&self.re_ui, ui);
 
-                crate::ui::top_panel(self, app_blueprint, store_context, gpu_resource_stats, ui);
+                crate::ui::top_panel(
+                    frame,
+                    self,
+                    app_blueprint,
+                    store_context,
+                    gpu_resource_stats,
+                    ui,
+                );
 
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats, caches_stats);
 
