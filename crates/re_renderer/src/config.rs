@@ -108,8 +108,8 @@ impl DeviceCaps {
     pub fn device_descriptor(&self) -> wgpu::DeviceDescriptor<'static> {
         wgpu::DeviceDescriptor {
             label: Some("re_renderer device"),
-            features: self.features(),
-            limits: self.limits(),
+            required_features: self.features(),
+            required_limits: self.limits(),
         }
     }
 
