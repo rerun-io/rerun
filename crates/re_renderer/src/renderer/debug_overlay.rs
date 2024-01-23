@@ -81,7 +81,7 @@ impl DebugOverlayDrawData {
         let mode = match debug_texture
             .texture
             .format()
-            .sample_type(Some(wgpu::TextureAspect::All))
+            .sample_type(Some(wgpu::TextureAspect::All), None)
         {
             Some(wgpu::TextureSampleType::Depth | wgpu::TextureSampleType::Float { .. }) => {
                 gpu_data::DebugOverlayMode::ShowFloatTexture
