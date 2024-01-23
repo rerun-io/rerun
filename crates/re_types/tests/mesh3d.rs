@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Mesh3D,
-    components::{ClassId, InstanceKey, Position2D, Position3D, Vector3D},
+    components::{ClassId, InstanceKey, Position3D, Texcoord2D, Vector3D},
     datatypes::{Material, MeshProperties, Rgba32, Vec2D, Vec3D},
     Archetype as _, AsComponents as _,
 };
@@ -29,8 +29,8 @@ fn roundtrip() {
             Rgba32::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD).into(),
         ]),
         vertex_texcoords: Some(vec![
-            Position2D(Vec2D([0.0, 1.0])), //
-            Position2D(Vec2D([2.0, 3.0])), //
+            Texcoord2D(Vec2D([0.0, 1.0])), //
+            Texcoord2D(Vec2D([2.0, 3.0])), //
         ]),
         mesh_material: Some(
             Material {

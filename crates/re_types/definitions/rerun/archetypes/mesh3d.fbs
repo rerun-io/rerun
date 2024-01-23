@@ -42,7 +42,7 @@ table Mesh3D (
   vertex_colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// An optional uv texture coordinate for each vertex.
-  vertex_texcoords: [rerun.components.Position2D] ("attr.rerun.component_optional", nullable, order: 3200);
+  vertex_texcoords: [rerun.components.Texcoord2D] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// Optional material properties for the mesh as a whole.
   mesh_material: rerun.components.Material ("attr.rerun.component_optional", nullable, order: 3300);

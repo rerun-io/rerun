@@ -29,6 +29,7 @@ rotation3d.py linguist-generated=true
 scalar.py linguist-generated=true
 scalar_scattering.py linguist-generated=true
 tensor_data.py linguist-generated=true
+texcoord2d.py linguist-generated=true
 text.py linguist-generated=true
 text_log_level.py linguist-generated=true
 transform3d.py linguist-generated=true

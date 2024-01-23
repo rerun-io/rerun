@@ -3,7 +3,7 @@ use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Mesh3D,
-    components::{Color, InstanceKey, Material, MeshProperties, Position2D, Position3D, Vector3D},
+    components::{Color, InstanceKey, Material, MeshProperties, Position3D, Texcoord2D, Vector3D},
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
@@ -81,12 +81,12 @@ impl Mesh3DVisualizer {
                 } else {
                     None
                 },
-                vertex_texcoords: if arch_view.has_component::<Position2D>() {
+                vertex_texcoords: if arch_view.has_component::<Texcoord2D>() {
                     re_tracing::profile_scope!("vertex_texcoords");
                     Some(
                         arch_view
-                            .iter_optional_component::<Position2D>()?
-                            .map(|comp| comp.unwrap_or(Position2D::ZERO))
+                            .iter_optional_component::<Texcoord2D>()?
+                            .map(|comp| comp.unwrap_or(Texcoord2D::ZERO))
                             .collect(),
                     )
                 } else {

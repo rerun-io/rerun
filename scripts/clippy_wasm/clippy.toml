@@ -55,6 +55,7 @@ disallowed-types = [
 # Allow-list of words for markdown in dosctrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
 doc-valid-idents = [
   # You must also update the same list in the root `clippy.toml`!
+  "..",
   "GitHub",
   "GLB",
   "GLTF",
@@ -62,11 +63,11 @@ doc-valid-idents = [
   "macOS",
   "NaN",
   "OBJ",
+  "OpenGL",
   "PyPI",
   "sRGB",
   "sRGBA",
   "WebGL",
   "WebSocket",
   "WebSockets",
-  "..",
 ]

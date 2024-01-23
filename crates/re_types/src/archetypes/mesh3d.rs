@@ -72,7 +72,7 @@ pub struct Mesh3D {
     pub vertex_colors: Option<Vec<crate::components::Color>>,
 
     /// An optional uv texture coordinate for each vertex.
-    pub vertex_texcoords: Option<Vec<crate::components::Position2D>>,
+    pub vertex_texcoords: Option<Vec<crate::components::Texcoord2D>>,
 
     /// Optional material properties for the mesh as a whole.
     pub mesh_material: Option<crate::components::Material>,
@@ -105,7 +105,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
             && <Option<crate::components::MeshProperties>>::is_pod()
             && <Option<Vec<crate::components::Vector3D>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
-            && <Option<Vec<crate::components::Position2D>>>::is_pod()
+            && <Option<Vec<crate::components::Texcoord2D>>>::is_pod()
             && <Option<crate::components::Material>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
             && <Option<Vec<crate::components::InstanceKey>>>::is_pod()
@@ -131,7 +131,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
-            "rerun.components.Position2D".into(),
+            "rerun.components.Texcoord2D".into(),
         ]
     });
 
@@ -146,7 +146,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
-            "rerun.components.Position2D".into(),
+            "rerun.components.Texcoord2D".into(),
         ]
     });
 
@@ -248,9 +248,9 @@ impl ::re_types_core::Archetype for Mesh3D {
             None
         };
         let vertex_texcoords =
-            if let Some(array) = arrays_by_name.get("rerun.components.Position2D") {
+            if let Some(array) = arrays_by_name.get("rerun.components.Texcoord2D") {
                 Some({
-                    <crate::components::Position2D>::from_arrow_opt(&**array)
+                    <crate::components::Texcoord2D>::from_arrow_opt(&**array)
                         .with_context("rerun.archetypes.Mesh3D#vertex_texcoords")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -393,7 +393,7 @@ impl Mesh3D {
     #[inline]
     pub fn with_vertex_texcoords(
         mut self,
-        vertex_texcoords: impl IntoIterator<Item = impl Into<crate::components::Position2D>>,
+        vertex_texcoords: impl IntoIterator<Item = impl Into<crate::components::Texcoord2D>>,
     ) -> Self {
         self.vertex_texcoords = Some(vertex_texcoords.into_iter().map(Into::into).collect());
         self

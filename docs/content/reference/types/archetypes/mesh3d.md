@@ -10,7 +10,7 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 **Recommended**: [`MeshProperties`](../components/mesh_properties.md), [`Vector3D`](../components/vector3d.md)
 
-**Optional**: [`Color`](../components/color.md), [`Position2D`](../components/position2d.md), [`Material`](../components/material.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
+**Optional**: [`Color`](../components/color.md), [`Texcoord2D`](../components/texcoord2d.md), [`Material`](../components/material.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
 ## Links
  * 🌊 [C++ API docs for `Mesh3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Mesh3D.html)

@@ -34,6 +34,7 @@ Archetypes are bundles of components
 * [`Scalar`](components/scalar.md)
 * [`ScalarScattering`](components/scalar_scattering.md)
 * [`TensorData`](components/tensor_data.md)
+* [`Texcoord2D`](components/texcoord2d.md)
 * [`Text`](components/text.md)
 * [`TextLogLevel`](components/text_log_level.md)
 * [`Transform3D`](components/transform3d.md)

@@ -112,10 +112,10 @@ class Mesh3D(Mesh3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    vertex_texcoords: components.Position2DBatch | None = field(
+    vertex_texcoords: components.Texcoord2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Position2DBatch._optional,  # type: ignore[misc]
+        converter=components.Texcoord2DBatch._optional,  # type: ignore[misc]
     )
     # An optional uv texture coordinate for each vertex.
     #
