@@ -543,17 +543,7 @@ fn space_view_top_level_properties(
                     View's origin is the same as this Entity's origin and all transforms are \
                     relative to it.",
                 );
-                //TODO: what should I do with that?
-                // let (query, store) =
-                //     guess_query_and_store_for_selected_entity(ctx, &space_view.space_origin);
-                // item_ui::entity_path_button(
-                //     ctx,
-                //     &query,
-                //     store,
-                //     ui,
-                //     Some(*space_view_id),
-                //     &space_view.space_origin,
-                // );
+
                 space_view_space_origin_widget_ui(ui, ctx, spaces_info, space_view);
 
                 ui.end_row();
