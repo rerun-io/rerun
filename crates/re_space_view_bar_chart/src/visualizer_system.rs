@@ -4,10 +4,7 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_space_view::diff_component_filter;
 use re_types::{
-    archetypes::{BarChart, Tensor},
-    components::Color,
-    datatypes::TensorData,
-    Archetype, ComponentNameSet,
+    archetypes::BarChart, components::Color, datatypes::TensorData, Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,

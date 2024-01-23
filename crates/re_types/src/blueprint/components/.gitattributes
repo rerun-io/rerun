@@ -6,6 +6,7 @@ column_shares.rs linguist-generated=true
 entities_determined_by_user.rs linguist-generated=true
 included_contents.rs linguist-generated=true
 included_queries.rs linguist-generated=true
+legend.rs linguist-generated=true
 mod.rs linguist-generated=true
 name.rs linguist-generated=true
 row_shares.rs linguist-generated=true

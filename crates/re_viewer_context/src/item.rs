@@ -19,6 +19,17 @@ pub enum Item {
     Container(egui_tiles::TileId),
 }
 
+impl Item {
+    pub fn entity_path(&self) -> Option<&EntityPath> {
+        match self {
+            Item::ComponentPath(component_path) => Some(&component_path.entity_path),
+            Item::SpaceView(_) | Item::Container(_) | Item::StoreId(_) => None,
+            Item::InstancePath(_, instance_path) => Some(&instance_path.entity_path),
+            Item::DataBlueprintGroup(_, _, entity_path) => Some(entity_path),
+        }
+    }
+}
+
 impl From<SpaceViewId> for Item {
     #[inline]
     fn from(space_view_id: SpaceViewId) -> Self {

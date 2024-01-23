@@ -4,7 +4,6 @@ use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_log_types::Timeline;
 use re_query::query_archetype;
 use re_viewer_context::{
     AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext,
@@ -58,16 +57,15 @@ impl ViewportBlueprint {
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
     pub fn try_from_db(
         blueprint_db: &re_entity_db::EntityDb,
+        query: &LatestAtQuery,
         app_options: &AppOptions,
         tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
     ) -> Self {
         re_tracing::profile_function!();
 
-        let query = LatestAtQuery::latest(Timeline::default());
-
         let arch = match query_archetype::<crate::blueprint::archetypes::ViewportBlueprint>(
             blueprint_db.store(),
-            &query,
+            query,
             &VIEWPORT_PATH.into(),
         )
         .and_then(|arch| arch.to_archetype())
@@ -93,7 +91,7 @@ impl ViewportBlueprint {
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
             .into_iter()
             .filter_map(|space_view: SpaceViewId| {
-                SpaceViewBlueprint::try_from_db(space_view, blueprint_db)
+                SpaceViewBlueprint::try_from_db(space_view, blueprint_db, query)
             })
             .map(|sv| (sv.id, sv))
             .collect();
@@ -112,7 +110,7 @@ impl ViewportBlueprint {
 
         let containers: BTreeMap<ContainerId, ContainerBlueprint> = all_container_ids
             .into_iter()
-            .filter_map(|id| ContainerBlueprint::try_from_db(blueprint_db, id))
+            .filter_map(|id| ContainerBlueprint::try_from_db(blueprint_db, query, id))
             .map(|c| (c.id, c))
             .collect();
 

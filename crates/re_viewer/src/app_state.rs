@@ -1,12 +1,14 @@
 use ahash::HashMap;
 
+use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
 use re_space_view::{DataQuery as _, PropertyResolver as _};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry, PlayState,
-    RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
+    blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
+    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
+    SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{
     determine_visualizable_entities, SpaceInfoCollection, Viewport, ViewportBlueprint,
@@ -18,7 +20,7 @@ use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_pane
 
 const WATERMARK: bool = false; // Nice for recording media material
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppState {
     /// Global options for the whole viewer.
@@ -30,9 +32,11 @@ pub struct AppState {
 
     /// Configuration for the current recording (found in [`EntityDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
+    blueprint_cfg: RecordingConfig,
 
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
+    blueprint_panel: re_time_panel::TimePanel,
 
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
@@ -48,6 +52,23 @@ pub struct AppState {
     /// that last several frames.
     #[serde(skip)]
     pub(crate) focused_item: Option<re_viewer_context::Item>,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            app_options: Default::default(),
+            cache: Default::default(),
+            recording_configs: Default::default(),
+            blueprint_cfg: Default::default(),
+            selection_panel: Default::default(),
+            time_panel: Default::default(),
+            blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
+            welcome_screen: Default::default(),
+            viewport_state: Default::default(),
+            focused_item: Default::default(),
+        }
+    }
 }
 
 impl AppState {
@@ -102,12 +123,16 @@ impl AppState {
     ) {
         re_tracing::profile_function!();
 
+        let blueprint_query = self.blueprint_query_for_viewer();
+
         let Self {
             app_options,
             cache,
             recording_configs,
+            blueprint_cfg,
             selection_panel,
             time_panel,
+            blueprint_panel,
             welcome_screen,
             viewport_state,
             focused_item,
@@ -118,8 +143,12 @@ impl AppState {
         // this, which gives us interior mutability (only a shared reference of `ViewportBlueprint`
         // is available to the UI code) and, if needed in the future, concurrency.
         let (sender, receiver) = std::sync::mpsc::channel();
-        let viewport_blueprint =
-            ViewportBlueprint::try_from_db(store_context.blueprint, app_options, sender);
+        let viewport_blueprint = ViewportBlueprint::try_from_db(
+            store_context.blueprint,
+            &blueprint_query,
+            app_options,
+            sender,
+        );
         let mut viewport = Viewport::new(
             &viewport_blueprint,
             viewport_state,
@@ -201,6 +230,8 @@ impl AppState {
             indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
+            blueprint_cfg,
+            blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
             command_sender,
@@ -222,7 +253,7 @@ impl AppState {
                     if let Some(query_result) = query_results.get_mut(&query.id) {
                         let props = viewport.state.space_view_props(space_view.id);
                         let resolver = query.build_resolver(space_view.id, props);
-                        resolver.update_overrides(store_context, query_result);
+                        resolver.update_overrides(store_context, &blueprint_query, query_result);
                     }
                 }
             }
@@ -241,13 +272,24 @@ impl AppState {
             indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
+            blueprint_cfg,
+            blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
             command_sender,
             focused_item,
         };
 
-        time_panel.show_panel(&ctx, ui, app_blueprint.time_panel_expanded);
+        if app_options.inspect_blueprint_timeline {
+            blueprint_panel.show_panel(&ctx, ctx.store_context.blueprint, blueprint_cfg, ui, true);
+        }
+        time_panel.show_panel(
+            &ctx,
+            ctx.entity_db,
+            ctx.rec_cfg,
+            ui,
+            app_blueprint.time_panel_expanded,
+        );
         selection_panel.show_panel(
             &ctx,
             ui,
@@ -330,12 +372,25 @@ impl AppState {
                 false
             };
 
-            let needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
+            let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
                 entity_db.times_per_timeline(),
                 dt,
                 more_data_is_coming,
             );
-            if needs_repaint == re_viewer_context::NeedsRepaint::Yes {
+
+            let blueprint_needs_repaint = if ctx.app_options.inspect_blueprint_timeline {
+                ctx.blueprint_cfg.time_ctrl.write().update(
+                    ctx.store_context.blueprint.times_per_timeline(),
+                    dt,
+                    more_data_is_coming,
+                )
+            } else {
+                re_viewer_context::NeedsRepaint::No
+            };
+
+            if recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+                || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+            {
                 ui.ctx().request_repaint();
             }
         }
@@ -360,6 +415,19 @@ impl AppState {
 
         self.recording_configs
             .retain(|store_id, _| store_hub.contains_recording(store_id));
+    }
+
+    /// Returns the blueprint query that should be used for generating the current
+    /// layout of the viewer.
+    ///
+    /// If `inspect_blueprint_timeline` is enabled, we use the time selection from the
+    /// blueprint `time_ctrl`. Otherwise, we use a latest query from the blueprint timeline.
+    pub fn blueprint_query_for_viewer(&self) -> LatestAtQuery {
+        if self.app_options.inspect_blueprint_timeline {
+            self.blueprint_cfg.time_ctrl.read().current_query().clone()
+        } else {
+            LatestAtQuery::latest(blueprint_timeline())
+        }
     }
 }
 

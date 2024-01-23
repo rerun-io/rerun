@@ -5,6 +5,7 @@ impl crate::DataUi for re_entity_db::EntityDb {
         ui: &mut egui::Ui,
         verbosity: re_viewer_context::UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
     ) {
         let re_ui = &ctx.re_ui;
 

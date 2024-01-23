@@ -36,6 +36,9 @@ pub enum UICommand {
     ToggleTimePanel,
 
     #[cfg(debug_assertions)]
+    ToggleBlueprintInspectionPanel,
+
+    #[cfg(debug_assertions)]
     ToggleStylePanel,
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -122,10 +125,18 @@ impl UICommand {
             Self::ToggleTimePanel => ("Toggle Time Panel", "Toggle the bottom panel"),
 
             #[cfg(debug_assertions)]
+            Self::ToggleBlueprintInspectionPanel => (
+                "Toggle Blueprint Inspection Panel",
+                "Inspect the timeline of the internal blueprint data.",
+            ),
+
+            #[cfg(debug_assertions)]
             Self::ToggleStylePanel => (
                 "Toggle Style Panel",
                 "View and change global egui style settings",
             ),
+
+
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ToggleFullscreen => (
@@ -222,6 +233,9 @@ impl UICommand {
             Self::ToggleBlueprintPanel => Some(ctrl_shift(Key::B)),
             Self::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             Self::ToggleTimePanel => Some(ctrl_shift(Key::T)),
+
+            #[cfg(debug_assertions)]
+            Self::ToggleBlueprintInspectionPanel => Some(ctrl_shift(Key::I)),
 
             #[cfg(debug_assertions)]
             Self::ToggleStylePanel => Some(ctrl_shift(Key::U)),

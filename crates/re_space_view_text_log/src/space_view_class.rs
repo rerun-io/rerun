@@ -348,6 +348,9 @@ fn table_ui(
 
             body_clip_rect = Some(body.max_rect());
 
+            let query = ctx.current_query();
+            let store = ctx.entity_db.store();
+
             let row_heights = entries.iter().map(|te| calc_row_height(te));
             body.heterogeneous_rows(row_heights, |mut row| {
                 let entry = &entries[row.index()];
@@ -394,7 +397,14 @@ fn table_ui(
                 // path
                 if state.filters.col_entity_path {
                     row.col(|ui| {
-                        item_ui::entity_path_button(ctx, ui, None, &entry.entity_path);
+                        item_ui::entity_path_button(
+                            ctx,
+                            &query,
+                            store,
+                            ui,
+                            None,
+                            &entry.entity_path,
+                        );
                     });
                 }
 

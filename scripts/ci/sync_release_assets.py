@@ -49,16 +49,23 @@ def fetch_binary_assets(
     bucket = gcs.bucket("rerun-builds")
 
     commit_short = commit[:7]
-    print(f"Fetching binary assets for #{commit_short}…")
-    print(f"  - wheels: {do_wheels}")
-    print(f"  - C libs: {do_rerun_c}")
-    print(f"  - C++ uber SDK: {do_rerun_cpp_sdk}")
-    print(f"  - CLI (Viewer): {do_rerun_cli}")
+    print(f"Fetching the following binary assets for #{commit_short}:")
+    if do_wheels:
+        print("  - Python wheels")
+    if do_rerun_c:
+        print("  - C libs")
+    if do_rerun_cpp_sdk:
+        print("  - C++ uber SDK")
+    if do_rerun_cli:
+        print("  - CLI (Viewer)")
+
+    all_found = True
 
     # Python wheels
     if do_wheels:
+        found = False
         wheel_blobs = list(bucket.list_blobs(prefix=f"commit/{commit_short}/wheels"))
-        for blob in [bucket.get_blob(blob.name) for blob in wheel_blobs if blob.name.endswith(".whl")]:
+        for blob in (bucket.get_blob(blob.name) for blob in wheel_blobs if blob.name.endswith(".whl")):
             if blob is not None and blob.name is not None:
                 name = blob.name.split("/")[-1]
 
@@ -76,9 +83,13 @@ def fetch_binary_assets(
                 #
                 # if "win_amd64" in name:
                 #     name = f"rerun_sdk-{tag}-x86_64-pc-windows-msvc.whl"
-
-                print(f"    Found Python wheel: {name} ")
+                print(f"Found Python wheels: {name}")
+                found = True
                 assets[name] = blob
+
+        if not found:
+            all_found = False
+            print("Python wheels not found")
 
     # rerun_c
     if do_rerun_c:
@@ -102,8 +113,11 @@ def fetch_binary_assets(
         ]
         for name, blob in rerun_c_blobs:
             if blob is not None:
-                print(f"    Found Rerun C library: {name}")
+                print(f"Found Rerun C library: {name}")
                 assets[name] = blob
+            else:
+                all_found = False
+                print(f"Rerun C library {name} not found")
 
     # rerun_cpp_sdk
     if do_rerun_cpp_sdk:
@@ -111,10 +125,13 @@ def fetch_binary_assets(
         for blob in [rerun_cpp_sdk_blob]:
             if blob is not None and blob.name is not None:
                 name = blob.name.split("/")[-1]
-                print(f"    Found Rerun cross-platform bundle: {name}")
+                print(f"Found Rerun cross-platform bundle: {name}")
                 assets[name] = blob
                 # NOTE: Want a versioned one too.
                 assets[f"rerun_cpp_sdk-{tag}-multiplatform.zip"] = blob
+            else:
+                all_found = False
+                print("Rerun cross-platform bundle not found")
 
     # rerun-cli
     if do_rerun_cli:
@@ -138,8 +155,14 @@ def fetch_binary_assets(
         ]
         for name, blob in rerun_cli_blobs:
             if blob is not None:
-                print(f"    Found Rerun CLI binary: {name}")
+                print(f"Found Rerun CLI binary: {name}")
                 assets[name] = blob
+            else:
+                all_found = False
+                print(f"Rerun CLI binary {name} not found")
+
+    if not all_found:
+        raise Exception("some requested assets were not found")
 
     return assets
 
@@ -148,7 +171,7 @@ def remove_release_assets(release: GitRelease):
     print("Removing pre-existing release assets…")
 
     for asset in release.get_assets():
-        print(f"    Removing {asset.name}…")
+        print(f"Removing {asset.name}…")
         asset.delete_asset()
 
 
@@ -162,7 +185,7 @@ def update_release_assets(release: GitRelease, assets: Assets):
         # the upload in all kinds of unexpected ways (including SSL errors!) depending on the versions
         # of your reqwest & pygithub dependencies.
         blob_raw_size = len(blob_contents)
-        print(f"    Uploading {name} ({blob_raw_size} bytes)…")
+        print(f"Uploading {name} ({blob_raw_size} bytes)…")
         release.upload_asset_from_memory(
             blob_contents,
             blob_raw_size,
