@@ -531,7 +531,8 @@ impl ReUi {
         let pos = widget_response.rect.left_bottom() + egui::vec2(0.0, vertical_offset);
         let pivot = Align2::LEFT_TOP;
 
-        let inner = egui::Area::new(popup_id)
+        let mut ret = None;
+        egui::Area::new(popup_id)
             .order(egui::Order::Foreground)
             .constrain(true)
             .fixed_pos(pos)
@@ -542,35 +543,28 @@ impl ReUi {
                     ..Default::default()
                 };
                 let frame_margin = frame.total_margin();
-                frame
-                    .show(ui, |ui| {
-                        ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
-                            ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
+                frame.show(ui, |ui| {
+                    ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
+                        ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
 
-                            ui.set_clip_rect(ui.cursor());
+                        ui.set_clip_rect(ui.cursor());
 
-                            egui::ScrollArea::vertical()
-                                .show(ui, |ui| {
-                                    egui::Frame {
-                                        //TODO(ab): use design token
-                                        inner_margin: egui::Margin::symmetric(8.0, 0.0),
-                                        ..Default::default()
-                                    }
-                                    .show(ui, add_contents)
-                                    .inner
-                                })
-                                .inner
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            egui::Frame {
+                                //TODO(ab): use design token
+                                inner_margin: egui::Margin::symmetric(8.0, 0.0),
+                                ..Default::default()
+                            }
+                            .show(ui, |ui| ret = Some(add_contents(ui)))
                         })
-                        .inner
                     })
-                    .inner
-            })
-            .inner;
+                })
+            });
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) || widget_response.clicked_elsewhere() {
             ui.memory_mut(|mem| mem.close_popup());
         }
-        Some(inner)
+        ret
     }
 
     pub fn panel_content<R>(
