@@ -1175,8 +1175,8 @@ mod hierarchical_drag_and_drop {
                 }
 
                 ui.painter().hline(
-                    drag_target.range_x,
-                    drag_target.insert_y,
+                    drag_target.indicator_span_x,
+                    drag_target.indicator_position_y,
                     (2.0, egui::Color32::WHITE),
                 );
 
@@ -1404,10 +1404,11 @@ mod hierarchical_drag_and_drop {
     }
 
     struct DropTarget {
-        /// Y coordinate for the cursor
-        insert_y: f32,
-        /// Range of X coordinates for the cursor
-        range_x: egui::Rangef,
+        /// Range of X coordinates for the drag target indicator
+        indicator_span_x: egui::Rangef,
+
+        /// Y coordinate for drag target indicator
+        indicator_position_y: f32,
 
         /// Destination container ID
         target_parent_id: ItemId,
@@ -1418,14 +1419,14 @@ mod hierarchical_drag_and_drop {
 
     impl DropTarget {
         fn new(
-            range_x: egui::Rangef,
-            insert_y: f32,
+            indicator_span_x: egui::Rangef,
+            indicator_position_y: f32,
             target_parent_id: ItemId,
             target_pos: usize,
         ) -> Self {
             Self {
-                insert_y,
-                range_x,
+                indicator_span_x,
+                indicator_position_y,
                 target_parent_id,
                 target_pos,
             }
