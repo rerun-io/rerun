@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(8);
+        cells.reserve(9);
 
         {
             auto result = DataCell::from_loggable(archetype.vertex_positions);
@@ -33,6 +33,11 @@ namespace rerun {
         }
         if (archetype.vertex_colors.has_value()) {
             auto result = DataCell::from_loggable(archetype.vertex_colors.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.vertex_texcoords.has_value()) {
+            auto result = DataCell::from_loggable(archetype.vertex_texcoords.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

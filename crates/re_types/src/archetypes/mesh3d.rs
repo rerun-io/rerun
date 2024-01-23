@@ -71,6 +71,9 @@ pub struct Mesh3D {
     /// An optional color for each vertex.
     pub vertex_colors: Option<Vec<crate::components::Color>>,
 
+    /// An optional uv texture coordinate for each vertex.
+    pub vertex_texcoords: Option<Vec<crate::components::Position2D>>,
+
     /// Optional material properties for the mesh as a whole.
     pub mesh_material: Option<crate::components::Material>,
 
@@ -90,6 +93,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
             + self.mesh_properties.heap_size_bytes()
             + self.vertex_normals.heap_size_bytes()
             + self.vertex_colors.heap_size_bytes()
+            + self.vertex_texcoords.heap_size_bytes()
             + self.mesh_material.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
             + self.instance_keys.heap_size_bytes()
@@ -101,6 +105,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
             && <Option<crate::components::MeshProperties>>::is_pod()
             && <Option<Vec<crate::components::Vector3D>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
+            && <Option<Vec<crate::components::Position2D>>>::is_pod()
             && <Option<crate::components::Material>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
             && <Option<Vec<crate::components::InstanceKey>>>::is_pod()
@@ -119,17 +124,18 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
+            "rerun.components.Position2D".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
@@ -140,11 +146,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
+            "rerun.components.Position2D".into(),
         ]
     });
 
 impl Mesh3D {
-    pub const NUM_COMPONENTS: usize = 8usize;
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
 /// Indicator component for the [`Mesh3D`] [`::re_types_core::Archetype`]
@@ -240,6 +247,19 @@ impl ::re_types_core::Archetype for Mesh3D {
         } else {
             None
         };
+        let vertex_texcoords =
+            if let Some(array) = arrays_by_name.get("rerun.components.Position2D") {
+                Some({
+                    <crate::components::Position2D>::from_arrow_opt(&**array)
+                        .with_context("rerun.archetypes.Mesh3D#vertex_texcoords")?
+                        .into_iter()
+                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                        .collect::<DeserializationResult<Vec<_>>>()
+                        .with_context("rerun.archetypes.Mesh3D#vertex_texcoords")?
+                })
+            } else {
+                None
+            };
         let mesh_material = if let Some(array) = arrays_by_name.get("rerun.components.Material") {
             <crate::components::Material>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Mesh3D#mesh_material")?
@@ -279,6 +299,7 @@ impl ::re_types_core::Archetype for Mesh3D {
             mesh_properties,
             vertex_normals,
             vertex_colors,
+            vertex_texcoords,
             mesh_material,
             class_ids,
             instance_keys,
@@ -300,6 +321,9 @@ impl ::re_types_core::AsComponents for Mesh3D {
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.vertex_colors
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.vertex_texcoords
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.mesh_material
@@ -332,6 +356,7 @@ impl Mesh3D {
             mesh_properties: None,
             vertex_normals: None,
             vertex_colors: None,
+            vertex_texcoords: None,
             mesh_material: None,
             class_ids: None,
             instance_keys: None,
@@ -362,6 +387,15 @@ impl Mesh3D {
         vertex_colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
         self.vertex_colors = Some(vertex_colors.into_iter().map(Into::into).collect());
+        self
+    }
+
+    #[inline]
+    pub fn with_vertex_texcoords(
+        mut self,
+        vertex_texcoords: impl IntoIterator<Item = impl Into<crate::components::Position2D>>,
+    ) -> Self {
+        self.vertex_texcoords = Some(vertex_texcoords.into_iter().map(Into::into).collect());
         self
     }
 

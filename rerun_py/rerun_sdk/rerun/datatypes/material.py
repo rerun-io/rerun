@@ -32,7 +32,11 @@ def _material__albedo_factor__special_field_converter_override(
 class Material(MaterialExt):
     """**Datatype**: Material properties of a mesh."""
 
-    def __init__(self: Any, albedo_factor: datatypes.Rgba32Like | None = None):
+    def __init__(
+        self: Any,
+        albedo_factor: datatypes.Rgba32Like | None = None,
+        albedo_texture: datatypes.TensorDataLike | None = None,
+    ):
         """
         Create a new instance of the Material datatype.
 
@@ -40,15 +44,28 @@ class Material(MaterialExt):
         ----------
         albedo_factor:
             Optional color multiplier.
+        albedo_texture:
+            Optional albedo texture.
+
+            Used with `vertex_texcoords` on `Mesh3D`.
+            Currently supports only RGB & RGBA 2D-textures, ignoring alpha.
         """
 
         # You can define your own __init__ function as a member of MaterialExt in material_ext.py
-        self.__attrs_init__(albedo_factor=albedo_factor)
+        self.__attrs_init__(albedo_factor=albedo_factor, albedo_texture=albedo_texture)
 
     albedo_factor: datatypes.Rgba32 | None = field(
         default=None, converter=_material__albedo_factor__special_field_converter_override
     )
     # Optional color multiplier.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_texture: datatypes.TensorData | None = field(default=None)
+    # Optional albedo texture.
+    #
+    # Used with `vertex_texcoords` on `Mesh3D`.
+    # Currently supports only RGB & RGBA 2D-textures, ignoring alpha.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -65,7 +82,128 @@ class MaterialType(BaseExtensionType):
 
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.struct([pa.field("albedo_factor", pa.uint32(), nullable=True, metadata={})]), self._TYPE_NAME
+            self,
+            pa.struct(
+                [
+                    pa.field("albedo_factor", pa.uint32(), nullable=True, metadata={}),
+                    pa.field(
+                        "albedo_texture",
+                        pa.struct(
+                            [
+                                pa.field(
+                                    "shape",
+                                    pa.list_(
+                                        pa.field(
+                                            "item",
+                                            pa.struct(
+                                                [
+                                                    pa.field("size", pa.uint64(), nullable=False, metadata={}),
+                                                    pa.field("name", pa.utf8(), nullable=True, metadata={}),
+                                                ]
+                                            ),
+                                            nullable=False,
+                                            metadata={},
+                                        )
+                                    ),
+                                    nullable=False,
+                                    metadata={},
+                                ),
+                                pa.field(
+                                    "buffer",
+                                    pa.dense_union(
+                                        [
+                                            pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                            pa.field(
+                                                "U8",
+                                                pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "U16",
+                                                pa.list_(pa.field("item", pa.uint16(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "U32",
+                                                pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "U64",
+                                                pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "I8",
+                                                pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "I16",
+                                                pa.list_(pa.field("item", pa.int16(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "I32",
+                                                pa.list_(pa.field("item", pa.int32(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "I64",
+                                                pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "F16",
+                                                pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "F32",
+                                                pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "F64",
+                                                pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "JPEG",
+                                                pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                            pa.field(
+                                                "NV12",
+                                                pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                                                nullable=False,
+                                                metadata={},
+                                            ),
+                                        ]
+                                    ),
+                                    nullable=False,
+                                    metadata={},
+                                ),
+                            ]
+                        ),
+                        nullable=True,
+                        metadata={},
+                    ),
+                ]
+            ),
+            self._TYPE_NAME,
         )
 
 

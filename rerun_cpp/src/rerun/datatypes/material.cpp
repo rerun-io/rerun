@@ -4,6 +4,7 @@
 #include "material.hpp"
 
 #include "rgba32.hpp"
+#include "tensor_data.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -16,6 +17,11 @@ namespace rerun {
             arrow::field(
                 "albedo_factor",
                 Loggable<rerun::datatypes::Rgba32>::arrow_datatype(),
+                true
+            ),
+            arrow::field(
+                "albedo_texture",
+                Loggable<rerun::datatypes::TensorData>::arrow_datatype(),
                 true
             ),
         });
@@ -46,6 +52,24 @@ namespace rerun {
                         &element.albedo_factor.value(),
                         1
                     ));
+                } else {
+                    ARROW_RETURN_NOT_OK(field_builder->AppendNull());
+                }
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(1));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto& element = elements[elem_idx];
+                if (element.albedo_texture.has_value()) {
+                    RR_RETURN_NOT_OK(
+                        Loggable<rerun::datatypes::TensorData>::fill_arrow_array_builder(
+                            field_builder,
+                            &element.albedo_texture.value(),
+                            1
+                        )
+                    );
                 } else {
                     ARROW_RETURN_NOT_OK(field_builder->AppendNull());
                 }

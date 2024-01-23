@@ -18,4 +18,5 @@ A position in 2D space.
 
 * [`Arrows2D`](../archetypes/arrows2d.md?speculative-link)
 * [`Boxes2D`](../archetypes/boxes2d.md)
+* [`Mesh3D`](../archetypes/mesh3d.md)
 * [`Points2D`](../archetypes/points2d.md)

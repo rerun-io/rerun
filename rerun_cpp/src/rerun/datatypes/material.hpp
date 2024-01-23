@@ -5,6 +5,7 @@
 
 #include "../result.hpp"
 #include "rgba32.hpp"
+#include "tensor_data.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -22,23 +23,14 @@ namespace rerun::datatypes {
         /// Optional color multiplier.
         std::optional<rerun::datatypes::Rgba32> albedo_factor;
 
+        /// Optional albedo texture.
+        ///
+        /// Used with `vertex_texcoords` on `Mesh3D`.
+        /// Currently supports only RGB & RGBA 2D-textures, ignoring alpha.
+        std::optional<rerun::datatypes::TensorData> albedo_texture;
+
       public:
         Material() = default;
-
-        Material(std::optional<rerun::datatypes::Rgba32> albedo_factor_)
-            : albedo_factor(albedo_factor_) {}
-
-        Material& operator=(std::optional<rerun::datatypes::Rgba32> albedo_factor_) {
-            albedo_factor = albedo_factor_;
-            return *this;
-        }
-
-        Material(uint32_t rgba_) : albedo_factor(rgba_) {}
-
-        Material& operator=(uint32_t rgba_) {
-            albedo_factor = rgba_;
-            return *this;
-        }
     };
 } // namespace rerun::datatypes
 

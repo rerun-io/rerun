@@ -60,6 +60,7 @@ class Mesh3D(Mesh3DExt, Archetype):
             mesh_properties=None,  # type: ignore[arg-type]
             vertex_normals=None,  # type: ignore[arg-type]
             vertex_colors=None,  # type: ignore[arg-type]
+            vertex_texcoords=None,  # type: ignore[arg-type]
             mesh_material=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
             instance_keys=None,  # type: ignore[arg-type]
@@ -108,6 +109,15 @@ class Mesh3D(Mesh3DExt, Archetype):
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     # An optional color for each vertex.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    vertex_texcoords: components.Position2DBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.Position2DBatch._optional,  # type: ignore[misc]
+    )
+    # An optional uv texture coordinate for each vertex.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

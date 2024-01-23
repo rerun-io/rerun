@@ -7,6 +7,7 @@ Material properties of a mesh.
 ## Fields
 
 * albedo_factor: [`Rgba32`](../datatypes/rgba32.md)
+* albedo_texture: [`TensorData`](../datatypes/tensor_data.md)
 
 ## Links
  * 🌊 [C++ API docs for `Material`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Material.html)

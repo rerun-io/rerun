@@ -10,6 +10,7 @@
 #include "../components/instance_key.hpp"
 #include "../components/material.hpp"
 #include "../components/mesh_properties.hpp"
+#include "../components/position2d.hpp"
 #include "../components/position3d.hpp"
 #include "../components/vector3d.hpp"
 #include "../data_cell.hpp"
@@ -77,6 +78,9 @@ namespace rerun::archetypes {
         /// An optional color for each vertex.
         std::optional<Collection<rerun::components::Color>> vertex_colors;
 
+        /// An optional uv texture coordinate for each vertex.
+        std::optional<Collection<rerun::components::Position2D>> vertex_texcoords;
+
         /// Optional material properties for the mesh as a whole.
         std::optional<rerun::components::Material> mesh_material;
 
@@ -120,6 +124,14 @@ namespace rerun::archetypes {
         /// An optional color for each vertex.
         Mesh3D with_vertex_colors(Collection<rerun::components::Color> _vertex_colors) && {
             vertex_colors = std::move(_vertex_colors);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// An optional uv texture coordinate for each vertex.
+        Mesh3D with_vertex_texcoords(Collection<rerun::components::Position2D> _vertex_texcoords
+        ) && {
+            vertex_texcoords = std::move(_vertex_texcoords);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

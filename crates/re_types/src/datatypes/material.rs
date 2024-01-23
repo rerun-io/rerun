@@ -22,45 +22,28 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Material properties of a mesh.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Material {
     /// Optional color multiplier.
     pub albedo_factor: Option<crate::datatypes::Rgba32>,
+
+    /// Optional albedo texture.
+    ///
+    /// Used with `vertex_texcoords` on `Mesh3D`.
+    /// Currently supports only RGB & RGBA 2D-textures, ignoring alpha.
+    pub albedo_texture: Option<crate::datatypes::TensorData>,
 }
 
 impl ::re_types_core::SizeBytes for Material {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.albedo_factor.heap_size_bytes()
+        self.albedo_factor.heap_size_bytes() + self.albedo_texture.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <Option<crate::datatypes::Rgba32>>::is_pod()
-    }
-}
-
-impl<T: Into<Option<crate::datatypes::Rgba32>>> From<T> for Material {
-    fn from(v: T) -> Self {
-        Self {
-            albedo_factor: v.into(),
-        }
-    }
-}
-
-impl std::borrow::Borrow<Option<crate::datatypes::Rgba32>> for Material {
-    #[inline]
-    fn borrow(&self) -> &Option<crate::datatypes::Rgba32> {
-        &self.albedo_factor
-    }
-}
-
-impl std::ops::Deref for Material {
-    type Target = Option<crate::datatypes::Rgba32>;
-
-    #[inline]
-    fn deref(&self) -> &Option<crate::datatypes::Rgba32> {
-        &self.albedo_factor
+            && <Option<crate::datatypes::TensorData>>::is_pod()
     }
 }
 
@@ -78,12 +61,20 @@ impl ::re_types_core::Loggable for Material {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![Field {
-            name: "albedo_factor".to_owned(),
-            data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
-            is_nullable: true,
-            metadata: [].into(),
-        }])
+        DataType::Struct(vec![
+            Field {
+                name: "albedo_factor".to_owned(),
+                data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
+                is_nullable: true,
+                metadata: [].into(),
+            },
+            Field {
+                name: "albedo_texture".to_owned(),
+                data_type: <crate::datatypes::TensorData>::arrow_datatype(),
+                is_nullable: true,
+                metadata: [].into(),
+            },
+        ])
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -109,41 +100,66 @@ impl ::re_types_core::Loggable for Material {
             };
             StructArray::new(
                 <crate::datatypes::Material>::arrow_datatype(),
-                vec![{
-                    let (somes, albedo_factor): (Vec<_>, Vec<_>) = data
-                        .iter()
-                        .map(|datum| {
-                            let datum = datum
-                                .as_ref()
-                                .map(|datum| {
-                                    let Self { albedo_factor, .. } = &**datum;
-                                    albedo_factor.clone()
-                                })
-                                .flatten();
-                            (datum.is_some(), datum)
-                        })
-                        .unzip();
-                    let albedo_factor_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
-                    PrimitiveArray::new(
-                        DataType::UInt32,
-                        albedo_factor
-                            .into_iter()
+                vec![
+                    {
+                        let (somes, albedo_factor): (Vec<_>, Vec<_>) = data
+                            .iter()
                             .map(|datum| {
-                                datum
+                                let datum = datum
+                                    .as_ref()
                                     .map(|datum| {
-                                        let crate::datatypes::Rgba32(data0) = datum;
-                                        data0
+                                        let Self { albedo_factor, .. } = &**datum;
+                                        albedo_factor.clone()
                                     })
-                                    .unwrap_or_default()
+                                    .flatten();
+                                (datum.is_some(), datum)
                             })
-                            .collect(),
-                        albedo_factor_bitmap,
-                    )
-                    .boxed()
-                }],
+                            .unzip();
+                        let albedo_factor_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        PrimitiveArray::new(
+                            DataType::UInt32,
+                            albedo_factor
+                                .into_iter()
+                                .map(|datum| {
+                                    datum
+                                        .map(|datum| {
+                                            let crate::datatypes::Rgba32(data0) = datum;
+                                            data0
+                                        })
+                                        .unwrap_or_default()
+                                })
+                                .collect(),
+                            albedo_factor_bitmap,
+                        )
+                        .boxed()
+                    },
+                    {
+                        let (somes, albedo_texture): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| {
+                                        let Self { albedo_texture, .. } = &**datum;
+                                        albedo_texture.clone()
+                                    })
+                                    .flatten();
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let albedo_texture_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            _ = albedo_texture_bitmap;
+                            crate::datatypes::TensorData::to_arrow_opt(albedo_texture)?
+                        }
+                    },
+                ],
                 bitmap,
             )
             .boxed()
@@ -165,12 +181,20 @@ impl ::re_types_core::Loggable for Material {
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::Struct(vec![Field {
-                            name: "albedo_factor".to_owned(),
-                            data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        }]),
+                        DataType::Struct(vec![
+                            Field {
+                                name: "albedo_factor".to_owned(),
+                                data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "albedo_texture".to_owned(),
+                                data_type: <crate::datatypes::TensorData>::arrow_datatype(),
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                        ]),
                         arrow_data.data_type().clone(),
                     )
                 })
@@ -208,13 +232,31 @@ impl ::re_types_core::Loggable for Material {
                         .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Rgba32(v)))
                 };
+                let albedo_texture = {
+                    if !arrays_by_name.contains_key("albedo_texture") {
+                        return Err(DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "albedo_texture",
+                        ))
+                        .with_context("rerun.datatypes.Material");
+                    }
+                    let arrow_data = &**arrays_by_name["albedo_texture"];
+                    crate::datatypes::TensorData::from_arrow_opt(arrow_data)
+                        .with_context("rerun.datatypes.Material#albedo_texture")?
+                        .into_iter()
+                };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(albedo_factor),
+                    ::itertools::izip!(albedo_factor, albedo_texture),
                     arrow_data.validity(),
                 )
                 .map(|opt| {
-                    opt.map(|(albedo_factor)| Ok(Self { albedo_factor }))
-                        .transpose()
+                    opt.map(|(albedo_factor, albedo_texture)| {
+                        Ok(Self {
+                            albedo_factor,
+                            albedo_texture,
+                        })
+                    })
+                    .transpose()
                 })
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.datatypes.Material")?

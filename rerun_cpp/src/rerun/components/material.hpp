@@ -4,12 +4,11 @@
 #pragma once
 
 #include "../datatypes/material.hpp"
-#include "../datatypes/rgba32.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
-#include <optional>
+#include <utility>
 
 namespace arrow {
     class Array;
@@ -32,18 +31,10 @@ namespace rerun::components {
       public:
         Material() = default;
 
-        Material(rerun::datatypes::Material material_) : material(material_) {}
+        Material(rerun::datatypes::Material material_) : material(std::move(material_)) {}
 
         Material& operator=(rerun::datatypes::Material material_) {
-            material = material_;
-            return *this;
-        }
-
-        Material(std::optional<rerun::datatypes::Rgba32> albedo_factor_)
-            : material(albedo_factor_) {}
-
-        Material& operator=(std::optional<rerun::datatypes::Rgba32> albedo_factor_) {
-            material = albedo_factor_;
+            material = std::move(material_);
             return *this;
         }
 
