@@ -23,7 +23,7 @@ features = ["all"]
 default = []
 
 ## All features except `testing`.
-all = ["ecolor", "glam", "image", "mint", "serde"]
+all = ["ecolor", "egui_plot", "glam", "image", "mint", "serde"]
 
 ## Enables the `datagen` module, which exposes a number of tools for generating random data for
 ## tests and benchmarks.
@@ -31,6 +31,9 @@ datagen = ["dep:rand"]
 
 ## Enable color conversions.
 ecolor = ["dep:ecolor"]
+
+## Enable conversions to plot primitives
+egui_plot = ["dep:egui_plot"]
 
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 glam = ["dep:glam"]
@@ -76,6 +79,7 @@ uuid = { workspace = true, features = ["serde", "v4", "js"] }
 
 # External (optional)
 ecolor = { workspace = true, optional = true }
+egui_plot = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 image = { workspace = true, optional = true, default-features = false }
 mint = { workspace = true, optional = true }

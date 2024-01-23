@@ -5,7 +5,7 @@ use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::EntityDb;
 use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_viewer_context::StoreContext;
+use re_viewer_context::{AppOptions, StoreContext};
 
 use re_data_store::StoreGeneration;
 
@@ -297,10 +297,26 @@ impl StoreHub {
         });
     }
 
+    pub fn gc_blueprints(&mut self, app_options: &AppOptions) {
+        re_tracing::profile_function!();
+        if app_options.blueprint_gc {
+            for blueprint_id in self.blueprint_by_app_id.values() {
+                if let Some(blueprint) = self.store_bundle.blueprint_mut(blueprint_id) {
+                    // TODO(jleibs): Decide a better tuning for this. Would like to save a
+                    // reasonable amount of history, or incremental snapshots.
+                    blueprint.gc_everything_but_the_latest_row();
+                }
+            }
+        }
+    }
+
     /// Persist any in-use blueprints to durable storage.
     // TODO(#2579): implement persistence for web
     #[allow(clippy::unnecessary_wraps)]
-    pub fn gc_and_persist_app_blueprints(&mut self) -> anyhow::Result<()> {
+    pub fn gc_and_persist_app_blueprints(
+        &mut self,
+        app_options: &AppOptions,
+    ) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         // Because we save blueprints based on their `ApplicationId`, we only
         // save the blueprints referenced by `blueprint_by_app_id`, even though
@@ -309,7 +325,9 @@ impl StoreHub {
         for (app_id, blueprint_id) in &self.blueprint_by_app_id {
             if let Some(blueprint) = self.store_bundle.blueprint_mut(blueprint_id) {
                 if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
-                    blueprint.gc_everything_but_the_latest_row();
+                    if app_options.blueprint_gc {
+                        blueprint.gc_everything_but_the_latest_row();
+                    }
 
                     #[cfg(not(target_arch = "wasm32"))]
                     {

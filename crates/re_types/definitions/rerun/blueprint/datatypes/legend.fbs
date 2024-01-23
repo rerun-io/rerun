@@ -1,0 +1,39 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.datatypes;
+
+
+// TODO(#3384)
+/*
+enum LegendPosition: byte {
+    LeftTop = 1,
+    RightTop = 2,
+    LeftBottom = 3,
+    RightBottom = 4
+}
+*/
+
+// ---
+
+/// Configuration for the legend of a plot.
+table Legend (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord"
+) {
+    /// Whether or not the legend should be displayed.
+    visible: bool (order: 100);
+
+    /// Where should the legend be located.
+    ///
+    /// Allowed values:
+    ///  - LeftTop = 1,
+    ///  - RightTop = 2,
+    ///  - LeftBottom = 3,
+    ///  - RightBottom = 4
+    location: ubyte (order: 200, nullable);
+}

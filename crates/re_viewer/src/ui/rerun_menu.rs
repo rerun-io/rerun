@@ -88,7 +88,12 @@ impl App {
             #[cfg(debug_assertions)]
             ui.menu_button("Debug", |ui| {
                 ui.style_mut().wrap = Some(false);
-                debug_menu_options_ui(&self.re_ui, ui, &mut self.state.app_options);
+                debug_menu_options_ui(
+                    &self.re_ui,
+                    ui,
+                    &mut self.state.app_options,
+                    &self.command_sender,
+                );
 
                 ui.label("egui debug options:");
                 egui_debug_options_ui(&self.re_ui, ui);
@@ -357,10 +362,14 @@ fn egui_debug_options_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
 }
 
 #[cfg(debug_assertions)]
+use re_viewer_context::CommandSender;
+
+#[cfg(debug_assertions)]
 fn debug_menu_options_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     app_options: &mut re_viewer_context::AppOptions,
+    command_sender: &CommandSender,
 ) {
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -379,15 +388,18 @@ fn debug_menu_options_ui(
         re_log::info!("Logging some info");
     }
 
+    UICommand::ToggleBlueprintInspectionPanel.menu_button_ui(ui, command_sender);
+
+    ui.horizontal(|ui| {
+        ui.label("Blueprint GC:");
+        re_ui.radio_value(ui, &mut app_options.blueprint_gc, true, "Enabled");
+        re_ui.radio_value(ui, &mut app_options.blueprint_gc, false, "Disabled");
+    });
+
     re_ui.checkbox(ui,
         &mut app_options.show_picking_debug_overlay,
         "Picking Debug Overlay",
     ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
-
-    re_ui.checkbox(ui,
-        &mut app_options.show_blueprint_in_timeline,
-        "Show Blueprint in the Time Panel",
-    ).on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]

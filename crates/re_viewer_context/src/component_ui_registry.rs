@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_data_store::LatestAtQuery;
+use re_data_store::{DataStore, LatestAtQuery};
 use re_entity_db::EntityPath;
 use re_query::ComponentWithInstances;
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
@@ -38,6 +38,7 @@ type ComponentUiCallback = Box<
             &mut egui::Ui,
             UiVerbosity,
             &LatestAtQuery,
+            &DataStore,
             &EntityPath,
             &ComponentWithInstances,
             &InstanceKey,
@@ -75,6 +76,7 @@ impl ComponentUiRegistry {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &LatestAtQuery,
+        store: &DataStore,
         entity_path: &EntityPath,
         component: &ComponentWithInstances,
         instance_key: &InstanceKey,
@@ -96,6 +98,7 @@ impl ComponentUiRegistry {
             ui,
             verbosity,
             query,
+            store,
             entity_path,
             component,
             instance_key,

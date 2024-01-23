@@ -1302,7 +1302,6 @@ impl DataTable {
 
 /// Crafts a simple but interesting [`DataTable`].
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "testing")]
 impl DataTable {
     pub fn example(timeless: bool) -> DataTable {
         use crate::{
