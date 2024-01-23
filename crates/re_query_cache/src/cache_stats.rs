@@ -62,6 +62,7 @@ impl CachedEntityStats {
 pub struct CachedComponentStats {
     pub total_rows: u64,
     pub total_instances: u64,
+    pub total_size_bytes: u64,
 }
 
 impl Caches {
@@ -80,6 +81,7 @@ impl Caches {
                     per_component.entry(*component_name).or_default();
                 stats.total_rows += data.dyn_num_entries() as u64;
                 stats.total_instances += data.dyn_num_values() as u64;
+                stats.total_size_bytes += data.dyn_total_size_bytes();
             }
         }
 
