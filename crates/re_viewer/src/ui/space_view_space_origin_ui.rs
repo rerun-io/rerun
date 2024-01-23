@@ -90,6 +90,7 @@ fn space_view_space_origin_widget_editing_ui(
     //
 
     // All suggestions for this class of space views.
+    // TODO(#4895): we should have/use a much simpler heuristic API to get a list of compatible entity sub-tree
     let space_view_suggestions =
         re_viewport::space_view_heuristics::all_possible_space_views(ctx, spaces_info)
             .into_iter()
