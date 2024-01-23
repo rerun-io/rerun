@@ -19,6 +19,7 @@ class Mesh3DExt:
         mesh_properties: datatypes.MeshPropertiesLike | None = None,
         vertex_normals: datatypes.Vec3DArrayLike | None = None,
         vertex_colors: datatypes.Rgba32ArrayLike | None = None,
+        vertex_texcoords: datatypes.Rgba32ArrayLike | None = None,
         mesh_material: datatypes.MaterialLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         instance_keys: components.InstanceKeyArrayLike | None = None,
@@ -40,6 +41,9 @@ class Mesh3DExt:
             Mutually exclusive with `indices`.
         vertex_normals:
             An optional normal for each vertex.
+            If specified, this must have as many elements as `vertex_positions`.
+        vertex_texcoords:
+            An optional texture coordinate for each vertex.
             If specified, this must have as many elements as `vertex_positions`.
         vertex_colors:
             An optional color for each vertex.
@@ -63,6 +67,7 @@ class Mesh3DExt:
                 mesh_properties=mesh_properties,
                 vertex_normals=vertex_normals,
                 vertex_colors=vertex_colors,
+                vertex_texcoords=vertex_texcoords,
                 mesh_material=mesh_material,
                 class_ids=class_ids,
                 instance_keys=instance_keys,
