@@ -32,7 +32,11 @@ pub enum DeviceTier {
 /// wgpu-core and webgpu.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WgpuBackendType {
+    /// Backend implemented via wgpu-core.
+    ///
+    /// This includes all native backends and WebGL.
     WgpuCore,
+    /// Backend implemented by the browser's WebGPU javascript api.
     #[cfg(web)]
     WebGpu,
 }
