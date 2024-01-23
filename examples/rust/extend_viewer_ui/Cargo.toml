@@ -14,9 +14,7 @@ analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
 
 [dependencies]
 re_crash_handler = { path = "../../../crates/re_crash_handler" }
-re_viewer = { path = "../../../crates/re_viewer", default-features = false, features = [
-  "webgl",
-] }
+re_viewer = { path = "../../../crates/re_viewer", default-features = false }
 
 # We need re_sdk_comms to receive log events from and SDK:
 re_sdk_comms = { path = "../../../crates/re_sdk_comms", features = ["server"] }

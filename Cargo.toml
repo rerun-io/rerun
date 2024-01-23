@@ -235,8 +235,21 @@ webbrowser = "0.8"
 winit = { version = "0.29.9", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
-wgpu = { version = "0.18.0", features = ["fragile-send-sync-non-atomic-wasm"] }
-wgpu-core = "0.18.0"
+wgpu = { version = "0.19.1", default-features = false, features = [
+  # Backends (see https://docs.rs/wgpu/latest/wgpu/#feature-flags)
+  "webgl",
+  "metal",
+  "webgpu",
+  #"vulkan", # Does not yet exist, wgpu enables this automatically on Linux & Windows.
+  #"gl",     # Does not yet exist, wgpu enables this automatically on Linux & Windows.
+  #"dx12",   # DX12 backend on wgpu isn't as stable. Also, we want to reduce the number of backends on native. Ideally we only have Vulkan & Metal, but we also keep GL as a manual fallback.
+  #"angle",  # As above, we want to limit the numbers of backends we support. GL support via angle isn't great and we didn't need it so far.
+  # Shader options:
+  "wgsl",
+  # Other:
+  "fragile-send-sync-non-atomic-wasm",
+] }
+wgpu-core = "0.19.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false }
 zune-core = "0.4"
@@ -268,12 +281,13 @@ debug = true
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
-# eframe = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
-# egui = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }        # egui master 2023-11-23
-# egui_extras = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" } # egui master 2023-11-23
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }   # egui master 2023-11-23
-# emath = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }       # egui master 2023-11-23
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }      # egui master 2024-01-23
+eframe = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }      # egui master 2024-01-23
+egui = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }        # egui master 2024-01-23
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" } # egui master 2024-01-23
+egui_plot = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }   # egui master 2024-01-23
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }   # egui master 2024-01-23
+emath = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }       # egui master 2024-01-23
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

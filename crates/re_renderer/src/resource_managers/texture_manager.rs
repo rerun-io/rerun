@@ -383,7 +383,7 @@ impl TextureManager2D {
         if !format.is_compressed() {
             if let Some(bytes_per_texel) = creation_desc
                 .format
-                .block_size(Some(wgpu::TextureAspect::All))
+                .block_copy_size(Some(wgpu::TextureAspect::All))
             {
                 let expected_bytes = width as usize * height as usize * bytes_per_texel as usize;
 
@@ -421,7 +421,7 @@ impl TextureManager2D {
         let width_blocks = width / format.block_dimensions().0;
         let block_size = creation_desc
             .format
-            .block_size(Some(wgpu::TextureAspect::All))
+            .block_copy_size(Some(wgpu::TextureAspect::All))
             .ok_or_else(|| TextureCreationError::UnsupportedFormatForTransfer {
                 label: label.clone(),
                 format,

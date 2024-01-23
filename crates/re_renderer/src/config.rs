@@ -12,6 +12,9 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DeviceTier {
     /// Limited feature support as provided by WebGL and native GLES2/OpenGL3(ish).
+    ///
+    /// Note that we do not distinguish between WebGL & native GL here,
+    /// instead, we go with the lowest common denominator.
     Gles = 0,
 
     /// Full support of WebGPU spec without additional feature requirements.
@@ -21,6 +24,22 @@ pub enum DeviceTier {
     FullWebGpuSupport = 1,
     // Run natively with Vulkan/Metal and require additional features.
     //HighEnd
+}
+
+/// Type of Wgpu backend.
+///
+/// Used in the rare cases where it's necessary to be aware of the api differences between
+/// wgpu-core and webgpu.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WgpuBackendType {
+    /// Backend implemented via wgpu-core.
+    ///
+    /// This includes all native backends and WebGL.
+    WgpuCore,
+
+    /// Backend implemented by the browser's WebGPU javascript api.
+    #[cfg(web)]
+    WebGpu,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -40,7 +59,7 @@ pub enum InsufficientDeviceCapabilities {
 
 /// Capabilities of a given device.
 ///
-/// Generally, this is a higher level interpretation of [`wgpu::Limits`].
+/// Generally, this is a higher level interpretation of [`wgpu::Limits`] & [`wgpu::Features`].
 ///
 /// We're trying to keep the number of fields in this struct to a minimum and associate
 /// as many as possible capabilities with the device tier.
@@ -52,6 +71,12 @@ pub struct DeviceCaps {
     ///
     /// Since this has a direct effect on the image sizes & screen resolution a user can use, we always pick the highest possible.
     pub max_texture_dimension2d: u32,
+
+    /// Wgpu backend type.
+    ///
+    /// Prefer using `tier` and other properties of this struct for distinguishing between abilities.
+    /// This is useful for making wgpu-core/webgpu api path decisions.
+    pub backend_type: WgpuBackendType,
 }
 
 impl DeviceCaps {
@@ -75,19 +100,39 @@ impl DeviceCaps {
     ///
     /// Note that it is always possible to pick a lower tier!
     pub fn from_adapter(adapter: &wgpu::Adapter) -> Self {
-        let tier = match adapter.get_info().backend {
+        let backend = adapter.get_info().backend;
+
+        let tier = match backend {
             wgpu::Backend::Vulkan
             | wgpu::Backend::Metal
             | wgpu::Backend::Dx12
             | wgpu::Backend::BrowserWebGpu => DeviceTier::FullWebGpuSupport,
 
-            // Dx11 support in wgpu is sporadic, treat it like GLES to be on the safe side.
-            wgpu::Backend::Dx11 | wgpu::Backend::Gl | wgpu::Backend::Empty => DeviceTier::Gles,
+            wgpu::Backend::Gl | wgpu::Backend::Empty => DeviceTier::Gles,
+        };
+
+        let backend_type = match backend {
+            wgpu::Backend::Empty
+            | wgpu::Backend::Vulkan
+            | wgpu::Backend::Metal
+            | wgpu::Backend::Dx12
+            | wgpu::Backend::Gl => WgpuBackendType::WgpuCore,
+            wgpu::Backend::BrowserWebGpu => {
+                #[cfg(web)]
+                {
+                    WgpuBackendType::WebGpu
+                }
+                #[cfg(not(web))]
+                {
+                    unreachable!("WebGPU backend is not supported on native platforms.")
+                }
+            }
         };
 
         Self {
             tier,
             max_texture_dimension2d: adapter.limits().max_texture_dimension_2d,
+            backend_type,
         }
     }
 
@@ -109,8 +154,8 @@ impl DeviceCaps {
     pub fn device_descriptor(&self) -> wgpu::DeviceDescriptor<'static> {
         wgpu::DeviceDescriptor {
             label: Some("re_renderer device"),
-            features: self.features(),
-            limits: self.limits(),
+            required_features: self.features(),
+            required_limits: self.limits(),
         }
     }
 
@@ -182,7 +227,6 @@ pub fn supported_backends() -> wgpu::Backends {
         wgpu::util::backend_bits_from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL)
     } else {
-        // Web - WebGL is used automatically when wgpu is compiled with `webgl` feature.
         wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
     }
 }
