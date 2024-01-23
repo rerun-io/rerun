@@ -49,10 +49,9 @@ impl ViewContextSystem for EntityDepthOffsets {
         // Use a BTreeSet for entity hashes to get a stable order.
         let mut entities_per_draw_order = BTreeMap::<DrawOrder, BTreeSet<DrawOrderTarget>>::new();
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            if let Some(draw_order) = store.query_latest_component::<DrawOrder>(
-                &data_result.entity_path,
-                &ctx.rec_cfg.time_ctrl.read().current_query(),
-            ) {
+            if let Some(draw_order) = store
+                .query_latest_component::<DrawOrder>(&data_result.entity_path, &ctx.current_query())
+            {
                 entities_per_draw_order
                     .entry(draw_order.value)
                     .or_default()

@@ -257,6 +257,9 @@ impl Viewport<'_, '_> {
         space_view: &SpaceViewBlueprint,
         space_view_visible: bool,
     ) {
+        let query = ctx.current_query();
+        let store = ctx.entity_db.store();
+
         let group_is_visible =
             top_node.data_result.accumulated_properties().visible && space_view_visible;
 
@@ -345,7 +348,13 @@ impl Viewport<'_, '_> {
                         if data_result.is_group {
                             ui.label("Group");
                         } else {
-                            re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, entity_path);
+                            re_data_ui::item_ui::entity_hover_card_ui(
+                                ui,
+                                ctx,
+                                &query,
+                                store,
+                                entity_path,
+                            );
                         }
                     })
             } else {
@@ -396,7 +405,13 @@ impl Viewport<'_, '_> {
                         if data_result.is_group {
                             ui.label("Group");
                         } else {
-                            re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, entity_path);
+                            re_data_ui::item_ui::entity_hover_card_ui(
+                                ui,
+                                ctx,
+                                &query,
+                                store,
+                                entity_path,
+                            );
                         }
                     });
 

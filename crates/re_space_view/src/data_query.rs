@@ -1,4 +1,4 @@
-use re_entity_db::{EntityProperties, EntityPropertyMap};
+use re_entity_db::{external::re_data_store::LatestAtQuery, EntityProperties, EntityPropertyMap};
 use re_viewer_context::{
     DataQueryResult, IndicatorMatchingEntities, PerVisualizer, StoreContext, VisualizableEntities,
 };
@@ -14,7 +14,12 @@ pub struct EntityOverrideContext {
 /// The `SpaceViewBlueprint` is the only thing that likely implements this today
 /// but we use a trait here so we don't have to pick up a full dependency on `re_viewport`.
 pub trait PropertyResolver {
-    fn update_overrides(&self, ctx: &StoreContext<'_>, query_result: &mut DataQueryResult);
+    fn update_overrides(
+        &self,
+        ctx: &StoreContext<'_>,
+        query: &LatestAtQuery,
+        query_result: &mut DataQueryResult,
+    );
 }
 
 /// The common trait implemented for data queries

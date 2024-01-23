@@ -10,7 +10,8 @@ impl DataUi for IncludedSpaceViews {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_data_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         match verbosity {
             UiVerbosity::Small => {
@@ -19,7 +20,7 @@ impl DataUi for IncludedSpaceViews {
             UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
                 for space_view in &self.0 {
                     let space_view: SpaceViewId = (*space_view).into();
-                    space_view.data_ui(_ctx, ui, verbosity, _query);
+                    space_view.data_ui(_ctx, ui, verbosity, query, store);
                     ui.end_row();
                 }
             }
@@ -35,11 +36,12 @@ impl DataUi for SpaceViewMaximized {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         match self.0 {
             Some(space_view) => {
                 let space_view: SpaceViewId = space_view.into();
-                space_view.data_ui(ctx, ui, verbosity, query);
+                space_view.data_ui(ctx, ui, verbosity, query, store);
             }
             None => {
                 ui.label("None");
@@ -56,6 +58,7 @@ impl DataUi for ViewportLayout {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
     ) {
         match verbosity {
             UiVerbosity::Small => {

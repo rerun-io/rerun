@@ -209,6 +209,7 @@ fn recording_ui(
             ui,
             re_viewer_context::UiVerbosity::Full,
             &ctx.current_query(),
+            entity_db.store(),
         );
     });
 
