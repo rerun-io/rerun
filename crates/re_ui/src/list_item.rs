@@ -372,11 +372,13 @@ impl<'a> ListItem<'a> {
         // update the response accordingly.
         let full_span_response = ui.interact(bg_rect, response.id, egui::Sense::click());
         response.clicked = full_span_response.clicked;
+        response.contains_pointer = full_span_response.contains_pointer;
         response.hovered = full_span_response.hovered;
 
         // override_hover should not affect the returned response
         let mut style_response = response.clone();
         if self.force_hovered {
+            style_response.contains_pointer = true;
             style_response.hovered = true;
         }
 
