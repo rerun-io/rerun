@@ -1,12 +1,10 @@
 //! Dumping a datastore to log messages and back.
 
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use itertools::Itertools;
-use re_data_store::WriteError;
 use re_data_store::{
-    test_row, test_util::sanity_unwrap, DataStore, DataStoreStats, GarbageCollectionOptions,
-    TimeInt, TimeRange, Timeline,
+    test_row,
+    test_util::{init_logs, insert_table_with_retries, sanity_unwrap},
+    DataStore, DataStoreStats, GarbageCollectionOptions, TimeInt, TimeRange, Timeline,
 };
 use re_log_types::{
     build_frame_nr, build_log_time, DataRow, DataTable, EntityPath, RowId, TableId,
@@ -16,22 +14,6 @@ use re_types::datagen::{build_some_colors, build_some_instances, build_some_posi
 use re_types_core::Loggable as _;
 
 // ---
-
-// We very often re-use RowIds when generating test data.
-fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
-    for row in table.to_rows() {
-        let mut row = row.unwrap();
-        loop {
-            match store.insert_row(&row) {
-                Ok(_) => break,
-                Err(WriteError::ReusedRowId(_)) => {
-                    row.row_id = row.row_id.next();
-                }
-                err @ Err(_) => err.map(|_| ()).unwrap(),
-            }
-        }
-    }
-}
 
 // Panic on RowId clash.
 fn insert_table(store: &mut DataStore, table: &DataTable) {
@@ -290,17 +272,6 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 }
 
 // ---
-
-pub fn init_logs() {
-    static INIT: AtomicBool = AtomicBool::new(false);
-
-    if INIT
-        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        .is_ok()
-    {
-        re_log::setup_native_logging();
-    }
-}
 
 fn create_insert_table(ent_path: impl Into<EntityPath>) -> DataTable {
     let ent_path = ent_path.into();
