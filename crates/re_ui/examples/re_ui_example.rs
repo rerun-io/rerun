@@ -1161,6 +1161,61 @@ impl HierarchicalDragAndDrop {
     }
 
     /// Compute the geometry of the drag cursor and where the dragged item should be inserted.
+    ///
+    /// This function implements the following logic:
+    /// ```text
+    ///
+    ///                     insert         insert last in container before me            
+    ///                   before me           (if any) or insert before me
+    ///                       │                             │
+    ///                   ╔═══▼═════════════════════════════▼══════════════════╗
+    ///                   ║      │                                             ║
+    ///      leaf item    ║ ─────┴──────────────────────────────────────────── ║
+    ///                   ║                                                    ║
+    ///                   ╚═════════════════════▲══════════════════════════════╝
+    ///                                         │
+    ///                                  insert after me
+    ///
+    ///
+    ///
+    ///                     insert         insert last in container before me
+    ///                   before me           (if any) or insert before me
+    ///                       │                             │
+    ///                   ╔═══▼═════════════════════════════▼══════════════════╗
+    /// container item    ║      │                                             ║
+    ///  (no/collapsed    ║ ─────┼──────────────────────────────────────────── ║
+    ///          body)    ║      │                                             ║
+    ///                   ╚═══▲═════════════════════════════▲══════════════════╝
+    ///                       │                             │
+    ///                    insert                   insert inside me
+    ///                   after me                     at pos = 0
+    ///
+    ///
+    ///
+    ///                     insert         insert last in container before me
+    ///                   before me           (if any) or insert before me
+    ///                       │                             │
+    ///                   ╔═══▼═════════════════════════════▼══════════════════╗
+    /// container item    ║      │                                             ║
+    ///      with body    ║ ─────┴──────────────────────────────────────────── ║
+    ///                   ║                                                    ║
+    ///                   ╚══▲═══╦═════════════════════════════════════════════╣ ─┐
+    ///                      │   ║                                             ║  │
+    ///                  insert  ║                                             ║  │
+    ///               inside me  ║                                             ║  │
+    ///              at pos = 0  ╠══                                         ══╣  │
+    ///                          ║                same logic                   ║  │
+    ///                          ║               recursively                   ║  │ body
+    ///                  insert  ║               applied here                  ║  │
+    ///                after me  ╠══                                         ══╣  │
+    ///                      │   ║                                             ║  │
+    ///                   ┌──▼── ║                                             ║  │
+    ///                   │      ║                                             ║  │
+    ///                   └───── ╚═════════════════════════════════════════════╝ ─┘
+    ///
+    /// ```
+    ///
+    /// **Note**: press `Alt` to visualize the drag zones while dragging.
     fn find_drag_target(
         &self,
         ui: &egui::Ui,
@@ -1270,18 +1325,10 @@ impl HierarchicalDragAndDrop {
         } else {
             let body_rect = body_response.map(|r| r.rect).filter(|r| r.width() > 0.0);
             if let Some(body_rect) = body_rect {
-                if ui.rect_contains_pointer(left_bottom) {
+                if ui.rect_contains_pointer(left_bottom) || ui.rect_contains_pointer(bottom) {
                     // insert at pos = 0 inside me
                     Some(DragTarget::new(
                         left_bottom.bottom(),
-                        (body_rect.left() + indent..=body_rect.right()).into(),
-                        item_id,
-                        0,
-                    ))
-                } else if ui.rect_contains_pointer(bottom) {
-                    // insert at pos = 0 inside me
-                    Some(DragTarget::new(
-                        bottom.bottom(),
                         (body_rect.left() + indent..=body_rect.right()).into(),
                         item_id,
                         0,
