@@ -1,18 +1,25 @@
 include "arrow/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
-
 include "rerun/attributes.fbs";
-include "rerun/datatypes/rgba32.fbs";
+
+include "./rgba32.fbs";
+include "./tensor_buffer.fbs";
 
 namespace rerun.datatypes;
 
 // ---
 
 /// Material properties of a mesh.
-struct Material (
-  "attr.rust.derive": "Copy, PartialEq, Eq, Hash"
+table Material (
+  "attr.rust.derive": "PartialEq"
 ) {
   /// Optional color multiplier.
   albedo_factor: rerun.datatypes.Rgba32 (nullable, order: 100);
+
+  /// Optional albedo texture.
+  ///
+  /// Used with `vertex_texcoords` on `Mesh3D`.
+  /// Currently supports only RGB & RGBA 2D-textures, ignoring alpha.
+  albedo_texture: rerun.datatypes.TensorData (nullable, order: 200);
 }
