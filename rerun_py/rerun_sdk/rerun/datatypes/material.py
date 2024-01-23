@@ -48,7 +48,8 @@ class Material(MaterialExt):
             Optional albedo texture.
 
             Used with `vertex_texcoords` on `Mesh3D`.
-            Currently supports only RGB & RGBA 2D-textures, ignoring alpha.
+            Currently supports only RGB & RGBA sRGBA textures, ignoring alpha.
+            (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
         """
 
         # You can define your own __init__ function as a member of MaterialExt in material_ext.py
@@ -65,7 +66,8 @@ class Material(MaterialExt):
     # Optional albedo texture.
     #
     # Used with `vertex_texcoords` on `Mesh3D`.
-    # Currently supports only RGB & RGBA 2D-textures, ignoring alpha.
+    # Currently supports only RGB & RGBA sRGBA textures, ignoring alpha.
+    # (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
