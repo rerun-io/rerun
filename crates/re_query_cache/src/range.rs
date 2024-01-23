@@ -184,7 +184,9 @@ macro_rules! impl_query_archetype_range {
                 #[cfg(not(target_arch = "wasm32"))]
                 let now = web_time::Instant::now();
 
+                #[cfg(not(target_arch = "wasm32"))]
                 let mut added_entries = 0u64;
+
                 let mut added_size_bytes = 0u64;
 
                 for arch_view in arch_views {
@@ -195,7 +197,11 @@ macro_rules! impl_query_archetype_range {
                     }
 
                     added_size_bytes += bucket.[<insert_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)*>(data_time, &arch_view)?;
-                    added_entries += 1;
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        added_entries += 1;
+                    }
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
