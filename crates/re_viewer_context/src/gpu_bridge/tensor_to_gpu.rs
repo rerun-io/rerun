@@ -124,9 +124,9 @@ pub fn color_tensor_to_gpu(
     .map_err(|err| anyhow::anyhow!("{err}"))?;
 
     let texture_format = texture_handle.format();
-    let shader_decoding = match &tensor.buffer {
-        &TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
-        &TensorBuffer::Yuv422(_) => Some(ShaderDecoding::Yuv422),
+    let shader_decoding = match tensor.buffer {
+        TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
+        TensorBuffer::Yuv422(_) => Some(ShaderDecoding::Yuv422),
         _ => None,
     };
     // TODO(emilk): let the user specify the color space.
@@ -173,8 +173,7 @@ pub fn color_tensor_to_gpu(
             }
         }
 
-        Some(ShaderDecoding::Nv12) => ColorMapper::OffRGB,
-        Some(ShaderDecoding::Yuv422) => ColorMapper::OffRGB,
+        Some(ShaderDecoding::Nv12) | Some(ShaderDecoding::Yuv422) => ColorMapper::OffRGB,
     };
 
     // TODO(wumpf): There should be a way to specify whether a texture uses pre-multiplied alpha or not.
@@ -444,10 +443,7 @@ fn general_texture_creation_desc_from_tensor<'a>(
                 TensorBuffer::Jpeg(_) => {
                     unreachable!("DecodedTensor cannot contain a JPEG")
                 }
-                TensorBuffer::Nv12(buf) => {
-                    (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Unorm)
-                }
-                TensorBuffer::Yuv422(buf) => {
+                TensorBuffer::Nv12(buf) | TensorBuffer::Yuv422(buf) => {
                     (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Unorm)
                 }
             }
