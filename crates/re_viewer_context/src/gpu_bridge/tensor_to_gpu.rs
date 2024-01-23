@@ -92,10 +92,7 @@ pub fn color_tensor_to_gpu(
 
     let texture_handle = try_get_or_create_texture(render_ctx, texture_key, || {
         let (data, format) = match (depth, &tensor.buffer) {
-            (3, TensorBuffer::Nv12(buf)) => {
-                (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Uint)
-            }
-            (3, TensorBuffer::Yuv422(buf)) => {
+            (3, TensorBuffer::Nv12(buf) | TensorBuffer::Yuv422(buf)) => {
                 (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Uint)
             }
             // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
@@ -173,7 +170,7 @@ pub fn color_tensor_to_gpu(
             }
         }
 
-        Some(ShaderDecoding::Nv12) | Some(ShaderDecoding::Yuv422) => ColorMapper::OffRGB,
+        Some(ShaderDecoding::Nv12 | ShaderDecoding::Yuv422) => ColorMapper::OffRGB,
     };
 
     // TODO(wumpf): There should be a way to specify whether a texture uses pre-multiplied alpha or not.
