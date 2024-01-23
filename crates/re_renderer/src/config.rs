@@ -81,8 +81,7 @@ impl DeviceCaps {
             | wgpu::Backend::Dx12
             | wgpu::Backend::BrowserWebGpu => DeviceTier::FullWebGpuSupport,
 
-            // Dx11 support in wgpu is sporadic, treat it like GLES to be on the safe side.
-            wgpu::Backend::Dx11 | wgpu::Backend::Gl | wgpu::Backend::Empty => DeviceTier::Gles,
+            wgpu::Backend::Gl | wgpu::Backend::Empty => DeviceTier::Gles,
         };
 
         Self {
