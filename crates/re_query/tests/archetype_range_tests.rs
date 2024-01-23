@@ -321,8 +321,6 @@ fn timeless_range() {
 
     // --- First test: `(timepoint1, timepoint3]` ---
 
-    // The exclusion of `timepoint1` means latest-at semantics will kick in!
-
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
@@ -416,7 +414,7 @@ fn timeless_range() {
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
-        let colors: Vec<Option<Color>> = vec![None, None];
+        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
         let expected = DataCellRow(smallvec![
             DataCell::from_native_sparse(instances),
             DataCell::from_native_sparse(positions),
@@ -730,8 +728,6 @@ fn simple_splatted_range() {
     }
 
     // --- Second test: `[timepoint1, timepoint3]` ---
-
-    // The inclusion of `timepoint1` means latest-at semantics will _not_ kick in!
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,

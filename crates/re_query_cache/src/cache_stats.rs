@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
 use re_log_types::{EntityPath, TimeRange, Timeline};
-use re_types_core::ComponentName;
+use re_types_core::{ComponentName, SizeBytes as _};
 
-use crate::{Caches, LatestAtCache, RangeCache};
+use crate::{cache::CacheBucket, Caches, LatestAtCache, RangeCache};
 
 // ---
 
@@ -68,113 +68,112 @@ impl Caches {
     /// Computes the stats for all primary caches.
     ///
     /// `per_component` toggles per-component stats.
-    pub fn stats(detailed_stats: bool) -> CachesStats {
+    pub fn stats(&self, detailed_stats: bool) -> CachesStats {
         re_tracing::profile_function!();
 
-        Self::with(|caches| {
-            let latest_at = caches
-                .0
-                .read()
-                .iter()
-                .map(|(key, caches_per_arch)| {
-                    (key.entity_path.clone(), {
-                        let mut total_size_bytes = 0u64;
-                        let mut total_rows = 0u64;
-                        let mut per_component = detailed_stats.then(BTreeMap::default);
+        fn upsert_bucket_stats(
+            per_component: &mut BTreeMap<ComponentName, CachedComponentStats>,
+            bucket: &CacheBucket,
+        ) {
+            for (component_name, data) in &bucket.components {
+                let stats: &mut CachedComponentStats =
+                    per_component.entry(*component_name).or_default();
+                stats.total_rows += data.dyn_num_entries() as u64;
+                stats.total_instances += data.dyn_num_values() as u64;
+            }
+        }
 
-                        for latest_at_cache in
-                            caches_per_arch.latest_at_per_archetype.read().values()
-                        {
-                            let latest_at_cache @ LatestAtCache {
-                                per_query_time: _,
+        let caches = self.read().clone();
+        // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
+
+        let latest_at = caches
+            .iter()
+            .map(|(key, caches_per_arch)| {
+                (key.entity_path.clone(), {
+                    let mut total_size_bytes = 0u64;
+                    let mut total_rows = 0u64;
+                    let mut per_component = detailed_stats.then(BTreeMap::default);
+
+                    for latest_at_cache in caches_per_arch
+                        .read()
+                        .latest_at_per_archetype
+                        .read()
+                        .values()
+                    {
+                        let latest_at_cache @ LatestAtCache {
+                            per_query_time: _,
+                            per_data_time,
+                            timeless,
+                            ..
+                        } = &*latest_at_cache.read();
+
+                        total_size_bytes += latest_at_cache.total_size_bytes();
+                        total_rows = per_data_time.len() as u64 + timeless.is_some() as u64;
+
+                        if let Some(per_component) = per_component.as_mut() {
+                            re_tracing::profile_scope!("detailed");
+
+                            if let Some(bucket) = &timeless {
+                                upsert_bucket_stats(per_component, bucket);
+                            }
+
+                            for bucket in per_data_time.values() {
+                                upsert_bucket_stats(per_component, bucket);
+                            }
+                        }
+                    }
+
+                    CachedEntityStats {
+                        total_size_bytes,
+                        total_rows,
+
+                        per_component,
+                    }
+                })
+            })
+            .collect();
+
+        let range = caches
+            .iter()
+            .map(|(key, caches_per_arch)| {
+                (key.entity_path.clone(), {
+                    caches_per_arch
+                        .read()
+                        .range_per_archetype
+                        .read()
+                        .values()
+                        .map(|range_cache| {
+                            let range_cache @ RangeCache {
                                 per_data_time,
                                 timeless,
-                                total_size_bytes: _,
-                            } = &*latest_at_cache.read();
+                            } = &*range_cache.read();
 
-                            total_size_bytes += latest_at_cache.total_size_bytes;
-                            total_rows = per_data_time.len() as u64 + timeless.is_some() as u64;
+                            let total_rows = per_data_time.data_times.len() as u64;
 
+                            let mut per_component = detailed_stats.then(BTreeMap::default);
                             if let Some(per_component) = per_component.as_mut() {
                                 re_tracing::profile_scope!("detailed");
 
-                                for bucket in per_data_time.values() {
-                                    for (component_name, data) in &bucket.read().components {
-                                        let stats: &mut CachedComponentStats =
-                                            per_component.entry(*component_name).or_default();
-                                        stats.total_rows += data.dyn_num_entries() as u64;
-                                        stats.total_instances += data.dyn_num_values() as u64;
-                                    }
-                                }
-
-                                if let Some(bucket) = &timeless {
-                                    for (component_name, data) in &bucket.components {
-                                        let stats: &mut CachedComponentStats =
-                                            per_component.entry(*component_name).or_default();
-                                        stats.total_rows += data.dyn_num_entries() as u64;
-                                        stats.total_instances += data.dyn_num_values() as u64;
-                                    }
-                                }
+                                upsert_bucket_stats(per_component, timeless);
+                                upsert_bucket_stats(per_component, per_data_time);
                             }
-                        }
 
-                        CachedEntityStats {
-                            total_size_bytes,
-                            total_rows,
+                            (
+                                key.timeline,
+                                per_data_time.time_range().unwrap_or(TimeRange::EMPTY),
+                                CachedEntityStats {
+                                    total_size_bytes: range_cache.total_size_bytes(),
+                                    total_rows,
 
-                            per_component,
-                        }
-                    })
+                                    per_component,
+                                },
+                            )
+                        })
+                        .collect()
                 })
-                .collect();
+            })
+            .collect();
 
-            let range = caches
-                .0
-                .read()
-                .iter()
-                .map(|(key, caches_per_arch)| {
-                    (key.entity_path.clone(), {
-                        caches_per_arch
-                            .range_per_archetype
-                            .read()
-                            .values()
-                            .map(|range_cache| {
-                                let RangeCache {
-                                    bucket,
-                                    total_size_bytes,
-                                } = &*range_cache.read();
-
-                                let total_rows = bucket.data_times.len() as u64;
-
-                                let mut per_component = detailed_stats.then(BTreeMap::default);
-                                if let Some(per_component) = per_component.as_mut() {
-                                    re_tracing::profile_scope!("detailed");
-
-                                    for (component_name, data) in &bucket.components {
-                                        let stats: &mut CachedComponentStats =
-                                            per_component.entry(*component_name).or_default();
-                                        stats.total_rows += data.dyn_num_entries() as u64;
-                                        stats.total_instances += data.dyn_num_values() as u64;
-                                    }
-                                }
-
-                                (
-                                    key.timeline,
-                                    bucket.time_range().unwrap_or(TimeRange::EMPTY),
-                                    CachedEntityStats {
-                                        total_size_bytes: *total_size_bytes,
-                                        total_rows,
-
-                                        per_component,
-                                    },
-                                )
-                            })
-                            .collect()
-                    })
-                })
-                .collect();
-
-            CachesStats { latest_at, range }
-        })
+        CachesStats { latest_at, range }
     }
 }
