@@ -114,6 +114,7 @@ pub struct ListItem<'a> {
     active: bool,
     selected: bool,
     drag_id: Option<egui::Id>,
+    drag_target: bool,
     subdued: bool,
     weak: bool,
     italics: bool,
@@ -136,6 +137,7 @@ impl<'a> ListItem<'a> {
             active: true,
             selected: false,
             drag_id: None,
+            drag_target: false,
             subdued: false,
             weak: false,
             italics: false,
@@ -167,6 +169,15 @@ impl<'a> ListItem<'a> {
     #[inline]
     pub fn drag_id(mut self, drag_id: egui::Id) -> Self {
         self.drag_id = Some(drag_id);
+        self
+    }
+
+    /// Highlight the item as the current drag target.
+    ///
+    /// Use this while dragging, to highlight which container will receive the drop at any given time.
+    #[inline]
+    pub fn drag_target(mut self, drag_target: bool) -> Self {
+        self.drag_target = drag_target;
         self
     }
 
@@ -373,13 +384,8 @@ impl<'a> ListItem<'a> {
         let (rect, mut response) = ui.allocate_at_least(desired_size, egui::Sense::click());
 
         // handle dragging
-        let mut is_being_dragged = false;
         if let Some(drag_id) = self.drag_id {
             response = ui.interact(response.rect, drag_id, egui::Sense::drag());
-
-            if response.dragged() && ui.input(|i| i.pointer.is_decidedly_dragging()) {
-                is_being_dragged = true;
-            }
         }
 
         // compute the full-span background rect
@@ -503,26 +509,28 @@ impl<'a> ListItem<'a> {
             ui.painter().galley(text_pos, galley, visuals.text_color());
 
             // Draw background on interaction.
-            let bg_fill = if button_response.map_or(false, |r| r.hovered()) {
-                Some(visuals.bg_fill)
-            } else if self.selected
-                || style_response.hovered()
-                || style_response.highlighted()
-                || style_response.has_focus()
-            {
-                Some(visuals.weak_bg_fill)
+            if self.drag_target {
+                ui.painter().set(
+                    background_frame,
+                    Shape::rect_stroke(bg_rect, 0.0, (1.0, ui.visuals().selection.bg_fill)),
+                );
             } else {
-                None
-            };
-
-            if let Some(bg_fill) = bg_fill {
-                let shape = if is_being_dragged {
-                    Shape::rect_stroke(bg_rect.shrink(1.0), 0.0, (2.0, bg_fill))
+                let bg_fill = if button_response.map_or(false, |r| r.hovered()) {
+                    Some(visuals.bg_fill)
+                } else if self.selected
+                    || style_response.hovered()
+                    || style_response.highlighted()
+                    || style_response.has_focus()
+                {
+                    Some(visuals.weak_bg_fill)
                 } else {
-                    Shape::rect_filled(bg_rect, 0.0, bg_fill)
+                    None
                 };
 
-                ui.painter().set(background_frame, shape);
+                if let Some(bg_fill) = bg_fill {
+                    ui.painter()
+                        .set(background_frame, Shape::rect_filled(bg_rect, 0.0, bg_fill));
+                }
             }
         }
 

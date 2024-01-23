@@ -811,22 +811,30 @@ enum Command {
 
     /// Move the currently dragged item to the given container and position.
     MoveDraggedItemTo(ItemId, usize),
+
+    /// Specify the currently identifed target container to be highlighted.
+    HighlightTargetContainer(ItemId),
 }
 
 struct HierarchicalDragAndDrop {
-    /// flat hash table of items
+    /// All items
     items: HashMap<ItemId, Item>,
 
-    /// id of the root item (not displayed in the UI)
+    /// Id of the root item (not displayed in the UI)
     root_id: ItemId,
 
-    /// set of all selected items
+    /// Set of all selected items
     selected_items: HashSet<ItemId>,
 
-    /// channel to receive commands from the UI
+    /// If a drag is ongoing, this is the id of the destination container (if any was identified)
+    ///
+    /// This is used to highlight the target container.
+    target_container: Option<ItemId>,
+
+    /// Channel to receive commands from the UI
     command_receiver: std::sync::mpsc::Receiver<Command>,
 
-    /// channel to send commands from the UI
+    /// Channel to send commands from the UI
     command_sender: std::sync::mpsc::Sender<Command>,
 }
 
@@ -841,6 +849,7 @@ impl Default for HierarchicalDragAndDrop {
             items: std::iter::once((root_id, root_item)).collect(),
             root_id,
             selected_items: HashSet::new(),
+            target_container: None,
             command_receiver,
             command_sender,
         };
@@ -998,6 +1007,9 @@ impl HierarchicalDragAndDrop {
             self.container_children_ui(re_ui, ui, top_level_items);
         }
 
+        // always reset the target container
+        self.target_container = None;
+
         while let Ok(command) = self.command_receiver.try_recv() {
             //println!("Received command: {command:?}");
             match command {
@@ -1016,6 +1028,9 @@ impl HierarchicalDragAndDrop {
                     if let Some(source_id) = self.dragged_id(ui) {
                         self.move_item(source_id, parent_id, pos);
                     }
+                }
+                Command::HighlightTargetContainer(item_id) => {
+                    self.target_container = Some(item_id);
                 }
             }
         }
@@ -1043,6 +1058,7 @@ impl HierarchicalDragAndDrop {
             .subdued(true)
             .selected(self.selected(item_id))
             .drag_id(item_id.into())
+            .drag_target(self.target_container == Some(item_id))
             .show_collapsing(ui, item_id.into(), true, |re_ui, ui| {
                 self.container_children_ui(re_ui, ui, children);
             });
@@ -1155,6 +1171,10 @@ impl HierarchicalDragAndDrop {
                 self.send_command(Command::MoveDraggedItemTo(
                     drag_target.target_parent_id,
                     drag_target.target_pos,
+                ));
+            } else {
+                self.send_command(Command::HighlightTargetContainer(
+                    drag_target.target_parent_id,
                 ));
             }
         }
