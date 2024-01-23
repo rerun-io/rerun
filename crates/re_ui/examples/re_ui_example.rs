@@ -722,10 +722,7 @@ mod drag_and_drop {
                 // Detect end-of-drag situation and prepare the swap command.
                 //
 
-                // TODO(emilk/egui#3841): very tempting to use `response.dragged()` here, but it
-                // doesn't work. We must introduce `response.drag_stopped()` and use
-                // `response.dragged() || response.drag_stopped()` here.
-                if ui.memory(|mem| mem.is_being_dragged(response.id)) {
+                if response.dragged() || response.drag_released() {
                     source_item_pos = Some(i);
                 }
 
@@ -907,7 +904,7 @@ mod hierarchical_drag_and_drop {
 
         /// Does some container contain the given item?
         ///
-        /// Used to test if a target location is suitable for a given dragged item.  
+        /// Used to test if a target location is suitable for a given dragged item.
         fn contains(&self, container_id: ItemId, item_id: ItemId) -> bool {
             if let Some(children) = self.container(container_id) {
                 if container_id == item_id {
@@ -1199,7 +1196,7 @@ mod hierarchical_drag_and_drop {
         /// This function implements the following logic:
         /// ```text
         ///
-        ///                     insert         insert last in container before me            
+        ///                     insert         insert last in container before me
         ///                   before me           (if any) or insert before me
         ///                       │                             │
         ///                   ╔═══▼═════════════════════════════▼══════════════════╗
