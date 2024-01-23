@@ -19,12 +19,14 @@ mod entity_path;
 mod image;
 mod image_meaning;
 mod instance_path;
-pub mod item_ui;
 mod log_msg;
+mod material;
 mod pinhole;
 mod rotation3d;
 mod store_id;
 mod transform3d;
+
+pub mod item_ui;
 
 pub use crate::image::{
     show_zoomed_image_region, show_zoomed_image_region_area_outline,
