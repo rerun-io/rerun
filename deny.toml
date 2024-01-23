@@ -54,7 +54,7 @@ skip = [
   { name = "memoffset" },         # Small crate
   { name = "prettyplease" },      # Old version being used by prost
   { name = "raw-window-handle" }, # Pretty small crate; some crates still on old version
-  { name = "redox_syscall" },        # Plenty of versions in the wild
+  { name = "redox_syscall" },     # Plenty of versions in the wild
   { name = "spin" },              # Old version used by rusttls
   { name = "windows" },           # Old version used by accesskit_windows, newer version used by wgpu
 ]
