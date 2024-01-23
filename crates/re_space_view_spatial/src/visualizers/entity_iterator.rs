@@ -139,7 +139,7 @@ macro_rules! impl_process_archetype {
                 (Option<TimeInt>, RowId),
                 &[InstanceKey],
                 $(&[$pov],)*
-                $(&[Option<$comp>],)*
+                $(Option<&[Option<$comp>]>,)*
             ) -> ::re_query::Result<()>,
         {
             // NOTE: not `profile_function!` because we want them merged together.
@@ -204,7 +204,7 @@ macro_rules! impl_process_archetype {
                             t,
                             keys.as_slice(),
                             $($pov.as_slice(),)+
-                            $($comp.as_slice(),)*
+                            $($comp.as_deref(),)*
                         ) {
                             re_log::error_once!(
                                 "Unexpected error querying {:?}: {err}",
