@@ -180,6 +180,8 @@ macro_rules! impl_query_archetype_range {
             {
                 re_tracing::profile_scope!("fill");
 
+                // Grabbing the current time is quite costly on web.
+                #[cfg(not(target_arch = "wasm32"))]
                 let now = web_time::Instant::now();
 
                 let mut added_entries = 0u64;
@@ -196,13 +198,16 @@ macro_rules! impl_query_archetype_range {
                     added_entries += 1;
                 }
 
-                let elapsed = now.elapsed();
-                ::re_log::trace!(
-                    archetype=%A::name(),
-                    added_size_bytes,
-                    "cached {added_entries} entries in {elapsed:?} ({:0.3} entries/s)",
-                    added_entries as f64 / elapsed.as_secs_f64()
-                );
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let elapsed = now.elapsed();
+                    ::re_log::trace!(
+                        archetype=%A::name(),
+                        added_size_bytes,
+                        "cached {added_entries} entries in {elapsed:?} ({:0.3} entries/s)",
+                        added_entries as f64 / elapsed.as_secs_f64()
+                    );
+                }
 
                 Ok(added_size_bytes)
             }
