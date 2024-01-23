@@ -149,14 +149,17 @@ impl<E: Example + 'static> Application<E> {
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: swapchain_format,
-            width: size.width,
-            height: size.height,
             // Not the best setting in general, but nice for quick & easy performance checking.
             // TODO(andreas): It seems at least on Metal M1 this still does not discard command buffers that come in too fast (even when using `Immediate` explicitly).
             //                  Quick look into wgpu looks like it does it correctly there. OS limitation? iOS has this limitation, so wouldn't be surprising!
             present_mode: wgpu::PresentMode::AutoNoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: [swapchain_format].to_vec(),
+            ..surface
+                .get_default_config(&adapter, size.width, size.height)
+                .ok_or(anyhow::format_err!(
+                    "The surface isn't supported by this adapter"
+                ))?
         };
         surface.configure(&device, &surface_config);
 
