@@ -1257,7 +1257,7 @@ mod hierarchical_drag_and_drop {
             is_container: bool,
             response: &egui::Response,
             body_response: Option<&egui::Response>,
-        ) -> Option<DragTarget> {
+        ) -> Option<DropTarget> {
             let indent = ui.spacing().indent;
 
             // For both leaf and containers we have two drag zones on the upper half of the item.
@@ -1315,7 +1315,7 @@ mod hierarchical_drag_and_drop {
 
             if ui.rect_contains_pointer(left_top) {
                 // insert before me
-                Some(DragTarget::new(
+                Some(DropTarget::new(
                     top.top(),
                     response.rect.x_range(),
                     parent_id,
@@ -1332,14 +1332,14 @@ mod hierarchical_drag_and_drop {
                 };
 
                 if let Some(previous_container_id) = previous_container_id {
-                    Some(DragTarget::new(
+                    Some(DropTarget::new(
                         top.top(),
                         (response.rect.left() + indent..=response.rect.right()).into(),
                         previous_container_id,
                         usize::MAX,
                     ))
                 } else {
-                    Some(DragTarget::new(
+                    Some(DropTarget::new(
                         top.top(),
                         response.rect.x_range(),
                         parent_id,
@@ -1349,7 +1349,7 @@ mod hierarchical_drag_and_drop {
             } else if !is_container {
                 if ui.rect_contains_pointer(bottom) {
                     // insert after me
-                    Some(DragTarget::new(
+                    Some(DropTarget::new(
                         bottom.bottom(),
                         response.rect.x_range(),
                         parent_id,
@@ -1363,7 +1363,7 @@ mod hierarchical_drag_and_drop {
                 if let Some(body_rect) = body_rect {
                     if ui.rect_contains_pointer(left_bottom) || ui.rect_contains_pointer(bottom) {
                         // insert at pos = 0 inside me
-                        Some(DragTarget::new(
+                        Some(DropTarget::new(
                             left_bottom.bottom(),
                             (body_rect.left() + indent..=body_rect.right()).into(),
                             item_id,
@@ -1371,7 +1371,7 @@ mod hierarchical_drag_and_drop {
                         ))
                     } else if ui.rect_contains_pointer(content_left_bottom) {
                         // insert after me in my parent
-                        Some(DragTarget::new(
+                        Some(DropTarget::new(
                             content_left_bottom.bottom(),
                             response.rect.x_range(),
                             parent_id,
@@ -1382,7 +1382,7 @@ mod hierarchical_drag_and_drop {
                     }
                 } else if ui.rect_contains_pointer(left_bottom) {
                     // insert after me in my parent
-                    Some(DragTarget::new(
+                    Some(DropTarget::new(
                         left_bottom.bottom(),
                         response.rect.x_range(),
                         parent_id,
@@ -1390,7 +1390,7 @@ mod hierarchical_drag_and_drop {
                     ))
                 } else if ui.rect_contains_pointer(bottom) {
                     // insert at pos = 0 inside me
-                    Some(DragTarget::new(
+                    Some(DropTarget::new(
                         bottom.bottom(),
                         (response.rect.left() + indent..=response.rect.right()).into(),
                         item_id,
@@ -1403,7 +1403,7 @@ mod hierarchical_drag_and_drop {
         }
     }
 
-    struct DragTarget {
+    struct DropTarget {
         /// Y coordinate for the cursor
         insert_y: f32,
         /// Range of X coordinates for the cursor
@@ -1416,7 +1416,7 @@ mod hierarchical_drag_and_drop {
         target_pos: usize,
     }
 
-    impl DragTarget {
+    impl DropTarget {
         fn new(
             insert_y: f32,
             range_x: egui::Rangef,
