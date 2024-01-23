@@ -1033,6 +1033,7 @@ impl HierarchicalDragAndDrop {
         self.handle_interaction(
             ui,
             item_id,
+            true,
             &response.item_response,
             response.body_response.as_ref().map(|r| &r.response),
         );
@@ -1064,13 +1065,14 @@ impl HierarchicalDragAndDrop {
             .drag_id(item_id.into())
             .show(ui);
 
-        self.handle_interaction(ui, item_id, &response, None);
+        self.handle_interaction(ui, item_id, false, &response, None);
     }
 
     fn handle_interaction(
         &self,
         ui: &egui::Ui,
         item_id: ItemId,
+        is_container: bool,
         response: &egui::Response,
         body_response: Option<&egui::Response>,
     ) {
@@ -1095,7 +1097,63 @@ impl HierarchicalDragAndDrop {
         let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
             && ui.input(|i| i.pointer.is_decidedly_dragging());
         if anything_being_decidedly_dragged {
-            let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
+            let (mut top, mut bottom) = response.rect.split_top_bottom_at_fraction(0.5);
+            let (mut left_top, mut left_bottom) = (egui::Rect::NOTHING, egui::Rect::NOTHING);
+            let indent = ui.spacing().indent;
+
+            if is_container {
+                (left_top, top) = top.split_left_right_at_x(top.left() + indent);
+                (left_bottom, bottom) = bottom.split_left_right_at_x(bottom.left() + indent);
+            }
+
+            let mut content_left_bot = egui::Rect::NOTHING;
+            if let Some(body_response) = body_response {
+                content_left_bot = egui::Rect::from_two_pos(
+                    body_response.rect.left_bottom()
+                        + egui::vec2(indent, -ReUi::list_item_height() / 2.0),
+                    body_response.rect.left_bottom(),
+                );
+            }
+
+            ui.ctx()
+                .debug_painter()
+                .debug_rect(top, egui::Color32::RED, "top");
+            ui.ctx()
+                .debug_painter()
+                .debug_rect(bottom, egui::Color32::GREEN, "bottom");
+
+            ui.ctx().debug_painter().debug_rect(
+                left_top,
+                egui::Color32::RED.gamma_multiply(0.5),
+                "lt",
+            );
+            ui.ctx().debug_painter().debug_rect(
+                left_bottom,
+                egui::Color32::GREEN.gamma_multiply(0.5),
+                "lb",
+            );
+            ui.ctx()
+                .debug_painter()
+                .debug_rect(content_left_bot, egui::Color32::YELLOW, "clb");
+
+            /*
+            if !container:
+                top -> insert before me in my parent
+                bottom -> insert after me in my parent
+            else:  # container case
+                if first:
+                    top + left_top -> insert before me in my parent (which must be root)
+                else:
+                    top -> insert last in the previous container (if any)
+                    left_top -> insert before me in my parent
+
+                if !body:  # could be collapsed or empty!
+                    left_bottom -> insert after me in my parent
+                    bottom -> insert at pos = 0 inside me
+                else:
+                    bottom + left_bottom -> insert at pos = 0 inside me
+                    body_left_bottom -> insert after me in my parent
+             */
 
             let target_info = if ui.rect_contains_pointer(top) {
                 Some((top.top(), Command::TargetItemBefore(item_id)))
