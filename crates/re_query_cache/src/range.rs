@@ -182,6 +182,8 @@ macro_rules! impl_query_archetype_range {
                 // NOTE: Same logic as what the store does.
                 if query.range.min <= TimeInt::MIN {
                     let mut reduced_query = query.clone();
+                    // This is the reduced query corresponding to the timeless part of the data.
+                    // It is inclusive and so it will yield `MIN..=MIN` = `[MIN]`.
                     reduced_query.range.max = TimeInt::MIN; // inclusive
 
                     // NOTE: `+ 2` because we always grab the indicator component as well as the
