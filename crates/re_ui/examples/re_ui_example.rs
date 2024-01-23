@@ -1316,8 +1316,8 @@ mod hierarchical_drag_and_drop {
             if ui.rect_contains_pointer(left_top) {
                 // insert before me
                 Some(DropTarget::new(
-                    top.top(),
                     response.rect.x_range(),
+                    top.top(),
                     parent_id,
                     pos_in_parent,
                 ))
@@ -1333,15 +1333,15 @@ mod hierarchical_drag_and_drop {
 
                 if let Some(previous_container_id) = previous_container_id {
                     Some(DropTarget::new(
-                        top.top(),
                         (response.rect.left() + indent..=response.rect.right()).into(),
+                        top.top(),
                         previous_container_id,
                         usize::MAX,
                     ))
                 } else {
                     Some(DropTarget::new(
-                        top.top(),
                         response.rect.x_range(),
+                        top.top(),
                         parent_id,
                         pos_in_parent,
                     ))
@@ -1350,8 +1350,8 @@ mod hierarchical_drag_and_drop {
                 if ui.rect_contains_pointer(bottom) {
                     // insert after me
                     Some(DropTarget::new(
-                        bottom.bottom(),
                         response.rect.x_range(),
+                        bottom.bottom(),
                         parent_id,
                         pos_in_parent + 1,
                     ))
@@ -1364,16 +1364,16 @@ mod hierarchical_drag_and_drop {
                     if ui.rect_contains_pointer(left_bottom) || ui.rect_contains_pointer(bottom) {
                         // insert at pos = 0 inside me
                         Some(DropTarget::new(
-                            left_bottom.bottom(),
                             (body_rect.left() + indent..=body_rect.right()).into(),
+                            left_bottom.bottom(),
                             item_id,
                             0,
                         ))
                     } else if ui.rect_contains_pointer(content_left_bottom) {
                         // insert after me in my parent
                         Some(DropTarget::new(
-                            content_left_bottom.bottom(),
                             response.rect.x_range(),
+                            content_left_bottom.bottom(),
                             parent_id,
                             pos_in_parent + 1,
                         ))
@@ -1383,16 +1383,16 @@ mod hierarchical_drag_and_drop {
                 } else if ui.rect_contains_pointer(left_bottom) {
                     // insert after me in my parent
                     Some(DropTarget::new(
-                        left_bottom.bottom(),
                         response.rect.x_range(),
+                        left_bottom.bottom(),
                         parent_id,
                         pos_in_parent + 1,
                     ))
                 } else if ui.rect_contains_pointer(bottom) {
                     // insert at pos = 0 inside me
                     Some(DropTarget::new(
-                        bottom.bottom(),
                         (response.rect.left() + indent..=response.rect.right()).into(),
+                        bottom.bottom(),
                         item_id,
                         0,
                     ))
@@ -1418,8 +1418,8 @@ mod hierarchical_drag_and_drop {
 
     impl DropTarget {
         fn new(
-            insert_y: f32,
             range_x: egui::Rangef,
+            insert_y: f32,
             target_parent_id: ItemId,
             target_pos: usize,
         ) -> Self {
