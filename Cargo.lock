@@ -4993,6 +4993,7 @@ dependencies = [
  "egui_extras",
  "egui_tiles",
  "parking_lot",
+ "rand",
  "re_entity_db",
  "re_log",
  "re_log_types",
