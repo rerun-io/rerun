@@ -2,7 +2,7 @@ use paste::paste;
 use seq_macro::seq;
 
 use re_data_store::{DataStore, RangeQuery, TimeInt};
-use re_log_types::{EntityPath, RowId};
+use re_log_types::{EntityPath, RowId, TimeRange};
 use re_types_core::{components::InstanceKey, Archetype, Component};
 
 use crate::{CacheBucket, Caches, MaybeCachedComponentData};
@@ -12,8 +12,13 @@ use crate::{CacheBucket, Caches, MaybeCachedComponentData};
 /// Caches the results of `Range` queries.
 #[derive(Default)]
 pub struct RangeCache {
+    /// All timeful data, organized by _data_ time.
+    //
     // TODO(cmc): bucketize
-    pub bucket: CacheBucket,
+    pub per_data_time: CacheBucket,
+
+    /// All timeless data.
+    pub timeless: CacheBucket,
 
     /// Total size of the data stored in this cache in bytes.
     pub total_size_bytes: u64,
@@ -35,11 +40,11 @@ impl RangeCache {
     pub fn compute_front_query(&self, query: &RangeQuery) -> Option<RangeQuery> {
         let mut reduced_query = query.clone();
 
-        if self.bucket.is_empty() {
+        if self.per_data_time.is_empty() {
             return Some(reduced_query);
         }
 
-        if let Some(bucket_time_range) = self.bucket.time_range() {
+        if let Some(bucket_time_range) = self.per_data_time.time_range() {
             reduced_query.range.max = TimeInt::min(
                 reduced_query.range.max,
                 bucket_time_range.min.as_i64().saturating_sub(1).into(),
@@ -61,7 +66,7 @@ impl RangeCache {
     pub fn compute_back_query(&self, query: &RangeQuery) -> Option<RangeQuery> {
         let mut reduced_query = query.clone();
 
-        if let Some(bucket_time_range) = self.bucket.time_range() {
+        if let Some(bucket_time_range) = self.per_data_time.time_range() {
             reduced_query.range.min = TimeInt::max(
                 reduced_query.range.min,
                 bucket_time_range.max.as_i64().saturating_add(1).into(),
@@ -104,19 +109,22 @@ macro_rules! impl_query_archetype_range {
                 ),
             ),
         {
-            let mut iter_results = |bucket: &crate::CacheBucket| -> crate::Result<()> {
+            let mut range_results =
+                |timeless: bool, bucket: &crate::CacheBucket, time_range: TimeRange| -> crate::Result<()> {
                 re_tracing::profile_scope!("iter");
 
+                let entry_range = bucket.entry_range(time_range);
+
                 let it = itertools::izip!(
-                    bucket.iter_data_times(),
-                    bucket.iter_pov_instance_keys(),
-                    $(bucket.iter_component::<$pov>()
+                    bucket.range_data_times(entry_range.clone()),
+                    bucket.range_pov_instance_keys(entry_range.clone()),
+                    $(bucket.range_component::<$pov>(entry_range.clone())
                         .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
-                    $(bucket.iter_component_opt::<$comp>()
+                    $(bucket.range_component_opt::<$comp>(entry_range.clone())
                         .ok_or_else(|| re_query::ComponentNotFoundError(<$comp>::name()))?,)*
                 ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
                     (
-                        (Some(*time), *row_id), // TODO(cmc): timeless
+                        ((!timeless).then_some(*time), *row_id),
                         MaybeCachedComponentData::Cached(instance_keys),
                         $(MaybeCachedComponentData::Cached($pov),)+
                         $(MaybeCachedComponentData::Cached($comp),)*
@@ -147,7 +155,7 @@ macro_rules! impl_query_archetype_range {
                 let mut added_size_bytes = 0u64;
 
                 for arch_view in arch_views {
-                    let data_time = arch_view.data_time().unwrap_or(TimeInt::MIN); // TODO(cmc): timeless
+                    let data_time = arch_view.data_time().unwrap_or(TimeInt::MIN);
 
                     if bucket.contains_data_row(data_time, arch_view.primary_row_id()) {
                         continue;
@@ -171,16 +179,43 @@ macro_rules! impl_query_archetype_range {
             let mut range_callback = |query: &RangeQuery, range_cache: &mut crate::RangeCache| {
                 re_tracing::profile_scope!("range", format!("{query:?}"));
 
-                for reduced_query in range_cache.compute_queries(query) {
+                // NOTE: Same logic as what the store does.
+                if query.range.min <= TimeInt::MIN {
+                    let mut reduced_query = query.clone();
+                    // This is the reduced query corresponding to the timeless part of the data.
+                    // It is inclusive and so it will yield `MIN..=MIN` = `[MIN]`.
+                    reduced_query.range.max = TimeInt::MIN; // inclusive
+
                     // NOTE: `+ 2` because we always grab the indicator component as well as the
                     // instance keys.
                     let arch_views =
                         ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, &reduced_query, entity_path);
                     range_cache.total_size_bytes +=
-                        upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.bucket)?;
+                        upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.timeless)?;
+
+                    if !range_cache.timeless.is_empty() {
+                        range_results(true, &range_cache.timeless, reduced_query.range)?;
+                    }
                 }
 
-                iter_results(&range_cache.bucket)
+
+                let mut query = query.clone();
+                query.range.min = TimeInt::max((TimeInt::MIN.as_i64() + 1).into(), query.range.min);
+
+                for reduced_query in range_cache.compute_queries(&query) {
+                    // NOTE: `+ 2` because we always grab the indicator component as well as the
+                    // instance keys.
+                    let arch_views =
+                        ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, &reduced_query, entity_path);
+                    range_cache.total_size_bytes +=
+                        upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.per_data_time)?;
+                }
+
+                if !range_cache.per_data_time.is_empty() {
+                    range_results(false, &range_cache.per_data_time, query.range)?;
+                }
+
+                Ok(())
             };
 
 

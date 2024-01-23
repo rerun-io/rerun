@@ -451,7 +451,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = re_data_store::RangeQuery::new(
         timeline_frame_nr,
-        re_data_store::TimeRange::new(i64::MIN.into(), i64::MAX.into()),
+        re_data_store::TimeRange::new(TimeInt::MIN, TimeInt::MAX),
     );
     let components = [InstanceKey::name(), Position2D::name(), Color::name()];
     let dfs = re_data_store::polars_util::range_components(

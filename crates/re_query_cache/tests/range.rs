@@ -97,8 +97,6 @@ fn simple_range() {
 }
 
 #[test]
-// TODO(cmc): timeless support
-#[should_panic(expected = "assertion failed: `(left == right)`")]
 fn timeless_range() {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
