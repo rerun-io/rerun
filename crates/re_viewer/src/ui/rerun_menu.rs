@@ -13,6 +13,7 @@ const SPACING: f32 = 12.0;
 impl App {
     pub fn rerun_menu_button_ui(
         &mut self,
+        frame: &eframe::Frame,
         _store_context: Option<&StoreContext<'_>>,
         ui: &mut egui::Ui,
     ) {
@@ -23,10 +24,11 @@ impl App {
         let image = re_ui::icons::RERUN_MENU
             .as_image()
             .max_height(desired_icon_height);
+
         ui.menu_image_button(image, |ui| {
             ui.set_min_width(220.0);
 
-            ui.menu_button("About", |ui| self.about_rerun_ui(ui));
+            ui.menu_button("About", |ui| self.about_rerun_ui(frame, ui));
 
             ui.add_space(SPACING);
 
@@ -112,7 +114,7 @@ impl App {
         });
     }
 
-    fn about_rerun_ui(&self, ui: &mut egui::Ui) {
+    fn about_rerun_ui(&self, frame: &eframe::Frame, ui: &mut egui::Ui) {
         let re_build_info::BuildInfo {
             crate_name,
             version,
@@ -151,6 +153,10 @@ impl App {
         }
 
         ui.label(label);
+
+        if let Some(render_state) = frame.wgpu_render_state() {
+            render_state_ui(ui, render_state);
+        }
     }
 
     // TODO(emilk): support saving data on web
@@ -207,6 +213,90 @@ impl App {
             });
         }
     }
+}
+
+fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
+    let wgpu_adapter_details_ui = |ui: &mut egui::Ui, adapter: &eframe::wgpu::Adapter| {
+        let info = &adapter.get_info();
+
+        let wgpu::AdapterInfo {
+            name,
+            vendor,
+            device,
+            device_type,
+            driver,
+            driver_info,
+            backend,
+        } = &info;
+
+        // Example values:
+        // > name: "llvmpipe (LLVM 16.0.6, 256 bits)", device_type: Cpu, backend: Vulkan, driver: "llvmpipe", driver_info: "Mesa 23.1.6-arch1.4 (LLVM 16.0.6)"
+        // > name: "Apple M1 Pro", device_type: IntegratedGpu, backend: Metal, driver: "", driver_info: ""
+        // > name: "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)", device_type: IntegratedGpu, backend: Gl, driver: "", driver_info: ""
+
+        egui::Grid::new("adapter_info").show(ui, |ui| {
+            ui.label("Backend");
+            ui.label(format!("{backend:?}"));
+            ui.end_row();
+
+            ui.label("Device Type");
+            ui.label(format!("{device_type:?}"));
+            ui.end_row();
+
+            if !name.is_empty() {
+                ui.label("Name");
+                ui.label(format!("{name:?}"));
+                ui.end_row();
+            }
+            if !driver.is_empty() {
+                ui.label("Driver");
+                ui.label(format!("{driver:?}"));
+                ui.end_row();
+            }
+            if !driver_info.is_empty() {
+                ui.label("Driver info");
+                ui.label(format!("{driver_info:?}"));
+                ui.end_row();
+            }
+            if *vendor != 0 {
+                // TODO(emilk): decode using https://github.com/gfx-rs/wgpu/blob/767ac03245ee937d3dc552edc13fe7ab0a860eec/wgpu-hal/src/auxil/mod.rs#L7
+                ui.label("Vendor");
+                ui.label(format!("0x{vendor:04X}"));
+                ui.end_row();
+            }
+            if *device != 0 {
+                ui.label("Device");
+                ui.label(format!("0x{device:02X}"));
+                ui.end_row();
+            }
+        });
+    };
+
+    let wgpu_adapter_ui = |ui: &mut egui::Ui, adapter: &eframe::wgpu::Adapter| {
+        let info = &adapter.get_info();
+        ui.label(format!("{:?}", info.backend)).on_hover_ui(|ui| {
+            wgpu_adapter_details_ui(ui, adapter);
+        });
+    };
+
+    egui::Grid::new("wgpu_info").num_columns(2).show(ui, |ui| {
+        ui.label("Rendering backend:");
+        wgpu_adapter_ui(ui, &render_state.adapter);
+        ui.end_row();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if 1 < render_state.available_adapters.len() {
+            ui.label("Other rendering backends:");
+            ui.vertical(|ui| {
+                for adapter in &*render_state.available_adapters {
+                    if adapter.get_info() != render_state.adapter.get_info() {
+                        wgpu_adapter_ui(ui, adapter);
+                    }
+                }
+            });
+            ui.end_row();
+        }
+    });
 }
 
 fn options_menu_ui(
