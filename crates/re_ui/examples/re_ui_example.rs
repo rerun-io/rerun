@@ -1,3 +1,4 @@
+use egui::NumExt;
 use re_ui::list_item::ListItem;
 use re_ui::{toasts, CommandPalette, ReUi, UICommand, UICommandSender};
 use std::collections::{HashMap, HashSet};
@@ -802,14 +803,14 @@ enum Item {
 
 #[derive(Debug)]
 enum Command {
-    // selection handling commands
+    /// Set the selection to the given item.
     SetSelection(ItemId),
+
+    /// Toggle the selected state of the given item.
     ToggleSelected(ItemId),
 
-    // drag and drop handling commands
-    //SourceItem(ItemId),
-    TargetItemBefore(ItemId),
-    TargetItemAfter(ItemId),
+    /// Move the currently dragged item to the given container and position.
+    MoveDraggedItemTo(ItemId, usize),
 }
 
 struct HierarchicalDragAndDrop {
@@ -957,7 +958,7 @@ impl HierarchicalDragAndDrop {
         }
 
         if let Some(Item::Container(children)) = self.items.get_mut(&container_id) {
-            children.insert(pos, item_id);
+            children.insert(pos.at_most(children.len()), item_id);
         }
     }
 }
@@ -972,7 +973,7 @@ impl HierarchicalDragAndDrop {
         }
 
         while let Ok(command) = self.command_receiver.try_recv() {
-            println!("Received command: {command:?}");
+            //println!("Received command: {command:?}");
             match command {
                 Command::SetSelection(item_id) => {
                     self.selected_items.clear();
@@ -985,19 +986,9 @@ impl HierarchicalDragAndDrop {
                         self.selected_items.insert(item_id);
                     }
                 }
-
-                Command::TargetItemBefore(item_id) => {
-                    if let Some((parent_id, pos)) = self.parent_and_pos(item_id) {
-                        if let Some(source_id) = self.dragged_id(ui) {
-                            self.move_item(source_id, parent_id, pos);
-                        }
-                    }
-                }
-                Command::TargetItemAfter(item_id) => {
-                    if let Some((parent_id, pos)) = self.parent_and_pos(item_id) {
-                        if let Some(source_id) = self.dragged_id(ui) {
-                            self.move_item(source_id, parent_id, pos + 1);
-                        }
+                Command::MoveDraggedItemTo(parent_id, pos) => {
+                    if let Some(source_id) = self.dragged_id(ui) {
+                        self.move_item(source_id, parent_id, pos);
                     }
                 }
             }
@@ -1101,8 +1092,9 @@ impl HierarchicalDragAndDrop {
             let (mut left_top, mut left_bottom) = (egui::Rect::NOTHING, egui::Rect::NOTHING);
             let indent = ui.spacing().indent;
 
+            (left_top, top) = top.split_left_right_at_x(top.left() + indent);
+
             if is_container {
-                (left_top, top) = top.split_left_right_at_x(top.left() + indent);
                 (left_bottom, bottom) = bottom.split_left_right_at_x(bottom.left() + indent);
             }
 
@@ -1115,26 +1107,153 @@ impl HierarchicalDragAndDrop {
                 );
             }
 
-            ui.ctx()
-                .debug_painter()
-                .debug_rect(top, egui::Color32::RED, "top");
-            ui.ctx()
-                .debug_painter()
-                .debug_rect(bottom, egui::Color32::GREEN, "bottom");
+            // Uncomment to visualize the various drag zones.
+            // ui.ctx()
+            //     .debug_painter()
+            //     .debug_rect(top, egui::Color32::RED, "top");
+            // ui.ctx()
+            //     .debug_painter()
+            //     .debug_rect(bottom, egui::Color32::GREEN, "bottom");
+            //
+            // ui.ctx().debug_painter().debug_rect(
+            //     left_top,
+            //     egui::Color32::RED.gamma_multiply(0.5),
+            //     "lt",
+            // );
+            // ui.ctx().debug_painter().debug_rect(
+            //     left_bottom,
+            //     egui::Color32::GREEN.gamma_multiply(0.5),
+            //     "lb",
+            // );
+            // ui.ctx()
+            //     .debug_painter()
+            //     .debug_rect(content_left_bot, egui::Color32::YELLOW, "clb");
 
-            ui.ctx().debug_painter().debug_rect(
-                left_top,
-                egui::Color32::RED.gamma_multiply(0.5),
-                "lt",
-            );
-            ui.ctx().debug_painter().debug_rect(
-                left_bottom,
-                egui::Color32::GREEN.gamma_multiply(0.5),
-                "lb",
-            );
-            ui.ctx()
-                .debug_painter()
-                .debug_rect(content_left_bot, egui::Color32::YELLOW, "clb");
+            let Some((parent_id, pos_in_parent)) = self.parent_and_pos(item_id) else {
+                // this shouldn't happen
+                return;
+            };
+
+            let target_info = if !is_container {
+                if ui.rect_contains_pointer(left_top) {
+                    // insert before me
+                    Some((
+                        top.top(),
+                        response.rect.x_range(),
+                        Command::MoveDraggedItemTo(parent_id, pos_in_parent),
+                    ))
+                } else if ui.rect_contains_pointer(top) {
+                    // insert last in the previous container if any, else insert before me
+                    let previous_container_id = if pos_in_parent > 0 {
+                        self.container(parent_id)
+                            .map(|c| c[pos_in_parent - 1])
+                            .filter(|id| self.container(*id).is_some())
+                    } else {
+                        None
+                    };
+
+                    if let Some(previous_container_id) = previous_container_id {
+                        Some((
+                            top.top(),
+                            (response.rect.left() + indent..=response.rect.right()).into(),
+                            Command::MoveDraggedItemTo(previous_container_id, usize::MAX),
+                        ))
+                    } else {
+                        Some((
+                            top.top(),
+                            response.rect.x_range(),
+                            Command::MoveDraggedItemTo(parent_id, pos_in_parent),
+                        ))
+                    }
+                } else if ui.rect_contains_pointer(bottom) {
+                    // insert after me
+                    Some((
+                        bottom.bottom(),
+                        response.rect.x_range(),
+                        Command::MoveDraggedItemTo(parent_id, pos_in_parent + 1),
+                    ))
+                } else {
+                    None
+                }
+            } else {
+                if ui.rect_contains_pointer(left_top) {
+                    // insert before me
+                    Some((
+                        left_top.top(),
+                        response.rect.x_range(),
+                        Command::MoveDraggedItemTo(parent_id, pos_in_parent),
+                    ))
+                } else if ui.rect_contains_pointer(top) {
+                    // insert last in the previous container if any, else insert before me
+                    let previous_container_id = if pos_in_parent > 0 {
+                        self.container(parent_id)
+                            .map(|c| c[pos_in_parent - 1])
+                            .filter(|id| self.container(*id).is_some())
+                    } else {
+                        None
+                    };
+
+                    if let Some(previous_container_id) = previous_container_id {
+                        Some((
+                            top.top(),
+                            (response.rect.left() + indent..=response.rect.right()).into(),
+                            Command::MoveDraggedItemTo(previous_container_id, usize::MAX),
+                        ))
+                    } else {
+                        Some((
+                            top.top(),
+                            response.rect.x_range(),
+                            Command::MoveDraggedItemTo(parent_id, pos_in_parent),
+                        ))
+                    }
+                } else {
+                    let body_rect = body_response.map(|r| r.rect).filter(|r| r.width() > 0.0);
+                    if let Some(body_rect) = body_rect {
+                        if ui.rect_contains_pointer(left_bottom) {
+                            // insert at pos = 0 inside me
+                            Some((
+                                left_bottom.bottom(),
+                                (body_rect.left() + indent..=body_rect.right()).into(),
+                                Command::MoveDraggedItemTo(item_id, 0),
+                            ))
+                        } else if ui.rect_contains_pointer(bottom) {
+                            // insert at pos = 0 inside me
+                            Some((
+                                bottom.bottom(),
+                                (body_rect.left() + indent..=body_rect.right()).into(),
+                                Command::MoveDraggedItemTo(item_id, 0),
+                            ))
+                        } else if ui.rect_contains_pointer(content_left_bot) {
+                            // insert after me in my parent
+                            Some((
+                                content_left_bot.bottom(),
+                                response.rect.x_range(),
+                                Command::MoveDraggedItemTo(parent_id, pos_in_parent + 1),
+                            ))
+                        } else {
+                            None
+                        }
+                    } else {
+                        if ui.rect_contains_pointer(left_bottom) {
+                            // insert after me in my parent
+                            Some((
+                                left_bottom.bottom(),
+                                response.rect.x_range(),
+                                Command::MoveDraggedItemTo(parent_id, pos_in_parent + 1),
+                            ))
+                        } else if ui.rect_contains_pointer(bottom) {
+                            // insert at pos = 0 inside me
+                            Some((
+                                bottom.bottom(),
+                                (response.rect.left() + indent..=response.rect.right()).into(),
+                                Command::MoveDraggedItemTo(item_id, 0),
+                            ))
+                        } else {
+                            None
+                        }
+                    }
+                }
+            };
 
             /*
             if !container:
@@ -1155,23 +1274,11 @@ impl HierarchicalDragAndDrop {
                     body_left_bottom -> insert after me in my parent
              */
 
-            let target_info = if ui.rect_contains_pointer(top) {
-                Some((top.top(), Command::TargetItemBefore(item_id)))
-            } else if ui.rect_contains_pointer(bottom) {
-                let insert_y = if let Some(body_response) = body_response {
-                    body_response.rect.bottom()
-                } else {
-                    bottom.bottom()
-                };
-
-                Some((insert_y, Command::TargetItemAfter(item_id)))
-            } else {
-                None
-            };
-
-            if let Some((insert_y, command)) = target_info {
+            if let Some((insert_y, range_x, command)) = target_info {
                 ui.painter()
-                    .hline(ui.cursor().x_range(), insert_y, (2.0, egui::Color32::WHITE));
+                    .hline(range_x, insert_y, (2.0, egui::Color32::WHITE));
+
+                println!("{command:?}");
 
                 // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
                 if ui.input(|i| i.pointer.any_released()) {
