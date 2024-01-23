@@ -524,59 +524,53 @@ impl ReUi {
         vertical_offset: f32,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> Option<R> {
-        if ui.memory(|mem| mem.is_popup_open(popup_id)) {
-            let pos = widget_response.rect.left_bottom() + egui::vec2(0.0, vertical_offset);
-            let pivot = Align2::LEFT_TOP;
+        if !ui.memory(|mem| mem.is_popup_open(popup_id)) {
+            return None;
+        }
 
-            let inner = egui::Area::new(popup_id)
-                .order(egui::Order::Foreground)
-                .constrain(true)
-                .fixed_pos(pos)
-                .pivot(pivot)
-                .show(ui.ctx(), |ui| {
-                    let frame = egui::Frame {
-                        fill: ui.visuals().panel_fill,
-                        ..Default::default()
-                    };
-                    let frame_margin = frame.total_margin();
-                    frame
-                        .show(ui, |ui| {
-                            ui.with_layout(
-                                egui::Layout::top_down_justified(egui::Align::LEFT),
-                                |ui| {
-                                    ui.set_width(
-                                        widget_response.rect.width() - frame_margin.sum().x,
-                                    );
+        let pos = widget_response.rect.left_bottom() + egui::vec2(0.0, vertical_offset);
+        let pivot = Align2::LEFT_TOP;
 
-                                    ui.set_clip_rect(ui.cursor());
+        let inner = egui::Area::new(popup_id)
+            .order(egui::Order::Foreground)
+            .constrain(true)
+            .fixed_pos(pos)
+            .pivot(pivot)
+            .show(ui.ctx(), |ui| {
+                let frame = egui::Frame {
+                    fill: ui.visuals().panel_fill,
+                    ..Default::default()
+                };
+                let frame_margin = frame.total_margin();
+                frame
+                    .show(ui, |ui| {
+                        ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
+                            ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
 
-                                    egui::ScrollArea::vertical()
-                                        .show(ui, |ui| {
-                                            egui::Frame {
-                                                //TODO(ab): use design token
-                                                inner_margin: egui::Margin::symmetric(8.0, 0.0),
-                                                ..Default::default()
-                                            }
-                                            .show(ui, add_contents)
-                                            .inner
-                                        })
-                                        .inner
-                                },
-                            )
-                            .inner
+                            ui.set_clip_rect(ui.cursor());
+
+                            egui::ScrollArea::vertical()
+                                .show(ui, |ui| {
+                                    egui::Frame {
+                                        //TODO(ab): use design token
+                                        inner_margin: egui::Margin::symmetric(8.0, 0.0),
+                                        ..Default::default()
+                                    }
+                                    .show(ui, add_contents)
+                                    .inner
+                                })
+                                .inner
                         })
                         .inner
-                })
-                .inner;
+                    })
+                    .inner
+            })
+            .inner;
 
-            if ui.input(|i| i.key_pressed(egui::Key::Escape)) || widget_response.clicked_elsewhere()
-            {
-                ui.memory_mut(|mem| mem.close_popup());
-            }
-            Some(inner)
-        } else {
-            None
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) || widget_response.clicked_elsewhere() {
+            ui.memory_mut(|mem| mem.close_popup());
         }
+        Some(inner)
     }
 
     pub fn panel_content<R>(
