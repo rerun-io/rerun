@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_log_types::{EntityPath, TimeRange, Timeline};
-use re_types_core::ComponentName;
+use re_types_core::{ComponentName, SizeBytes as _};
 
 use crate::{cache::CacheBucket, Caches, LatestAtCache, RangeCache};
 
@@ -101,10 +101,10 @@ impl Caches {
                                 per_query_time: _,
                                 per_data_time,
                                 timeless,
-                                total_size_bytes: _,
+                                ..
                             } = &*latest_at_cache.read();
 
-                            total_size_bytes += latest_at_cache.total_size_bytes;
+                            total_size_bytes += latest_at_cache.total_size_bytes();
                             total_rows = per_data_time.len() as u64 + timeless.is_some() as u64;
 
                             if let Some(per_component) = per_component.as_mut() {
@@ -141,10 +141,9 @@ impl Caches {
                             .read()
                             .values()
                             .map(|range_cache| {
-                                let RangeCache {
+                                let range_cache @ RangeCache {
                                     per_data_time,
                                     timeless,
-                                    total_size_bytes,
                                 } = &*range_cache.read();
 
                                 let total_rows = per_data_time.data_times.len() as u64;
@@ -161,7 +160,7 @@ impl Caches {
                                     key.timeline,
                                     per_data_time.time_range().unwrap_or(TimeRange::EMPTY),
                                     CachedEntityStats {
-                                        total_size_bytes: *total_size_bytes,
+                                        total_size_bytes: range_cache.total_size_bytes(),
                                         total_rows,
 
                                         per_component,
