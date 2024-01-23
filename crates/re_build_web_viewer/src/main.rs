@@ -1,10 +1,9 @@
 use cargo_metadata::camino::Utf8PathBuf;
-use re_build_web_viewer::{default_build_dir, Backend, Profile, Target};
+use re_build_web_viewer::{default_build_dir, Profile, Target};
 use std::process::ExitCode;
 
 struct Opts {
     profile: Option<Profile>,
-    backend: Backend,
     target: Target,
     build_dir: Utf8PathBuf,
 }
@@ -13,7 +12,6 @@ impl Default for Opts {
     fn default() -> Self {
         Self {
             profile: None,
-            backend: Backend::WebGL,
             target: Target::Browser,
             build_dir: default_build_dir(),
         }
@@ -44,9 +42,6 @@ fn main() -> ExitCode {
                 );
                 opts.profile = Some(Profile::Release);
             }
-            "--webgpu" => {
-                opts.backend = Backend::WebGPU;
-            }
             "-o" | "--out" => match args.next() {
                 Some(value) if !value.starts_with('-') => {
                     opts.build_dir = Utf8PathBuf::from(value);
@@ -68,9 +63,7 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
 
-    if let Err(err) =
-        re_build_web_viewer::build(release, opts.backend, opts.target, &opts.build_dir)
-    {
+    if let Err(err) = re_build_web_viewer::build(release, opts.target, &opts.build_dir) {
         eprintln!("Failed to build web viewer: {}", re_error::format(err));
         ExitCode::FAILURE
     } else {
@@ -86,7 +79,6 @@ fn print_help() {
   --debug:    Build a debug binary
   --release:  Compile for release, and run wasm-opt.
               NOTE: --release also removes debug symbols which are otherwise useful for in-browser profiling.
-  --webgpu:   Enable WebGPU support (experimental). If not set the viewer will use WebGL instead.
   -o, --out:  Set the output directory. This is a path relative to the cargo workspace root.
 "
     );

@@ -28,13 +28,10 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = ["analytics", "webgl"]
+default = ["analytics"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
-
-## Render using webgl instead of webgpu on wasm builds.
-webgl = ["re_renderer/webgl"]
 
 [dependencies]
 # Internal:

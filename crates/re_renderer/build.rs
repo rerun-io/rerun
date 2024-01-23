@@ -121,8 +121,7 @@ fn should_run() -> bool {
 fn main() {
     cfg_aliases::cfg_aliases! {
         native: { not(target_arch = "wasm32") },
-        webgl: { all(not(native), feature = "webgl") },
-        webgpu: { all(not(webgl), not(native)) },
+        web: { target_arch = "wasm32" },
         load_shaders_from_disk: { all(native, debug_assertions) } // Shader reloading is only supported on native-debug currently.
     }
 
