@@ -31,7 +31,7 @@ impl From<GltfPrimitive> for Mesh3D {
             vertex_positions,
             vertex_colors,
             vertex_normals,
-            vertex_texcoords: _, // TODO(cmc): support mesh texturing
+            vertex_texcoords,
         } = primitive;
 
         let mut mesh = Mesh3D::new(vertex_positions);
@@ -48,10 +48,14 @@ impl From<GltfPrimitive> for Mesh3D {
         if let Some(vertex_colors) = vertex_colors {
             mesh = mesh.with_vertex_colors(vertex_colors);
         }
+        if let Some(vertex_texcoords) = vertex_texcoords {
+            mesh = mesh.with_vertex_texcoords(vertex_texcoords);
+        }
         if albedo_factor.is_some() {
             mesh = mesh.with_mesh_material(rerun::datatypes::Material {
                 albedo_factor: albedo_factor
                     .map(|[r, g, b, a]| ecolor::Rgba::from_rgba_unmultiplied(r, g, b, a).into()),
+                albedo_texture: None, // TODO(andreas): This would require loading the right texture file and converting it to `TensorData`.
             });
         }
 
