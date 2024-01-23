@@ -121,6 +121,7 @@ macro_rules! impl_query_archetype_range {
         #[doc = "(combined) for `" $N "` point-of-view components and `" $M "` optional components."]
         #[allow(non_snake_case)]
         pub fn [<query_archetype_range_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
+            &self,
             store: &'a DataStore,
             query: &RangeQuery,
             entity_path: &'a EntityPath,
@@ -246,8 +247,8 @@ macro_rules! impl_query_archetype_range {
             };
 
 
-            Caches::with_range::<A, _, _>(
-                store.id().clone(),
+            self.with_range::<A, _, _>(
+                store,
                 entity_path.clone(),
                 query,
                 |range_cache| range_callback(query, range_cache),
@@ -264,6 +265,8 @@ macro_rules! impl_query_archetype_range {
     };
 }
 
-seq!(NUM_COMP in 0..10 {
-    impl_query_archetype_range!(for N=1, M=NUM_COMP);
-});
+impl Caches {
+    seq!(NUM_COMP in 0..10 {
+        impl_query_archetype_range!(for N=1, M=NUM_COMP);
+    });
+}
