@@ -81,6 +81,8 @@ pub use self::file_server::FileServer;
 
 // Re-export used color types.
 pub use ecolor::{Color32, Hsva, Rgba};
+// Re-export wgpu
+pub use wgpu;
 
 // ---------------------------------------------------------------------------
 

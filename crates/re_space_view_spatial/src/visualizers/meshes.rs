@@ -3,7 +3,7 @@ use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Mesh3D,
-    components::{Color, InstanceKey, Material, MeshProperties, Position3D, Vector3D},
+    components::{Color, InstanceKey, Material, MeshProperties, Position2D, Position3D, Vector3D},
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
@@ -81,6 +81,17 @@ impl Mesh3DVisualizer {
                 } else {
                     None
                 },
+                vertex_texcoords: if arch_view.has_component::<Position2D>() {
+                    re_tracing::profile_scope!("vertex_texcoords");
+                    Some(
+                        arch_view
+                            .iter_optional_component::<Position2D>()?
+                            .map(|comp| comp.unwrap_or(Position2D::ZERO))
+                            .collect(),
+                    )
+                } else {
+                    None
+                },
                 mesh_properties: arch_view.raw_optional_mono_component::<MeshProperties>()?,
                 mesh_material: arch_view.raw_optional_mono_component::<Material>()?,
                 class_ids: None,
@@ -99,7 +110,10 @@ impl Mesh3DVisualizer {
                     versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
                     media_type: None,
                 },
-                AnyMesh::Mesh(&mesh),
+                AnyMesh::Mesh {
+                    mesh: &mesh,
+                    texture_key: re_log_types::hash::Hash64::hash(primary_row_id).hash64(),
+                },
                 ctx.render_ctx,
             )
         });
