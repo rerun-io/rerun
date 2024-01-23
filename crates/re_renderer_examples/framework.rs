@@ -84,8 +84,8 @@ impl Time {
 
 struct Application<E> {
     event_loop: EventLoop<()>,
-    window: Window,
-    surface: wgpu::Surface,
+    window: Arc<Window>,
+    surface: wgpu::Surface<'static>,
     surface_config: wgpu::SurfaceConfiguration,
     time: Time,
 
@@ -109,6 +109,7 @@ fn preferred_framebuffer_format(formats: &[wgpu::TextureFormat]) -> wgpu::Textur
 
 impl<E: Example + 'static> Application<E> {
     async fn new(event_loop: EventLoop<()>, window: Window) -> anyhow::Result<Self> {
+        let window = Arc::new(window);
         let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: supported_backends(),
@@ -116,8 +117,7 @@ impl<E: Example + 'static> Application<E> {
             dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
             gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
         });
-        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-        let surface = unsafe { instance.create_surface(&window) }.unwrap();
+        let surface = instance.create_surface(window.clone()).unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
