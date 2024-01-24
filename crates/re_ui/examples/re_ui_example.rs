@@ -686,7 +686,7 @@ mod drag_and_drop {
                 let response = re_ui
                     .list_item(label.as_str())
                     .selected(self.selected_items.contains(item_id))
-                    .drag_id(id)
+                    .draggable(id)
                     .show(ui);
 
                 //
@@ -1069,7 +1069,7 @@ mod hierarchical_drag_and_drop {
                 .list_item(format!("Container {item_id:?}"))
                 .subdued(true)
                 .selected(self.selected(item_id))
-                .drag_id(item_id.into())
+                .draggable(item_id.into())
                 .drag_target(self.target_container == Some(item_id))
                 .show_collapsing(ui, item_id.into(), true, |re_ui, ui| {
                     self.container_children_ui(re_ui, ui, children);
@@ -1107,7 +1107,7 @@ mod hierarchical_drag_and_drop {
             let response = re_ui
                 .list_item(label)
                 .selected(self.selected(item_id))
-                .drag_id(item_id.into())
+                .draggable(item_id.into())
                 .show(ui);
 
             self.handle_interaction(ui, item_id, false, &response, None);

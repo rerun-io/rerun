@@ -167,7 +167,7 @@ impl<'a> ListItem<'a> {
 
     /// Make the item draggable and set its persistent ID.
     #[inline]
-    pub fn drag_id(mut self, drag_id: egui::Id) -> Self {
+    pub fn draggable(mut self, drag_id: egui::Id) -> Self {
         self.drag_id = Some(drag_id);
         self
     }
