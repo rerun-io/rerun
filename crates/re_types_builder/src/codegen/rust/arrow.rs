@@ -32,12 +32,12 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
 
             DataType::List(field) => {
                 let field = ArrowFieldTokenizer(field);
-                quote!(DataType::List(Box::new(#field)))
+                quote!(DataType::List(std::sync::Arc::new(#field)))
             }
 
             DataType::FixedSizeList(field, length) => {
                 let field = ArrowFieldTokenizer(field);
-                quote!(DataType::FixedSizeList(Box::new(#field), #length))
+                quote!(DataType::FixedSizeList(std::sync::Arc::new(#field), #length))
             }
 
             DataType::Union(fields, types, mode) => {
@@ -47,15 +47,19 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                     UnionMode::Sparse => quote!(UnionMode::Sparse),
                 };
                 if let Some(types) = types {
-                    quote!(DataType::Union(vec![ #(#fields,)* ], Some(vec![ #(#types,)* ]), #mode))
+                    quote!(DataType::Union(
+                        std::sync::Arc::new(vec![ #(#fields,)* ]),
+                        Some(std::sync::Arc::new(vec![ #(#types,)* ])),
+                        #mode,
+                    ))
                 } else {
-                    quote!(DataType::Union(vec![ #(#fields,)* ], None, #mode))
+                    quote!(DataType::Union(std::sync::Arc::new(vec![ #(#fields,)* ]), None, #mode))
                 }
             }
 
             DataType::Struct(fields) => {
                 let fields = fields.iter().map(ArrowFieldTokenizer);
-                quote!(DataType::Struct(vec![ #(#fields,)* ]))
+                quote!(DataType::Struct(std::sync::Arc::new(vec![ #(#fields,)* ])))
             }
 
             DataType::Extension(fqname, datatype, _metadata) => {

@@ -32,7 +32,7 @@ macro_rules! join {
 }
 
 fn main() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let mut profiler = re_tracing::Profiler::default(); // must be started early and dropped late to catch everything
 

@@ -72,7 +72,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "p".to_owned(),
                 data_type: <crate::testing::datatypes::PrimitiveComponent>::arrow_datatype(),
@@ -85,7 +85,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                 is_nullable: false,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]

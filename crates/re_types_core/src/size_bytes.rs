@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::sync::Arc;
 
 use arrow2::datatypes::{DataType, Field};
 use smallvec::SmallVec;
@@ -149,6 +150,13 @@ impl<T: SizeBytes> SizeBytes for Option<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.as_ref().map_or(0, SizeBytes::heap_size_bytes)
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for Arc<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0 // assume it's amortized
     }
 }
 
@@ -659,7 +667,7 @@ fn test_arrow_estimated_size_bytes() {
                 Field::new("x", DataType::Float64, false),
                 Field::new("y", DataType::Float64, false),
             ];
-            StructArray::new(DataType::Struct(fields), vec![x, y], None).boxed()
+            StructArray::new(DataType::Struct(Arc::new(fields)), vec![x, y], None).boxed()
         };
 
         let raw_size_bytes = std::mem::size_of_val(data.as_slice());
@@ -696,7 +704,7 @@ fn test_arrow_estimated_size_bytes() {
                     Field::new("x", DataType::Float64, false),
                     Field::new("y", DataType::Float64, false),
                 ];
-                StructArray::new(DataType::Struct(fields), vec![x, y], None)
+                StructArray::new(DataType::Struct(Arc::new(fields)), vec![x, y], None)
             };
 
             ListArray::<i32>::new(
@@ -727,7 +735,11 @@ fn test_arrow_estimated_size_bytes() {
             Field::new("i", DataType::Int32, false),
             Field::new("f", DataType::Float64, false),
         ];
-        let data_type = DataType::Union(fields, Some(vec![0i32, 1i32]), UnionMode::Dense);
+        let data_type = DataType::Union(
+            Arc::new(fields),
+            Some(Arc::new(vec![0i32, 1i32])),
+            UnionMode::Dense,
+        );
         let types = Buffer::<i8>::from(vec![0i8, 0i8, 1i8, 0i8, 1i8]);
         let fields = vec![
             PrimitiveArray::<i32>::from_vec(vec![0, 1, 2]).boxed(),

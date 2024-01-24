@@ -54,7 +54,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "p".to_owned(),
                 data_type: <crate::testing::datatypes::PrimitiveComponent>::arrow_datatype(),
@@ -67,7 +67,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                 is_nullable: false,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -200,15 +200,15 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                     .downcast_ref::<arrow2::array::StructArray>()
                     .ok_or_else(|| {
                         DeserializationError::datatype_mismatch(
-                            DataType::Struct(vec![
-                            Field { name : "p".to_owned(), data_type : < crate
-                            ::testing::datatypes::PrimitiveComponent >
-                            ::arrow_datatype(), is_nullable : false, metadata : []
-                            .into(), }, Field { name : "s".to_owned(), data_type : <
-                            crate ::testing::datatypes::StringComponent >
-                            ::arrow_datatype(), is_nullable : false, metadata : []
-                            .into(), },
-                        ]),
+                            DataType::Struct(std::sync::Arc::new(vec![
+                                Field { name : "p".to_owned(), data_type : < crate
+                                ::testing::datatypes::PrimitiveComponent >
+                                ::arrow_datatype(), is_nullable : false, metadata : []
+                                .into(), }, Field { name : "s".to_owned(), data_type : <
+                                crate ::testing::datatypes::StringComponent >
+                                ::arrow_datatype(), is_nullable : false, metadata : []
+                                .into(), },
+                            ])),
                             arrow_data.data_type().clone(),
                         )
                     })

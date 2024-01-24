@@ -31,7 +31,7 @@ fn command_channel() -> (CommandSender, CommandReceiver) {
 }
 
 fn main() -> eframe::Result<()> {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

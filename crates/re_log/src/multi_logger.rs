@@ -6,7 +6,7 @@ static MULTI_LOGGER: MultiLogger = MultiLogger::new();
 
 static HAS_MULTI_LOGGER: AtomicBool = AtomicBool::new(false);
 
-/// Produced when trying to install additional loggers when [`crate::setup_native_logging`] has not been called.
+/// Produced when trying to install additional loggers when [`crate::setup_logging`] has not been called.
 ///
 /// This can happen for example when users of the `rerun` crate use the `spawn` method,
 /// and they aren't using `re_log`.
