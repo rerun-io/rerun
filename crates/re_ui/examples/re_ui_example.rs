@@ -708,14 +708,9 @@ mod drag_and_drop {
                 }
 
                 // Drag-and-drop of multiple items not (yet?) supported, so dragging resets selection to single item.
-                // TODO(emilk/egui#3841): it would be nice to have response.decidedly_dragged()
-                if response.dragged() {
-                    // Here, we support dragging a single item at a time, so we set the selection to the dragged item
-                    // if/when we're dragging it proper.
-                    if ui.input(|i| i.pointer.is_decidedly_dragging()) {
-                        self.selected_items.clear();
-                        self.selected_items.insert(*item_id);
-                    }
+                if response.decidedly_dragged() {
+                    self.selected_items.clear();
+                    self.selected_items.insert(*item_id);
                 }
 
                 //
@@ -1051,7 +1046,7 @@ mod hierarchical_drag_and_drop {
         }
 
         fn dragged_id(&self, ui: &egui::Ui) -> Option<ItemId> {
-            // TODO(emilk/egui#3841): `ui.memory()` should really let us get the `dragged_id` directly.
+            // TODO(ab): `mem.dragged_id()` now exists but there is no easy way to get the value out of and egui::Id
             ui.memory(|mem| {
                 self.items
                     .keys()
@@ -1139,12 +1134,10 @@ mod hierarchical_drag_and_drop {
             // handle drag
             //
 
-            if response.dragged() {
+            if response.decidedly_dragged() {
                 // Here, we support dragging a single item at a time, so we set the selection to the dragged item
                 // if/when we're dragging it proper.
-                if ui.input(|i| i.pointer.is_decidedly_dragging()) {
-                    self.send_command(Command::SetSelection(item_id));
-                }
+                self.send_command(Command::SetSelection(item_id));
             }
 
             //

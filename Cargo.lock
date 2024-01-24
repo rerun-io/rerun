@@ -1453,17 +1453,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "d3d12"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e3d747f100290a1ca24b752186f61f6637e1deffe3bf6320de6fcb29510a307"
-dependencies = [
- "bitflags 2.4.1",
- "libloading 0.8.1",
- "winapi",
-]
-
-[[package]]
 name = "darling"
 version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1593,7 +1582,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=2f9a4ca6e8434aaee3569095c0743b73cba26c44#2f9a4ca6e8434aaee3569095c0743b73cba26c44"
+source = "git+https://github.com/emilk/egui.git?rev=bcf032a08f7d7b510901a8f24a66ea12de6b2ac9#bcf032a08f7d7b510901a8f24a66ea12de6b2ac9"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1602,7 +1591,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=2f9a4ca6e8434aaee3569095c0743b73cba26c44#2f9a4ca6e8434aaee3569095c0743b73cba26c44"
+source = "git+https://github.com/emilk/egui.git?rev=bcf032a08f7d7b510901a8f24a66ea12de6b2ac9#bcf032a08f7d7b510901a8f24a66ea12de6b2ac9"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1635,7 +1624,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=2f9a4ca6e8434aaee3569095c0743b73cba26c44#2f9a4ca6e8434aaee3569095c0743b73cba26c44"
+source = "git+https://github.com/emilk/egui.git?rev=bcf032a08f7d7b510901a8f24a66ea12de6b2ac9#bcf032a08f7d7b510901a8f24a66ea12de6b2ac9"
 dependencies = [
  "accesskit",
  "ahash",
@@ -1651,7 +1640,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=2f9a4ca6e8434aaee3569095c0743b73cba26c44#2f9a4ca6e8434aaee3569095c0743b73cba26c44"
+source = "git+https://github.com/emilk/egui.git?rev=bcf032a08f7d7b510901a8f24a66ea12de6b2ac9#bcf032a08f7d7b510901a8f24a66ea12de6b2ac9"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1667,7 +1656,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=2f9a4ca6e8434aaee3569095c0743b73cba26c44#2f9a4ca6e8434aaee3569095c0743b73cba26c44"
+source = "git+https://github.com/emilk/egui.git?rev=bcf032a08f7d7b510901a8f24a66ea12de6b2ac9#bcf032a08f7d7b510901a8f24a66ea12de6b2ac9"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -1696,7 +1685,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=2f9a4ca6e8434aaee3569095c0743b73cba26c44#2f9a4ca6e8434aaee3569095c0743b73cba26c44"
+source = "git+https://github.com/emilk/egui.git?rev=bcf032a08f7d7b510901a8f24a66ea12de6b2ac9#bcf032a08f7d7b510901a8f24a66ea12de6b2ac9"
 dependencies = [
  "egui",
  "ehttp",
@@ -1711,7 +1700,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=2f9a4ca6e8434aaee3569095c0743b73cba26c44#2f9a4ca6e8434aaee3569095c0743b73cba26c44"
+source = "git+https://github.com/emilk/egui.git?rev=bcf032a08f7d7b510901a8f24a66ea12de6b2ac9#bcf032a08f7d7b510901a8f24a66ea12de6b2ac9"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1728,7 +1717,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=2f9a4ca6e8434aaee3569095c0743b73cba26c44#2f9a4ca6e8434aaee3569095c0743b73cba26c44"
+source = "git+https://github.com/emilk/egui.git?rev=bcf032a08f7d7b510901a8f24a66ea12de6b2ac9#bcf032a08f7d7b510901a8f24a66ea12de6b2ac9"
 dependencies = [
  "egui",
 ]
@@ -1771,7 +1760,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "emath"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=2f9a4ca6e8434aaee3569095c0743b73cba26c44#2f9a4ca6e8434aaee3569095c0743b73cba26c44"
+source = "git+https://github.com/emilk/egui.git?rev=bcf032a08f7d7b510901a8f24a66ea12de6b2ac9#bcf032a08f7d7b510901a8f24a66ea12de6b2ac9"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1872,7 +1861,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=2f9a4ca6e8434aaee3569095c0743b73cba26c44#2f9a4ca6e8434aaee3569095c0743b73cba26c44"
+source = "git+https://github.com/emilk/egui.git?rev=bcf032a08f7d7b510901a8f24a66ea12de6b2ac9#bcf032a08f7d7b510901a8f24a66ea12de6b2ac9"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -4117,12 +4106,6 @@ dependencies = [
  "num-traits",
  "rand",
 ]
-
-[[package]]
-name = "range-alloc"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c8a99fddc9f0ba0a85884b8d14e3592853e787d581ca1816c91349b10e4eeab"
 
 [[package]]
 name = "raw-window-handle"
@@ -7072,12 +7055,10 @@ dependencies = [
  "android_system_properties",
  "arrayvec",
  "ash",
- "bit-set",
  "bitflags 2.4.1",
  "block",
  "cfg_aliases 0.1.1",
  "core-graphics-types",
- "d3d12",
  "glow",
  "glutin_wgl_sys",
  "gpu-alloc",
@@ -7095,7 +7076,6 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "profiling",
- "range-alloc",
  "raw-window-handle 0.6.0",
  "renderdoc-sys",
  "rustc-hash",
