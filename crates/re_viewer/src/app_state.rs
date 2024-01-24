@@ -290,6 +290,7 @@ impl AppState {
             &ctx,
             ui,
             &mut viewport,
+            &spaces_info,
             app_blueprint.selection_panel_expanded,
         );
 

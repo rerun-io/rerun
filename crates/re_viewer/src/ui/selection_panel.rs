@@ -20,7 +20,7 @@ use re_viewer_context::{
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
-    Contents, Viewport, ViewportBlueprint,
+    Contents, SpaceInfoCollection, Viewport, ViewportBlueprint,
 };
 
 use crate::ui::add_space_view_or_container_modal::AddSpaceViewOrContainerModal;
@@ -71,6 +71,7 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
+        spaces_info: &SpaceInfoCollection,
         expanded: bool,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
@@ -120,7 +121,7 @@ impl SelectionPanel {
                 .show(ui, |ui| {
                     ui.add_space(ui.spacing().item_spacing.y);
                     ctx.re_ui.panel_content(ui, |_, ui| {
-                        self.contents(ctx, ui, viewport);
+                        self.contents(ctx, ui, viewport, spaces_info);
                     });
                 });
         });
@@ -132,6 +133,7 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
+        spaces_info: &SpaceInfoCollection,
     ) {
         re_tracing::profile_function!();
 
@@ -165,7 +167,13 @@ impl SelectionPanel {
                     }
 
                     Item::SpaceView(space_view_id) => {
-                        space_view_top_level_properties(ui, ctx, viewport.blueprint, space_view_id);
+                        space_view_top_level_properties(
+                            ui,
+                            ctx,
+                            viewport.blueprint,
+                            spaces_info,
+                            space_view_id,
+                        );
                     }
 
                     _ => {}
@@ -195,6 +203,8 @@ impl SelectionPanel {
                 }
             });
         }
+
+        self.add_space_view_or_container_modal.ui(ui, ctx, viewport);
     }
 
     fn container_children(
@@ -221,8 +231,6 @@ impl SelectionPanel {
                 }
             });
         });
-
-        self.add_space_view_or_container_modal.ui(ui, ctx, viewport);
 
         let show_content = |ui: &mut egui::Ui| {
             let mut has_child = false;
@@ -514,6 +522,7 @@ fn space_view_top_level_properties(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
+    spaces_info: &SpaceInfoCollection,
     space_view_id: &SpaceViewId,
 ) {
     if let Some(space_view) = viewport.space_view(space_view_id) {
@@ -526,25 +535,23 @@ fn space_view_top_level_properties(
                     string.",
                 );
                 ui.text_edit_singleline(&mut name);
-                ui.end_row();
-
                 space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+
+                ui.end_row();
 
                 ui.label("Space origin").on_hover_text(
                     "The origin Entity for this Space View. For spatial Space Views, the Space \
                     View's origin is the same as this Entity's origin and all transforms are \
                     relative to it.",
                 );
-                let (query, store) =
-                    guess_query_and_store_for_selected_entity(ctx, &space_view.space_origin);
-                item_ui::entity_path_button(
-                    ctx,
-                    &query,
-                    store,
+
+                super::space_view_space_origin_ui::space_view_space_origin_widget_ui(
                     ui,
-                    Some(*space_view_id),
-                    &space_view.space_origin,
+                    ctx,
+                    spaces_info,
+                    space_view,
                 );
+
                 ui.end_row();
 
                 ui.label("Type")
@@ -554,6 +561,7 @@ fn space_view_top_level_properties(
                         .class(ctx.space_view_class_registry)
                         .display_name(),
                 );
+
                 ui.end_row();
             });
     }

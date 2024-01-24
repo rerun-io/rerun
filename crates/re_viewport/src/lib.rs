@@ -9,7 +9,7 @@ mod container;
 mod space_info;
 mod space_view;
 mod space_view_entity_picker;
-mod space_view_heuristics;
+pub mod space_view_heuristics;
 mod space_view_highlights;
 mod system_execution;
 mod viewport;
