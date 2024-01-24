@@ -250,7 +250,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "YUY2".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::UInt8,
                         is_nullable: false,
@@ -1043,7 +1043,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::UInt8,
                                     is_nullable: false,
@@ -1329,16 +1329,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
-<<<<<<< HEAD
-                            ]),
-                            Some(std::sync::Arc::new(vec![
-                                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32,
-                                11i32, 12i32, 13i32,
-                            ])),
-=======
                                 Field {
                                     name: "YUY2".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
@@ -1347,12 +1340,11 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
-                            ],
-                            Some(vec![
+                            ]),
+                            Some(std::sync::Arc::new(vec![
                                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32,
                                 11i32, 12i32, 13i32, 14i32,
-                            ]),
->>>>>>> abbb72a82 (Add support for YUV422 encoded images)
+                            ])),
                             UnionMode::Dense,
                         ),
                         arrow_data.data_type().clone(),
@@ -2314,7 +2306,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
