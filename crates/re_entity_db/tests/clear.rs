@@ -13,7 +13,7 @@ use re_types_core::{
 /// Complete test suite for the clear & pending clear paths.
 #[test]
 fn clears() -> anyhow::Result<()> {
-    init_logs();
+    re_log::setup_logging();
 
     let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
 
@@ -437,7 +437,7 @@ fn clears() -> anyhow::Result<()> {
 /// Test for GC behavior following clear. This functionality is expected by blueprints.
 #[test]
 fn clear_and_gc() -> anyhow::Result<()> {
-    init_logs();
+    re_log::setup_logging();
 
     let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
 
@@ -488,17 +488,4 @@ fn clear_and_gc() -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-// ---
-
-pub fn init_logs() {
-    use std::sync::atomic::AtomicBool;
-    use std::sync::atomic::Ordering::SeqCst;
-
-    static INIT: AtomicBool = AtomicBool::new(false);
-
-    if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
-        re_log::setup_native_logging();
-    }
 }

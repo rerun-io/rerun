@@ -22,7 +22,7 @@ impl WebHandle {
     #[allow(clippy::new_without_default)]
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        re_log::setup_web_logging();
+        re_log::setup_logging();
 
         Self {
             runner: eframe::WebRunner::new(),

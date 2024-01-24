@@ -18,7 +18,7 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 
 #[tokio::main]
 async fn main() -> std::process::ExitCode {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     // Name the rayon threads for the benefit of debuggers and profilers:
     rayon::ThreadPoolBuilder::new()

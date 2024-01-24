@@ -14,7 +14,7 @@ use rerun::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<std::process::ExitCode> {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     re_data_source::register_custom_data_loader(HashLoader);
 
