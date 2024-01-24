@@ -372,49 +372,80 @@ impl From<LegendCorner> for egui_plot::Corner {
 
 // ----------------------------------------------------------------------------
 
-/// What kind of aggregation should we perform when the zoom-level on the X axis goes below 1.0?
+/// What kind of aggregation should be performed when the zoom-level on the X axis goes below 1.0?
+///
+/// Aggregation affects the points' values and radii.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeSeriesAggregator {
+    /// No aggregation.
+    Off,
+
+    /// Average all points in the range together.
+    Average,
+
+    /// Keep only the maximum values in the range.
+    Max,
+
+    /// Keep only the minimum values in the range.
+    Min,
+
+    /// Keep both the minimum and maximum values in the range.
+    ///
+    /// This will yield two aggregated points instead of one, effectively creating a vertical line.
     #[default]
     MinMax,
-    Max,
-    Min,
-    Average,
-    None,
+
+    /// Find both the minimum and maximum values in the range, then use the average of those.
+    MinMaxAverage,
 }
 
 impl std::fmt::Display for TimeSeriesAggregator {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            TimeSeriesAggregator::MinMax => write!(f, "MinMax"),
+            TimeSeriesAggregator::Off => write!(f, "Off"),
+            TimeSeriesAggregator::Average => write!(f, "Average"),
             TimeSeriesAggregator::Max => write!(f, "Max"),
             TimeSeriesAggregator::Min => write!(f, "Min"),
-            TimeSeriesAggregator::Average => write!(f, "Average"),
-            TimeSeriesAggregator::None => write!(f, "None"),
+            TimeSeriesAggregator::MinMax => write!(f, "MinMax"),
+            TimeSeriesAggregator::MinMaxAverage => write!(f, "MinMaxAverage"),
         }
     }
 }
 
 impl TimeSeriesAggregator {
     #[inline]
-    pub fn variants() -> [TimeSeriesAggregator; 5] {
+    pub fn variants() -> [TimeSeriesAggregator; 6] {
         // Just making sure this method won't compile if the enum gets modified.
         #[allow(clippy::match_same_arms)]
         match Self::default() {
-            TimeSeriesAggregator::MinMax => {}
+            TimeSeriesAggregator::Off => {}
+            TimeSeriesAggregator::Average => {}
             TimeSeriesAggregator::Max => {}
             TimeSeriesAggregator::Min => {}
-            TimeSeriesAggregator::Average => {}
-            TimeSeriesAggregator::None => {}
+            TimeSeriesAggregator::MinMax => {}
+            TimeSeriesAggregator::MinMaxAverage => {}
         }
 
         [
-            TimeSeriesAggregator::MinMax,
+            TimeSeriesAggregator::Off,
+            TimeSeriesAggregator::Average,
             TimeSeriesAggregator::Max,
             TimeSeriesAggregator::Min,
-            TimeSeriesAggregator::Average,
-            TimeSeriesAggregator::None,
+            TimeSeriesAggregator::MinMax,
+            TimeSeriesAggregator::MinMaxAverage,
         ]
+    }
+
+    #[inline]
+    pub fn description(&self) -> &'static str {
+        match self {
+            TimeSeriesAggregator::Off => "No aggregation.",
+            TimeSeriesAggregator::Average => "Average all points in the range together.",
+            TimeSeriesAggregator::Max => "Keep only the maximum values in the range.",
+            TimeSeriesAggregator::Min => "Keep only the minimum values in the range.",
+            TimeSeriesAggregator::MinMax => "Keep both the minimum and maximum values in the range.\nThis will yield two aggregated points instead of one, effectively creating a vertical line.",
+            TimeSeriesAggregator::MinMaxAverage => "Find both the minimum and maximum values in the range, then use the average of those",
+        }
     }
 }

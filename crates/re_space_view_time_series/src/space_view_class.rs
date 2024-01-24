@@ -1,7 +1,4 @@
-use std::collections::BTreeMap;
-
 use egui_plot::{Legend, Line, Plot, Points};
-use parking_lot::Mutex;
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
@@ -17,41 +14,6 @@ use re_viewer_context::{
 };
 
 use crate::visualizer_system::{PlotSeriesKind, TimeSeriesSystem};
-
-// ---
-
-#[derive(Debug, Clone)]
-pub struct TimeSeriesSpaceViewFeedback {
-    /// What was the size of the plot canvas in the last frame?
-    pub plot_canvas_size: egui::Vec2,
-
-    /// What were the plot bounds in the last frame?
-    pub plot_bounds: egui_plot::PlotBounds,
-}
-
-impl Default for TimeSeriesSpaceViewFeedback {
-    fn default() -> Self {
-        Self {
-            plot_canvas_size: Default::default(),
-            plot_bounds: egui_plot::PlotBounds::NOTHING,
-        }
-    }
-}
-
-static TIME_SERIES_SPACE_VIEW_FEEDBACK: Mutex<BTreeMap<SpaceViewId, TimeSeriesSpaceViewFeedback>> =
-    Mutex::new(BTreeMap::new());
-
-impl TimeSeriesSpaceViewFeedback {
-    pub fn insert(space_view_id: SpaceViewId, feedback: TimeSeriesSpaceViewFeedback) {
-        TIME_SERIES_SPACE_VIEW_FEEDBACK
-            .lock()
-            .insert(space_view_id, feedback);
-    }
-
-    pub fn remove(space_view_id: &SpaceViewId) -> Option<TimeSeriesSpaceViewFeedback> {
-        TIME_SERIES_SPACE_VIEW_FEEDBACK.lock().remove(space_view_id)
-    }
-}
 
 // ---
 
@@ -169,7 +131,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                         ui.set_min_width(64.0);
 
                         for variant in TimeSeriesAggregator::variants() {
-                            ui.selectable_value(&mut agg_mode, variant, variant.to_string());
+                            ui.selectable_value(&mut agg_mode, variant, variant.to_string())
+                                .on_hover_text(variant.description());
                         }
                     });
 
@@ -269,8 +232,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let time_series = system_output.view_systems.get::<TimeSeriesSystem>()?;
 
-        let agg_mode = time_series.agg_mode;
-        let agg_range = time_series.agg_range;
+        let aggregator = time_series.aggregator;
+        let aggregation_factor = time_series.aggregation_factor;
 
         // Get the minimum time/X value for the entire plot…
         let min_time = time_series.min_time.unwrap_or(0);
@@ -292,6 +255,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
+            .id(crate::plot_id(query.space_view_id))
             .allow_zoom([true, zoom_both_axis])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
@@ -302,35 +266,24 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             })
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
+                let label = time_type.format(
+                    (value.x as i64 + time_offset).into(),
+                    time_zone_for_timestamps
+                );
 
                 let is_integer = value.y.round() == value.y;
                 let decimals = if is_integer { 0 } else { 5 };
 
-                let agg_range_is_integer = agg_range.round() == agg_range;
+                let agg_range_is_integer = aggregation_factor.round() == aggregation_factor;
                 let agg_range_decimals = if agg_range_is_integer { 0 } else { 5 };
 
-                if agg_mode == TimeSeriesAggregator::None || agg_range <= 1.0 {
-                    format!(
-                        "{timeline_name}: {}\n{name}: {:.*}",
-                        time_type.format(
-                            (value.x as i64 + time_offset).into(),
-                            time_zone_for_timestamps
-                        ),
-                        decimals,
-                        value.y,
-                    )
+                if aggregator == TimeSeriesAggregator::Off || aggregation_factor <= 1.0 {
+                    format!("{timeline_name}: {label}\n{name}: {:.decimals$}", value.y)
                 } else {
                     format!(
-                        "{timeline_name}: {}\n{name}: {:.*}\nValue aggregated using {} over {:.*} ticks",
-                        time_type.format(
-                            (value.x as i64 + time_offset).into(),
-                            time_zone_for_timestamps
-                        ),
-                        decimals,
+                        "{timeline_name}: {label}\n{name}: {:.decimals$}\n\
+                         Y value aggregated using {aggregator} over {aggregation_factor:.agg_range_decimals$} X increments",
                         value.y,
-                        agg_mode,
-                        agg_range_decimals,
-                        agg_range,
                     )
                 }
             });
@@ -344,18 +297,11 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
         }
 
-        let mut feedback = TimeSeriesSpaceViewFeedback {
-            plot_canvas_size: ui.available_size(),
-            ..Default::default()
-        };
-
         let egui_plot::PlotResponse {
             inner: time_x,
             response,
             transform,
         } = plot.show(ui, |plot_ui| {
-            feedback.plot_bounds = plot_ui.plot_bounds();
-
             if plot_ui.response().secondary_clicked() {
                 let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
                 let timeline = *time_ctrl_write.timeline();
@@ -413,8 +359,6 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 })
                 .map(|x| plot_ui.screen_from_plot([x, 0.0].into()).x)
         });
-
-        TimeSeriesSpaceViewFeedback::insert(query.space_view_id, feedback);
 
         if let Some(time_x) = time_x {
             let interact_radius = ui.style().interaction.resize_grab_radius_side;
