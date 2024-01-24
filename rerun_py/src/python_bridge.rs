@@ -125,7 +125,7 @@ fn main(py: Python<'_>) -> PyResult<u8> {
 fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     // We always want main to be available
     m.add_function(wrap_pyfunction!(main, m)?)?;

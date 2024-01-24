@@ -24,7 +24,7 @@ use re_types_core::{ComponentName, Loggable as _};
 
 #[test]
 fn all_components() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");
 
@@ -254,7 +254,7 @@ fn all_components() {
 
 #[test]
 fn latest_at() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
@@ -267,7 +267,7 @@ fn latest_at() {
 }
 
 fn latest_at_impl(store: &mut DataStore) {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");
 
@@ -380,7 +380,7 @@ fn latest_at_impl(store: &mut DataStore) {
 
 #[test]
 fn range() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
@@ -393,7 +393,7 @@ fn range() {
 }
 
 fn range_impl(store: &mut DataStore) {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");
 
@@ -595,7 +595,7 @@ fn range_impl(store: &mut DataStore) {
 
 #[test]
 fn gc() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
@@ -666,7 +666,7 @@ fn gc_impl(store: &mut DataStore) {
 
 #[test]
 fn protected_gc() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
@@ -679,7 +679,7 @@ fn protected_gc() {
 }
 
 fn protected_gc_impl(store: &mut DataStore) {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");
 
@@ -771,7 +771,7 @@ fn protected_gc_impl(store: &mut DataStore) {
 
 #[test]
 fn protected_gc_clear() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
@@ -784,7 +784,7 @@ fn protected_gc_clear() {
 }
 
 fn protected_gc_clear_impl(store: &mut DataStore) {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");
 

@@ -15,7 +15,7 @@ static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Direct calls using the `log` crate to stderr. Control with `RUST_LOG=debug` etc.
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     // Install handlers for panics and crashes that prints to stderr and send
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).

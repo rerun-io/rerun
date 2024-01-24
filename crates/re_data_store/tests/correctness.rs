@@ -192,7 +192,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
 #[test]
 fn write_errors() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");
 
@@ -287,7 +287,7 @@ fn write_errors() {
 
 #[test]
 fn latest_at_emptiness_edge_cases() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
@@ -408,7 +408,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 
 #[test]
 fn gc_correct() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -524,7 +524,7 @@ fn gc_metadata_size() -> anyhow::Result<()> {
 
 #[test]
 fn entity_min_time_correct() -> anyhow::Result<()> {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(

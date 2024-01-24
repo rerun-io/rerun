@@ -20,7 +20,7 @@ use re_types_core::Loggable as _;
 // make an exception, for now…
 #[test]
 fn pathological_bucket_topology() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let mut store_forward = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),

@@ -258,7 +258,7 @@ fn rr_recording_stream_new_impl(
     store_info: *const CStoreInfo,
     default_enabled: bool,
 ) -> Result<CRecordingStream, CError> {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let store_info = ptr::try_ptr_as_ref(store_info, "store_info")?;
 

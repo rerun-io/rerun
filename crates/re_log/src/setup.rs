@@ -1,8 +1,10 @@
 //! Function to setup logging in binaries and web apps.
 
-/// Directs [`log`] calls to stderr.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn setup_native_logging() {
+/// Automatically does the right thing dependending on target environment (native vs. web).
+///
+/// Directs [`log`] calls to stderr on native.
+pub fn setup_logging() {
+    #[cfg(not(target_arch = "wasm32"))]
     fn setup() {
         if cfg!(debug_assertions) && std::env::var("RUST_BACKTRACE").is_err() {
             // In debug build, default `RUST_BACKTRACE` to `1` if it is not set.
@@ -39,13 +41,7 @@ pub fn setup_native_logging() {
         }
     }
 
-    use std::sync::Once;
-    static START: Once = Once::new();
-    START.call_once(setup);
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn setup_web_logging() {
+    #[cfg(target_arch = "wasm32")]
     fn setup() {
         crate::multi_logger::init().expect("Failed to set logger");
         log::set_max_level(log::LevelFilter::Debug);
