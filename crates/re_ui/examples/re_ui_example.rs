@@ -731,6 +731,8 @@ mod drag_and_drop {
                     .memory(|mem| mem.is_anything_being_dragged())
                     && ui.input(|i| i.pointer.is_decidedly_dragging());
                 if anything_being_decidedly_dragged {
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+
                     let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
 
                     let (insert_y, target) = if ui.rect_contains_pointer(top) {
@@ -1159,6 +1161,8 @@ mod hierarchical_drag_and_drop {
                 // this shouldn't happen
                 return;
             };
+
+            ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
 
             let drag_target =
                 self.find_drag_target(ui, item_id, is_container, response, body_response);
