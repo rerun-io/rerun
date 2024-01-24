@@ -39,7 +39,7 @@ pub enum TensorBuffer {
     F64(::re_types_core::ArrowBuffer<f64>),
     Jpeg(::re_types_core::ArrowBuffer<u8>),
     Nv12(::re_types_core::ArrowBuffer<u8>),
-    Yuv422(::re_types_core::ArrowBuffer<u8>),
+    Yuy2(::re_types_core::ArrowBuffer<u8>),
 }
 
 impl ::re_types_core::SizeBytes for TensorBuffer {
@@ -60,7 +60,7 @@ impl ::re_types_core::SizeBytes for TensorBuffer {
             Self::F64(v) => v.heap_size_bytes(),
             Self::Jpeg(v) => v.heap_size_bytes(),
             Self::Nv12(v) => v.heap_size_bytes(),
-            Self::Yuv422(v) => v.heap_size_bytes(),
+            Self::Yuy2(v) => v.heap_size_bytes(),
         }
     }
 
@@ -249,7 +249,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     metadata: [].into(),
                 },
                 Field {
-                    name: "YUV422".to_owned(),
+                    name: "YUY2".to_owned(),
                     data_type: DataType::List(Box::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::UInt8,
@@ -303,7 +303,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         Some(TensorBuffer::F64(_)) => 11i8,
                         Some(TensorBuffer::Jpeg(_)) => 12i8,
                         Some(TensorBuffer::Nv12(_)) => 13i8,
-                        Some(TensorBuffer::Yuv422(_)) => 14i8,
+                        Some(TensorBuffer::Yuy2(_)) => 14i8,
                     })
                     .collect(),
                 vec![
@@ -1008,35 +1008,33 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         }
                     },
                     {
-                        let (somes, yuv422): (Vec<_>, Vec<_>) = data
+                        let (somes, yuy2): (Vec<_>, Vec<_>) = data
                             .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(TensorBuffer::Yuv422(_)))
-                            })
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::Yuy2(_))))
                             .map(|datum| {
                                 let datum = match datum.as_deref() {
-                                    Some(TensorBuffer::Yuv422(v)) => Some(v.clone()),
+                                    Some(TensorBuffer::Yuy2(v)) => Some(v.clone()),
                                     _ => None,
                                 };
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let yuv422_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let yuy2_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let yuv422_inner_data: Buffer<_> = yuv422
+                            let yuy2_inner_data: Buffer<_> = yuy2
                                 .iter()
                                 .flatten()
                                 .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let yuv422_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let yuy2_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                yuv422.iter().map(|opt| {
+                                yuy2.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
                                         .unwrap_or_default()
@@ -1054,11 +1052,11 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::UInt8,
-                                    yuv422_inner_data,
-                                    yuv422_inner_bitmap,
+                                    yuy2_inner_data,
+                                    yuy2_inner_bitmap,
                                 )
                                 .boxed(),
-                                yuv422_bitmap,
+                                yuy2_bitmap,
                             )
                             .boxed()
                         }
@@ -1078,7 +1076,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let mut f64_offset = 0;
                     let mut jpeg_offset = 0;
                     let mut nv12_offset = 0;
-                    let mut yuv422_offset = 0;
+                    let mut yuy2_offset = 0;
                     let mut nulls_offset = 0;
                     data.iter()
                         .map(|v| match v.as_deref() {
@@ -1152,9 +1150,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 nv12_offset += 1;
                                 offset
                             }
-                            Some(TensorBuffer::Yuv422(_)) => {
-                                let offset = yuv422_offset;
-                                yuv422_offset += 1;
+                            Some(TensorBuffer::Yuy2(_)) => {
+                                let offset = yuy2_offset;
+                                yuy2_offset += 1;
                                 offset
                             }
                         })
@@ -1339,7 +1337,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             ])),
 =======
                                 Field {
-                                    name: "YUV422".to_owned(),
+                                    name: "YUY2".to_owned(),
                                     data_type: DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
@@ -2305,7 +2303,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                     .collect::<Vec<_>>()
                 };
-                let yuv422 = {
+                let yuy2 = {
                     if 14usize >= arrow_data_arrays.len() {
                         return Ok(Vec::new());
                     }
@@ -2325,7 +2323,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     arrow_data.data_type().clone(),
                                 )
                             })
-                            .with_context("rerun.datatypes.TensorBuffer#YUV422")?;
+                            .with_context("rerun.datatypes.TensorBuffer#YUY2")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -2340,7 +2338,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                             arrow_data_inner.data_type().clone(),
                                         )
                                     })
-                                    .with_context("rerun.datatypes.TensorBuffer#YUV422")?
+                                    .with_context("rerun.datatypes.TensorBuffer#YUY2")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
@@ -2580,20 +2578,20 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#NV12")?
                                 }),
-                                14i8 => TensorBuffer::Yuv422({
-                                    if offset as usize >= yuv422.len() {
+                                14i8 => TensorBuffer::Yuy2({
+                                    if offset as usize >= yuy2.len() {
                                         return Err(DeserializationError::offset_oob(
                                             offset as _,
-                                            yuv422.len(),
+                                            yuy2.len(),
                                         ))
-                                        .with_context("rerun.datatypes.TensorBuffer#YUV422");
+                                        .with_context("rerun.datatypes.TensorBuffer#YUY2");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { yuv422.get_unchecked(offset as usize) }
+                                    unsafe { yuy2.get_unchecked(offset as usize) }
                                         .clone()
                                         .ok_or_else(DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TensorBuffer#YUV422")?
+                                        .with_context("rerun.datatypes.TensorBuffer#YUY2")?
                                 }),
                                 _ => {
                                     return Err(DeserializationError::missing_union_arm(

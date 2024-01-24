@@ -12,7 +12,7 @@ fn vs_main(@builtin(vertex_index) v_idx: u32) -> VertexOut {
     if rect_info.sample_type == SAMPLE_TYPE_NV12 {
         out.texcoord.y /= 1.5;
     }
-    if rect_info.sample_type == SAMPLE_TYPE_YUV422 {
+    if rect_info.sample_type == SAMPLE_TYPE_YUY2 {
         out.texcoord.x /= 2.0;
     }
 

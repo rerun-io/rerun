@@ -234,9 +234,9 @@ impl SpaceViewClass for BarChartSpaceView {
                             );
                             continue;
                         }
-                        TensorBuffer::Yuv422(_) => {
+                        TensorBuffer::Yuy2(_) => {
                             re_log::warn_once!(
-                                "trying to display YUV422 data as a bar chart ({:?})",
+                                "trying to display YUY2 data as a bar chart ({:?})",
                                 ent_path
                             );
                             continue;

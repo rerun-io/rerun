@@ -75,16 +75,16 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
         texture_dimensions = vec2f(textureDimensions(texture_uint).xy);
     } else if rect_info.sample_type == SAMPLE_TYPE_NV12 {
         texture_dimensions = vec2f(textureDimensions(texture_uint).xy);
-    } else if rect_info.sample_type == SAMPLE_TYPE_YUV422 {
+    } else if rect_info.sample_type == SAMPLE_TYPE_YUY2 {
         texture_dimensions = vec2f(textureDimensions(texture_uint).xy);
     }
 
     let coord = in.texcoord * texture_dimensions;
     let clamped_coord = clamp_to_edge_nearest_neighbor(coord, texture_dimensions);
     let v00_coord = clamp_to_edge_nearest_neighbor(coord + vec2f(-0.5, -0.5), texture_dimensions);
-    let v01_coord = clamp_to_edge_nearest_neighbor(coord + vec2f(-0.5,  0.5), texture_dimensions);
-    let v10_coord = clamp_to_edge_nearest_neighbor(coord + vec2f( 0.5, -0.5), texture_dimensions);
-    let v11_coord = clamp_to_edge_nearest_neighbor(coord + vec2f( 0.5,  0.5), texture_dimensions);
+    let v01_coord = clamp_to_edge_nearest_neighbor(coord + vec2f(-0.5, 0.5), texture_dimensions);
+    let v10_coord = clamp_to_edge_nearest_neighbor(coord + vec2f(0.5, -0.5), texture_dimensions);
+    let v11_coord = clamp_to_edge_nearest_neighbor(coord + vec2f(0.5, 0.5), texture_dimensions);
 
     if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
         if tex_filter(coord) == FILTER_NEAREST {
@@ -99,8 +99,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
             let v11 = textureLoad(texture_float, v11_coord, 0);
             normalized_value = decode_color_and_filter_bilinear(coord, v00, v01, v10, v11);
         }
-    }
-    else if rect_info.sample_type == SAMPLE_TYPE_SINT {
+    } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
             normalized_value = decode_color(vec4f(textureLoad(texture_sint, clamped_coord, 0)));
@@ -112,8 +111,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
             let v11 = vec4f(textureLoad(texture_sint, v11_coord, 0));
             normalized_value = decode_color_and_filter_bilinear(coord, v00, v01, v10, v11);
         }
-    }
-    else if rect_info.sample_type == SAMPLE_TYPE_UINT {
+    } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
             normalized_value = decode_color(vec4f(textureLoad(texture_uint, clamped_coord, 0)));
@@ -137,20 +135,19 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
             let v11 = decode_nv12(texture_uint, v11_coord);
             normalized_value = decode_color_and_filter_bilinear(coord, v00, v01, v10, v11);
         }
-    } else if rect_info.sample_type == SAMPLE_TYPE_YUV422 {
+    } else if rect_info.sample_type == SAMPLE_TYPE_YUY2 {
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
-            normalized_value = decode_color(vec4f(decode_yuv422(texture_uint, clamped_coord)));
+            normalized_value = decode_color(vec4f(decode_yuy2(texture_uint, clamped_coord)));
         } else {
             // bilinear
-            let v00 = decode_yuv422(texture_uint, v00_coord);
-            let v01 = decode_yuv422(texture_uint, v01_coord);
-            let v10 = decode_yuv422(texture_uint, v10_coord);
-            let v11 = decode_yuv422(texture_uint, v11_coord);
+            let v00 = decode_yuy2(texture_uint, v00_coord);
+            let v01 = decode_yuy2(texture_uint, v01_coord);
+            let v10 = decode_yuy2(texture_uint, v10_coord);
+            let v11 = decode_yuy2(texture_uint, v11_coord);
             normalized_value = decode_color_and_filter_bilinear(coord, v00, v01, v10, v11);
         }
-    }
-    else {
+    } else {
         return ERROR_RGBA; // unknown sample type
     }
 

@@ -55,9 +55,9 @@ impl TensorData {
                     _ => None,
                 }
             }
-            // In the case of YUV422, return the shape of the RGB image, not the tensor size.
-            TensorBuffer::Yuv422(_) => {
-                // YUV422 encodes a color image in 2 "channels" -> 1 luma (per pixel) + (1U + 1V) (per 2 pixels).
+            // In the case of YUY2, return the shape of the RGB image, not the tensor size.
+            TensorBuffer::Yuy2(_) => {
+                // YUY2 encodes a color image in 2 "channels" -> 1 luma (per pixel) + (1U + 1V) (per 2 pixels).
                 match shape_short {
                     [h, w] => Some([h.size, w.size / 2, 3]),
                     _ => None,
@@ -205,7 +205,7 @@ impl TensorData {
                     }
                 }
             }
-            TensorBuffer::Yuv422(_) => {
+            TensorBuffer::Yuy2(_) => {
                 {
                     // Returns the U32 packed RGBA value of the pixel at index [y, x] if it is valid.
                     let [y, x] = index else {
@@ -214,7 +214,7 @@ impl TensorData {
 
                     if let Some(
                         [TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)],
-                    ) = self.get_yuv422_pixel(*x, *y)
+                    ) = self.get_yuy2_pixel(*x, *y)
                     {
                         let mut rgba = 0;
                         rgba |= (r as u32) << 24;
@@ -256,14 +256,14 @@ impl TensorData {
         }
     }
 
-    pub fn get_yuv422_pixel(&self, x: u64, y: u64) -> Option<[TensorElement; 3]> {
-        let TensorBuffer::Yuv422(buf) = &self.buffer else {
+    pub fn get_yuy2_pixel(&self, x: u64, y: u64) -> Option<[TensorElement; 3]> {
+        let TensorBuffer::Yuy2(buf) = &self.buffer else {
             return None;
         };
 
         match self.image_height_width_channels() {
             Some([_, w, _]) => {
-                // given an x and y coordinate, get the offset into the yuv422 buffer
+                // given an x and y coordinate, get the offset into the YUY2 buffer
                 let index = ((y * w + x) * 2) as usize;
                 let (luma, u, v) = if x % 2 == 0 {
                     (buf[index], buf[index + 1], buf[index + 3])

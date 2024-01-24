@@ -50,7 +50,7 @@ pub enum TextureFilterMin {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ShaderDecoding {
     Nv12,
-    Yuv422,
+    Yuy2,
 }
 
 /// Describes a texture and how to map it to a color.
@@ -147,7 +147,7 @@ impl ColormappedTexture {
                 let [width, height] = self.texture.width_height();
                 [width, height * 2 / 3]
             }
-            Some(ShaderDecoding::Yuv422) => {
+            Some(ShaderDecoding::Yuy2) => {
                 let [width, height] = self.texture.width_height();
                 [width / 2, height]
             }
@@ -238,7 +238,7 @@ mod gpu_data {
     const SAMPLE_TYPE_SINT: u32 = 2;
     const SAMPLE_TYPE_UINT: u32 = 3;
     const SAMPLE_TYPE_NV12: u32 = 4;
-    const SAMPLE_TYPE_YUV422: u32 = 5;
+    const SAMPLE_TYPE_YUY2: u32 = 5;
 
     // How do we do colormapping?
     const COLOR_MAPPER_OFF_GRAYSCALE: u32 = 1;
@@ -320,8 +320,8 @@ mod gpu_data {
                 Some(wgpu::TextureSampleType::Uint) => {
                     if shader_decoding == &Some(super::ShaderDecoding::Nv12) {
                         SAMPLE_TYPE_NV12
-                    } else if shader_decoding == &Some(super::ShaderDecoding::Yuv422) {
-                        SAMPLE_TYPE_YUV422
+                    } else if shader_decoding == &Some(super::ShaderDecoding::Yuy2) {
+                        SAMPLE_TYPE_YUY2
                     } else {
                         SAMPLE_TYPE_UINT
                     }

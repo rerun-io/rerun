@@ -17,8 +17,8 @@ fn decode_nv12(texture: texture_2d<u32>, coords: vec2i) -> vec4f {
     return vec4f(rgb, 1.0);
 }
 
-/// Loads an RGBA texel from a texture holding an YUV422 encoded image at the given screen space coordinates.
-fn decode_yuv422(texture: texture_2d<u32>, coords: vec2i) -> vec4f {
+/// Loads an RGBA texel from a texture holding an YUY2 encoded image at the given screen space coordinates.
+fn decode_yuy2(texture: texture_2d<u32>, coords: vec2i) -> vec4f {
     // texture is 2*width x height
     // every 4 bytes is 2 pixels
     let uv_row = u32(coords.y);

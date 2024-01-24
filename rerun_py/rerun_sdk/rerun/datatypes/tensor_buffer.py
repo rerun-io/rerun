@@ -70,11 +70,11 @@ class TensorBuffer(TensorBufferExt):
 
     NV12 (npt.NDArray[np.uint8]):
 
-    YUV422 (npt.NDArray[np.uint8]):
+    YUY2 (npt.NDArray[np.uint8]):
     """
 
     kind: Literal[
-        "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg", "nv12", "yuv422"
+        "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg", "nv12", "yuy2"
     ] = field(default="u8")
 
 
@@ -201,7 +201,7 @@ class TensorBufferType(BaseExtensionType):
                         metadata={},
                     ),
                     pa.field(
-                        "YUV422",
+                        "YUY2",
                         pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
                         nullable=False,
                         metadata={},

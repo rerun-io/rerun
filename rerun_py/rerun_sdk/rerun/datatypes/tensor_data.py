@@ -162,7 +162,7 @@ class TensorDataType(BaseExtensionType):
                                     metadata={},
                                 ),
                                 pa.field(
-                                    "YUV422",
+                                    "YUY2",
                                     pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
                                     nullable=False,
                                     metadata={},
