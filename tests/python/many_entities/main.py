@@ -7,7 +7,7 @@ import rerun as rr
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Simple benchmark for many individual entitites.")
+    parser = argparse.ArgumentParser(description="Simple benchmark for many individual entities.")
     rr.script_add_args(parser)
     args = parser.parse_args()
 

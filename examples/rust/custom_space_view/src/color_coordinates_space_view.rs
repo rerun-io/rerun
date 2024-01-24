@@ -97,7 +97,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
-        // By default spawn a singl view at the root if there's anything the visualizer is applicable to.
+        // By default spawn a single view at the root if there's anything the visualizer is applicable to.
         if ctx
             .applicable_entities_per_visualizer
             .get(&InstanceColorSystem::identifier())
