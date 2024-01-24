@@ -238,18 +238,16 @@ impl TensorData {
         match self.image_height_width_channels() {
             Some([h, w, _]) => {
                 let uv_offset = w * h;
-                let luma = ((buf[(y * w + x) as usize] as f64) - 16.0) / 216.0;
-                let u = ((buf[(uv_offset + (y / 2) * w + x) as usize] as f64) - 128.0) / 224.0;
-                let v =
-                    ((buf[((uv_offset + (y / 2) * w + x) as usize) + 1] as f64) - 128.0) / 224.0;
-                let r = luma + 1.402 * v;
-                let g = luma - 0.344 * u + 0.714 * v;
-                let b = luma + 1.772 * u;
+                let luma = buf[(y * w + x) as usize];
+                let u = buf[(uv_offset + (y / 2) * w + x) as usize];
+                let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
+
+                let (r, g, b) = Self::set_color_standard(luma, u, v);
 
                 Some([
-                    TensorElement::U8(f64::clamp(r * 255.0, 0.0, 255.0) as u8),
-                    TensorElement::U8(f64::clamp(g * 255.0, 0.0, 255.0) as u8),
-                    TensorElement::U8(f64::clamp(b * 255.0, 0.0, 255.0) as u8),
+                    TensorElement::U8(r),
+                    TensorElement::U8(g),
+                    TensorElement::U8(b),
                 ])
             }
             _ => None,
@@ -271,7 +269,7 @@ impl TensorData {
                     (buf[index], buf[index - 1], buf[index + 1])
                 };
 
-                let (r, g, b) = Self::yuv_to_rgb(luma, u, v);
+                let (r, g, b) = Self::set_color_standard(luma, u, v);
 
                 Some([
                     TensorElement::U8(r),
@@ -283,17 +281,34 @@ impl TensorData {
         }
     }
 
-    /// Convert YUV to RGB
-    fn yuv_to_rgb(y: u8, u: u8, v: u8) -> (u8, u8, u8) {
-        let y = y as f32 - 16.0;
-        let u = u as f32 - 128.0;
-        let v = v as f32 - 128.0;
+    /// Sets the color standard for the given YUV color.
+    ///
+    /// This conversion mirrors the function of the same name in `crates/re_renderer/shader/decodings.wgsl`
+    ///
+    /// Specifying the color standard should be exposed in the future (https://github.com/rerun-io/rerun/pull/3541)
+    fn set_color_standard(y: u8, u: u8, v: u8) -> (u8, u8, u8) {
+        let (y, u, v) = (y as f32, u as f32, v as f32);
 
-        let r = (y + 1.403 * v).clamp(0.0, 255.0) as u8;
-        let g = (y - 0.344 * u - 0.714 * v).clamp(0.0, 255.0) as u8;
-        let b = (y + 1.770 * u).clamp(0.0, 255.0) as u8;
+        // rescale YUV values
+        let y = (y - 16.0) / 219.0;
+        let u = (u - 128.0) / 224.0;
+        let v = (v - 128.0) / 224.0;
 
-        (r, g, b)
+        // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
+        let r = y + 1.402 * v;
+        let g = y - 0.344 * u - 0.714 * v;
+        let b = y + 1.772 * u;
+
+        // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
+        // let r = y + 1.575 * v;
+        // let g = y - 0.187 * u - 0.468 * v;
+        // let b = y + 1.856 * u;
+
+        (
+            (255.0 * r).clamp(0.0, 255.0) as u8,
+            (255.0 * g).clamp(0.0, 255.0) as u8,
+            (255.0 * b).clamp(0.0, 255.0) as u8,
+        )
     }
 
     #[inline]
