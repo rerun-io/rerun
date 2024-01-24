@@ -676,7 +676,7 @@ mod drag_and_drop {
             let mut source_item_position_index = None;
             let mut target_item_position_index = None;
 
-            for (i, (item_id, label)) in self.items.iter_mut().enumerate() {
+            for (i, (item_id, label)) in self.items.iter().enumerate() {
                 //
                 // Draw the item
                 //
@@ -707,7 +707,7 @@ mod drag_and_drop {
                     }
                 }
 
-                // Multi-selection dragging not (yet?) supported, so dragging resets selection to single item.
+                // Drag-and-drop of multiple items not (yet?) supported, so dragging resets selection to single item.
                 // TODO(emilk/egui#3841): it would be nice to have response.decidedly_dragged()
                 if response.dragged() {
                     // Here, we support dragging a single item at a time, so we set the selection to the dragged item
@@ -1105,7 +1105,7 @@ mod hierarchical_drag_and_drop {
             }
         }
 
-        fn leaf_ui(&self, re_ui: &crate::ReUi, ui: &mut egui::Ui, item_id: ItemId, label: &String) {
+        fn leaf_ui(&self, re_ui: &crate::ReUi, ui: &mut egui::Ui, item_id: ItemId, label: &str) {
             let response = re_ui
                 .list_item(label)
                 .selected(self.selected(item_id))
