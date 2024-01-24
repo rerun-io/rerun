@@ -5,6 +5,7 @@ use re_entity_db::EntityDb;
 use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId};
 use re_query::query_archetype;
+use re_types::blueprint::components::Visible;
 use re_types_core::{archetypes::Clear, ArrowBuffer};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId,
@@ -39,7 +40,7 @@ impl Contents {
     }
 
     #[inline]
-    fn to_tile_id(&self) -> TileId {
+    pub fn to_tile_id(&self) -> TileId {
         match self {
             Self::Container(id) => blueprint_id_to_tile_id(id),
             Self::SpaceView(id) => blueprint_id_to_tile_id(id),
@@ -324,6 +325,26 @@ impl ContainerBlueprint {
                     egui_tiles::GridLayout::Auto => None,
                 },
             },
+        }
+    }
+
+    #[inline]
+    pub fn set_visible(&self, ctx: &ViewerContext<'_>, visible: bool) {
+        if visible != self.visible {
+            let component = Visible(visible);
+            ctx.save_blueprint_component(&self.entity_path(), component);
+        }
+    }
+
+    #[inline]
+    pub fn set_grid_columns(&self, ctx: &ViewerContext<'_>, grid_columns: Option<u32>) {
+        if grid_columns != self.grid_columns {
+            if let Some(grid_columns) = grid_columns {
+                let component = GridColumns(grid_columns);
+                ctx.save_blueprint_component(&self.entity_path(), component);
+            } else {
+                ctx.save_empty_blueprint_component::<GridColumns>(&self.entity_path());
+            }
         }
     }
 
