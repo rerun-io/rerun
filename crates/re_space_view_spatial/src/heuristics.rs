@@ -262,21 +262,21 @@ pub fn root_space_split_heuristic(
 
     // We want to split the root space if...
     //
-    // ... there's a root space in the first place.
+    // … there's a root space in the first place.
     let Some(root_space) = topo.subspace_for_subspace_origin(EntityPath::root().hash()) else {
         return Default::default();
     };
-    // ... and that root space doesn't have a different dimensionality.
+    // … and that root space doesn't have a different dimensionality.
     if root_space.dimensionality != dimensionality
         && root_space.dimensionality != SubSpaceDimensionality::Unknown
     {
         return Default::default();
     }
-    // ... the root space is not empty.
+    // … the root space is not empty.
     if root_space.entities.is_empty() {
         return Default::default();
     }
-    // ... nothing relevant logged directly at the root.
+    // … nothing relevant logged directly at the root.
     if relevant_entities.contains(&EntityPath::root()) {
         return Default::default();
     }

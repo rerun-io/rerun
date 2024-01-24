@@ -76,7 +76,7 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
         Box::new(())
     }
 
-    /// TODO: doc
+    /// Determines which space views should be spawned by default for this class.
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
     /// Optional archetype of the Space View's blueprint properties.

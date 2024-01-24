@@ -114,7 +114,7 @@ pub trait DynSpaceViewClass: Send + Sync {
         entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext>;
 
-    /// TODO: doc
+    /// Determines which space views should be spawned by default for this class.
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
     /// Executed for all active space views on frame start (before any ui is drawn),
