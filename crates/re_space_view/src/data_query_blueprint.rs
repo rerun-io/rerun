@@ -402,7 +402,7 @@ impl DataQueryPropertyResolver<'_> {
         let mut prop_map = self.auto_properties.clone();
 
         if let Some(tree) = blueprint.tree().subtree(override_root) {
-            tree.visit_children_recursively(&mut |path: &EntityPath| {
+            tree.visit_children_recursively(&mut |path: &EntityPath, _| {
                 if let Some(props) = blueprint
                     .store()
                     .query_latest_component_quiet::<EntityPropertiesComponent>(path, query)

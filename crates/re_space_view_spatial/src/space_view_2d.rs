@@ -2,7 +2,7 @@ use ahash::HashMap;
 use nohash_hasher::IntSet;
 
 use re_entity_db::EntityProperties;
-use re_log_types::{EntityPath, EntityPathFilter, EntityPathPart, Timeline};
+use re_log_types::{EntityPath, EntityPathFilter, Timeline};
 use re_types::{
     components::{DrawOrder, TensorData},
     Loggable,
@@ -15,7 +15,10 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
-    heuristics::{entities_with_indicator_for_visualizer_kind, update_object_property_heuristics},
+    heuristics::{
+        entities_with_indicator_for_visualizer_kind, root_space_split_heuristic,
+        update_object_property_heuristics,
+    },
     spatial_topology::{SpatialTopology, SubSpace, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
@@ -176,44 +179,15 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
         SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
-            // We want to split the root space into several spaces if:
-            // * nothing is logged directly at the root
-            // * nothing relevant logged directly at the roots direct children
-            let mut children_of_root_spaces = HashMap::<EntityPathPart, SubSpace>::default();
-            if let Some(root_space) = topo.subspace_for_subspace_origin(EntityPath::root().hash()) {
-                if !root_space.entities.is_empty()
-                    && root_space
-                        .entities
-                        .iter()
-                        .all(|entity| entity.iter().count() > 1 || !image_entities.contains(entity))
-                {
-                    for entity in &root_space.entities {
-                        let Some(root_child) = entity.iter().next() else {
-                            continue;
-                        };
-                        children_of_root_spaces
-                            .entry(root_child.clone())
-                            .or_insert_with(|| {
-                                SubSpace {
-                                    origin: [root_child.clone()].as_slice().into(),
-                                    dimensionality: SubSpaceDimensionality::TwoD,
-                                    entities: Default::default(), // Filled as we go.
-                                    child_spaces: Default::default(), // Unused here.
-                                    parent_space: Some(EntityPath::root().hash()),
-                                }
-                            })
-                            .entities
-                            .insert(entity.clone());
-                    }
-                }
-            }
+            let split_root_spaces =
+                root_space_split_heuristic(topo, &indicated_entities, SubSpaceDimensionality::TwoD);
 
             SpaceViewSpawnHeuristics {
                 recommended_space_views: topo
                     .iter_subspaces()
                     .flat_map(|subspace| {
-                        if subspace.origin.is_root() && children_of_root_spaces.len() > 1 {
-                            itertools::Either::Left(children_of_root_spaces.values())
+                        if subspace.origin.is_root() && !split_root_spaces.is_empty() {
+                            itertools::Either::Left(split_root_spaces.values())
                         } else {
                             itertools::Either::Right(std::iter::once(subspace))
                         }
