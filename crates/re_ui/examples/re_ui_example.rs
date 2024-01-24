@@ -656,7 +656,7 @@ mod drag_and_drop {
     struct ItemId(u32);
 
     pub struct ExampleDragAndDrop {
-        items: Vec<(ItemId, String)>,
+        items: Vec<ItemId>,
 
         /// currently selected items
         selected_items: HashSet<ItemId>,
@@ -665,7 +665,7 @@ mod drag_and_drop {
     impl Default for ExampleDragAndDrop {
         fn default() -> Self {
             Self {
-                items: (0..10).map(|i| (ItemId(i), format!("Item {i}"))).collect(),
+                items: (0..10).map(ItemId).collect(),
                 selected_items: HashSet::new(),
             }
         }
@@ -676,13 +676,14 @@ mod drag_and_drop {
             let mut source_item_position_index = None;
             let mut target_item_position_index = None;
 
-            for (i, (item_id, label)) in self.items.iter().enumerate() {
+            for (i, item_id) in self.items.iter().enumerate() {
                 //
                 // Draw the item
                 //
 
                 let id = egui::Id::new("drag_demo").with(*item_id);
 
+                let label = format!("Item {}", item_id.0);
                 let response = re_ui
                     .list_item(label.as_str())
                     .selected(self.selected_items.contains(item_id))
