@@ -39,6 +39,9 @@ pub struct ViewerContext<'a> {
     pub applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.
+    ///
+    /// TODO(andreas): Should we always do the intersection with `applicable_entities_per_visualizer`
+    ///                 or are we ever interested in a non-applicable but indicator-matching entity?
     pub indicator_matching_entities_per_visualizer: &'a PerVisualizer<IndicatorMatchingEntities>,
 
     /// All the query results for this frame

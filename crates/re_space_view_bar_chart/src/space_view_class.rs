@@ -1,7 +1,7 @@
 use egui::util::hash;
 use re_entity_db::{EditableAutoValue, EntityProperties, LegendCorner};
 use re_log_types::EntityPath;
-use re_space_view::{controls, recommend_space_view_for_each_matching_indicator};
+use re_space_view::{controls, recommend_space_views_for_all_default_visualized_entities_for};
 use re_types::datatypes::TensorBuffer;
 use re_viewer_context::{
     auto_color, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
@@ -64,7 +64,9 @@ impl SpaceViewClass for BarChartSpaceView {
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
         re_tracing::profile_function!();
-        recommend_space_view_for_each_matching_indicator::<BarChartVisualizerSystem>(ctx, self)
+        recommend_space_views_for_all_default_visualized_entities_for::<BarChartVisualizerSystem>(
+            ctx, self,
+        )
     }
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {

@@ -223,7 +223,11 @@ fn update_transform3d_lines_heuristics(
     }
 }
 
-pub fn entities_with_indicator_for_visualizer_kind(
+/// Returns all entities for which a visualizer of the given kind would be picked.
+///
+/// I.e. all entities for which at least one visualizer of the specified is applicable
+/// *and* has a matching indicator component.
+pub fn default_visualized_entities_for_visualizer_kind(
     ctx: &ViewerContext<'_>,
     space_view_class_identifier: SpaceViewClassIdentifier,
     visualizer_kind: SpatialSpaceViewKind,
@@ -239,11 +243,9 @@ pub fn entities_with_indicator_for_visualizer_kind(
                 .downcast_ref::<SpatialViewVisualizerData>()?;
 
             if data.preferred_view_kind == Some(visualizer_kind) {
-                Some(
-                    ctx.indicator_matching_entities_per_visualizer
-                        .get(&id)?
-                        .iter(),
-                )
+                let indicator_matching = ctx.indicator_matching_entities_per_visualizer.get(&id)?;
+                let applicable = ctx.applicable_entities_per_visualizer.get(&id)?;
+                Some(indicator_matching.intersection(applicable))
             } else {
                 None
             }

@@ -11,7 +11,7 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{
-        entities_with_indicator_for_visualizer_kind, root_space_split_heuristic,
+        default_visualized_entities_for_visualizer_kind, root_space_split_heuristic,
         update_object_property_heuristics,
     },
     spatial_topology::{SpatialTopology, SubSpaceDimensionality},
@@ -136,7 +136,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        let mut indicated_entities = entities_with_indicator_for_visualizer_kind(
+        let mut indicated_entities = default_visualized_entities_for_visualizer_kind(
             ctx,
             self.identifier(),
             SpatialSpaceViewKind::ThreeD,

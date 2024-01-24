@@ -75,6 +75,7 @@ impl SpaceViewClass for TextSpaceView {
         re_tracing::profile_function!();
 
         // Spawn a single log view at the root if there's any text logs around anywhere.
+        // Checking indicators is enough, since we know that this is enough to infer visualizability here.
         if ctx
             .indicator_matching_entities_per_visualizer
             .get(&TextLogSystem::identifier())
