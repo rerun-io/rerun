@@ -73,7 +73,7 @@ impl ::re_types_core::Loggable for Legend {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "visible".to_owned(),
                 data_type: DataType::Boolean,
@@ -86,7 +86,7 @@ impl ::re_types_core::Loggable for Legend {
                 is_nullable: true,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]
