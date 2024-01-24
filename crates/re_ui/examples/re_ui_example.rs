@@ -820,7 +820,11 @@ mod hierarchical_drag_and_drop {
         ToggleSelected(ItemId),
 
         /// Move the currently dragged item to the given container and position.
-        MoveDraggedItemTo(ItemId, usize),
+        MoveItem {
+            moved_item_id: ItemId,
+            target_container_id: ItemId,
+            target_position_index: usize,
+        },
 
         /// Specify the currently identifed target container to be highlighted.
         HighlightTargetContainer(ItemId),
@@ -1034,26 +1038,16 @@ mod hierarchical_drag_and_drop {
                             self.selected_items.insert(item_id);
                         }
                     }
-                    Command::MoveDraggedItemTo(parent_id, pos) => {
-                        if let Some(source_id) = self.dragged_id(ui) {
-                            self.move_item(source_id, parent_id, pos);
-                        }
-                    }
+                    Command::MoveItem {
+                        moved_item_id,
+                        target_container_id,
+                        target_position_index,
+                    } => self.move_item(moved_item_id, target_container_id, target_position_index),
                     Command::HighlightTargetContainer(item_id) => {
                         self.target_container = Some(item_id);
                     }
                 }
             }
-        }
-
-        fn dragged_id(&self, ui: &egui::Ui) -> Option<ItemId> {
-            // TODO(ab): `mem.dragged_id()` now exists but there is no easy way to get the value out of and egui::Id
-            ui.memory(|mem| {
-                self.items
-                    .keys()
-                    .find(|item_id| mem.is_being_dragged((**item_id).into()))
-                    .copied()
-            })
         }
 
         fn container_ui(
@@ -1153,7 +1147,14 @@ mod hierarchical_drag_and_drop {
                 return;
             }
 
-            let Some(dragged_item_id) = self.dragged_id(ui) else {
+            // find the item being dragged
+            // TODO(ab): `mem.dragged_id()` now exists but there is no easy way to get the value out of and egui::Id
+            let Some(dragged_item_id) = ui.memory(|mem| {
+                self.items
+                    .keys()
+                    .find(|item_id| mem.is_being_dragged((**item_id).into()))
+                    .copied()
+            }) else {
                 // this shouldn't happen
                 return;
             };
@@ -1161,7 +1162,7 @@ mod hierarchical_drag_and_drop {
             ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
 
             let drag_target =
-                self.find_drag_target(ui, item_id, is_container, response, body_response);
+                self.find_drop_target(ui, item_id, is_container, response, body_response);
 
             if let Some(drag_target) = drag_target {
                 // We cannot allow the target location to be "inside" the dragged item, because that would amount moving
@@ -1179,10 +1180,11 @@ mod hierarchical_drag_and_drop {
 
                 // TODO(emilk/egui#3882): it would be nice to have a drag specific API for `ctx().drag_stopped()`.
                 if ui.input(|i| i.pointer.any_released()) {
-                    self.send_command(Command::MoveDraggedItemTo(
-                        drag_target.target_parent_id,
-                        drag_target.target_position_index,
-                    ));
+                    self.send_command(Command::MoveItem {
+                        moved_item_id: dragged_item_id,
+                        target_container_id: drag_target.target_parent_id,
+                        target_position_index: drag_target.target_position_index,
+                    });
                 } else {
                     self.send_command(Command::HighlightTargetContainer(
                         drag_target.target_parent_id,
@@ -1247,7 +1249,7 @@ mod hierarchical_drag_and_drop {
         /// ```
         ///
         /// **Note**: press `Alt` to visualize the drag zones while dragging.
-        fn find_drag_target(
+        fn find_drop_target(
             &self,
             ui: &egui::Ui,
             item_id: ItemId,
@@ -1400,6 +1402,8 @@ mod hierarchical_drag_and_drop {
         }
     }
 
+    /// Gather information about a drop target, including the geometry of the drop indicator that should be
+    /// displayed, and the destination where the dragged items should be moved.
     struct DropTarget {
         /// Range of X coordinates for the drag target indicator
         indicator_span_x: egui::Rangef,
