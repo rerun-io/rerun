@@ -260,7 +260,7 @@ pub fn root_space_split_heuristic(
 ) -> HashMap<EntityPathPart, SubSpace> {
     re_tracing::profile_function!();
 
-    // We want to split the root space if...
+    // We want to split the root space if…
     //
     // … there's a root space in the first place.
     let Some(root_space) = topo.subspace_for_subspace_origin(EntityPath::root().hash()) else {
