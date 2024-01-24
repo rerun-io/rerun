@@ -721,7 +721,7 @@ mod drag_and_drop {
                     source_item_position_index = Some(i);
                 }
 
-                // TODO(emilk/egui#3841): this feels like a common enough pattern that is should deserve its own API.
+                // TODO(emilk/egui#3882): this feels like a common enough pattern that is should deserve its own API.
                 let anything_being_decidedly_dragged = ui
                     .memory(|mem| mem.is_anything_being_dragged())
                     && ui.input(|i| i.pointer.is_decidedly_dragging());
@@ -745,7 +745,7 @@ mod drag_and_drop {
                             (2.0, egui::Color32::WHITE),
                         );
 
-                        // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
+                        // TODO(emilk/egui#3882): it would be nice to have a drag specific API for that
                         if ui.input(|i| i.pointer.any_released()) {
                             target_item_position_index = target;
                         }
@@ -1176,7 +1176,7 @@ mod hierarchical_drag_and_drop {
                     (2.0, egui::Color32::WHITE),
                 );
 
-                // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
+                // TODO(emilk/egui#3882): it would be nice to have a drag specific API for `ctx().drag_stopped()`.
                 if ui.input(|i| i.pointer.any_released()) {
                     self.send_command(Command::MoveDraggedItemTo(
                         drag_target.target_parent_id,
