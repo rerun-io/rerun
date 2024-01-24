@@ -673,8 +673,8 @@ mod drag_and_drop {
 
     impl ExampleDragAndDrop {
         pub fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
-            let mut source_item_pos = None;
-            let mut target_item_pos = None;
+            let mut source_item_position_index = None;
+            let mut target_item_position_index = None;
 
             for (i, (item_id, label)) in self.items.iter_mut().enumerate() {
                 //
@@ -723,7 +723,7 @@ mod drag_and_drop {
                 //
 
                 if response.dragged() || response.drag_released() {
-                    source_item_pos = Some(i);
+                    source_item_position_index = Some(i);
                 }
 
                 // TODO(emilk/egui#3841): this feels like a common enough pattern that is should deserve its own API.
@@ -752,7 +752,7 @@ mod drag_and_drop {
 
                         // TODO(emilk/egui#3841): it would be nice to have a drag specific API for that
                         if ui.input(|i| i.pointer.any_released()) {
-                            target_item_pos = target;
+                            target_item_position_index = target;
                         }
                     }
                 }
@@ -762,7 +762,9 @@ mod drag_and_drop {
             // Handle the swap command (if any)
             //
 
-            if let (Some(source), Some(target)) = (source_item_pos, target_item_pos) {
+            if let (Some(source), Some(target)) =
+                (source_item_position_index, target_item_position_index)
+            {
                 if source != target {
                     let item = self.items.remove(source);
 
@@ -1185,7 +1187,7 @@ mod hierarchical_drag_and_drop {
                 if ui.input(|i| i.pointer.any_released()) {
                     self.send_command(Command::MoveDraggedItemTo(
                         drag_target.target_parent_id,
-                        drag_target.target_pos,
+                        drag_target.target_position_index,
                     ));
                 } else {
                     self.send_command(Command::HighlightTargetContainer(
@@ -1415,7 +1417,7 @@ mod hierarchical_drag_and_drop {
         target_parent_id: ItemId,
 
         /// Destination position within the container
-        target_pos: usize,
+        target_position_index: usize,
     }
 
     impl DropTarget {
@@ -1423,13 +1425,13 @@ mod hierarchical_drag_and_drop {
             indicator_span_x: egui::Rangef,
             indicator_position_y: f32,
             target_parent_id: ItemId,
-            target_pos: usize,
+            target_position_index: usize,
         ) -> Self {
             Self {
                 indicator_span_x,
                 indicator_position_y,
                 target_parent_id,
-                target_pos,
+                target_position_index,
             }
         }
     }
