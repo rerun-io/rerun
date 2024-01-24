@@ -1067,7 +1067,7 @@ mod hierarchical_drag_and_drop {
                 .subdued(true)
                 .selected(self.selected(item_id))
                 .draggable(item_id.into())
-                .drag_target(self.target_container == Some(item_id))
+                .drop_target_style(self.target_container == Some(item_id))
                 .show_collapsing(ui, item_id.into(), true, |re_ui, ui| {
                     self.container_children_ui(re_ui, ui, children);
                 });

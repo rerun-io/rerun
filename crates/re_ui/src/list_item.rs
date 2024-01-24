@@ -172,11 +172,13 @@ impl<'a> ListItem<'a> {
         self
     }
 
-    /// Highlight the item as the current drag target.
+    /// Highlight the item as the current drop target.
     ///
     /// Use this while dragging, to highlight which container will receive the drop at any given time.
+    /// **Note**: this flag has otherwise no behavioural effect. It's up to the caller to set it when the item is
+    /// being hovered (or otherwise selected as drop target) while a drag is in progress.
     #[inline]
-    pub fn drag_target(mut self, drag_target: bool) -> Self {
+    pub fn drop_target_style(mut self, drag_target: bool) -> Self {
         self.drag_target = drag_target;
         self
     }
