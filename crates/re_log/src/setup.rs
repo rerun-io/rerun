@@ -46,20 +46,18 @@ pub fn setup_native_logging() {
 
 #[cfg(target_arch = "wasm32")]
 pub fn setup_web_logging() {
-    use std::sync::atomic::{AtomicBool, Ordering};
-
-    static LOG_INIT: AtomicBool = AtomicBool::new(false);
-    if LOG_INIT.load(Ordering::SeqCst) {
-        return;
+    fn setup() {
+        crate::multi_logger::init().expect("Failed to set logger");
+        log::set_max_level(log::LevelFilter::Debug);
+        crate::add_boxed_logger(Box::new(crate::web_logger::WebLogger::new(
+            log::LevelFilter::Debug,
+        )))
+        .expect("Failed to install logger");
     }
-    LOG_INIT.store(true, Ordering::SeqCst);
 
-    crate::multi_logger::init().expect("Failed to set logger");
-    log::set_max_level(log::LevelFilter::Debug);
-    crate::add_boxed_logger(Box::new(crate::web_logger::WebLogger::new(
-        log::LevelFilter::Debug,
-    )))
-    .expect("Failed to install logger");
+    use std::sync::Once;
+    static START: Once = Once::new();
+    START.call_once(setup);
 }
 
 // ----------------------------------------------------------------------------
