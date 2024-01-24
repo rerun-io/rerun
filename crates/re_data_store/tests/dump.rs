@@ -3,7 +3,7 @@
 use itertools::Itertools;
 use re_data_store::{
     test_row,
-    test_util::{init_logs, insert_table_with_retries, sanity_unwrap},
+    test_util::{insert_table_with_retries, sanity_unwrap},
     DataStore, DataStoreStats, GarbageCollectionOptions, TimeInt, TimeRange, Timeline,
 };
 use re_log_types::{
@@ -71,7 +71,7 @@ impl RowSet {
 
 #[test]
 fn data_store_dump() {
-    init_logs();
+    re_log::setup_native_logging();
 
     for mut config in re_data_store::test_util::all_configs() {
         // NOTE: insert IDs aren't serialized and can be different across runs.
@@ -176,7 +176,7 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
 
 #[test]
 fn data_store_dump_filtered() {
-    init_logs();
+    re_log::setup_native_logging();
 
     for mut config in re_data_store::test_util::all_configs() {
         // NOTE: insert IDs aren't serialized and can be different across runs.
@@ -310,7 +310,7 @@ fn create_insert_table(ent_path: impl Into<EntityPath>) -> DataTable {
 // See: https://github.com/rerun-io/rerun/pull/2007
 #[test]
 fn data_store_dump_empty_column() {
-    init_logs();
+    re_log::setup_native_logging();
 
     // Split tables on 1 row
     let mut config = re_data_store::DataStoreConfig {

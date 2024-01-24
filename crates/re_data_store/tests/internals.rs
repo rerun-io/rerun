@@ -2,7 +2,7 @@
 //!
 //! They're awful, but sometimes you just have to…
 
-use re_data_store::{test_util::init_logs, DataStore, DataStoreConfig};
+use re_data_store::{DataStore, DataStoreConfig};
 use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId, TimePoint};
 use re_types::{components::InstanceKey, datagen::build_some_instances};
 use re_types_core::Loggable as _;
@@ -20,7 +20,7 @@ use re_types_core::Loggable as _;
 // make an exception, for now…
 #[test]
 fn pathological_bucket_topology() {
-    init_logs();
+    re_log::setup_native_logging();
 
     let mut store_forward = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),

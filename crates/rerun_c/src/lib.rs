@@ -258,7 +258,7 @@ fn rr_recording_stream_new_impl(
     store_info: *const CStoreInfo,
     default_enabled: bool,
 ) -> Result<CRecordingStream, CError> {
-    initialize_logging();
+    re_log::setup_native_logging();
 
     let store_info = ptr::try_ptr_as_ref(store_info, "store_info")?;
 
@@ -734,15 +734,4 @@ pub unsafe extern "C" fn _rr_free_string(str: *mut c_char) {
         // SAFETY: `_rr_free_string` should only be called on strings allocated by `_rr_escape_entity_path_part`.
         let _ = CString::from_raw(str);
     }
-}
-
-// ----------------------------------------------------------------------------
-// Helper functions:
-
-fn initialize_logging() {
-    use std::sync::Once;
-    static START: Once = Once::new();
-    START.call_once(|| {
-        re_log::setup_native_logging();
-    });
 }
