@@ -10,7 +10,7 @@ use re_entity_db::{
 use re_log_types::{
     path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, StoreKind,
 };
-use re_types_core::{archetypes::Clear, ComponentName};
+use re_types_core::{archetypes::Clear, components::InstanceKey, ComponentName};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
     DataResultNode, DataResultTree, IndicatorMatchingEntities, PerVisualizer, PropertyOverrides,
@@ -474,20 +474,22 @@ impl DataQueryPropertyResolver<'_> {
                     let mut component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)> =
                         Default::default();
 
-                    // TODO(jleibs): This information needs to come from the Visualizer.
-                    let color_component = ComponentName::from("rerun.components.Color");
-
-                    // TODO(jleibs): To handle clears properly, need to check that the component
-                    // isn't empty.
-                    if ctx.blueprint.store().entity_has_component(
-                        &query.timeline,
-                        &override_path,
-                        &color_component,
-                    ) {
-                        component_overrides.insert(
-                            color_component,
-                            (StoreKind::Blueprint, override_path.clone()),
-                        );
+                    if let Some(override_subtree) = ctx.blueprint.tree().subtree(&override_path) {
+                        for component in override_subtree.entity.components.keys() {
+                            if let Some(component_data) = ctx
+                                .blueprint
+                                .store()
+                                .latest_at(query, &override_path, *component, &[*component])
+                                .and_then(|result| result.2[0].clone())
+                            {
+                                if !component_data.is_empty() {
+                                    component_overrides.insert(
+                                        *component,
+                                        (StoreKind::Blueprint, override_path.clone()),
+                                    );
+                                }
+                            }
+                        }
                     }
 
                     node.data_result.property_overrides = Some(PropertyOverrides {

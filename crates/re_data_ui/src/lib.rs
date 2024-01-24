@@ -30,6 +30,7 @@ pub use crate::image::{
     show_zoomed_image_region, show_zoomed_image_region_area_outline,
     tensor_summary_ui_grid_contents,
 };
+pub use component::EntityComponentWithInstances;
 pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
 pub use image_meaning::image_meaning_for_entity;
 
@@ -50,7 +51,7 @@ pub fn ui_visible_components<'a>(
 }
 
 /// Show this component in the UI.
-fn is_component_visible_in_ui(component_name: &ComponentName) -> bool {
+pub fn is_component_visible_in_ui(component_name: &ComponentName) -> bool {
     const HIDDEN_COMPONENTS: &[&str] = &["rerun.components.InstanceKey"];
     !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
 }

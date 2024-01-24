@@ -24,8 +24,10 @@ use re_viewport::{
     Contents, SpaceInfoCollection, Viewport, ViewportBlueprint,
 };
 
-use crate::ui::add_space_view_or_container_modal::AddSpaceViewOrContainerModal;
 use crate::ui::visible_history::visible_history_ui;
+use crate::ui::{
+    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, override_ui::override_ui,
+};
 
 use super::selection_history_ui::SelectionHistoryUi;
 
@@ -47,7 +49,7 @@ pub(crate) struct SelectionPanel {
 /// timeline, then use the blueprint. Otherwise use the recording.
 // TODO(jleibs): Ideally this wouldn't be necessary and we could make the assessment
 // directly from the entity_path.
-fn guess_query_and_store_for_selected_entity<'a>(
+pub(crate) fn guess_query_and_store_for_selected_entity<'a>(
     ctx: &'a ViewerContext<'_>,
     entity_path: &EntityPath,
 ) -> (re_data_store::LatestAtQuery, &'a re_data_store::DataStore) {
@@ -189,6 +191,16 @@ impl SelectionPanel {
                         };
                         data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, store);
                     });
+                }
+
+                // Special section for space-view-entities
+                if let Item::InstancePath(Some(space_view_id), instance_path) = item {
+                    if let Some(space_view) = viewport.blueprint.space_views.get(space_view_id) {
+                        ctx.re_ui
+                            .large_collapsing_header(ui, "Component Overrides", true, |ui| {
+                                override_ui(ctx, space_view, instance_path, ui);
+                            });
+                    }
                 }
 
                 if has_blueprint_section(item) {
