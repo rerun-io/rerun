@@ -927,7 +927,7 @@ mod hierarchical_drag_and_drop {
             false
         }
 
-        /// Move item `item_id` to `container_id`at position `pos`.
+        /// Move item `item_id` to `container_id` at position `pos`.
         fn move_item(&mut self, item_id: ItemId, container_id: ItemId, mut pos: usize) {
             println!("Moving {item_id:?} to {container_id:?} at position {pos:?}");
 
