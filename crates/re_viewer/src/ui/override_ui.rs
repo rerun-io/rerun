@@ -2,15 +2,12 @@ use std::collections::BTreeSet;
 
 use itertools::Itertools;
 use re_data_store::{DataStore, LatestAtQuery};
-use re_data_ui::{
-    is_component_visible_in_ui, item_ui, temporary_style_ui_for_component, DataUi as _,
-    EntityComponentWithInstances,
-};
+use re_data_ui::{is_component_visible_in_ui, item_ui, temporary_style_ui_for_component};
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, DataCell, DataRow, RowId, StoreKind};
 use re_query_cache::external::re_query::get_component_with_instances;
 use re_types::components::{Color, Scalar};
-use re_types_core::{ComponentName, Loggable};
+use re_types_core::{components::InstanceKey, ComponentName, Loggable};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataResult, SystemCommand, SystemCommandSender as _,
     UiVerbosity, ViewerContext,
@@ -84,29 +81,18 @@ pub fn override_ui(
             };
 
             if let Some((_, _, component_data)) = component_data {
-                if let Some(archetype_name) = component_name.indicator_component_archetype() {
-                    ui.weak(format!(
-                        "Indicator component for the {archetype_name} archetype"
-                    ));
-                } else if instance_key.is_splat() {
-                    EntityComponentWithInstances {
-                        entity_path: entity_path.clone(),
-                        component_data,
-                    }
-                    .data_ui(ctx, ui, UiVerbosity::Small, &query, store);
-                } else {
-                    ctx.component_ui_registry.ui(
-                        ctx,
-                        ui,
-                        UiVerbosity::Small,
-                        &query,
-                        store,
-                        entity_path,
-                        &component_data,
-                        instance_key,
-                    );
-                }
+                ctx.component_ui_registry.edit(
+                    ctx,
+                    ui,
+                    UiVerbosity::Small,
+                    &query,
+                    store,
+                    entity_path,
+                    &component_data,
+                    instance_key,
+                );
             } else {
+                // TODO(jleibs): This shouldn't happen. Warn instead?
                 ui.weak("(empty)");
             }
 
@@ -169,18 +155,28 @@ pub fn add_new_override(
                 // TODO(jleibs): The override-editor interface needs a way to specify the default-value
                 // if there isn't one in the store already. We can't default to "empty" because empty
                 // needs to be "no override."
+                let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
+                splat_cell.compute_size_bytes();
+
                 let initial_data = store
                     .latest_at(query, &data_result.entity_path, component, &components)
                     .and_then(|result| result.2[0].clone())
+                    .and_then(|cell| {
+                        if cell.num_instances() == 1 {
+                            Some(cell)
+                        } else {
+                            None
+                        }
+                    })
                     .unwrap_or_else(|| {
                         if component == Scalar::name() {
-                            let mut row: DataCell = [Scalar::from(0.0)].into();
-                            row.compute_size_bytes();
-                            row
+                            let mut cell: DataCell = [Scalar::from(0.0)].into();
+                            cell.compute_size_bytes();
+                            cell
                         } else {
-                            let mut row: DataCell = [Color::from_rgb(255, 255, 255)].into();
-                            row.compute_size_bytes();
-                            row
+                            let mut cell: DataCell = [Color::from_rgb(255, 255, 255)].into();
+                            cell.compute_size_bytes();
+                            cell
                         }
                     });
 
@@ -191,7 +187,7 @@ pub fn add_new_override(
                     blueprint_timepoint_for_writes(),
                     override_path.clone(),
                     1,
-                    [initial_data],
+                    [splat_cell, initial_data],
                 ) {
                     Ok(row) => ctx
                         .command_sender

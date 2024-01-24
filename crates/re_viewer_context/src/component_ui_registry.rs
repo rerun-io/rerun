@@ -46,18 +46,34 @@ type ComponentUiCallback = Box<
         + Sync,
 >;
 
+type ComponentEditCallback = Box<
+    dyn Fn(
+            &ViewerContext<'_>,
+            &mut egui::Ui,
+            UiVerbosity,
+            &LatestAtQuery,
+            &DataStore,
+            &EntityPath,
+            &ComponentWithInstances,
+            &InstanceKey,
+        ) + Send
+        + Sync,
+>;
+
 /// How to display components in a Ui.
 pub struct ComponentUiRegistry {
     /// Ui method to use if there was no specific one registered for a component.
     fallback_ui: ComponentUiCallback,
-    components: BTreeMap<ComponentName, ComponentUiCallback>,
+    component_uis: BTreeMap<ComponentName, ComponentUiCallback>,
+    component_editors: BTreeMap<ComponentName, ComponentEditCallback>,
 }
 
 impl ComponentUiRegistry {
     pub fn new(fallback_ui: ComponentUiCallback) -> Self {
         Self {
             fallback_ui,
-            components: Default::default(),
+            component_uis: Default::default(),
+            component_editors: Default::default(),
         }
     }
 
@@ -65,7 +81,14 @@ impl ComponentUiRegistry {
     ///
     /// If the component was already registered, the new callback replaces the old one.
     pub fn add(&mut self, name: ComponentName, callback: ComponentUiCallback) {
-        self.components.insert(name, callback);
+        self.component_uis.insert(name, callback);
+    }
+
+    /// Registers how to edit a given component in the ui.
+    ///
+    /// If the component was already registered, the new callback replaces the old one.
+    pub fn add_editor(&mut self, name: ComponentName, callback: ComponentEditCallback) {
+        self.component_editors.insert(name, callback);
     }
 
     /// Show a ui for this instance of this component.
@@ -90,7 +113,7 @@ impl ComponentUiRegistry {
         }
 
         let ui_callback = self
-            .components
+            .component_uis
             .get(&component.name())
             .unwrap_or(&self.fallback_ui);
         (*ui_callback)(
@@ -103,5 +126,52 @@ impl ComponentUiRegistry {
             component,
             instance_key,
         );
+    }
+
+    /// Show an editor for this instance of this component.
+    #[allow(clippy::too_many_arguments)]
+    pub fn edit(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        verbosity: UiVerbosity,
+        query: &LatestAtQuery,
+        store: &DataStore,
+        entity_path: &EntityPath,
+        component: &ComponentWithInstances,
+        instance_key: &InstanceKey,
+    ) {
+        re_tracing::profile_function!(component.name().full_name());
+
+        if component.name() == InstanceKey::name() {
+            // The user wants to show a ui for the `InstanceKey` component - well, that's easy:
+            ui.label(instance_key.to_string());
+            return;
+        }
+
+        if let Some(edit_callback) = self.component_editors.get(&component.name()) {
+            (*edit_callback)(
+                ctx,
+                ui,
+                verbosity,
+                query,
+                store,
+                entity_path,
+                component,
+                instance_key,
+            );
+        } else {
+            // Even if we can't edit the component, it's still helpful to show what the value is.
+            self.ui(
+                ctx,
+                ui,
+                verbosity,
+                query,
+                store,
+                entity_path,
+                component,
+                instance_key,
+            );
+        }
     }
 }
