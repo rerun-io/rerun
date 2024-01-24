@@ -686,8 +686,8 @@ fn data_cell_sizes() {
             DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
         cell.compute_size_bytes();
 
-        assert_eq!(216, cell.heap_size_bytes());
-        assert_eq!(216, cell.heap_size_bytes());
+        assert_eq!(184, cell.heap_size_bytes());
+        assert_eq!(184, cell.heap_size_bytes());
     }
 
     // anything else
@@ -699,7 +699,7 @@ fn data_cell_sizes() {
         cell.compute_size_bytes();
 
         // zero-sized + 3x u64s
-        assert_eq!(240, cell.heap_size_bytes());
-        assert_eq!(240, cell.heap_size_bytes());
+        assert_eq!(208, cell.heap_size_bytes());
+        assert_eq!(208, cell.heap_size_bytes());
     }
 }

@@ -386,7 +386,7 @@ pub fn start<E: Example + 'static>() {
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-        re_log::setup_native_logging();
+        re_log::setup_logging();
         pollster::block_on(run::<E>(event_loop, window));
     }
 
@@ -395,7 +395,7 @@ pub fn start<E: Example + 'static>() {
         // Make sure panics are logged using `console.error`.
         console_error_panic_hook::set_once();
 
-        re_log::setup_web_logging();
+        re_log::setup_logging();
 
         use winit::platform::web::WindowExtWebSys;
         let canvas = window.canvas().expect("Couldn't get canvas");

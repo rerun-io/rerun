@@ -65,7 +65,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "id".to_owned(),
                 data_type: DataType::UInt16,
@@ -84,7 +84,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 is_nullable: true,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -242,7 +242,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::Struct(vec![
+                        DataType::Struct(std::sync::Arc::new(vec![
                             Field {
                                 name: "id".to_owned(),
                                 data_type: DataType::UInt16,
@@ -261,7 +261,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                                 is_nullable: true,
                                 metadata: [].into(),
                             },
-                        ]),
+                        ])),
                         arrow_data.data_type().clone(),
                     )
                 })

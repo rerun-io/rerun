@@ -69,7 +69,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "translation".to_owned(),
                 data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
@@ -88,7 +88,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                 is_nullable: false,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -159,7 +159,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
-                                    Box::new(Field {
+                                    std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float32,
                                         is_nullable: false,
@@ -225,7 +225,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
-                                    Box::new(Field {
+                                    std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float32,
                                         is_nullable: false,
@@ -294,7 +294,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::Struct(vec![
+                        DataType::Struct(std::sync::Arc::new(vec![
                             Field {
                                 name: "translation".to_owned(),
                                 data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
@@ -313,7 +313,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
-                        ]),
+                        ])),
                         arrow_data.data_type().clone(),
                     )
                 })
@@ -344,7 +344,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
                                     DataType::FixedSizeList(
-                                        Box::new(Field {
+                                        std::sync::Arc::new(Field {
                                             name: "item".to_owned(),
                                             data_type: DataType::Float32,
                                             is_nullable: false,
@@ -430,7 +430,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
                                     DataType::FixedSizeList(
-                                        Box::new(Field {
+                                        std::sync::Arc::new(Field {
                                             name: "item".to_owned(),
                                             data_type: DataType::Float32,
                                             is_nullable: false,

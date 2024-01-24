@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     result::_Backtrace, DeserializationResult, ResultExt as _, SerializationResult, SizeBytes,
 };
@@ -51,7 +53,7 @@ pub trait Loggable: Clone + Sized + SizeBytes {
     fn extended_arrow_datatype() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::Extension(
             Self::name().to_string(),
-            Box::new(Self::arrow_datatype()),
+            Arc::new(Self::arrow_datatype()),
             None,
         )
     }

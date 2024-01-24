@@ -68,7 +68,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::List(Box::new(Field {
+        DataType::List(std::sync::Arc::new(Field {
             name: "item".to_owned(),
             data_type: <crate::datatypes::Vec2D>::arrow_datatype(),
             is_nullable: false,
@@ -147,7 +147,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                             });
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
-                                Box::new(Field {
+                                std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float32,
                                     is_nullable: false,
@@ -190,7 +190,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::List(Box::new(Field {
+                        DataType::List(std::sync::Arc::new(Field {
                             name: "item".to_owned(),
                             data_type: <crate::datatypes::Vec2D>::arrow_datatype(),
                             is_nullable: false,
@@ -212,7 +212,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
                                     DataType::FixedSizeList(
-                                        Box::new(Field {
+                                        std::sync::Arc::new(Field {
                                             name: "item".to_owned(),
                                             data_type: DataType::Float32,
                                             is_nullable: false,

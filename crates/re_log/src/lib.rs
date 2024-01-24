@@ -42,7 +42,7 @@ pub use channel_logger::*;
 pub use multi_logger::{add_boxed_logger, add_logger, MultiLoggerNotSetupError};
 
 #[cfg(feature = "setup")]
-pub use setup::*;
+pub use setup::setup_logging;
 
 /// Re-exports of other crates.
 pub mod external {

@@ -180,7 +180,10 @@ impl std::fmt::Display for DisplayDataType {
             DataType::Decimal(_, _) => "decimal",
             DataType::Decimal256(_, _) => "decimal256",
             DataType::Extension(name, data_type, _) => {
-                let s = format!("extension<{name}>[{}]", DisplayDataType(*data_type.clone()));
+                let s = format!(
+                    "extension<{name}>[{}]",
+                    DisplayDataType((**data_type).clone())
+                );
                 return f.write_str(&s);
             }
         };

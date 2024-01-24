@@ -79,17 +79,3 @@ pub fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
         }
     }
 }
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn init_logs() {
-    use std::sync::atomic::{AtomicBool, Ordering};
-
-    static INIT: AtomicBool = AtomicBool::new(false);
-
-    if INIT
-        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        .is_ok()
-    {
-        re_log::setup_native_logging();
-    }
-}
