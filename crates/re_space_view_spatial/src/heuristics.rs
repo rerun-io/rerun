@@ -5,20 +5,18 @@ use egui::NumExt as _;
 use nohash_hasher::IntSet;
 use re_data_ui::image_meaning_for_entity;
 use re_entity_db::EditableAutoValue;
-use re_log_types::{EntityPath, EntityPathFilter};
+use re_log_types::EntityPath;
 use re_types::{
     components::{DepthMeter, TensorData},
     tensor_data::TensorDataMeaning,
     Archetype as _,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, PerSystemEntities, RecommendedSpaceView, SpaceViewClassIdentifier,
-    SpaceViewSpawnHeuristics, ViewerContext,
+    IdentifiedViewSystem, PerSystemEntities, SpaceViewClassIdentifier, ViewerContext,
 };
 
 use crate::{
     query_pinhole,
-    spatial_topology::{SpatialTopology, SubSpaceDimensionality},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         CamerasVisualizer, ImageVisualizer, SpatialViewVisualizerData, Transform3DArrowsVisualizer,
@@ -223,18 +221,15 @@ fn update_transform3d_lines_heuristics(
     }
 }
 
-pub fn spawn_heuristics(
+pub fn entities_with_indicator_for_visualizer_kind(
     ctx: &ViewerContext<'_>,
     space_view_class_identifier: SpaceViewClassIdentifier,
     visualizer_kind: SpatialSpaceViewKind,
-) -> SpaceViewSpawnHeuristics {
+) -> IntSet<EntityPath> {
     re_tracing::profile_function!();
 
-    // First, create a list of all entities that have a matching indicator for *any* 2D/3D visualizer.
-    let visualizers = ctx
-        .space_view_class_registry
-        .new_visualizer_collection(space_view_class_identifier);
-    let indicated_entities: IntSet<EntityPath> = visualizers
+    ctx.space_view_class_registry
+        .new_visualizer_collection(space_view_class_identifier)
         .iter_with_identifiers()
         .filter_map(|(id, visualizer)| {
             let data = visualizer
@@ -253,40 +248,5 @@ pub fn spawn_heuristics(
         })
         .flatten()
         .cloned()
-        .collect();
-
-    let preferred_dimensionality = match visualizer_kind {
-        SpatialSpaceViewKind::TwoD => SubSpaceDimensionality::TwoD,
-        SpatialSpaceViewKind::ThreeD => SubSpaceDimensionality::ThreeD,
-    };
-
-    // Spawn a space view at each subspace that has any potential 2D/3D content.
-    // Note that visualizability filtering is all about being in the right subspace,
-    // so we only need to check visualizability here.
-    SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
-        let recommended_space_views = topo
-            .iter_subspaces()
-            .filter_map(|subspace| {
-                if subspace.dimensionality == SubSpaceDimensionality::Unknown
-                    || subspace.dimensionality == preferred_dimensionality
-                {
-                    if indicated_entities.is_disjoint(&subspace.entities) {
-                        None
-                    } else {
-                        Some(RecommendedSpaceView {
-                            root: subspace.origin.clone(),
-                            query_filter: EntityPathFilter::subtree_entity_filter(&subspace.origin),
-                        })
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-        SpaceViewSpawnHeuristics {
-            recommended_space_views,
-        }
-    })
-    .unwrap_or_default()
+        .collect()
 }

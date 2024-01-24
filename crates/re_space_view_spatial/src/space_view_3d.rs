@@ -1,14 +1,15 @@
 use nohash_hasher::IntSet;
 use re_entity_db::EntityProperties;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathFilter};
 use re_viewer_context::{
-    PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
+    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    VisualizableFilterContext,
 };
 
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
-    heuristics::{spawn_heuristics, update_object_property_heuristics},
+    heuristics::{entities_with_indicator_for_visualizer_kind, update_object_property_heuristics},
     spatial_topology::{SpatialTopology, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
@@ -130,7 +131,34 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
         re_tracing::profile_function!();
-        spawn_heuristics(ctx, self.identifier(), SpatialSpaceViewKind::ThreeD)
+
+        let indicated_entities = entities_with_indicator_for_visualizer_kind(
+            ctx,
+            self.identifier(),
+            SpatialSpaceViewKind::ThreeD,
+        );
+
+        // Spawn a space view at each subspace that has any potential 3D content.
+        // Note that visualizability filtering is all about being in the right subspace,
+        // so we don't need to call the visualizers' filter functions here.
+        SpatialTopology::access(ctx.entity_db.store_id(), |topo| SpaceViewSpawnHeuristics {
+            recommended_space_views: topo
+                .iter_subspaces()
+                .filter_map(|subspace| {
+                    if subspace.dimensionality == SubSpaceDimensionality::TwoD
+                        || indicated_entities.is_disjoint(&subspace.entities)
+                    {
+                        None
+                    } else {
+                        Some(RecommendedSpaceView {
+                            root: subspace.origin.clone(),
+                            query_filter: EntityPathFilter::subtree_entity_filter(&subspace.origin),
+                        })
+                    }
+                })
+                .collect(),
+        })
+        .unwrap_or_default()
     }
 
     fn on_frame_start(

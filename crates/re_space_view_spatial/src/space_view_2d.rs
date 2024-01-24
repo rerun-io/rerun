@@ -1,18 +1,25 @@
+use ahash::HashMap;
 use nohash_hasher::IntSet;
+
 use re_entity_db::EntityProperties;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathFilter, EntityPathPart, Timeline};
+use re_types::{
+    components::{DrawOrder, TensorData},
+    Loggable,
+};
 use re_viewer_context::{
-    PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    ApplicableEntities, IdentifiedViewSystem as _, PerSystemEntities, RecommendedSpaceView,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
     SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
 };
 
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
-    heuristics::{spawn_heuristics, update_object_property_heuristics},
-    spatial_topology::{SpatialTopology, SubSpaceDimensionality},
+    heuristics::{entities_with_indicator_for_visualizer_kind, update_object_property_heuristics},
+    spatial_topology::{SpatialTopology, SubSpace, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::register_2d_spatial_visualizers,
+    visualizers::{register_2d_spatial_visualizers, ImageVisualizer},
 };
 
 #[derive(Default)]
@@ -152,7 +159,105 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ctx: &ViewerContext<'_>,
     ) -> re_viewer_context::SpaceViewSpawnHeuristics {
         re_tracing::profile_function!();
-        spawn_heuristics(ctx, self.identifier(), SpatialSpaceViewKind::TwoD)
+
+        let indicated_entities = entities_with_indicator_for_visualizer_kind(
+            ctx,
+            self.identifier(),
+            SpatialSpaceViewKind::TwoD,
+        );
+
+        let image_entities_fallback = ApplicableEntities::default();
+        let image_entities = ctx
+            .applicable_entities_per_visualizer
+            .get(&ImageVisualizer::identifier())
+            .unwrap_or(&image_entities_fallback);
+
+        // Spawn a space view at each subspace that has any potential 2D content.
+        // Note that visualizability filtering is all about being in the right subspace,
+        // so we don't need to call the visualizers' filter functions here.
+        SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
+            // We want to split the root space into several spaces if:
+            // * nothing is logged directly at the root
+            // * nothing relevant logged directly at the roots direct children
+            let mut children_of_root_spaces = HashMap::<EntityPathPart, SubSpace>::default();
+            if let Some(root_space) = topo.subspace_for_subspace_origin(EntityPath::root().hash()) {
+                if !root_space.entities.is_empty()
+                    && root_space
+                        .entities
+                        .iter()
+                        .all(|entity| entity.iter().count() > 1 || !image_entities.contains(entity))
+                {
+                    for entity in &root_space.entities {
+                        let Some(root_child) = entity.iter().next() else {
+                            continue;
+                        };
+                        children_of_root_spaces
+                            .entry(root_child.clone())
+                            .or_insert_with(|| {
+                                SubSpace {
+                                    origin: [root_child.clone()].as_slice().into(),
+                                    dimensionality: SubSpaceDimensionality::TwoD,
+                                    entities: Default::default(), // Filled as we go.
+                                    child_spaces: Default::default(), // Unused here.
+                                    parent_space: Some(EntityPath::root().hash()),
+                                }
+                            })
+                            .entities
+                            .insert(entity.clone());
+                    }
+                }
+            }
+
+            SpaceViewSpawnHeuristics {
+                recommended_space_views: topo
+                    .iter_subspaces()
+                    .flat_map(|subspace| {
+                        if subspace.origin.is_root() && children_of_root_spaces.len() > 1 {
+                            itertools::Either::Left(children_of_root_spaces.values())
+                        } else {
+                            itertools::Either::Right(std::iter::once(subspace))
+                        }
+                    })
+                    .flat_map(|subspace| {
+                        if subspace.dimensionality == SubSpaceDimensionality::ThreeD
+                            || indicated_entities.is_disjoint(&subspace.entities)
+                        {
+                            return Vec::new();
+                        }
+
+                        let images_by_bucket =
+                            bucket_images_in_subspace(ctx, subspace, image_entities);
+                        if images_by_bucket.len() <= 1 {
+                            vec![RecommendedSpaceView {
+                                root: subspace.origin.clone(),
+                                query_filter: EntityPathFilter::subtree_entity_filter(
+                                    &subspace.origin,
+                                ),
+                            }]
+                        } else {
+                            #[allow(clippy::iter_kv_map)] // Not doing `values()` saves a path copy!
+                            images_by_bucket
+                                .into_iter()
+                                .map(|(_, entity_bucket)| {
+                                    let mut query_filter = EntityPathFilter::default();
+                                    for image in entity_bucket {
+                                        // This might lead to overlapping subtrees and break the same image size bucketing again.
+                                        // We just take that risk, the heuristic doesn't need to be perfect.
+                                        query_filter.add_subtree(image);
+                                    }
+
+                                    RecommendedSpaceView {
+                                        root: subspace.origin.clone(),
+                                        query_filter,
+                                    }
+                                })
+                                .collect()
+                        }
+                    })
+                    .collect(),
+            }
+        })
+        .unwrap_or_default()
     }
 
     fn selection_ui(
@@ -187,4 +292,53 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
         crate::ui_2d::view_2d(ctx, ui, state, query, system_output)
     }
+}
+
+#[derive(Hash, PartialEq, Eq)]
+enum ImageBucketing {
+    BySize((u64, u64)),
+    ExplicitDrawOrder,
+}
+
+/// Groups all images in the subspace by size and draw order.
+fn bucket_images_in_subspace(
+    ctx: &ViewerContext<'_>,
+    subspace: &SubSpace,
+    image_entities: &ApplicableEntities,
+) -> HashMap<ImageBucketing, Vec<EntityPath>> {
+    let mut images_by_bucket = HashMap::<ImageBucketing, Vec<EntityPath>>::default();
+    let store = ctx.entity_db.store();
+
+    for image_entity in subspace
+        .entities
+        .iter()
+        .filter(|e| image_entities.contains(e))
+    {
+        // Put everything in the same bucket if it has a draw order.
+        if store
+            .all_components(&Timeline::log_tick(), image_entity)
+            .map_or(false, |c| c.contains(&DrawOrder::name()))
+        {
+            images_by_bucket
+                .entry(ImageBucketing::ExplicitDrawOrder)
+                .or_default()
+                .push(image_entity.clone());
+        } else {
+            // Otherwise, distinguish by image size.
+            // TODO(andreas): We really don't want to do a latest at query here since this means the heuristic can have different results depending on the
+            //                current query, but for this we'd have to store the max-size over time somewhere using another store subscriber (?).
+            if let Some(tensor) =
+                store.query_latest_component::<TensorData>(image_entity, &ctx.current_query())
+            {
+                if let Some([height, width, _]) = tensor.image_height_width_channels() {
+                    images_by_bucket
+                        .entry(ImageBucketing::BySize((height, width)))
+                        .or_default()
+                        .push(image_entity.clone());
+                }
+            }
+        }
+    }
+
+    images_by_bucket
 }
