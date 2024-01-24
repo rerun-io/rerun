@@ -7,7 +7,7 @@ const SAMPLE_TYPE_FLOAT = 1u;
 const SAMPLE_TYPE_SINT  = 2u;
 const SAMPLE_TYPE_UINT  = 3u;
 const SAMPLE_TYPE_NV12  = 4u;
-const SAMPLE_TYPE_YUV422  = 5u;
+const SAMPLE_TYPE_YUY2  = 5u;
 
 // How do we do colormapping?
 const COLOR_MAPPER_OFF_GRAYSCALE = 1u;
