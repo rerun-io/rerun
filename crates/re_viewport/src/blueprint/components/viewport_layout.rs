@@ -55,7 +55,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::List(Box::new(Field {
+        DataType::List(std::sync::Arc::new(Field {
             name: "item".to_owned(),
             data_type: DataType::UInt8,
             is_nullable: false,
@@ -146,7 +146,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::List(Box::new(Field {
+                        DataType::List(std::sync::Arc::new(Field {
                             name: "item".to_owned(),
                             data_type: DataType::UInt8,
                             is_nullable: false,

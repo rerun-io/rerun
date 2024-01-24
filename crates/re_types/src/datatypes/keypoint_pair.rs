@@ -57,7 +57,7 @@ impl ::re_types_core::Loggable for KeypointPair {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "keypoint0".to_owned(),
                 data_type: <crate::datatypes::KeypointId>::arrow_datatype(),
@@ -70,7 +70,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                 is_nullable: false,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -183,7 +183,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::Struct(vec![
+                        DataType::Struct(std::sync::Arc::new(vec![
                             Field {
                                 name: "keypoint0".to_owned(),
                                 data_type: <crate::datatypes::KeypointId>::arrow_datatype(),
@@ -196,7 +196,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
-                        ]),
+                        ])),
                         arrow_data.data_type().clone(),
                     )
                 })

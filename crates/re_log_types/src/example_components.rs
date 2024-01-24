@@ -1,5 +1,7 @@
 //! Example components to be used for tests and docs
 
+use std::sync::Arc;
+
 use re_types_core::{components::InstanceKey, Loggable, SizeBytes};
 
 // ----------------------------------------------------------------------------
@@ -67,10 +69,10 @@ impl Loggable for MyPoint {
 
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::DataType::Float32;
-        arrow2::datatypes::DataType::Struct(vec![
+        arrow2::datatypes::DataType::Struct(Arc::new(vec![
             arrow2::datatypes::Field::new("x", Float32, false),
             arrow2::datatypes::Field::new("y", Float32, false),
-        ])
+        ]))
     }
 
     fn to_arrow_opt<'a>(

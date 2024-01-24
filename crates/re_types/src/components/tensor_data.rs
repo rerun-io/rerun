@@ -74,10 +74,10 @@ impl ::re_types_core::Loggable for TensorData {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "shape".to_owned(),
-                data_type: DataType::List(Box::new(Field {
+                data_type: DataType::List(std::sync::Arc::new(Field {
                     name: "item".to_owned(),
                     data_type: <crate::datatypes::TensorDimension>::arrow_datatype(),
                     is_nullable: false,
@@ -92,7 +92,7 @@ impl ::re_types_core::Loggable for TensorData {
                 is_nullable: false,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]

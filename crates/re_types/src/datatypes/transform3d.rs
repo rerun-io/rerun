@@ -63,7 +63,7 @@ impl ::re_types_core::Loggable for Transform3D {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Union(
-            vec![
+            std::sync::Arc::new(vec![
                 Field {
                     name: "_null_markers".to_owned(),
                     data_type: DataType::Null,
@@ -82,8 +82,8 @@ impl ::re_types_core::Loggable for Transform3D {
                     is_nullable: false,
                     metadata: [].into(),
                 },
-            ],
-            Some(vec![0i32, 1i32, 2i32]),
+            ]),
+            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
             UnionMode::Dense,
         )
     }
@@ -221,18 +221,19 @@ impl ::re_types_core::Loggable for Transform3D {
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
                         DataType::Union(
-                            vec![
-                            Field { name : "_null_markers".to_owned(), data_type :
-                            DataType::Null, is_nullable : true, metadata : [].into(), },
-                            Field { name : "TranslationAndMat3x3".to_owned(), data_type :
-                            < crate ::datatypes::TranslationAndMat3x3 >
-                            ::arrow_datatype(), is_nullable : false, metadata : []
-                            .into(), }, Field { name : "TranslationRotationScale"
-                            .to_owned(), data_type : < crate
-                            ::datatypes::TranslationRotationScale3D > ::arrow_datatype(),
-                            is_nullable : false, metadata : [].into(), },
-                        ],
-                            Some(vec![0i32, 1i32, 2i32]),
+                            std::sync::Arc::new(vec![
+                                Field { name : "_null_markers".to_owned(), data_type :
+                                DataType::Null, is_nullable : true, metadata : [].into(), },
+                                Field { name : "TranslationAndMat3x3".to_owned(), data_type
+                                : < crate ::datatypes::TranslationAndMat3x3 >
+                                ::arrow_datatype(), is_nullable : false, metadata : []
+                                .into(), }, Field { name : "TranslationRotationScale"
+                                .to_owned(), data_type : < crate
+                                ::datatypes::TranslationRotationScale3D >
+                                ::arrow_datatype(), is_nullable : false, metadata : []
+                                .into(), },
+                            ]),
+                            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
                             UnionMode::Dense,
                         ),
                         arrow_data.data_type().clone(),

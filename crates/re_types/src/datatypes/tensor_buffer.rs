@@ -95,7 +95,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Union(
-            vec![
+            std::sync::Arc::new(vec![
                 Field {
                     name: "_null_markers".to_owned(),
                     data_type: DataType::Null,
@@ -104,7 +104,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "U8".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::UInt8,
                         is_nullable: false,
@@ -115,7 +115,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "U16".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::UInt16,
                         is_nullable: false,
@@ -126,7 +126,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "U32".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::UInt32,
                         is_nullable: false,
@@ -137,7 +137,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "U64".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::UInt64,
                         is_nullable: false,
@@ -148,7 +148,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "I8".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::Int8,
                         is_nullable: false,
@@ -159,7 +159,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "I16".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::Int16,
                         is_nullable: false,
@@ -170,7 +170,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "I32".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::Int32,
                         is_nullable: false,
@@ -181,7 +181,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "I64".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::Int64,
                         is_nullable: false,
@@ -192,7 +192,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "F16".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::Float16,
                         is_nullable: false,
@@ -203,7 +203,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "F32".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::Float32,
                         is_nullable: false,
@@ -214,7 +214,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "F64".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::Float64,
                         is_nullable: false,
@@ -225,7 +225,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "JPEG".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::UInt8,
                         is_nullable: false,
@@ -236,7 +236,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 },
                 Field {
                     name: "NV12".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: DataType::UInt8,
                         is_nullable: false,
@@ -245,11 +245,11 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     is_nullable: false,
                     metadata: [].into(),
                 },
-            ],
-            Some(vec![
+            ]),
+            Some(std::sync::Arc::new(vec![
                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32, 11i32, 12i32,
                 13i32,
-            ]),
+            ])),
             UnionMode::Dense,
         )
     }
@@ -330,7 +330,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::UInt8,
                                     is_nullable: false,
@@ -384,7 +384,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::UInt16,
                                     is_nullable: false,
@@ -438,7 +438,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::UInt32,
                                     is_nullable: false,
@@ -492,7 +492,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::UInt64,
                                     is_nullable: false,
@@ -546,7 +546,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Int8,
                                     is_nullable: false,
@@ -596,7 +596,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Int16,
                                     is_nullable: false,
@@ -650,7 +650,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Int32,
                                     is_nullable: false,
@@ -704,7 +704,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Int64,
                                     is_nullable: false,
@@ -758,7 +758,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float16,
                                     is_nullable: false,
@@ -812,7 +812,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float32,
                                     is_nullable: false,
@@ -866,7 +866,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float64,
                                     is_nullable: false,
@@ -920,7 +920,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::UInt8,
                                     is_nullable: false,
@@ -974,7 +974,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::UInt8,
                                     is_nullable: false,
@@ -1104,7 +1104,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
                         DataType::Union(
-                            vec![
+                            std::sync::Arc::new(vec![
                                 Field {
                                     name: "_null_markers".to_owned(),
                                     data_type: DataType::Null,
@@ -1113,7 +1113,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "U8".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
@@ -1124,7 +1124,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "U16".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt16,
                                         is_nullable: false,
@@ -1135,7 +1135,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "U32".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt32,
                                         is_nullable: false,
@@ -1146,7 +1146,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "U64".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt64,
                                         is_nullable: false,
@@ -1157,7 +1157,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "I8".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int8,
                                         is_nullable: false,
@@ -1168,7 +1168,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "I16".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int16,
                                         is_nullable: false,
@@ -1179,7 +1179,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "I32".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int32,
                                         is_nullable: false,
@@ -1190,7 +1190,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "I64".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int64,
                                         is_nullable: false,
@@ -1201,7 +1201,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "F16".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float16,
                                         is_nullable: false,
@@ -1212,7 +1212,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "F32".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float32,
                                         is_nullable: false,
@@ -1223,7 +1223,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "F64".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float64,
                                         is_nullable: false,
@@ -1234,7 +1234,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "JPEG".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
@@ -1245,7 +1245,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 },
                                 Field {
                                     name: "NV12".to_owned(),
-                                    data_type: DataType::List(Box::new(Field {
+                                    data_type: DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
@@ -1254,11 +1254,11 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     is_nullable: false,
                                     metadata: [].into(),
                                 },
-                            ],
-                            Some(vec![
+                            ]),
+                            Some(std::sync::Arc::new(vec![
                                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32,
                                 11i32, 12i32, 13i32,
-                            ]),
+                            ])),
                             UnionMode::Dense,
                         ),
                         arrow_data.data_type().clone(),
@@ -1297,7 +1297,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
@@ -1368,7 +1368,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt16,
                                         is_nullable: false,
@@ -1439,7 +1439,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt32,
                                         is_nullable: false,
@@ -1510,7 +1510,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt64,
                                         is_nullable: false,
@@ -1581,7 +1581,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int8,
                                         is_nullable: false,
@@ -1652,7 +1652,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int16,
                                         is_nullable: false,
@@ -1723,7 +1723,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int32,
                                         is_nullable: false,
@@ -1794,7 +1794,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int64,
                                         is_nullable: false,
@@ -1865,7 +1865,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float16,
                                         is_nullable: false,
@@ -1936,7 +1936,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float32,
                                         is_nullable: false,
@@ -2007,7 +2007,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float64,
                                         is_nullable: false,
@@ -2078,7 +2078,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
@@ -2149,7 +2149,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,

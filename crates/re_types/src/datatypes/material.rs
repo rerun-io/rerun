@@ -78,12 +78,12 @@ impl ::re_types_core::Loggable for Material {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![Field {
+        DataType::Struct(std::sync::Arc::new(vec![Field {
             name: "albedo_factor".to_owned(),
             data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
-        }])
+        }]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -165,12 +165,12 @@ impl ::re_types_core::Loggable for Material {
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::Struct(vec![Field {
+                        DataType::Struct(std::sync::Arc::new(vec![Field {
                             name: "albedo_factor".to_owned(),
                             data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
                             is_nullable: true,
                             metadata: [].into(),
-                        }]),
+                        }])),
                         arrow_data.data_type().clone(),
                     )
                 })
