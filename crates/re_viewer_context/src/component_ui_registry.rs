@@ -54,6 +54,7 @@ type ComponentEditCallback = Box<
             &LatestAtQuery,
             &DataStore,
             &EntityPath,
+            &EntityPath,
             &ComponentWithInstances,
             &InstanceKey,
         ) + Send
@@ -138,6 +139,7 @@ impl ComponentUiRegistry {
         query: &LatestAtQuery,
         store: &DataStore,
         entity_path: &EntityPath,
+        override_path: &EntityPath,
         component: &ComponentWithInstances,
         instance_key: &InstanceKey,
     ) {
@@ -157,6 +159,7 @@ impl ComponentUiRegistry {
                 query,
                 store,
                 entity_path,
+                override_path,
                 component,
                 instance_key,
             );

@@ -88,6 +88,7 @@ pub fn override_ui(
                     &query,
                     store,
                     entity_path,
+                    &overrides.override_path,
                     &component_data,
                     instance_key,
                 );

@@ -10,7 +10,7 @@ use re_types::{
     components::{Color, PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_types_core::Loggable;
+use re_types_core::{components::InstanceKey, Loggable};
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
@@ -195,11 +195,18 @@ impl SelectionPanel {
 
                 // Special section for space-view-entities
                 if let Item::InstancePath(Some(space_view_id), instance_path) = item {
-                    if let Some(space_view) = viewport.blueprint.space_views.get(space_view_id) {
-                        ctx.re_ui
-                            .large_collapsing_header(ui, "Component Overrides", true, |ui| {
-                                override_ui(ctx, space_view, instance_path, ui);
-                            });
+                    if instance_path.instance_key == InstanceKey::SPLAT {
+                        if let Some(space_view) = viewport.blueprint.space_views.get(space_view_id)
+                        {
+                            ctx.re_ui.large_collapsing_header(
+                                ui,
+                                "Component Overrides",
+                                true,
+                                |ui| {
+                                    override_ui(ctx, space_view, instance_path, ui);
+                                },
+                            );
+                        }
                     }
                 }
 
@@ -922,7 +929,7 @@ fn blueprint_ui(
                                 data_result.accumulated_properties(),
                             );
                             data_result.save_override(Some(props), ctx);
-                            entity_overrides_ui(ctx, ui, &space_view_class, &data_result);
+                            //entity_overrides_ui(ctx, ui, &space_view_class, &data_result);
                         }
                     }
                 }

@@ -1,5 +1,5 @@
 use re_log_types::{DataCell, DataRow, EntityPath, RowId, Time, TimePoint, Timeline};
-use re_types::ComponentName;
+use re_types::{components::InstanceKey, ComponentName};
 
 use crate::{SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -23,12 +23,18 @@ impl ViewerContext<'_> {
     {
         let timepoint = blueprint_timepoint_for_writes();
 
-        match DataRow::from_cells1_sized(
+        let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
+        splat_cell.compute_size_bytes();
+
+        let mut component: DataCell = [component].into();
+        component.compute_size_bytes();
+
+        match DataRow::from_cells(
             RowId::new(),
-            entity_path.clone(),
             timepoint.clone(),
+            entity_path.clone(),
             1,
-            [component],
+            [splat_cell, component],
         ) {
             Ok(row) => self
                 .command_sender
