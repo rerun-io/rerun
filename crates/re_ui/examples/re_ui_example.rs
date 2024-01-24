@@ -317,16 +317,35 @@ impl eframe::App for ExampleApp {
                 ui.set_clip_rect(ui.max_rect());
 
                 //
-                // First section - no scroll area, so a single outer "panel_content" can be used.
+                // First section - Drag and drop demos
+                //
+
+                ui.scope(|ui| {
+                    ui.spacing_mut().item_spacing.y = 0.0;
+
+                    self.re_ui.panel_content(ui, |re_ui, ui| {
+                        re_ui.panel_title_bar_with_buttons(ui, "Drag-and-drop demo", None, |ui| {
+                            ui.add(re_ui::toggle_switch(&mut self.show_hierarchical_demo));
+                            ui.label("Hierarchical:");
+                        });
+
+                        if self.show_hierarchical_demo {
+                            self.hierarchical_drag_and_drop.ui(re_ui, ui);
+                        } else {
+                            self.drag_and_drop.ui(re_ui, ui);
+                        }
+                    });
+
+                    ReUi::full_span_separator(ui);
+                    ui.add_space(20.0);
+                });
+
+                //
+                // Second section - no scroll area, so a single outer "panel_content" can be used.
                 //
 
                 self.re_ui.panel_content(ui, |re_ui, ui| {
-                    re_ui.panel_title_bar(
-                        ui,
-                        "Right panel",
-                        Some("This is the title of the right panel"),
-                    );
-                    re_ui.large_collapsing_header(ui, "Large Collapsing Header", true, |ui| {
+                    re_ui.large_collapsing_header(ui, "Full-Span UI examples", true, |ui| {
                         ui.label("Some data here");
                         ui.label("Some data there");
 
@@ -338,32 +357,6 @@ impl eframe::App for ExampleApp {
                 // spacing.
                 ui.scope(|ui| {
                     ui.spacing_mut().item_spacing.y = 0.0;
-
-                    //
-                    // Drag and drop demo
-                    //
-
-                    ui.scope(|ui| {
-                        ui.spacing_mut().item_spacing.y = 0.0;
-
-                        self.re_ui.panel_content(ui, |re_ui, ui| {
-                            re_ui.panel_title_bar_with_buttons(
-                                ui,
-                                "Drag-and-drop demo",
-                                None,
-                                |ui| {
-                                    ui.add(re_ui::toggle_switch(&mut self.show_hierarchical_demo));
-                                    ui.label("Hierarchical:");
-                                },
-                            );
-
-                            if self.show_hierarchical_demo {
-                                self.hierarchical_drag_and_drop.ui(re_ui, ui);
-                            } else {
-                                self.drag_and_drop.ui(re_ui, ui);
-                            }
-                        });
-                    });
 
                     //
                     // Nested scroll area demo. Multiple `panel_content` must be used.
