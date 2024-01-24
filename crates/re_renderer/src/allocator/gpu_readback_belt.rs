@@ -68,7 +68,7 @@ impl GpuReadbackBuffer {
                 source
                     .texture
                     .format()
-                    .block_size(Some(source.aspect))
+                    .block_copy_size(Some(source.aspect))
                     .ok_or(GpuReadbackError::UnsupportedTextureFormatForReadback(
                         source.texture.format(),
                     ))? as u64,

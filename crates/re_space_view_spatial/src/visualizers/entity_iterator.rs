@@ -183,7 +183,7 @@ macro_rules! impl_process_archetype {
                     space_view_class_identifier: view_ctx.space_view_class_identifier(),
                 };
 
-                ::re_query_cache::[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
+                match ctx.entity_db.query_caches().[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
                     ctx.app_options.experimental_primary_caching_latest_at,
                     ctx.app_options.experimental_primary_caching_range,
                     ctx.entity_db.store(),
@@ -212,7 +212,15 @@ macro_rules! impl_process_archetype {
                             );
                         }
                     }
-                )?;
+                ) {
+                    Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
+                    Err(err) => {
+                        re_log::error_once!(
+                            "Unexpected error querying {:?}: {err}",
+                            &data_result.entity_path
+                        );
+                    }
+                }
             }
 
             Ok(())

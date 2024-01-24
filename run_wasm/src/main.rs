@@ -5,7 +5,6 @@
 use std::time::Duration;
 
 fn main() {
-    // TODO(cmc): Why is this not taking the full screen?
     const CSS: &str = r#"
         html {
             /* Remove touch delay: */
@@ -34,31 +33,6 @@ fn main() {
             padding: 0 !important;
             height: 100%;
             width: 100%;
-        }
-
-        /* Position canvas in center-top: */
-        canvas {
-            margin-right: auto;
-            margin-left: auto;
-            display: block;
-            position: absolute;
-            top: 0%;
-            left: 50%;
-            transform: translate(-50%, 0%);
-        }
-
-        .centered {
-            margin-right: auto;
-            margin-left: auto;
-            display: block;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #f0f0f0;
-            font-size: 24px;
-            font-family: Ubuntu-Light, Helvetica, sans-serif;
-            text-align: center;
         }
 
         /* ---------------------------------------------- */

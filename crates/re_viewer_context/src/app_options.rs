@@ -68,7 +68,7 @@ impl Default for AppOptions {
             experimental_additive_workflow: cfg!(debug_assertions),
 
             experimental_primary_caching_latest_at: true,
-            experimental_primary_caching_range: false,
+            experimental_primary_caching_range: true,
 
             show_picking_debug_overlay: false,
 

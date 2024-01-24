@@ -9,6 +9,7 @@ use re_viewer_context::StoreContext;
 use crate::{app_blueprint::AppBlueprint, App};
 
 pub fn top_panel(
+    frame: &eframe::Frame,
     app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
@@ -28,7 +29,14 @@ pub fn top_panel(
                 ui.set_height(top_bar_style.height);
                 ui.add_space(top_bar_style.indent);
 
-                top_bar_ui(app, app_blueprint, store_context, ui, gpu_resource_stats);
+                top_bar_ui(
+                    frame,
+                    app,
+                    app_blueprint,
+                    store_context,
+                    ui,
+                    gpu_resource_stats,
+                );
             })
             .response;
 
@@ -48,13 +56,14 @@ pub fn top_panel(
 }
 
 fn top_bar_ui(
+    frame: &eframe::Frame,
     app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    app.rerun_menu_button_ui(store_context, ui);
+    app.rerun_menu_button_ui(frame, store_context, ui);
 
     ui.add_space(12.0);
     website_link_ui(ui);

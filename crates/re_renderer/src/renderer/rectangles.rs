@@ -308,7 +308,7 @@ mod gpu_data {
                 outline_mask,
             } = options;
 
-            let sample_type = match texture_format.sample_type(None) {
+            let sample_type = match texture_format.sample_type(None, None) {
                 Some(wgpu::TextureSampleType::Float { .. }) => SAMPLE_TYPE_FLOAT,
                 Some(wgpu::TextureSampleType::Sint) => SAMPLE_TYPE_SINT,
                 Some(wgpu::TextureSampleType::Uint) => {
@@ -432,7 +432,7 @@ impl RectangleDrawData {
             let mut texture_sint = ctx.texture_manager_2d.zeroed_texture_sint().handle;
             let mut texture_uint = ctx.texture_manager_2d.zeroed_texture_uint().handle;
 
-            match texture_format.sample_type(None) {
+            match texture_format.sample_type(None, None) {
                 Some(wgpu::TextureSampleType::Float { .. }) => {
                     texture_float = texture.handle;
                 }

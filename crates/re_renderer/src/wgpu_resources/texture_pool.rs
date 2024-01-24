@@ -71,14 +71,14 @@ impl DynamicResourcesDesc for TextureDesc {
         let mut size_in_bytes = 0;
         let block_size = self
             .format
-            .block_size(Some(wgpu::TextureAspect::All))
+            .block_copy_size(Some(wgpu::TextureAspect::All))
             .unwrap_or_else(|| {
                 self.format
-                    .block_size(Some(wgpu::TextureAspect::DepthOnly))
+                    .block_copy_size(Some(wgpu::TextureAspect::DepthOnly))
                     .unwrap_or(0)
                     + self
                         .format
-                        .block_size(Some(wgpu::TextureAspect::StencilOnly))
+                        .block_copy_size(Some(wgpu::TextureAspect::StencilOnly))
                         .unwrap_or(0)
             });
         let block_dimension = self.format.block_dimensions();

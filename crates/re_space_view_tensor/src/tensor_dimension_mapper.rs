@@ -144,7 +144,7 @@ fn drop_target_ui<R>(
         egui::Rect::from_min_max(outer_rect_bounds.min, content_ui.min_rect().max + margin);
     let (rect, response) = ui.allocate_at_least(outer_rect.size(), egui::Sense::hover());
 
-    let style = if is_being_dragged && can_accept_dragged && response.hovered() {
+    let style = if is_being_dragged && can_accept_dragged && response.contains_pointer() {
         ui.visuals().widgets.active
     } else {
         ui.visuals().widgets.inactive
