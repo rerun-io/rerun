@@ -1,7 +1,4 @@
-use std::collections::BTreeMap;
-
 use egui_plot::{Legend, Line, Plot, Points};
-use parking_lot::Mutex;
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
@@ -17,41 +14,6 @@ use re_viewer_context::{
 };
 
 use crate::visualizer_system::{PlotSeriesKind, TimeSeriesSystem};
-
-// ---
-
-#[derive(Debug, Clone)]
-pub struct TimeSeriesSpaceViewFeedback {
-    /// What was the size of the plot canvas in the last frame?
-    pub plot_canvas_size: egui::Vec2,
-
-    /// What were the plot bounds in the last frame?
-    pub plot_bounds: egui_plot::PlotBounds,
-}
-
-impl Default for TimeSeriesSpaceViewFeedback {
-    fn default() -> Self {
-        Self {
-            plot_canvas_size: Default::default(),
-            plot_bounds: egui_plot::PlotBounds::NOTHING,
-        }
-    }
-}
-
-static TIME_SERIES_SPACE_VIEW_FEEDBACK: Mutex<BTreeMap<SpaceViewId, TimeSeriesSpaceViewFeedback>> =
-    Mutex::new(BTreeMap::new());
-
-impl TimeSeriesSpaceViewFeedback {
-    pub fn insert(space_view_id: SpaceViewId, feedback: TimeSeriesSpaceViewFeedback) {
-        TIME_SERIES_SPACE_VIEW_FEEDBACK
-            .lock()
-            .insert(space_view_id, feedback);
-    }
-
-    pub fn remove(space_view_id: &SpaceViewId) -> Option<TimeSeriesSpaceViewFeedback> {
-        TIME_SERIES_SPACE_VIEW_FEEDBACK.lock().remove(space_view_id)
-    }
-}
 
 // ---
 
@@ -269,8 +231,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let time_series = system_output.view_systems.get::<TimeSeriesSystem>()?;
 
-        let agg_mode = time_series.agg_mode;
-        let agg_range = time_series.agg_range;
+        let agg_mode = time_series.aggregator;
+        let agg_range = time_series.aggregation_factor;
 
         // Get the minimum time/X value for the entire plot…
         let min_time = time_series.min_time.unwrap_or(0);
@@ -288,10 +250,13 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
+        let id = egui::Id::new(format!("plot_{}", query.space_view_id));
+
         let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
+            .id(id)
             .allow_zoom([true, zoom_both_axis])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
@@ -344,18 +309,11 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
         }
 
-        let mut feedback = TimeSeriesSpaceViewFeedback {
-            plot_canvas_size: ui.available_size(),
-            ..Default::default()
-        };
-
         let egui_plot::PlotResponse {
             inner: time_x,
             response,
             transform,
         } = plot.show(ui, |plot_ui| {
-            feedback.plot_bounds = plot_ui.plot_bounds();
-
             if plot_ui.response().secondary_clicked() {
                 let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
                 let timeline = *time_ctrl_write.timeline();
@@ -413,8 +371,6 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 })
                 .map(|x| plot_ui.screen_from_plot([x, 0.0].into()).x)
         });
-
-        TimeSeriesSpaceViewFeedback::insert(query.space_view_id, feedback);
 
         if let Some(time_x) = time_x {
             let interact_radius = ui.style().interaction.resize_grab_radius_side;

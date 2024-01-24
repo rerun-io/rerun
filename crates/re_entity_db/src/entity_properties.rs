@@ -378,6 +378,7 @@ impl From<LegendCorner> for egui_plot::Corner {
 pub enum TimeSeriesAggregator {
     #[default]
     MinMax,
+    MinMaxMedian,
     Max,
     Min,
     Average,
@@ -388,6 +389,7 @@ impl std::fmt::Display for TimeSeriesAggregator {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             TimeSeriesAggregator::MinMax => write!(f, "MinMax"),
+            TimeSeriesAggregator::MinMaxMedian => write!(f, "MinMaxMedian"),
             TimeSeriesAggregator::Max => write!(f, "Max"),
             TimeSeriesAggregator::Min => write!(f, "Min"),
             TimeSeriesAggregator::Average => write!(f, "Average"),
@@ -398,11 +400,12 @@ impl std::fmt::Display for TimeSeriesAggregator {
 
 impl TimeSeriesAggregator {
     #[inline]
-    pub fn variants() -> [TimeSeriesAggregator; 5] {
+    pub fn variants() -> [TimeSeriesAggregator; 6] {
         // Just making sure this method won't compile if the enum gets modified.
         #[allow(clippy::match_same_arms)]
         match Self::default() {
             TimeSeriesAggregator::MinMax => {}
+            TimeSeriesAggregator::MinMaxMedian => {}
             TimeSeriesAggregator::Max => {}
             TimeSeriesAggregator::Min => {}
             TimeSeriesAggregator::Average => {}
@@ -411,6 +414,7 @@ impl TimeSeriesAggregator {
 
         [
             TimeSeriesAggregator::MinMax,
+            TimeSeriesAggregator::MinMaxMedian,
             TimeSeriesAggregator::Max,
             TimeSeriesAggregator::Min,
             TimeSeriesAggregator::Average,
