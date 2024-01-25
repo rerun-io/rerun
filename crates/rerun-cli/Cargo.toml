@@ -64,7 +64,6 @@ rerun = { workspace = true, features = [
   "server",
 ] }
 
-anyhow.workspace = true
 document-features.workspace = true
 mimalloc.workspace = true
 rayon.workspace = true

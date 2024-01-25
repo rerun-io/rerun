@@ -7,7 +7,6 @@ license.workspace = true
 publish = false
 
 [dependencies]
-re_log = { workspace = true, features = ["setup"] }
 re_tracing = { path = "../../../crates/re_tracing", features = ["server"] }
 rerun = { path = "../../../crates/rerun" }
 
