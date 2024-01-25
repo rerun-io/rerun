@@ -22,6 +22,20 @@ pub enum MaybeCachedComponentData<'a, C> {
     Raw(Vec<C>),
 }
 
+impl<'a, C> MaybeCachedComponentData<'a, Option<C>> {
+    /// Iterates over the data of an optional component, or repeat `None` values if it's missing.
+    #[inline]
+    pub fn iter_or_repeat_opt(
+        this: &Option<Self>,
+        len: usize,
+    ) -> impl Iterator<Item = &Option<C>> + '_ {
+        this.as_ref().map_or(
+            itertools::Either::Left(std::iter::repeat(&None).take(len)),
+            |data| itertools::Either::Right(data.iter()),
+        )
+    }
+}
+
 impl<'a, C> std::ops::Deref for MaybeCachedComponentData<'a, C> {
     type Target = [C];
 
@@ -99,7 +113,7 @@ macro_rules! impl_query_archetype {
                     (Option<TimeInt>, RowId),
                     MaybeCachedComponentData<'_, InstanceKey>,
                     $(MaybeCachedComponentData<'_, $pov>,)+
-                    $(MaybeCachedComponentData<'_, Option<$comp>>,)*
+                    $(Option<MaybeCachedComponentData<'_, Option<$comp>>>,)*
                 ),
             ),
         {
@@ -119,7 +133,7 @@ macro_rules! impl_query_archetype {
                         (arch_view.data_time(), arch_view.primary_row_id()),
                         MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
                         $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
-                        $(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect()),)*
+                        $(Some(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect())),)*
                     );
 
                     f(data);
@@ -150,7 +164,7 @@ macro_rules! impl_query_archetype {
                             (arch_view.data_time(), arch_view.primary_row_id()),
                             MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
                             $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
-                            $(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect()),)*
+                            $(Some(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect())),)*
                         );
 
                         f(data);
@@ -259,7 +273,7 @@ macro_rules! impl_query_archetype_with_history {
                     (Option<TimeInt>, RowId),
                     MaybeCachedComponentData<'_, InstanceKey>,
                     $(MaybeCachedComponentData<'_, $pov>,)+
-                    $(MaybeCachedComponentData<'_, Option<$comp>>,)*
+                    $(Option<MaybeCachedComponentData<'_, Option<$comp>>>,)*
                 ),
             ),
         {

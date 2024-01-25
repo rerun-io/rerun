@@ -770,6 +770,7 @@ impl CacheBucket {
         Ok(added_size_bytes)
     }
 
+    /// This will insert an empty slice for a missing component (instead of N `None` values).
     #[inline]
     fn insert_component_opt<A: Archetype, C: Component + Send + Sync + 'static>(
         &mut self,
@@ -783,12 +784,20 @@ impl CacheBucket {
             .entry(C::name())
             .or_insert_with(|| Box::new(FlatVecDeque::<Option<C>>::new()));
 
-        // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
-        // instead, that way we can efficiently computes its size while we're at it.
-        let added: FlatVecDeque<Option<C>> = arch_view
-            .iter_optional_component::<C>()?
-            .collect::<VecDeque<Option<C>>>()
-            .into();
+        let added: FlatVecDeque<Option<C>> = if arch_view.has_component::<C>() {
+            // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
+            // instead, that way we can efficiently computes its size while we're at it.
+            arch_view
+                .iter_optional_component::<C>()?
+                .collect::<VecDeque<Option<C>>>()
+                .into()
+        } else {
+            // If an optional component is missing entirely, we just store an empty slice in its
+            // stead, rather than a bunch of `None` values.
+            let mut added = FlatVecDeque::<Option<C>>::new();
+            added.push_back(std::iter::empty());
+            added
+        };
         let added_size_bytes = added.total_size_bytes();
 
         // NOTE: downcast cannot fail, we create it just above.

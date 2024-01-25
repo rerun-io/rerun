@@ -292,12 +292,14 @@ fn query_and_visit_points(
                 &query.clone().into(),
                 path,
                 |(_, _, positions, colors)| {
-                    itertools::izip!(positions.iter(), colors.iter()).for_each(|(pos, color)| {
-                        points.push(SavePoint {
-                            _pos: *pos,
-                            _color: *color,
-                        });
-                    });
+                    itertools::izip!(positions.iter(), colors.unwrap().iter()).for_each(
+                        |(pos, color)| {
+                            points.push(SavePoint {
+                                _pos: *pos,
+                                _color: *color,
+                            });
+                        },
+                    );
                 },
             )
             .unwrap();
@@ -328,7 +330,7 @@ fn query_and_visit_strings(
                 &query.clone().into(),
                 path,
                 |(_, _, _, labels)| {
-                    for label in labels.iter() {
+                    for label in labels.unwrap().iter() {
                         strings.push(SaveString {
                             _label: label.clone(),
                         });
