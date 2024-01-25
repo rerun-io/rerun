@@ -167,11 +167,13 @@ pub fn add_new_override(
             }
 
             if ui.button(component.as_str()).clicked() {
+                // We are creating a new override. We need to decide what initial value to give it.
+                // - First see if there's an existing splat in the recording.
+                // - Next see if visualizer system wants to provide a value.
+                // - Finally, fall back on the default value from the component registry.
+
                 let components = [*component];
 
-                // TODO(jleibs): The override-editor interface needs a way to specify the default-value
-                // if there isn't one in the store already. We can't default to "empty" because empty
-                // needs to be "no override."
                 let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
                 splat_cell.compute_size_bytes();
 

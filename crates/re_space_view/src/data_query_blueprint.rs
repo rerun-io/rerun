@@ -372,7 +372,9 @@ impl DataQueryPropertyResolver<'_> {
             }
         }
 
-        // TODO(jleibs): Should pass through an initial `ComponentOverrides` here.
+        // TODO(jleibs): Should pass through an initial `ComponentOverrides` here
+        // if we were to support incrementally inheriting overrides from parent
+        // contexts such as the `SpaceView` or `Container`.
         EntityOverrideContext {
             root,
             individual: self.resolve_entity_overrides_for_path(
