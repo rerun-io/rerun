@@ -157,6 +157,11 @@ pub fn add_new_override(
                 continue;
             };
 
+            // If there is no registered editor, don't let the user create an override
+            if !ctx.component_ui_registry.has_registered_editor(component) {
+                continue;
+            }
+
             if ui.button(component.as_str()).clicked() {
                 let components = [*component];
 

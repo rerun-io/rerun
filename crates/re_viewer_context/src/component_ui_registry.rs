@@ -92,6 +92,11 @@ impl ComponentUiRegistry {
         self.component_editors.insert(name, callback);
     }
 
+    /// Check if there is a registered editor for a given component
+    pub fn has_registered_editor(&self, name: &ComponentName) -> bool {
+        self.component_editors.contains_key(name)
+    }
+
     /// Show a ui for this instance of this component.
     #[allow(clippy::too_many_arguments)]
     pub fn ui(
