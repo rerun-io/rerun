@@ -15,7 +15,6 @@ cargo install cargo-cranky # Uses lints defined in Cranky.toml. See https://gith
 cargo install --locked cargo-deny # https://github.com/EmbarkStudios/cargo-deny
 cargo install just # https://github.com/casey/just - a command runner
 cargo install taplo-cli --locked # https://github.com/tamasfe/taplo - toml formatter/linter/lsp
-cargo install typos-cli # https://github.com/crate-ci/typos - typo detector
 
 
 packagesNeeded='pngcrush pipx clang-format flatbuffers'
