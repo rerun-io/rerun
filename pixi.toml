@@ -51,7 +51,9 @@ py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
-py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py" }
+py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py", depends_on =[
+  "py-build",
+] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
