@@ -6,8 +6,7 @@ use re_data_ui::{is_component_visible_in_ui, item_ui, temporary_style_ui_for_com
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, DataCell, DataRow, RowId, StoreKind};
 use re_query_cache::external::re_query::get_component_with_instances;
-use re_types::components::{Color, Scalar};
-use re_types_core::{components::InstanceKey, ComponentName, Loggable};
+use re_types_core::{components::InstanceKey, ComponentName};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataResult, SystemCommand, SystemCommandSender as _,
     UiVerbosity, ViewerContext,

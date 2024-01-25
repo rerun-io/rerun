@@ -2,7 +2,7 @@ use re_data_store::LatestAtQuery;
 use re_query::{query_archetype, QueryError};
 use re_types::{
     archetypes::{self, TextDocument},
-    components, Archetype as _, ComponentNameSet,
+    components,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,

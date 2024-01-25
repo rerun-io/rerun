@@ -4,20 +4,20 @@ use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
-use re_log_types::{DataRow, EntityPathFilter, RowId, StoreKind};
+use re_log_types::{DataRow, EntityPathFilter, RowId};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
-    components::{Color, PinholeProjection, Transform3D},
+    components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_types_core::{components::InstanceKey, Loggable};
+use re_types_core::components::InstanceKey;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{
-    auto_color, blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui,
-    ContainerId, DataResult, HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier,
-    SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
+    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId,
+    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand,
+    SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,

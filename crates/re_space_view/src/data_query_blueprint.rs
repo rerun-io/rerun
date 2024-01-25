@@ -10,7 +10,7 @@ use re_entity_db::{
 use re_log_types::{
     path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, StoreKind,
 };
-use re_types_core::{archetypes::Clear, components::InstanceKey, ComponentName};
+use re_types_core::{archetypes::Clear, ComponentName};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
     DataResultNode, DataResultTree, IndicatorMatchingEntities, PerVisualizer, PropertyOverrides,

@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use re_types::{Archetype, Component, ComponentNameSet};
+use re_types::{Archetype, ComponentNameSet};
 
 use crate::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
