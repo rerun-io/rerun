@@ -85,7 +85,8 @@ def main() -> None:
 
     # Doc tests
     if args.skip_docs is not True:
-        timings.append(run_cargo("doc", "--all-features"))
+        # Full doc build takes prohibitively long (over 17min as of writing), so we skip it:
+        # timings.append(run_cargo("doc", "--all-features"))
         timings.append(run_cargo("doc", "--no-deps --all-features --workspace"))
         timings.append(run_cargo("doc", "--document-private-items --no-deps --all-features --workspace"))
 
