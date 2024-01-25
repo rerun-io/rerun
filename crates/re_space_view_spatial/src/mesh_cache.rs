@@ -26,6 +26,7 @@ pub enum AnyMesh<'a> {
     Asset(&'a re_types::archetypes::Asset3D),
     Mesh {
         mesh: &'a re_types::archetypes::Mesh3D,
+
         /// If any textures are in the mesh's material, they use this hash for texture manager lookup.
         texture_key: u64,
     },
