@@ -173,12 +173,10 @@ jobs:
 
       - name: Rust checks & tests
         if: ${{ !inputs.ALL_CHECKS }}
-        shell: bash
         run: ./scripts/ci/rust_checks.py --skip-check-individual-crates
 
       - name: Rust all checks & tests
         if: inputs.ALL_CHECKS
-        shell: bash
         run: ./scripts/ci/rust_checks.py
 
   # ---------------------------------------------------------------------------
