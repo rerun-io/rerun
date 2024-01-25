@@ -40,7 +40,7 @@ namespace rerun::components {
         // Extensions to generated type defined in 'texcoord2d_ext.cpp'
 
         /// Construct Texcoord2D from u/v values.
-        Texcoord2D(float x, float y) : uv{u, v} {}
+        Texcoord2D(float u, float v) : uv{u, v} {}
 
         float u() const {
             return uv.x();
