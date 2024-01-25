@@ -86,7 +86,7 @@ def main() -> None:
     )
     if args.series_type == "gaussian_random_walk":
         values = np.cumsum(np.random.normal(size=values_shape), axis=0)
-    elif args.series_type == "sin_normal":
+    elif args.series_type == "sin_uniform":
         values = np.sin(np.random.uniform(0, math.pi, size=values_shape))
     else:
         # Just generate random numbers rather than crash
