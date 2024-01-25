@@ -65,11 +65,12 @@ def main() -> None:
     num_series = len(plot_paths) * len(series_paths)
     time_per_tick = 1.0 / args.freq
     expected_total_freq = args.freq * num_series
+    stop_time = args.num_points_per_series * time_per_tick
 
     if args.order == "forwards":
-        sim_times = np.arange(args.num_points_per_series)
+        sim_times = np.arange(0, stop_time, time_per_tick)
     elif args.order == "backwards":
-        sim_times = np.arange(args.num_points_per_series)[::-1]
+        sim_times = np.arange(0, stop_time, time_per_tick)[::-1]
     else:
         sim_times = np.random.randint(0, args.num_points_per_series)
 
