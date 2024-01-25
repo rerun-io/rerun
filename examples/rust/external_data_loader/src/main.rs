@@ -1,8 +1,6 @@
 //! Example of an external data-loader executable plugin for the Rerun Viewer.
 
-use rerun::{
-    external::re_data_source::extension, MediaType, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE,
-};
+use rerun::{MediaType, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE};
 
 // The Rerun Viewer will always pass these two pieces of information:
 // 1. The path to be loaded, as a positional arg.
@@ -31,6 +29,14 @@ struct Args {
     /// optional ID of the shared recording
     #[argh(option)]
     recording_id: Option<String>,
+}
+
+fn extension(path: &std::path::Path) -> String {
+    path.extension()
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .to_string_lossy()
+        .to_string()
 }
 
 fn main() -> anyhow::Result<()> {

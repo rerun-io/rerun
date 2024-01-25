@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use bytes::Bytes;
 use rerun::{
     components::{MeshProperties, Transform3D},
-    external::{ecolor, re_log, re_memory::AccountingAllocator},
+    external::re_log,
     Color, Mesh3D, RecordingStream,
 };
 
@@ -50,8 +50,14 @@ impl From<GltfPrimitive> for Mesh3D {
         }
         if albedo_factor.is_some() {
             mesh = mesh.with_mesh_material(rerun::datatypes::Material {
-                albedo_factor: albedo_factor
-                    .map(|[r, g, b, a]| ecolor::Rgba::from_rgba_unmultiplied(r, g, b, a).into()),
+                albedo_factor: albedo_factor.map(|[r, g, b, a]| {
+                    rerun::Rgba32::from_unmultiplied_rgba(
+                        (r / 255.0) as u8,
+                        (g / 255.0) as u8,
+                        (b / 255.0) as u8,
+                        (a / 255.0) as u8,
+                    )
+                }),
             });
         }
 
@@ -99,12 +105,6 @@ fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
 }
 
 // --- Init ---
-
-// Use MiMalloc as global allocator (because it is fast), wrapped in Rerun's allocation tracker
-// so that the rerun viewer can show how much memory it is using when calling `show`.
-#[global_allocator]
-static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
-    AccountingAllocator::new(mimalloc::MiMalloc);
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum Scene {
