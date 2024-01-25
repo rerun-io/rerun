@@ -45,7 +45,15 @@ pub fn override_ui(
         .map(|props| props.component_overrides.keys().cloned().collect())
         .unwrap_or_default();
 
-    add_new_override(ctx, &query, store, ui, &data_result, &active_components);
+    add_new_override(
+        ctx,
+        &query,
+        store,
+        ui,
+        space_view,
+        &data_result,
+        &active_components,
+    );
 
     let Some(overrides) = data_result.property_overrides else {
         return;
@@ -118,32 +126,31 @@ pub fn add_new_override(
     query: &LatestAtQuery,
     store: &DataStore,
     ui: &mut egui::Ui,
+    space_view: &SpaceViewBlueprint,
     data_result: &DataResult,
     active_components: &BTreeSet<ComponentName>,
 ) {
     ui.menu_button("Add new override", |ui| {
         ui.style_mut().wrap = Some(false);
 
-        // TODO(jleibs): Actually query this from the Visualizer Registry
-        // and filter down from there.
-        /*
         let view_systems = ctx
             .space_view_class_registry
             .new_visualizer_collection(*space_view.class_identifier());
 
-        let components = data_result
+        let mut components_per_visualizer = data_result
             .visualizers
             .iter()
             .filter_map(|vis| view_systems.get_by_identifier(*vis).ok())
-            .collect::<Vec<_>>();
-        */
+            .map(|vis| vis.visualizer_query_info().queried);
 
-        let components = [Scalar::name(), Color::name()]
-            .into_iter()
-            .filter(|c| !active_components.contains(c));
+        // Accmulate all the components if there are multiple visualizers
+        let mut components = components_per_visualizer.next().unwrap_or_default();
+        for mut rest in components_per_visualizer {
+            components.append(&mut rest);
+        }
 
         // Empty space views of every available types
-        for component in components {
+        for component in components.difference(active_components) {
             // If we don't have an override_path we can't set up an initial override
             // this shouldn't happen if the `DataResult` is valid.
             let Some(override_path) = data_result.override_path() else {
@@ -151,7 +158,7 @@ pub fn add_new_override(
             };
 
             if ui.button(component.as_str()).clicked() {
-                let components = [component];
+                let components = [*component];
 
                 // TODO(jleibs): The override-editor interface needs a way to specify the default-value
                 // if there isn't one in the store already. We can't default to "empty" because empty
@@ -160,7 +167,7 @@ pub fn add_new_override(
                 splat_cell.compute_size_bytes();
 
                 let initial_data = store
-                    .latest_at(query, &data_result.entity_path, component, &components)
+                    .latest_at(query, &data_result.entity_path, *component, &components)
                     .and_then(|result| result.2[0].clone())
                     .and_then(|cell| {
                         if cell.num_instances() == 1 {
@@ -170,7 +177,7 @@ pub fn add_new_override(
                         }
                     })
                     .unwrap_or_else(|| {
-                        if component == Scalar::name() {
+                        if *component == Scalar::name() {
                             let mut cell: DataCell = [Scalar::from(0.0)].into();
                             cell.compute_size_bytes();
                             cell
