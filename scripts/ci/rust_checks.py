@@ -4,74 +4,102 @@
 
 from __future__ import annotations
 
-import os
+import argparse
 import re
 import subprocess
 import sys
 import time
+from glob import glob
 
 
 class Timing:
-    def __init__(self, command: str, start_time: float) -> None:
-        self.command = command
+    def __init__(self, cwd: str, start_time: float) -> None:
+        self.cwd = cwd
         self.duration = time.time() - start_time
 
 
-def run_cargo(args: str) -> Timing:
-    command = f"cargo {args}"
-    print(f"Running '{command}'")
+def run_cargo(command: str, args: str) -> Timing:
+    cwd = f"cargo {command} --quiet {args}"
+    print(f"Running '{cwd}'")
     start = time.time()
-    result = subprocess.call(command, shell=True)
+    result = subprocess.call(cwd, shell=True)
 
     if result != 0:
         sys.exit(result)
 
-    return Timing(command, start)
+    return Timing(cwd, start)
+
+
+def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
+    with open(cargo_toml_path) as file:
+        cargo_toml_contents = file.read()
+    package_name_result = re.search(r'name\s+=\s"([\w\-_]+)"', cargo_toml_contents)
+    if package_name_result is None:
+        raise Exception(f"Failed to find package name in '{cargo_toml_path}'")
+
+    return package_name_result.group(1)
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Run Rust checks and tests")
+    parser.add_argument(
+        "--skip-check-individual-crates",
+        help="If true, don't check individual crates in /crates/.",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--skip-check-individual-examples",
+        help="If true, don't check individual examples in /examples/rust/.",
+        action="store_true",
+    )
+    parser.add_argument("--skip-docs", help="If true, don't run doc generation.", action="store_true")
+    parser.add_argument("--skip-tests", help="If true, don't run tests.", action="store_true")
+    args = parser.parse_args()
+
+    # ----------------------
+
     timings = []
 
     # First check with --locked to make sure Cargo.lock is up to date.
-    timings.append(run_cargo("check --locked --all-features"))
+    timings.append(run_cargo("check", "--locked --all-features"))
 
-    timings.append(run_cargo("fmt --all -- --check"))
-    timings.append(run_cargo("cranky --all-targets --all-features -- --deny warnings"))
-
-    # Since features are additive, check samples individually.
-    for path, dirnames, filenames in os.walk("examples/rust"):
-        if "Cargo.toml" in filenames:
-            # Read the package name from the Cargo.toml file. Crude but effective.
-            with open(f"{path}/Cargo.toml") as file:
-                cargo_toml_contents = file.read()
-            package_name_result = re.search(r'name\s+=\s"([\w\-_]+)"', cargo_toml_contents)
-            if package_name_result is None:
-                raise Exception(f"Failed to find package name in {path}/Cargo.toml")
-            package_name = package_name_result.group(1)
-
-            timings.append(run_cargo(f"check --no-default-features -p {package_name}"))
-            timings.append(run_cargo(f"check --all-features -p {package_name}"))
+    timings.append(run_cargo("fmt", "--all -- --check"))
+    timings.append(run_cargo("cranky", "--all-targets --all-features -- --deny warnings"))
 
     # Check a few important permutations of the feature flags for our `rerun` library:
-    timings.append(run_cargo("cranky -p rerun --no-default-features"))
-    timings.append(run_cargo("cranky -p rerun --no-default-features --features sdk"))
+    timings.append(run_cargo("check", "-p rerun --no-default-features"))
+    timings.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
+
+    # Since features are additive, check crates individually.
+    if args.skip_check_individual_examples is not True:
+        for cargo_toml_path in glob("./examples/rust/**/Cargo.toml", recursive=True):
+            package_name = package_name_from_cargo_toml(cargo_toml_path)
+            timings.append(run_cargo("check", f"--no-default-features -p {package_name}"))
+            timings.append(run_cargo("check", f"--all-features -p {package_name}"))
+
+    if args.skip_check_individual_crates is not True:
+        for cargo_toml_path in glob("./crates/**/Cargo.toml", recursive=True):
+            package_name = package_name_from_cargo_toml(cargo_toml_path)
+            timings.append(run_cargo("check", f"--no-default-features -p {package_name}"))
+            timings.append(run_cargo("check", f"--all-features -p {package_name}"))
 
     # Doc tests
-    timings.append(run_cargo("doc --all-features"))
-    timings.append(run_cargo("doc --no-deps --all-features --workspace"))
-    timings.append(run_cargo("doc --document-private-items --no-deps --all-features --workspace"))
+    if args.skip_docs is not True:
+        timings.append(run_cargo("doc", "--all-features"))
+        timings.append(run_cargo("doc", "--no-deps --all-features --workspace"))
+        timings.append(run_cargo("doc", "--document-private-items --no-deps --all-features --workspace"))
 
-    # Just a normal `cargo test` should always work:
-    timings.append(run_cargo("test --all-targets"))
-
-    # Full test of everything:
-    timings.append(run_cargo("test --all-targets --all-features"))
+    if args.skip_tests is not True:
+        # Just a normal `cargo test` should always work:
+        timings.append(run_cargo("test", "--all-targets"))
+        # Full test of everything:
+        timings.append(run_cargo("test", "--all-targets --all-features"))
 
     # Print timings overview
     print("-----------------")
     print("Timings:")
     for timing in timings:
-        print(f"{timing.duration:.2f}s \t {timing.command}")
+        print(f"{timing.duration:.2f}s \t {timing.cwd}")
 
 
 if __name__ == "__main__":
