@@ -92,6 +92,9 @@ impl ComponentUiRegistry {
 
     /// Registers how to edit a given component in the ui.
     ///
+    /// Requires two callbacks: one to provided an initial default value, and one to show the editor
+    /// UI and save the updated value.
+    ///
     /// If the component was already registered, the new callback replaces the old one.
     pub fn add_editor(
         &mut self,
@@ -188,7 +191,7 @@ impl ComponentUiRegistry {
         }
     }
 
-    /// Show an editor for this instance of this component.
+    /// Return a default value for this component.
     #[allow(clippy::too_many_arguments)]
     pub fn default_value(
         &self,
