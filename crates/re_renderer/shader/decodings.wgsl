@@ -23,19 +23,11 @@ fn decode_yuy2(texture: texture_2d<u32>, coords: vec2i) -> vec4f {
     // every 4 bytes is 2 pixels
     let uv_row = u32(coords.y);
     // multiply by 2 because the width is multiplied by 2
-    var uv_col = u32(coords.x) * 2u;
+    let y_col = u32(coords.x) * 2u;
+    let y = f32(textureLoad(texture, vec2u(y_col, uv_row), 0).r);
 
-    var y = 0.0;
-    if coords.x % 2 == 0 {
-        // we're on an even pixel, so we can sample the first y value
-        y = f32(textureLoad(texture, vec2u(uv_col, uv_row), 0).r);
-    } else {
-        // we're on an odd pixel, so we need to sample the second y value
-        // we add 2 to the column to get the second y value
-        y = f32(textureLoad(texture, vec2u(uv_col + 2u, uv_row), 0).r);
-        // We subtract 2 from the column so that we can sample the u and v values
-        uv_col -= 2u;
-    }
+    // at odd pixels we're in the second half of the yuyu block, offset back by 2
+    let uv_col = y_col - u32(coords.x % 2) * 2u;
     let u = f32(textureLoad(texture, vec2u(uv_col + 1u, uv_row), 0).r);
     let v = f32(textureLoad(texture, vec2u(uv_col + 3u, uv_row), 0).r);
 
