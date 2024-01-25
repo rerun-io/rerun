@@ -4,7 +4,7 @@ use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::{
     archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
-    Loggable,
+    Component, Loggable,
 };
 use re_viewer_context::{
     external::re_entity_db::TimeSeriesAggregator, AnnotationMap, DefaultColor,
@@ -206,26 +206,10 @@ impl TimeSeriesSystem {
                     .annotation_info();
                 let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
-                // TODO(jleibs) Need a helper to do this
-                let override_color = data_result
-                    .property_overrides
-                    .as_ref()
-                    .and_then(|p| p.component_overrides.get(&Color::name()))
-                    .and_then(|(store_kind, path)| match store_kind {
-                        StoreKind::Blueprint => ctx
-                            .store_context
-                            .blueprint
-                            .store()
-                            .query_latest_component::<Color>(path, ctx.blueprint_query),
-                        StoreKind::Recording => ctx
-                            .entity_db
-                            .store()
-                            .query_latest_component::<Color>(path, &ctx.current_query()),
-                    })
-                    .map(|c| {
-                        let arr = c.value.to_array();
-                        egui::Color32::from_rgba_unmultiplied(arr[0], arr[1], arr[2], arr[3])
-                    });
+                let override_color = lookup_override::<Color>(data_result, ctx).map(|c| {
+                    let arr = c.to_array();
+                    egui::Color32::from_rgba_unmultiplied(arr[0], arr[1], arr[2], arr[3])
+                });
 
                 let query =
                     re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
@@ -442,6 +426,28 @@ impl TimeSeriesSystem {
             self.lines.push(line);
         }
     }
+}
+
+fn lookup_override<C: Component>(
+    data_result: &re_viewer_context::DataResult,
+    ctx: &ViewerContext<'_>,
+) -> Option<C> {
+    data_result
+        .property_overrides
+        .as_ref()
+        .and_then(|p| p.component_overrides.get(&C::name()))
+        .and_then(|(store_kind, path)| match store_kind {
+            StoreKind::Blueprint => ctx
+                .store_context
+                .blueprint
+                .store()
+                .query_latest_component::<C>(path, ctx.blueprint_query),
+            StoreKind::Recording => ctx
+                .entity_db
+                .store()
+                .query_latest_component::<C>(path, &ctx.current_query()),
+        })
+        .map(|c| c.value)
 }
 
 // ---

@@ -198,14 +198,19 @@ impl SelectionPanel {
                     if instance_path.instance_key == InstanceKey::SPLAT {
                         if let Some(space_view) = viewport.blueprint.space_views.get(space_view_id)
                         {
-                            ctx.re_ui.large_collapsing_header(
-                                ui,
-                                "Component Overrides",
-                                true,
-                                |ui| {
-                                    override_ui(ctx, space_view, instance_path, ui);
-                                },
-                            );
+                            // TODO(jleibs): Overrides still require special handling inside the space view.
+                            // For now, only show the override section for TimeSeries until support is implemented
+                            // generically.
+                            if space_view.class_identifier() == TimeSeriesSpaceView::IDENTIFIER {
+                                ctx.re_ui.large_collapsing_header(
+                                    ui,
+                                    "Component Overrides",
+                                    true,
+                                    |ui| {
+                                        override_ui(ctx, space_view, instance_path, ui);
+                                    },
+                                );
+                            }
                         }
                     }
                 }
