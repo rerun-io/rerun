@@ -4788,6 +4788,7 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
+ "re_query_cache",
  "re_renderer",
  "re_tracing",
  "re_types",
