@@ -456,7 +456,12 @@ impl<'a> ListItem<'a> {
             }
 
             // Handle buttons
-            let button_response = if self.active && ui.rect_contains_pointer(rect) {
+            let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
+                && ui.input(|i| i.pointer.is_decidedly_dragging());
+            let button_response = if self.active
+                && ui.rect_contains_pointer(rect)
+                && !anything_being_decidedly_dragged
+            {
                 if let Some(buttons) = self.buttons_fn {
                     let mut ui =
                         ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::Center));
