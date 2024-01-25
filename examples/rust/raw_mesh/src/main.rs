@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use bytes::Bytes;
 use rerun::{
     components::{MeshProperties, Transform3D},
-    external::re_log,
+    external::{ecolor, re_log},
     Color, Mesh3D, RecordingStream,
 };
 
@@ -50,14 +50,8 @@ impl From<GltfPrimitive> for Mesh3D {
         }
         if albedo_factor.is_some() {
             mesh = mesh.with_mesh_material(rerun::datatypes::Material {
-                albedo_factor: albedo_factor.map(|[r, g, b, a]| {
-                    rerun::Rgba32::from_unmultiplied_rgba(
-                        (r * 255.0) as u8,
-                        (g * 255.0) as u8,
-                        (b * 255.0) as u8,
-                        (a * 255.0) as u8,
-                    )
-                }),
+                albedo_factor: albedo_factor
+                    .map(|[r, g, b, a]| ecolor::Rgba::from_rgba_unmultiplied(r, g, b, a).into()),
             });
         }
 

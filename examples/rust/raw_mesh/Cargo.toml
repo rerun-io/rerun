@@ -7,7 +7,11 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/rerun", features = ["web_viewer", "clap"] }
+rerun = { path = "../../../crates/rerun", features = [
+  "web_viewer",
+  "clap",
+  "ecolor",
+] }
 
 anyhow = "1.0"
 bytes = "1.3"
