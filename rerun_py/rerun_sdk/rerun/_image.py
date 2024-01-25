@@ -148,7 +148,7 @@ class ImageEncoded(AsComponents):
                     kind = "yuy2"
 
                 tensor_buffer = TensorBuffer(np_buf)
-                tensor_buffer.kind = kind
+                tensor_buffer.kind = kind  # type: ignore[assignment]
 
                 self.data = TensorData(
                     buffer=tensor_buffer,
