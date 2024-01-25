@@ -30,7 +30,7 @@ pub struct Material {
     /// Optional albedo texture.
     ///
     /// Used with `vertex_texcoords` on `Mesh3D`.
-    /// Currently supports only RGB & RGBA sRGBA textures, ignoring alpha.
+    /// Currently supports only sRGB(A) textures, ignoring alpha.
     /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     pub albedo_texture: Option<crate::datatypes::TensorData>,
 }

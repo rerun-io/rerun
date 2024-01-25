@@ -24,9 +24,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A 2D texture UV coordinate.
 ///
 /// Texture coordinates specify a position on a 2D texture.
-/// A range from 0-1 in covers the entire texture in the respective dimension.
-/// The behavior for values outside of this range depends on the visualization/renderer,
-/// but will most commonly repeat the texture.
+/// A range from 0-1 covers the entire texture in the respective dimension.
+/// Unless configured otherwise, the texture repeats outside of this range.
 /// Rerun uses top-left as the origin for UV coordinates.
 ///
 ///   0     U     1
