@@ -17,7 +17,7 @@ pub struct ShowCollapsingResponse<R> {
     pub item_response: Response,
 
     /// Response from the body, if it was displayed.
-    pub body_response: Option<R>,
+    pub body_response: Option<egui::InnerResponse<R>>,
 }
 
 /// Specification of how the width of the [`ListItem`] must be allocated.
@@ -113,6 +113,8 @@ pub struct ListItem<'a> {
     re_ui: &'a ReUi,
     active: bool,
     selected: bool,
+    drag_id: Option<egui::Id>,
+    drag_target: bool,
     subdued: bool,
     weak: bool,
     italics: bool,
@@ -134,6 +136,8 @@ impl<'a> ListItem<'a> {
             re_ui,
             active: true,
             selected: false,
+            drag_id: None,
+            drag_target: false,
             subdued: false,
             weak: false,
             italics: false,
@@ -158,6 +162,24 @@ impl<'a> ListItem<'a> {
     #[inline]
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = selected;
+        self
+    }
+
+    /// Make the item draggable and set its persistent ID.
+    #[inline]
+    pub fn draggable(mut self, drag_id: egui::Id) -> Self {
+        self.drag_id = Some(drag_id);
+        self
+    }
+
+    /// Highlight the item as the current drop target.
+    ///
+    /// Use this while dragging, to highlight which container will receive the drop at any given time.
+    /// **Note**: this flag has otherwise no behavioural effect. It's up to the caller to set it when the item is
+    /// being hovered (or otherwise selected as drop target) while a drag is in progress.
+    #[inline]
+    pub fn drop_target_style(mut self, drag_target: bool) -> Self {
+        self.drag_target = drag_target;
         self
     }
 
@@ -304,7 +326,7 @@ impl<'a> ListItem<'a> {
 
         ShowCollapsingResponse {
             item_response: response.response,
-            body_response: body_response.map(|r| r.inner),
+            body_response,
         }
     }
 
@@ -362,6 +384,11 @@ impl<'a> ListItem<'a> {
 
         let desired_size = egui::vec2(desired_width, self.height);
         let (rect, mut response) = ui.allocate_at_least(desired_size, egui::Sense::click());
+
+        // handle dragging
+        if let Some(drag_id) = self.drag_id {
+            response = ui.interact(response.rect, drag_id, egui::Sense::drag());
+        }
 
         // compute the full-span background rect
         let mut bg_rect = rect;
@@ -478,21 +505,28 @@ impl<'a> ListItem<'a> {
             ui.painter().galley(text_pos, galley, visuals.text_color());
 
             // Draw background on interaction.
-            let bg_fill = if button_response.map_or(false, |r| r.hovered()) {
-                Some(visuals.bg_fill)
-            } else if self.selected
-                || style_response.hovered()
-                || style_response.highlighted()
-                || style_response.has_focus()
-            {
-                Some(visuals.weak_bg_fill)
+            if self.drag_target {
+                ui.painter().set(
+                    background_frame,
+                    Shape::rect_stroke(bg_rect, 0.0, (1.0, ui.visuals().selection.bg_fill)),
+                );
             } else {
-                None
-            };
+                let bg_fill = if button_response.map_or(false, |r| r.hovered()) {
+                    Some(visuals.bg_fill)
+                } else if self.selected
+                    || style_response.hovered()
+                    || style_response.highlighted()
+                    || style_response.has_focus()
+                {
+                    Some(visuals.weak_bg_fill)
+                } else {
+                    None
+                };
 
-            if let Some(bg_fill) = bg_fill {
-                ui.painter()
-                    .set(background_frame, Shape::rect_filled(bg_rect, 0.0, bg_fill));
+                if let Some(bg_fill) = bg_fill {
+                    ui.painter()
+                        .set(background_frame, Shape::rect_filled(bg_rect, 0.0, bg_fill));
+                }
             }
         }
 
