@@ -4,12 +4,12 @@ use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::{
     archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
-    Archetype, ComponentNameSet, Loggable,
+    Loggable,
 };
 use re_viewer_context::{
     external::re_entity_db::TimeSeriesAggregator, AnnotationMap, DefaultColor,
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
-    VisualizerSystem,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -84,15 +84,8 @@ impl IdentifiedViewSystem for TimeSeriesSystem {
 }
 
 impl VisualizerSystem for TimeSeriesSystem {
-    fn required_components(&self) -> ComponentNameSet {
-        TimeSeriesScalar::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(TimeSeriesScalar::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<TimeSeriesScalar>()
     }
 
     fn execute(

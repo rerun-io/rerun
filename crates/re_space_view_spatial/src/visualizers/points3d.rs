@@ -4,12 +4,11 @@ use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points3D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position3D, Radius, Text},
-    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     Annotations, ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -172,15 +171,8 @@ impl IdentifiedViewSystem for Points3DVisualizer {
 }
 
 impl VisualizerSystem for Points3DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Points3D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Points3D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Points3D>()
     }
 
     fn filter_visualizable_entities(

@@ -84,11 +84,13 @@ struct VisualizerEntityMapping {
 
 impl VisualizerEntitySubscriber {
     pub fn new<T: IdentifiedViewSystem + VisualizerSystem>(visualizer: &T) -> Self {
+        let visualizer_query_info = visualizer.visualizer_query_info();
+
         Self {
             visualizer: T::identifier(),
-            indicator_components: visualizer.indicator_components(),
-            required_components_indices: visualizer
-                .required_components()
+            indicator_components: visualizer_query_info.indicators,
+            required_components_indices: visualizer_query_info
+                .required
                 .into_iter()
                 .enumerate()
                 .map(|(i, name)| (name, i))

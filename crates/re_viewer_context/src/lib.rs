@@ -50,7 +50,7 @@ pub use space_view::{
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
     ViewContextCollection, ViewContextSystem, ViewQuery, ViewSystemIdentifier,
     VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
-    VisualizerSystem,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

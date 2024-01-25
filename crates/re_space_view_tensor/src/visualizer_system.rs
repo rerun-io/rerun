@@ -2,13 +2,11 @@ use re_data_store::{LatestAtQuery, VersionedComponent};
 use re_entity_db::EntityPath;
 use re_log_types::RowId;
 use re_space_view::diff_component_filter;
-use re_types::{
-    archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor, Archetype,
-    ComponentNameSet,
-};
+use re_types::{archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor};
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizerAdditionalApplicabilityFilter, VisualizerSystem,
+    ViewQuery, ViewerContext, VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 #[derive(Default)]
@@ -33,15 +31,8 @@ impl VisualizerAdditionalApplicabilityFilter for TensorVisualizerEntityFilter {
 }
 
 impl VisualizerSystem for TensorSystem {
-    fn required_components(&self) -> ComponentNameSet {
-        Tensor::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Tensor::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Tensor>()
     }
 
     fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
