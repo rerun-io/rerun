@@ -605,10 +605,10 @@ impl Viewport<'_, '_> {
         if let Some(drop_target) = drop_target {
             // We cannot allow the target location to be "inside" the dragged item, because that would amount moving
             // myself inside of me.
-            if let Contents::Container(container_id) = &contents {
+            if let Contents::Container(dragged_container_id) = &dragged_item_id {
                 if self
                     .blueprint
-                    .is_contents_in_container(&drop_target.target_parent_id, container_id)
+                    .is_contents_in_container(&drop_target.target_parent_id, dragged_container_id)
                 {
                     return;
                 }

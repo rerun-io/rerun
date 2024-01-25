@@ -1702,7 +1702,7 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.6.0"
-source = "git+https://github.com/rerun-io/egui_tiles?rev=3cb9547e6de4433d619f7d579182a709ab5a0dc5#3cb9547e6de4433d619f7d579182a709ab5a0dc5"
+source = "git+https://github.com/rerun-io/egui_tiles?rev=f40606f43157a2d03ffe30e272014da1461c54f8#f40606f43157a2d03ffe30e272014da1461c54f8"
 dependencies = [
  "ahash",
  "egui",
@@ -4787,6 +4787,7 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
+ "re_query_cache",
  "re_renderer",
  "re_tracing",
  "re_types",
