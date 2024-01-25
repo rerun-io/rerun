@@ -425,17 +425,20 @@ impl MemoryPanel {
                             ui.label(egui::RichText::new("Component").underline());
                             ui.label(egui::RichText::new("Rows").underline());
                             ui.label(egui::RichText::new("Instances").underline());
+                            ui.label(egui::RichText::new("Size").underline());
                             ui.end_row();
 
                             for (component_name, stats) in per_component {
                                 let &CachedComponentStats {
                                     total_rows,
                                     total_instances,
+                                    total_size_bytes,
                                 } = stats;
 
                                 ui.label(component_name.to_string());
                                 ui.label(re_format::format_number(total_rows as _));
                                 ui.label(re_format::format_number(total_instances as _));
+                                ui.label(re_format::format_bytes(total_size_bytes as _));
                                 ui.end_row();
                             }
                         });

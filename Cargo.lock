@@ -2978,7 +2978,6 @@ dependencies = [
  "anyhow",
  "clap",
  "glam",
- "re_log",
  "re_tracing",
  "rerun",
 ]
@@ -4103,7 +4102,6 @@ dependencies = [
  "bytes",
  "clap",
  "gltf",
- "mimalloc",
  "rerun",
 ]
 
@@ -4489,7 +4487,6 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
- "rmp-serde",
  "serde",
  "similar-asserts",
  "smallvec",
@@ -4501,19 +4498,13 @@ name = "re_query_cache"
 version = "0.13.0-alpha.2"
 dependencies = [
  "ahash",
- "backtrace",
  "criterion",
- "document-features",
  "itertools 0.12.0",
  "mimalloc",
- "nohash-hasher",
- "once_cell",
  "parking_lot",
  "paste",
  "rand",
- "re_arrow2",
  "re_data_store",
- "re_format",
  "re_log",
  "re_log_types",
  "re_query",
@@ -4522,7 +4513,6 @@ dependencies = [
  "re_types_core",
  "seq-macro",
  "similar-asserts",
- "thiserror",
  "web-time",
 ]
 
@@ -4583,7 +4573,6 @@ dependencies = [
  "glam",
  "image",
  "itertools 0.12.0",
- "log",
  "macaw",
  "pollster",
  "rand",
@@ -4661,13 +4650,11 @@ dependencies = [
  "egui",
  "itertools 0.12.0",
  "nohash-hasher",
- "once_cell",
  "re_entity_db",
  "re_log_types",
  "re_tracing",
  "re_types_core",
  "re_viewer_context",
- "serde",
  "slotmap",
  "smallvec",
 ]
@@ -4696,11 +4683,9 @@ version = "0.13.0-alpha.2"
 dependencies = [
  "egui",
  "egui_extras",
- "itertools 0.12.0",
  "re_data_store",
  "re_data_ui",
  "re_entity_db",
- "re_log",
  "re_log_types",
  "re_query",
  "re_renderer",
@@ -4802,7 +4787,6 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query_cache",
  "re_renderer",
  "re_tracing",
  "re_types",
@@ -5115,7 +5099,6 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "rmp-serde",
- "tinyvec",
 ]
 
 [[package]]
@@ -5264,7 +5247,6 @@ dependencies = [
 name = "rerun-cli"
 version = "0.13.0-alpha.2"
 dependencies = [
- "anyhow",
  "document-features",
  "mimalloc",
  "rayon",
@@ -6156,7 +6138,6 @@ version = "0.13.0-alpha.2"
 dependencies = [
  "mimalloc",
  "re_format",
- "re_log",
  "rerun",
 ]
 

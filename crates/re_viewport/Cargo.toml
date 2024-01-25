@@ -47,4 +47,3 @@ nohash-hasher.workspace = true
 once_cell.workspace = true
 rayon.workspace = true
 rmp-serde.workspace = true
-tinyvec.workspace = true

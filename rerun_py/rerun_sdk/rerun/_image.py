@@ -26,6 +26,7 @@ class ImageFormat:
     PNG: ImageFormat
     TIFF: ImageFormat
     NV12: type[NV12]
+    YUY2: type[YUY2]
 
     def __init__(self, name: str):
         self.name = name
@@ -52,6 +53,26 @@ class NV12(ImageFormat):
         self.size_hint = size_hint
 
 
+class YUY2(ImageFormat):
+    """YUY2 format."""
+
+    name = "YUY2"
+    size_hint: tuple[int, int]
+
+    def __init__(self, size_hint: tuple[int, int]) -> None:
+        """
+        An YUY2 encoded image.
+
+        YUY2 is a YUV422 encoding with bytes ordered as `yuyv`.
+
+        Parameters
+        ----------
+        size_hint:
+            A tuple of (height, width), specifying the RGB size of the image
+        """
+        self.size_hint = size_hint
+
+
 # Assign the variants
 # This allows for rust like enums, for example:
 # ImageFormat.NV12(width=1920, height=1080)
@@ -62,6 +83,7 @@ ImageFormat.JPEG = ImageFormat("JPEG")
 ImageFormat.PNG = ImageFormat("PNG")
 ImageFormat.TIFF = ImageFormat("TIFF")
 ImageFormat.NV12 = NV12
+ImageFormat.YUY2 = YUY2
 
 
 class ImageEncoded(AsComponents):
@@ -115,11 +137,19 @@ class ImageEncoded(AsComponents):
 
         formats = None
         if format is not None:
-            if isinstance(format, NV12):
+            if isinstance(format, NV12) or isinstance(format, YUY2):
                 np_buf = np.frombuffer(buffer.read(), dtype=np.uint8)
-                np_buf = np_buf.reshape(int(format.size_hint[0] * 1.5), format.size_hint[1])
+
+                if isinstance(format, NV12):
+                    np_buf = np_buf.reshape(int(format.size_hint[0] * 1.5), format.size_hint[1])
+                    kind = "nv12"
+                elif isinstance(format, YUY2):
+                    np_buf = np_buf.reshape(format.size_hint[0], int(format.size_hint[1] * 2))
+                    kind = "yuy2"
+
                 tensor_buffer = TensorBuffer(np_buf)
-                tensor_buffer.kind = "nv12"
+                tensor_buffer.kind = kind  # type: ignore[assignment]
+
                 self.data = TensorData(
                     buffer=tensor_buffer,
                     shape=[

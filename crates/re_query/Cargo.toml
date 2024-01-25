@@ -20,7 +20,7 @@ all-features = true
 default = []
 
 ## Enable (de)serialization using serde.
-serde = ["dep:serde", "dep:rmp-serde"]
+serde = ["dep:serde"]
 
 
 [dependencies]
@@ -37,7 +37,6 @@ arrow2.workspace = true
 backtrace.workspace = true
 document-features.workspace = true
 itertools = { workspace = true }
-rmp-serde = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
 smallvec.workspace = true
 thiserror.workspace = true

@@ -19,12 +19,24 @@ def bgra2nv12(bgra: Any) -> np.ndarray:
     return yuv
 
 
+def bgra2yuy2(bgra: Any) -> np.ndarray:
+    yuv = cv2.cvtColor(bgra, cv2.COLOR_BGRA2YUV_YUY2)
+    (y, uv) = cv2.split(yuv)
+
+    yuy2 = np.empty((y.shape[0], y.shape[1] * 2), dtype=y.dtype)
+    yuy2[:, 0::2] = y
+    yuy2[:, 1::4] = uv[:, ::2]
+    yuy2[:, 3::4] = uv[:, 1::2]
+
+    return yuy2
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Displaying NV12 encoded images.")
+    parser = argparse.ArgumentParser(description="Displaying chroma downsampled images.")
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_nv12image")
+    rr.script_setup(args, "rerun_example_chroma_downsampled")
 
     # Make sure you use a colorful image!
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -39,6 +51,13 @@ def main() -> None:
         rr.ImageEncoded(
             contents=bytes(bgra2nv12(img_bgra)),
             format=rr.ImageFormat.NV12((img_bgra.shape[0], img_bgra.shape[1])),
+        ),
+    )
+    rr.log(
+        "img_yuy2",
+        rr.ImageEncoded(
+            contents=bytes(bgra2yuy2(img_bgra)),
+            format=rr.ImageFormat.YUY2((img_bgra.shape[0], img_bgra.shape[1])),
         ),
     )
 
