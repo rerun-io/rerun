@@ -49,8 +49,9 @@ pub fn colormapped_texture(
         multiply_rgb_with_alpha: false,
         gamma: color_mapping.gamma,
         color_mapper: re_renderer::renderer::ColorMapper::Function(color_mapping.map),
-        shader_decoding: match &tensor.buffer {
-            &TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
+        shader_decoding: match tensor.buffer {
+            TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
+            TensorBuffer::Yuy2(_) => Some(ShaderDecoding::Yuy2),
             _ => None,
         },
     })

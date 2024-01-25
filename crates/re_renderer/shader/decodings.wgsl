@@ -8,18 +8,58 @@ fn decode_nv12(texture: texture_2d<u32>, coords: vec2i) -> vec4f {
     let uv_row = u32(coords.y / 2);
     var uv_col = u32(coords.x / 2) * 2u;
 
-    let y = max(0.0, (f32(textureLoad(texture, vec2u(coords), 0).r) - 16.0)) / 219.0;
-    let u = (f32(textureLoad(texture, vec2u(u32(uv_col), uv_offset + uv_row), 0).r) - 128.0) / 224.0;
-    let v = (f32(textureLoad(texture, vec2u((u32(uv_col) + 1u), uv_offset + uv_row), 0).r) - 128.0) / 224.0;
+    let y = f32(textureLoad(texture, vec2u(coords), 0).r);
+    let u = f32(textureLoad(texture, vec2u(u32(uv_col), uv_offset + uv_row), 0).r);
+    let v = f32(textureLoad(texture, vec2u((u32(uv_col) + 1u), uv_offset + uv_row), 0).r);
 
-    // Specifying the color standard should be exposed in the future (https://github.com/rerun-io/rerun/pull/3541)
+    let rgb = set_color_standard(vec3f(y, u, v));
+
+    return vec4f(rgb, 1.0);
+}
+
+/// Loads an RGBA texel from a texture holding an YUY2 encoded image at the given screen space coordinates.
+fn decode_yuy2(texture: texture_2d<u32>, coords: vec2i) -> vec4f {
+    // texture is 2 * width * height
+    // every 4 bytes is 2 pixels
+    let uv_row = u32(coords.y);
+    // multiply by 2 because the width is multiplied by 2
+    let y_col = u32(coords.x) * 2u;
+    let y = f32(textureLoad(texture, vec2u(y_col, uv_row), 0).r);
+
+    // at odd pixels we're in the second half of the yuyu block, offset back by 2
+    let uv_col = y_col - u32(coords.x % 2) * 2u;
+    let u = f32(textureLoad(texture, vec2u(uv_col + 1u, uv_row), 0).r);
+    let v = f32(textureLoad(texture, vec2u(uv_col + 3u, uv_row), 0).r);
+
+    let rgb = set_color_standard(vec3f(y, u, v));
+
+    return vec4f(rgb, 1.0);
+}
+
+/// Sets the color standard for the given YUV color.
+///
+/// This conversion mirrors the function in `crates/re_types/src/datatypes/tensor_data_ext.rs`
+///
+/// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
+fn set_color_standard(yuv: vec3f) -> vec3f {
+    // rescale YUV values
+    let y = (yuv.x - 16.0) / 219.0;
+    let u = (yuv.y - 128.0) / 224.0;
+    let v = (yuv.z - 128.0) / 224.0;
+
     // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
-    let r = clamp(y + 1.402 * v, 0.0, 1.0);
-    let g = clamp(y  - (0.344 * u + 0.714 * v), 0.0, 1.0);
-    let b = clamp(y + 1.772 * u, 0.0, 1.0);
+    let r = y + 1.402 * v;
+    let g = y - 0.344 * u - 0.714 * v;
+    let b = y + 1.772 * u;
+
     // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
-    // let r = clamp(y + 1.5748 * v, 0.0, 1.0);
-    // let g = clamp(y + u * -0.1873 + v * -0.4681, 0.0, 1.0);
-    // let b = clamp(y + u * 1.8556, 0.0 , 1.0);
-    return vec4f(r, g, b, 1.0);
+    // let r = y + 1.575 * v;
+    // let g = y - 0.187 * u - 0.468 * v;
+    // let b = y + 1.856 * u;
+
+    return vec3f(
+        clamp(r, 0.0, 1.0),
+        clamp(g, 0.0, 1.0),
+        clamp(b, 0.0, 1.0)
+    );
 }
