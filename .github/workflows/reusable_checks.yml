@@ -22,6 +22,10 @@ on:
         required: false
         type: string
         default: ""
+      ALL_CHECKS:
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks
@@ -173,6 +177,12 @@ jobs:
           python-version: "3.11"
 
       - name: Rust checks & tests
+        if: ${{ !inputs.ALL_CHECKS }}
+        shell: bash
+        run: python ./scripts/ci/rust_checks.py --skip-check-individual-crates
+
+      - name: Rust all checks & tests
+        if: inputs.ALL_CHECKS
         shell: bash
         run: python ./scripts/ci/rust_checks.py
 
