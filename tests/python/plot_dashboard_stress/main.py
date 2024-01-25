@@ -39,8 +39,16 @@ order = [
     "random",
 ]
 parser.add_argument(
-    "--order", type=str, default="forwards", help="What order to log the data in (applies to all series)"
+    "--order", type=str, default="forwards", help="What order to log the data in (applies to all series)", choices=order
 )
+parser.add_argument(
+    "--series_type",
+    type=str,
+    default="gaussian_random_walk",
+    choices=("gaussian_random_walk", "sin_uniform"),
+    help="The method used to generate time series",
+)
+
 
 # TODO(cmc): could have flags to add attributes (color, radius...) to put some more stress
 # on the line fragmenter.
@@ -71,14 +79,25 @@ def main() -> None:
     tick_start_time = time.time()
     max_load = 0.0
 
-    for sim_time in sim_times:
+    values_shape = (
+        len(sim_times),
+        len(plot_paths),
+        len(series_paths),
+    )
+    if args.series_type == "gaussian_random_walk":
+        values = np.cumsum(np.random.normal(size=values_shape), axis=0)
+    elif args.series_type == "sin_normal":
+        values = np.sin(np.random.uniform(0, math.pi, size=values_shape))
+    else:
+        # Just generate random numbers rather than crash
+        values = np.random.normal(size=values_shape)
+
+    for time_step, sim_time in enumerate(sim_times):
         rr.set_time_seconds("sim_time", sim_time)
-
         # Log
-
-        for plot_path in plot_paths:
-            for series_path in series_paths:
-                value = math.sin(random.uniform(0.0, math.pi))
+        for plot_idx, plot_path in enumerate(plot_paths):
+            for series_idx, series_path in enumerate(series_paths):
+                value = values[time_step, plot_idx, series_idx]
                 rr.log(f"{plot_path}/{series_path}", rr.TimeSeriesScalar(value))
 
         # Progress report
