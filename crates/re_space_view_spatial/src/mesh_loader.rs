@@ -233,7 +233,7 @@ fn mesh_texture_from_tensor_data(
         Ok(re_renderer::resource_managers::Texture2DCreationDesc {
             label: "mesh albedo texture from tensor data".into(),
             data,
-            format: re_renderer::wgpu::TextureFormat::Rgba8UnormSrgb,
+            format: re_renderer::external::wgpu::TextureFormat::Rgba8UnormSrgb,
             width,
             height,
         })

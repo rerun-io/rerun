@@ -79,10 +79,12 @@ pub use self::file_resolver::{
 };
 pub use self::file_server::FileServer;
 
-// Re-export used color types.
+// Re-export used color types directly.
 pub use ecolor::{Color32, Hsva, Rgba};
-// Re-export wgpu
-pub use wgpu;
+
+pub mod external {
+    pub use wgpu;
+}
 
 // ---------------------------------------------------------------------------
 
