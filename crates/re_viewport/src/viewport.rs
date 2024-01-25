@@ -421,7 +421,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     self.tree_edited = true;
                 }
                 TreeAction::RemoveContents(contents) => {
-                    let tile_id = contents.to_tile_id();
+                    let tile_id = contents.as_tile_id();
 
                     for tile in self.tree.remove_recursively(tile_id) {
                         re_log::trace!("Removing tile {tile_id:?}");
@@ -453,7 +453,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         {target_position_in_container}"
                     );
 
-                    let contents_tile_id = contents_to_move.to_tile_id();
+                    let contents_tile_id = contents_to_move.as_tile_id();
                     let target_container_tile_id = blueprint_id_to_tile_id(&target_container);
 
                     self.tree.move_tile_to_container(

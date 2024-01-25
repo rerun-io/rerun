@@ -34,12 +34,16 @@ impl<ItemId: Copy> DropTarget<ItemId> {
 pub struct DropItemDescription<ItemId: Copy> {
     /// ID of the item being hovered during drag
     pub id: ItemId,
+
     /// Can this item "contain" the currently dragged item?
     pub is_container: bool,
+
     /// ID of the parent if this item.
     pub parent_id: ItemId,
+
     /// Position of this item within its parent.
     pub position_index_in_parent: usize,
+
     /// ID of the container just before this item within the parent, if such a container exists.
     pub previous_container_id: Option<ItemId>,
 }
@@ -49,76 +53,76 @@ pub struct DropItemDescription<ItemId: Copy> {
 /// This function implements the following logic:
 /// ```text
 ///
-///                        insert         insert last in container before me            
-///                      before me           (if any) or insert before me               
-///                          │                             │                            
-///                      ╔═══▼═════════════════════════════▼══════════════════╗         
-///                      ║      │                                             ║         
-///         leaf item    ║ ─────┴──────────────────────────────────────────── ║         
-///                      ║                                                    ║         
-///                      ╚═════════════════════▲══════════════════════════════╝         
-///                                            │                                        
-///                                     insert after me                                 
-///                                                                                     
-///                                                                                     
-///                        insert         insert last in container before me            
-///                      before me           (if any) or insert before me               
-///                          │                             │                            
-///                      ╔═══▼═════════════════════════════▼══════════════════╗         
-///         leaf item    ║      │                                             ║         
-///         with body    ║ ─────┴──────────────────────────────────────────── ║         
-///                      ║                                                    ║         
-///                      ╚══════╦══════════════════════════════════════▲══════╣ ─┐      
-///                      │      ║                                      │      ║  │      
-///                      │      ║                                   insert    ║  │      
-///                      │      ║                                  after me   ║  │      
-///                      │      ╠══                                         ══╣  │      
-///                      │      ║             no insertion possible           ║  │      
+///                        insert         insert last in container before me
+///                      before me           (if any) or insert before me
+///                          │                             │
+///                      ╔═══▼═════════════════════════════▼══════════════════╗
+///                      ║      │                                             ║
+///         leaf item    ║ ─────┴──────────────────────────────────────────── ║
+///                      ║                                                    ║
+///                      ╚═════════════════════▲══════════════════════════════╝
+///                                            │
+///                                     insert after me
+///
+///
+///                        insert         insert last in container before me
+///                      before me           (if any) or insert before me
+///                          │                             │
+///                      ╔═══▼═════════════════════════════▼══════════════════╗
+///         leaf item    ║      │                                             ║
+///         with body    ║ ─────┴──────────────────────────────────────────── ║
+///                      ║                                                    ║
+///                      ╚══════╦══════════════════════════════════════▲══════╣ ─┐
+///                      │      ║                                      │      ║  │
+///                      │      ║                                   insert    ║  │
+///                      │      ║                                  after me   ║  │
+///                      │      ╠══                                         ══╣  │
+///                      │      ║             no insertion possible           ║  │
 ///                      │      ║             here by definition of           ║  │ body
-///                      │      ║              parent being a leaf            ║  │      
-///                      │      ╠══                                         ══╣  │      
-///                      │      ║                                             ║  │      
-///                      │      ║                                             ║  │      
-///                      │      ║                                             ║  │      
-///                      └──▲── ╚══════════════════════════▲══════════════════╝ ─┘      
-///                         │                              │                            
-///                      insert                         insert                          
-///                     after me                       after me                         
-///                                                                                     
-///                                                                                     
-///                        insert         insert last in container before me            
-///                      before me           (if any) or insert before me               
-///                          │                             │                            
-///                      ╔═══▼═════════════════════════════▼══════════════════╗         
-///    container item    ║      │                                             ║         
-///  (empty/collapsed    ║ ─────┼──────────────────────────────────────────── ║         
-///             body)    ║      │                                             ║         
-///                      ╚═══▲═════════════════════════════▲══════════════════╝         
-///                          │                             │                            
-///                       insert                   insert inside me                     
-///                      after me                     at pos = 0                        
-///                                                                                     
-///                                                                                     
-///                        insert         insert last in container before me            
-///                      before me           (if any) or insert before me               
-///                          │                             │                            
-///                      ╔═══▼═════════════════════════════▼══════════════════╗         
-///    container item    ║      │                                             ║         
-///         with body    ║ ─────┴──────────────────────────────────────────── ║         
-///                      ║                                                    ║         
-///                      ╚═▲════╦═════════════════════════════════════════════╣ ─┐      
-///                        │    ║                                             ║  │      
-///                     insert  ║                                             ║  │      
-///                  inside me  ║                                             ║  │      
-///                 at pos = 0  ╠══                                         ══╣  │      
-///                             ║                  same logic                 ║  │      
+///                      │      ║              parent being a leaf            ║  │
+///                      │      ╠══                                         ══╣  │
+///                      │      ║                                             ║  │
+///                      │      ║                                             ║  │
+///                      │      ║                                             ║  │
+///                      └──▲── ╚══════════════════════════▲══════════════════╝ ─┘
+///                         │                              │
+///                      insert                         insert
+///                     after me                       after me
+///
+///
+///                        insert         insert last in container before me
+///                      before me           (if any) or insert before me
+///                          │                             │
+///                      ╔═══▼═════════════════════════════▼══════════════════╗
+///    container item    ║      │                                             ║
+///  (empty/collapsed    ║ ─────┼──────────────────────────────────────────── ║
+///             body)    ║      │                                             ║
+///                      ╚═══▲═════════════════════════════▲══════════════════╝
+///                          │                             │
+///                       insert                   insert inside me
+///                      after me                     at pos = 0
+///
+///
+///                        insert         insert last in container before me
+///                      before me           (if any) or insert before me
+///                          │                             │
+///                      ╔═══▼═════════════════════════════▼══════════════════╗
+///    container item    ║      │                                             ║
+///         with body    ║ ─────┴──────────────────────────────────────────── ║
+///                      ║                                                    ║
+///                      ╚═▲════╦═════════════════════════════════════════════╣ ─┐
+///                        │    ║                                             ║  │
+///                     insert  ║                                             ║  │
+///                  inside me  ║                                             ║  │
+///                 at pos = 0  ╠══                                         ══╣  │
+///                             ║                  same logic                 ║  │
 ///                             ║                 recursively                 ║  │ body
-///                     insert  ║                 applied here                ║  │      
-///                   after me  ╠══                                         ══╣  │      
-///                        │    ║                                             ║  │      
-///                      ┌─▼─── ║                                             ║  │      
-///                      │      ║                                             ║  │      
-///                      └───── ╚═════════════════════════════════════════════╝ ─┘      
+///                     insert  ║                 applied here                ║  │
+///                   after me  ╠══                                         ══╣  │
+///                        │    ║                                             ║  │
+///                      ┌─▼─── ║                                             ║  │
+///                      │      ║                                             ║  │
+///                      └───── ╚═════════════════════════════════════════════╝ ─┘
 /// ```
 ///
 /// Here are a few observations of the above that help navigate the "if-statement-of-death"

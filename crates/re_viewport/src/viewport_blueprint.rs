@@ -326,12 +326,12 @@ impl ViewportBlueprint {
             return Some(Contents::Container(*container_id));
         }
 
-        let Some(container) = self.container(&container_id) else {
+        let Some(container) = self.container(container_id) else {
             return None;
         };
 
         for contents in &container.contents {
-            if predicate(&contents) {
+            if predicate(contents) {
                 return Some(*contents);
             }
 
@@ -346,7 +346,7 @@ impl ViewportBlueprint {
             }
         }
 
-        return None;
+        None
     }
 
     /// Checks if some content is (directly or indirectly) contained in the given container.
@@ -380,7 +380,7 @@ impl ViewportBlueprint {
         contents: &Contents,
         container_id: &ContainerId,
     ) -> Option<(ContainerId, usize)> {
-        let Some(container) = self.container(&container_id) else {
+        let Some(container) = self.container(container_id) else {
             return None;
         };
 
@@ -431,7 +431,7 @@ impl ViewportBlueprint {
             contents_to_move: contents,
             target_container,
             target_position_in_container,
-        })
+        });
     }
 
     /// Make sure the tab corresponding to this space view is focused.

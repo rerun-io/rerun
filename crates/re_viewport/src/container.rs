@@ -32,7 +32,7 @@ impl Contents {
     }
 
     #[inline]
-    fn to_entity_path(&self) -> EntityPath {
+    fn as_entity_path(&self) -> EntityPath {
         match self {
             Self::Container(id) => id.as_entity_path(),
             Self::SpaceView(id) => id.as_entity_path(),
@@ -40,7 +40,7 @@ impl Contents {
     }
 
     #[inline]
-    pub fn to_tile_id(&self) -> TileId {
+    pub fn as_tile_id(&self) -> TileId {
         match self {
             Self::Container(id) => blueprint_id_to_tile_id(id),
             Self::SpaceView(id) => blueprint_id_to_tile_id(id),
@@ -51,15 +51,15 @@ impl Contents {
     ///
     /// Drag ids are used to track items during drag-and-drop operations.
     #[inline]
-    pub fn to_drag_id(&self) -> egui::Id {
+    pub fn as_drag_id(&self) -> egui::Id {
         match self {
-            Contents::Container(id) => id.to_drag_id(),
-            Contents::SpaceView(id) => id.to_drag_id(),
+            Contents::Container(id) => id.as_drag_id(),
+            Contents::SpaceView(id) => id.as_drag_id(),
         }
     }
 
     #[inline]
-    pub fn to_item(&self) -> Item {
+    pub fn as_item(&self) -> Item {
         match self {
             Contents::Container(container_id) => Item::Container(*container_id),
             Contents::SpaceView(space_view_id) => Item::SpaceView(*space_view_id),
@@ -215,7 +215,7 @@ impl ContainerBlueprint {
             grid_columns,
         } = self;
 
-        let contents: Vec<_> = contents.iter().map(|item| item.to_entity_path()).collect();
+        let contents: Vec<_> = contents.iter().map(|item| item.as_entity_path()).collect();
 
         let col_shares: ArrowBuffer<_> = col_shares.clone().into();
         let row_shares: ArrowBuffer<_> = row_shares.clone().into();
@@ -230,7 +230,7 @@ impl ContainerBlueprint {
         // TODO(jleibs): The need for this pattern is annoying. Should codegen
         // a version of this that can take an Option.
         if let Some(active_tab) = &active_tab {
-            arch = arch.with_active_tab(&active_tab.to_entity_path());
+            arch = arch.with_active_tab(&active_tab.as_entity_path());
         }
 
         if let Some(cols) = grid_columns {
@@ -378,7 +378,7 @@ impl ContainerBlueprint {
         let children = self
             .contents
             .iter()
-            .map(|item| item.to_tile_id())
+            .map(|item| item.as_tile_id())
             .collect::<Vec<_>>();
 
         let container = match self.container_kind {
@@ -387,7 +387,7 @@ impl ContainerBlueprint {
                 tabs.active = self
                     .active_tab
                     .as_ref()
-                    .map(|id| id.to_tile_id())
+                    .map(|id| id.as_tile_id())
                     .or_else(|| tabs.children.first().copied());
                 egui_tiles::Container::Tabs(tabs)
             }
