@@ -16,5 +16,5 @@ pub use space_view_class::TimeSeriesSpaceView;
 /// ```
 #[inline]
 pub(crate) fn plot_id(space_view_id: re_viewer_context::SpaceViewId) -> egui::Id {
-    egui::Id::new(format!("plot_{space_view_id}"))
+    egui::Id::new(("plot", space_view_id))
 }
