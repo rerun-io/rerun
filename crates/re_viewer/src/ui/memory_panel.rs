@@ -29,7 +29,6 @@ impl MemoryPanel {
         &mut self,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &StoreHubStats,
-        caches_stats: &CachesStats,
     ) {
         re_tracing::profile_function!();
         self.history.capture(
@@ -38,7 +37,7 @@ impl MemoryPanel {
                     + gpu_resource_stats.total_texture_size_in_bytes) as _,
             ),
             Some(store_stats.recording_stats.total.num_bytes as _),
-            Some(caches_stats.total_size_bytes() as _),
+            Some(store_stats.recording_cached_stats.total_size_bytes() as _),
             Some(store_stats.blueprint_stats.total.num_bytes as _),
         );
     }
@@ -63,7 +62,6 @@ impl MemoryPanel {
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &StoreHubStats,
-        caches_stats: &CachesStats,
     ) {
         re_tracing::profile_function!();
 
@@ -75,14 +73,7 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                self.left_side(
-                    ui,
-                    re_ui,
-                    limit,
-                    gpu_resource_stats,
-                    store_stats,
-                    caches_stats,
-                );
+                self.left_side(ui, re_ui, limit, gpu_resource_stats, store_stats);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -98,7 +89,6 @@ impl MemoryPanel {
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: &StoreHubStats,
-        caches_stats: &CachesStats,
     ) {
         ui.strong("Rerun Viewer resource usage");
 
@@ -123,7 +113,7 @@ impl MemoryPanel {
 
         ui.separator();
         ui.collapsing("Primary Cache Resources", |ui| {
-            self.caches_stats(ui, re_ui, caches_stats);
+            self.caches_stats(ui, re_ui, &store_stats.recording_cached_stats);
         });
 
         ui.separator();
@@ -435,17 +425,20 @@ impl MemoryPanel {
                             ui.label(egui::RichText::new("Component").underline());
                             ui.label(egui::RichText::new("Rows").underline());
                             ui.label(egui::RichText::new("Instances").underline());
+                            ui.label(egui::RichText::new("Size").underline());
                             ui.end_row();
 
                             for (component_name, stats) in per_component {
                                 let &CachedComponentStats {
                                     total_rows,
                                     total_instances,
+                                    total_size_bytes,
                                 } = stats;
 
                                 ui.label(component_name.to_string());
                                 ui.label(re_format::format_number(total_rows as _));
                                 ui.label(re_format::format_number(total_instances as _));
+                                ui.label(re_format::format_bytes(total_size_bytes as _));
                                 ui.end_row();
                             }
                         });

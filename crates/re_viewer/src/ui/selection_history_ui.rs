@@ -1,5 +1,4 @@
 use egui::RichText;
-use egui_tiles::Tile;
 use re_ui::UICommand;
 use re_viewer_context::{Item, Selection, SelectionHistory};
 use re_viewport::ViewportBlueprint;
@@ -196,25 +195,9 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
         Item::ComponentPath(path) => {
             format!("{}:{}", path.entity_path, path.component_name.short_name(),)
         }
-        Item::Container(tile_id) => {
-            if let Some(tile) = blueprint.tree.tiles.get(*tile_id) {
-                match tile {
-                    Tile::Pane(sid) => {
-                        // This case shouldn't happen really.
-                        if let Some(space_view) = blueprint.space_view(sid) {
-                            format!(
-                                "Tile showing {}",
-                                space_view
-                                    .display_name
-                                    .as_ref()
-                                    .unwrap_or(&space_view.missing_name_placeholder())
-                            )
-                        } else {
-                            "Tile containing unknown Space View".to_owned()
-                        }
-                    }
-                    Tile::Container(container) => format!("{:?}", container.kind()),
-                }
+        Item::Container(container_id) => {
+            if let Some(container) = blueprint.container(container_id) {
+                format!("{:?}", container.container_kind)
             } else {
                 "<removed Container>".to_owned()
             }

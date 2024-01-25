@@ -7,7 +7,7 @@ fn input_filled_event(body: String) -> Event {
 }
 
 fn main() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let mut analytics = Analytics::new(Duration::from_secs(3)).unwrap();
     analytics.register_append_property("application_id", "end_to_end_example");

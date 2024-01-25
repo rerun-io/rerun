@@ -72,12 +72,12 @@ impl ::re_types_core::Loggable for AffixFuzzer19 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![Field {
+        DataType::Struct(std::sync::Arc::new(vec![Field {
             name: "single_optional_union".to_owned(),
             data_type: <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
             is_nullable: true,
             metadata: [].into(),
-        }])
+        }]))
     }
 
     #[allow(clippy::wildcard_imports)]

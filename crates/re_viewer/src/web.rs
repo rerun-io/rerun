@@ -22,7 +22,7 @@ impl WebHandle {
     #[allow(clippy::new_without_default)]
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        re_log::setup_web_logging();
+        re_log::setup_logging();
 
         Self {
             runner: eframe::WebRunner::new(),
@@ -214,11 +214,6 @@ pub fn set_email(email: String) {
     let mut config = re_analytics::Config::load().unwrap().unwrap_or_default();
     config.opt_in_metadata.insert("email".into(), email.into());
     config.save().unwrap();
-}
-
-#[wasm_bindgen]
-pub fn is_webgpu_build() -> bool {
-    !cfg!(feature = "webgl")
 }
 
 enum EndpointCategory {

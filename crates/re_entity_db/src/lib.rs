@@ -30,6 +30,8 @@ pub(crate) use self::entity_tree::{ClearCascade, CompactedStoreEvents};
 use re_log_types::DataTableError;
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
+pub use re_query::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
+
 #[cfg(feature = "serde")]
 pub use blueprint::components::EntityPropertiesComponent;
 #[cfg(feature = "serde")]

@@ -26,7 +26,7 @@ pub struct RenderContext {
     pub device: Arc<wgpu::Device>,
     pub queue: Arc<wgpu::Queue>,
 
-    pub(crate) config: RenderContextConfig,
+    pub config: RenderContextConfig,
 
     /// Global bindings, always bound to 0 bind group slot zero.
     /// [`Renderer`] are not allowed to use bind group 0 themselves!
@@ -323,6 +323,7 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         if let Some(top_level_error_scope) = self.active_frame.top_level_error_scope.take() {
             let frame_index_for_uncaptured_errors = self.frame_index_for_uncaptured_errors.clone();
             self.top_level_error_tracker.handle_error_future(
+                self.config.device_caps.backend_type,
                 top_level_error_scope.end(),
                 self.active_frame.frame_index,
                 move |err_tracker, frame_index| {

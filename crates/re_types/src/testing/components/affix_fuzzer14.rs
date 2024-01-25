@@ -73,7 +73,7 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Union(
-            vec![
+            std::sync::Arc::new(vec![
                 Field {
                     name: "_null_markers".to_owned(),
                     data_type: DataType::Null,
@@ -94,7 +94,7 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
                 },
                 Field {
                     name: "craziness".to_owned(),
-                    data_type: DataType::List(Box::new(Field {
+                    data_type: DataType::List(std::sync::Arc::new(Field {
                         name: "item".to_owned(),
                         data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
                         is_nullable: false,
@@ -106,7 +106,7 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
                 Field {
                     name: "fixed_size_shenanigans".to_owned(),
                     data_type: DataType::FixedSizeList(
-                        Box::new(Field {
+                        std::sync::Arc::new(Field {
                             name: "item".to_owned(),
                             data_type: DataType::Float32,
                             is_nullable: false,
@@ -117,8 +117,8 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
                     is_nullable: false,
                     metadata: [].into(),
                 },
-            ],
-            Some(vec![0i32, 1i32, 2i32, 3i32, 4i32]),
+            ]),
+            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
             UnionMode::Dense,
         )
     }

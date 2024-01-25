@@ -129,23 +129,6 @@ You may need to turn on Windows developer mode in order to give the `mklink` com
 See also this [Stack Overflow reply](https://stackoverflow.com/questions/5917249/git-symbolic-links-in-windows/59761201#59761201) on the issue.
 
 
-### Building with WebGPU support
-
-By default, all web builds are using WebGL for rendering.
-However, Rerun can also build with experimental WebGPU support!
-Note that currently we can't build wasm files that support both WebGPU and WebGL.
-
-To build a standalone Rerun executable with a WebGPU web viewer, you need to set
-the `RERUN_BUILD_WEBGPU` env variable and enable the  `web_viewer` feature:
-```
-RERUN_BUILD_WEBGPU=1 cargo build -p rerun --features web_viewer
-```
-
-And for building a WebGPU based web-viewer without the server:
-```
-cargo run -p re_build_web_viewer -- --release --webgpu
-```
-
 ## Improving compile times
 
 As of today, we link everything statically in both debug and release builds, which makes custom linkers and split debuginfo the two most impactful tools we have at our disposal in order to improve compile times.

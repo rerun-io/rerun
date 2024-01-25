@@ -44,24 +44,13 @@ impl Profile {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Backend {
-    WebGL,
-    WebGPU,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Target {
     Browser,
     Module,
 }
 
 /// Build `re_viewer` as Wasm, generate .js bindings for it, and place it all into the `build_dir` folder.
-pub fn build(
-    profile: Profile,
-    backend: Backend,
-    target: Target,
-    build_dir: &Utf8Path,
-) -> anyhow::Result<()> {
+pub fn build(profile: Profile, target: Target, build_dir: &Utf8Path) -> anyhow::Result<()> {
     std::env::set_current_dir(workspace_root())?;
 
     eprintln!("Building web viewer wasm…");
@@ -108,11 +97,8 @@ pub fn build(
         "--target-dir",
         target_wasm_dir.as_str(),
         "--no-default-features",
+        "--features=analytics",
     ]);
-    match backend {
-        Backend::WebGL => cmd.arg("--features=analytics,webgl"),
-        Backend::WebGPU => cmd.arg("--features=analytics"),
-    };
     if profile == Profile::Release {
         cmd.arg("--release");
     }

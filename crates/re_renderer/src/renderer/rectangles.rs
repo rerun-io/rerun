@@ -50,6 +50,7 @@ pub enum TextureFilterMin {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ShaderDecoding {
     Nv12,
+    Yuy2,
 }
 
 /// Describes a texture and how to map it to a color.
@@ -146,6 +147,10 @@ impl ColormappedTexture {
                 let [width, height] = self.texture.width_height();
                 [width, height * 2 / 3]
             }
+            Some(ShaderDecoding::Yuy2) => {
+                let [width, height] = self.texture.width_height();
+                [width / 2, height]
+            }
             _ => self.texture.width_height(),
         }
     }
@@ -233,6 +238,7 @@ mod gpu_data {
     const SAMPLE_TYPE_SINT: u32 = 2;
     const SAMPLE_TYPE_UINT: u32 = 3;
     const SAMPLE_TYPE_NV12: u32 = 4;
+    const SAMPLE_TYPE_YUY2: u32 = 5;
 
     // How do we do colormapping?
     const COLOR_MAPPER_OFF_GRAYSCALE: u32 = 1;
@@ -308,12 +314,14 @@ mod gpu_data {
                 outline_mask,
             } = options;
 
-            let sample_type = match texture_format.sample_type(None) {
+            let sample_type = match texture_format.sample_type(None, None) {
                 Some(wgpu::TextureSampleType::Float { .. }) => SAMPLE_TYPE_FLOAT,
                 Some(wgpu::TextureSampleType::Sint) => SAMPLE_TYPE_SINT,
                 Some(wgpu::TextureSampleType::Uint) => {
                     if shader_decoding == &Some(super::ShaderDecoding::Nv12) {
                         SAMPLE_TYPE_NV12
+                    } else if shader_decoding == &Some(super::ShaderDecoding::Yuy2) {
+                        SAMPLE_TYPE_YUY2
                     } else {
                         SAMPLE_TYPE_UINT
                     }
@@ -432,7 +440,7 @@ impl RectangleDrawData {
             let mut texture_sint = ctx.texture_manager_2d.zeroed_texture_sint().handle;
             let mut texture_uint = ctx.texture_manager_2d.zeroed_texture_uint().handle;
 
-            match texture_format.sample_type(None) {
+            match texture_format.sample_type(None, None) {
                 Some(wgpu::TextureSampleType::Float { .. }) => {
                     texture_float = texture.handle;
                 }

@@ -1,8 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use re_build_tools::{
-    get_and_track_env_var, is_tracked_env_var_set, rebuild_if_crate_changed, rerun_if_changed,
-};
+use re_build_tools::{get_and_track_env_var, rebuild_if_crate_changed, rerun_if_changed};
 
 fn should_run() -> bool {
     #![allow(clippy::match_same_arms)]
@@ -51,14 +49,9 @@ fn main() {
     } else {
         re_build_web_viewer::Profile::Debug
     };
-    let backend = if is_tracked_env_var_set("RERUN_BUILD_WEBGPU") {
-        re_build_web_viewer::Backend::WebGPU
-    } else {
-        re_build_web_viewer::Backend::WebGL
-    };
     let target = re_build_web_viewer::Target::Browser;
     let build_dir = re_build_web_viewer::default_build_dir();
-    if let Err(err) = re_build_web_viewer::build(release, backend, target, &build_dir) {
+    if let Err(err) = re_build_web_viewer::build(release, target, &build_dir) {
         panic!("Failed to build web viewer: {}", re_error::format(err));
     }
 }

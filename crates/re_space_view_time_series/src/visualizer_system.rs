@@ -1,5 +1,6 @@
 use re_data_store::TimeRange;
-use re_query_cache::QueryError;
+use re_log_types::TimeInt;
+use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::{
     archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
@@ -120,6 +121,7 @@ impl TimeSeriesSystem {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
+        let query_caches = ctx.entity_db.query_caches();
         let store = ctx.entity_db.store();
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
@@ -152,13 +154,13 @@ impl TimeSeriesSystem {
                         visible_history.to(query.latest_at),
                     )
                 } else {
-                    (i64::MIN.into(), i64::MAX.into())
+                    (TimeInt::MIN, TimeInt::MAX)
                 };
 
                 let query =
                     re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
-                re_query_cache::query_archetype_pov1_comp4::<
+                query_caches.query_archetype_pov1_comp4::<
                     TimeSeriesScalar,
                     Scalar,
                     ScalarScattering,
@@ -178,10 +180,10 @@ impl TimeSeriesSystem {
 
                         for (scalar, scattered, color, radius, label) in itertools::izip!(
                             scalars.iter(),
-                            scatterings.iter(),
-                            colors.iter(),
-                            radii.iter(),
-                            labels.iter()
+                            MaybeCachedComponentData::iter_or_repeat_opt(&scatterings, scalars.len()),
+                            MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
+                            MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
+                            MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
                         ) {
                             let color =
                                 annotation_info.color(color.map(|c| c.to_array()), default_color);

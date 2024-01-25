@@ -47,6 +47,9 @@ mint = ["re_types?/mint"]
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["re_types?/image"]
 
+## Integration with the [`ecolor`](https://crates.io/crates/ecolor/) crate.
+ecolor = ["re_types?/ecolor"]
+
 ## Integration with the [`log`](https://crates.io/crates/log/) crate.
 log = ["dep:env_logger", "dep:log"]
 

@@ -40,6 +40,8 @@ strum.workspace = true
 sublime_fuzzy.workspace = true
 
 [dev-dependencies]
+re_log.workspace = true
+
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_tiles.workspace = true
-re_log.workspace = true
+rand.workspace = true

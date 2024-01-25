@@ -411,7 +411,9 @@ impl CpuWriteGpuReadBelt {
         );
         // Largest uncompressed texture format (btw. many compressed texture format have the same block size!)
         debug_assert!(
-            wgpu::TextureFormat::Rgba32Uint.block_size(None).unwrap() as u64
+            wgpu::TextureFormat::Rgba32Uint
+                .block_copy_size(None)
+                .unwrap() as u64
                 <= CpuWriteGpuReadBelt::MIN_OFFSET_ALIGNMENT
         );
 

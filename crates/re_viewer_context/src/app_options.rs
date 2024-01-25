@@ -17,9 +17,6 @@ pub struct AppOptions {
     /// Enable experimental dataframe space views.
     pub experimental_dataframe_space_view: bool,
 
-    /// Use the legacy container blueprint storage for the space view.
-    pub legacy_container_blueprint: bool,
-
     pub experimental_entity_filter_editor: bool,
 
     /// Enable the experimental support for the container addition workflow.
@@ -61,14 +58,12 @@ impl Default for AppOptions {
 
             experimental_dataframe_space_view: false,
 
-            legacy_container_blueprint: false,
-
             experimental_entity_filter_editor: false,
 
             experimental_additive_workflow: cfg!(debug_assertions),
 
             experimental_primary_caching_latest_at: true,
-            experimental_primary_caching_range: false,
+            experimental_primary_caching_range: true,
 
             show_picking_debug_overlay: false,
 

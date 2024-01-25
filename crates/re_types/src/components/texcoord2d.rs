@@ -90,7 +90,7 @@ impl ::re_types_core::Loggable for Texcoord2D {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::FixedSizeList(
-            Box::new(Field {
+            std::sync::Arc::new(Field {
                 name: "item".to_owned(),
                 data_type: DataType::Float32,
                 is_nullable: false,
@@ -183,7 +183,7 @@ impl ::re_types_core::Loggable for Texcoord2D {
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
                         DataType::FixedSizeList(
-                            Box::new(Field {
+                            std::sync::Arc::new(Field {
                                 name: "item".to_owned(),
                                 data_type: DataType::Float32,
                                 is_nullable: false,
@@ -275,7 +275,7 @@ impl ::re_types_core::Loggable for Texcoord2D {
                     .ok_or_else(|| {
                         DeserializationError::datatype_mismatch(
                             DataType::FixedSizeList(
-                                Box::new(Field {
+                                std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float32,
                                     is_nullable: false,

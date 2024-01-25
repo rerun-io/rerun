@@ -137,7 +137,7 @@ class TensorDataExt:
         elif array is not None:
             self.buffer = TensorBuffer(array.flatten())
 
-        if self.buffer.kind != "jpeg" and self.buffer.kind != "nv12":
+        if self.buffer.kind != "jpeg" and self.buffer.kind != "nv12" and self.buffer.kind != "yuy2":
             expected_buffer_size = prod(d.size for d in self.shape)
 
             if len(self.buffer.inner) != expected_buffer_size:
@@ -237,6 +237,8 @@ def _build_buffer_array(buffer: TensorBufferLike) -> pa.Array:
         discriminant = "JPEG"
     elif kind == "nv12":
         discriminant = "NV12"
+    elif kind == "yuy2":
+        discriminant = "YUY2"
     else:
         assert buffer.dtype.type in DTYPE_MAP, f"Failed to find {buffer.dtype.type} in f{DTYPE_MAP}"
         discriminant = DTYPE_MAP[buffer.dtype.type]

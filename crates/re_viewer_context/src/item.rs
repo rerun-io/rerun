@@ -1,9 +1,7 @@
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, DataPath, EntityPath};
 
-use crate::DataQueryId;
-
-use super::SpaceViewId;
+use crate::{ContainerId, DataQueryId, SpaceViewId};
 
 /// One "thing" in the UI.
 ///
@@ -16,7 +14,7 @@ pub enum Item {
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
     DataBlueprintGroup(SpaceViewId, DataQueryId, EntityPath),
-    Container(egui_tiles::TileId),
+    Container(ContainerId),
 }
 
 impl Item {

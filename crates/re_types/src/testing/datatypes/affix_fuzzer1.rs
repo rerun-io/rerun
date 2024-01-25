@@ -76,7 +76,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "single_float_optional".to_owned(),
                 data_type: DataType::Float32,
@@ -97,7 +97,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
             },
             Field {
                 name: "many_floats_optional".to_owned(),
-                data_type: DataType::List(Box::new(Field {
+                data_type: DataType::List(std::sync::Arc::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float32,
                     is_nullable: false,
@@ -108,7 +108,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
             },
             Field {
                 name: "many_strings_required".to_owned(),
-                data_type: DataType::List(Box::new(Field {
+                data_type: DataType::List(std::sync::Arc::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Utf8,
                     is_nullable: false,
@@ -119,7 +119,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
             },
             Field {
                 name: "many_strings_optional".to_owned(),
-                data_type: DataType::List(Box::new(Field {
+                data_type: DataType::List(std::sync::Arc::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Utf8,
                     is_nullable: false,
@@ -146,7 +146,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 is_nullable: true,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -335,7 +335,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float32,
                                     is_nullable: false,
@@ -390,7 +390,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Utf8,
                                     is_nullable: false,
@@ -469,7 +469,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Utf8,
                                     is_nullable: false,
@@ -610,7 +610,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::Struct(vec![
+                        DataType::Struct(std::sync::Arc::new(vec![
                             Field {
                                 name: "single_float_optional".to_owned(),
                                 data_type: DataType::Float32,
@@ -631,7 +631,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             },
                             Field {
                                 name: "many_floats_optional".to_owned(),
-                                data_type: DataType::List(Box::new(Field {
+                                data_type: DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Float32,
                                     is_nullable: false,
@@ -642,7 +642,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             },
                             Field {
                                 name: "many_strings_required".to_owned(),
-                                data_type: DataType::List(Box::new(Field {
+                                data_type: DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Utf8,
                                     is_nullable: false,
@@ -653,7 +653,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             },
                             Field {
                                 name: "many_strings_optional".to_owned(),
-                                data_type: DataType::List(Box::new(Field {
+                                data_type: DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: DataType::Utf8,
                                     is_nullable: false,
@@ -681,7 +681,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 is_nullable: true,
                                 metadata: [].into(),
                             },
-                        ]),
+                        ])),
                         arrow_data.data_type().clone(),
                     )
                 })
@@ -849,7 +849,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float32,
                                         is_nullable: false,
@@ -926,7 +926,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Utf8,
                                         is_nullable: false,
@@ -1048,7 +1048,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Utf8,
                                         is_nullable: false,

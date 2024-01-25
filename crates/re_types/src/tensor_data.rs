@@ -434,7 +434,7 @@ impl TryFrom<TensorData> for DecodedTensor {
             | TensorBuffer::F16(_)
             | TensorBuffer::F32(_)
             | TensorBuffer::F64(_) => Ok(Self(tensor)),
-            TensorBuffer::Jpeg(_) | TensorBuffer::Nv12(_) => Err(tensor),
+            TensorBuffer::Jpeg(_) | TensorBuffer::Nv12(_) | TensorBuffer::Yuy2(_) => Err(tensor),
         }
     }
 }
@@ -531,7 +531,8 @@ impl DecodedTensor {
             | TensorBuffer::F16(_)
             | TensorBuffer::F32(_)
             | TensorBuffer::F64(_)
-            | TensorBuffer::Nv12(_) => Ok(Self(maybe_encoded_tensor)), // Decoding happens on the GPU
+            | TensorBuffer::Nv12(_)
+            | TensorBuffer::Yuy2(_) => Ok(Self(maybe_encoded_tensor)), // Decoding happens on the GPU
 
             TensorBuffer::Jpeg(jpeg_bytes) => {
                 let [h, w, c] = maybe_encoded_tensor

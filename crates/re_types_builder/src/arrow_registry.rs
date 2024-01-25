@@ -2,7 +2,10 @@
 
 use anyhow::Context as _;
 use arrow2::datatypes::{DataType, Field, UnionMode};
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 use crate::{ElementType, Object, ObjectField, Type, ATTR_ARROW_SPARSE_UNION};
 
@@ -303,20 +306,26 @@ impl From<DataType> for LazyDatatype {
             DataType::LargeBinary => LazyDatatype::LargeBinary,
             DataType::Utf8 => LazyDatatype::Utf8,
             DataType::LargeUtf8 => LazyDatatype::LargeUtf8,
-            DataType::List(field) => LazyDatatype::List(Box::new((*field).into())),
+            DataType::List(field) => LazyDatatype::List(Box::new((*field).clone().into())),
             DataType::FixedSizeList(field, length) => {
-                LazyDatatype::FixedSizeList(Box::new((*field).into()), length)
+                LazyDatatype::FixedSizeList(Box::new((*field).clone().into()), length)
             }
-            DataType::LargeList(field) => LazyDatatype::LargeList(Box::new((*field).into())),
+            DataType::LargeList(field) => {
+                LazyDatatype::LargeList(Box::new((*field).clone().into()))
+            }
             DataType::Struct(fields) => {
-                LazyDatatype::Struct(fields.into_iter().map(Into::into).collect())
+                LazyDatatype::Struct(fields.iter().cloned().map(Into::into).collect())
             }
-            DataType::Union(fields, x, mode) => {
-                LazyDatatype::Union(fields.into_iter().map(Into::into).collect(), x, mode)
-            }
-            DataType::Extension(name, datatype, metadata) => {
-                LazyDatatype::Extension(name, Box::new((*datatype).into()), metadata)
-            }
+            DataType::Union(fields, x, mode) => LazyDatatype::Union(
+                fields.iter().cloned().map(Into::into).collect(),
+                x.map(|arc| arc.to_vec()),
+                mode,
+            ),
+            DataType::Extension(name, datatype, metadata) => LazyDatatype::Extension(
+                name,
+                Box::new((*datatype).clone().into()),
+                metadata.map(|arc| arc.to_string()),
+            ),
             _ => unimplemented!("{datatype:#?}"),
         }
     }
@@ -344,25 +353,25 @@ impl LazyDatatype {
             LazyDatatype::LargeBinary => DataType::LargeBinary,
             LazyDatatype::Utf8 => DataType::Utf8,
             LazyDatatype::LargeUtf8 => DataType::LargeUtf8,
-            LazyDatatype::List(field) => DataType::List(Box::new(field.resolve(registry))),
+            LazyDatatype::List(field) => DataType::List(Arc::new(field.resolve(registry))),
             LazyDatatype::FixedSizeList(field, length) => {
-                DataType::FixedSizeList(Box::new(field.resolve(registry)), *length)
+                DataType::FixedSizeList(Arc::new(field.resolve(registry)), *length)
             }
             LazyDatatype::LargeList(field) => {
-                DataType::LargeList(Box::new(field.resolve(registry)))
+                DataType::LargeList(Arc::new(field.resolve(registry)))
             }
-            LazyDatatype::Struct(fields) => {
-                DataType::Struct(fields.iter().map(|field| field.resolve(registry)).collect())
-            }
-            LazyDatatype::Union(fields, x, mode) => DataType::Union(
+            LazyDatatype::Struct(fields) => DataType::Struct(Arc::new(
                 fields.iter().map(|field| field.resolve(registry)).collect(),
-                x.clone(),
+            )),
+            LazyDatatype::Union(fields, x, mode) => DataType::Union(
+                Arc::new(fields.iter().map(|field| field.resolve(registry)).collect()),
+                x.as_ref().map(|x| Arc::new(x.clone())),
                 *mode,
             ),
             LazyDatatype::Extension(name, datatype, metadata) => DataType::Extension(
                 name.clone(),
-                Box::new(datatype.resolve(registry)),
-                metadata.clone(),
+                Arc::new(datatype.resolve(registry)),
+                metadata.as_ref().map(|s| Arc::new(s.clone())),
             ),
             LazyDatatype::Unresolved(fqname) => registry.get(fqname),
         }

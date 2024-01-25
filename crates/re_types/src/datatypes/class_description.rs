@@ -77,7 +77,7 @@ impl ::re_types_core::Loggable for ClassDescription {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "info".to_owned(),
                 data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
@@ -86,7 +86,7 @@ impl ::re_types_core::Loggable for ClassDescription {
             },
             Field {
                 name: "keypoint_annotations".to_owned(),
-                data_type: DataType::List(Box::new(Field {
+                data_type: DataType::List(std::sync::Arc::new(Field {
                     name: "item".to_owned(),
                     data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                     is_nullable: false,
@@ -97,7 +97,7 @@ impl ::re_types_core::Loggable for ClassDescription {
             },
             Field {
                 name: "keypoint_connections".to_owned(),
-                data_type: DataType::List(Box::new(Field {
+                data_type: DataType::List(std::sync::Arc::new(Field {
                     name: "item".to_owned(),
                     data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
                     is_nullable: false,
@@ -106,7 +106,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 is_nullable: false,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -190,7 +190,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                                     is_nullable: false,
@@ -245,7 +245,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(Box::new(Field {
+                                DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
                                     is_nullable: false,
@@ -285,7 +285,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::Struct(vec![
+                        DataType::Struct(std::sync::Arc::new(vec![
                             Field {
                                 name: "info".to_owned(),
                                 data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
@@ -294,7 +294,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             },
                             Field {
                                 name: "keypoint_annotations".to_owned(),
-                                data_type: DataType::List(Box::new(Field {
+                                data_type: DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                                     is_nullable: false,
@@ -305,7 +305,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             },
                             Field {
                                 name: "keypoint_connections".to_owned(),
-                                data_type: DataType::List(Box::new(Field {
+                                data_type: DataType::List(std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
                                     data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
                                     is_nullable: false,
@@ -314,7 +314,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 is_nullable: false,
                                 metadata: [].into(),
                             },
-                        ]),
+                        ])),
                         arrow_data.data_type().clone(),
                     )
                 })
@@ -357,7 +357,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type:
                                             <crate::datatypes::AnnotationInfo>::arrow_datatype(),
@@ -431,7 +431,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 DeserializationError::datatype_mismatch(
-                                    DataType::List(Box::new(Field {
+                                    DataType::List(std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: <crate::datatypes::KeypointPair>::arrow_datatype(
                                         ),

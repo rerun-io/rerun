@@ -2,8 +2,6 @@
 //!
 //! They're awful, but sometimes you just have to…
 
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
-
 use re_data_store::{DataStore, DataStoreConfig};
 use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId, TimePoint};
 use re_types::{components::InstanceKey, datagen::build_some_instances};
@@ -22,7 +20,7 @@ use re_types_core::Loggable as _;
 // make an exception, for now…
 #[test]
 fn pathological_bucket_topology() {
-    init_logs();
+    re_log::setup_logging();
 
     let mut store_forward = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -142,13 +140,5 @@ fn pathological_bucket_topology() {
                 store_backward
             }
         );
-    }
-}
-
-fn init_logs() {
-    static INIT: AtomicBool = AtomicBool::new(false);
-
-    if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
-        re_log::setup_native_logging();
     }
 }

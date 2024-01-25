@@ -1,17 +1,15 @@
 use std::{
     collections::{BTreeMap, VecDeque},
+    ops::Range,
     sync::Arc,
 };
 
 use ahash::{HashMap, HashSet};
-use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use paste::paste;
 use seq_macro::seq;
 
-use re_data_store::{
-    LatestAtQuery, RangeQuery, StoreDiff, StoreEvent, StoreSubscriber, StoreSubscriberHandle,
-};
+use re_data_store::{DataStore, LatestAtQuery, RangeQuery, StoreDiff, StoreEvent, StoreSubscriber};
 use re_log_types::{EntityPath, RowId, StoreId, TimeInt, TimeRange, Timeline};
 use re_query::ArchetypeView;
 use re_types_core::{
@@ -44,15 +42,34 @@ impl From<RangeQuery> for AnyQuery {
 
 // ---
 
-/// All primary caches (all stores, all entities, everything).
-//
-// TODO(cmc): Centralize and harmonize all caches (query, jpeg, mesh).
-static CACHES: Lazy<StoreSubscriberHandle> =
-    Lazy::new(|| re_data_store::DataStore::register_subscriber(Box::<Caches>::default()));
-
 /// Maintains the top-level cache mappings.
-#[derive(Default)]
-pub struct Caches(pub(crate) RwLock<HashMap<CacheKey, CachesPerArchetype>>);
+//
+pub struct Caches {
+    /// The [`StoreId`] of the associated [`DataStore`].
+    store_id: StoreId,
+
+    // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
+    per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>,
+}
+
+impl std::ops::Deref for Caches {
+    type Target = RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.per_cache_key
+    }
+}
+
+impl Caches {
+    #[inline]
+    pub fn new(store: &DataStore) -> Self {
+        Self {
+            store_id: store.id().clone(),
+            per_cache_key: Default::default(),
+        }
+    }
+}
 
 #[derive(Default)]
 pub struct CachesPerArchetype {
@@ -62,6 +79,8 @@ pub struct CachesPerArchetype {
     /// query for components from a specific point-of-view (the so-called primary component).
     /// Different archetypes have different point-of-views, and therefore can end up with different
     /// results, even from the same raw data.
+    //
+    // NOTE: `Arc` so we can cheaply free the archetype-level lock early when needed.
     //
     // TODO(cmc): At some point we should probably just store the PoV and optional components rather
     // than an `ArchetypeName`: the query system doesn't care about archetypes.
@@ -73,6 +92,8 @@ pub struct CachesPerArchetype {
     /// query for components from a specific point-of-view (the so-called primary component).
     /// Different archetypes have different point-of-views, and therefore can end up with different
     /// results, even from the same raw data.
+    //
+    // NOTE: `Arc` so we can cheaply free the archetype-level lock early when needed.
     //
     // TODO(cmc): At some point we should probably just store the PoV and optional components rather
     // than an `ArchetypeName`: the query system doesn't care about archetypes.
@@ -102,17 +123,16 @@ impl Caches {
     //
     // TODO(#4731): expose palette command.
     #[inline]
-    pub fn clear() {
-        re_data_store::DataStore::with_subscriber_once(*CACHES, |caches: &Caches| {
-            caches.0.write().clear();
-        });
+    pub fn clear(&self) {
+        self.write().clear();
     }
 
     /// Gives write access to the appropriate `LatestAtCache` according to the specified
     /// query parameters.
     #[inline]
     pub fn with_latest_at<A, F, R>(
-        store_id: StoreId,
+        &self,
+        store: &DataStore,
         entity_path: EntityPath,
         query: &LatestAtQuery,
         mut f: F,
@@ -121,25 +141,37 @@ impl Caches {
         A: Archetype,
         F: FnMut(&mut LatestAtCache) -> R,
     {
-        let key = CacheKey::new(store_id, entity_path, query.timeline);
+        assert!(
+            self.store_id == *store.id(),
+            "attempted to use a query cache {} with the wrong datastore ({})",
+            self.store_id,
+            store.id(),
+        );
 
-        let cache =
-            re_data_store::DataStore::with_subscriber_once(*CACHES, move |caches: &Caches| {
-                let mut caches = caches.0.write();
+        let key = CacheKey::new(entity_path, query.timeline);
 
-                let caches_per_archetype = caches.entry(key.clone()).or_default();
-                caches_per_archetype.handle_pending_invalidation(&key);
+        let cache = {
+            let caches_per_archetype = Arc::clone(self.write().entry(key.clone()).or_default());
+            // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
-                let mut latest_at_per_archetype =
-                    caches_per_archetype.latest_at_per_archetype.write();
-                let latest_at_cache = latest_at_per_archetype.entry(A::name()).or_default();
+            let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
+            // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
+            // same `CacheKey` but a different `ArchetypeName` can run once again.
+            if removed_bytes > 0 {
+                re_log::trace!(
+                    store_id=%self.store_id,
+                    entity_path = %key.entity_path,
+                    removed = removed_bytes,
+                    "invalidated latest-at caches"
+                );
+            }
 
-                Arc::clone(latest_at_cache)
-
-                // Implicitly releasing all intermediary locks.
-            })
-            // NOTE: downcasting cannot fail, this is our own private handle.
-            .unwrap();
+            let caches_per_archetype = caches_per_archetype.read();
+            let mut latest_at_per_archetype = caches_per_archetype.latest_at_per_archetype.write();
+            Arc::clone(latest_at_per_archetype.entry(A::name()).or_default())
+            // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
+            // can run once again.
+        };
 
         let mut cache = cache.write();
         f(&mut cache)
@@ -149,7 +181,8 @@ impl Caches {
     /// query parameters.
     #[inline]
     pub fn with_range<A, F, R>(
-        store_id: StoreId,
+        &self,
+        store: &DataStore,
         entity_path: EntityPath,
         query: &RangeQuery,
         mut f: F,
@@ -158,42 +191,46 @@ impl Caches {
         A: Archetype,
         F: FnMut(&mut RangeCache) -> R,
     {
-        let key = CacheKey::new(store_id, entity_path, query.timeline);
+        assert!(
+            self.store_id == *store.id(),
+            "attempted to use a query cache {} with the wrong datastore ({})",
+            self.store_id,
+            store.id(),
+        );
 
-        let cache =
-            re_data_store::DataStore::with_subscriber_once(*CACHES, move |caches: &Caches| {
-                let mut caches = caches.0.write();
+        let key = CacheKey::new(entity_path, query.timeline);
 
-                let caches_per_archetype = caches.entry(key.clone()).or_default();
-                caches_per_archetype.handle_pending_invalidation(&key);
+        let cache = {
+            let caches_per_archetype = Arc::clone(self.write().entry(key.clone()).or_default());
+            // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
-                let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
-                let range_cache = range_per_archetype.entry(A::name()).or_default();
+            let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
+            // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
+            // same `CacheKey` but a different `ArchetypeName` can run once again.
+            if removed_bytes > 0 {
+                re_log::trace!(
+                    store_id=%self.store_id,
+                    entity_path = %key.entity_path,
+                    removed = removed_bytes,
+                    "invalidated latest-at caches"
+                );
+            }
 
-                Arc::clone(range_cache)
-
-                // Implicitly releasing all intermediary locks.
-            })
-            // NOTE: downcasting cannot fail, this is our own private handle.
-            .unwrap();
+            let caches_per_archetype = caches_per_archetype.read();
+            let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
+            Arc::clone(range_per_archetype.entry(A::name()).or_default())
+            // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
+            // can run once again.
+        };
 
         let mut cache = cache.write();
         f(&mut cache)
-    }
-
-    #[inline]
-    pub(crate) fn with<F: FnMut(&Caches) -> R, R>(f: F) -> R {
-        // NOTE: downcasting cannot fail, this is our own private handle.
-        re_data_store::DataStore::with_subscriber(*CACHES, f).unwrap()
     }
 }
 
 /// Uniquely identifies cached query results in the [`Caches`].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CacheKey {
-    /// Which [`re_data_store::DataStore`] is the query targeting?
-    pub store_id: StoreId,
-
     /// Which [`EntityPath`] is the query targeting?
     pub entity_path: EntityPath,
 
@@ -203,13 +240,8 @@ pub struct CacheKey {
 
 impl CacheKey {
     #[inline]
-    pub fn new(
-        store_id: impl Into<StoreId>,
-        entity_path: impl Into<EntityPath>,
-        timeline: impl Into<Timeline>,
-    ) -> Self {
+    pub fn new(entity_path: impl Into<EntityPath>, timeline: impl Into<Timeline>) -> Self {
         Self {
-            store_id: store_id.into(),
             entity_path: entity_path.into(),
             timeline: timeline.into(),
         }
@@ -234,7 +266,6 @@ impl StoreSubscriber for Caches {
         self
     }
 
-    // TODO(cmc): support dropped recordings.
     fn on_events(&mut self, events: &[StoreEvent]) {
         re_tracing::profile_function!(format!("num_events={}", events.len()));
 
@@ -246,6 +277,13 @@ impl StoreSubscriber for Caches {
                 diff,
             } = event;
 
+            assert!(
+                self.store_id == *store_id,
+                "attempted to use a query cache {} with the wrong datastore ({})",
+                self.store_id,
+                store_id,
+            );
+
             let StoreDiff {
                 kind: _, // Don't care: both additions and deletions invalidate query results.
                 row_id: _,
@@ -256,7 +294,7 @@ impl StoreSubscriber for Caches {
 
             #[derive(Default, Debug)]
             struct CompactedEvents {
-                timeless: HashSet<(StoreId, EntityPath)>,
+                timeless: HashSet<EntityPath>,
                 timeful: HashMap<CacheKey, TimeInt>,
             }
 
@@ -265,29 +303,32 @@ impl StoreSubscriber for Caches {
                 re_tracing::profile_scope!("compact events");
 
                 if times.is_empty() {
-                    compacted
-                        .timeless
-                        .insert((store_id.clone(), entity_path.clone()));
+                    compacted.timeless.insert(entity_path.clone());
                 }
 
                 for &(timeline, time) in times {
-                    let key = CacheKey::new(store_id.clone(), entity_path.clone(), timeline);
+                    let key = CacheKey::new(entity_path.clone(), timeline);
                     let min_time = compacted.timeful.entry(key).or_insert(TimeInt::MAX);
                     *min_time = TimeInt::min(*min_time, time);
                 }
             }
 
+            let caches = self.write();
+            // NOTE: Don't release the top-level lock -- even though this cannot happen yet with
+            // our current macro-architecture, we want to prevent queries from concurrently
+            // running while we're updating the invalidation flags.
+
             // TODO(cmc): This is horribly stupid and slow and can easily be made faster by adding
             // yet another layer of caching indirection.
             // But since this pretty much never happens in practice, let's not go there until we
-            // have metrics showing that we need to.
+            // have metrics showing that show we need to.
             {
                 re_tracing::profile_scope!("timeless");
 
-                for (store_id, entity_path) in compacted.timeless {
-                    for (key, caches_per_archetype) in self.0.write().iter_mut() {
-                        if key.store_id == store_id && key.entity_path == entity_path {
-                            caches_per_archetype.pending_timeless_invalidation = true;
+                for entity_path in compacted.timeless {
+                    for (key, caches_per_archetype) in caches.iter() {
+                        if key.entity_path == entity_path {
+                            caches_per_archetype.write().pending_timeless_invalidation = true;
                         }
                     }
                 }
@@ -297,7 +338,12 @@ impl StoreSubscriber for Caches {
                 re_tracing::profile_scope!("timeful");
 
                 for (key, time) in compacted.timeful {
-                    if let Some(caches_per_archetype) = self.0.write().get_mut(&key) {
+                    if let Some(caches_per_archetype) = caches.get(&key) {
+                        // NOTE: Do _NOT_ lock from within the if clause itself or the guard will live
+                        // for the remainder of the if statement and hell will ensue.
+                        // <https://rust-lang.github.io/rust-clippy/master/#if_let_mutex> is
+                        // supposed to catch but it didn't, I don't know why.
+                        let mut caches_per_archetype = caches_per_archetype.write();
                         if let Some(min_time) =
                             caches_per_archetype.pending_timeful_invalidation.as_mut()
                         {
@@ -317,60 +363,63 @@ impl CachesPerArchetype {
     ///
     /// Invalidation is deferred to query time because it is far more efficient that way: the frame
     /// time effectively behaves as a natural micro-batching mechanism.
-    fn handle_pending_invalidation(&mut self, key: &CacheKey) {
+    ///
+    /// Returns the number of bytes removed.
+    fn handle_pending_invalidation(&mut self) -> u64 {
         let pending_timeless_invalidation = self.pending_timeless_invalidation;
         let pending_timeful_invalidation = self.pending_timeful_invalidation.is_some();
 
         if !pending_timeless_invalidation && !pending_timeful_invalidation {
-            return;
+            return 0;
         }
 
         re_tracing::profile_function!();
 
-        for latest_at_cache in self.latest_at_per_archetype.read().values() {
-            let mut latest_at_cache = latest_at_cache.write();
-
-            if pending_timeless_invalidation {
-                latest_at_cache.timeless = None;
-            }
-
-            let mut removed_bytes = 0u64;
-            if let Some(min_time) = self.pending_timeful_invalidation {
-                latest_at_cache
-                    .per_query_time
-                    .retain(|&query_time, _| query_time < min_time);
-
-                latest_at_cache.per_data_time.retain(|&data_time, bucket| {
-                    if data_time < min_time {
-                        return true;
-                    }
-
-                    // Only if that bucket is about to be dropped.
-                    if Arc::strong_count(bucket) == 1 {
-                        removed_bytes += bucket.read().total_size_bytes;
-                    }
-
-                    false
-                });
-            }
-
-            latest_at_cache.total_size_bytes = latest_at_cache
-                .total_size_bytes
-                .checked_sub(removed_bytes)
-                .unwrap_or_else(|| {
-                    re_log::debug!(
-                        store_id = %key.store_id,
-                        entity_path = %key.entity_path,
-                        current = latest_at_cache.total_size_bytes,
-                        removed = removed_bytes,
-                        "book keeping underflowed"
-                    );
-                    u64::MIN
-                });
-        }
+        let time_threshold = self.pending_timeful_invalidation.unwrap_or(TimeInt::MAX);
 
         self.pending_timeful_invalidation = None;
         self.pending_timeless_invalidation = false;
+
+        // Timeless being infinitely into the past, this effectively invalidates _everything_ with
+        // the current coarse-grained / archetype-level caching strategy.
+        if pending_timeless_invalidation {
+            re_tracing::profile_scope!("timeless");
+
+            let latest_at_removed_bytes = self
+                .latest_at_per_archetype
+                .read()
+                .values()
+                .map(|latest_at_cache| latest_at_cache.read().total_size_bytes())
+                .sum::<u64>();
+            let range_removed_bytes = self
+                .range_per_archetype
+                .read()
+                .values()
+                .map(|range_cache| range_cache.read().total_size_bytes())
+                .sum::<u64>();
+
+            *self = CachesPerArchetype::default();
+
+            return latest_at_removed_bytes + range_removed_bytes;
+        }
+
+        re_tracing::profile_scope!("timeful");
+
+        let mut removed_bytes = 0u64;
+
+        for latest_at_cache in self.latest_at_per_archetype.read().values() {
+            let mut latest_at_cache = latest_at_cache.write();
+            removed_bytes =
+                removed_bytes.saturating_add(latest_at_cache.truncate_at_time(time_threshold));
+        }
+
+        for range_cache in self.range_per_archetype.read().values() {
+            let mut range_cache = range_cache.write();
+            removed_bytes =
+                removed_bytes.saturating_add(range_cache.truncate_at_time(time_threshold));
+        }
+
+        removed_bytes
     }
 }
 
@@ -419,12 +468,6 @@ pub struct CacheBucket {
 }
 
 impl CacheBucket {
-    /// Iterate over the timestamps of the point-of-view components.
-    #[inline]
-    pub fn iter_data_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
-        self.data_times.iter()
-    }
-
     #[inline]
     pub fn time_range(&self) -> Option<TimeRange> {
         let first_time = self.data_times.front().map(|(t, _)| *t)?;
@@ -442,6 +485,25 @@ impl CacheBucket {
     #[inline]
     pub fn contains_data_row(&self, data_time: TimeInt, row_id: RowId) -> bool {
         self.data_times.binary_search(&(data_time, row_id)).is_ok()
+    }
+
+    /// How many timestamps' worth of data is stored in this bucket?
+    #[inline]
+    pub fn num_entries(&self) -> usize {
+        self.data_times.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.num_entries() == 0
+    }
+
+    // ---
+
+    /// Iterate over the timestamps of the point-of-view components.
+    #[inline]
+    pub fn iter_data_times(&self) -> impl Iterator<Item = &(TimeInt, RowId)> {
+        self.data_times.iter()
     }
 
     /// Iterate over the [`InstanceKey`] batches of the point-of-view components.
@@ -474,15 +536,131 @@ impl CacheBucket {
         Some(data.iter())
     }
 
-    /// How many timestamps' worth of data is stored in this bucket?
+    // ---
+
+    /// Returns the index range that corresponds to the specified `time_range`.
+    ///
+    /// Use the returned range with one of the range iteration methods:
+    /// - [`Self::range_data_times`]
+    /// - [`Self::range_pov_instance_keys`]
+    /// - [`Self::range_component`]
+    /// - [`Self::range_component_opt`]
+    ///
+    /// Make sure that the bucket hasn't been modified in-between!
+    ///
+    /// This is `O(2*log(n))`, so make sure to clone the returned range rather than calling this
+    /// multiple times.
     #[inline]
-    pub fn num_entries(&self) -> usize {
-        self.data_times.len()
+    pub fn entry_range(&self, time_range: TimeRange) -> Range<usize> {
+        let start_index = self
+            .data_times
+            .partition_point(|(data_time, _)| data_time < &time_range.min);
+        let end_index = self
+            .data_times
+            .partition_point(|(data_time, _)| data_time <= &time_range.max);
+        start_index..end_index
     }
 
+    /// Range over the timestamps of the point-of-view components.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.num_entries() == 0
+    pub fn range_data_times(
+        &self,
+        entry_range: Range<usize>,
+    ) -> impl Iterator<Item = &(TimeInt, RowId)> {
+        self.data_times.range(entry_range)
+    }
+
+    /// Range over the [`InstanceKey`] batches of the point-of-view components.
+    #[inline]
+    pub fn range_pov_instance_keys(
+        &self,
+        entry_range: Range<usize>,
+    ) -> impl Iterator<Item = &[InstanceKey]> {
+        self.pov_instance_keys.range(entry_range)
+    }
+
+    /// Range over the batches of the specified non-optional component.
+    #[inline]
+    pub fn range_component<C: Component + Send + Sync + 'static>(
+        &self,
+        entry_range: Range<usize>,
+    ) -> Option<impl Iterator<Item = &[C]>> {
+        let data = self
+            .components
+            .get(&C::name())
+            .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())?;
+        Some(data.range(entry_range))
+    }
+
+    /// Range over the batches of the specified optional component.
+    #[inline]
+    pub fn range_component_opt<C: Component + Send + Sync + 'static>(
+        &self,
+        entry_range: Range<usize>,
+    ) -> Option<impl Iterator<Item = &[Option<C>]>> {
+        let data = self
+            .components
+            .get(&C::name())
+            .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<Option<C>>>())?;
+        Some(data.range(entry_range))
+    }
+
+    /// Removes everything from the bucket that corresponds to a time equal or greater than the
+    /// specified `threshold`.
+    ///
+    /// Returns the number of bytes removed.
+    #[inline]
+    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
+        let Self {
+            data_times,
+            pov_instance_keys,
+            components,
+            total_size_bytes,
+        } = self;
+
+        let mut removed_bytes = 0u64;
+
+        let threshold_idx = data_times.partition_point(|(data_time, _)| data_time < &threshold);
+
+        {
+            let total_size_bytes_before = data_times.total_size_bytes();
+            data_times.truncate(threshold_idx);
+            removed_bytes += total_size_bytes_before - data_times.total_size_bytes();
+        }
+
+        {
+            let total_size_bytes_before = pov_instance_keys.total_size_bytes();
+            pov_instance_keys.truncate(threshold_idx);
+            removed_bytes += total_size_bytes_before - pov_instance_keys.total_size_bytes();
+        }
+
+        for data in components.values_mut() {
+            let total_size_bytes_before = data.dyn_total_size_bytes();
+            data.dyn_truncate(threshold_idx);
+            removed_bytes += total_size_bytes_before - data.dyn_total_size_bytes();
+        }
+
+        debug_assert!({
+            let expected_num_entries = data_times.len();
+            data_times.len() == expected_num_entries
+                && pov_instance_keys.num_entries() == expected_num_entries
+                && components
+                    .values()
+                    .all(|data| data.dyn_num_entries() == expected_num_entries)
+        });
+
+        *total_size_bytes = total_size_bytes
+            .checked_sub(removed_bytes)
+            .unwrap_or_else(|| {
+                re_log::debug!(
+                    current = *total_size_bytes,
+                    removed = removed_bytes,
+                    "book keeping underflowed"
+                );
+                u64::MIN
+            });
+
+        removed_bytes
     }
 }
 
@@ -517,7 +695,7 @@ macro_rules! impl_insert {
 
             {
                 // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
-                // instead, that way we can efficiently computes its size while we're at it.
+                // instead, that way we can efficiently compute its size while we're at it.
                 let added: FlatVecDeque<InstanceKey> = arch_view
                     .iter_instance_keys()
                     .collect::<VecDeque<InstanceKey>>()
@@ -578,7 +756,7 @@ impl CacheBucket {
             .or_insert_with(|| Box::new(FlatVecDeque::<C>::new()));
 
         // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
-        // instead, that way we can efficiently computes its size while we're at it.
+        // instead, that way we can efficiently compute its size while we're at it.
         let added: FlatVecDeque<C> = arch_view
             .iter_required_component::<C>()?
             .collect::<VecDeque<C>>()
@@ -592,6 +770,7 @@ impl CacheBucket {
         Ok(added_size_bytes)
     }
 
+    /// This will insert an empty slice for a missing component (instead of N `None` values).
     #[inline]
     fn insert_component_opt<A: Archetype, C: Component + Send + Sync + 'static>(
         &mut self,
@@ -605,12 +784,20 @@ impl CacheBucket {
             .entry(C::name())
             .or_insert_with(|| Box::new(FlatVecDeque::<Option<C>>::new()));
 
-        // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
-        // instead, that way we can efficiently computes its size while we're at it.
-        let added: FlatVecDeque<Option<C>> = arch_view
-            .iter_optional_component::<C>()?
-            .collect::<VecDeque<Option<C>>>()
-            .into();
+        let added: FlatVecDeque<Option<C>> = if arch_view.has_component::<C>() {
+            // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
+            // instead, that way we can efficiently computes its size while we're at it.
+            arch_view
+                .iter_optional_component::<C>()?
+                .collect::<VecDeque<Option<C>>>()
+                .into()
+        } else {
+            // If an optional component is missing entirely, we just store an empty slice in its
+            // stead, rather than a bunch of `None` values.
+            let mut added = FlatVecDeque::<Option<C>>::new();
+            added.push_back(std::iter::empty());
+            added
+        };
         let added_size_bytes = added.total_size_bytes();
 
         // NOTE: downcast cannot fail, we create it just above.

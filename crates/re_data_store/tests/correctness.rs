@@ -2,8 +2,6 @@
 //!
 //! Bending and twisting the datastore APIs in all kinds of weird ways to try and break them.
 
-use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
-
 use rand::Rng;
 
 use re_data_store::{
@@ -194,7 +192,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
 #[test]
 fn write_errors() {
-    init_logs();
+    re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");
 
@@ -289,7 +287,7 @@ fn write_errors() {
 
 #[test]
 fn latest_at_emptiness_edge_cases() {
-    init_logs();
+    re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
@@ -408,91 +406,9 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 
 // ---
 
-// This one demonstrates a nasty edge case when stream-joining multiple iterators that happen to
-// share the same exact row of data at some point (because, for that specific entry, it turns out
-// that those component where inserted together).
-//
-// When that happens, one must be very careful to not only compare time and index row numbers, but
-// also make sure that, if all else if equal, the primary iterator comes last so that it gathers as
-// much state as possible!
-
-#[cfg(feature = "polars")]
-#[test]
-fn range_join_across_single_row() {
-    init_logs();
-
-    for config in re_data_store::test_util::all_configs() {
-        let mut store = DataStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
-            config.clone(),
-        );
-        range_join_across_single_row_impl(&mut store);
-    }
-}
-
-#[cfg(feature = "polars")]
-fn range_join_across_single_row_impl(store: &mut DataStore) {
-    use polars_core::{
-        prelude::{DataFrame, JoinType},
-        series::Series,
-    };
-    use re_data_store::ArrayExt as _;
-    use re_types::components::{Color, Position2D};
-
-    let ent_path = EntityPath::from("this/that");
-
-    let positions = build_some_positions2d(3);
-    let colors = build_some_colors(3);
-    let row =
-        test_row!(ent_path @ [build_frame_nr(42.into())] => 3; [positions.clone(), colors.clone()]);
-    store.insert_row(&row).unwrap();
-
-    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = re_data_store::RangeQuery::new(
-        timeline_frame_nr,
-        re_data_store::TimeRange::new(i64::MIN.into(), i64::MAX.into()),
-    );
-    let components = [InstanceKey::name(), Position2D::name(), Color::name()];
-    let dfs = re_data_store::polars_util::range_components(
-        store,
-        &query,
-        &ent_path,
-        Position2D::name(),
-        components,
-        &JoinType::Outer,
-    )
-    .collect::<Vec<_>>();
-
-    let df_expected = {
-        let instances =
-            InstanceKey::to_arrow(vec![InstanceKey(0), InstanceKey(1), InstanceKey(2)]).unwrap();
-        let positions = Position2D::to_arrow(positions).unwrap();
-        let colors = Color::to_arrow(colors).unwrap();
-
-        DataFrame::new(vec![
-            Series::try_from((InstanceKey::name().as_ref(), instances)).unwrap(),
-            Series::try_from((
-                Position2D::name().as_ref(),
-                positions.as_ref().clean_for_polars(),
-            ))
-            .unwrap(),
-            Series::try_from((Color::name().as_ref(), colors)).unwrap(),
-        ])
-        .unwrap()
-    };
-
-    assert_eq!(1, dfs.len());
-    let (_, df) = dfs[0].clone().unwrap();
-
-    assert_eq!(df_expected, df);
-}
-
-// ---
-
 #[test]
 fn gc_correct() {
-    init_logs();
+    re_log::setup_logging();
 
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -606,19 +522,9 @@ fn gc_metadata_size() -> anyhow::Result<()> {
 
 // ---
 
-pub fn init_logs() {
-    static INIT: AtomicBool = AtomicBool::new(false);
-
-    if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
-        re_log::setup_native_logging();
-    }
-}
-
-// ---
-
 #[test]
 fn entity_min_time_correct() -> anyhow::Result<()> {
-    init_logs();
+    re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(

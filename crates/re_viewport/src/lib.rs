@@ -9,7 +9,7 @@ mod container;
 mod space_info;
 mod space_view;
 mod space_view_entity_picker;
-mod space_view_heuristics;
+pub mod space_view_heuristics;
 mod space_view_highlights;
 mod system_execution;
 mod viewport;
@@ -23,6 +23,7 @@ mod viewport_blueprint_ui;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
+pub use container::{ContainerBlueprint, Contents};
 pub use space_info::SpaceInfoCollection;
 pub use space_view::{SpaceViewBlueprint, SpaceViewName};
 pub use viewport::{Viewport, ViewportState};

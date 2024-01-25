@@ -1,5 +1,4 @@
 use egui::NumExt as _;
-use egui_tiles::{GridLayout, Tile};
 
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_entity_db::{
@@ -15,13 +14,13 @@ use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, HoverHighlight, Item,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender as _,
-    UiVerbosity, ViewerContext,
+    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId,
+    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand,
+    SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
-    Viewport, ViewportBlueprint,
+    Contents, SpaceInfoCollection, Viewport, ViewportBlueprint,
 };
 
 use crate::ui::add_space_view_or_container_modal::AddSpaceViewOrContainerModal;
@@ -72,6 +71,7 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
+        spaces_info: &SpaceInfoCollection,
         expanded: bool,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
@@ -121,7 +121,7 @@ impl SelectionPanel {
                 .show(ui, |ui| {
                     ui.add_space(ui.spacing().item_spacing.y);
                     ctx.re_ui.panel_content(ui, |_, ui| {
-                        self.contents(ctx, ui, viewport);
+                        self.contents(ctx, ui, viewport, spaces_info);
                     });
                 });
         });
@@ -133,6 +133,7 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
+        spaces_info: &SpaceInfoCollection,
     ) {
         re_tracing::profile_function!();
 
@@ -154,19 +155,25 @@ impl SelectionPanel {
                 what_is_selected_ui(ui, ctx, viewport.blueprint, item);
 
                 match item {
-                    Item::Container(tile_id) => {
-                        container_top_level_properties(ui, ctx, viewport, tile_id);
+                    Item::Container(container_id) => {
+                        container_top_level_properties(ui, ctx, viewport, container_id);
 
                         // the container children and related additive workflow is only available with the new container
                         // blueprints feature
                         if ctx.app_options.experimental_additive_workflow {
                             ui.add_space(12.0);
-                            self.container_children(ui, ctx, viewport, tile_id);
+                            self.container_children(ui, ctx, viewport, container_id);
                         }
                     }
 
                     Item::SpaceView(space_view_id) => {
-                        space_view_top_level_properties(ui, ctx, viewport.blueprint, space_view_id);
+                        space_view_top_level_properties(
+                            ui,
+                            ctx,
+                            viewport.blueprint,
+                            spaces_info,
+                            space_view_id,
+                        );
                     }
 
                     _ => {}
@@ -196,6 +203,8 @@ impl SelectionPanel {
                 }
             });
         }
+
+        self.add_space_view_or_container_modal.ui(ui, ctx, viewport);
     }
 
     fn container_children(
@@ -203,9 +212,9 @@ impl SelectionPanel {
         ui: &mut egui::Ui,
         ctx: &ViewerContext<'_>,
         viewport: &Viewport<'_, '_>,
-        tile_id: &egui_tiles::TileId,
+        container_id: &ContainerId,
     ) {
-        let Some(Tile::Container(container)) = viewport.tree.tiles.get(*tile_id) else {
+        let Some(container) = viewport.blueprint.container(container_id) else {
             return;
         };
 
@@ -218,17 +227,15 @@ impl SelectionPanel {
                     .small_icon_button(ui, &re_ui::icons::ADD)
                     .clicked()
                 {
-                    self.add_space_view_or_container_modal.open(*tile_id);
+                    self.add_space_view_or_container_modal.open(*container_id);
                 }
             });
         });
 
-        self.add_space_view_or_container_modal.ui(ui, ctx, viewport);
-
         let show_content = |ui: &mut egui::Ui| {
             let mut has_child = false;
-            for &child_tile_id in container.children() {
-                has_child |= show_list_item_for_container_child(ui, ctx, viewport, child_tile_id);
+            for child_contents in &container.contents {
+                has_child |= show_list_item_for_container_child(ui, ctx, viewport, child_contents);
             }
 
             if !has_child {
@@ -327,14 +334,16 @@ fn what_is_selected_ui(
 
             item_title_ui(ctx.re_ui, ui, &title, Some(&re_ui::icons::STORE), &id_str);
         }
-        Item::Container(tile_id) => {
-            if let Some(Tile::Container(container)) = viewport.tree.tiles.get(*tile_id) {
+        Item::Container(container_id) => {
+            if let Some(container_blueprint) = viewport.container(container_id) {
                 item_title_ui(
                     ctx.re_ui,
                     ui,
-                    &format!("{:?}", container.kind()),
-                    Some(re_viewport::icon_for_container_kind(&container.kind())),
-                    &format!("{:?} container", container.kind()),
+                    &format!("{:?}", container_blueprint.container_kind),
+                    Some(re_viewport::icon_for_container_kind(
+                        &container_blueprint.container_kind,
+                    )),
+                    &format!("{:?} container", container_blueprint.container_kind),
                 );
             }
         }
@@ -513,6 +522,7 @@ fn space_view_top_level_properties(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
+    spaces_info: &SpaceInfoCollection,
     space_view_id: &SpaceViewId,
 ) {
     if let Some(space_view) = viewport.space_view(space_view_id) {
@@ -525,25 +535,23 @@ fn space_view_top_level_properties(
                     string.",
                 );
                 ui.text_edit_singleline(&mut name);
-                ui.end_row();
-
                 space_view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+
+                ui.end_row();
 
                 ui.label("Space origin").on_hover_text(
                     "The origin Entity for this Space View. For spatial Space Views, the Space \
                     View's origin is the same as this Entity's origin and all transforms are \
                     relative to it.",
                 );
-                let (query, store) =
-                    guess_query_and_store_for_selected_entity(ctx, &space_view.space_origin);
-                item_ui::entity_path_button(
-                    ctx,
-                    &query,
-                    store,
+
+                super::space_view_space_origin_ui::space_view_space_origin_widget_ui(
                     ui,
-                    Some(*space_view_id),
-                    &space_view.space_origin,
+                    ctx,
+                    spaces_info,
+                    space_view,
                 );
+
                 ui.end_row();
 
                 ui.label("Type")
@@ -553,6 +561,7 @@ fn space_view_top_level_properties(
                         .class(ctx.space_view_class_registry)
                         .display_name(),
                 );
+
                 ui.end_row();
             });
     }
@@ -561,115 +570,111 @@ fn space_view_top_level_properties(
 fn container_top_level_properties(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    viewport: &mut Viewport<'_, '_>,
-    tile_id: &egui_tiles::TileId,
+    viewport: &Viewport<'_, '_>,
+    container_id: &ContainerId,
 ) {
-    if let Some(Tile::Container(container)) = viewport.tree.tiles.get_mut(*tile_id) {
-        egui::Grid::new("container_top_level_properties")
-            .num_columns(2)
-            .show(ui, |ui| {
-                ui.label("Kind");
+    let Some(container) = viewport.blueprint.container(container_id) else {
+        return;
+    };
 
-                let mut container_kind = container.kind();
-                egui::ComboBox::from_id_source("container_kind")
-                    .selected_text(format!("{container_kind:?}"))
+    egui::Grid::new("container_top_level_properties")
+        .num_columns(2)
+        .show(ui, |ui| {
+            ui.label("Kind");
+
+            let mut container_kind = container.container_kind;
+            egui::ComboBox::from_id_source("container_kind")
+                .selected_text(format!("{container_kind:?}"))
+                .show_ui(ui, |ui| {
+                    ui.style_mut().wrap = Some(false);
+                    ui.set_min_width(64.0);
+
+                    ui.selectable_value(
+                        &mut container_kind,
+                        egui_tiles::ContainerKind::Tabs,
+                        format!("{:?}", egui_tiles::ContainerKind::Tabs),
+                    );
+                    ui.selectable_value(
+                        &mut container_kind,
+                        egui_tiles::ContainerKind::Horizontal,
+                        format!("{:?}", egui_tiles::ContainerKind::Horizontal),
+                    );
+                    ui.selectable_value(
+                        &mut container_kind,
+                        egui_tiles::ContainerKind::Vertical,
+                        format!("{:?}", egui_tiles::ContainerKind::Vertical),
+                    );
+                    ui.selectable_value(
+                        &mut container_kind,
+                        egui_tiles::ContainerKind::Grid,
+                        format!("{:?}", egui_tiles::ContainerKind::Grid),
+                    );
+                });
+
+            viewport
+                .blueprint
+                .set_container_kind(*container_id, container_kind);
+
+            ui.end_row();
+
+            if container.container_kind == egui_tiles::ContainerKind::Grid {
+                ui.label("Columns");
+
+                fn columns_to_string(columns: &Option<u32>) -> String {
+                    match columns {
+                        None => "Auto".to_owned(),
+                        Some(cols) => cols.to_string(),
+                    }
+                }
+
+                let mut new_columns = container.grid_columns;
+
+                egui::ComboBox::from_id_source("container_grid_columns")
+                    .selected_text(columns_to_string(&new_columns))
                     .show_ui(ui, |ui| {
                         ui.style_mut().wrap = Some(false);
                         ui.set_min_width(64.0);
 
-                        ui.selectable_value(
-                            &mut container_kind,
-                            egui_tiles::ContainerKind::Tabs,
-                            format!("{:?}", egui_tiles::ContainerKind::Tabs),
-                        );
-                        ui.selectable_value(
-                            &mut container_kind,
-                            egui_tiles::ContainerKind::Horizontal,
-                            format!("{:?}", egui_tiles::ContainerKind::Horizontal),
-                        );
-                        ui.selectable_value(
-                            &mut container_kind,
-                            egui_tiles::ContainerKind::Vertical,
-                            format!("{:?}", egui_tiles::ContainerKind::Vertical),
-                        );
-                        ui.selectable_value(
-                            &mut container_kind,
-                            egui_tiles::ContainerKind::Grid,
-                            format!("{:?}", egui_tiles::ContainerKind::Grid),
-                        );
+                        ui.selectable_value(&mut new_columns, None, columns_to_string(&None));
+
+                        ui.separator();
+
+                        for columns in 1..=container.contents.len() as u32 {
+                            ui.selectable_value(
+                                &mut new_columns,
+                                Some(columns),
+                                columns_to_string(&Some(columns)),
+                            );
+                        }
                     });
 
-                viewport
-                    .blueprint
-                    .set_container_kind(*tile_id, container_kind);
+                container.set_grid_columns(ctx, new_columns);
 
                 ui.end_row();
+            }
 
-                if let egui_tiles::Container::Grid(grid) = container {
-                    ui.label("Columns");
-
-                    fn grid_layout_to_string(layout: &egui_tiles::GridLayout) -> String {
-                        match layout {
-                            GridLayout::Auto => "Auto".to_owned(),
-                            GridLayout::Columns(cols) => cols.to_string(),
-                        }
-                    }
-
-                    let original_layout = grid.layout;
-
-                    egui::ComboBox::from_id_source("container_grid_columns")
-                        .selected_text(grid_layout_to_string(&grid.layout))
-                        .show_ui(ui, |ui| {
-                            ui.style_mut().wrap = Some(false);
-                            ui.set_min_width(64.0);
-
-                            ui.selectable_value(
-                                &mut grid.layout,
-                                GridLayout::Auto,
-                                grid_layout_to_string(&GridLayout::Auto),
-                            );
-
-                            ui.separator();
-
-                            for columns in 1..=grid.num_children() {
-                                ui.selectable_value(
-                                    &mut grid.layout,
-                                    GridLayout::Columns(columns),
-                                    grid_layout_to_string(&GridLayout::Columns(columns)),
-                                );
-                            }
-                        });
-
-                    // TODO(jleibs): Manually marking edited like this is way too error prone.
-                    // Need to detect this in a better way.
-                    viewport.edited |= original_layout != grid.layout;
-
-                    ui.end_row();
+            // this feature is only available with the new container blueprints feature
+            #[allow(clippy::collapsible_if)]
+            if ctx.app_options.experimental_additive_workflow {
+                if ui
+                    .button("Simplify hierarchy")
+                    .on_hover_text("Simplify this container and its children")
+                    .clicked()
+                {
+                    viewport.blueprint.simplify_container(
+                        container_id,
+                        egui_tiles::SimplificationOptions {
+                            prune_empty_tabs: true,
+                            prune_empty_containers: true,
+                            prune_single_child_tabs: false,
+                            prune_single_child_containers: false,
+                            all_panes_must_have_tabs: true,
+                            join_nested_linear_containers: true,
+                        },
+                    );
                 }
-
-                // this feature is only available with the new container blueprints feature
-                #[allow(clippy::collapsible_if)]
-                if ctx.app_options.experimental_additive_workflow {
-                    if ui
-                        .button("Simplify hierarchy")
-                        .on_hover_text("Simplify this container and its children")
-                        .clicked()
-                    {
-                        viewport.blueprint.simplify_container(
-                            *tile_id,
-                            egui_tiles::SimplificationOptions {
-                                prune_empty_tabs: true,
-                                prune_empty_containers: true,
-                                prune_single_child_tabs: false,
-                                prune_single_child_containers: false,
-                                all_panes_must_have_tabs: true,
-                                join_nested_linear_containers: true,
-                            },
-                        );
-                    }
-                }
-            });
-    }
+            }
+        });
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui
@@ -680,16 +685,11 @@ fn show_list_item_for_container_child(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     viewport: &Viewport<'_, '_>,
-    child_tile_id: egui_tiles::TileId,
+    child_contents: &Contents,
 ) -> bool {
-    let Some(child_tile) = viewport.tree.tiles.get(child_tile_id) else {
-        re_log::warn_once!("Could not find child tile with ID {child_tile_id:?}",);
-        return false;
-    };
-
-    let (item, mut list_item) = match child_tile {
-        Tile::Pane(space_view_id) => {
-            let Some(space_view) = viewport.blueprint.space_views.get(space_view_id) else {
+    let (item, mut list_item) = match child_contents {
+        Contents::SpaceView(space_view_id) => {
+            let Some(space_view) = viewport.blueprint.space_view(space_view_id) else {
                 re_log::warn_once!("Could not find space view with ID {space_view_id:?}",);
                 return false;
             };
@@ -702,18 +702,16 @@ fn show_list_item_for_container_child(
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon()),
             )
         }
-        Tile::Container(container) => {
-            // TODO(#4285): this hack should be cleaned with "blueprintified" containers
-            if let (egui_tiles::Container::Tabs(_), Some(child_id)) =
-                (container, container.only_child())
-            {
-                return show_list_item_for_container_child(ui, ctx, viewport, child_id);
-            }
+        Contents::Container(container_id) => {
+            let Some(container) = viewport.blueprint.container(container_id) else {
+                re_log::warn_once!("Could not find container with ID {container_id:?}",);
+                return false;
+            };
 
             (
-                Item::Container(child_tile_id),
-                ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
-                    .with_icon(icon_for_container_kind(&container.kind())),
+                Item::Container(*container_id),
+                ListItem::new(ctx.re_ui, format!("{:?}", container.container_kind))
+                    .with_icon(icon_for_container_kind(&container.container_kind)),
             )
         }
     };

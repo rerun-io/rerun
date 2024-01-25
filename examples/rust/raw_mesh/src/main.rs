@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use bytes::Bytes;
 use rerun::{
     components::{MeshProperties, Transform3D},
-    external::{ecolor, re_log, re_memory::AccountingAllocator},
+    external::{ecolor, re_log},
     Color, Mesh3D, RecordingStream,
 };
 
@@ -104,12 +104,6 @@ fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
 
 // --- Init ---
 
-// Use MiMalloc as global allocator (because it is fast), wrapped in Rerun's allocation tracker
-// so that the rerun viewer can show how much memory it is using when calling `show`.
-#[global_allocator]
-static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
-    AccountingAllocator::new(mimalloc::MiMalloc);
-
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum Scene {
     Buggy,
@@ -179,7 +173,7 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
 }
 
 fn main() -> anyhow::Result<()> {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     use clap::Parser as _;
     let args = Args::parse();
