@@ -142,11 +142,13 @@ class ImageEncoded(AsComponents):
 
                 if isinstance(format, NV12):
                     np_buf = np_buf.reshape(int(format.size_hint[0] * 1.5), format.size_hint[1])
+                    kind = "nv12"
                 elif isinstance(format, YUY2):
                     np_buf = np_buf.reshape(format.size_hint[0], int(format.size_hint[1] * 2))
+                    kind = "yuy2"
 
                 tensor_buffer = TensorBuffer(np_buf)
-                tensor_buffer.kind = format.name.lower()
+                tensor_buffer.kind = kind
 
                 self.data = TensorData(
                     buffer=tensor_buffer,
