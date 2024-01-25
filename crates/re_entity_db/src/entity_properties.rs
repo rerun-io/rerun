@@ -135,6 +135,9 @@ pub struct EntityProperties {
     /// This is an Option instead of an EditableAutoValue to let each space view class decide on
     /// what's the best default.
     pub legend_location: Option<LegendCorner>,
+
+    /// What kind of data aggregation to perform (for plot space views).
+    pub time_series_aggregator: EditableAutoValue<TimeSeriesAggregator>,
 }
 
 #[cfg(feature = "serde")]
@@ -153,6 +156,7 @@ impl Default for EntityProperties {
             transform_3d_size: EditableAutoValue::Auto(1.0),
             show_legend: EditableAutoValue::Auto(true),
             legend_location: None,
+            time_series_aggregator: EditableAutoValue::Auto(TimeSeriesAggregator::default()),
         }
     }
 }
@@ -191,6 +195,10 @@ impl EntityProperties {
 
             show_legend: self.show_legend.or(&child.show_legend).clone(),
             legend_location: self.legend_location.or(child.legend_location),
+            time_series_aggregator: self
+                .time_series_aggregator
+                .or(&child.time_series_aggregator)
+                .clone(),
         }
     }
 
@@ -232,6 +240,10 @@ impl EntityProperties {
 
             show_legend: other.show_legend.or(&self.show_legend).clone(),
             legend_location: other.legend_location.or(self.legend_location),
+            time_series_aggregator: other
+                .time_series_aggregator
+                .or(&self.time_series_aggregator)
+                .clone(),
         }
     }
 
@@ -250,6 +262,7 @@ impl EntityProperties {
             transform_3d_size,
             show_legend,
             legend_location,
+            time_series_aggregator,
         } = self;
 
         visible != &other.visible
@@ -264,6 +277,7 @@ impl EntityProperties {
             || transform_3d_size.has_edits(&other.transform_3d_size)
             || show_legend.has_edits(&other.show_legend)
             || *legend_location != other.legend_location
+            || time_series_aggregator.has_edits(&other.time_series_aggregator)
     }
 }
 
@@ -352,6 +366,86 @@ impl From<LegendCorner> for egui_plot::Corner {
             LegendCorner::RightTop => egui_plot::Corner::RightTop,
             LegendCorner::LeftBottom => egui_plot::Corner::LeftBottom,
             LegendCorner::RightBottom => egui_plot::Corner::RightBottom,
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// What kind of aggregation should be performed when the zoom-level on the X axis goes below 1.0?
+///
+/// Aggregation affects the points' values and radii.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum TimeSeriesAggregator {
+    /// No aggregation.
+    Off,
+
+    /// Average all points in the range together.
+    Average,
+
+    /// Keep only the maximum values in the range.
+    Max,
+
+    /// Keep only the minimum values in the range.
+    Min,
+
+    /// Keep both the minimum and maximum values in the range.
+    ///
+    /// This will yield two aggregated points instead of one, effectively creating a vertical line.
+    #[default]
+    MinMax,
+
+    /// Find both the minimum and maximum values in the range, then use the average of those.
+    MinMaxAverage,
+}
+
+impl std::fmt::Display for TimeSeriesAggregator {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TimeSeriesAggregator::Off => write!(f, "Off"),
+            TimeSeriesAggregator::Average => write!(f, "Average"),
+            TimeSeriesAggregator::Max => write!(f, "Max"),
+            TimeSeriesAggregator::Min => write!(f, "Min"),
+            TimeSeriesAggregator::MinMax => write!(f, "MinMax"),
+            TimeSeriesAggregator::MinMaxAverage => write!(f, "MinMaxAverage"),
+        }
+    }
+}
+
+impl TimeSeriesAggregator {
+    #[inline]
+    pub fn variants() -> [TimeSeriesAggregator; 6] {
+        // Just making sure this method won't compile if the enum gets modified.
+        #[allow(clippy::match_same_arms)]
+        match Self::default() {
+            TimeSeriesAggregator::Off => {}
+            TimeSeriesAggregator::Average => {}
+            TimeSeriesAggregator::Max => {}
+            TimeSeriesAggregator::Min => {}
+            TimeSeriesAggregator::MinMax => {}
+            TimeSeriesAggregator::MinMaxAverage => {}
+        }
+
+        [
+            TimeSeriesAggregator::Off,
+            TimeSeriesAggregator::Average,
+            TimeSeriesAggregator::Max,
+            TimeSeriesAggregator::Min,
+            TimeSeriesAggregator::MinMax,
+            TimeSeriesAggregator::MinMaxAverage,
+        ]
+    }
+
+    #[inline]
+    pub fn description(&self) -> &'static str {
+        match self {
+            TimeSeriesAggregator::Off => "No aggregation.",
+            TimeSeriesAggregator::Average => "Average all points in the range together.",
+            TimeSeriesAggregator::Max => "Keep only the maximum values in the range.",
+            TimeSeriesAggregator::Min => "Keep only the minimum values in the range.",
+            TimeSeriesAggregator::MinMax => "Keep both the minimum and maximum values in the range.\nThis will yield two aggregated points instead of one, effectively creating a vertical line.",
+            TimeSeriesAggregator::MinMaxAverage => "Find both the minimum and maximum values in the range, then use the average of those",
         }
     }
 }
