@@ -211,6 +211,9 @@ impl TimeSeriesSystem {
                     egui::Color32::from_rgba_unmultiplied(arr[0], arr[1], arr[2], arr[3])
                 });
 
+                let override_label =
+                    lookup_override::<Text>(data_result, ctx).map(|t| t.to_string());
+
                 let query =
                     re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
@@ -242,7 +245,9 @@ impl TimeSeriesSystem {
                             let color = override_color.unwrap_or_else(|| {
                                 annotation_info.color(color.map(|c| c.to_array()), default_color)
                             });
-                            let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+                            let label = override_label.clone().or_else(|| {
+                                annotation_info.label(label.as_ref().map(|l| l.as_str()))
+                            });
 
                             const DEFAULT_RADIUS: f32 = 0.75;
 

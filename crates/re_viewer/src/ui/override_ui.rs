@@ -54,6 +54,8 @@ pub fn override_ui(
         &active_components,
     );
 
+    ui.end_row();
+
     let Some(overrides) = data_result.property_overrides else {
         return;
     };

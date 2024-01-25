@@ -1,10 +1,10 @@
 use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{external::arrow2, EntityPath};
 use re_query::ComponentWithInstances;
-use re_types::{external::arrow2::array::Utf8Array, Loggable};
+use re_types::external::arrow2::array::Utf8Array;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 
-use crate::editors::{default_color, edit_color_ui};
+use crate::editors::register_editors;
 
 use super::EntityDataUi;
 
@@ -31,11 +31,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     add_to_registry::<re_types::blueprint::components::IncludedQueries>(&mut registry);
 
-    registry.add_editor(
-        re_types::components::Color::name(),
-        Box::new(default_color),
-        Box::new(edit_color_ui),
-    );
+    register_editors(&mut registry);
 
     registry
 }
