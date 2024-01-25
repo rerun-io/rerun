@@ -5,9 +5,7 @@ use egui_tiles::{SimplificationOptions, TileId};
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_query::query_archetype;
-use re_viewer_context::{
-    AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext,
-};
+use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
 
 use crate::{
     blueprint::components::{
@@ -58,7 +56,6 @@ impl ViewportBlueprint {
     pub fn try_from_db(
         blueprint_db: &re_entity_db::EntityDb,
         query: &LatestAtQuery,
-        app_options: &AppOptions,
         tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
     ) -> Self {
         re_tracing::profile_function!();
@@ -130,20 +127,11 @@ impl ViewportBlueprint {
 
         let maximized = arch.maximized.and_then(|id| id.0.map(|id| id.into()));
 
-        let tree = if app_options.legacy_container_blueprint {
-            blueprint_db
-                .store()
-                .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
-                .map(|space_view| space_view.value)
-                .unwrap_or_default()
-                .0
-        } else {
-            build_tree_from_space_views_and_containers(
-                space_views.values(),
-                containers.values(),
-                root_container,
-            )
-        };
+        let tree = build_tree_from_space_views_and_containers(
+            space_views.values(),
+            containers.values(),
+            root_container,
+        );
 
         ViewportBlueprint {
             space_views,
@@ -203,6 +191,10 @@ impl ViewportBlueprint {
         self.space_views.get(space_view)
     }
 
+    pub fn container(&self, container_id: &ContainerId) -> Option<&ContainerBlueprint> {
+        self.containers.get(container_id)
+    }
+
     pub fn space_view_mut(
         &mut self,
         space_view_id: &SpaceViewId,
@@ -246,21 +238,7 @@ impl ViewportBlueprint {
                 .space_views
                 .get(space_view_id)
                 .map_or(false, |sv| sv.queries.iter().any(|q| q.id == *query_id)),
-            Item::Container(tile_id) => {
-                if Some(*tile_id) == self.tree.root {
-                    // the root tile is always visible
-                    true
-                } else if let Some(tile) = self.tree.tiles.get(*tile_id) {
-                    if let egui_tiles::Tile::Container(container) = tile {
-                        // single children containers are generally hidden
-                        container.num_children() > 1
-                    } else {
-                        true
-                    }
-                } else {
-                    false
-                }
-            }
+            Item::Container(container_id) => self.container(container_id).is_some(),
         }
     }
 
@@ -297,7 +275,7 @@ impl ViewportBlueprint {
         &self,
         space_views: impl Iterator<Item = SpaceViewBlueprint>,
         ctx: &ViewerContext<'_>,
-        parent_container: Option<egui_tiles::TileId>,
+        parent_container: Option<ContainerId>,
     ) -> Vec<SpaceViewId> {
         let mut new_ids: Vec<_> = vec![];
 
@@ -333,16 +311,14 @@ impl ViewportBlueprint {
     pub fn add_container(
         &self,
         kind: egui_tiles::ContainerKind,
-        parent_container: Option<egui_tiles::TileId>,
+        parent_container: Option<ContainerId>,
     ) {
         self.send_tree_action(TreeAction::AddContainer(kind, parent_container));
     }
 
-    /// Recursively remove a tile.
-    ///
-    /// All space views directly or indirectly contained by this tile are removed as well.
-    pub fn remove(&self, tile_id: egui_tiles::TileId) {
-        self.send_tree_action(TreeAction::Remove(tile_id));
+    /// Recursively remove a container or a space view.
+    pub fn remove_contents(&self, contents: Contents) {
+        self.send_tree_action(TreeAction::RemoveContents(contents));
     }
 
     /// Make sure the tab corresponding to this space view is focused.
@@ -351,14 +327,10 @@ impl ViewportBlueprint {
     }
 
     /// Set the kind of the provided container.
-    pub fn set_container_kind(
-        &self,
-        container_id: egui_tiles::TileId,
-        kind: egui_tiles::ContainerKind,
-    ) {
+    pub fn set_container_kind(&self, container_id: ContainerId, kind: egui_tiles::ContainerKind) {
         // no-op check
-        if let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get(container_id) {
-            if container.kind() == kind {
+        if let Some(container) = self.container(&container_id) {
+            if container.container_kind == kind {
                 return;
             }
         }
@@ -369,11 +341,11 @@ impl ViewportBlueprint {
     /// Simplify the container tree with the provided options.
     pub fn simplify_container(
         &self,
-        tile_id: egui_tiles::TileId,
+        container_id: &ContainerId,
         simplification_options: SimplificationOptions,
     ) {
         self.send_tree_action(TreeAction::SimplifyContainer(
-            tile_id,
+            *container_id,
             simplification_options,
         ));
     }

@@ -5,17 +5,17 @@ use itertools::Itertools;
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_space_view::DataQueryBlueprint;
 use re_ui::ReUi;
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{ContainerId, ViewerContext};
 use re_viewport::{icon_for_container_kind, SpaceViewBlueprint, Viewport};
 
 #[derive(Default)]
 pub struct AddSpaceViewOrContainerModal {
-    target_container: Option<egui_tiles::TileId>,
+    target_container: Option<ContainerId>,
     modal_handler: re_ui::modal::ModalHandler,
 }
 
 impl AddSpaceViewOrContainerModal {
-    pub fn open(&mut self, target_container: egui_tiles::TileId) {
+    pub fn open(&mut self, target_container: ContainerId) {
         self.target_container = Some(target_container);
         self.modal_handler.open();
     }
@@ -38,7 +38,7 @@ fn modal_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     viewport: &Viewport<'_, '_>,
-    target_container: Option<egui_tiles::TileId>,
+    target_container: Option<ContainerId>,
 ) {
     let container_data = [
         (
