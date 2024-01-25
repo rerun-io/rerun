@@ -38,6 +38,9 @@ pub struct PerSpaceViewState {
 pub struct ViewportState {
     space_view_entity_window: SpaceViewEntityPicker,
     space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
+
+    /// when a drag is in progress, this is the currently identified drop target to be highlighted
+    drop_target_container_id: Option<ContainerId>,
 }
 
 static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);
@@ -63,6 +66,10 @@ impl ViewportState {
         self.space_view_states
             .get(&space_view_id)
             .map_or(&DEFAULT_PROPS, |state| &state.auto_properties)
+    }
+
+    pub fn is_drop_target(&self, container_id: &ContainerId) -> bool {
+        self.drop_target_container_id.as_ref() == Some(container_id)
     }
 }
 
@@ -94,6 +101,12 @@ pub enum TreeAction {
         target_container: ContainerId,
         target_position_in_container: usize,
     },
+
+    /// Set the container that is currently identified as the drop target of an ongoing drag.
+    ///
+    /// This is used for highlighting the drop target in the UI. Note that the drop target container is reset at every
+    /// frame, so this command must be re-sent every frame as long as a drop target is identified.
+    SetDropTarget(ContainerId),
 }
 
 fn tree_simplification_option_for_app_options(
@@ -325,6 +338,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         let mut reset = false;
 
+        // always reset the drop target
+        self.state.drop_target_container_id = None;
+
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
         for tree_action in self.tree_action_receiver.try_iter() {
             match tree_action {
@@ -446,6 +462,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         target_position_in_container,
                     );
                     self.tree_edited = true;
+                }
+                TreeAction::SetDropTarget(container_id) => {
+                    self.state.drop_target_container_id = Some(container_id);
                 }
             }
         }

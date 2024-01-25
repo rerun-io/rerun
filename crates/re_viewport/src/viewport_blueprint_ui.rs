@@ -96,6 +96,7 @@ impl Viewport<'_, '_> {
         .subdued(!container_visible)
         .selected(ctx.selection().contains_item(&item))
         .draggable(container_id.to_drag_id())
+        .drop_target_style(self.state.is_drop_target(container_id))
         .with_icon(crate::icon_for_container_kind(
             &container_blueprint.container_kind,
         ))
@@ -619,23 +620,19 @@ impl Viewport<'_, '_> {
                 (2.0, egui::Color32::WHITE),
             );
 
-            if ui.input(|i| i.pointer.any_released()) {
-                let Contents::Container(target_container_id) = drop_target.target_parent_id else {
-                    // this shouldn't append
-                    return;
-                };
+            let Contents::Container(target_container_id) = drop_target.target_parent_id else {
+                // this shouldn't append
+                return;
+            };
 
+            if ui.input(|i| i.pointer.any_released()) {
                 self.blueprint.move_contents(
                     dragged_item_id,
                     target_container_id,
                     drop_target.target_position_index,
                 );
             } else {
-                //TODO: the target container should be highlighted
-
-                // self.send_command(Command::HighlightTargetContainer(
-                //     drag_target.target_parent_id,
-                // ));
+                self.blueprint.set_drop_target(&target_container_id);
             }
         }
     }
