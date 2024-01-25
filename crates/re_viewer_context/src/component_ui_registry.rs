@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use re_data_store::{DataStore, LatestAtQuery};
 use re_entity_db::EntityPath;
+use re_log_types::DataCell;
 use re_query::ComponentWithInstances;
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 
@@ -61,12 +62,16 @@ type ComponentEditCallback = Box<
         + Sync,
 >;
 
+type DefaultValueCallback = Box<
+    dyn Fn(&ViewerContext<'_>, &LatestAtQuery, &DataStore, &EntityPath) -> DataCell + Send + Sync,
+>;
+
 /// How to display components in a Ui.
 pub struct ComponentUiRegistry {
     /// Ui method to use if there was no specific one registered for a component.
     fallback_ui: ComponentUiCallback,
     component_uis: BTreeMap<ComponentName, ComponentUiCallback>,
-    component_editors: BTreeMap<ComponentName, ComponentEditCallback>,
+    component_editors: BTreeMap<ComponentName, (DefaultValueCallback, ComponentEditCallback)>,
 }
 
 impl ComponentUiRegistry {
@@ -88,8 +93,14 @@ impl ComponentUiRegistry {
     /// Registers how to edit a given component in the ui.
     ///
     /// If the component was already registered, the new callback replaces the old one.
-    pub fn add_editor(&mut self, name: ComponentName, callback: ComponentEditCallback) {
-        self.component_editors.insert(name, callback);
+    pub fn add_editor(
+        &mut self,
+        name: ComponentName,
+        default_value: DefaultValueCallback,
+        editor_callback: ComponentEditCallback,
+    ) {
+        self.component_editors
+            .insert(name, (default_value, editor_callback));
     }
 
     /// Check if there is a registered editor for a given component
@@ -150,13 +161,7 @@ impl ComponentUiRegistry {
     ) {
         re_tracing::profile_function!(component.name().full_name());
 
-        if component.name() == InstanceKey::name() {
-            // The user wants to show a ui for the `InstanceKey` component - well, that's easy:
-            ui.label(instance_key.to_string());
-            return;
-        }
-
-        if let Some(edit_callback) = self.component_editors.get(&component.name()) {
+        if let Some((_, edit_callback)) = self.component_editors.get(&component.name()) {
             (*edit_callback)(
                 ctx,
                 ui,
@@ -181,5 +186,22 @@ impl ComponentUiRegistry {
                 instance_key,
             );
         }
+    }
+
+    /// Show an editor for this instance of this component.
+    #[allow(clippy::too_many_arguments)]
+    pub fn default_value(
+        &self,
+        ctx: &ViewerContext<'_>,
+        query: &LatestAtQuery,
+        store: &DataStore,
+        entity_path: &EntityPath,
+        component: &ComponentName,
+    ) -> Option<DataCell> {
+        re_tracing::profile_function!(component);
+
+        self.component_editors
+            .get(component)
+            .map(|(default_value, _)| (*default_value)(ctx, query, store, entity_path))
     }
 }

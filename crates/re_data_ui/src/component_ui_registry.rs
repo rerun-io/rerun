@@ -4,7 +4,7 @@ use re_query::ComponentWithInstances;
 use re_types::{external::arrow2::array::Utf8Array, Loggable};
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 
-use crate::editors::edit_color_ui;
+use crate::editors::{default_color, edit_color_ui};
 
 use super::EntityDataUi;
 
@@ -31,7 +31,11 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     add_to_registry::<re_types::blueprint::components::IncludedQueries>(&mut registry);
 
-    registry.add_editor(re_types::components::Color::name(), Box::new(edit_color_ui));
+    registry.add_editor(
+        re_types::components::Color::name(),
+        Box::new(default_color),
+        Box::new(edit_color_ui),
+    );
 
     registry
 }

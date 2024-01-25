@@ -1,7 +1,7 @@
 // TODO(jleibs): Turn this into a trait
 
 use re_data_store::{DataStore, LatestAtQuery};
-use re_log_types::EntityPath;
+use re_log_types::{DataCell, EntityPath};
 use re_query::ComponentWithInstances;
 use re_types::components::Color;
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -37,4 +37,13 @@ pub fn edit_color_ui(
             ctx.save_blueprint_component(override_path, new_color);
         }
     }
+}
+
+pub fn default_color(
+    _ctx: &ViewerContext<'_>,
+    _query: &LatestAtQuery,
+    _store: &DataStore,
+    _entity_path: &EntityPath,
+) -> DataCell {
+    [Color::from_rgb(255, 255, 255)].into()
 }

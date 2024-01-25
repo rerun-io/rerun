@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use re_types::{Archetype, ComponentNameSet};
+use re_types::{Archetype, Component, ComponentNameSet};
 
 use crate::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -93,6 +93,19 @@ pub trait VisualizerSystem: Send + Sync + 'static {
     }
 
     fn as_any(&self) -> &dyn std::any::Any;
+
+    /// Returns an initial value to use when creating an override for a component for this
+    /// visualizer. This is used as a fallback if the component doesn't already have data.
+    fn initial_override_value(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
+        _entity_path: &re_log_types::EntityPath,
+        _component: &re_types::ComponentName,
+    ) -> Option<re_log_types::DataCell> {
+        None
+    }
 }
 
 pub struct VisualizerCollection {

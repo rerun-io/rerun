@@ -137,6 +137,11 @@ pub fn add_new_override(
             .space_view_class_registry
             .new_visualizer_collection(*space_view.class_identifier());
 
+        // We have to have at least 1 visualizer system or we can't create an override
+        let Some(system_for_initial_value) = view_systems.systems.values().next() else {
+            return;
+        };
+
         let mut components_per_visualizer = data_result
             .visualizers
             .iter()
@@ -171,7 +176,7 @@ pub fn add_new_override(
                 let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
                 splat_cell.compute_size_bytes();
 
-                let initial_data = store
+                let Some(mut initial_data) = store
                     .latest_at(query, &data_result.entity_path, *component, &components)
                     .and_then(|result| result.2[0].clone())
                     .and_then(|cell| {
@@ -181,19 +186,30 @@ pub fn add_new_override(
                             None
                         }
                     })
-                    .unwrap_or_else(|| {
-                        if *component == Scalar::name() {
-                            let mut cell: DataCell = [Scalar::from(0.0)].into();
-                            cell.compute_size_bytes();
-                            cell
-                        } else {
-                            let mut cell: DataCell = [Color::from_rgb(255, 255, 255)].into();
-                            cell.compute_size_bytes();
-                            cell
-                        }
-                    });
+                    .or_else(|| {
+                        system_for_initial_value.initial_override_value(
+                            ctx,
+                            query,
+                            store,
+                            &data_result.entity_path,
+                            component,
+                        )
+                    })
+                    .or_else(|| {
+                        ctx.component_ui_registry.default_value(
+                            ctx,
+                            query,
+                            store,
+                            &data_result.entity_path,
+                            component,
+                        )
+                    })
+                else {
+                    re_log::warn!("Could not identify an initial value for: {}", component);
+                    return;
+                };
 
-                //ctx.save_blueprint_component(override_path, initial_data.2);
+                initial_data.compute_size_bytes();
 
                 match DataRow::from_cells(
                     RowId::new(),
@@ -209,11 +225,7 @@ pub fn add_new_override(
                             vec![row],
                         )),
                     Err(err) => {
-                        // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
-                        re_log::error_once!(
-                            "Failed to create DataRow for blueprint component: {}",
-                            err
-                        );
+                        re_log::warn!("Failed to create DataRow for blueprint component: {}", err);
                     }
                 }
 

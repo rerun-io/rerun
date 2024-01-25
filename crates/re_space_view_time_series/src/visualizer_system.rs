@@ -8,8 +8,8 @@ use re_types::{
 };
 use re_viewer_context::{
     external::re_entity_db::TimeSeriesAggregator, AnnotationMap, DefaultColor,
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ResolvedAnnotationInfo, SpaceViewSystemExecutionError, ViewQuery,
+    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -112,6 +112,29 @@ impl VisualizerSystem for TimeSeriesSystem {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+
+    fn initial_override_value(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
+        entity_path: &re_log_types::EntityPath,
+        component: &re_types::ComponentName,
+    ) -> Option<re_log_types::DataCell> {
+        if *component == Color::name() {
+            let default_color = DefaultColor::EntityPath(entity_path);
+
+            let annotation_info = ResolvedAnnotationInfo::default();
+
+            let color = annotation_info.color(None, default_color);
+
+            let [r, g, b, a] = color.to_array();
+
+            Some([Color::from_unmultiplied_rgba(r, g, b, a)].into())
+        } else {
+            None
+        }
     }
 }
 
