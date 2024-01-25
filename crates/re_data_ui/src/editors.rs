@@ -4,7 +4,7 @@ use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataCell, EntityPath};
 use re_query::ComponentWithInstances;
 use re_types::{
-    components::{Color, Text},
+    components::{Color, ScalarScattering, Text},
     Loggable,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -91,6 +91,49 @@ fn default_text(
     [Text::from(entity_path.to_string())].into()
 }
 
+#[allow(clippy::too_many_arguments)]
+fn edit_scatter_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _verbosity: UiVerbosity,
+    _query: &LatestAtQuery,
+    _store: &DataStore,
+    _entity_path: &EntityPath,
+    override_path: &EntityPath,
+    component: &ComponentWithInstances,
+    instance_key: &re_types::components::InstanceKey,
+) {
+    // TODO(jleibs): Handle missing data still
+    if let Ok(current_scatter) = component.lookup::<ScalarScattering>(instance_key) {
+        let current_scatter = current_scatter.0;
+        let mut edit_scatter = current_scatter;
+
+        let scattered_text = if current_scatter { "Scattered" } else { "Line" };
+
+        egui::ComboBox::from_id_source("scatter")
+            .selected_text(scattered_text)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut edit_scatter, false, "Line");
+                ui.selectable_value(&mut edit_scatter, true, "Scattered");
+            });
+
+        if edit_scatter != current_scatter {
+            let new_scatter = ScalarScattering::from(edit_scatter);
+
+            ctx.save_blueprint_component(override_path, new_scatter);
+        }
+    }
+}
+
+fn default_scatter(
+    _ctx: &ViewerContext<'_>,
+    _query: &LatestAtQuery,
+    _store: &DataStore,
+    _entity_path: &EntityPath,
+) -> DataCell {
+    [ScalarScattering::from(false)].into()
+}
+
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_editor(
         re_types::components::Color::name(),
@@ -102,5 +145,11 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         re_types::components::Text::name(),
         Box::new(default_text),
         Box::new(edit_text_ui),
+    );
+
+    registry.add_editor(
+        re_types::components::ScalarScattering::name(),
+        Box::new(default_scatter),
+        Box::new(edit_scatter_ui),
     );
 }

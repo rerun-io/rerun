@@ -214,6 +214,9 @@ impl TimeSeriesSystem {
                 let override_label =
                     lookup_override::<Text>(data_result, ctx).map(|t| t.to_string());
 
+                let override_scattered =
+                    lookup_override::<ScalarScattering>(data_result, ctx).map(|s| s.0);
+
                 let query =
                     re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
@@ -248,6 +251,8 @@ impl TimeSeriesSystem {
                             let label = override_label.clone().or_else(|| {
                                 annotation_info.label(label.as_ref().map(|l| l.as_str()))
                             });
+                            let scattered = override_scattered
+                                .unwrap_or_else(|| scattered.map_or(false, |s| s.0));
 
                             const DEFAULT_RADIUS: f32 = 0.75;
 
@@ -258,7 +263,7 @@ impl TimeSeriesSystem {
                                     label,
                                     color,
                                     radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
-                                    scattered: scattered.map_or(false, |s| s.0),
+                                    scattered,
                                 },
                             });
                         }
