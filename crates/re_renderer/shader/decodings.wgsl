@@ -48,7 +48,7 @@ fn decode_yuy2(texture: texture_2d<u32>, coords: vec2i) -> vec4f {
 ///
 /// This conversion mirrors the function in `crates/re_types/src/datatypes/tensor_data_ext.rs`
 ///
-/// Specifying the color standard should be exposed in the future (https://github.com/rerun-io/rerun/pull/3541)
+/// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
 fn set_color_standard(yuv: vec3f) -> vec3f {
     // rescale YUV values
     let y = (yuv.x - 16.0) / 219.0;

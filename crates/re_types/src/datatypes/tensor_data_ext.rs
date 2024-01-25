@@ -285,7 +285,7 @@ impl TensorData {
     ///
     /// This conversion mirrors the function of the same name in `crates/re_renderer/shader/decodings.wgsl`
     ///
-    /// Specifying the color standard should be exposed in the future (https://github.com/rerun-io/rerun/pull/3541)
+    /// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
     fn set_color_standard(y: u8, u: u8, v: u8) -> (u8, u8, u8) {
         let (y, u, v) = (y as f32, u as f32, v as f32);
 
