@@ -52,10 +52,10 @@ impl From<GltfPrimitive> for Mesh3D {
             mesh = mesh.with_mesh_material(rerun::datatypes::Material {
                 albedo_factor: albedo_factor.map(|[r, g, b, a]| {
                     rerun::Rgba32::from_unmultiplied_rgba(
-                        (r / 255.0) as u8,
-                        (g / 255.0) as u8,
-                        (b / 255.0) as u8,
-                        (a / 255.0) as u8,
+                        (r * 255.0) as u8,
+                        (g * 255.0) as u8,
+                        (b * 255.0) as u8,
+                        (a * 255.0) as u8,
                     )
                 }),
             });
