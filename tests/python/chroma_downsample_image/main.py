@@ -20,15 +20,13 @@ def bgra2nv12(bgra: Any) -> np.ndarray:
 
 
 def bgra2yuy2(bgra: Any) -> np.ndarray:
-    # There's no direct BGR to YUY2 conversion in OpenCV, see https://github.com/opencv/opencv/issues/9587
-    bgr = cv2.cvtColor(bgra, cv2.COLOR_BGRA2BGR)
-    yuv = cv2.cvtColor(bgr, cv2.COLOR_BGR2YUV)
-    (y, u, v) = cv2.split(yuv)
+    yuv = cv2.cvtColor(bgra, cv2.COLOR_BGRA2YUV_YUY2)
+    (y, uv) = cv2.split(yuv)
 
     yuy2 = np.empty((y.shape[0], y.shape[1] * 2), dtype=y.dtype)
     yuy2[:, 0::2] = y
-    yuy2[:, 1::4] = u[:, ::2]
-    yuy2[:, 3::4] = v[:, 1::2]
+    yuy2[:, 1::4] = uv[:, ::2]
+    yuy2[:, 3::4] = uv[:, 1::2]
 
     return yuy2
 
