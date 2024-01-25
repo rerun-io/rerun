@@ -756,7 +756,7 @@ impl CacheBucket {
             .or_insert_with(|| Box::new(FlatVecDeque::<C>::new()));
 
         // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
-        // instead, that way we can efficiently computes its size while we're at it.
+        // instead, that way we can efficiently compute its size while we're at it.
         let added: FlatVecDeque<C> = arch_view
             .iter_required_component::<C>()?
             .collect::<VecDeque<C>>()
