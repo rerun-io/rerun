@@ -9,7 +9,7 @@ use crate::mesh_loader::LoadedMesh;
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct MeshCacheKey {
     pub versioned_instance_path_hash: VersionedInstancePathHash,
     pub media_type: Option<MediaType>,

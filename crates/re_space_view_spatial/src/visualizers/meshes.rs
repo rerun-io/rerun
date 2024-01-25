@@ -104,15 +104,16 @@ impl Mesh3DVisualizer {
         let outline_mask_ids = ent_context.highlight.index_outline_mask(InstanceKey::SPLAT);
 
         let mesh = ctx.cache.entry(|c: &mut MeshCache| {
+            let key = MeshCacheKey {
+                versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
+                media_type: None,
+            };
             c.entry(
                 &ent_path.to_string(),
-                MeshCacheKey {
-                    versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
-                    media_type: None,
-                },
+                key.clone(),
                 AnyMesh::Mesh {
                     mesh: &mesh,
-                    texture_key: re_log_types::hash::Hash64::hash(primary_row_id).hash64(),
+                    texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
                 },
                 ctx.render_ctx,
             )
