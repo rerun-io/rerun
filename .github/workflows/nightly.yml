@@ -8,6 +8,14 @@ on:
     - cron: "15 12 * * *"
 
 jobs:
+  checks:
+    name: Checks
+    uses: ./.github/workflows/reusable_checks.yml
+    with:
+      CONCURRENCY: nightly
+      ALL_CHECKS: true
+    secrets: inherit
+
   build-web:
     name: "Build Web"
     uses: ./.github/workflows/reusable_build_web.yml
