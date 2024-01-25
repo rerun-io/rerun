@@ -1,10 +1,11 @@
 // TODO(jleibs): Turn this into a trait
 
+use egui::NumExt as _;
 use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataCell, EntityPath};
 use re_query::ComponentWithInstances;
 use re_types::{
-    components::{Color, ScalarScattering, Text},
+    components::{Color, Radius, ScalarScattering, Text},
     Loggable,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -134,6 +135,48 @@ fn default_scatter(
     [ScalarScattering::from(false)].into()
 }
 
+#[allow(clippy::too_many_arguments)]
+fn edit_radius_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _verbosity: UiVerbosity,
+    _query: &LatestAtQuery,
+    _store: &DataStore,
+    _entity_path: &EntityPath,
+    override_path: &EntityPath,
+    component: &ComponentWithInstances,
+    instance_key: &re_types::components::InstanceKey,
+) {
+    // TODO: Handle missing data still
+    if let Ok(current_radius) = component.lookup::<Radius>(instance_key) {
+        let current_radius = current_radius.0;
+        let mut edit_radius = current_radius;
+
+        let speed = (current_radius * 0.01).at_least(0.001);
+
+        ui.add(
+            egui::DragValue::new(&mut edit_radius)
+                .clamp_range(0.0..=5.0)
+                .speed(speed),
+        );
+
+        if edit_radius != current_radius {
+            let new_radius = Radius::from(edit_radius);
+
+            ctx.save_blueprint_component(override_path, new_radius);
+        }
+    }
+}
+
+fn default_radius(
+    _ctx: &ViewerContext<'_>,
+    _query: &LatestAtQuery,
+    _store: &DataStore,
+    _entity_path: &EntityPath,
+) -> DataCell {
+    [Radius::from(0.75)].into()
+}
+
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     registry.add_editor(
         re_types::components::Color::name(),
@@ -151,5 +194,11 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
         re_types::components::ScalarScattering::name(),
         Box::new(default_scatter),
         Box::new(edit_scatter_ui),
+    );
+
+    registry.add_editor(
+        re_types::components::Radius::name(),
+        Box::new(default_radius),
+        Box::new(edit_radius_ui),
     );
 }

@@ -217,6 +217,8 @@ impl TimeSeriesSystem {
                 let override_scattered =
                     lookup_override::<ScalarScattering>(data_result, ctx).map(|s| s.0);
 
+                let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
+
                 let query =
                     re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
@@ -253,6 +255,8 @@ impl TimeSeriesSystem {
                             });
                             let scattered = override_scattered
                                 .unwrap_or_else(|| scattered.map_or(false, |s| s.0));
+                            let radius = override_radius
+                                .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
 
                             const DEFAULT_RADIUS: f32 = 0.75;
 
@@ -262,7 +266,7 @@ impl TimeSeriesSystem {
                                 attrs: PlotPointAttrs {
                                     label,
                                     color,
-                                    radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
+                                    radius,
                                     scattered,
                                 },
                             });
