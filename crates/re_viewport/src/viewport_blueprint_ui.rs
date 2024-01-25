@@ -86,12 +86,16 @@ impl Viewport<'_, '_> {
 
         let default_open = true;
 
-        let response = ListItem::new(
+        let re_ui::list_item::ShowCollapsingResponse {
+            item_response: response,
+            body_response,
+        } = ListItem::new(
             ctx.re_ui,
             format!("{:?}", container_blueprint.container_kind),
         )
         .subdued(!container_visible)
         .selected(ctx.selection().contains_item(&item))
+        .draggable(container_id.to_drag_id())
         .with_icon(crate::icon_for_container_kind(
             &container_blueprint.container_kind,
         ))
@@ -108,10 +112,17 @@ impl Viewport<'_, '_> {
             for child in &container_blueprint.contents {
                 self.contents_ui(ctx, ui, child, container_visible);
             }
-        })
-        .item_response;
+        });
 
         item_ui::select_hovered_on_click(ctx, &response, item);
+
+        self.handle_drag_and_drop_interaction(
+            ctx,
+            ui,
+            Contents::Container(*container_id),
+            &response,
+            body_response.as_ref().map(|r| &r.response),
+        );
 
         if remove {
             self.blueprint.mark_user_interaction(ctx);
@@ -165,10 +176,14 @@ impl Viewport<'_, '_> {
 
         let space_view_name = space_view.display_name_or_default();
 
-        let response = ListItem::new(ctx.re_ui, space_view_name.as_ref())
+        let re_ui::list_item::ShowCollapsingResponse {
+            item_response: mut response,
+            body_response,
+        } = ListItem::new(ctx.re_ui, space_view_name.as_ref())
             .label_style(space_view_name.style())
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .selected(ctx.selection().contains_item(&item))
+            .draggable(space_view_id.to_drag_id())
             .subdued(!space_view_visible)
             .force_hovered(is_item_hovered)
             .with_buttons(|re_ui, ui| {
@@ -200,15 +215,23 @@ impl Viewport<'_, '_> {
                 } else {
                     ui.label("No results");
                 }
-            })
-            .item_response
-            .on_hover_text("Space View");
+            });
+
+        response = response.on_hover_text("Space View");
 
         if response.clicked() {
             self.blueprint.focus_tab(space_view.id);
         }
 
         item_ui::select_hovered_on_click(ctx, &response, item);
+
+        self.handle_drag_and_drop_interaction(
+            ctx,
+            ui,
+            Contents::SpaceView(*space_view_id),
+            &response,
+            body_response.as_ref().map(|r| &r.response),
+        );
 
         if visibility_changed {
             if self.blueprint.auto_layout {
@@ -490,6 +513,129 @@ impl Viewport<'_, '_> {
         )
         .response
         .on_hover_text("Add new Space View");
+    }
+
+    // ----------------------------------------------------------------------------
+    // drag and drop support
+
+    fn handle_drag_and_drop_interaction(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &egui::Ui,
+        contents: Contents,
+        response: &egui::Response,
+        body_response: Option<&egui::Response>,
+    ) {
+        //
+        // are we really dragging something? if so, set the appropriate cursor
+        //
+
+        let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
+            && ui.input(|i| i.pointer.is_decidedly_dragging());
+
+        if !anything_being_decidedly_dragged {
+            // nothing to do
+            return;
+        }
+
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+
+        //
+        // force single-selection on drag-and-drop
+        //
+
+        if response.decidedly_dragged() {
+            ctx.selection_state().set_selection(contents.to_item());
+        }
+
+        //
+        // find the item being dragged
+        //
+
+        let Some(dragged_item_id) = ui.memory(|mem| {
+            self.blueprint
+                .find_contents_by(&|contents| mem.is_being_dragged(contents.to_drag_id()))
+        }) else {
+            // this shouldn't happen
+            return;
+        };
+
+        //
+        // find our parent, our position within parent, and the previous container (if any)
+        //
+
+        let Some((parent_container_id, pos_in_parent)) =
+            self.blueprint.find_parent_and_position_index(&contents)
+        else {
+            return;
+        };
+
+        let previous_container = if pos_in_parent > 0 {
+            self.blueprint
+                .container(&parent_container_id)
+                .map(|container| container.contents[pos_in_parent - 1])
+                .filter(|contents| matches!(contents, Contents::Container(_)))
+        } else {
+            None
+        };
+
+        //
+        // find the drop target
+        //
+
+        // Prepare the item description structure needed by `find_drop_target`. Here, we use
+        // `Contents` for the "ItemId" generic type parameter.
+        let item_desc = re_ui::drag_and_drop::DropItemDescription {
+            id: contents,
+            is_container: matches!(contents, Contents::Container(_)),
+            parent_id: Contents::Container(parent_container_id),
+            position_index_in_parent: pos_in_parent,
+            previous_container_id: previous_container,
+        };
+
+        let drop_target = re_ui::drag_and_drop::find_drop_target(
+            ui,
+            &item_desc,
+            response,
+            body_response,
+            ReUi::list_item_height(),
+        );
+
+        if let Some(drop_target) = drop_target {
+            // We cannot allow the target location to be "inside" the dragged item, because that would amount moving
+            // myself inside of me.
+            if let Contents::Container(container_id) = &contents {
+                if self
+                    .blueprint
+                    .is_contents_in_container(&drop_target.target_parent_id, container_id)
+                {
+                    return;
+                }
+            }
+
+            ui.painter().hline(
+                drop_target.indicator_span_x,
+                drop_target.indicator_position_y,
+                (2.0, egui::Color32::WHITE),
+            );
+
+            // TODO(emilk/egui#3882): it would be nice to have a drag specific API for `ctx().drag_stopped()`.
+            if ui.input(|i| i.pointer.any_released()) {
+                //TODO: emit a move tree action
+
+                // self.send_command(Command::MoveItem {
+                //     moved_item_id: dragged_item_id,
+                //     target_container_id: drag_target.target_parent_id,
+                //     target_position_index: drag_target.target_position_index,
+                // });
+            } else {
+                //TODO: the target container should be highlighted
+
+                // self.send_command(Command::HighlightTargetContainer(
+                //     drag_target.target_parent_id,
+                // ));
+            }
+        }
     }
 }
 

@@ -305,6 +305,105 @@ impl ViewportBlueprint {
         new_ids
     }
 
+    /// Given a predicate, finds the (first) matching contents by recursively walking from the root
+    /// container.
+    pub fn find_contents_by(&self, predicate: &impl Fn(&Contents) -> bool) -> Option<Contents> {
+        if let Some(root_container) = self.root_container {
+            self.find_contents_in_container_by(predicate, &root_container)
+        } else {
+            None
+        }
+    }
+
+    /// Given a predicate, finds the (first) matching contents by recursively walking from the given
+    /// container.
+    pub fn find_contents_in_container_by(
+        &self,
+        predicate: &impl Fn(&Contents) -> bool,
+        container_id: &ContainerId,
+    ) -> Option<Contents> {
+        if predicate(&Contents::Container(*container_id)) {
+            return Some(Contents::Container(*container_id));
+        }
+
+        let Some(container) = self.container(&container_id) else {
+            return None;
+        };
+
+        for contents in &container.contents {
+            if predicate(&contents) {
+                return Some(*contents);
+            }
+
+            match contents {
+                Contents::Container(container_id) => {
+                    let res = self.find_contents_in_container_by(predicate, container_id);
+                    if res.is_some() {
+                        return res;
+                    }
+                }
+                Contents::SpaceView(_) => {}
+            }
+        }
+
+        return None;
+    }
+
+    /// Checks if some content is (directly or indirectly) contained in the given container.
+    pub fn is_contents_in_container(
+        &self,
+        contents: &Contents,
+        container_id: &ContainerId,
+    ) -> bool {
+        self.find_contents_in_container_by(&|c| c == contents, container_id)
+            .is_some()
+    }
+
+    /// Given a container or a space view, find its enclosing container and its position within it.
+    pub fn find_parent_and_position_index(
+        &self,
+        contents: &Contents,
+    ) -> Option<(ContainerId, usize)> {
+        if let Some(container_id) = self.root_container {
+            if *contents == Contents::Container(container_id) {
+                // root doesn't have a parent
+                return None;
+            }
+            self.find_parent_and_position_index_impl(contents, &container_id)
+        } else {
+            None
+        }
+    }
+
+    fn find_parent_and_position_index_impl(
+        &self,
+        contents: &Contents,
+        container_id: &ContainerId,
+    ) -> Option<(ContainerId, usize)> {
+        let Some(container) = self.container(&container_id) else {
+            return None;
+        };
+
+        for (pos, child_contents) in container.contents.iter().enumerate() {
+            if child_contents == contents {
+                return Some((*container_id, pos));
+            }
+
+            match child_contents {
+                Contents::Container(child_container_id) => {
+                    let res =
+                        self.find_parent_and_position_index_impl(contents, child_container_id);
+                    if res.is_some() {
+                        return res;
+                    }
+                }
+                Contents::SpaceView(_) => {}
+            }
+        }
+
+        None
+    }
+
     /// Add a container of the provided kind.
     ///
     /// The container is added to the root container or, if provided, to the given parent container.

@@ -8,13 +8,13 @@ use re_query::query_archetype;
 use re_types::blueprint::components::Visible;
 use re_types_core::{archetypes::Clear, ArrowBuffer};
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId,
-    SystemCommand, SystemCommandSender as _, ViewerContext,
+    blueprint_timepoint_for_writes, BlueprintId, BlueprintIdRegistry, ContainerId, Item,
+    SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
 use crate::blueprint::components::GridColumns;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Contents {
     Container(ContainerId),
     SpaceView(SpaceViewId),
@@ -44,6 +44,25 @@ impl Contents {
         match self {
             Self::Container(id) => blueprint_id_to_tile_id(id),
             Self::SpaceView(id) => blueprint_id_to_tile_id(id),
+        }
+    }
+
+    /// Convert to drag id.
+    ///
+    /// Drag ids are used to track items during drag-and-drop operations.
+    #[inline]
+    pub fn to_drag_id(&self) -> egui::Id {
+        match self {
+            Contents::Container(id) => id.to_drag_id(),
+            Contents::SpaceView(id) => id.to_drag_id(),
+        }
+    }
+
+    #[inline]
+    pub fn to_item(&self) -> Item {
+        match self {
+            Contents::Container(container_id) => Item::Container(*container_id),
+            Contents::SpaceView(space_view_id) => Item::SpaceView(*space_view_id),
         }
     }
 
