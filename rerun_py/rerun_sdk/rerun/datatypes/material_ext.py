@@ -16,7 +16,7 @@ class MaterialExt:
 
     @staticmethod
     def native_to_pa_array_override(data: MaterialArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import Material, Rgba32Type
+        from . import Material, Rgba32Type, TensorDataType
 
         # If it's a sequence of a single Material, grab the first one
         if isinstance(data, collections.abc.Sequence):
@@ -35,9 +35,11 @@ class MaterialExt:
             type=Rgba32Type().storage_type,
         )
         if data.albedo_texture is not None:
-            albedo_texture = TensorDataExt.native_to_pa_array_override(data.albedo_texture, field_albedo_texture.type)
+            albedo_texture = TensorDataExt.native_to_pa_array_override(
+                data.albedo_texture, TensorDataType().storage_type
+            )
         else:
-            albedo_texture = pa.array([None], type=field_albedo_texture.type)
+            albedo_texture = pa.nulls(1, type=TensorDataType().storage_type)
 
         return pa.StructArray.from_arrays(
             arrays=[albedo_factors, albedo_texture],
