@@ -420,6 +420,20 @@ impl ViewportBlueprint {
         self.send_tree_action(TreeAction::RemoveContents(contents));
     }
 
+    /// Move the `contents` container or space view to the specified target container and position.
+    pub fn move_contents(
+        &self,
+        contents: Contents,
+        target_container: ContainerId,
+        target_position_in_container: usize,
+    ) {
+        self.send_tree_action(TreeAction::MoveContents {
+            contents_to_move: contents,
+            target_container,
+            target_position_in_container,
+        })
+    }
+
     /// Make sure the tab corresponding to this space view is focused.
     pub fn focus_tab(&self, space_view_id: SpaceViewId) {
         self.send_tree_action(TreeAction::FocusTab(space_view_id));

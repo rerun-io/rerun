@@ -5,12 +5,11 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-
 use egui_tiles::Behavior as _;
 use once_cell::sync::Lazy;
+
 use re_data_ui::item_ui;
 use re_entity_db::EntityPropertyMap;
-
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
     AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
@@ -88,6 +87,13 @@ pub enum TreeAction {
 
     /// Simplify the container with the provided options
     SimplifyContainer(ContainerId, egui_tiles::SimplificationOptions),
+
+    /// Move some contents to a different container
+    MoveContents {
+        contents_to_move: Contents,
+        target_container: ContainerId,
+        target_position_in_container: usize,
+    },
 }
 
 fn tree_simplification_option_for_app_options(
@@ -419,6 +425,26 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     re_log::trace!("Simplifying tree with options: {options:?}");
                     let tile_id = blueprint_id_to_tile_id(&container_id);
                     self.tree.simplify_children_of_tile(tile_id, &options);
+                    self.tree_edited = true;
+                }
+                TreeAction::MoveContents {
+                    contents_to_move,
+                    target_container,
+                    target_position_in_container,
+                } => {
+                    re_log::trace!(
+                        "Moving {contents_to_move:?} to container {target_container:?} at pos \
+                        {target_position_in_container}"
+                    );
+
+                    let contents_tile_id = contents_to_move.to_tile_id();
+                    let target_container_tile_id = blueprint_id_to_tile_id(&target_container);
+
+                    self.tree.move_tile_to_container(
+                        contents_tile_id,
+                        target_container_tile_id,
+                        target_position_in_container,
+                    );
                     self.tree_edited = true;
                 }
             }

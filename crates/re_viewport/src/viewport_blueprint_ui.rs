@@ -619,15 +619,17 @@ impl Viewport<'_, '_> {
                 (2.0, egui::Color32::WHITE),
             );
 
-            // TODO(emilk/egui#3882): it would be nice to have a drag specific API for `ctx().drag_stopped()`.
             if ui.input(|i| i.pointer.any_released()) {
-                //TODO: emit a move tree action
+                let Contents::Container(target_container_id) = drop_target.target_parent_id else {
+                    // this shouldn't append
+                    return;
+                };
 
-                // self.send_command(Command::MoveItem {
-                //     moved_item_id: dragged_item_id,
-                //     target_container_id: drag_target.target_parent_id,
-                //     target_position_index: drag_target.target_position_index,
-                // });
+                self.blueprint.move_contents(
+                    dragged_item_id,
+                    target_container_id,
+                    drop_target.target_position_index,
+                );
             } else {
                 //TODO: the target container should be highlighted
 
