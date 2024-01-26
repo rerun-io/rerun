@@ -21,7 +21,7 @@ Examples for invalid transformation paths are:
 * mismatched start space
   * 2D content can not be added to a 3D space and vice versa
 * several projections (a pinhole can only be applied once)
-* explicit space disconnect 
+* explicit space disconnect
 
 ## `DisconnectedTransform` (former `DisconnectedSpace`)
 Disconnected transform is a special transform that forbids any transformation path
