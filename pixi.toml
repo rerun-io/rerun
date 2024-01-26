@@ -42,6 +42,7 @@ lint-py-blackdoc = "blackdoc --check"
 lint-py-mypy = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 lint-py-ruff = "ruff check --config rerun_py/pyproject.toml"
 lint-taplo = "taplo fmt --check --diff"
+lint-typos = "typos"
 
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
