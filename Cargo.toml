@@ -183,6 +183,7 @@ pyo3 = "0.20.2"
 pyo3-build-config = "0.20.2"
 quote = "1.0"
 rand = { version = "0.8", default-features = false }
+rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
 rfd = { version = "0.12", default_features = false, features = ["xdg-portal"] }
 rmp-serde = "1"
