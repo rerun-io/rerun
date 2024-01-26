@@ -10,71 +10,22 @@ use re_data_store::{
 };
 use re_log_types::{
     ApplicationId, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg, RowId,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
+    SetStoreInfo, StoreId, StoreInfo, StoreKind, TableId, TimePoint, Timeline,
 };
 use re_types_core::{components::InstanceKey, Archetype, Loggable};
 
 use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
 
-// ----------------------------------------------------------------------------
+// ---
 
-/// See [`insert_row_with_retries`].
+/// See [`DataStore::insert_row_with_retries`].
 const MAX_INSERT_ROW_ATTEMPTS: usize = 1_000;
 
-/// See [`insert_row_with_retries`].
+/// See [`DataStore::insert_row_with_retries`].
 const DEFAULT_INSERT_ROW_STEP_SIZE: u64 = 100;
 
 /// See [`GarbageCollectionOptions::time_budget`].
 const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
-
-/// Inserts a [`DataRow`] into the [`DataStore`], retrying in case of duplicated `RowId`s.
-///
-/// Retries a maximum of `num_attempts` times if the row couldn't be inserted because of a
-/// duplicated [`RowId`], bumping the [`RowId`]'s internal counter by a random number
-/// (up to `step_size`) between attempts.
-///
-/// Returns the actual [`DataRow`] that was successfully inserted, if any.
-///
-/// The default value of `num_attempts` (see [`MAX_INSERT_ROW_ATTEMPTS`]) should be (way) more than
-/// enough for all valid use cases.
-///
-/// When using this function, please add a comment explaining the rationale.
-fn insert_row_with_retries(
-    store: &mut DataStore,
-    mut row: DataRow,
-    num_attempts: usize,
-    step_size: u64,
-) -> re_data_store::WriteResult<StoreEvent> {
-    fn random_u64() -> u64 {
-        let mut bytes = [0_u8; 8];
-        getrandom::getrandom(&mut bytes).map_or(0, |_| u64::from_le_bytes(bytes))
-    }
-
-    for i in 0..num_attempts {
-        match store.insert_row(&row) {
-            Ok(event) => return Ok(event),
-            Err(re_data_store::WriteError::ReusedRowId(_)) => {
-                // TODO(#1894): currently we produce duplicate row-ids when hitting the "save" button.
-                // This means we hit this code path when loading an .rrd file that was saved from the viewer.
-                // In the future a row-id clash should probably either be considered an error (with a loud warning)
-                // or an ignored idempotent operation (with the assumption that if the RowId is the same, so is the data).
-                // In any case, we cannot log loudly here.
-                // We also get here because of `ClearCascade`, but that could be solved by adding a random increment
-                // in `on_clear_cascade` (see https://github.com/rerun-io/rerun/issues/4469).
-                re_log::trace!(
-                    "Found duplicated RowId ({}) during insert. Incrementing it by random offset (retry {}/{})…",
-                    row.row_id,
-                    i + 1,
-                    num_attempts
-                );
-                row.row_id = row.row_id.incremented_by(random_u64() % step_size + 1);
-            }
-            Err(err) => return Err(err),
-        }
-    }
-
-    Err(re_data_store::WriteError::ReusedRowId(row.row_id()))
-}
 
 // ----------------------------------------------------------------------------
 
@@ -109,10 +60,9 @@ pub struct EntityDb {
     tree: crate::EntityTree,
 
     /// Stores all components for all entities for all timelines.
+    // TODO: introduce a DataStore?
+    // TODO: why we shard here
     data_store: DataStore,
-
-    // TODO: imagine
-    datastores: HashMap<EntityPath, Arc<RwLock<DataStore>>>,
 
     /// Query caches for the data in [`Self::data_store`].
     query_caches: re_query_cache::Caches,
@@ -122,12 +72,12 @@ pub struct EntityDb {
 
 impl EntityDb {
     pub fn new(store_id: StoreId) -> Self {
-        let data_store = re_data_store::DataStore::new(
+        let data_store = DataStore::new(
             store_id.clone(),
             InstanceKey::name(),
             DataStoreConfig::default(),
         );
-        let query_caches = re_query_cache::Caches::new(&data_store);
+        let query_caches = re_query_cache::Caches::from_store_id(store_id.clone());
         Self {
             store_id: store_id.clone(),
             data_source: None,
@@ -137,7 +87,6 @@ impl EntityDb {
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             data_store,
-            datastores: Default::default(),
             query_caches,
             stats: IngestionStatistics::new(store_id),
         }
@@ -157,9 +106,9 @@ impl EntityDb {
             row_id: RowId::new(),
             info: store_info,
         });
-        for row in rows {
-            entity_db.add_data_row(row)?;
-        }
+
+        let table = DataTable::from_rows(TableId::new(), rows);
+        entity_db.add_data_table(table)?;
 
         Ok(entity_db)
     }
@@ -167,11 +116,6 @@ impl EntityDb {
     #[inline]
     pub fn tree(&self) -> &crate::EntityTree {
         &self.tree
-    }
-
-    #[inline]
-    pub fn data_store(&self) -> &DataStore {
-        &self.data_store
     }
 
     pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
@@ -223,7 +167,7 @@ impl EntityDb {
     }
 
     pub fn num_rows(&self) -> usize {
-        self.data_store.num_timeless_rows() as usize + self.data_store.num_temporal_rows() as usize
+        (self.data_store.num_timeless_rows() + self.data_store.num_temporal_rows()) as usize
     }
 
     /// Return the current `StoreGeneration`. This can be used to determine whether the
@@ -280,143 +224,33 @@ impl EntityDb {
             LogMsg::ArrowMsg(_, arrow_msg) => {
                 let table = DataTable::from_arrow_msg(arrow_msg)?;
                 // self.add_data_table(table)?;
-                self.add_data_table2(table)?;
+                self.add_data_table(table)?;
             }
         }
 
         Ok(())
     }
 
-    pub fn add_data_table2(&mut self, mut table: DataTable) -> Result<(), Error> {
-        // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
-        table.compute_all_size_bytes();
-
-        // TODO: why we shard at entitydb layer
-
-        let mut rows_per_entity_path: HashMap<EntityPath, Vec<DataRow>> = Default::default();
-        for row in table.to_rows() {
-            let row = row?;
-            self.register_entity_path(row.entity_path());
-            rows_per_entity_path
-                .entry(row.entity_path().clone())
-                .or_default()
-                .push(row);
-        }
-
-        let store_events = Arc::new(Mutex::new(Vec::with_capacity(table.num_rows() as _)));
-        rayon::scope(|s| {
-            for (entity_path, rows) in rows_per_entity_path {
-                let datastore = Arc::clone(
-                    self.datastores
-                        .entry(entity_path.clone())
-                        .or_insert_with(|| {
-                            Arc::new(RwLock::new(re_data_store::DataStore::new(
-                                self.store_id.clone(),
-                                InstanceKey::name(),
-                                DataStoreConfig::default(),
-                            )))
-                        }),
-                );
-                let store_events = Arc::clone(&store_events);
-
-                s.spawn(move |_| {
-                    let mut datastore = datastore.write();
-                    let mut local_events = Vec::with_capacity(rows.len());
-                    for row in rows {
-                        // ## RowId duplication
-                        //
-                        // We shouldn't be attempting to retry in this instance: a duplicated RowId at this stage
-                        // is likely a user error.
-                        //
-                        // We only do so because, the way our 'save' feature is currently implemented in the
-                        // viewer can result in a single row's worth of data to be split across several insertions
-                        // when loading that data back (because we dump per-bucket, and RowIds get duplicated
-                        // across buckets).
-                        //
-                        // TODO(#1894): Remove this once the save/load process becomes RowId-driven.
-                        local_events.push(
-                            insert_row_with_retries(
-                                &mut datastore,
-                                row,
-                                MAX_INSERT_ROW_ATTEMPTS,
-                                DEFAULT_INSERT_ROW_STEP_SIZE,
-                            )
-                            .unwrap(), // TODO
-                        );
-                    }
-
-                    store_events.lock().extend(local_events);
-                });
-            }
-        });
-
-        // TODO: why we keep this multi-threaded
-
-        // First-pass: update our internal views by notifying them of resulting [`StoreEvent`]s.
-        //
-        // This might result in a [`ClearCascade`] if the events trigger one or more immediate
-        // and/or pending clears.
-        let original_store_events = &store_events.lock();
-        self.times_per_timeline.on_events(original_store_events);
-        self.query_caches.on_events(original_store_events);
-        let clear_cascade = self.tree.on_store_additions(original_store_events);
-
-        // Second-pass: update the [`DataStore`] by applying the [`ClearCascade`].
-        //
-        // This will in turn generate new [`StoreEvent`]s that our internal views need to be
-        // notified of, again!
-        let new_store_events = self.on_clear_cascade(clear_cascade);
-        self.times_per_timeline.on_events(&new_store_events);
-        self.query_caches.on_events(&new_store_events);
-        let clear_cascade = self.tree.on_store_additions(&new_store_events);
-
-        // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
-        // cascades, thus this whole process must stabilize after one iteration.
-        debug_assert!(clear_cascade.is_empty());
-
-        // We inform the stats last, since it measures e2e latency.
-        self.stats.on_events(original_store_events);
-
-        self.last_modified_at = web_time::Instant::now();
-
-        Ok(())
+    // TODO: don't call this in a loop
+    // TODO: this exists only for tests right? yes, pretty much
+    #[inline]
+    pub fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
+        self.add_data_table(DataTable::from_rows(TableId::new(), [row]))
     }
 
     pub fn add_data_table(&mut self, mut table: DataTable) -> Result<(), Error> {
+        re_tracing::profile_function!(format!("num_rows={}", table.num_rows()));
+
         // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
         table.compute_all_size_bytes();
 
         for row in table.to_rows() {
-            self.add_data_row(row?)?;
+            let row = row?;
+            self.register_entity_path(row.entity_path());
         }
 
-        self.last_modified_at = web_time::Instant::now();
-
-        Ok(())
-    }
-
-    /// Inserts a [`DataRow`] into the database.
-    ///
-    /// Updates the [`crate::EntityTree`] and applies [`ClearCascade`]s as needed.
-    pub fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
-        re_tracing::profile_function!(format!("num_cells={}", row.num_cells()));
-
-        self.register_entity_path(&row.entity_path);
-
-        // ## RowId duplication
-        //
-        // We shouldn't be attempting to retry in this instance: a duplicated RowId at this stage
-        // is likely a user error.
-        //
-        // We only do so because, the way our 'save' feature is currently implemented in the
-        // viewer can result in a single row's worth of data to be split across several insertions
-        // when loading that data back (because we dump per-bucket, and RowIds get duplicated
-        // across buckets).
-        //
-        // TODO(#1894): Remove this once the save/load process becomes RowId-driven.
-        let store_event = insert_row_with_retries(
-            &mut self.data_store,
-            row,
+        let store_events = self.data_store.insert_table_with_retries(
+            table,
             MAX_INSERT_ROW_ATTEMPTS,
             DEFAULT_INSERT_ROW_STEP_SIZE,
         )?;
@@ -425,7 +259,7 @@ impl EntityDb {
         //
         // This might result in a [`ClearCascade`] if the events trigger one or more immediate
         // and/or pending clears.
-        let original_store_events = &[store_event];
+        let original_store_events = &store_events;
         self.times_per_timeline.on_events(original_store_events);
         self.query_caches.on_events(original_store_events);
         let clear_cascade = self.tree.on_store_additions(original_store_events);
@@ -445,6 +279,8 @@ impl EntityDb {
 
         // We inform the stats last, since it measures e2e latency.
         self.stats.on_events(original_store_events);
+
+        self.last_modified_at = web_time::Instant::now();
 
         Ok(())
     }
@@ -464,6 +300,7 @@ impl EntityDb {
                 let (cur_timepoint, cells) = per_entity.entry(entity_path).or_default();
 
                 *cur_timepoint = timepoint.union_max(cur_timepoint);
+
                 for component_path in component_paths {
                     if let Some(data_type) = self
                         .data_store
@@ -488,8 +325,7 @@ impl EntityDb {
                 //    API (e.g. range queries)!
                 match DataRow::from_cells(row_id, timepoint.clone(), entity_path, 0, cells) {
                     Ok(row) => {
-                        let res = insert_row_with_retries(
-                            &mut self.data_store,
+                        let res = self.data_store.insert_row_with_retries(
                             row,
                             MAX_INSERT_ROW_ATTEMPTS,
                             DEFAULT_INSERT_ROW_STEP_SIZE,
@@ -567,15 +403,17 @@ impl EntityDb {
     pub fn gc(&mut self, gc_options: &GarbageCollectionOptions) {
         re_tracing::profile_function!();
 
-        let (store_events, stats_diff) = self.data_store.gc(gc_options);
+        // TODO: shit, somehow need to split that evenly
 
-        re_log::trace!(
-            num_row_ids_dropped = store_events.len(),
-            size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
-            "purged datastore"
-        );
-
-        self.on_store_deletions(&store_events);
+        // let (store_events, stats_diff) = self.data_store.gc(gc_options);
+        //
+        // re_log::trace!(
+        //     num_row_ids_dropped = store_events.len(),
+        //     size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
+        //     "purged datastore"
+        // );
+        //
+        // self.on_store_deletions(&store_events);
     }
 
     fn on_store_deletions(&mut self, store_events: &[StoreEvent]) {
@@ -590,7 +428,6 @@ impl EntityDb {
             times_per_timeline,
             tree,
             data_store: _,
-            datastores: _,
             query_caches,
             stats: _,
         } = self;

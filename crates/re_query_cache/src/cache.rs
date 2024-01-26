@@ -69,6 +69,14 @@ impl Caches {
             per_cache_key: Default::default(),
         }
     }
+
+    #[inline]
+    pub fn from_store_id(store_id: StoreId) -> Self {
+        Self {
+            store_id,
+            per_cache_key: Default::default(),
+        }
+    }
 }
 
 #[derive(Default)]

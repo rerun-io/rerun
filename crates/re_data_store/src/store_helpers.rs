@@ -2,7 +2,7 @@ use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimeInt, TimePoint, Tim
 
 use re_types_core::{Component, ComponentName};
 
-use crate::{DataStore, LatestAtQuery};
+use crate::{LatestAtQuery, UnaryDataStore};
 
 // --- Read ---
 
@@ -42,7 +42,7 @@ impl<C: Component> std::ops::Deref for VersionedComponent<C> {
     }
 }
 
-impl DataStore {
+impl UnaryDataStore {
     /// Get the latest value for a given [`re_types_core::Component`], as well as the associated
     /// _data_ time and [`RowId`].
     ///
@@ -143,6 +143,7 @@ impl DataStore {
     }
 
     /// Call [`Self::query_latest_component`] at the given path, walking up the hierarchy until an instance is found.
+    #[inline]
     pub fn query_latest_component_at_closest_ancestor<C: Component>(
         &self,
         entity_path: &EntityPath,
@@ -169,6 +170,7 @@ impl DataStore {
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
     ///
     /// This is a best-effort helper, it will merely log errors on failure.
+    #[inline]
     pub fn query_timeless_component<C: Component>(
         &self,
         entity_path: &EntityPath,
@@ -191,6 +193,7 @@ impl DataStore {
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
     ///
     /// This is a best-effort helper, it will merely log debug on failure.
+    #[inline]
     pub fn query_timeless_component_quiet<C: Component>(
         &self,
         entity_path: &EntityPath,
@@ -208,7 +211,7 @@ impl DataStore {
 
 // --- Write ---
 
-impl DataStore {
+impl UnaryDataStore {
     /// Stores a single value for a given [`re_types_core::Component`].
     ///
     /// This is a best-effort helper, it will merely log errors on failure.

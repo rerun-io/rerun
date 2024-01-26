@@ -14,7 +14,7 @@ use crate::{
         ClusterCellCache, IndexedBucketInner, IndexedTable, PersistentIndexedTable,
         PersistentIndexedTableInner,
     },
-    DataStore, DataStoreStats, StoreDiff, StoreDiffKind, StoreEvent,
+    DataStoreStats, StoreDiff, StoreDiffKind, StoreEvent, UnaryDataStore,
 };
 
 // ---
@@ -89,7 +89,7 @@ impl std::fmt::Display for GarbageCollectionTarget {
     }
 }
 
-impl DataStore {
+impl UnaryDataStore {
     /// Triggers a garbage collection according to the desired `target`.
     ///
     /// Garbage collection's performance is bounded by the number of buckets in each table (for

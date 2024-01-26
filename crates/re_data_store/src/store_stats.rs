@@ -3,8 +3,8 @@ use re_types_core::SizeBytes;
 
 use crate::{
     store::{IndexedBucketInner, PersistentIndexedTableInner},
-    ClusterCellCache, DataStore, IndexedBucket, IndexedTable, MetadataRegistry,
-    PersistentIndexedTable,
+    ClusterCellCache, IndexedBucket, IndexedTable, MetadataRegistry, PersistentIndexedTable,
+    UnaryDataStore,
 };
 
 // ---
@@ -84,7 +84,7 @@ impl std::ops::Add for DataStoreStats {
 }
 
 impl DataStoreStats {
-    pub fn from_store(store: &DataStore) -> Self {
+    pub fn from_store(store: &UnaryDataStore) -> Self {
         re_tracing::profile_function!();
 
         let type_registry = {
@@ -179,7 +179,12 @@ impl SizeBytes for ClusterCellCache {
     }
 }
 
-impl DataStore {
+impl UnaryDataStore {
+    #[inline]
+    pub fn stats(&self) -> DataStoreStats {
+        DataStoreStats::from_store(self)
+    }
+
     /// Returns the number of timeless index rows stored across this entire store, i.e. the sum of
     /// the number of rows across all of its timeless indexed tables.
     #[inline]

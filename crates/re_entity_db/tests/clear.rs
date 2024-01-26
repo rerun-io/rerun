@@ -462,7 +462,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
 
         db.gc_everything_but_the_latest_row();
 
-        let stats = DataStoreStats::from_store(db.store());
+        let stats = db.store().stats();
         assert_eq!(stats.timeless.num_rows, 1);
 
         let clear = DataRow::from_component_batches(
@@ -480,7 +480,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
         db.gc_everything_but_the_latest_row();
 
         // No rows should remain because the table should have been purged
-        let stats = DataStoreStats::from_store(db.store());
+        let stats = db.store().stats();
         assert_eq!(stats.timeless.num_rows, 0);
 
         // EntityTree should be empty again when we end since everything was GC'd

@@ -5,7 +5,7 @@ use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 
 use itertools::Itertools;
 use re_data_store::{
-    DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget,
+    DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, UnaryDataStore,
 };
 use re_log_types::{
     build_frame_nr, build_log_time, DataRow, DataTable, EntityPath, RowId, TableId, Time, TimePoint,
@@ -229,12 +229,12 @@ fn build_store<FT, FD>(
     packed: bool,
     timegen: &mut FT,
     datagen: &mut FD,
-) -> DataStore
+) -> UnaryDataStore
 where
     FT: FnMut(usize) -> TimePoint,
     FD: FnMut(usize) -> Box<dyn AsComponents>,
 {
-    let mut store = DataStore::new(
+    let mut store = UnaryDataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         cluster_key,
         config,

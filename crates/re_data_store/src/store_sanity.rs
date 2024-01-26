@@ -4,8 +4,8 @@ use re_log_types::{
 use re_types_core::{ComponentName, Loggable, SizeBytes as _};
 
 use crate::{
-    store::PersistentIndexedTableInner, DataStore, IndexedBucket, IndexedBucketInner, IndexedTable,
-    PersistentIndexedTable,
+    store::PersistentIndexedTableInner, IndexedBucket, IndexedBucketInner, IndexedTable,
+    PersistentIndexedTable, UnaryDataStore,
 };
 
 // ---
@@ -65,7 +65,7 @@ pub type SanityResult<T> = ::std::result::Result<T, SanityError>;
 
 // --- Data store ---
 
-impl DataStore {
+impl UnaryDataStore {
     /// Runs the sanity check suite for the entire datastore.
     ///
     /// Returns an error if anything looks wrong.
@@ -219,8 +219,12 @@ impl IndexedBucket {
                 let num_rows = self.num_rows();
 
                 let column_lengths = [
-                    (!col_insert_id.is_empty())
-                        .then(|| (DataStore::insert_id_component_name(), col_insert_id.len())), //
+                    (!col_insert_id.is_empty()).then(|| {
+                        (
+                            UnaryDataStore::insert_id_component_name(),
+                            col_insert_id.len(),
+                        )
+                    }), //
                     Some((COLUMN_TIMEPOINT.into(), col_time.len())),
                     Some((RowId::name(), col_row_id.len())),
                     Some((NumInstances::name(), col_num_instances.len())),
@@ -307,8 +311,12 @@ impl PersistentIndexedTable {
             let num_rows = inner.num_rows();
 
             let column_lengths = [
-                (!col_insert_id.is_empty())
-                    .then(|| (DataStore::insert_id_component_name(), col_insert_id.len())), //
+                (!col_insert_id.is_empty()).then(|| {
+                    (
+                        UnaryDataStore::insert_id_component_name(),
+                        col_insert_id.len(),
+                    )
+                }), //
                 Some((RowId::name(), col_row_id.len())),
                 Some((NumInstances::name(), col_num_instances.len())),
             ]

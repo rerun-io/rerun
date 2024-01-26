@@ -2,7 +2,7 @@
 //!
 //! They're awful, but sometimes you just have to…
 
-use re_data_store::{DataStore, DataStoreConfig};
+use re_data_store::{DataStoreConfig, UnaryDataStore};
 use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId, TimePoint};
 use re_types::{components::InstanceKey, datagen::build_some_instances};
 use re_types_core::Loggable as _;
@@ -22,7 +22,7 @@ use re_types_core::Loggable as _;
 fn pathological_bucket_topology() {
     re_log::setup_logging();
 
-    let mut store_forward = DataStore::new(
+    let mut store_forward = UnaryDataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         InstanceKey::name(),
         DataStoreConfig {
@@ -30,7 +30,7 @@ fn pathological_bucket_topology() {
             ..Default::default()
         },
     );
-    let mut store_backward = DataStore::new(
+    let mut store_backward = UnaryDataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         InstanceKey::name(),
         DataStoreConfig {
@@ -42,8 +42,8 @@ fn pathological_bucket_topology() {
     fn store_repeated_frame(
         frame_nr: i64,
         num: usize,
-        store_forward: &mut DataStore,
-        store_backward: &mut DataStore,
+        store_forward: &mut UnaryDataStore,
+        store_backward: &mut UnaryDataStore,
     ) {
         let ent_path = EntityPath::from("this/that");
         let num_instances = 1;
@@ -74,8 +74,8 @@ fn pathological_bucket_topology() {
 
     fn store_frame_range(
         range: core::ops::RangeInclusive<i64>,
-        store_forward: &mut DataStore,
-        store_backward: &mut DataStore,
+        store_forward: &mut UnaryDataStore,
+        store_backward: &mut UnaryDataStore,
     ) {
         let ent_path = EntityPath::from("this/that");
         let num_instances = 1;

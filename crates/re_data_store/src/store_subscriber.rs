@@ -1,6 +1,6 @@
 use parking_lot::RwLock;
 
-use crate::{DataStore, StoreEvent};
+use crate::{StoreEvent, UnaryDataStore};
 
 // ---
 
@@ -63,7 +63,7 @@ static SUBSCRIBERS: once_cell::sync::Lazy<RwLock<Vec<SharedStoreSubscriber>>> =
 #[derive(Debug, Clone, Copy)]
 pub struct StoreSubscriberHandle(u32);
 
-impl DataStore {
+impl UnaryDataStore {
     /// Registers a [`StoreSubscriber`] so it gets automatically notified when data gets added and/or
     /// removed to/from a [`DataStore`].
     ///
@@ -161,7 +161,7 @@ mod tests {
     };
     use re_types_core::{components::InstanceKey, Loggable as _};
 
-    use crate::{DataStore, GarbageCollectionOptions, StoreSubscriber};
+    use crate::{GarbageCollectionOptions, StoreSubscriber, UnaryDataStore};
 
     use super::*;
 
@@ -207,12 +207,12 @@ mod tests {
 
     #[test]
     fn store_subscriber() -> anyhow::Result<()> {
-        let mut store1 = DataStore::new(
+        let mut store1 = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             Default::default(),
         );
-        let mut store2 = DataStore::new(
+        let mut store2 = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             Default::default(),
@@ -221,7 +221,7 @@ mod tests {
         let mut expected_events = Vec::new();
 
         let view = AllEvents::new([store1.id().clone(), store2.id().clone()]);
-        let view_handle = DataStore::register_subscriber(Box::new(view));
+        let view_handle = UnaryDataStore::register_subscriber(Box::new(view));
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timeline_other = Timeline::new_temporal("other");
@@ -278,7 +278,7 @@ mod tests {
         expected_events.extend(store1.gc(&GarbageCollectionOptions::gc_everything()).0);
         expected_events.extend(store2.gc(&GarbageCollectionOptions::gc_everything()).0);
 
-        DataStore::with_subscriber::<AllEvents, _, _>(view_handle, |got| {
+        UnaryDataStore::with_subscriber::<AllEvents, _, _>(view_handle, |got| {
             similar_asserts::assert_eq!(expected_events.len(), got.events.len());
             similar_asserts::assert_eq!(expected_events, got.events);
         });

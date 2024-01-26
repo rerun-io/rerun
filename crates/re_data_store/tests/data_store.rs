@@ -7,8 +7,8 @@ use rand::Rng;
 use re_data_store::{
     test_row,
     test_util::{insert_table_with_retries, sanity_unwrap},
-    DataStore, DataStoreConfig, DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget,
-    LatestAtQuery, RangeQuery, TimeInt, TimeRange,
+    DataStoreConfig, DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget,
+    LatestAtQuery, RangeQuery, TimeInt, TimeRange, UnaryDataStore,
 };
 use re_log_types::{build_frame_nr, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
 use re_types::datagen::{
@@ -35,9 +35,9 @@ fn all_components() {
     let frame4 = TimeInt::from(4);
 
     let assert_latest_components_at =
-        |store: &mut DataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
+        |store: &mut UnaryDataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
             // Stress test save-to-disk & load-from-disk
-            let mut store2 = DataStore::new(
+            let mut store2 = UnaryDataStore::new(
                 re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
                 store.cluster_key(),
                 store.config().clone(),
@@ -77,7 +77,7 @@ fn all_components() {
 
     // One big bucket, demonstrating the easier-to-reason-about cases.
     {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             DataStoreConfig {
@@ -121,7 +121,7 @@ fn all_components() {
 
     // Tiny buckets, demonstrating the harder-to-reason-about cases.
     {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             DataStoreConfig {
@@ -182,7 +182,7 @@ fn all_components() {
     // Tiny buckets and tricky splits, demonstrating a case that is not only extremely hard to
     // reason about, it is technically incorrect.
     {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             DataStoreConfig {
@@ -257,7 +257,7 @@ fn latest_at() {
     re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
@@ -266,7 +266,7 @@ fn latest_at() {
     }
 }
 
-fn latest_at_impl(store: &mut DataStore) {
+fn latest_at_impl(store: &mut UnaryDataStore) {
     re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");
@@ -278,7 +278,7 @@ fn latest_at_impl(store: &mut DataStore) {
     let frame4 = TimeInt::from(4);
 
     // helper to insert a table both as a temporal and timeless payload
-    let insert_table = |store: &mut DataStore, table: &DataTable| {
+    let insert_table = |store: &mut UnaryDataStore, table: &DataTable| {
         // insert temporal
         insert_table_with_retries(store, table);
 
@@ -309,7 +309,7 @@ fn latest_at_impl(store: &mut DataStore) {
     );
 
     // Stress test save-to-disk & load-from-disk
-    let mut store2 = DataStore::new(
+    let mut store2 = UnaryDataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         store.cluster_key(),
         store.config().clone(),
@@ -383,7 +383,7 @@ fn range() {
     re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
@@ -392,7 +392,7 @@ fn range() {
     }
 }
 
-fn range_impl(store: &mut DataStore) {
+fn range_impl(store: &mut UnaryDataStore) {
     re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");
@@ -404,7 +404,7 @@ fn range_impl(store: &mut DataStore) {
     let frame5 = TimeInt::from(5);
 
     // helper to insert a row both as a temporal and timeless payload
-    let insert = |store: &mut DataStore, row| {
+    let insert = |store: &mut UnaryDataStore, row| {
         // insert temporal
         store.insert_row(row).unwrap();
 
@@ -462,7 +462,7 @@ fn range_impl(store: &mut DataStore) {
          components: [ComponentName; 2],
          rows_at_times: &[(Option<TimeInt>, &[(ComponentName, &DataRow)])]| {
             // Stress test save-to-disk & load-from-disk
-            let mut store2 = DataStore::new(
+            let mut store2 = UnaryDataStore::new(
                 re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
                 store.cluster_key(),
                 store.config().clone(),
@@ -598,7 +598,7 @@ fn gc() {
     re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
@@ -607,7 +607,7 @@ fn gc() {
     }
 }
 
-fn gc_impl(store: &mut DataStore) {
+fn gc_impl(store: &mut UnaryDataStore) {
     let mut rng = rand::thread_rng();
 
     for _ in 0..2 {
@@ -669,7 +669,7 @@ fn protected_gc() {
     re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
@@ -678,7 +678,7 @@ fn protected_gc() {
     }
 }
 
-fn protected_gc_impl(store: &mut DataStore) {
+fn protected_gc_impl(store: &mut UnaryDataStore) {
     re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");
@@ -774,7 +774,7 @@ fn protected_gc_clear() {
     re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
@@ -783,7 +783,7 @@ fn protected_gc_clear() {
     }
 }
 
-fn protected_gc_clear_impl(store: &mut DataStore) {
+fn protected_gc_clear_impl(store: &mut UnaryDataStore) {
     re_log::setup_logging();
 
     let ent_path = EntityPath::from("this/that");

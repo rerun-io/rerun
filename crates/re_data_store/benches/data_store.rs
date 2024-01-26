@@ -5,8 +5,8 @@ use arrow2::array::{Array as _, StructArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_data_store::{
-    DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery,
-    RangeQuery, TimeInt, TimeRange,
+    DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery, RangeQuery,
+    TimeInt, TimeRange, UnaryDataStore,
 };
 use re_log_types::{
     build_frame_nr, DataCell, DataRow, DataTable, EntityPath, RowId, TableId, TimePoint, TimeType,
@@ -121,7 +121,7 @@ fn insert_same_time_point(c: &mut Criterion) {
             // Default config
             group.bench_function("insert", |b| {
                 b.iter(|| {
-                    let mut store = DataStore::new(
+                    let mut store = UnaryDataStore::new(
                         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
                         InstanceKey::name(),
                         DataStoreConfig::default(),
@@ -434,9 +434,9 @@ fn build_rows_ex(
     table.to_rows().map(|r| r.unwrap()).collect()
 }
 
-fn insert_rows(config: DataStoreConfig, rows: &[DataRow]) -> DataStore {
+fn insert_rows(config: DataStoreConfig, rows: &[DataRow]) -> UnaryDataStore {
     let cluster_key = InstanceKey::name();
-    let mut store = DataStore::new(
+    let mut store = UnaryDataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         cluster_key,
         config,
@@ -448,7 +448,7 @@ fn insert_rows(config: DataStoreConfig, rows: &[DataRow]) -> DataStore {
 }
 
 fn latest_data_at<const N: usize>(
-    store: &DataStore,
+    store: &UnaryDataStore,
     primary: ComponentName,
     secondaries: &[ComponentName; N],
 ) -> [Option<DataCell>; N] {
@@ -462,7 +462,7 @@ fn latest_data_at<const N: usize>(
 }
 
 fn range_data<const N: usize>(
-    store: &DataStore,
+    store: &UnaryDataStore,
     components: [ComponentName; N],
 ) -> impl Iterator<Item = (Option<TimeInt>, [Option<DataCell>; N])> + '_ {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);

@@ -149,7 +149,7 @@ fn serialize_control_columns(
     // NOTE: Optional column, so make sure it's actually there:
     if !col_insert_id.is_empty() {
         let (insert_id_field, insert_id_column) = DataTable::serialize_primitive_column(
-            &crate::DataStore::insert_id_component_name(),
+            &crate::UnaryDataStore::insert_id_component_name(),
             col_insert_id,
             None,
         );

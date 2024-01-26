@@ -13,9 +13,9 @@ use re_types_core::{
 };
 
 use crate::{
-    store::PersistentIndexedTableInner, DataStore, DataStoreConfig, IndexedBucket,
-    IndexedBucketInner, IndexedTable, MetadataRegistry, PersistentIndexedTable, StoreDiff,
-    StoreDiffKind, StoreEvent,
+    store::PersistentIndexedTableInner, DataStoreConfig, IndexedBucket, IndexedBucketInner,
+    IndexedTable, MetadataRegistry, PersistentIndexedTable, StoreDiff, StoreDiffKind, StoreEvent,
+    UnaryDataStore,
 };
 
 // --- Data store ---
@@ -55,7 +55,7 @@ pub enum WriteError {
 
 pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
 
-impl DataStore {
+impl UnaryDataStore {
     /// Inserts a [`DataRow`]'s worth of components into the datastore.
     ///
     /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated

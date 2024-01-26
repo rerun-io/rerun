@@ -15,6 +15,7 @@
 //!
 
 mod arrow_util;
+mod sharded_store;
 mod store;
 mod store_arrow;
 mod store_dump;
@@ -32,7 +33,8 @@ mod store_write;
 pub mod test_util;
 
 pub use self::arrow_util::ArrayExt;
-pub use self::store::{DataStore, DataStoreConfig, StoreGeneration};
+pub use self::sharded_store::ShardedDataStore as DataStore;
+pub use self::store::{DataStoreConfig, StoreGeneration, UnaryDataStore};
 pub use self::store_event::{StoreDiff, StoreDiffKind, StoreEvent};
 pub use self::store_gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::store_helpers::VersionedComponent;

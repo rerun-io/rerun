@@ -5,8 +5,8 @@
 use rand::Rng;
 
 use re_data_store::{
-    test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
-    GarbageCollectionOptions, LatestAtQuery, WriteError,
+    test_row, test_util::sanity_unwrap, DataStoreConfig, DataStoreStats, GarbageCollectionOptions,
+    LatestAtQuery, UnaryDataStore, WriteError,
 };
 use re_log_types::example_components::MyPoint;
 use re_log_types::{
@@ -34,7 +34,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     // * Query at frame #11 and make sure we get `point2` because random `RowId`s are monotonically
     //   increasing.
     {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             Default::default(),
@@ -75,7 +75,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     // * Insert `point1` at frame #10 with a random `RowId`.
     // * Fail to insert `point2` at frame #10 using `point1`s `RowId` because it is illegal.
     {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             Default::default(),
@@ -106,7 +106,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     // * Insert `point2` at frame #10 using `point1`'s `RowId`, decremented by one.
     // * Query at frame #11 and make sure we get `point1` because of intra-timestamp tie-breaks.
     {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             Default::default(),
@@ -151,7 +151,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     // * Insert timeless `point2` using `point1`'s `RowId`, decremented by one.
     // * Query timelessly and make sure we get `point1` because of timeless tie-breaks.
     {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             Default::default(),
@@ -201,7 +201,7 @@ fn write_errors() {
             DataCell::from_component_sparse::<InstanceKey>([Some(1), None, Some(3)])
         }
 
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             Default::default(),
@@ -225,7 +225,7 @@ fn write_errors() {
             DataCell::from_component::<InstanceKey>([1, 2, 2])
         }
 
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             Default::default(),
@@ -253,7 +253,7 @@ fn write_errors() {
     }
 
     {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             Default::default(),
@@ -290,7 +290,7 @@ fn latest_at_emptiness_edge_cases() {
     re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
@@ -299,7 +299,7 @@ fn latest_at_emptiness_edge_cases() {
     }
 }
 
-fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
+fn latest_at_emptiness_edge_cases_impl(store: &mut UnaryDataStore) {
     let ent_path = EntityPath::from("this/that");
     let now = Time::now();
     let now_minus_1s = now - Duration::from_secs(1.0);
@@ -410,7 +410,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 fn gc_correct() {
     re_log::setup_logging();
 
-    let mut store = DataStore::new(
+    let mut store = UnaryDataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         InstanceKey::name(),
         DataStoreConfig::default(),
@@ -468,7 +468,7 @@ fn gc_correct() {
     check_still_readable(&store);
 }
 
-fn check_still_readable(store: &DataStore) {
+fn check_still_readable(store: &UnaryDataStore) {
     store.to_data_table().unwrap(); // simple way of checking that everything is still readable
 }
 
@@ -477,7 +477,7 @@ fn check_still_readable(store: &DataStore) {
 #[test]
 fn gc_metadata_size() -> anyhow::Result<()> {
     for enable_batching in [false, true] {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             Default::default(),
@@ -527,7 +527,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     for config in re_data_store::test_util::all_configs() {
-        let mut store = DataStore::new(
+        let mut store = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
@@ -538,7 +538,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
+fn entity_min_time_correct_impl(store: &mut UnaryDataStore) -> anyhow::Result<()> {
     let ent_path = EntityPath::from("this/that");
     let wrong_ent_path = EntityPath::from("this/that/other");
 

@@ -2,11 +2,11 @@ use re_format::{format_bytes, format_number};
 use re_log_types::TimeInt;
 use re_types_core::SizeBytes as _;
 
-use crate::{DataStore, IndexedBucket, IndexedTable, PersistentIndexedTable};
+use crate::{IndexedBucket, IndexedTable, PersistentIndexedTable, UnaryDataStore};
 
 // --- Data store ---
 
-impl std::fmt::Display for DataStore {
+impl std::fmt::Display for UnaryDataStore {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {

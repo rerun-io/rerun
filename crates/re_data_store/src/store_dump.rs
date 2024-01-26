@@ -7,12 +7,12 @@ use re_log_types::{
 
 use crate::{
     store::{IndexedBucketInner, PersistentIndexedTable, PersistentIndexedTableInner},
-    DataStore, IndexedBucket,
+    IndexedBucket, UnaryDataStore,
 };
 
 // ---
 
-impl DataStore {
+impl UnaryDataStore {
     /// Serializes the entire datastore into one big sorted list of [`DataRow`].
     ///
     /// Individual [`re_log_types::DataRow`]s that were split apart due to bucketing are merged back together.

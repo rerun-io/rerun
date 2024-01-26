@@ -8,8 +8,8 @@ use re_log_types::{
 use re_types_core::{ComponentName, ComponentNameSet};
 
 use crate::{
-    store::PersistentIndexedTableInner, DataStore, IndexedBucket, IndexedBucketInner, IndexedTable,
-    PersistentIndexedTable,
+    store::PersistentIndexedTableInner, IndexedBucket, IndexedBucketInner, IndexedTable,
+    PersistentIndexedTable, UnaryDataStore,
 };
 
 // --- Queries ---
@@ -82,7 +82,7 @@ impl RangeQuery {
 
 // --- Data store ---
 
-impl DataStore {
+impl UnaryDataStore {
     /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`] on
     /// a specific [`Timeline`].
     ///

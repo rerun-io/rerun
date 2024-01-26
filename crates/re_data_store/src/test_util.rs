@@ -1,6 +1,6 @@
 use re_log_types::DataTable;
 
-use crate::{DataStore, DataStoreConfig, WriteError};
+use crate::{DataStoreConfig, UnaryDataStore, WriteError};
 
 // ---
 
@@ -56,7 +56,7 @@ pub fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
     })
 }
 
-pub fn sanity_unwrap(store: &DataStore) {
+pub fn sanity_unwrap(store: &UnaryDataStore) {
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices_if_needed();
         eprintln!("{store}");
@@ -65,7 +65,7 @@ pub fn sanity_unwrap(store: &DataStore) {
 }
 
 // We very often re-use RowIds when generating test data.
-pub fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
+pub fn insert_table_with_retries(store: &mut UnaryDataStore, table: &DataTable) {
     for row in table.to_rows() {
         let mut row = row.unwrap();
         loop {

@@ -4,7 +4,7 @@ use itertools::Itertools;
 use re_data_store::{
     test_row,
     test_util::{insert_table_with_retries, sanity_unwrap},
-    DataStore, DataStoreStats, GarbageCollectionOptions, TimeInt, TimeRange, Timeline,
+    DataStoreStats, GarbageCollectionOptions, TimeInt, TimeRange, Timeline, UnaryDataStore,
 };
 use re_log_types::{
     build_frame_nr, build_log_time, DataRow, DataTable, EntityPath, RowId, TableId,
@@ -16,7 +16,7 @@ use re_types_core::Loggable as _;
 // ---
 
 // Panic on RowId clash.
-fn insert_table(store: &mut DataStore, table: &DataTable) {
+fn insert_table(store: &mut UnaryDataStore, table: &DataTable) {
     for row in table.to_rows() {
         let row = row.unwrap();
         store.insert_row(&row).unwrap();
@@ -58,7 +58,7 @@ impl RowSet {
         }
     }
 
-    fn insert_into(self, store: &mut DataStore) {
+    fn insert_into(self, store: &mut UnaryDataStore) {
         let mut rows = self.0.into_values().collect::<Vec<_>>();
         rows.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
         for row in rows {
@@ -77,17 +77,17 @@ fn data_store_dump() {
         // NOTE: insert IDs aren't serialized and can be different across runs.
         config.store_insert_ids = false;
 
-        let mut store1 = DataStore::new(
+        let mut store1 = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
         );
-        let mut store2 = DataStore::new(
+        let mut store2 = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
         );
-        let mut store3 = DataStore::new(
+        let mut store3 = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
@@ -104,7 +104,11 @@ fn data_store_dump() {
     }
 }
 
-fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataStore) {
+fn data_store_dump_impl(
+    store1: &mut UnaryDataStore,
+    store2: &mut UnaryDataStore,
+    store3: &mut UnaryDataStore,
+) {
     let ent_paths = ["this/that", "other", "yet/another/one"];
     let tables = ent_paths
         .iter()
@@ -182,12 +186,12 @@ fn data_store_dump_filtered() {
         // NOTE: insert IDs aren't serialized and can be different across runs.
         config.store_insert_ids = false;
 
-        let mut store1 = DataStore::new(
+        let mut store1 = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
         );
-        let mut store2 = DataStore::new(
+        let mut store2 = UnaryDataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             config.clone(),
@@ -203,7 +207,7 @@ fn data_store_dump_filtered() {
     }
 }
 
-fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore) {
+fn data_store_dump_filtered_impl(store1: &mut UnaryDataStore, store2: &mut UnaryDataStore) {
     let timeline_frame_nr = Timeline::new_sequence("frame_nr");
     let timeline_log_time = Timeline::log_time();
     let frame1: TimeInt = 1.into();
@@ -319,7 +323,7 @@ fn data_store_dump_empty_column() {
     };
     config.store_insert_ids = false;
 
-    let mut store = DataStore::new(
+    let mut store = UnaryDataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         InstanceKey::name(),
         config,
@@ -328,7 +332,7 @@ fn data_store_dump_empty_column() {
     data_store_dump_empty_column_impl(&mut store);
 }
 
-fn data_store_dump_empty_column_impl(store: &mut DataStore) {
+fn data_store_dump_empty_column_impl(store: &mut UnaryDataStore) {
     let ent_path: EntityPath = "points".into();
     let frame1: TimeInt = 1.into();
     let frame2: TimeInt = 2.into();

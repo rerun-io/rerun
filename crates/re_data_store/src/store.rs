@@ -168,7 +168,7 @@ pub struct StoreGeneration {
 /// know what's going on internally.
 /// For even more information, you can set `RERUN_DATA_STORE_DISPLAY_SCHEMAS=1` in your
 /// environment, which will result in additional schema information being printed out.
-pub struct DataStore {
+pub struct UnaryDataStore {
     pub(crate) id: StoreId,
 
     /// The cluster key specifies a column/component that is guaranteed to always be present for
@@ -226,7 +226,7 @@ pub struct DataStore {
     pub(crate) event_id: AtomicU64,
 }
 
-impl Clone for DataStore {
+impl Clone for UnaryDataStore {
     fn clone(&self) -> Self {
         Self {
             id: self.id.clone(),
@@ -245,7 +245,7 @@ impl Clone for DataStore {
     }
 }
 
-impl DataStore {
+impl UnaryDataStore {
     /// See [`Self::cluster_key`] for more information about the cluster key.
     pub fn new(id: StoreId, cluster_key: ComponentName, config: DataStoreConfig) -> Self {
         Self {
@@ -350,7 +350,7 @@ fn datastore_internal_repr() {
     use re_log_types::DataTable;
     use re_types_core::Loggable as _;
 
-    let mut store = DataStore::new(
+    let mut store = UnaryDataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         re_types::components::InstanceKey::name(),
         DataStoreConfig {
