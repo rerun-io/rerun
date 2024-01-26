@@ -7,7 +7,10 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-Includes an opt-in sampling profiler for allocation callstacks.
+This is a library for tracking memory use in a running application.
+This is useful for tracking leaks, and for figuring out what is using up memory.
+
+`re_memory` includes an opt-in sampling profiler for allocation callstacks.
 Each time memory is allocated there is a chance a callstack will be collected.
 This information is tracked until deallocation.
 You can thus get information about what callstacks lead to the most live allocations,
