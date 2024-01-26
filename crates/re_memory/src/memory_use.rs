@@ -1,3 +1,4 @@
+/// How much RAM is the application using?
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct MemoryUse {
     /// Bytes allocated by the application according to operating system.
@@ -18,6 +19,7 @@ pub struct MemoryUse {
 }
 
 impl MemoryUse {
+    /// Read the current memory of the running application.
     #[inline]
     pub fn capture() -> Self {
         Self {
@@ -50,6 +52,7 @@ impl std::ops::Mul<f32> for MemoryUse {
 impl std::ops::Sub for MemoryUse {
     type Output = Self;
 
+    #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         fn sub(a: Option<i64>, b: Option<i64>) -> Option<i64> {
             Some(a? - b?)

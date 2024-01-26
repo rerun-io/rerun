@@ -1,6 +1,38 @@
 //! Run-time memory tracking and profiling.
 //!
-//! See [`AccountingAllocator`] and [`accounting_allocator`].
+//! ## First steps
+//!
+//! Add `re_memory` to your `Cargo.toml`:
+//!
+//! ```toml
+//! cargo add re_memory
+//! ```
+//!
+//! Install the [`AccountingAllocator`] in your `main.rs`:
+//! ```no_run
+//! use re_memory::AccountingAllocator;
+//!
+//! #[global_allocator]
+//! static GLOBAL: AccountingAllocator<std::alloc::System>
+//!     = AccountingAllocator::new(std::alloc::System);
+//! ```
+//!
+//! ### Checking memory use
+//! Use [`MemoryUse::capture`] to get the current memory use of your application.
+//!
+//! ### Finding meory leaks
+//! Turn on memory tracking at the top of your `main()` function:
+//!
+//! ```rs
+//! re_memory::accounting_allocator::set_tracking_callstacks(true);
+//! ```
+//!
+//! Now let your app run for a while, and then call [`accounting_allocator::tracking_stats`]
+//! to get the statistics. Any memory leak should show up in
+//! [`TrackingStatistics::top_callstacks`].
+//!
+//! ### More
+//! See also [`accounting_allocator`].
 
 pub mod accounting_allocator;
 mod allocation_tracker;
@@ -23,8 +55,11 @@ mod backtrace_web;
 use backtrace_web::Backtrace;
 
 pub use {
-    accounting_allocator::AccountingAllocator, memory_history::MemoryHistory,
-    memory_limit::MemoryLimit, memory_use::MemoryUse, ram_warner::*,
+    accounting_allocator::{AccountingAllocator, TrackingStatistics},
+    memory_history::MemoryHistory,
+    memory_limit::MemoryLimit,
+    memory_use::MemoryUse,
+    ram_warner::*,
 };
 
 /// Number of allocation and their total size.
