@@ -550,7 +550,7 @@ impl Viewport<'_, '_> {
         // force single-selection on drag-and-drop
         //
 
-        if response.decidedly_dragged() {
+        if response.drag_started() {
             ctx.selection_state().set_selection(contents.as_item());
         }
 
