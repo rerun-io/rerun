@@ -45,6 +45,7 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
 rmp-serde = { workspace = true, optional = true }
+rayon.workspace = true
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
 thiserror.workspace = true
 web-time.workspace = true

@@ -1,8 +1,9 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
+use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 
 use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
@@ -110,6 +111,9 @@ pub struct EntityDb {
     /// Stores all components for all entities for all timelines.
     data_store: DataStore,
 
+    // TODO: imagine
+    datastores: HashMap<EntityPath, Arc<RwLock<DataStore>>>,
+
     /// Query caches for the data in [`Self::data_store`].
     query_caches: re_query_cache::Caches,
 
@@ -133,6 +137,7 @@ impl EntityDb {
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             data_store,
+            datastores: Default::default(),
             query_caches,
             stats: IngestionStatistics::new(store_id),
         }
@@ -274,9 +279,105 @@ impl EntityDb {
 
             LogMsg::ArrowMsg(_, arrow_msg) => {
                 let table = DataTable::from_arrow_msg(arrow_msg)?;
-                self.add_data_table(table)?;
+                // self.add_data_table(table)?;
+                self.add_data_table2(table)?;
             }
         }
+
+        Ok(())
+    }
+
+    pub fn add_data_table2(&mut self, mut table: DataTable) -> Result<(), Error> {
+        // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
+        table.compute_all_size_bytes();
+
+        // TODO: why we shard at entitydb layer
+
+        let mut rows_per_entity_path: HashMap<EntityPath, Vec<DataRow>> = Default::default();
+        for row in table.to_rows() {
+            let row = row?;
+            self.register_entity_path(row.entity_path());
+            rows_per_entity_path
+                .entry(row.entity_path().clone())
+                .or_default()
+                .push(row);
+        }
+
+        let store_events = Arc::new(Mutex::new(Vec::with_capacity(table.num_rows() as _)));
+        rayon::scope(|s| {
+            for (entity_path, rows) in rows_per_entity_path {
+                let datastore = Arc::clone(
+                    self.datastores
+                        .entry(entity_path.clone())
+                        .or_insert_with(|| {
+                            Arc::new(RwLock::new(re_data_store::DataStore::new(
+                                self.store_id.clone(),
+                                InstanceKey::name(),
+                                DataStoreConfig::default(),
+                            )))
+                        }),
+                );
+                let store_events = Arc::clone(&store_events);
+
+                s.spawn(move |_| {
+                    let mut datastore = datastore.write();
+                    let mut local_events = Vec::with_capacity(rows.len());
+                    for row in rows {
+                        // ## RowId duplication
+                        //
+                        // We shouldn't be attempting to retry in this instance: a duplicated RowId at this stage
+                        // is likely a user error.
+                        //
+                        // We only do so because, the way our 'save' feature is currently implemented in the
+                        // viewer can result in a single row's worth of data to be split across several insertions
+                        // when loading that data back (because we dump per-bucket, and RowIds get duplicated
+                        // across buckets).
+                        //
+                        // TODO(#1894): Remove this once the save/load process becomes RowId-driven.
+                        local_events.push(
+                            insert_row_with_retries(
+                                &mut datastore,
+                                row,
+                                MAX_INSERT_ROW_ATTEMPTS,
+                                DEFAULT_INSERT_ROW_STEP_SIZE,
+                            )
+                            .unwrap(), // TODO
+                        );
+                    }
+
+                    store_events.lock().extend(local_events);
+                });
+            }
+        });
+
+        // TODO: why we keep this multi-threaded
+
+        // First-pass: update our internal views by notifying them of resulting [`StoreEvent`]s.
+        //
+        // This might result in a [`ClearCascade`] if the events trigger one or more immediate
+        // and/or pending clears.
+        let original_store_events = &store_events.lock();
+        self.times_per_timeline.on_events(original_store_events);
+        self.query_caches.on_events(original_store_events);
+        let clear_cascade = self.tree.on_store_additions(original_store_events);
+
+        // Second-pass: update the [`DataStore`] by applying the [`ClearCascade`].
+        //
+        // This will in turn generate new [`StoreEvent`]s that our internal views need to be
+        // notified of, again!
+        let new_store_events = self.on_clear_cascade(clear_cascade);
+        self.times_per_timeline.on_events(&new_store_events);
+        self.query_caches.on_events(&new_store_events);
+        let clear_cascade = self.tree.on_store_additions(&new_store_events);
+
+        // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
+        // cascades, thus this whole process must stabilize after one iteration.
+        debug_assert!(clear_cascade.is_empty());
+
+        // We inform the stats last, since it measures e2e latency.
+        self.stats.on_events(original_store_events);
+
+        self.last_modified_at = web_time::Instant::now();
 
         Ok(())
     }
@@ -489,6 +590,7 @@ impl EntityDb {
             times_per_timeline,
             tree,
             data_store: _,
+            datastores: _,
             query_caches,
             stats: _,
         } = self;
