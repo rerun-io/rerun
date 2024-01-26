@@ -60,66 +60,93 @@ pub fn override_ui(
         return;
     };
 
-    egui::Grid::new("overrides").num_columns(3).show(ui, |ui| {
-        for (component_name, (store_kind, entity_path)) in overrides
-            .component_overrides
-            .iter()
-            .sorted_by_key(|(c, _)| *c)
-        {
-            if !is_component_visible_in_ui(component_name) {
-                continue;
-            }
+    let components: Vec<_> = overrides
+        .component_overrides
+        .into_iter()
+        .sorted_by_key(|(c, _)| *c)
+        .filter(|(c, _)| is_component_visible_in_ui(c))
+        .collect();
 
-            temporary_style_ui_for_component(ui, component_name, |ui| {
-                item_ui::component_path_button(
-                    ctx,
-                    ui,
-                    &ComponentPath::new(entity_path.clone(), *component_name),
-                );
+    egui_extras::TableBuilder::new(ui)
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .auto_shrink([false, true])
+        .column(egui_extras::Column::auto())
+        .column(egui_extras::Column::auto())
+        .column(egui_extras::Column::remainder())
+        .body(|mut body| {
+            re_ui::ReUi::setup_table_body(&mut body);
+            let row_height = re_ui::ReUi::table_line_height();
+            body.rows(row_height, components.len(), |mut row| {
+                if let Some((component_name, (store_kind, entity_path))) =
+                    components.get(row.index())
+                {
+                    // Remove button
+                    row.col(|ui| {
+                        if ctx
+                            .re_ui
+                            .small_icon_button(ui, &re_ui::icons::CLOSE)
+                            .clicked()
+                        {
+                            // Note: need to use the blueprint store since the data might
+                            // not exist in the recording store.
+                            ctx.save_empty_blueprint_component_name(
+                                ctx.store_context.blueprint.store(),
+                                &overrides.override_path,
+                                *component_name,
+                            );
+                        }
+                    });
+                    // Component label
+                    row.col(|ui| {
+                        temporary_style_ui_for_component(ui, component_name, |ui| {
+                            item_ui::component_path_button(
+                                ctx,
+                                ui,
+                                &ComponentPath::new(entity_path.clone(), *component_name),
+                            );
+                        });
+                    });
+                    // Editor last to take up remainder of space
+                    row.col(|ui| {
+                        let component_data = match store_kind {
+                            StoreKind::Blueprint => {
+                                let store = ctx.store_context.blueprint.store();
+                                let query = ctx.blueprint_query;
+                                get_component_with_instances(
+                                    store,
+                                    query,
+                                    entity_path,
+                                    *component_name,
+                                )
+                            }
+                            StoreKind::Recording => get_component_with_instances(
+                                store,
+                                &query,
+                                entity_path,
+                                *component_name,
+                            ),
+                        };
+
+                        if let Some((_, _, component_data)) = component_data {
+                            ctx.component_ui_registry.edit(
+                                ctx,
+                                ui,
+                                UiVerbosity::Small,
+                                &query,
+                                store,
+                                entity_path,
+                                &overrides.override_path,
+                                &component_data,
+                                instance_key,
+                            );
+                        } else {
+                            // TODO(jleibs): This shouldn't happen. Warn instead?
+                            ui.weak("(empty)");
+                        }
+                    });
+                }
             });
-
-            let component_data = match store_kind {
-                StoreKind::Blueprint => {
-                    let store = ctx.store_context.blueprint.store();
-                    let query = ctx.blueprint_query;
-                    get_component_with_instances(store, query, entity_path, *component_name)
-                }
-                StoreKind::Recording => {
-                    get_component_with_instances(store, &query, entity_path, *component_name)
-                }
-            };
-
-            if let Some((_, _, component_data)) = component_data {
-                ctx.component_ui_registry.edit(
-                    ctx,
-                    ui,
-                    UiVerbosity::Small,
-                    &query,
-                    store,
-                    entity_path,
-                    &overrides.override_path,
-                    &component_data,
-                    instance_key,
-                );
-            } else {
-                // TODO(jleibs): This shouldn't happen. Warn instead?
-                ui.weak("(empty)");
-            }
-
-            if ui.button("❎").clicked() {
-                // Note: need to use the blueprint store since the data might
-                // not exist in the recording store.
-                ctx.save_empty_blueprint_component_name(
-                    ctx.store_context.blueprint.store(),
-                    &overrides.override_path,
-                    *component_name,
-                );
-            }
-
-            ui.end_row();
-        }
-        Some(())
-    });
+        });
 }
 
 pub fn add_new_override(

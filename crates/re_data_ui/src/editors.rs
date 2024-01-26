@@ -75,11 +75,7 @@ fn edit_text_ui(
     let current_text = current_text.to_string();
     let mut edit_text = current_text.clone();
 
-    // TODO(jleibs): Clip text false isn't exactly what we want. Need
-    // to figure out how to size this properly to fit the space appropriately.
-    egui::TextEdit::singleline(&mut edit_text)
-        .clip_text(false)
-        .show(ui);
+    egui::TextEdit::singleline(&mut edit_text).show(ui);
 
     if edit_text != current_text {
         let new_text = Text::from(edit_text);
@@ -123,6 +119,7 @@ fn edit_scatter_ui(
     egui::ComboBox::from_id_source("scatter")
         .selected_text(scattered_text)
         .show_ui(ui, |ui| {
+            ui.style_mut().wrap = Some(false);
             ui.selectable_value(&mut edit_scatter, false, "Line");
             ui.selectable_value(&mut edit_scatter, true, "Scattered");
         });
@@ -168,7 +165,7 @@ fn edit_radius_ui(
 
     ui.add(
         egui::DragValue::new(&mut edit_radius)
-            .clamp_range(0.0..=5.0)
+            .clamp_range(0.0..=f64::INFINITY)
             .speed(speed),
     );
 

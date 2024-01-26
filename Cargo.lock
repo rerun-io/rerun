@@ -4986,6 +4986,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui-wgpu",
+ "egui_extras",
  "egui_plot",
  "egui_tiles",
  "ehttp",
