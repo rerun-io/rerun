@@ -164,10 +164,6 @@ pub struct OrbitEye {
 
     /// For controlling the eye with WSAD in a smooth way.
     pub velocity: Vec3,
-
-    /// Left over scroll delta that still needs to be applied (smoothed out over several frames)
-    #[serde(skip)]
-    unprocessed_scroll_delta: f32,
 }
 
 impl OrbitEye {
@@ -181,7 +177,6 @@ impl OrbitEye {
             fov_y: Eye::DEFAULT_FOV_Y,
             up,
             velocity: Vec3::ZERO,
-            unprocessed_scroll_delta: 0.0,
         }
     }
 
@@ -221,10 +216,6 @@ impl OrbitEye {
             fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
             up: self.up.lerp(other.up, t).normalize_or_zero(),
             velocity: self.velocity.lerp(other.velocity, t),
-            unprocessed_scroll_delta: lerp(
-                self.unprocessed_scroll_delta..=other.unprocessed_scroll_delta,
-                t,
-            ),
         }
     }
 
@@ -302,35 +293,15 @@ impl OrbitEye {
             }
         }
 
-        let (zoom_delta, raw_scroll_delta) = if response.hovered() {
+        let (zoom_delta, scroll_delta) = if response.hovered() {
             self.keyboard_navigation(&response.ctx);
-            response.ctx.input(|i| (i.zoom_delta(), i.scroll_delta.y))
+            response
+                .ctx
+                .input(|i| (i.zoom_delta(), i.smooth_scroll_delta.y))
         } else {
             (1.0, 0.0)
         };
-        if zoom_delta != 1.0 || raw_scroll_delta != 0.0 {
-            did_interact = true;
-        }
-
-        let scroll_delta;
-        {
-            // Mouse wheels often go very large steps.
-            // A single notch on a logitech mouse wheel connected to a Macbook returns 14.0 raw_scroll_delta.
-            // This makes the zoom speed feel clunky, so we smooth it out over several frames.
-
-            self.unprocessed_scroll_delta += raw_scroll_delta;
-
-            let dt = response.ctx.input(|i| i.stable_dt).at_most(0.1);
-            let t = egui::emath::exponential_smooth_factor(0.90, 0.1, dt); // reach _% in _ seconds
-
-            scroll_delta = t * self.unprocessed_scroll_delta;
-            self.unprocessed_scroll_delta -= scroll_delta;
-        }
-
-        if self.unprocessed_scroll_delta.abs() > 0.1 {
-            // We have a lot of unprocessed scroll delta, so we need to keep calling this function.
-            response.ctx.request_repaint();
-            // Also, we pretend this smoothing a user interaction for all other purposes.
+        if zoom_delta != 1.0 || scroll_delta.abs() > 0.1 {
             did_interact = true;
         }
 

@@ -22,7 +22,7 @@ impl PtrHash {
 
 // ----------------------------------------------------------------------------
 
-/// Formatted [`Backtrace`].
+/// Formatted backtrace.
 ///
 /// Clones without allocating.
 #[derive(Clone)]
@@ -54,6 +54,10 @@ pub struct CallstackStatistics {
     pub readable_backtrace: ReadableBacktrace,
 
     /// If this was stochastically sampled - at what rate?
+    ///
+    /// A `stochastic_rate` of `10` means that we only sampled 1 in 10 allocations.
+    ///
+    /// (so this is actually an interval rather than rate…).
     pub stochastic_rate: usize,
 
     /// Live allocations at this callstack.

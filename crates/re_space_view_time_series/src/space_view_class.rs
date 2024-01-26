@@ -5,13 +5,17 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
 use re_query::query_archetype;
 use re_space_view::controls;
-use re_viewer_context::external::re_entity_db::EntityProperties;
+use re_viewer_context::external::re_entity_db::{
+    EditableAutoValue, EntityProperties, TimeSeriesAggregator,
+};
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::visualizer_system::{PlotSeriesKind, TimeSeriesSystem};
+
+// ---
 
 #[derive(Clone, Default)]
 pub struct TimeSeriesSpaceViewState {
@@ -101,7 +105,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         _state: &mut Self::State,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
+        root_entity_properties: &mut EntityProperties,
     ) {
         let re_types::blueprint::archetypes::TimeSeries { legend } = query_archetype(
             ctx.store_context.blueprint.store(),
@@ -112,7 +116,32 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         .unwrap_or_default();
 
         ctx.re_ui
-            .selection_grid(ui, "time_series_selection_ui")
+            .selection_grid(ui, "time_series_selection_ui_aggregation")
+            .show(ui, |ui| {
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Aggregation")
+                    .on_hover_text("Configures the aggregation behavior of the plot when the zoom-level on the X axis goes below 1.0, i.e. a single pixel covers more than one tick worth of data.\nThis can greatly improve performance (and readability) in such situations as it prevents overdraw.");
+
+                let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
+
+                egui::ComboBox::from_id_source("aggregation_mode")
+                    .selected_text(agg_mode.to_string())
+                    .show_ui(ui, |ui| {
+                        ui.style_mut().wrap = Some(false);
+                        ui.set_min_width(64.0);
+
+                        for variant in TimeSeriesAggregator::variants() {
+                            ui.selectable_value(&mut agg_mode, variant, variant.to_string())
+                                .on_hover_text(variant.description());
+                        }
+                    });
+
+                root_entity_properties.time_series_aggregator =
+                    EditableAutoValue::UserEdited(agg_mode);
+            });
+
+        ctx.re_ui
+            .selection_grid(ui, "time_series_selection_ui_legend")
             .show(ui, |ui| {
                 ctx.re_ui.grid_left_hand_label(ui, "Legend");
 
@@ -166,6 +195,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                         ctx.save_blueprint_component(&space_view_id.as_entity_path(), edit_legend);
                     }
                 });
+
                 ui.end_row();
             });
     }
@@ -176,7 +206,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
-        _query: &ViewQuery<'_>,
+        query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
@@ -184,7 +214,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let re_types::blueprint::archetypes::TimeSeries { legend } = query_archetype(
             ctx.store_context.blueprint.store(),
             ctx.blueprint_query,
-            &_query.space_view_id.as_entity_path(),
+            &query.space_view_id.as_entity_path(),
         )
         .and_then(|arch| arch.to_archetype())
         .unwrap_or_default();
@@ -201,6 +231,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let timeline_name = timeline.name().to_string();
 
         let time_series = system_output.view_systems.get::<TimeSeriesSystem>()?;
+
+        let aggregator = time_series.aggregator;
+        let aggregation_factor = time_series.aggregation_factor;
 
         // Get the minimum time/X value for the entire plot…
         let min_time = time_series.min_time.unwrap_or(0);
@@ -222,6 +255,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
+            .id(crate::plot_id(query.space_view_id))
             .allow_zoom([true, zoom_both_axis])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
@@ -232,17 +266,26 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             })
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
+                let label = time_type.format(
+                    (value.x as i64 + time_offset).into(),
+                    time_zone_for_timestamps
+                );
+
                 let is_integer = value.y.round() == value.y;
                 let decimals = if is_integer { 0 } else { 5 };
-                format!(
-                    "{timeline_name}: {}\n{name}: {:.*}",
-                    time_type.format(
-                        (value.x as i64 + time_offset).into(),
-                        time_zone_for_timestamps
-                    ),
-                    decimals,
-                    value.y,
-                )
+
+                let agg_range_is_integer = aggregation_factor.round() == aggregation_factor;
+                let agg_range_decimals = if agg_range_is_integer { 0 } else { 5 };
+
+                if aggregator == TimeSeriesAggregator::Off || aggregation_factor <= 1.0 {
+                    format!("{timeline_name}: {label}\n{name}: {:.decimals$}", value.y)
+                } else {
+                    format!(
+                        "{timeline_name}: {label}\n{name}: {:.decimals$}\n\
+                         Y value aggregated using {aggregator} over {aggregation_factor:.agg_range_decimals$} X increments",
+                        value.y,
+                    )
+                }
             });
 
         if legend.visible {
