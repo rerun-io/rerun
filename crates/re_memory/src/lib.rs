@@ -20,7 +20,7 @@
 //! ### Checking memory use
 //! Use [`MemoryUse::capture`] to get the current memory use of your application.
 //!
-//! ### Finding meory leaks
+//! ### Finding memory leaks
 //! Turn on memory tracking at the top of your `main()` function:
 //!
 //! ```rs
