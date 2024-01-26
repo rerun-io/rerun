@@ -1,5 +1,25 @@
 //! Helpers for drag and drop support. Works well in combination with [`crate::list_item::ListItem`].
 
+/// Context information related to a candidate drop target, used by [`find_drop_target`] to compute the [`DropTarget`],
+/// if any.
+pub struct DropItemDescription<ItemId: Copy> {
+    /// ID of the item being hovered during drag
+    pub id: ItemId,
+
+    /// Can this item "contain" the currently dragged item?
+    pub is_container: bool,
+
+    /// ID of the parent if this item.
+    pub parent_id: ItemId,
+
+    /// Position of this item within its parent.
+    pub position_index_in_parent: usize,
+
+    /// ID of the container just before this item within the parent, if such a container exists.
+    pub previous_container_id: Option<ItemId>,
+}
+
+/// Drop target information, including where to draw the drop indicator and where to insert the dragged item.
 #[derive(Clone, Debug)]
 pub struct DropTarget<ItemId: Copy> {
     /// Range of X coordinates for the drag target indicator
@@ -29,23 +49,6 @@ impl<ItemId: Copy> DropTarget<ItemId> {
             target_position_index,
         }
     }
-}
-
-pub struct DropItemDescription<ItemId: Copy> {
-    /// ID of the item being hovered during drag
-    pub id: ItemId,
-
-    /// Can this item "contain" the currently dragged item?
-    pub is_container: bool,
-
-    /// ID of the parent if this item.
-    pub parent_id: ItemId,
-
-    /// Position of this item within its parent.
-    pub position_index_in_parent: usize,
-
-    /// ID of the container just before this item within the parent, if such a container exists.
-    pub previous_container_id: Option<ItemId>,
 }
 
 /// Compute the geometry of the drag cursor and where the dragged item should be inserted.
