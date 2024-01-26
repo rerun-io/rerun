@@ -460,6 +460,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         contents_tile_id,
                         target_container_tile_id,
                         target_position_in_container,
+                        true,
                     );
                     self.tree_edited = true;
                 }

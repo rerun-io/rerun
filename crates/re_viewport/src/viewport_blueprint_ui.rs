@@ -553,10 +553,15 @@ impl Viewport<'_, '_> {
         // find the item being dragged
         //
 
-        let Some(dragged_item_id) = ui.memory(|mem| {
-            self.blueprint
-                .find_contents_by(&|contents| mem.is_being_dragged(contents.as_drag_id()))
-        }) else {
+        let Some(egui_dragged_id) = ui.memory(|mem| mem.dragged_id()) else {
+            // this shouldn't happen
+            return;
+        };
+
+        let Some(dragged_item_id) = self
+            .blueprint
+            .find_contents_by(&|contents| contents.as_drag_id() == egui_dragged_id)
+        else {
             // this shouldn't happen
             return;
         };
