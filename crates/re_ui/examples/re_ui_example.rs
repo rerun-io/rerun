@@ -699,7 +699,7 @@ mod drag_and_drop {
                 }
 
                 // Drag-and-drop of multiple items not (yet?) supported, so dragging resets selection to single item.
-                if response.decidedly_dragged() {
+                if response.drag_started() {
                     self.selected_items.clear();
                     self.selected_items.insert(*item_id);
 
@@ -732,6 +732,8 @@ mod drag_and_drop {
                             (2.0, egui::Color32::WHITE),
                         );
 
+                        // note: can't use `response.drag_released()` because we not the item which
+                        // started the drag
                         if ui.input(|i| i.pointer.any_released()) {
                             swap = Some((source_item_position_index, target));
                             egui::DragAndDrop::clear_payload(ui.ctx());
@@ -1113,33 +1115,23 @@ mod hierarchical_drag_and_drop {
             // handle drag
             //
 
-            if response.dragged() {
+            if response.drag_started() {
                 // Here, we support dragging a single item at a time, so we set the selection to the dragged item
                 // if/when we're dragging it proper.
                 self.send_command(Command::SetSelection(item_id));
+
+                egui::DragAndDrop::set_payload(ui.ctx(), item_id);
             }
 
             //
             // handle drop
             //
 
-            let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
-                && ui.input(|i| i.pointer.is_decidedly_dragging());
-
-            if !anything_being_decidedly_dragged {
-                // nothing to do
-                return;
-            }
-
             // find the item being dragged
-            // TODO(ab): `mem.dragged_id()` now exists but there is no easy way to get the value out of and egui::Id
-            let Some(dragged_item_id) = ui.memory(|mem| {
-                self.items
-                    .keys()
-                    .find(|item_id| mem.is_being_dragged((**item_id).into()))
-                    .copied()
-            }) else {
-                // this shouldn't happen
+            let Some(dragged_item_id) =
+                egui::DragAndDrop::payload(ui.ctx()).map(|payload| (*payload))
+            else {
+                // nothing is being dragged, we're done here
                 return;
             };
 
@@ -1188,7 +1180,8 @@ mod hierarchical_drag_and_drop {
                     (2.0, egui::Color32::WHITE),
                 );
 
-                // TODO(emilk/egui#3882): it would be nice to have a drag specific API for `ctx().drag_stopped()`.
+                // note: can't use `response.drag_released()` because we not the item which
+                // started the drag
                 if ui.input(|i| i.pointer.any_released()) {
                     self.send_command(Command::MoveItem {
                         moved_item_id: dragged_item_id,
