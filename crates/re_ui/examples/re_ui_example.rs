@@ -736,6 +736,7 @@ mod drag_and_drop {
                         // started the drag
                         if ui.input(|i| i.pointer.any_released()) {
                             swap = Some((source_item_position_index, target));
+
                             egui::DragAndDrop::clear_payload(ui.ctx());
                         }
                     }
@@ -1188,6 +1189,8 @@ mod hierarchical_drag_and_drop {
                         target_container_id: drop_target.target_parent_id,
                         target_position_index: drop_target.target_position_index,
                     });
+
+                    egui::DragAndDrop::clear_payload(ui.ctx());
                 } else {
                     self.send_command(Command::HighlightTargetContainer(
                         drop_target.target_parent_id,

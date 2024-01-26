@@ -533,43 +533,25 @@ impl Viewport<'_, '_> {
         body_response: Option<&egui::Response>,
     ) {
         //
-        // are we really dragging something? if so, set the appropriate cursor
-        //
-
-        let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
-            && ui.input(|i| i.pointer.is_decidedly_dragging());
-
-        if !anything_being_decidedly_dragged {
-            // nothing to do
-            return;
-        }
-
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
-
-        //
-        // force single-selection on drag-and-drop
+        // initiate drag and force single-selection
         //
 
         if response.drag_started() {
             ctx.selection_state().set_selection(contents.as_item());
+            egui::DragAndDrop::set_payload(ui.ctx(), contents);
         }
 
         //
-        // find the item being dragged
+        // check if a drag is in progress and set the cursor accordingly
         //
 
-        let Some(egui_dragged_id) = ui.memory(|mem| mem.dragged_id()) else {
-            // this shouldn't happen
+        let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| *payload)
+        else {
+            // nothing is being dragged, so nothing to do
             return;
         };
 
-        let Some(dragged_item_id) = self
-            .blueprint
-            .find_contents_by(&|contents| contents.as_drag_id() == egui_dragged_id)
-        else {
-            // this shouldn't happen
-            return;
-        };
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
 
         //
         // find our parent, our position within parent, and the previous container (if any)
@@ -619,35 +601,16 @@ impl Viewport<'_, '_> {
 
     fn handle_empty_space_drag_and_drop_interaction(&self, ui: &egui::Ui, empty_space: egui::Rect) {
         //
-        // are we really dragging something? if so, set the appropriate cursor
+        // check if a drag is in progress and set the cursor accordingly
         //
 
-        let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
-            && ui.input(|i| i.pointer.is_decidedly_dragging());
-
-        if !anything_being_decidedly_dragged {
-            // nothing to do
+        let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| *payload)
+        else {
+            // nothing is being dragged, so nothing to do
             return;
-        }
+        };
 
         ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
-
-        //
-        // find the item being dragged
-        //
-
-        let Some(egui_dragged_id) = ui.memory(|mem| mem.dragged_id()) else {
-            // this shouldn't happen
-            return;
-        };
-
-        let Some(dragged_item_id) = self
-            .blueprint
-            .find_contents_by(&|contents| contents.as_drag_id() == egui_dragged_id)
-        else {
-            // this shouldn't happen
-            return;
-        };
 
         //
         // prepare a drop target corresponding to "insert last in root container"
@@ -706,6 +669,8 @@ impl Viewport<'_, '_> {
                 target_container_id,
                 drop_target.target_position_index,
             );
+
+            egui::DragAndDrop::clear_payload(ui.ctx());
         } else {
             self.blueprint.set_drop_target(&target_container_id);
         }
