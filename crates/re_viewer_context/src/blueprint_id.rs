@@ -179,18 +179,6 @@ define_blueprint_id_type!(SpaceViewId, SpaceViewIdRegistry, "space_view");
 define_blueprint_id_type!(DataQueryId, DataQueryIdRegistry, "data_query");
 define_blueprint_id_type!(ContainerId, ContainerIdRegistry, "container");
 
-impl ContainerId {
-    pub fn as_drag_id(&self) -> egui::Id {
-        egui::Id::new("container_id").with(self.id)
-    }
-}
-
-impl SpaceViewId {
-    pub fn as_drag_id(&self) -> egui::Id {
-        egui::Id::new("space_view_id").with(self.id)
-    }
-}
-
 // ----------------------------------------------------------------------------
 // Tests
 #[cfg(test)]

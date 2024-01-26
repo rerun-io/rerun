@@ -47,17 +47,6 @@ impl Contents {
         }
     }
 
-    /// Convert to drag id.
-    ///
-    /// Drag ids are used to track items during drag-and-drop operations.
-    #[inline]
-    pub fn as_drag_id(&self) -> egui::Id {
-        match self {
-            Contents::Container(id) => id.as_drag_id(),
-            Contents::SpaceView(id) => id.as_drag_id(),
-        }
-    }
-
     #[inline]
     pub fn as_item(&self) -> Item {
         match self {
