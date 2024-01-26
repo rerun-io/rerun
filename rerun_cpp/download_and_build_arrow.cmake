@@ -83,11 +83,11 @@ function(download_and_build_arrow)
         -DARROW_BOOST_USE_SHARED=OFF
         -DARROW_BUILD_SHARED=${ARROW_BUILD_SHARED}
         -DARROW_BUILD_STATIC=${ARROW_BUILD_STATIC}
-        -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
+        -DARROW_CXXFLAGS=${ARROW_CXXFLAGS}
         -DARROW_IPC=OFF
         -DARROW_JEMALLOC=OFF # We encountered some build issues with jemalloc, use mimalloc instead.
         -DARROW_MIMALLOC=ON
-        -DARROW_USE_ASAN=${RERUN_USE_ASAN}
+        -DARROW_USE_ASAN=${ARROW_ASAN}
         -DARROW_USE_TSAN=OFF
         -DARROW_USE_UBSAN=OFF
         -DBOOST_SOURCE=BUNDLED
