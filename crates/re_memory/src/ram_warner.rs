@@ -23,6 +23,9 @@ pub fn total_ram_in_bytes() -> u64 {
 
 // ----------------------------------------------------------------------------
 
+/// Helper to warn if we are using too much RAM.
+///
+/// You need to call [`RamLimitWarner::update`] regularly.
 pub struct RamLimitWarner {
     total_ram_in_bytes: u64,
     warn_limit: u64,

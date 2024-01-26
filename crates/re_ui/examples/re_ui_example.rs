@@ -702,7 +702,7 @@ mod drag_and_drop {
                 }
 
                 // Drag-and-drop of multiple items not (yet?) supported, so dragging resets selection to single item.
-                if response.decidedly_dragged() {
+                if response.dragged() {
                     self.selected_items.clear();
                     self.selected_items.insert(*item_id);
                 }
@@ -1122,7 +1122,7 @@ mod hierarchical_drag_and_drop {
             // handle drag
             //
 
-            if response.decidedly_dragged() {
+            if response.dragged() {
                 // Here, we support dragging a single item at a time, so we set the selection to the dragged item
                 // if/when we're dragging it proper.
                 self.send_command(Command::SetSelection(item_id));

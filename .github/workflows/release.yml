@@ -88,10 +88,9 @@ jobs:
         run: |
           python3 -m pip install -r ./scripts/ci/requirements-crates.txt
 
-      - name: Install taplo-cli
-        uses: taiki-e/install-action@v2
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          tool: taplo-cli
+          pixi-version: v0.6.0
 
       - name: Update crate versions
         id: versioning
@@ -147,7 +146,7 @@ jobs:
         run: |
           cmake -B build -S .
 
-      - run: taplo fmt
+      - run: pixi run toml-fmt
         shell: bash
 
       - name: Commit new version
@@ -389,11 +388,6 @@ jobs:
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
 
-      - name: Install taplo-cli
-        uses: taiki-e/install-action@v2
-        with:
-          tool: taplo-cli
-
       - name: Update version
         id: update-version
         shell: bash
@@ -401,7 +395,11 @@ jobs:
           python3 scripts/ci/crates.py version --bump auto
           echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
-      - run: taplo fmt
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.6.0
+
+      - run: pixi run toml-fmt
         shell: bash
 
       - name: Commit new version
