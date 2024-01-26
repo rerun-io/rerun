@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
 
 use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
@@ -203,15 +204,7 @@ pub struct DataStore {
     /// so that they can be properly deduplicated on insertion.
     pub(crate) cluster_cell_cache: ClusterCellCache,
 
-    /// All temporal [`IndexedTable`]s for all entities on all timelines.
-    ///
-    /// See also [`Self::timeless_tables`].
-    pub(crate) tables: BTreeMap<(EntityPathHash, Timeline), IndexedTable>,
-
-    /// All timeless indexed tables for all entities. Never garbage collected.
-    ///
-    /// See also [`Self::tables`].
-    pub(crate) timeless_tables: IntMap<EntityPathHash, PersistentIndexedTable>,
+    pub(crate) tables: IntMap<EntityPathHash, Arc<RwLock<Tables>>>,
 
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
@@ -226,6 +219,19 @@ pub struct DataStore {
     pub(crate) event_id: AtomicU64,
 }
 
+#[derive(Clone)]
+struct Tables {
+    /// All temporal [`IndexedTable`]s for all entities on all timelines.
+    ///
+    /// See also [`Self::timeless_tables`].
+    pub(crate) tables: BTreeMap<Timeline, IndexedTable>,
+
+    /// All timeless indexed tables for all entities. Never garbage collected.
+    ///
+    /// See also [`Self::tables`].
+    pub(crate) timeless_tables: PersistentIndexedTable,
+}
+
 impl Clone for DataStore {
     fn clone(&self) -> Self {
         Self {
@@ -236,7 +242,6 @@ impl Clone for DataStore {
             metadata_registry: self.metadata_registry.clone(),
             cluster_cell_cache: self.cluster_cell_cache.clone(),
             tables: self.tables.clone(),
-            timeless_tables: self.timeless_tables.clone(),
             insert_id: Default::default(),
             query_id: Default::default(),
             gc_id: Default::default(),
@@ -256,7 +261,6 @@ impl DataStore {
             type_registry: Default::default(),
             metadata_registry: Default::default(),
             tables: Default::default(),
-            timeless_tables: Default::default(),
             insert_id: 0,
             query_id: AtomicU64::new(0),
             gc_id: 0,
@@ -312,13 +316,15 @@ impl DataStore {
 
         let mut oldest_time_per_timeline = BTreeMap::default();
 
-        for index in self.tables.values() {
-            if let Some(bucket) = index.buckets.values().next() {
-                let entry = oldest_time_per_timeline
-                    .entry(bucket.timeline)
-                    .or_insert(TimeInt::MAX);
-                if let Some(time) = bucket.inner.read().col_time.front() {
-                    *entry = TimeInt::min(*entry, (*time).into());
+        for tables in self.tables.values() {
+            for index in tables.read().tables.values() {
+                if let Some(bucket) = index.buckets.values().next() {
+                    let entry = oldest_time_per_timeline
+                        .entry(bucket.timeline)
+                        .or_insert(TimeInt::MAX);
+                    if let Some(time) = bucket.inner.read().col_time.front() {
+                        *entry = TimeInt::min(*entry, (*time).into());
+                    }
                 }
             }
         }
@@ -332,9 +338,11 @@ impl DataStore {
     pub fn iter_indices(
         &self,
     ) -> impl ExactSizeIterator<Item = ((EntityPath, Timeline), &IndexedTable)> {
-        self.tables.iter().map(|((_, timeline), table)| {
-            ((table.ent_path.clone() /* shallow */, *timeline), table)
-        })
+        // TODO
+        std::iter::empty()
+        // self.tables.iter().map(|((_, timeline), table)| {
+        //     ((table.ent_path.clone() /* shallow */, *timeline), table)
+        // })
     }
 }
 
