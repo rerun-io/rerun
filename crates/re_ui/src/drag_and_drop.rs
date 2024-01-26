@@ -16,7 +16,7 @@ pub struct DropTarget<ItemId: Copy> {
 }
 
 impl<ItemId: Copy> DropTarget<ItemId> {
-    fn new(
+    pub fn new(
         indicator_span_x: egui::Rangef,
         indicator_position_y: f32,
         target_parent_id: ItemId,
