@@ -34,13 +34,15 @@ int main(int argc, char** argv) {
       // Rerun
       ("spawn", "Start a new Rerun Viewer process and feed it data in real-time")
       ("connect", "Connects and sends the logged data to a remote Rerun viewer")
+      ("save", "Log data to an rrd file", cxxopts::value<std::string>())
       ("stdout", "Log data to standard output, to be piped into a Rerun Viewer")
       // Dashboard
       ("num-plots", "How many different plots?", cxxopts::value<uint64_t>()->default_value("1"))
       ("num-series-per-plot", "How many series in each single plot?", cxxopts::value<uint64_t>()->default_value("1"))
       ("num-points-per-series", "How many points in each single series?", cxxopts::value<uint64_t>()->default_value("100000"))
       ("freq", "Frequency of logging (applies to all series)", cxxopts::value<double>()->default_value("1000.0"))
-    ("order", "What order to log the data in ('forwards', 'backwards', 'random') (applies to all series)", cxxopts::value<std::string>()->default_value("forwards"))
+    ("order", "What order to log the data in ('forwards', 'backwards', 'random') (applies to all series).", cxxopts::value<std::string>()->default_value("forwards"))
+    ("series-type", "The method used to generate time series ('gaussian-random-walk', 'sin-uniform').", cxxopts::value<std::string>()->default_value("gaussian-random-walk"))
     ;
     // clang-format on
 
@@ -58,6 +60,8 @@ int main(int argc, char** argv) {
         rec.connect().exit_on_failure();
     } else if (args["stdout"].as<bool>()) {
         rec.to_stdout().exit_on_failure();
+    } else if (args.count("save")) {
+        rec.save(args["save"].as<std::string>()).exit_on_failure();
     } else {
         rec.spawn().exit_on_failure();
     }
@@ -86,24 +90,47 @@ int main(int argc, char** argv) {
 
     std::random_device rd;
     std::mt19937 rng(rd());
-    std::uniform_real_distribution<double> uniform_pi(0.0, rerun::demo::PI);
+    std::uniform_real_distribution<double> distr_uniform_pi(0.0, rerun::demo::PI);
+    std::normal_distribution<double> distr_std_normal;
 
-    std::vector<int64_t> sim_times;
+    std::vector<double> sim_times;
     const auto order = args["order"].as<std::string>();
+    const auto series_type = args["series-type"].as<std::string>();
 
     if (order == "forwards") {
         for (int64_t i = 0; i < static_cast<int64_t>(num_points_per_series); ++i) {
-            sim_times.push_back(i);
+            sim_times.push_back(static_cast<double>(i) * time_per_tick);
         }
     } else if (order == "backwards") {
         for (int64_t i = static_cast<int64_t>(num_points_per_series); i > 0; --i) {
-            sim_times.push_back(i - 1);
+            sim_times.push_back(static_cast<double>(i - 1) * time_per_tick);
         }
     } else if (order == "random") {
         for (int64_t i = 0; i < static_cast<int64_t>(num_points_per_series); ++i) {
-            sim_times.push_back(i);
+            sim_times.push_back(static_cast<double>(i) * time_per_tick);
         }
         std::shuffle(sim_times.begin(), sim_times.end(), rng);
+    }
+
+    std::vector<std::vector<double>> values_per_series;
+    for (uint64_t series_idx = 0; series_idx < num_series; ++series_idx) {
+        std::vector<double> values;
+
+        double value = 0.0;
+        for (uint64_t i = 0; i < num_points_per_series; ++i) {
+            if (series_type == "gaussian-random-walk") {
+                value += distr_std_normal(rng);
+            } else if (series_type == "sin-uniform") {
+                value = distr_uniform_pi(rng);
+            } else {
+                // Just generate random numbers rather than crash
+                value = distr_std_normal(rng);
+            }
+
+            values.push_back(value);
+        }
+
+        values_per_series.push_back(values);
     }
 
     uint64_t total_num_scalars = 0;
@@ -112,17 +139,24 @@ int main(int argc, char** argv) {
 
     auto tick_start_time = std::chrono::high_resolution_clock::now();
 
+    size_t time_step = 0;
     for (auto sim_time : sim_times) {
-        rec.set_time_sequence("sim_time", sim_time);
+        rec.set_time_seconds("sim_time", sim_time);
 
         // Log
 
+        size_t plot_idx = 0;
         for (auto plot_path : plot_paths) {
+            auto global_plot_idx = plot_idx * num_series_per_plot;
+            size_t series_idx = 0;
             for (auto series_path : series_paths) {
-                double value = std::sin(uniform_pi(rng));
+                double value = values_per_series[global_plot_idx + series_idx][time_step];
                 rec.log(plot_path + "/" + series_path, rerun::TimeSeriesScalar(value));
+                ++series_idx;
             }
+            ++plot_idx;
         }
+        ++time_step;
 
         // Progress report
 
