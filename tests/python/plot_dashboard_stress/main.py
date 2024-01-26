@@ -38,13 +38,18 @@ order = [
     "random",
 ]
 parser.add_argument(
-    "--order", type=str, default="forwards", help="What order to log the data in (applies to all series)", choices=order
+    "--order", type=str, default=order[0], help="What order to log the data in (applies to all series)", choices=order
 )
+
+series_type = [
+    "gaussian-random-walk",
+    "sin-uniform",
+]
 parser.add_argument(
-    "--series_type",
+    "--series-type",
     type=str,
-    default="gaussian_random_walk",
-    choices=("gaussian_random_walk", "sin_uniform"),
+    default=series_type[0],
+    choices=series_type,
     help="The method used to generate time series",
 )
 
@@ -84,9 +89,9 @@ def main() -> None:
         len(plot_paths),
         len(series_paths),
     )
-    if args.series_type == "gaussian_random_walk":
+    if args.series_type == "gaussian-random-walk":
         values = np.cumsum(np.random.normal(size=values_shape), axis=0)
-    elif args.series_type == "sin_uniform":
+    elif args.series_type == "sin-uniform":
         values = np.sin(np.random.uniform(0, math.pi, size=values_shape))
     else:
         # Just generate random numbers rather than crash
@@ -94,7 +99,9 @@ def main() -> None:
 
     for time_step, sim_time in enumerate(sim_times):
         rr.set_time_seconds("sim_time", sim_time)
+
         # Log
+
         for plot_idx, plot_path in enumerate(plot_paths):
             for series_idx, series_path in enumerate(series_paths):
                 value = values[time_step, plot_idx, series_idx]
