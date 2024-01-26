@@ -100,7 +100,7 @@ impl Viewport<'_, '_> {
         )
         .subdued(!container_visible)
         .selected(ctx.selection().contains_item(&item))
-        .draggable(container_id.as_drag_id())
+        .draggable(true)
         .drop_target_style(self.state.is_drop_target(container_id))
         .with_icon(crate::icon_for_container_kind(
             &container_blueprint.container_kind,
@@ -189,7 +189,7 @@ impl Viewport<'_, '_> {
             .label_style(space_view_name.style())
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .selected(ctx.selection().contains_item(&item))
-            .draggable(space_view_id.as_drag_id())
+            .draggable(true)
             .subdued(!space_view_visible)
             .force_hovered(is_item_hovered)
             .with_buttons(|re_ui, ui| {

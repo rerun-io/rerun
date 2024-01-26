@@ -666,21 +666,18 @@ mod drag_and_drop {
 
     impl ExampleDragAndDrop {
         pub fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
-            let mut source_item_position_index = None;
-            let mut target_item_position_index = None;
+            let mut swap: Option<(usize, usize)> = None;
 
             for (i, item_id) in self.items.iter().enumerate() {
                 //
                 // Draw the item
                 //
 
-                let id = egui::Id::new("drag_demo").with(*item_id);
-
                 let label = format!("Item {}", item_id.0);
                 let response = re_ui
                     .list_item(label.as_str())
                     .selected(self.selected_items.contains(item_id))
-                    .draggable(id)
+                    .draggable(true)
                     .show(ui);
 
                 //
@@ -702,24 +699,20 @@ mod drag_and_drop {
                 }
 
                 // Drag-and-drop of multiple items not (yet?) supported, so dragging resets selection to single item.
-                if response.dragged() {
+                if response.decidedly_dragged() {
                     self.selected_items.clear();
                     self.selected_items.insert(*item_id);
+
+                    response.dnd_set_drag_payload(i);
                 }
 
                 //
-                // Detect end-of-drag situation and prepare the swap command.
+                // Detect drag situation and run the swap if it ends.
                 //
 
-                if response.dragged() || response.drag_released() {
-                    source_item_position_index = Some(i);
-                }
+                let source_item_position_index = egui::DragAndDrop::payload(ui.ctx()).map(|i| *i);
 
-                // TODO(emilk/egui#3882): this feels like a common enough pattern that is should deserve its own API.
-                let anything_being_decidedly_dragged = ui
-                    .memory(|mem| mem.is_anything_being_dragged())
-                    && ui.input(|i| i.pointer.is_decidedly_dragging());
-                if anything_being_decidedly_dragged {
+                if let Some(source_item_position_index) = source_item_position_index {
                     ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
 
                     let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
@@ -732,16 +725,16 @@ mod drag_and_drop {
                         (None, None)
                     };
 
-                    if let Some(insert_y) = insert_y {
+                    if let (Some(insert_y), Some(target)) = (insert_y, target) {
                         ui.painter().hline(
                             ui.cursor().x_range(),
                             insert_y,
                             (2.0, egui::Color32::WHITE),
                         );
 
-                        // TODO(emilk/egui#3882): it would be nice to have a drag specific API for that
                         if ui.input(|i| i.pointer.any_released()) {
-                            target_item_position_index = target;
+                            swap = Some((source_item_position_index, target));
+                            egui::DragAndDrop::clear_payload(ui.ctx());
                         }
                     }
                 }
@@ -751,9 +744,7 @@ mod drag_and_drop {
             // Handle the swap command (if any)
             //
 
-            if let (Some(source), Some(target)) =
-                (source_item_position_index, target_item_position_index)
-            {
+            if let Some((source, target)) = swap {
                 if source != target {
                     let item = self.items.remove(source);
 
@@ -1054,7 +1045,7 @@ mod hierarchical_drag_and_drop {
                 .list_item(format!("Container {item_id:?}"))
                 .subdued(true)
                 .selected(self.selected(item_id))
-                .draggable(item_id.into())
+                .draggable(true)
                 .drop_target_style(self.target_container == Some(item_id))
                 .show_collapsing(ui, item_id.into(), true, |re_ui, ui| {
                     self.container_children_ui(re_ui, ui, children);
@@ -1092,7 +1083,7 @@ mod hierarchical_drag_and_drop {
             let response = re_ui
                 .list_item(label)
                 .selected(self.selected(item_id))
-                .draggable(item_id.into())
+                .draggable(true)
                 .show(ui);
 
             self.handle_interaction(ui, item_id, false, &response, None);
