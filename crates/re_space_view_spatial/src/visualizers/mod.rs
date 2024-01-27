@@ -130,7 +130,7 @@ pub fn process_color_slice<'a>(
     default_len: usize,
     ent_path: &'a EntityPath,
     annotation_infos: &'a ResolvedAnnotationInfos,
-) -> impl Iterator<Item = egui::Color32> + 'a {
+) -> Vec<egui::Color32> {
     re_tracing::profile_function!();
     let default_color = DefaultColor::EntityPath(ent_path);
 
@@ -139,9 +139,11 @@ pub fn process_color_slice<'a>(
         |data| itertools::Either::Right(data.iter()),
     );
 
-    itertools::izip!(annotation_infos.iter(), colors).map(move |(annotation_info, color)| {
-        annotation_info.color(color.map(|c| c.to_array()), default_color)
-    })
+    itertools::izip!(annotation_infos.iter(), colors)
+        .map(move |(annotation_info, color)| {
+            annotation_info.color(color.map(|c| c.to_array()), default_color)
+        })
+        .collect()
 }
 
 /// Process [`Text`] components using annotations.

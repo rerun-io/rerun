@@ -139,8 +139,7 @@ impl Points3DVisualizer {
                 data.positions.len(),
                 ent_path,
                 &annotation_infos,
-            )
-            .collect::<Vec<_>>();
+            );
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
@@ -341,17 +340,7 @@ impl LoadedPoints {
         ent_path: &EntityPath,
         annotation_infos: &ResolvedAnnotationInfos,
     ) -> Vec<re_renderer::Color32> {
-        re_tracing::profile_function!();
-        let colors = crate::visualizers::process_color_slice(
-            colors,
-            positions.len(),
-            ent_path,
-            annotation_infos,
-        );
-        {
-            re_tracing::profile_scope!("collect");
-            colors.collect()
-        }
+        crate::visualizers::process_color_slice(colors, positions.len(), ent_path, annotation_infos)
     }
 
     #[inline]
