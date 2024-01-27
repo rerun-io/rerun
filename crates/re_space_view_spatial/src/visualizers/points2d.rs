@@ -143,12 +143,7 @@ impl Points2DVisualizer {
             re_tracing::profile_scope!("labels");
 
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors = process_color_slice(
-                data.colors,
-                data.positions.len(),
-                ent_path,
-                &annotation_infos,
-            );
+            let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
@@ -199,13 +194,11 @@ impl Points2DVisualizer {
 
     #[inline]
     pub fn load_colors(
-        &Points2DComponentData {
-            positions, colors, ..
-        }: &Points2DComponentData<'_>,
+        &Points2DComponentData { colors, .. }: &Points2DComponentData<'_>,
         ent_path: &EntityPath,
         annotation_infos: &ResolvedAnnotationInfos,
     ) -> Vec<re_renderer::Color32> {
-        crate::visualizers::process_color_slice(colors, positions.len(), ent_path, annotation_infos)
+        crate::visualizers::process_color_slice(colors, ent_path, annotation_infos)
     }
 
     #[inline]

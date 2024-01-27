@@ -127,23 +127,45 @@ pub fn process_colors<'a, A: Archetype>(
 /// Process [`Color`] components using annotations and default colors.
 pub fn process_color_slice<'a>(
     colors: Option<&'a [Option<Color>]>,
-    default_len: usize,
     ent_path: &'a EntityPath,
     annotation_infos: &'a ResolvedAnnotationInfos,
 ) -> Vec<egui::Color32> {
     re_tracing::profile_function!();
     let default_color = DefaultColor::EntityPath(ent_path);
 
-    let colors = colors.as_ref().map_or(
-        itertools::Either::Left(std::iter::repeat(&None).take(default_len)),
-        |data| itertools::Either::Right(data.iter()),
-    );
+    match (colors, annotation_infos) {
+        (None, ResolvedAnnotationInfos::Same(count, annotation_info)) => {
+            re_tracing::profile_scope!("no colors, same annotation");
+            let color = annotation_info.color(None, default_color);
+            vec![color; *count]
+        }
 
-    itertools::izip!(annotation_infos.iter(), colors)
-        .map(move |(annotation_info, color)| {
-            annotation_info.color(color.map(|c| c.to_array()), default_color)
-        })
-        .collect()
+        (None, ResolvedAnnotationInfos::Many(annotation_infos)) => {
+            re_tracing::profile_scope!("no-colors, many annotations");
+            annotation_infos
+                .iter()
+                .map(|annotation_info| annotation_info.color(None, default_color))
+                .collect()
+        }
+
+        (Some(colors), ResolvedAnnotationInfos::Same(count, annotation_info)) => {
+            re_tracing::profile_scope!("many-colors, same annotation");
+            debug_assert_eq!(colors.len(), *count);
+            colors
+                .iter()
+                .map(|color| annotation_info.color(color.map(|c| c.to_array()), default_color))
+                .collect()
+        }
+
+        (Some(colors), ResolvedAnnotationInfos::Many(annotation_infos)) => {
+            re_tracing::profile_scope!("many-colors, many annotations");
+            itertools::izip!(annotation_infos.iter(), colors)
+                .map(move |(annotation_info, color)| {
+                    annotation_info.color(color.map(|c| c.to_array()), default_color)
+                })
+                .collect()
+        }
+    }
 }
 
 /// Process [`Text`] components using annotations.
