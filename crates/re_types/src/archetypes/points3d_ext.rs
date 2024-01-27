@@ -1,5 +1,10 @@
 use std::collections::BTreeSet;
 
+use crate::{
+    components::{HalfSizes3D, Rotation3D},
+    datatypes::Quaternion,
+};
+
 use super::Points3D;
 
 impl Points3D {
@@ -125,6 +130,8 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
         color: Option<Color>,
         radius: Option<Radius>,
         label: Option<Text>,
+        scale: Option<HalfSizes3D>,
+        rotation: Option<Rotation3D>,
     }
 
     // TODO(cmc): This could be optimized by using custom property accessors.
@@ -143,6 +150,19 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
             const PROP_ALPHA: &str = "alpha";
             const PROP_RADIUS: &str = "radius";
             const PROP_LABEL: &str = "label";
+
+            // Gaussian splatting using models from e.g. https://poly.cam/tools/gaussian-splatting
+            const PROPS_SCALE_X: &str = "scale_0";
+            const PROPS_SCALE_Y: &str = "scale_1";
+            const PROPS_SCALE_Z: &str = "scale_2";
+            const PROPS_QUAT_W: &str = "rot_0";
+            const PROPS_QUAT_X: &str = "rot_1";
+            const PROPS_QUAT_Y: &str = "rot_2";
+            const PROPS_QUAT_Z: &str = "rot_3";
+            const PROPS_SH_DC_0: &str = "f_dc_0";
+            const PROPS_SH_DC_1: &str = "f_dc_1";
+            const PROPS_SH_DC_2: &str = "f_dc_2";
+            const PROP_OPACITY: &str = "opacity";
 
             let (Some(x), Some(y), Some(z)) = (
                 props.get(PROP_X).and_then(f32),
@@ -166,6 +186,8 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
                 color: None,
                 radius: None,
                 label: None,
+                scale: None,
+                rotation: None,
             };
 
             if let (Some(r), Some(g), Some(b)) = (
@@ -183,6 +205,63 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
                 this.color = Some(Color::new((r, g, b, a)));
             };
 
+            if let (Some(r_dc), Some(g_dc), Some(b_dc)) = (
+                props.get(PROPS_SH_DC_0).and_then(f32),
+                props.get(PROPS_SH_DC_1).and_then(f32),
+                props.get(PROPS_SH_DC_2).and_then(f32),
+            ) {
+                fn to_u8(f: f32) -> u8 {
+                    (f * 255.0 + 0.5) as u8
+                }
+
+                // See http://en.wikipedia.org/wiki/Table_of_spherical_harmonics
+                let sp_c0 = 0.5 * (1.0 / std::f32::consts::PI).sqrt();
+
+                // Evaluate the zero-degree Spherical Harmonic to get the ambient RGB:
+                let r = to_u8(0.5 + sp_c0 * r_dc);
+                let g = to_u8(0.5 + sp_c0 * g_dc);
+                let b = to_u8(0.5 + sp_c0 * b_dc);
+
+                // Convert opacity to alpha (if any):
+                let a = props
+                    .get(PROP_OPACITY)
+                    .and_then(f32)
+                    .map(|opacity| 1.0 / (1.0 + (-opacity).exp()));
+                let a = a.map_or(255, to_u8);
+
+                props.remove(PROPS_SH_DC_0);
+                props.remove(PROPS_SH_DC_1);
+                props.remove(PROPS_SH_DC_2);
+                props.remove(PROP_OPACITY);
+                this.color = Some(Color::new((r, g, b, a)));
+            }
+
+            if let (Some(x), Some(y), Some(z)) = (
+                props.get(PROPS_SCALE_X).and_then(f32),
+                props.get(PROPS_SCALE_Y).and_then(f32),
+                props.get(PROPS_SCALE_Z).and_then(f32),
+            ) {
+                props.remove(PROPS_SCALE_X);
+                props.remove(PROPS_SCALE_Y);
+                props.remove(PROPS_SCALE_Z);
+                this.scale = Some(HalfSizes3D::new(x.exp(), y.exp(), z.exp())); // Gaussian splatting files store the log scale.
+            }
+
+            if let (Some(x), Some(y), Some(z), Some(w)) = (
+                props.get(PROPS_QUAT_X).and_then(f32),
+                props.get(PROPS_QUAT_Y).and_then(f32),
+                props.get(PROPS_QUAT_Z).and_then(f32),
+                props.get(PROPS_QUAT_W).and_then(f32),
+            ) {
+                props.remove(PROPS_QUAT_X);
+                props.remove(PROPS_QUAT_Y);
+                props.remove(PROPS_QUAT_Z);
+                props.remove(PROPS_QUAT_W);
+                this.rotation = Some(Rotation3D::from(glam::Quat { x, y, z, w }.normalize()));
+            }
+
+            // rot_0…, scale_0, …
+
             if let Some(radius) = props.get(PROP_RADIUS).and_then(f32) {
                 props.remove(PROP_RADIUS);
                 this.radius = Some(Radius(radius));
@@ -194,7 +273,12 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
             }
 
             for (key, _value) in props {
-                ignored_props.insert(key);
+                if key.starts_with("f_rest_") {
+                    // f_rest_0, f_rest_1, f_rest_2, …
+                    ignored_props.insert("f_rest_*".to_owned());
+                } else {
+                    ignored_props.insert(key);
+                }
             }
 
             Some(this)
@@ -204,6 +288,8 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
     let mut positions = Vec::new();
     let mut colors = Vec::new();
     let mut radii = Vec::new();
+    let mut scales = Vec::new();
+    let mut rotations = Vec::new();
     let mut labels = Vec::new();
 
     let mut ignored_props = BTreeSet::new();
@@ -217,10 +303,14 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
                         color,
                         radius,
                         label,
+                        scale,
+                        rotation,
                     } = vertex;
                     positions.push(position);
                     colors.push(color); // opt
                     radii.push(radius); // opt
+                    scales.push(scale); // opt
+                    rotations.push(rotation); // opt
                     labels.push(label); // opt
                 }
             }
@@ -235,10 +325,6 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
 
     re_tracing::profile_scope!("fill-in");
 
-    colors.truncate(positions.len());
-    radii.truncate(positions.len());
-    labels.truncate(positions.len());
-
     let mut arch = crate::archetypes::Points3D::new(positions);
     if colors.iter().any(|opt| opt.is_some()) {
         // If some colors have been specified but not others, default the unspecified ones to white.
@@ -251,6 +337,18 @@ fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
         // If some radii have been specified but not others, default the unspecified ones to 1.0.
         let radii = radii.into_iter().map(|opt| opt.unwrap_or(Radius(1.0)));
         arch = arch.with_radii(radii);
+    }
+    if scales.iter().any(|opt| opt.is_some()) {
+        let scales = scales
+            .into_iter()
+            .map(|opt| opt.unwrap_or(HalfSizes3D::new(1.0, 1.0, 1.0)));
+        arch = arch.with_scales(scales);
+    }
+    if rotations.iter().any(|opt| opt.is_some()) {
+        let rotations = rotations
+            .into_iter()
+            .map(|opt| opt.unwrap_or(Rotation3D::from(Quaternion::IDENTITY)));
+        arch = arch.with_rotations(rotations);
     }
     if labels.iter().any(|opt| opt.is_some()) {
         // If some labels have been specified but not others, default the unspecified ones to "undef".
