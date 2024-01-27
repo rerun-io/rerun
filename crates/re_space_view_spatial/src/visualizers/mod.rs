@@ -130,7 +130,10 @@ pub fn process_color_slice<'a>(
     ent_path: &'a EntityPath,
     annotation_infos: &'a ResolvedAnnotationInfos,
 ) -> Vec<egui::Color32> {
+    // This can be rather slow for colors with transparency, since we need to pre-multiply the alpha.
     re_tracing::profile_function!();
+    use rayon::prelude::*;
+
     let default_color = DefaultColor::EntityPath(ent_path);
 
     match (colors, annotation_infos) {
@@ -143,7 +146,7 @@ pub fn process_color_slice<'a>(
         (None, ResolvedAnnotationInfos::Many(annotation_infos)) => {
             re_tracing::profile_scope!("no-colors, many annotations");
             annotation_infos
-                .iter()
+                .par_iter()
                 .map(|annotation_info| annotation_info.color(None, default_color))
                 .collect()
         }
@@ -152,15 +155,17 @@ pub fn process_color_slice<'a>(
             re_tracing::profile_scope!("many-colors, same annotation");
             debug_assert_eq!(colors.len(), *count);
             colors
-                .iter()
+                .par_iter()
                 .map(|color| annotation_info.color(color.map(|c| c.to_array()), default_color))
                 .collect()
         }
 
         (Some(colors), ResolvedAnnotationInfos::Many(annotation_infos)) => {
             re_tracing::profile_scope!("many-colors, many annotations");
-            itertools::izip!(annotation_infos.iter(), colors)
-                .map(move |(annotation_info, color)| {
+            colors
+                .par_iter()
+                .zip(annotation_infos.par_iter())
+                .map(move |(color, annotation_info)| {
                     annotation_info.color(color.map(|c| c.to_array()), default_color)
                 })
                 .collect()
