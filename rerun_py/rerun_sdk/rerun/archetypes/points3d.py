@@ -54,6 +54,8 @@ class Points3D(Points3DExt, Archetype):
             positions=None,  # type: ignore[arg-type]
             radii=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
+            scales=None,  # type: ignore[arg-type]
+            rotations=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
             keypoint_ids=None,  # type: ignore[arg-type]
@@ -93,6 +95,24 @@ class Points3D(Points3DExt, Archetype):
     #
     # The colors are interpreted as RGB or RGBA in sRGB gamma-space,
     # As either 0-1 floats or 0-255 integers, with separate alpha.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    scales: components.HalfSizes3DBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.HalfSizes3DBatch._optional,  # type: ignore[misc]
+    )
+    # Scale of points. Like `radii`, but 3D, allowing for ellipsoids / splats.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    rotations: components.Rotation3DBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.Rotation3DBatch._optional,  # type: ignore[misc]
+    )
+    # Rotations of point splats.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

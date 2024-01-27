@@ -67,6 +67,12 @@ pub struct Points3D {
     /// Optional colors for the points.
     pub colors: Option<Vec<crate::components::Color>>,
 
+    /// Scale of points. Like `radii`, but 3D, allowing for ellipsoids / splats.
+    pub scales: Option<Vec<crate::components::HalfSizes3D>>,
+
+    /// Rotations of point splats.
+    pub rotations: Option<Vec<crate::components::Rotation3D>>,
+
     /// Optional text labels for the points.
     pub labels: Option<Vec<crate::components::Text>>,
 
@@ -95,6 +101,8 @@ impl ::re_types_core::SizeBytes for Points3D {
         self.positions.heap_size_bytes()
             + self.radii.heap_size_bytes()
             + self.colors.heap_size_bytes()
+            + self.scales.heap_size_bytes()
+            + self.rotations.heap_size_bytes()
             + self.labels.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
             + self.keypoint_ids.heap_size_bytes()
@@ -106,6 +114,8 @@ impl ::re_types_core::SizeBytes for Points3D {
         <Vec<crate::components::Position3D>>::is_pod()
             && <Option<Vec<crate::components::Radius>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
+            && <Option<Vec<crate::components::HalfSizes3D>>>::is_pod()
+            && <Option<Vec<crate::components::Rotation3D>>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
             && <Option<Vec<crate::components::KeypointId>>>::is_pod()
@@ -125,17 +135,19 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
+            "rerun.components.HalfSizes3D".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.KeypointId".into(),
+            "rerun.components.Rotation3D".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
@@ -143,14 +155,16 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.components.Points3DIndicator".into(),
             "rerun.components.Radius".into(),
             "rerun.components.ClassId".into(),
+            "rerun.components.HalfSizes3D".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.KeypointId".into(),
+            "rerun.components.Rotation3D".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl Points3D {
-    pub const NUM_COMPONENTS: usize = 8usize;
+    pub const NUM_COMPONENTS: usize = 10usize;
 }
 
 /// Indicator component for the [`Points3D`] [`::re_types_core::Archetype`]
@@ -236,6 +250,30 @@ impl ::re_types_core::Archetype for Points3D {
         } else {
             None
         };
+        let scales = if let Some(array) = arrays_by_name.get("rerun.components.HalfSizes3D") {
+            Some({
+                <crate::components::HalfSizes3D>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points3D#scales")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points3D#scales")?
+            })
+        } else {
+            None
+        };
+        let rotations = if let Some(array) = arrays_by_name.get("rerun.components.Rotation3D") {
+            Some({
+                <crate::components::Rotation3D>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.Points3D#rotations")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.Points3D#rotations")?
+            })
+        } else {
+            None
+        };
         let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
             Some({
                 <crate::components::Text>::from_arrow_opt(&**array)
@@ -289,6 +327,8 @@ impl ::re_types_core::Archetype for Points3D {
             positions,
             radii,
             colors,
+            scales,
+            rotations,
             labels,
             class_ids,
             keypoint_ids,
@@ -308,6 +348,12 @@ impl ::re_types_core::AsComponents for Points3D {
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.colors
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.scales
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.rotations
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.labels
@@ -342,6 +388,8 @@ impl Points3D {
             positions: positions.into_iter().map(Into::into).collect(),
             radii: None,
             colors: None,
+            scales: None,
+            rotations: None,
             labels: None,
             class_ids: None,
             keypoint_ids: None,
@@ -364,6 +412,24 @@ impl Points3D {
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
         self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self
+    }
+
+    #[inline]
+    pub fn with_scales(
+        mut self,
+        scales: impl IntoIterator<Item = impl Into<crate::components::HalfSizes3D>>,
+    ) -> Self {
+        self.scales = Some(scales.into_iter().map(Into::into).collect());
+        self
+    }
+
+    #[inline]
+    pub fn with_rotations(
+        mut self,
+        rotations: impl IntoIterator<Item = impl Into<crate::components::Rotation3D>>,
+    ) -> Self {
+        self.rotations = Some(rotations.into_iter().map(Into::into).collect());
         self
     }
 

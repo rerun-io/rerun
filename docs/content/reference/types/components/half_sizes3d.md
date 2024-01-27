@@ -20,3 +20,4 @@ Negative sizes indicate that the box is flipped along the respective axis, but t
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
+* [`Points3D`](../archetypes/points3d.md)

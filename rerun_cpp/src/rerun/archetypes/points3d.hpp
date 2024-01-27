@@ -7,10 +7,12 @@
 #include "../compiler_utils.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
+#include "../components/half_sizes3d.hpp"
 #include "../components/instance_key.hpp"
 #include "../components/keypoint_id.hpp"
 #include "../components/position3d.hpp"
 #include "../components/radius.hpp"
+#include "../components/rotation3d.hpp"
 #include "../components/text.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
@@ -74,6 +76,12 @@ namespace rerun::archetypes {
         /// Optional colors for the points.
         std::optional<Collection<rerun::components::Color>> colors;
 
+        /// Scale of points. Like `radii`, but 3D, allowing for ellipsoids / splats.
+        std::optional<Collection<rerun::components::HalfSizes3D>> scales;
+
+        /// Rotations of point splats.
+        std::optional<Collection<rerun::components::Rotation3D>> rotations;
+
         /// Optional text labels for the points.
         std::optional<Collection<rerun::components::Text>> labels;
 
@@ -118,6 +126,20 @@ namespace rerun::archetypes {
         /// Optional colors for the points.
         Points3D with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Scale of points. Like `radii`, but 3D, allowing for ellipsoids / splats.
+        Points3D with_scales(Collection<rerun::components::HalfSizes3D> _scales) && {
+            scales = std::move(_scales);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Rotations of point splats.
+        Points3D with_rotations(Collection<rerun::components::Rotation3D> _rotations) && {
+            rotations = std::move(_rotations);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
