@@ -294,7 +294,7 @@ impl OrbitEye {
         }
 
         let (zoom_delta, scroll_delta) = if response.hovered() {
-            self.keyboard_navigation(&response.ctx);
+            did_interact |= self.keyboard_navigation(&response.ctx);
             response
                 .ctx
                 .input(|i| (i.zoom_delta(), i.smooth_scroll_delta.y))
@@ -328,15 +328,20 @@ impl OrbitEye {
     }
 
     /// Listen to WSAD and QE to move the eye.
-    fn keyboard_navigation(&mut self, egui_ctx: &egui::Context) {
+    ///
+    /// Returns `true` if we did anything.
+    fn keyboard_navigation(&mut self, egui_ctx: &egui::Context) -> bool {
         let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
         if anything_has_focus {
-            return; // e.g. we're typing in a TextField
+            return false; // e.g. we're typing in a TextField
         }
 
         let os = egui_ctx.os();
 
-        let requires_repaint = egui_ctx.input(|input| {
+        let mut did_interact = false;
+        let mut requires_repaint = false;
+
+        egui_ctx.input(|input| {
             let dt = input.stable_dt.at_most(0.1);
 
             // X=right, Y=up, Z=back
@@ -367,12 +372,17 @@ impl OrbitEye {
                 egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
             );
             self.orbit_center += self.velocity * dt;
-            local_movement != Vec3::ZERO || self.velocity.length() > 0.01 * speed
+
+            did_interact = local_movement != Vec3::ZERO;
+            requires_repaint =
+                local_movement != Vec3::ZERO || self.velocity.length() > 0.01 * speed;
         });
 
         if requires_repaint {
             egui_ctx.request_repaint();
         }
+
+        did_interact
     }
 
     /// Rotate based on a certain number of pixel delta.

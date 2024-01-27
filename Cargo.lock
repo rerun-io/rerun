@@ -4732,6 +4732,7 @@ dependencies = [
  "re_viewer_context",
  "serde",
  "smallvec",
+ "web-time",
 ]
 
 [[package]]

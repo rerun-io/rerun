@@ -1,6 +1,7 @@
 use egui::{emath::RectTransform, NumExt as _};
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
+use web_time::Instant;
 
 use re_log_types::EntityPath;
 use re_renderer::{
@@ -36,7 +37,10 @@ use super::eye::{Eye, OrbitEye};
 #[derive(Clone)]
 pub struct View3DState {
     pub orbit_eye: Option<OrbitEye>,
-    pub did_interact_with_eye: bool,
+
+    /// Used to show the orbit center of the eye-camera when the user interacts.
+    /// None: user has never interacted with the eye-camera.
+    pub last_eye_interaction: Option<Instant>,
 
     /// Currently tracked entity.
     ///
@@ -62,7 +66,7 @@ impl Default for View3DState {
     fn default() -> Self {
         Self {
             orbit_eye: Default::default(),
-            did_interact_with_eye: false,
+            last_eye_interaction: None,
             tracked_entity: None,
             camera_before_tracked_entity: None,
             eye_interpolation: Default::default(),
@@ -101,7 +105,7 @@ impl View3DState {
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
         // with scenes that grow over time.
-        if !self.did_interact_with_eye {
+        if self.last_eye_interaction.is_none() {
             self.interpolate_to_orbit_eye(default_eye(
                 &bounding_boxes.accumulated,
                 &view_coordinates,
@@ -179,7 +183,7 @@ impl View3DState {
             orbit_eye_drag_threshold,
             &bounding_boxes.accumulated,
         ) {
-            self.did_interact_with_eye = true;
+            self.last_eye_interaction = Some(Instant::now());
             self.eye_interpolation = None;
             self.tracked_entity = None;
             self.camera_before_tracked_entity = None;
@@ -304,8 +308,10 @@ impl View3DState {
     }
 
     pub fn set_spin(&mut self, spin: bool) {
-        self.spin = spin;
-        self.did_interact_with_eye = true;
+        if spin != self.spin {
+            self.spin = spin;
+            self.last_eye_interaction = Some(Instant::now());
+        }
     }
 }
 
@@ -547,7 +553,7 @@ pub fn view_3d(
             }
         };
         if let Some(entity_path) = focused_entity {
-            state.state_3d.did_interact_with_eye = true;
+            state.state_3d.last_eye_interaction = Some(Instant::now());
 
             // TODO(#4812): We currently only track cameras on double click since tracking arbitrary entities was deemed too surprising.
             if find_camera(space_cameras, entity_path).is_some() {
@@ -630,18 +636,21 @@ pub fn view_3d(
         let ui_time = ui.input(|i| i.time);
         let any_mouse_button_down = ui.input(|i| i.pointer.any_down());
 
-        // Don't show for merely scrolling.
-        // Scroll events from a mouse wheel often happen with some pause between meaning we either need a long delay for the center to show
-        // or live with the flickering.
-        let should_show_center_of_orbit_camera =
-            state.state_3d.did_interact_with_eye && any_mouse_button_down;
+        let should_show_center_of_orbit_camera = state
+            .state_3d
+            .last_eye_interaction
+            .map_or(false, |d| d.elapsed().as_secs_f32() < 0.35);
 
-        if should_show_center_of_orbit_camera && !state.state_3d.eye_interact_fade_in {
+        if !state.state_3d.eye_interact_fade_in && should_show_center_of_orbit_camera {
             // Any interaction immediately causes fade in to start if it's not already on.
             state.state_3d.eye_interact_fade_change_time = ui_time;
             state.state_3d.eye_interact_fade_in = true;
-        } else if state.state_3d.eye_interact_fade_in && !any_mouse_button_down {
-            // Fade out on the other hand only happens if no mouse cursor is pressed.
+        }
+        if state.state_3d.eye_interact_fade_in
+            && !should_show_center_of_orbit_camera
+            // Don't start fade-out while dragging, even if mouse is still
+            && !any_mouse_button_down
+        {
             state.state_3d.eye_interact_fade_change_time = ui_time;
             state.state_3d.eye_interact_fade_in = false;
         }

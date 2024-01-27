@@ -46,6 +46,7 @@ parking_lot.workspace = true
 rayon.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
+web-time.workspace = true
 
 
 [dev-dependencies]
