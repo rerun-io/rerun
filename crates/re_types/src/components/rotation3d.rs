@@ -22,7 +22,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 3D rotation, represented either by a quaternion or a rotation around axis.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 pub struct Rotation3D(
     /// Representation of the rotation.
     pub crate::datatypes::Rotation3D,

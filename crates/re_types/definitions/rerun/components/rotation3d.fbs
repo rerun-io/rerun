@@ -8,7 +8,7 @@ namespace rerun.components;
 
 /// A 3D rotation, represented either by a quaternion or a rotation around axis.
 table Rotation3D (
-  "attr.rust.derive": "PartialEq"
+  "attr.rust.derive": "Copy, PartialEq"
 ) {
   /// Representation of the rotation.
   repr: rerun.datatypes.Rotation3D (order: 100);
