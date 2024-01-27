@@ -137,8 +137,6 @@ impl<ItemId: Copy> DropTarget<ItemId> {
 /// - The bottom parts have the most difference between cases and need case-by-case handling.
 ///   In both leaf item cases, the entire bottom part maps to "insert after me", though.
 ///
-///
-///
 /// **Note**: in debug builds, press `Alt` to visualize the drag zones while dragging.
 pub fn find_drop_target<ItemId: Copy>(
     ui: &egui::Ui,
