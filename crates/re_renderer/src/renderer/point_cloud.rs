@@ -163,9 +163,11 @@ pub enum PointCloudDrawDataError {
 
 impl PointCloudDrawData {
     pub const COLOR_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-    pub const POSITION_DATA_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
     pub const PICKING_INSTANCE_ID_TEXTURE_FORMAT: wgpu::TextureFormat =
         wgpu::TextureFormat::Rg32Uint;
+    pub const POSITION_DATA_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
+    pub const ROTATION_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
+    pub const SCALE_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 
     /// Transforms and uploads point cloud data to be consumed by gpu.
     ///
@@ -245,7 +247,24 @@ impl PointCloudDrawData {
                 max_texture_dimension_2d,
             ),
         );
-
+        let scale_texture = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &data_texture_desc(
+                "PointCloudDrawData::scale_texture",
+                Self::SCALE_TEXTURE_FORMAT,
+                vertices.len() as u32,
+                max_texture_dimension_2d,
+            ),
+        );
+        let rotation_texture = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &data_texture_desc(
+                "PointCloudDrawData::rotation_texture",
+                Self::ROTATION_TEXTURE_FORMAT,
+                vertices.len() as u32,
+                max_texture_dimension_2d,
+            ),
+        );
         let picking_instance_id_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
             &data_texture_desc(
@@ -257,7 +276,7 @@ impl PointCloudDrawData {
         );
 
         {
-            re_tracing::profile_scope!("write_pos_size_texture");
+            re_tracing::profile_scope!("copy-position");
 
             let texture_size = position_data_texture.texture.size();
             let texel_count = (texture_size.width * texture_size.height) as usize;
@@ -282,6 +301,7 @@ impl PointCloudDrawData {
             )?;
         }
         {
+            re_tracing::profile_scope!("copy-color");
             let texture_size = color_texture.texture.size();
             let texel_count = (texture_size.width * texture_size.height) as usize;
             let num_elements_padding = texel_count - vertices.len();
@@ -294,8 +314,39 @@ impl PointCloudDrawData {
                 &color_texture,
             )?;
         }
+        {
+            re_tracing::profile_scope!("copy-scale");
+            let texture_size = scale_texture.texture.size();
+            let texel_count = (texture_size.width * texture_size.height) as usize;
+            let num_elements_padding = texel_count - vertices.len();
+
+            builder
+                .scale_buffer
+                .fill_n(Default::default(), num_elements_padding)?;
+            builder.scale_buffer.copy_to_texture2d_entire_first_layer(
+                ctx.active_frame.before_view_builder_encoder.lock().get(),
+                &scale_texture,
+            )?;
+        }
+        {
+            re_tracing::profile_scope!("copy-rotation");
+            let texture_size = rotation_texture.texture.size();
+            let texel_count = (texture_size.width * texture_size.height) as usize;
+            let num_elements_padding = texel_count - vertices.len();
+
+            builder
+                .rotation_buffer
+                .fill_n(Default::default(), num_elements_padding)?;
+            builder
+                .rotation_buffer
+                .copy_to_texture2d_entire_first_layer(
+                    ctx.active_frame.before_view_builder_encoder.lock().get(),
+                    &rotation_texture,
+                )?;
+        }
 
         {
+            re_tracing::profile_scope!("copy-picking-ids");
             let texture_size = picking_instance_id_texture.texture.size();
             let texel_count = (texture_size.width * texture_size.height) as usize;
             let num_elements_padding = texel_count - vertices.len();
@@ -343,6 +394,8 @@ impl PointCloudDrawData {
                     entries: smallvec![
                         BindGroupEntry::DefaultTextureView(position_data_texture.handle),
                         BindGroupEntry::DefaultTextureView(color_texture.handle),
+                        BindGroupEntry::DefaultTextureView(scale_texture.handle),
+                        BindGroupEntry::DefaultTextureView(rotation_texture.handle),
                         BindGroupEntry::DefaultTextureView(picking_instance_id_texture.handle),
                         draw_data_uniform_buffer_binding,
                     ],
@@ -519,6 +572,7 @@ impl Renderer for PointCloudRenderer {
             &BindGroupLayoutDesc {
                 label: "PointCloudRenderer::bind_group_layout_all_points".into(),
                 entries: vec![
+                    // position data texture (xyz + radius):
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
                         visibility: wgpu::ShaderStages::VERTEX,
@@ -529,6 +583,7 @@ impl Renderer for PointCloudRenderer {
                         },
                         count: None,
                     },
+                    // Color data texture (RGBA):
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
                         visibility: wgpu::ShaderStages::VERTEX,
@@ -539,8 +594,31 @@ impl Renderer for PointCloudRenderer {
                         },
                         count: None,
                     },
+                    // Scale texture (XYZ_):
                     wgpu::BindGroupLayoutEntry {
                         binding: 2,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // Rotation texture (XYZW quaternion):
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // Picking instance IDs:
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
                         visibility: wgpu::ShaderStages::VERTEX,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Uint,
@@ -549,8 +627,9 @@ impl Renderer for PointCloudRenderer {
                         },
                         count: None,
                     },
+                    // Draw-data uniform buffer:
                     wgpu::BindGroupLayoutEntry {
-                        binding: 3,
+                        binding: 5,
                         visibility: wgpu::ShaderStages::VERTEX,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
@@ -619,7 +698,12 @@ impl Renderer for PointCloudRenderer {
             fragment_entrypoint: "fs_main".into(),
             fragment_handle: shader_module,
             vertex_buffers: smallvec![],
-            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
+            render_targets: smallvec![Some(wgpu::ColorTargetState {
+                format: ViewBuilder::MAIN_TARGET_COLOR_FORMAT,
+                // TODO(andreas): have two render pipelines, an opaque one and a transparent one. Transparent shouldn't write depth!
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 ..Default::default()

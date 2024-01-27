@@ -19,6 +19,8 @@ pub struct PointCloudBuilder {
     pub vertices: Vec<PositionRadius>,
 
     pub(crate) color_buffer: CpuWriteGpuReadBuffer<Color32>,
+    pub(crate) scale_buffer: CpuWriteGpuReadBuffer<glam::Vec4>, // TODO: optional
+    pub(crate) rotation_buffer: CpuWriteGpuReadBuffer<glam::Quat>, // TODO: optional
     pub(crate) picking_instance_ids_buffer: CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
 
     pub(crate) batches: Vec<PointCloudBatchInfo>,
@@ -46,6 +48,34 @@ impl PointCloudBuilder {
             )
             .expect("Failed to allocate color buffer"); // TODO(#3408): Should never happen but should propagate error anyways
 
+        let scale_buffer = ctx
+            .cpu_write_gpu_read_belt
+            .lock()
+            .allocate::<glam::Vec4>(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                data_texture_source_buffer_element_count(
+                    PointCloudDrawData::SCALE_TEXTURE_FORMAT,
+                    max_num_points,
+                    max_texture_dimension_2d,
+                ),
+            )
+            .expect("Failed to allocate scale buffer"); // TODO(#3408): Should never happen but should propagate error anyways
+
+        let rotation_buffer = ctx
+            .cpu_write_gpu_read_belt
+            .lock()
+            .allocate::<glam::Quat>(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                data_texture_source_buffer_element_count(
+                    PointCloudDrawData::ROTATION_TEXTURE_FORMAT,
+                    max_num_points,
+                    max_texture_dimension_2d,
+                ),
+            )
+            .expect("Failed to allocate rotation buffer"); // TODO(#3408): Should never happen but should propagate error anyways
+
         let picking_instance_ids_buffer = ctx
             .cpu_write_gpu_read_belt
             .lock()
@@ -63,6 +93,8 @@ impl PointCloudBuilder {
         Self {
             vertices: Vec::with_capacity(max_num_points as usize),
             color_buffer,
+            scale_buffer,
+            rotation_buffer,
             picking_instance_ids_buffer,
             batches: Vec::with_capacity(16),
             radius_boost_in_ui_points_for_outlines: 0.0,
@@ -288,6 +320,28 @@ impl<'a> PointCloudBatchBuilder<'a> {
     pub fn picking_object_id(mut self, picking_object_id: PickingLayerObjectId) -> Self {
         self.batch_mut().picking_object_id = picking_object_id;
         self
+    }
+
+    pub fn push_scales3(&mut self, scales: &[glam::Vec3]) {
+        // TODO: handle only some point clouds having scales
+        re_tracing::profile_function!();
+        let scales4 = scales
+            .iter()
+            .copied()
+            .map(|s| glam::Vec4::new(s.x, s.y, s.z, 1.0));
+        self.0
+            .scale_buffer
+            .extend(scales4.into_iter())
+            .unwrap_debug_or_log_error();
+    }
+
+    pub fn push_rotations(&mut self, rotations: &[glam::Quat]) {
+        // TODO: handle only some point clouds having rotations
+        re_tracing::profile_function!();
+        self.0
+            .rotation_buffer
+            .extend_from_slice(rotations)
+            .unwrap_debug_or_log_error();
     }
 
     /// Pushes additional outline mask ids for a specific range of points.
