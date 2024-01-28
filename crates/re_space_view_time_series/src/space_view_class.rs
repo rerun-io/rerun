@@ -177,7 +177,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
         let Some(indicated_entities) = ctx
-            .indicator_matching_entities_per_visualizer
+            .indicated_entities_per_visualizer
             .get(&TimeSeriesSystem::identifier())
         else {
             return SpaceViewSpawnHeuristics::default();

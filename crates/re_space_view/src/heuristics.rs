@@ -18,7 +18,7 @@ where
     re_tracing::profile_function!();
 
     let Some(indicator_matching_entities) = ctx
-        .indicator_matching_entities_per_visualizer
+        .indicated_entities_per_visualizer
         .get(&TVisualizer::identifier())
     else {
         return Default::default();

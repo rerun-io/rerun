@@ -70,7 +70,7 @@ pub fn all_possible_space_views(
                     let results = candidate_query.execute_query(
                         ctx.store_context,
                         &visualizable_entities,
-                        ctx.indicator_matching_entities_per_visualizer,
+                        ctx.indicated_entities_per_visualizer,
                     );
 
                     if !results.is_empty() {

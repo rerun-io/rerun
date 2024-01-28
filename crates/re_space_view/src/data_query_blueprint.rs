@@ -181,7 +181,7 @@ impl DataQuery for DataQueryBlueprint {
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
         visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
-        indicator_matching_entities_per_visualizer: &PerVisualizer<IndicatorMatchingEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatorMatchingEntities>,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
@@ -190,7 +190,7 @@ impl DataQuery for DataQueryBlueprint {
         let executor = QueryExpressionEvaluator::new(
             self,
             visualizable_entities_for_visualizer_systems,
-            indicator_matching_entities_per_visualizer,
+            indicated_entities_per_visualizer,
         );
 
         let root_handle = ctx.recording.and_then(|store| {
@@ -212,8 +212,7 @@ impl DataQuery for DataQueryBlueprint {
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
     visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
-    indicator_matching_entities_per_visualizer:
-        &'a IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>,
+    indicated_entities_per_visualizer: &'a IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>,
     entity_path_filter: EntityPathFilter,
 }
 
@@ -221,7 +220,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
     fn new(
         blueprint: &'a DataQueryBlueprint,
         visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
-        indicator_matching_entities_per_visualizer: &'a IntMap<
+        indicated_entities_per_visualizer: &'a IntMap<
             ViewSystemIdentifier,
             IndicatorMatchingEntities,
         >,
@@ -230,7 +229,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
 
         Self {
             visualizable_entities_for_visualizer_systems,
-            indicator_matching_entities_per_visualizer,
+            indicated_entities_per_visualizer,
             entity_path_filter: blueprint.entity_path_filter.clone(),
         }
     }
@@ -272,7 +271,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                         //      to a single `IntSet<EntityPathHash>`
                         //   -> consider three steps of query: list entities, list their visualizers, list their properties
                         if self
-                            .indicator_matching_entities_per_visualizer
+                            .indicated_entities_per_visualizer
                             .get(visualizer)
                             .map_or(false, |matching_list| matching_list.contains(entity_path))
                         {
@@ -658,22 +657,21 @@ mod tests {
                 entity_path_filter: EntityPathFilter::parse_forgiving(filter),
             };
 
-            let indicator_matching_entities_per_visualizer =
-                PerVisualizer::<IndicatorMatchingEntities>(
-                    visualizable_entities_for_visualizer_systems
-                        .iter()
-                        .map(|(id, entities)| {
-                            (
-                                *id,
-                                IndicatorMatchingEntities(entities.0.iter().cloned().collect()),
-                            )
-                        })
-                        .collect(),
-                );
+            let indicated_entities_per_visualizer = PerVisualizer::<IndicatorMatchingEntities>(
+                visualizable_entities_for_visualizer_systems
+                    .iter()
+                    .map(|(id, entities)| {
+                        (
+                            *id,
+                            IndicatorMatchingEntities(entities.0.iter().cloned().collect()),
+                        )
+                    })
+                    .collect(),
+            );
             let query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities_for_visualizer_systems,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
 
             let mut visited = vec![];

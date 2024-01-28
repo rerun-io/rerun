@@ -243,7 +243,7 @@ pub fn default_visualized_entities_for_visualizer_kind(
                 .downcast_ref::<SpatialViewVisualizerData>()?;
 
             if data.preferred_view_kind == Some(visualizer_kind) {
-                let indicator_matching = ctx.indicator_matching_entities_per_visualizer.get(&id)?;
+                let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
                 let applicable = ctx.applicable_entities_per_visualizer.get(&id)?;
                 Some(indicator_matching.intersection(applicable))
             } else {

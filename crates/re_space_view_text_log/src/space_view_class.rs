@@ -77,7 +77,7 @@ impl SpaceViewClass for TextSpaceView {
         // Spawn a single log view at the root if there's any text logs around anywhere.
         // Checking indicators is enough, since we know that this is enough to infer visualizability here.
         if ctx
-            .indicator_matching_entities_per_visualizer
+            .indicated_entities_per_visualizer
             .get(&TextLogSystem::identifier())
             .map_or(true, |entities| entities.is_empty())
         {

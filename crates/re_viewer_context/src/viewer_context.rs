@@ -42,7 +42,7 @@ pub struct ViewerContext<'a> {
     ///
     /// TODO(andreas): Should we always do the intersection with `applicable_entities_per_visualizer`
     ///                 or are we ever interested in a non-applicable but indicator-matching entity?
-    pub indicator_matching_entities_per_visualizer: &'a PerVisualizer<IndicatorMatchingEntities>,
+    pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatorMatchingEntities>,
 
     /// All the query results for this frame
     pub query_results: &'a HashMap<DataQueryId, DataQueryResult>,
