@@ -1,6 +1,7 @@
 use super::Rgba32;
 
 impl Rgba32 {
+    pub const BLACK: Self = Self::from_rgb(0, 0, 0);
     pub const WHITE: Self = Self::from_rgb(255, 255, 255);
 
     #[inline]
