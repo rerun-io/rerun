@@ -195,6 +195,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                     })
                     .flat_map(|subspace| {
                         if subspace.dimensionality == SubSpaceDimensionality::ThreeD
+                            || subspace.entities.is_empty()
                             || indicated_entities.is_disjoint(&subspace.entities)
                         {
                             return Vec::new();
@@ -283,7 +284,6 @@ fn bucket_images_in_subspace(
 ) -> HashMap<ImageBucketing, Vec<EntityPath>> {
     re_tracing::profile_function!();
 
-    let mut images_by_bucket = HashMap::<ImageBucketing, Vec<EntityPath>>::default();
     let store = ctx.entity_db.store();
 
     let image_entities = subspace
@@ -294,9 +294,13 @@ fn bucket_images_in_subspace(
 
     if image_entities.len() <= 1 {
         // Very common case, early out before we get into the more expensive query code.
-        return images_by_bucket;
+        return image_entities
+            .into_iter()
+            .map(|e| (ImageBucketing::ExplicitDrawOrder, vec![e.clone()]))
+            .collect();
     }
 
+    let mut images_by_bucket = HashMap::<ImageBucketing, Vec<EntityPath>>::default();
     for image_entity in image_entities {
         // Put everything in the same bucket if it has a draw order.
         if store
