@@ -5,7 +5,10 @@ use re_viewer_context::{
 };
 
 /// Spawns a space view for each single entity which is visualizable & indicator-matching for a given visualizer.
-pub fn recommend_space_views_for_all_default_visualized_entities_for<TVisualizer>(
+///
+/// This is used as utility by *some* space view types that want
+/// to spawn a space view for every single entity that is visualizable with a given visualizer.
+pub fn suggest_space_view_for_each_entity<TVisualizer>(
     ctx: &ViewerContext<'_>,
     space_view: &impl SpaceViewClass,
 ) -> SpaceViewSpawnHeuristics
