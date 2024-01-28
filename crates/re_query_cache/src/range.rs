@@ -136,7 +136,7 @@ macro_rules! impl_query_archetype_range {
                     (Option<TimeInt>, RowId),
                     MaybeCachedComponentData<'_, InstanceKey>,
                     $(MaybeCachedComponentData<'_, $pov>,)+
-                    $(MaybeCachedComponentData<'_, Option<$comp>>,)*
+                    $(Option<MaybeCachedComponentData<'_, Option<$comp>>>,)*
                 ),
             ),
         {
@@ -158,7 +158,7 @@ macro_rules! impl_query_archetype_range {
                         ((!timeless).then_some(*time), *row_id),
                         MaybeCachedComponentData::Cached(instance_keys),
                         $(MaybeCachedComponentData::Cached($pov),)+
-                        $(MaybeCachedComponentData::Cached($comp),)*
+                        $((!$comp.is_empty()).then_some(MaybeCachedComponentData::Cached($comp)),)*
                     )
                 });
 
@@ -180,9 +180,13 @@ macro_rules! impl_query_archetype_range {
             {
                 re_tracing::profile_scope!("fill");
 
+                // Grabbing the current time is quite costly on web.
+                #[cfg(not(target_arch = "wasm32"))]
                 let now = web_time::Instant::now();
 
+                #[cfg(not(target_arch = "wasm32"))]
                 let mut added_entries = 0u64;
+
                 let mut added_size_bytes = 0u64;
 
                 for arch_view in arch_views {
@@ -193,16 +197,23 @@ macro_rules! impl_query_archetype_range {
                     }
 
                     added_size_bytes += bucket.[<insert_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)*>(data_time, &arch_view)?;
-                    added_entries += 1;
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        added_entries += 1;
+                    }
                 }
 
-                let elapsed = now.elapsed();
-                ::re_log::trace!(
-                    archetype=%A::name(),
-                    added_size_bytes,
-                    "cached {added_entries} entries in {elapsed:?} ({:0.3} entries/s)",
-                    added_entries as f64 / elapsed.as_secs_f64()
-                );
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let elapsed = now.elapsed();
+                    ::re_log::trace!(
+                        archetype=%A::name(),
+                        added_size_bytes,
+                        "cached {added_entries} entries in {elapsed:?} ({:0.3} entries/s)",
+                        added_entries as f64 / elapsed.as_secs_f64()
+                    );
+                }
 
                 Ok(added_size_bytes)
             }

@@ -10,7 +10,7 @@ use re_log_types::{
     example_components::{MyColor, MyLabel, MyPoint, MyPoints},
     DataRow, EntityPath, RowId, TimeInt, TimePoint, TimeRange,
 };
-use re_query_cache::Caches;
+use re_query_cache::{Caches, MaybeCachedComponentData};
 use re_types::components::InstanceKey;
 use re_types_core::Loggable as _;
 
@@ -597,7 +597,11 @@ fn query_and_compare(
                     uncached_data_times.push(data_time);
                     uncached_instance_keys.push(instance_keys.to_vec());
                     uncached_positions.push(positions.to_vec());
-                    uncached_colors.push(colors.to_vec());
+                    uncached_colors.push(
+                        MaybeCachedComponentData::iter_or_repeat_opt(&colors, positions.len())
+                            .copied()
+                            .collect_vec(),
+                    );
                 },
             )
             .unwrap();
@@ -616,7 +620,11 @@ fn query_and_compare(
                     cached_data_times.push(data_time);
                     cached_instance_keys.push(instance_keys.to_vec());
                     cached_positions.push(positions.to_vec());
-                    cached_colors.push(colors.to_vec());
+                    cached_colors.push(
+                        MaybeCachedComponentData::iter_or_repeat_opt(&colors, positions.len())
+                            .copied()
+                            .collect_vec(),
+                    );
                 },
             )
             .unwrap();

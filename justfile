@@ -211,11 +211,11 @@ rs-plot-dashboard *ARGS:
 
 # Format .toml files
 toml-format:
-    taplo fmt
+    pixi run toml-fmt
 
 # Lint .toml files
 toml-lint:
-    taplo fmt --check --diff
+    pixi run lint-taplo
 
 
 ### Misc

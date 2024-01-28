@@ -126,12 +126,18 @@ pub fn process_colors<'a, A: Archetype>(
 
 /// Process [`Color`] components using annotations and default colors.
 pub fn process_color_slice<'a>(
-    colors: &'a [Option<Color>],
+    colors: Option<&'a [Option<Color>]>,
+    default_len: usize,
     ent_path: &'a EntityPath,
     annotation_infos: &'a ResolvedAnnotationInfos,
 ) -> impl Iterator<Item = egui::Color32> + 'a {
     re_tracing::profile_function!();
     let default_color = DefaultColor::EntityPath(ent_path);
+
+    let colors = colors.as_ref().map_or(
+        itertools::Either::Left(std::iter::repeat(&None).take(default_len)),
+        |data| itertools::Either::Right(data.iter()),
+    );
 
     itertools::izip!(annotation_infos.iter(), colors).map(move |(annotation_info, color)| {
         annotation_info.color(color.map(|c| c.to_array()), default_color)
@@ -169,14 +175,19 @@ pub fn process_radii<'a, A: Archetype>(
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
 pub fn process_radius_slice<'a>(
-    radii: &'a [Option<re_types::components::Radius>],
+    radii: Option<&'a [Option<re_types::components::Radius>]>,
+    default_len: usize,
     ent_path: &EntityPath,
 ) -> impl Iterator<Item = re_renderer::Size> + 'a {
     re_tracing::profile_function!();
     let ent_path = ent_path.clone();
-    radii
-        .iter()
-        .map(move |radius| process_radius(&ent_path, radius))
+
+    let radii = radii.as_ref().map_or(
+        itertools::Either::Left(std::iter::repeat(&None).take(default_len)),
+        |data| itertools::Either::Right(data.iter()),
+    );
+
+    radii.map(move |radius| process_radius(&ent_path, radius))
 }
 
 fn process_radius(

@@ -1,3 +1,5 @@
+//! Utitility functions
+
 /// Returns monotonically increasing time in seconds.
 #[inline]
 pub fn sec_since_start() -> f64 {

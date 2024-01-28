@@ -8,7 +8,7 @@ publish = false
 
 
 [dependencies]
-rerun = { path = "../../../crates/rerun", features = ["web_viewer"] }
+rerun = { path = "../../../crates/rerun", features = ["web_viewer", "clap"] }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }

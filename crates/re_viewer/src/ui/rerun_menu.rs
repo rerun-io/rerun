@@ -401,14 +401,6 @@ fn experimental_feature_ui(
             "Primary caching: range queries",
         )
         .on_hover_text("Toggle primary caching for range queries.\nApplies to the 2D/3D point cloud, text log and time series space views.");
-
-    re_ui
-        .checkbox(
-            ui,
-            &mut app_options.legacy_container_blueprint,
-            "Use the legacy container blueprint storage for the viewport",
-        )
-        .on_hover_text("The legacy container blueprint storage is deprecated, but may be helpful if unexpected regressions are found in the new container blueprints.");
 }
 
 #[cfg(debug_assertions)]

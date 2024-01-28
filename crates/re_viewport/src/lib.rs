@@ -23,6 +23,7 @@ mod viewport_blueprint_ui;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
+pub use container::{ContainerBlueprint, Contents};
 pub use space_info::SpaceInfoCollection;
 pub use space_view::{SpaceViewBlueprint, SpaceViewName};
 pub use viewport::{Viewport, ViewportState};

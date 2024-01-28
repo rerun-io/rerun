@@ -125,7 +125,7 @@ macro_rules! impl_query_archetype_latest_at {
                     (Option<TimeInt>, RowId),
                     MaybeCachedComponentData<'_, InstanceKey>,
                     $(MaybeCachedComponentData<'_, $pov>,)+
-                    $(MaybeCachedComponentData<'_, Option<$comp>>,)*
+                    $(Option<MaybeCachedComponentData<'_, Option<$comp>>>,)*
                 ),
             ),
         {
@@ -144,7 +144,7 @@ macro_rules! impl_query_archetype_latest_at {
                         ((!timeless).then_some(*time), *row_id),
                         MaybeCachedComponentData::Cached(instance_keys),
                         $(MaybeCachedComponentData::Cached($pov),)+
-                        $(MaybeCachedComponentData::Cached($comp),)*
+                        $((!$comp.is_empty()).then_some(MaybeCachedComponentData::Cached($comp)),)*
                     )
                 });
 

@@ -248,6 +248,7 @@ impl ViewerAnalytics {
         Self {}
     }
 
+    #[allow(clippy::unused_self)]
     pub fn on_viewer_started(
         &mut self,
         _build_info: &re_build_info::BuildInfo,
@@ -255,5 +256,6 @@ impl ViewerAnalytics {
     ) {
     }
 
+    #[allow(clippy::unused_self)]
     pub fn on_open_recording(&mut self, _entity_db: &re_entity_db::EntityDb) {}
 }

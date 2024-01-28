@@ -242,6 +242,13 @@ impl SpaceViewClass for BarChartSpaceView {
                             );
                             continue;
                         }
+                        TensorBuffer::Yuy2(_) => {
+                            re_log::warn_once!(
+                                "trying to display YUY2 data as a bar chart ({:?})",
+                                ent_path
+                            );
+                            continue;
+                        }
                     };
 
                     plot_ui.bar_chart(chart);

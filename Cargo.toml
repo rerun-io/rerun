@@ -183,6 +183,7 @@ pyo3 = "0.20.2"
 pyo3-build-config = "0.20.2"
 quote = "1.0"
 rand = { version = "0.8", default-features = false }
+rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
 rfd = { version = "0.12", default_features = false, features = ["xdg-portal"] }
 rmp-serde = "1"
@@ -276,13 +277,13 @@ debug = true
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }      # egui master 2024-01-23
-eframe = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }      # egui master 2024-01-23
-egui = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }        # egui master 2024-01-23
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" } # egui master 2024-01-23
-egui_plot = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }   # egui master 2024-01-23
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }   # egui master 2024-01-23
-emath = { git = "https://github.com/emilk/egui.git", rev = "2f9a4ca6e8434aaee3569095c0743b73cba26c44" }       # egui master 2024-01-23
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "6b0782c96b76349da9be785d0e9054f87cd7b00a" }      # egui master 2024-01-26
+eframe = { git = "https://github.com/emilk/egui.git", rev = "6b0782c96b76349da9be785d0e9054f87cd7b00a" }      # egui master 2024-01-26
+egui = { git = "https://github.com/emilk/egui.git", rev = "6b0782c96b76349da9be785d0e9054f87cd7b00a" }        # egui master 2024-01-26
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "6b0782c96b76349da9be785d0e9054f87cd7b00a" } # egui master 2024-01-26
+egui_plot = { git = "https://github.com/emilk/egui.git", rev = "6b0782c96b76349da9be785d0e9054f87cd7b00a" }   # egui master 2024-01-26
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "6b0782c96b76349da9be785d0e9054f87cd7b00a" }   # egui master 2024-01-26
+emath = { git = "https://github.com/emilk/egui.git", rev = "6b0782c96b76349da9be785d0e9054f87cd7b00a" }       # egui master 2024-01-26
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

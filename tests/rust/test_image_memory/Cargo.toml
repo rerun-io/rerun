@@ -8,7 +8,6 @@ publish = false
 
 [dependencies]
 re_format.workspace = true
-re_log = { workspace = true, features = ["setup"] }
 rerun = { workspace = true, features = ["sdk", "image"] }
 
 mimalloc.workspace = true

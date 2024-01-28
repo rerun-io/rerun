@@ -1221,7 +1221,7 @@ fn interact_with_streams_rect(
         pointer_pos.map_or(false, |pointer_pos| full_rect.contains(pointer_pos));
     if full_rect_hovered {
         ui.input(|input| {
-            delta_x += input.scroll_delta.x;
+            delta_x += input.smooth_scroll_delta.x;
             zoom_factor *= input.zoom_delta_2d().x;
         });
     }

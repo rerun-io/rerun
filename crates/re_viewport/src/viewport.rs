@@ -13,12 +13,13 @@ use re_entity_db::EntityPropertyMap;
 
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    AppOptions, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
+    AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
     SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
+use crate::container::blueprint_id_to_tile_id;
 use crate::{
-    space_view_entity_picker::SpaceViewEntityPicker,
+    container::Contents, space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
     system_execution::execute_systems_for_space_views, SpaceViewBlueprint, ViewportBlueprint,
 };
@@ -70,22 +71,22 @@ impl ViewportState {
 #[derive(Clone)]
 pub enum TreeAction {
     /// Add a new space view to the provided container (or the root if `None`).
-    AddSpaceView(SpaceViewId, Option<egui_tiles::TileId>),
+    AddSpaceView(SpaceViewId, Option<ContainerId>),
 
     /// Add a new container of the provided kind to the provided container (or the root if `None`).
-    AddContainer(egui_tiles::ContainerKind, Option<egui_tiles::TileId>),
+    AddContainer(egui_tiles::ContainerKind, Option<ContainerId>),
 
     /// Change the kind of a container.
-    SetContainerKind(egui_tiles::TileId, egui_tiles::ContainerKind),
+    SetContainerKind(ContainerId, egui_tiles::ContainerKind),
 
     /// Ensure the tab for the provided space view is focused (see [`egui_tiles::Tree::make_active`]).
     FocusTab(SpaceViewId),
 
-    /// Remove a tile and all its children.
-    Remove(egui_tiles::TileId),
+    /// Remove a container (recursively) or a space view
+    RemoveContents(Contents),
 
     /// Simplify the container with the provided options
-    SimplifyContainer(egui_tiles::TileId, egui_tiles::SimplificationOptions),
+    SimplifyContainer(ContainerId, egui_tiles::SimplificationOptions),
 }
 
 fn tree_simplification_option_for_app_options(
@@ -125,7 +126,10 @@ pub struct Viewport<'a, 'b> {
     /// to be mutable for things like drag-and-drop and is ultimately saved back to the store.
     /// at the end of the frame if edited.
     pub tree: egui_tiles::Tree<SpaceViewId>,
-    pub edited: bool,
+
+    /// Should be set to `true` whenever a tree modification should be back-ported to the blueprint
+    /// store. That should _only_ happen as a result of a user action.
+    pub tree_edited: bool,
 
     /// Actions to perform at the end of the frame.
     ///
@@ -160,7 +164,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             blueprint,
             state,
             tree,
-            edited,
+            tree_edited: edited,
             tree_action_receiver,
         }
     }
@@ -239,7 +243,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             }
 
             // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
-            self.edited |= tab_viewer.edited;
+            self.tree_edited |= tab_viewer.edited;
         });
 
         self.blueprint.set_maximized(maximized, ctx);
@@ -325,10 +329,12 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         );
 
                         reset = true;
-                    } else if let Some(parent_id) = parent_container.or(self.tree.root) {
+                    } else if let Some(parent_id) =
+                        parent_container.or(self.blueprint.root_container)
+                    {
                         let tile_id = self.tree.tiles.insert_pane(space_view_id);
                         if let Some(egui_tiles::Tile::Container(container)) =
-                            self.tree.tiles.get_mut(parent_id)
+                            self.tree.tiles.get_mut(blueprint_id_to_tile_id(&parent_id))
                         {
                             re_log::trace!("Inserting new space view into root container");
                             container.add_child(tile_id);
@@ -340,16 +346,16 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         re_log::trace!("No root found - will re-run auto-layout");
                     }
 
-                    self.edited = true;
+                    self.tree_edited = true;
                 }
                 TreeAction::AddContainer(container_kind, parent_container) => {
-                    if let Some(parent_id) = parent_container.or(self.tree.root) {
+                    if let Some(parent_id) = parent_container.or(self.blueprint.root_container) {
                         let tile_id = self
                             .tree
                             .tiles
                             .insert_container(egui_tiles::Container::new(container_kind, vec![]));
                         if let Some(egui_tiles::Tile::Container(container)) =
-                            self.tree.tiles.get_mut(parent_id)
+                            self.tree.tiles.get_mut(blueprint_id_to_tile_id(&parent_id))
                         {
                             re_log::trace!("Inserting new space view into container {parent_id:?}");
                             container.add_child(tile_id);
@@ -363,11 +369,13 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         re_log::trace!("No root found - will re-run auto-layout");
                     }
 
-                    self.edited = true;
+                    self.tree_edited = true;
                 }
                 TreeAction::SetContainerKind(container_id, container_kind) => {
-                    if let Some(egui_tiles::Tile::Container(container)) =
-                        self.tree.tiles.get_mut(container_id)
+                    if let Some(egui_tiles::Tile::Container(container)) = self
+                        .tree
+                        .tiles
+                        .get_mut(blueprint_id_to_tile_id(&container_id))
                     {
                         re_log::trace!("Mutating container {container_id:?} to {container_kind:?}");
                         container.set_kind(container_kind);
@@ -375,7 +383,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         re_log::trace!("No root found - will re-run auto-layout");
                     }
 
-                    self.edited = true;
+                    self.tree_edited = true;
                 }
                 TreeAction::FocusTab(space_view_id) => {
                     let found = self.tree.make_active(|_, tile| match tile {
@@ -387,9 +395,11 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     re_log::trace!(
                         "Found tab to focus on for space view ID {space_view_id}: {found}"
                     );
-                    self.edited = true;
+                    self.tree_edited = true;
                 }
-                TreeAction::Remove(tile_id) => {
+                TreeAction::RemoveContents(contents) => {
+                    let tile_id = contents.to_tile_id();
+
                     for tile in self.tree.remove_recursively(tile_id) {
                         re_log::trace!("Removing tile {tile_id:?}");
                         if let egui_tiles::Tile::Pane(space_view_id) = tile {
@@ -402,12 +412,13 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     if Some(tile_id) == self.tree.root {
                         self.tree.root = None;
                     }
-                    self.edited = true;
+                    self.tree_edited = true;
                 }
-                TreeAction::SimplifyContainer(tile_id, options) => {
+                TreeAction::SimplifyContainer(container_id, options) => {
                     re_log::trace!("Simplifying tree with options: {options:?}");
+                    let tile_id = blueprint_id_to_tile_id(&container_id);
                     self.tree.simplify_children_of_tile(tile_id, &options);
-                    self.edited = true;
+                    self.tree_edited = true;
                 }
             }
         }
@@ -417,14 +428,12 @@ impl<'a, 'b> Viewport<'a, 'b> {
             // written to the store yet.
             re_log::trace!("Clearing the blueprint tree to force reset on the next frame");
             self.tree = egui_tiles::Tree::empty("viewport_tree");
-            self.edited = true;
+            self.tree_edited = true;
         }
 
         // Finally, save any edits to the blueprint tree
         // This is a no-op if the tree hasn't changed.
-        if ctx.app_options.legacy_container_blueprint {
-            self.blueprint.set_tree(&self.tree, ctx);
-        } else if self.edited {
+        if self.tree_edited {
             // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
 
             // Simplify before we save the tree. Normally additional simplification will
