@@ -1158,7 +1158,7 @@ impl RecordingStream {
             // Get the current time on all timelines, for the current recording, on the current
             // thread…
             let mut now = self.now();
-            // ...and then also inject the current recording tick into it.
+            // …and then also inject the current recording tick into it.
             now.insert(Timeline::log_tick(), tick.into());
 
             // Inject all these times into the row, overriding conflicting times, if any.

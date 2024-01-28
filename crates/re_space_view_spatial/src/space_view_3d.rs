@@ -1,19 +1,23 @@
 use nohash_hasher::IntSet;
 use re_entity_db::EntityProperties;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathFilter};
+use re_types::{components::ViewCoordinates, Loggable};
 use re_viewer_context::{
-    AutoSpawnHeuristic, IdentifiedViewSystem as _, PerSystemEntities, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError, ViewQuery,
-    ViewerContext, VisualizableFilterContext,
+    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    VisualizableFilterContext,
 };
 
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
-    heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
+    heuristics::{
+        default_visualized_entities_for_visualizer_kind, root_space_split_heuristic,
+        update_object_property_heuristics,
+    },
     spatial_topology::{SpatialTopology, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{register_3d_spatial_visualizers, CamerasVisualizer},
+    visualizers::register_3d_spatial_visualizers,
 };
 
 #[derive(Default)]
@@ -126,37 +130,73 @@ impl SpaceViewClass for SpatialSpaceView3D {
         Box::new(context.unwrap_or_default())
     }
 
-    fn auto_spawn_heuristic(
+    fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        space_origin: &EntityPath,
-        per_system_entities: &PerSystemEntities,
-    ) -> AutoSpawnHeuristic {
-        let score = auto_spawn_heuristic(
-            self.identifier(),
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
+
+        let mut indicated_entities = default_visualized_entities_for_visualizer_kind(
             ctx,
-            per_system_entities,
+            self.identifier(),
             SpatialSpaceViewKind::ThreeD,
         );
 
-        if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(mut score) = score {
-            if let Some(camera_paths) = per_system_entities.get(&CamerasVisualizer::identifier()) {
-                // If there is a camera at the origin, this cannot be a 3D space -- it must be 2D
-                if camera_paths.contains(space_origin) {
-                    return AutoSpawnHeuristic::NeverSpawn;
-                } else if !camera_paths.is_empty() {
-                    // If there's a camera at a non-root path, make 3D view higher priority.
-                    // TODO(andreas): It would be nice to just return `AutoSpawnHeuristic::AlwaysSpawn` here
-                    // but AlwaysSpawn does not prevent other `SpawnClassWithHighestScoreForRoot` instances
-                    // from being added to the view.
-                    score += 100.0;
+        // ViewCoordinates is a strong indicator that a 3D space view is needed.
+        // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
+        // from splitting the root space into several subspaces.
+        //
+        // TODO(andreas)/TODO(#4926):
+        // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
+        // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
+        // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
+        ctx.entity_db
+            .tree()
+            .visit_children_recursively(&mut |path, info| {
+                if info.components.contains_key(&ViewCoordinates::name()) {
+                    indicated_entities.insert(path.clone());
                 }
-            }
+            });
 
-            AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score)
-        } else {
-            score
-        }
+        // Spawn a space view at each subspace that has any potential 3D content.
+        // Note that visualizability filtering is all about being in the right subspace,
+        // so we don't need to call the visualizers' filter functions here.
+        SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
+            let split_root_spaces = root_space_split_heuristic(
+                topo,
+                &indicated_entities,
+                SubSpaceDimensionality::ThreeD,
+            );
+
+            SpaceViewSpawnHeuristics {
+                recommended_space_views: topo
+                    .iter_subspaces()
+                    .flat_map(|subspace| {
+                        if subspace.origin.is_root() && !split_root_spaces.is_empty() {
+                            itertools::Either::Left(split_root_spaces.values())
+                        } else {
+                            itertools::Either::Right(std::iter::once(subspace))
+                        }
+                    })
+                    .filter_map(|subspace| {
+                        if subspace.dimensionality == SubSpaceDimensionality::TwoD
+                            || subspace.entities.is_empty()
+                            || indicated_entities.is_disjoint(&subspace.entities)
+                        {
+                            None
+                        } else {
+                            Some(RecommendedSpaceView {
+                                root: subspace.origin.clone(),
+                                query_filter: EntityPathFilter::subtree_entity_filter(
+                                    &subspace.origin,
+                                ),
+                            })
+                        }
+                    })
+                    .collect(),
+            }
+        })
+        .unwrap_or_default()
     }
 
     fn on_frame_start(

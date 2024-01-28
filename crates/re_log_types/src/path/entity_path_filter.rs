@@ -110,6 +110,20 @@ impl EntityPathFilter {
         filter
     }
 
+    /// Creates a new entity path filter that includes only a single entity.
+    pub fn single_entity_filter(entity_path: &EntityPath) -> Self {
+        let mut filter = Self::default();
+        filter.add_exact(entity_path.clone());
+        filter
+    }
+
+    /// Creates a new entity path filter that includes a single subtree.
+    pub fn subtree_entity_filter(entity_path: &EntityPath) -> Self {
+        let mut filter = Self::default();
+        filter.add_subtree(entity_path.clone());
+        filter
+    }
+
     pub fn add_rule(&mut self, effect: RuleEffect, rule: EntityPathRule) {
         self.rules.insert(rule, effect);
     }

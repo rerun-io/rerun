@@ -305,7 +305,7 @@ impl SpaceViewClassRegistry {
     }
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.
-    pub fn indicator_matching_entities_per_visualizer(
+    pub fn indicated_entities_per_visualizer(
         &self,
         store_id: &re_log_types::StoreId,
     ) -> PerVisualizer<IndicatorMatchingEntities> {

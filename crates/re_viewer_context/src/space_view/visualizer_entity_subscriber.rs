@@ -155,7 +155,6 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
                 .or_default();
 
             let entity_path = &event.diff.entity_path;
-            let entity_path_hash = entity_path.hash();
 
             // Update indicator component tracking:
             if self
@@ -166,13 +165,13 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
                 store_mapping
                     .indicator_matching_entities
                     .0
-                    .insert(entity_path_hash);
+                    .insert(entity_path.clone());
             }
 
             // Update required component tracking:
             let required_components_bitmap = store_mapping
                 .required_component_and_filter_bitmap_per_entity
-                .entry(entity_path_hash)
+                .entry(entity_path.hash())
                 .or_insert_with(|| {
                     BitVec::from_elem(self.required_components_indices.len() + 1, false)
                 });

@@ -1,66 +1,29 @@
 use std::collections::BTreeSet;
 
+use ahash::HashMap;
 use egui::NumExt as _;
+use nohash_hasher::IntSet;
 
 use re_data_ui::image_meaning_for_entity;
 use re_entity_db::EditableAutoValue;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathPart};
 use re_types::{
     components::{DepthMeter, TensorData},
     tensor_data::TensorDataMeaning,
     Archetype as _,
 };
 use re_viewer_context::{
-    AutoSpawnHeuristic, IdentifiedViewSystem, PerSystemEntities, SpaceViewClassIdentifier,
-    ViewerContext,
+    IdentifiedViewSystem, PerSystemEntities, SpaceViewClassIdentifier, ViewerContext,
 };
 
 use crate::{
     query_pinhole,
+    spatial_topology::{SpatialTopology, SubSpace, SubSpaceDimensionality},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         CamerasVisualizer, ImageVisualizer, SpatialViewVisualizerData, Transform3DArrowsVisualizer,
     },
 };
-
-pub fn auto_spawn_heuristic(
-    class: SpaceViewClassIdentifier,
-    ctx: &ViewerContext<'_>,
-    per_system_entities: &PerSystemEntities,
-    view_kind: SpatialSpaceViewKind,
-) -> AutoSpawnHeuristic {
-    re_tracing::profile_function!();
-
-    let mut score = 0.0;
-
-    let parts = ctx
-        .space_view_class_registry
-        .new_visualizer_collection(class);
-
-    // Gather all systems that advertise a "preferred view kind" matching the passed in kind.
-    let system_names_with_matching_view_kind = parts
-        .iter_with_identifiers()
-        .filter_map(|(name, part)| {
-            part.data()
-                .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
-                .map_or(false, |data| data.preferred_view_kind == Some(view_kind))
-                .then_some(name)
-        })
-        .collect::<Vec<_>>();
-
-    // For each of the system with the matching "preferred view kind", count the entities involved.
-    // We tally this up for scoring.
-    for system_name in system_names_with_matching_view_kind {
-        if per_system_entities
-            .get(&system_name)
-            .map_or(false, |c| !c.is_empty())
-        {
-            score += 1.0;
-        }
-    }
-
-    AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score)
-}
 
 pub fn update_object_property_heuristics(
     ctx: &ViewerContext<'_>,
@@ -258,4 +221,102 @@ fn update_transform3d_lines_heuristics(
 
         entity_properties.overwrite_properties(ent_path.clone(), properties);
     }
+}
+
+/// Returns all entities for which a visualizer of the given kind would be picked.
+///
+/// I.e. all entities for which at least one visualizer of the specified kind is applicable
+/// *and* has a matching indicator component.
+pub fn default_visualized_entities_for_visualizer_kind(
+    ctx: &ViewerContext<'_>,
+    space_view_class_identifier: SpaceViewClassIdentifier,
+    visualizer_kind: SpatialSpaceViewKind,
+) -> IntSet<EntityPath> {
+    re_tracing::profile_function!();
+
+    ctx.space_view_class_registry
+        .new_visualizer_collection(space_view_class_identifier)
+        .iter_with_identifiers()
+        .filter_map(|(id, visualizer)| {
+            let data = visualizer
+                .data()?
+                .downcast_ref::<SpatialViewVisualizerData>()?;
+
+            if data.preferred_view_kind == Some(visualizer_kind) {
+                let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
+                let applicable = ctx.applicable_entities_per_visualizer.get(&id)?;
+                Some(indicator_matching.intersection(applicable))
+            } else {
+                None
+            }
+        })
+        .flatten()
+        .cloned()
+        .collect()
+}
+
+/// Splits the root space into subspaces under certain circumstances.
+///
+/// TODO(#4926): This seems to be unnecessarily complicated.
+///              #4926 describes the rationale and how we might be able to remove this.
+pub fn root_space_split_heuristic(
+    topo: &SpatialTopology,
+    relevant_entities: &IntSet<EntityPath>,
+    dimensionality: SubSpaceDimensionality,
+) -> HashMap<EntityPathPart, SubSpace> {
+    re_tracing::profile_function!();
+
+    // We want to split the root space if…
+    //
+    // … there's a root space in the first place.
+    let Some(root_space) = topo.subspace_for_subspace_origin(EntityPath::root().hash()) else {
+        return Default::default();
+    };
+    // … and that root space doesn't have a different dimensionality.
+    if root_space.dimensionality != dimensionality
+        && root_space.dimensionality != SubSpaceDimensionality::Unknown
+    {
+        return Default::default();
+    }
+    // … the root space is not empty.
+    if root_space.entities.is_empty() {
+        return Default::default();
+    }
+    // … nothing relevant logged directly at the root.
+    if relevant_entities.contains(&EntityPath::root()) {
+        return Default::default();
+    }
+
+    let mut interesting_children_of_root_spaces = HashMap::<EntityPathPart, SubSpace>::default();
+    for entity in &root_space.entities {
+        let Some(root_child) = entity.iter().next() else {
+            continue;
+        };
+        interesting_children_of_root_spaces
+            .entry(root_child.clone())
+            .or_insert_with(|| {
+                let root_child_path: EntityPath = [root_child.clone()].as_slice().into();
+                SubSpace {
+                    origin: root_child_path.clone(),
+                    dimensionality,
+                    entities: Default::default(), // Filled as we go.
+                    child_spaces: root_space
+                        .child_spaces
+                        .iter()
+                        .filter_map(|(child, connection)| {
+                            if child.is_descendant_of(&root_child_path) {
+                                Some((child.clone(), *connection))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect(),
+                    parent_space: Some(EntityPath::root().hash()),
+                }
+            })
+            .entities
+            .insert(entity.clone());
+    }
+
+    interesting_children_of_root_spaces
 }
