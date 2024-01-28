@@ -270,18 +270,12 @@ impl SpaceViewClass for SpatialSpaceView2D {
     }
 }
 
-#[derive(Hash, PartialEq, Eq)]
-enum ImageBucketing {
-    BySize((u64, u64)),
-    ExplicitDrawOrder,
-}
-
 /// Groups all images in the subspace by size and draw order.
 fn bucket_images_in_subspace(
     ctx: &ViewerContext<'_>,
     subspace: &SubSpace,
     image_entities: &ApplicableEntities,
-) -> HashMap<ImageBucketing, Vec<EntityPath>> {
+) -> HashMap<(u64, u64), Vec<EntityPath>> {
     re_tracing::profile_function!();
 
     let store = ctx.entity_db.store();
@@ -296,34 +290,22 @@ fn bucket_images_in_subspace(
         // Very common case, early out before we get into the more expensive query code.
         return image_entities
             .into_iter()
-            .map(|e| (ImageBucketing::ExplicitDrawOrder, vec![e.clone()]))
+            .map(|e| ((0, 0), vec![e.clone()]))
             .collect();
     }
 
-    let mut images_by_bucket = HashMap::<ImageBucketing, Vec<EntityPath>>::default();
+    let mut images_by_bucket = HashMap::<(u64, u64), Vec<EntityPath>>::default();
     for image_entity in image_entities {
-        // Put everything in the same bucket if it has a draw order.
-        if store
-            .all_components(&Timeline::log_tick(), image_entity)
-            .map_or(false, |c| c.contains(&DrawOrder::name()))
+        // TODO(andreas): We really don't want to do a latest at query here since this means the heuristic can have different results depending on the
+        //                current query, but for this we'd have to store the max-size over time somewhere using another store subscriber (?).
+        if let Some(tensor) =
+            store.query_latest_component::<TensorData>(image_entity, &ctx.current_query())
         {
-            images_by_bucket
-                .entry(ImageBucketing::ExplicitDrawOrder)
-                .or_default()
-                .push(image_entity.clone());
-        } else {
-            // Otherwise, distinguish by image size.
-            // TODO(andreas): We really don't want to do a latest at query here since this means the heuristic can have different results depending on the
-            //                current query, but for this we'd have to store the max-size over time somewhere using another store subscriber (?).
-            if let Some(tensor) =
-                store.query_latest_component::<TensorData>(image_entity, &ctx.current_query())
-            {
-                if let Some([height, width, _]) = tensor.image_height_width_channels() {
-                    images_by_bucket
-                        .entry(ImageBucketing::BySize((height, width)))
-                        .or_default()
-                        .push(image_entity.clone());
-                }
+            if let Some([height, width, _]) = tensor.image_height_width_channels() {
+                images_by_bucket
+                    .entry((height, width))
+                    .or_default()
+                    .push(image_entity.clone());
             }
         }
     }
