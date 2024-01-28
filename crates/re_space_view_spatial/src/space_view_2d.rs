@@ -3,11 +3,8 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 
 use re_entity_db::EntityProperties;
-use re_log_types::{EntityPath, EntityPathFilter, Timeline};
-use re_types::{
-    components::{DrawOrder, TensorData},
-    Loggable,
-};
+use re_log_types::{EntityPath, EntityPathFilter};
+use re_types::components::TensorData;
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem as _, PerSystemEntities, RecommendedSpaceView,
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
@@ -203,7 +200,9 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
                         let images_by_bucket =
                             bucket_images_in_subspace(ctx, subspace, image_entities);
+
                         if images_by_bucket.len() <= 1 {
+                            // If there's no or only a single image bucket, use the whole subspace to capture all the non-image entities!
                             vec![RecommendedSpaceView {
                                 root: subspace.origin.clone(),
                                 query_filter: EntityPathFilter::subtree_entity_filter(
