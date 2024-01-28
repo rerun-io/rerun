@@ -185,6 +185,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         // Spawn time series data at the root if there's time series data either
         // directly at the root or one of its children.
+        // TODO(#4926): This seems to be unnecessarily complicated.
         let subtree_of_root_entity = &ctx.entity_db.tree().children;
         if indicated_entities.contains(&EntityPath::root())
             || subtree_of_root_entity

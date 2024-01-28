@@ -225,7 +225,7 @@ fn update_transform3d_lines_heuristics(
 
 /// Returns all entities for which a visualizer of the given kind would be picked.
 ///
-/// I.e. all entities for which at least one visualizer of the specified is applicable
+/// I.e. all entities for which at least one visualizer of the specified kind is applicable
 /// *and* has a matching indicator component.
 pub fn default_visualized_entities_for_visualizer_kind(
     ctx: &ViewerContext<'_>,
@@ -255,6 +255,10 @@ pub fn default_visualized_entities_for_visualizer_kind(
         .collect()
 }
 
+/// Splits the root space into subspaces under certain circumstances.
+///
+/// TODO(#4926): This seems to be unnecessarily complicated.
+///              #4926 describes the rationale and how we might be able to remove this.
 pub fn root_space_split_heuristic(
     topo: &SpatialTopology,
     relevant_entities: &IntSet<EntityPath>,
