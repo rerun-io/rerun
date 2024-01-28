@@ -203,20 +203,25 @@ pub fn process_radii<'a, A: Archetype>(
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
-pub fn process_radius_slice<'a>(
-    radii: Option<&'a [Option<re_types::components::Radius>]>,
+pub fn process_radius_slice(
+    radii: Option<&[Option<re_types::components::Radius>]>,
     default_len: usize,
     ent_path: &EntityPath,
-) -> impl Iterator<Item = re_renderer::Size> + 'a {
+) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
+    use rayon::prelude::*;
+
     let ent_path = ent_path.clone();
 
-    let radii = radii.as_ref().map_or(
-        itertools::Either::Left(std::iter::repeat(&None).take(default_len)),
-        |data| itertools::Either::Right(data.iter()),
-    );
-
-    radii.map(move |radius| process_radius(&ent_path, radius))
+    match radii {
+        None => {
+            vec![re_renderer::Size::AUTO; default_len]
+        }
+        Some(radii) => radii
+            .par_iter()
+            .map(|radius| process_radius(&ent_path, radius))
+            .collect(),
+    }
 }
 
 fn process_radius(

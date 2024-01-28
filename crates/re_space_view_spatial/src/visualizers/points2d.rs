@@ -184,12 +184,7 @@ impl Points2DVisualizer {
         }: &Points2DComponentData<'_>,
         ent_path: &EntityPath,
     ) -> Vec<re_renderer::Size> {
-        re_tracing::profile_function!();
-        let radii = crate::visualizers::process_radius_slice(radii, positions.len(), ent_path);
-        {
-            re_tracing::profile_scope!("collect");
-            radii.collect()
-        }
+        crate::visualizers::process_radius_slice(radii, positions.len(), ent_path)
     }
 
     #[inline]
