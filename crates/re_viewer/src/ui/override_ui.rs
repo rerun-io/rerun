@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 use re_data_store::{DataStore, LatestAtQuery};
@@ -9,7 +9,7 @@ use re_query_cache::external::re_query::get_component_with_instances;
 use re_types_core::{components::InstanceKey, ComponentName};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataResult, SystemCommand, SystemCommandSender as _,
-    UiVerbosity, ViewerContext,
+    UiVerbosity, ViewSystemIdentifier, ViewerContext, VisualizerSystem,
 };
 use re_viewport::SpaceViewBlueprint;
 
@@ -169,29 +169,32 @@ pub fn add_new_override(
             .space_view_class_registry
             .new_visualizer_collection(*space_view.class_identifier());
 
-        // We have to have at least 1 visualizer system or we can't create an override
-        // TODO(jleibs): If we have multiple systems it could be nice to give the user a choice.
-        // However, we have very vew multi-visualizer systems and fewer that provide defaults,
-        // so don't do this until we actually understand the motivating usecase.
-        let Some(system_for_initial_value) = view_systems.systems.values().next() else {
-            return;
-        };
+        let mut component_to_vis: BTreeMap<ComponentName, ViewSystemIdentifier> =
+            Default::default();
 
-        let mut components_per_visualizer = data_result
-            .visualizers
-            .iter()
-            .filter_map(|vis| view_systems.get_by_identifier(*vis).ok())
-            .map(|vis| vis.visualizer_query_info().queried);
+        // Accumulate the components across all visualizers and track which visualizer
+        // each component came from so we can use it for defaults later.
+        //
+        // If two visualizers have the same component, the first one wins.
+        // TODO(jleibs): We can do something fancier in the future such as presenting both
+        // options once we have a motivating use-case.
+        for vis in &data_result.visualizers {
+            let Some(queried) = view_systems
+                .get_by_identifier(*vis)
+                .ok()
+                .map(|vis| vis.visualizer_query_info().queried)
+            else {
+                continue;
+            };
 
-        // Accumulate all the components if there are multiple visualizers
-        let mut components = components_per_visualizer.next().unwrap_or_default();
-        for mut rest in components_per_visualizer {
-            components.append(&mut rest);
+            for component in queried.difference(active_overrides) {
+                component_to_vis.entry(*component).or_insert_with(|| *vis);
+            }
         }
 
         // Present the option to add new components for each component that doesn't
         // already have an active override.
-        for component in components.difference(active_overrides) {
+        for (component, viz) in component_to_vis {
             // If we don't have an override_path we can't set up an initial override
             // this shouldn't happen if the `DataResult` is valid.
             let Some(override_path) = data_result.override_path() else {
@@ -202,7 +205,7 @@ pub fn add_new_override(
             };
 
             // If there is no registered editor, don't let the user create an override
-            if !ctx.component_ui_registry.has_registered_editor(component) {
+            if !ctx.component_ui_registry.has_registered_editor(&component) {
                 continue;
             }
 
@@ -212,13 +215,13 @@ pub fn add_new_override(
                 // - Next see if visualizer system wants to provide a value.
                 // - Finally, fall back on the default value from the component registry.
 
-                let components = [*component];
+                let components = [component];
 
                 let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
                 splat_cell.compute_size_bytes();
 
                 let Some(mut initial_data) = store
-                    .latest_at(query, &data_result.entity_path, *component, &components)
+                    .latest_at(query, &data_result.entity_path, component, &components)
                     .and_then(|result| result.2[0].clone())
                     .and_then(|cell| {
                         if cell.num_instances() == 1 {
@@ -228,13 +231,15 @@ pub fn add_new_override(
                         }
                     })
                     .or_else(|| {
-                        system_for_initial_value.initial_override_value(
-                            ctx,
-                            query,
-                            store,
-                            &data_result.entity_path,
-                            component,
-                        )
+                        view_systems.get_by_identifier(viz).ok().and_then(|sys| {
+                            sys.initial_override_value(
+                                ctx,
+                                query,
+                                store,
+                                &data_result.entity_path,
+                                &component,
+                            )
+                        })
                     })
                     .or_else(|| {
                         ctx.component_ui_registry.default_value(
@@ -242,7 +247,7 @@ pub fn add_new_override(
                             query,
                             store,
                             &data_result.entity_path,
-                            component,
+                            &component,
                         )
                     })
                 else {
