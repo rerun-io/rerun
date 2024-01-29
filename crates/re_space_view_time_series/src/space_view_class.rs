@@ -314,7 +314,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
-                    time as i64 + time_offset,
+                    time.value as i64 + time_offset,
                     time_zone_for_timestamps,
                 )
             })
