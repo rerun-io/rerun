@@ -150,7 +150,7 @@ impl ComponentUiRegistry {
 
     /// Show an editor for this instance of this component.
     #[allow(clippy::too_many_arguments)]
-    pub fn edit(
+    pub fn edit_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,

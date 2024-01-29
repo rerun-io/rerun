@@ -13,8 +13,6 @@ use re_viewer_context::{
 };
 use re_viewport::SpaceViewBlueprint;
 
-use crate::selection_panel::guess_query_and_store_for_selected_entity;
-
 pub fn override_ui(
     ctx: &ViewerContext<'_>,
     space_view: &SpaceViewBlueprint,
@@ -26,19 +24,24 @@ pub fn override_ui(
         instance_key,
     } = instance_path;
 
-    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
+    // Because of how overrides are implemented the overridden-data must be an entity
+    // in the real store.  We would never show an override UI for a selected blueprint
+    // entity from the blueprint-inspector since it isn't "part" of a space-view to provide
+    // the overrides.
+    let query = ctx.current_query();
+    let store = ctx.entity_db.store();
 
     let query_result = ctx.lookup_query_result(space_view.query_id());
     let Some(data_result) = query_result
         .tree
-        .lookup_result_by_path_and_group(&instance_path.entity_path, false)
+        .lookup_result_by_path_and_group(entity_path, false)
         .cloned()
     else {
         ui.label(ctx.re_ui.error_text("Entity not found in view."));
         return;
     };
 
-    let active_components: BTreeSet<ComponentName> = data_result
+    let active_overrides: BTreeSet<ComponentName> = data_result
         .property_overrides
         .as_ref()
         .map(|props| props.component_overrides.keys().cloned().collect())
@@ -51,7 +54,7 @@ pub fn override_ui(
         ui,
         space_view,
         &data_result,
-        &active_components,
+        &active_overrides,
     );
 
     ui.end_row();
@@ -128,7 +131,7 @@ pub fn override_ui(
                         };
 
                         if let Some((_, _, component_data)) = component_data {
-                            ctx.component_ui_registry.edit(
+                            ctx.component_ui_registry.edit_ui(
                                 ctx,
                                 ui,
                                 UiVerbosity::Small,
@@ -140,7 +143,8 @@ pub fn override_ui(
                                 instance_key,
                             );
                         } else {
-                            // TODO(jleibs): This shouldn't happen. Warn instead?
+                            // TODO(jleibs): Is it possible to set an override to empty and not confuse
+                            // the situation with "not-overriden?". Maybe we hit this in cases of `[]` vs `[null]`.
                             ui.weak("(empty)");
                         }
                     });
@@ -156,7 +160,7 @@ pub fn add_new_override(
     ui: &mut egui::Ui,
     space_view: &SpaceViewBlueprint,
     data_result: &DataResult,
-    active_components: &BTreeSet<ComponentName>,
+    active_overrides: &BTreeSet<ComponentName>,
 ) {
     ui.menu_button("Add new override", |ui| {
         ui.style_mut().wrap = Some(false);
@@ -166,6 +170,9 @@ pub fn add_new_override(
             .new_visualizer_collection(*space_view.class_identifier());
 
         // We have to have at least 1 visualizer system or we can't create an override
+        // TODO(jleibs): If we have multiple systems it could be nice to give the user a choice.
+        // However, we have very vew multi-visualizer systems and fewer that provide defaults,
+        // so don't do this until we actually understand the motivating usecase.
         let Some(system_for_initial_value) = view_systems.systems.values().next() else {
             return;
         };
@@ -176,17 +183,21 @@ pub fn add_new_override(
             .filter_map(|vis| view_systems.get_by_identifier(*vis).ok())
             .map(|vis| vis.visualizer_query_info().queried);
 
-        // Accmulate all the components if there are multiple visualizers
+        // Accumulate all the components if there are multiple visualizers
         let mut components = components_per_visualizer.next().unwrap_or_default();
         for mut rest in components_per_visualizer {
             components.append(&mut rest);
         }
 
-        // Empty space views of every available types
-        for component in components.difference(active_components) {
+        // Present the option to add new components for each component that doesn't
+        // already have an active override.
+        for component in components.difference(active_overrides) {
             // If we don't have an override_path we can't set up an initial override
             // this shouldn't happen if the `DataResult` is valid.
             let Some(override_path) = data_result.override_path() else {
+                if cfg!(debug_assertions) {
+                    re_log::error!("No override path for: {}", component);
+                }
                 continue;
             };
 
@@ -262,5 +273,7 @@ pub fn add_new_override(
                 ui.close_menu();
             }
         }
-    });
+    })
+    .response
+    .on_hover_text("Choose a component to specify an override value.".to_owned());
 }

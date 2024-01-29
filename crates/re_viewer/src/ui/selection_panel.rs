@@ -49,7 +49,7 @@ pub(crate) struct SelectionPanel {
 /// timeline, then use the blueprint. Otherwise use the recording.
 // TODO(jleibs): Ideally this wouldn't be necessary and we could make the assessment
 // directly from the entity_path.
-pub(crate) fn guess_query_and_store_for_selected_entity<'a>(
+fn guess_query_and_store_for_selected_entity<'a>(
     ctx: &'a ViewerContext<'_>,
     entity_path: &EntityPath,
 ) -> (re_data_store::LatestAtQuery, &'a re_data_store::DataStore) {
@@ -193,12 +193,15 @@ impl SelectionPanel {
                     });
                 }
 
-                // Special section for space-view-entities
+                // Special override section for space-view-entities
                 if let Item::InstancePath(Some(space_view_id), instance_path) = item {
+                    // Note: for now we only support overriding as a splat, rather than per-instance. So we
+                    // only show the UI when we've selected a full entity (indicated by splat) so as not to
+                    // me ambiguous as to what the override applies to.
                     if instance_path.instance_key == InstanceKey::SPLAT {
                         if let Some(space_view) = viewport.blueprint.space_views.get(space_view_id)
                         {
-                            // TODO(jleibs): Overrides still require special handling inside the space view.
+                            // TODO(jleibs): Overrides still require special handling inside the visualizers.
                             // For now, only show the override section for TimeSeries until support is implemented
                             // generically.
                             if space_view.class_identifier() == TimeSeriesSpaceView::IDENTIFIER {
@@ -962,7 +965,6 @@ fn blueprint_ui(
                                 data_result.accumulated_properties(),
                             );
                             data_result.save_override(Some(props), ctx);
-                            //entity_overrides_ui(ctx, ui, &space_view_class, &data_result);
                         }
                     }
                 }
