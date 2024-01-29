@@ -29,6 +29,7 @@ struct TransformInfo {
 enum UnreachableTransformReason {
     /// More than one pinhole camera between this and the reference space.
     NestedPinholeCameras,
+
     /// Unknown transform between this and the reference space.
     DisconnectedSpace,
 }
