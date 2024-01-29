@@ -1,6 +1,6 @@
 use egui::{lerp, NumExt as _, Rect};
 use glam::Affine3A;
-use macaw::{vec3, BoundingBox, IsoTransform, Mat4, Quat, Vec3};
+use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
 use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
