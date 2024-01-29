@@ -239,7 +239,6 @@ class FaceLandmarkerLogger:
         )
         rr.log("video/landmarker/faces", rr.Clear(recursive=True))
         rr.log("reconstruction/faces", rr.Clear(recursive=True))
-        rr.log("blendshapes", rr.Clear(recursive=True))
 
         for i, (landmark, blendshapes) in enumerate(
             zip(detection_result.face_landmarks, detection_result.face_blendshapes)
