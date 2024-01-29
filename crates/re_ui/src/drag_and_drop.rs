@@ -9,7 +9,7 @@ pub struct DropItemDescription<ItemId: Copy> {
     /// Can this item "contain" the currently dragged item?
     pub is_container: bool,
 
-    /// ID of the parent if this item.
+    /// ID of the parent of this item.
     pub parent_id: ItemId,
 
     /// Position of this item within its parent.
