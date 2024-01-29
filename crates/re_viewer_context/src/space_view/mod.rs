@@ -32,7 +32,7 @@ pub use system_execution_output::SystemExecutionOutput;
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
 pub use view_query::{DataResult, PerSystemDataResults, PropertyOverrides, ViewQuery};
 pub use visualizer_entity_subscriber::VisualizerAdditionalApplicabilityFilter;
-pub use visualizer_system::{VisualizerCollection, VisualizerSystem};
+pub use visualizer_system::{VisualizerCollection, VisualizerQueryInfo, VisualizerSystem};
 
 // ---------------------------------------------------------------------------
 

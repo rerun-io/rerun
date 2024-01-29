@@ -22,7 +22,7 @@ use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContextCollection,
     ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerSystem,
+    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -673,7 +673,15 @@ impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
 }
 
 impl VisualizerSystem for ImageVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        let indicators = [
+            Image::indicator().name(),
+            DepthImage::indicator().name(),
+            SegmentationImage::indicator().name(),
+        ]
+        .into_iter()
+        .collect();
+
         let image: ComponentNameSet = Image::required_components()
             .iter()
             .map(ToOwned::to_owned)
@@ -687,23 +695,26 @@ impl VisualizerSystem for ImageVisualizer {
             .map(ToOwned::to_owned)
             .collect();
 
-        image
+        let required = image
             .intersection(&depth_image)
             .map(ToOwned::to_owned)
             .collect::<ComponentNameSet>()
             .intersection(&segmentation_image)
             .map(ToOwned::to_owned)
-            .collect()
-    }
+            .collect();
 
-    fn indicator_components(&self) -> ComponentNameSet {
-        [
-            Image::indicator().name(),
-            DepthImage::indicator().name(),
-            SegmentationImage::indicator().name(),
-        ]
-        .into_iter()
-        .collect()
+        let queried = Image::all_components()
+            .iter()
+            .chain(DepthImage::all_components().iter())
+            .chain(SegmentationImage::all_components().iter())
+            .map(ToOwned::to_owned)
+            .collect();
+
+        VisualizerQueryInfo {
+            indicators,
+            required,
+            queried,
+        }
     }
 
     fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {

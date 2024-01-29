@@ -4,11 +4,11 @@ use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Mesh3D,
     components::{Color, InstanceKey, Material, MeshProperties, Position3D, Vector3D},
-    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use super::{
@@ -137,15 +137,8 @@ impl IdentifiedViewSystem for Mesh3DVisualizer {
 }
 
 impl VisualizerSystem for Mesh3DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Mesh3D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Mesh3D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Mesh3D>()
     }
 
     fn filter_visualizable_entities(

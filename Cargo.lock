@@ -4649,6 +4649,7 @@ dependencies = [
 name = "re_space_view"
 version = "0.13.0-alpha.3"
 dependencies = [
+ "ahash",
  "egui",
  "itertools 0.12.0",
  "nohash-hasher",
@@ -4988,6 +4989,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui-wgpu",
+ "egui_extras",
  "egui_plot",
  "egui_tiles",
  "ehttp",

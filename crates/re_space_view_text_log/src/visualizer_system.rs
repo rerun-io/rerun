@@ -5,11 +5,10 @@ use re_query_cache::MaybeCachedComponentData;
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
-    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerSystem,
+    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Debug, Clone)]
@@ -42,15 +41,8 @@ impl IdentifiedViewSystem for TextLogSystem {
 }
 
 impl VisualizerSystem for TextLogSystem {
-    fn required_components(&self) -> ComponentNameSet {
-        TextLog::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(TextLog::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<TextLog>()
     }
 
     fn execute(

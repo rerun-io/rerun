@@ -1,15 +1,15 @@
 use re_data_store::TimeRange;
-use re_log_types::TimeInt;
+use re_log_types::{StoreKind, TimeInt};
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::{
     archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
-    Archetype, ComponentNameSet,
+    Component, Loggable,
 };
 use re_viewer_context::{
     external::re_entity_db::TimeSeriesAggregator, AnnotationMap, DefaultColor,
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
-    VisualizerSystem,
+    IdentifiedViewSystem, ResolvedAnnotationInfo, SpaceViewSystemExecutionError, ViewQuery,
+    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -84,15 +84,8 @@ impl IdentifiedViewSystem for TimeSeriesSystem {
 }
 
 impl VisualizerSystem for TimeSeriesSystem {
-    fn required_components(&self) -> ComponentNameSet {
-        TimeSeriesScalar::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(TimeSeriesScalar::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<TimeSeriesScalar>()
     }
 
     fn execute(
@@ -119,6 +112,29 @@ impl VisualizerSystem for TimeSeriesSystem {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+
+    fn initial_override_value(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
+        entity_path: &re_log_types::EntityPath,
+        component: &re_types::ComponentName,
+    ) -> Option<re_log_types::DataCell> {
+        if *component == Color::name() {
+            let default_color = DefaultColor::EntityPath(entity_path);
+
+            let annotation_info = ResolvedAnnotationInfo::default();
+
+            let color = annotation_info.color(None, default_color);
+
+            let [r, g, b, a] = color.to_array();
+
+            Some([Color::from_unmultiplied_rgba(r, g, b, a)].into())
+        } else {
+            None
+        }
     }
 }
 
@@ -190,6 +206,19 @@ impl TimeSeriesSystem {
                     .annotation_info();
                 let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
+                let override_color = lookup_override::<Color>(data_result, ctx).map(|c| {
+                    let arr = c.to_array();
+                    egui::Color32::from_rgba_unmultiplied(arr[0], arr[1], arr[2], arr[3])
+                });
+
+                let override_label =
+                    lookup_override::<Text>(data_result, ctx).map(|t| t.to_string());
+
+                let override_scattered =
+                    lookup_override::<ScalarScattering>(data_result, ctx).map(|s| s.0);
+
+                let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
+
                 let query =
                     re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
@@ -218,9 +247,16 @@ impl TimeSeriesSystem {
                             MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
                             MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
                         ) {
-                            let color =
-                                annotation_info.color(color.map(|c| c.to_array()), default_color);
-                            let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+                            let color = override_color.unwrap_or_else(|| {
+                                annotation_info.color(color.map(|c| c.to_array()), default_color)
+                            });
+                            let label = override_label.clone().or_else(|| {
+                                annotation_info.label(label.as_ref().map(|l| l.as_str()))
+                            });
+                            let scattered = override_scattered
+                                .unwrap_or_else(|| scattered.map_or(false, |s| s.0));
+                            let radius = override_radius
+                                .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
 
                             const DEFAULT_RADIUS: f32 = 0.75;
 
@@ -230,8 +266,8 @@ impl TimeSeriesSystem {
                                 attrs: PlotPointAttrs {
                                     label,
                                     color,
-                                    radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
-                                    scattered: scattered.map_or(false, |s| s.0),
+                                    radius,
+                                    scattered,
                                 },
                             });
                         }
@@ -404,6 +440,28 @@ impl TimeSeriesSystem {
             self.lines.push(line);
         }
     }
+}
+
+fn lookup_override<C: Component>(
+    data_result: &re_viewer_context::DataResult,
+    ctx: &ViewerContext<'_>,
+) -> Option<C> {
+    data_result
+        .property_overrides
+        .as_ref()
+        .and_then(|p| p.component_overrides.get(&C::name()))
+        .and_then(|(store_kind, path)| match store_kind {
+            StoreKind::Blueprint => ctx
+                .store_context
+                .blueprint
+                .store()
+                .query_latest_component::<C>(path, ctx.blueprint_query),
+            StoreKind::Recording => ctx
+                .entity_db
+                .store()
+                .query_latest_component::<C>(path, &ctx.current_query()),
+        })
+        .map(|c| c.value)
 }
 
 // ---

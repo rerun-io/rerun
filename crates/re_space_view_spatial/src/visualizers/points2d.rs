@@ -3,12 +3,11 @@ use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points2D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text},
-    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -225,15 +224,8 @@ impl IdentifiedViewSystem for Points2DVisualizer {
 }
 
 impl VisualizerSystem for Points2DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Points2D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Points2D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Points2D>()
     }
 
     fn filter_visualizable_entities(

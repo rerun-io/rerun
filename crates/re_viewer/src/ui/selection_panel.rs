@@ -10,6 +10,7 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
+use re_types_core::components::InstanceKey;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
@@ -23,8 +24,10 @@ use re_viewport::{
     Contents, SpaceInfoCollection, Viewport, ViewportBlueprint,
 };
 
-use crate::ui::add_space_view_or_container_modal::AddSpaceViewOrContainerModal;
 use crate::ui::visible_history::visible_history_ui;
+use crate::ui::{
+    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, override_ui::override_ui,
+};
 
 use super::selection_history_ui::SelectionHistoryUi;
 
@@ -188,6 +191,31 @@ impl SelectionPanel {
                         };
                         data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, store);
                     });
+                }
+
+                // Special override section for space-view-entities
+                if let Item::InstancePath(Some(space_view_id), instance_path) = item {
+                    // Note: for now we only support overriding as a splat, rather than per-instance. So we
+                    // only show the UI when we've selected a full entity (indicated by splat) so as not to
+                    // me ambiguous as to what the override applies to.
+                    if instance_path.instance_key == InstanceKey::SPLAT {
+                        if let Some(space_view) = viewport.blueprint.space_views.get(space_view_id)
+                        {
+                            // TODO(jleibs): Overrides still require special handling inside the visualizers.
+                            // For now, only show the override section for TimeSeries until support is implemented
+                            // generically.
+                            if space_view.class_identifier() == TimeSeriesSpaceView::IDENTIFIER {
+                                ctx.re_ui.large_collapsing_header(
+                                    ui,
+                                    "Component Overrides",
+                                    true,
+                                    |ui| {
+                                        override_ui(ctx, space_view, instance_path, ui);
+                                    },
+                                );
+                            }
+                        }
+                    }
                 }
 
                 if has_blueprint_section(item) {

@@ -1,5 +1,6 @@
 mod blueprint_panel;
 mod mobile_warning_ui;
+mod override_ui;
 mod recordings_panel;
 mod rerun_menu;
 mod selection_history_ui;

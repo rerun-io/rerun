@@ -1,7 +1,6 @@
-use re_types::ComponentNameSet;
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerSystem,
+    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// An empty system to accept all entities in the space view
@@ -15,12 +14,8 @@ impl IdentifiedViewSystem for EmptySystem {
 }
 
 impl VisualizerSystem for EmptySystem {
-    fn required_components(&self) -> ComponentNameSet {
-        std::iter::empty().collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::empty().collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::empty()
     }
 
     fn execute(
