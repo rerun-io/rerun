@@ -712,6 +712,7 @@ fn show_list_item_for_container_child(
     viewport: &Viewport<'_, '_>,
     child_contents: &Contents,
 ) -> bool {
+    let mut remove_contents = false;
     let (item, mut list_item) = match child_contents {
         Contents::SpaceView(space_view_id) => {
             let Some(space_view) = viewport.blueprint.space_view(space_view_id) else {
@@ -724,7 +725,18 @@ fn show_list_item_for_container_child(
                 Item::SpaceView(*space_view_id),
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
                     .label_style(space_view_name.style())
-                    .with_icon(space_view.class(ctx.space_view_class_registry).icon()),
+                    .with_icon(space_view.class(ctx.space_view_class_registry).icon())
+                    .with_buttons(|re_ui, ui| {
+                        let response = re_ui
+                            .small_icon_button(ui, &re_ui::icons::REMOVE)
+                            .on_hover_text("Remove this Space View");
+
+                        if response.clicked() {
+                            remove_contents = true;
+                        }
+
+                        response
+                    }),
             )
         }
         Contents::Container(container_id) => {
@@ -736,7 +748,18 @@ fn show_list_item_for_container_child(
             (
                 Item::Container(*container_id),
                 ListItem::new(ctx.re_ui, format!("{:?}", container.container_kind))
-                    .with_icon(icon_for_container_kind(&container.container_kind)),
+                    .with_icon(icon_for_container_kind(&container.container_kind))
+                    .with_buttons(|re_ui, ui| {
+                        let response = re_ui
+                            .small_icon_button(ui, &re_ui::icons::REMOVE)
+                            .on_hover_text("Remove this Container");
+
+                        if response.clicked() {
+                            remove_contents = true;
+                        }
+
+                        response
+                    }),
             )
         }
     };
@@ -751,6 +774,11 @@ fn show_list_item_for_container_child(
     let response = list_item.show(ui);
 
     item_ui::select_hovered_on_click(ctx, &response, std::iter::once(item));
+
+    if remove_contents {
+        viewport.blueprint.mark_user_interaction(ctx);
+        viewport.blueprint.remove_contents(child_contents.clone());
+    }
 
     true
 }

@@ -206,15 +206,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install taplo-cli
-        uses: taiki-e/install-action@v2
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          tool: taplo-cli
+          pixi-version: v0.6.0
 
-      - name: Taplo check
+      - run: pixi run lint-taplo
         shell: bash
-        run: |
-          taplo fmt --check --diff
 
   misc-rerun-lints:
     name: Rerun lints

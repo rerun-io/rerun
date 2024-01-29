@@ -563,9 +563,9 @@ impl EntityTree {
         subtree_recursive(self, path.as_slice())
     }
 
-    // Invokes visitor for `self` all children recursively.
-    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&EntityPath)) {
-        visitor(&self.path);
+    // Invokes visitor for `self` and all children recursively.
+    pub fn visit_children_recursively(&self, visitor: &mut impl FnMut(&EntityPath, &EntityInfo)) {
+        visitor(&self.path, &self.entity);
         for child in self.children.values() {
             child.visit_children_recursively(visitor);
         }

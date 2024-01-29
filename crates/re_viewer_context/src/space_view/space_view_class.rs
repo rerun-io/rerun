@@ -3,8 +3,8 @@ use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
-    AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
     VisualizableFilterContext,
 };
@@ -76,15 +76,8 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
         Box::new(())
     }
 
-    /// Heuristic used to determine which space view is the best fit for a set of paths.
-    fn auto_spawn_heuristic(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
-    ) -> AutoSpawnHeuristic {
-        AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(ent_paths.len() as f32)
-    }
+    /// Determines which space views should be spawned by default for this class.
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
     /// Optional archetype of the Space View's blueprint properties.
     ///
@@ -195,13 +188,8 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     }
 
     #[inline]
-    fn auto_spawn_heuristic(
-        &self,
-        ctx: &ViewerContext<'_>,
-        space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
-    ) -> AutoSpawnHeuristic {
-        self.auto_spawn_heuristic(ctx, space_origin, ent_paths)
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+        self.spawn_heuristics(ctx)
     }
 
     #[inline]

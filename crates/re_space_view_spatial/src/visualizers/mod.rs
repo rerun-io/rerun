@@ -127,21 +127,50 @@ pub fn process_colors<'a, A: Archetype>(
 /// Process [`Color`] components using annotations and default colors.
 pub fn process_color_slice<'a>(
     colors: Option<&'a [Option<Color>]>,
-    default_len: usize,
     ent_path: &'a EntityPath,
     annotation_infos: &'a ResolvedAnnotationInfos,
-) -> impl Iterator<Item = egui::Color32> + 'a {
+) -> Vec<egui::Color32> {
+    // This can be rather slow for colors with transparency, since we need to pre-multiply the alpha.
     re_tracing::profile_function!();
+    use rayon::prelude::*;
+
     let default_color = DefaultColor::EntityPath(ent_path);
 
-    let colors = colors.as_ref().map_or(
-        itertools::Either::Left(std::iter::repeat(&None).take(default_len)),
-        |data| itertools::Either::Right(data.iter()),
-    );
+    match (colors, annotation_infos) {
+        (None, ResolvedAnnotationInfos::Same(count, annotation_info)) => {
+            re_tracing::profile_scope!("no colors, same annotation");
+            let color = annotation_info.color(None, default_color);
+            vec![color; *count]
+        }
 
-    itertools::izip!(annotation_infos.iter(), colors).map(move |(annotation_info, color)| {
-        annotation_info.color(color.map(|c| c.to_array()), default_color)
-    })
+        (None, ResolvedAnnotationInfos::Many(annotation_infos)) => {
+            re_tracing::profile_scope!("no-colors, many annotations");
+            annotation_infos
+                .par_iter()
+                .map(|annotation_info| annotation_info.color(None, default_color))
+                .collect()
+        }
+
+        (Some(colors), ResolvedAnnotationInfos::Same(count, annotation_info)) => {
+            re_tracing::profile_scope!("many-colors, same annotation");
+            debug_assert_eq!(colors.len(), *count);
+            colors
+                .par_iter()
+                .map(|color| annotation_info.color(color.map(|c| c.to_array()), default_color))
+                .collect()
+        }
+
+        (Some(colors), ResolvedAnnotationInfos::Many(annotation_infos)) => {
+            re_tracing::profile_scope!("many-colors, many annotations");
+            colors
+                .par_iter()
+                .zip(annotation_infos.par_iter())
+                .map(move |(color, annotation_info)| {
+                    annotation_info.color(color.map(|c| c.to_array()), default_color)
+                })
+                .collect()
+        }
+    }
 }
 
 /// Process [`Text`] components using annotations.
@@ -174,20 +203,25 @@ pub fn process_radii<'a, A: Archetype>(
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
-pub fn process_radius_slice<'a>(
-    radii: Option<&'a [Option<re_types::components::Radius>]>,
+pub fn process_radius_slice(
+    radii: Option<&[Option<re_types::components::Radius>]>,
     default_len: usize,
     ent_path: &EntityPath,
-) -> impl Iterator<Item = re_renderer::Size> + 'a {
+) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
+    use rayon::prelude::*;
+
     let ent_path = ent_path.clone();
 
-    let radii = radii.as_ref().map_or(
-        itertools::Either::Left(std::iter::repeat(&None).take(default_len)),
-        |data| itertools::Either::Right(data.iter()),
-    );
-
-    radii.map(move |radius| process_radius(&ent_path, radius))
+    match radii {
+        None => {
+            vec![re_renderer::Size::AUTO; default_len]
+        }
+        Some(radii) => radii
+            .par_iter()
+            .map(|radius| process_radius(&ent_path, radius))
+            .collect(),
+    }
 }
 
 fn process_radius(

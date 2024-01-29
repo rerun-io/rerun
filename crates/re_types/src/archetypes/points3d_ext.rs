@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use super::Points3D;
 
 impl Points3D {
@@ -14,6 +16,7 @@ impl Points3D {
     /// The media type will be inferred from the path (extension), or the contents if that fails.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn from_file_path(filepath: &std::path::Path) -> anyhow::Result<Self> {
+        re_tracing::profile_function!(filepath.to_string_lossy());
         use anyhow::Context as _;
 
         let file = std::fs::File::open(filepath)
@@ -21,23 +24,30 @@ impl Points3D {
         let mut file = std::io::BufReader::new(file);
 
         let parser = ply_rs::parser::Parser::<ply_rs::ply::DefaultElement>::new();
-        let ply = parser.read_ply(&mut file)?;
+        let ply = {
+            re_tracing::profile_scope!("read_ply");
+            parser.read_ply(&mut file)?
+        };
 
-        Ok(from_ply(&ply))
+        Ok(from_ply(ply))
     }
 
     /// Creates a new [`Points3D`] from the contents of a `.ply` file.
     ///
     /// If unspecified, he media type will be inferred from the contents.
     pub fn from_file_contents(contents: &[u8]) -> anyhow::Result<Self> {
+        re_tracing::profile_function!();
         let parser = ply_rs::parser::Parser::<ply_rs::ply::DefaultElement>::new();
         let mut contents = std::io::Cursor::new(contents);
-        let ply = parser.read_ply(&mut contents)?;
-        Ok(from_ply(&ply))
+        let ply = {
+            re_tracing::profile_scope!("read_ply");
+            parser.read_ply(&mut contents)?
+        };
+        Ok(from_ply(ply))
     }
 }
 
-fn from_ply(ply: &ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
+fn from_ply(ply: ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
     re_tracing::profile_function!();
 
     use std::borrow::Cow;
@@ -119,7 +129,10 @@ fn from_ply(ply: &ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
 
     // TODO(cmc): This could be optimized by using custom property accessors.
     impl Vertex {
-        fn from_props(props: &LinkedHashMap<String, Property>) -> Option<Vertex> {
+        fn from_props(
+            mut props: LinkedHashMap<String, Property>,
+            ignored_props: &mut BTreeSet<String>,
+        ) -> Option<Vertex> {
             // NOTE: Empirical evidence points to these being de-facto standard…
             const PROP_X: &str = "x";
             const PROP_Y: &str = "y";
@@ -136,8 +149,17 @@ fn from_ply(ply: &ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
                 props.get(PROP_Y).and_then(f32),
                 props.get(PROP_Z).and_then(f32),
             ) else {
+                // All points much have positions.
+                for (key, _value) in props {
+                    ignored_props.insert(key);
+                }
                 return None;
             };
+
+            // We remove properties as they are read so we can warn about the ones we don't recognize.
+            props.remove(PROP_X);
+            props.remove(PROP_Y);
+            props.remove(PROP_Z);
 
             let mut this = Self {
                 position: Position3D::new(x, y, z),
@@ -152,15 +174,27 @@ fn from_ply(ply: &ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
                 props.get(PROP_BLUE).and_then(u8),
             ) {
                 let a = props.get(PROP_ALPHA).and_then(u8).unwrap_or(255);
+
+                props.remove(PROP_RED);
+                props.remove(PROP_GREEN);
+                props.remove(PROP_BLUE);
+                props.remove(PROP_ALPHA);
+
                 this.color = Some(Color::new((r, g, b, a)));
             };
 
             if let Some(radius) = props.get(PROP_RADIUS).and_then(f32) {
+                props.remove(PROP_RADIUS);
                 this.radius = Some(Radius(radius));
             }
 
             if let Some(label) = props.get(PROP_LABEL).and_then(string) {
                 this.label = Some(Text(label.to_string().into()));
+                props.remove(PROP_LABEL);
+            }
+
+            for (key, _value) in props {
+                ignored_props.insert(key);
             }
 
             Some(this)
@@ -172,22 +206,34 @@ fn from_ply(ply: &ply_rs::ply::Ply<ply_rs::ply::DefaultElement>) -> Points3D {
     let mut radii = Vec::new();
     let mut labels = Vec::new();
 
-    for all_props in ply.payload.values() {
-        for props in all_props {
-            if let Some(vertex) = Vertex::from_props(props) {
-                let Vertex {
-                    position,
-                    color,
-                    radius,
-                    label,
-                } = vertex;
-                positions.push(position);
-                colors.push(color); // opt
-                radii.push(radius); // opt
-                labels.push(label); // opt
+    let mut ignored_props = BTreeSet::new();
+
+    for (key, all_props) in ply.payload {
+        if key == "vertex" {
+            for props in all_props {
+                if let Some(vertex) = Vertex::from_props(props, &mut ignored_props) {
+                    let Vertex {
+                        position,
+                        color,
+                        radius,
+                        label,
+                    } = vertex;
+                    positions.push(position);
+                    colors.push(color); // opt
+                    radii.push(radius); // opt
+                    labels.push(label); // opt
+                }
             }
+        } else {
+            re_log::warn!("Ignoring {key:?} in .ply file");
         }
     }
+
+    if !ignored_props.is_empty() {
+        re_log::warn!("Ignored properties of .ply file: {ignored_props:?}");
+    }
+
+    re_tracing::profile_scope!("fill-in");
 
     colors.truncate(positions.len());
     radii.truncate(positions.len());
