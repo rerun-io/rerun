@@ -178,11 +178,7 @@ impl View3DState {
             0.0
         };
 
-        if orbit_eye.update(
-            response,
-            orbit_eye_drag_threshold,
-            &bounding_boxes.accumulated,
-        ) {
+        if orbit_eye.update(response, orbit_eye_drag_threshold) {
             self.last_eye_interaction = Some(Instant::now());
             self.eye_interpolation = None;
             self.tracked_entity = None;

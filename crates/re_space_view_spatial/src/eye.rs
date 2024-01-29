@@ -266,12 +266,7 @@ impl OrbitEye {
 
     /// Returns `true` if interaction occurred.
     /// I.e. the camera changed via user input.
-    pub fn update(
-        &mut self,
-        response: &egui::Response,
-        drag_threshold: f32,
-        scene_bbox: &BoundingBox,
-    ) -> bool {
+    pub fn update(&mut self, response: &egui::Response, drag_threshold: f32) -> bool {
         // Dragging even below the [`drag_threshold`] should be considered interaction.
         // Otherwise we flicker in and out of "has interacted" too quickly.
         let mut did_interact = response.drag_delta().length() > 0.0;
