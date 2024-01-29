@@ -38,8 +38,10 @@ pub struct ViewportState {
     space_view_entity_window: SpaceViewEntityPicker,
     space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
 
-    /// when a drag is in progress, this is the currently identified drop target to be highlighted
-    drop_target_container_id: Option<ContainerId>,
+    /// Current candidate parent container for the onging drop.
+    ///
+    /// See [`ViewportState::is_candidate_drop_parent_container`] for details.
+    candidate_drop_parent_container_id: Option<ContainerId>,
 }
 
 static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);
@@ -67,8 +69,12 @@ impl ViewportState {
             .map_or(&DEFAULT_PROPS, |state| &state.auto_properties)
     }
 
-    pub fn is_drop_target(&self, container_id: &ContainerId) -> bool {
-        self.drop_target_container_id.as_ref() == Some(container_id)
+    /// Is the provided container the current candidate parent container for the ongoing drag?
+    ///
+    /// When a drag is in progress, the candidate parent container for the dragged item should be highlighted. Note that
+    /// this can happen when hovering said container, its direct children, or even the item just after it.
+    pub fn is_candidate_drop_parent_container(&self, container_id: &ContainerId) -> bool {
+        self.candidate_drop_parent_container_id.as_ref() == Some(container_id)
     }
 }
 
@@ -338,7 +344,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         let mut reset = false;
 
         // always reset the drop target
-        self.state.drop_target_container_id = None;
+        self.state.candidate_drop_parent_container_id = None;
 
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
         for tree_action in self.tree_action_receiver.try_iter() {
@@ -464,7 +470,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     self.tree_edited = true;
                 }
                 TreeAction::SetDropTarget(container_id) => {
-                    self.state.drop_target_container_id = Some(container_id);
+                    self.state.candidate_drop_parent_container_id = Some(container_id);
                 }
             }
         }

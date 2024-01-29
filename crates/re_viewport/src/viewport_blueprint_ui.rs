@@ -101,7 +101,7 @@ impl Viewport<'_, '_> {
         .subdued(!container_visible)
         .selected(ctx.selection().contains_item(&item))
         .draggable(true)
-        .drop_target_style(self.state.is_drop_target(container_id))
+        .drop_target_style(self.state.is_candidate_drop_parent_container(container_id))
         .with_icon(crate::icon_for_container_kind(
             &container_blueprint.container_kind,
         ))
