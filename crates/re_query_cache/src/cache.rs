@@ -702,6 +702,11 @@ impl CacheBucket {
             .components
             .get(&C::name())
             .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())?;
+        // dbg!((
+        //     C::name(),
+        //     data.iter().take(data.num_entries() - 1).collect_vec()
+        // ));
+
         Some(data.range(entry_range))
     }
 
@@ -874,6 +879,12 @@ impl CacheBucket {
             .iter_required_component::<C>()?
             .collect::<VecDeque<C>>()
             .into();
+        // dbg!((
+        //     arch_view
+        //         .iter_required_component::<C>()?
+        //         .collect::<Vec<C>>(),
+        //     &added
+        // ));
         let added_size_bytes = added.total_size_bytes();
 
         // NOTE: downcast cannot fail, we create it just above.

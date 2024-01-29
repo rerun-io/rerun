@@ -70,8 +70,11 @@
                 }
             },
             "args": [
-                "../data.rrd"
+                "cam.rrd"
             ],
+            "env": {
+                "RAYON_NUM_THREADS": "1",
+            },
             "cwd": "${workspaceFolder}"
         },
         {

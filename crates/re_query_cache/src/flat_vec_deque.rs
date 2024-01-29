@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, ops::Range};
 
-use itertools::Itertools as _;
+use itertools::Itertools;
 
 use re_types_core::SizeBytes;
 
@@ -251,15 +251,35 @@ impl<T> FlatVecDeque<T> {
     /// Iterates over all the entries in the deque in the given `entry_range`.
     ///
     /// Keep in mind that each entry is an array of values!
-    #[inline]
+    // #[inline]
     pub fn range(&self, entry_range: Range<usize>) -> impl Iterator<Item = &[T]> {
+        eprintln!("{:?}", self.offsets);
         let (values_left, values_right) = self.values.as_slices();
+        // dbg!((
+        //     &entry_range,
+        //     entry_range.len(),
+        //     // &self.offsets,
+        //     self.offsets.len(),
+        //     self.values.len(),
+        //     values_left.len(),
+        //     values_right.len(),
+        //     self.iter_offset_ranges().collect_vec(),
+        // ));
         // NOTE: We can't slice into our offsets, we don't even know if they're contiguous in
         // memory at this point -> skip() and take().
         self.iter_offset_ranges()
             .skip(entry_range.start)
             .take(entry_range.len())
             .map(|offsets| {
+                if offsets.is_empty() {
+                    return &[] as &'_ [T];
+                }
+                // dbg!((
+                //     &offsets,
+                //     offsets.start,
+                //     values_left.len(),
+                //     values_right.len()
+                // ));
                 // NOTE: We do not need `make_contiguous` here because we always guarantee
                 // that a single entry's worth of values is fully contained in either the left or
                 // right buffer, but never straddling across both.
@@ -426,19 +446,29 @@ fn insert() {
     assert_eq!(0, v.num_entries());
     assert_eq!(0, v.num_values());
 
+    // TODO: dont commit this
+    fn assert_offsets_eq(expected: &[usize], got: &VecDeque<usize>) {
+        similar_asserts::assert_eq!(expected, got.clone().into_iter().collect_vec());
+    }
+
     v.insert(0, [1, 2, 3]);
+    assert_offsets_eq(&[3], &v.offsets);
     assert_deque_eq(&[&[1, 2, 3]], &v);
 
     v.insert(0, [4, 5, 6, 7]);
+    assert_offsets_eq(&[4, 7], &v.offsets);
     assert_deque_eq(&[&[4, 5, 6, 7], &[1, 2, 3]], &v);
 
     v.insert(0, [8, 9]);
+    assert_offsets_eq(&[2, 6, 9], &v.offsets);
     assert_deque_eq(&[&[8, 9], &[4, 5, 6, 7], &[1, 2, 3]], &v);
 
     v.insert(2, [10, 11, 12, 13]);
+    assert_offsets_eq(&[2, 6, 10, 13], &v.offsets);
     assert_deque_eq(&[&[8, 9], &[4, 5, 6, 7], &[10, 11, 12, 13], &[1, 2, 3]], &v);
 
     v.insert(v.num_entries(), [14, 15]);
+    assert_offsets_eq(&[2, 6, 10, 13, 15], &v.offsets);
     assert_deque_eq(
         &[
             &[8, 9],
@@ -451,6 +481,7 @@ fn insert() {
     );
 
     v.insert(v.num_entries() - 1, [42]);
+    assert_offsets_eq(&[2, 6, 10, 13, 14, 16], &v.offsets);
     assert_deque_eq(
         &[
             &[8, 9],
@@ -476,6 +507,35 @@ fn insert_empty() {
     v.push_back([]);
 
     assert_deque_eq(&[&[], &[], &[]], &v);
+}
+
+// Simulate the bug that was making everything crash on the face tracking example.
+#[test]
+fn insert_some_and_empty() {
+    let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
+
+    assert_eq!(0, v.num_entries());
+    assert_eq!(0, v.num_values());
+
+    v.push_back([0]);
+
+    eprintln!("{:?}", v.offsets);
+    assert_deque_eq(&[&[0]], &v);
+
+    v.push_back([]);
+
+    eprintln!("{:?}", v.offsets);
+    assert_deque_eq(&[&[0], &[]], &v);
+
+    return;
+
+    v.push_back([1]);
+    v.push_back([]);
+
+    v.push_back([2]);
+    v.push_back([]);
+
+    assert_deque_eq(&[&[0], &[], &[1], &[], &[2], &[]], &v);
 }
 
 #[test]

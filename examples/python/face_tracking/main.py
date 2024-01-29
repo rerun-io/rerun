@@ -131,7 +131,7 @@ class FaceDetectorLogger:
             if self._video_mode
             else self._detector.detect(image)
         )
-        rr.log("video/detector/faces", rr.Clear(recursive=True))
+        # rr.log("video/detector/faces", rr.Clear(recursive=True))
         for i, detection in enumerate(detection_result.detections):
             # log bounding box
             bbox = detection.bounding_box
@@ -237,9 +237,10 @@ class FaceLandmarkerLogger:
             if self._video_mode
             else self._detector.detect(image)
         )
-        rr.log("video/landmarker/faces", rr.Clear(recursive=True))
-        rr.log("reconstruction/faces", rr.Clear(recursive=True))
-        rr.log("blendshapes", rr.Clear(recursive=True))
+        # rr.log("video/landmarker/faces", rr.Clear(recursive=True))
+        # rr.log("reconstruction/faces", rr.Clear(recursive=True))
+        # TODO: WHY?
+        # rr.log("blendshapes", rr.Clear(recursive=True))
 
         for i, (landmark, blendshapes) in enumerate(
             zip(detection_result.face_landmarks, detection_result.face_blendshapes)

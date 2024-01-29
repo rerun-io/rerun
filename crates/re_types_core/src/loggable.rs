@@ -21,7 +21,7 @@ use crate::{Archetype, ComponentBatch, DatatypeBatch, LoggableBatch};
 /// automatically derives the [`LoggableBatch`] implementation (and by extension
 /// [`DatatypeBatch`]/[`ComponentBatch`]), which makes it possible to work with lists' worth of data
 /// in a generic fashion.
-pub trait Loggable: Clone + Sized + SizeBytes {
+pub trait Loggable: std::fmt::Debug + Clone + Sized + SizeBytes {
     type Name: std::fmt::Display;
 
     /// The fully-qualified name of this loggable, e.g. `rerun.datatypes.Vec2D`.

@@ -16,11 +16,11 @@ static BUILD_INFO: Mutex<Option<BuildInfo>> = Mutex::new(None);
 /// * First of all, we don't want to compete with other panic/signal handlers.
 /// * Second of all, we don't ever want to include user callstacks in our analytics.
 pub fn install_crash_handlers(build_info: BuildInfo) {
-    install_panic_hook(build_info);
+    //install_panic_hook(build_info);
 
-    #[cfg(not(target_arch = "wasm32"))]
-    #[cfg(not(target_os = "windows"))]
-    install_signal_handler(build_info);
+    // #[cfg(not(target_arch = "wasm32"))]
+    // #[cfg(not(target_os = "windows"))]
+    // install_signal_handler(build_info);
 }
 
 fn install_panic_hook(_build_info: BuildInfo) {

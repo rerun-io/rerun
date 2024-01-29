@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: The configurable set of overridable properties.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct EntityPropertiesComponent(pub crate::EntityProperties);
 
 impl From<crate::EntityProperties> for EntityPropertiesComponent {

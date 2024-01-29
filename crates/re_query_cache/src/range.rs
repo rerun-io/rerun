@@ -200,16 +200,20 @@ macro_rules! impl_query_archetype_range {
                     bucket.range_pov_instance_keys(entry_range.clone()),
                     $(bucket.range_component::<$pov>(entry_range.clone())
                         .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
-                    $(bucket.range_component_opt::<$comp>(entry_range.clone())
-                        .ok_or_else(|| re_query::ComponentNotFoundError(<$comp>::name()))?,)*
+                    $(std::iter::repeat(Option::<$comp>::None),)*
+                    // $(bucket.range_component_opt::<$comp>(entry_range.clone())
+                        // .ok_or_else(|| re_query::ComponentNotFoundError(<$comp>::name()))?,)*
                 ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
                     (
                         ((!timeless).then_some(*time), *row_id),
                         MaybeCachedComponentData::Cached(instance_keys),
                         $(MaybeCachedComponentData::Cached($pov),)+
-                        $((!$comp.is_empty()).then_some(MaybeCachedComponentData::Cached($comp)),)*
+                        $(Option::<MaybeCachedComponentData<'_, Option<$comp>>>::None,)*
+                        // $((!$comp.is_empty()).then_some(MaybeCachedComponentData::Cached($comp)),)*
                     )
                 });
+
+                // eprintln!("{store}");
 
                 for data in it {
                     f(data);

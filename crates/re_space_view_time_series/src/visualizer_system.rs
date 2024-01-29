@@ -193,6 +193,8 @@ impl TimeSeriesSystem {
                 let query =
                     re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
+                eprintln!("---\n{} @ {query:?}", &data_result.entity_path);
+                eprintln!("{query_caches:?}");
                 query_caches.query_archetype_pov1_comp4::<
                     TimeSeriesScalar,
                     Scalar,

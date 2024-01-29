@@ -14,7 +14,7 @@ namespace rerun.blueprint.components;
 /// Unstable. Used for the ongoing blueprint experimentations.
 table EntityPropertiesComponent (
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive_only": "Clone",
+  "attr.rust.derive_only": "Debug, Clone",
   "attr.rust.override_crate": "re_entity_db"
 ) {
   props: [ubyte] (order: 100, "attr.rust.serde_type": "crate::EntityProperties");
