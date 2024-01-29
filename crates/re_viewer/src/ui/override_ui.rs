@@ -9,7 +9,7 @@ use re_query_cache::external::re_query::get_component_with_instances;
 use re_types_core::{components::InstanceKey, ComponentName};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataResult, SystemCommand, SystemCommandSender as _,
-    UiVerbosity, ViewSystemIdentifier, ViewerContext, VisualizerSystem,
+    UiVerbosity, ViewSystemIdentifier, ViewerContext,
 };
 use re_viewport::SpaceViewBlueprint;
 
