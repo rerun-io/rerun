@@ -10,10 +10,7 @@ use re_viewer_context::{
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
     SystemCommandSender as _, ViewerContext,
 };
-use re_viewport::{
-    determine_visualizable_entities, SpaceInfoCollection, Viewport, ViewportBlueprint,
-    ViewportState,
-};
+use re_viewport::{determine_visualizable_entities, Viewport, ViewportBlueprint, ViewportState};
 
 use crate::ui::recordings_panel_ui;
 use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
@@ -237,8 +234,6 @@ impl AppState {
         // First update the viewport and thus all active space views.
         // This may update their heuristics, so that all panels that are shown in this frame,
         // have the latest information.
-        let spaces_info = SpaceInfoCollection::new(ctx.entity_db);
-
         viewport.on_frame_start(&ctx);
 
         {
@@ -290,7 +285,6 @@ impl AppState {
             &ctx,
             ui,
             &mut viewport,
-            &spaces_info,
             app_blueprint.selection_panel_expanded,
         );
 
@@ -331,7 +325,7 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(&mut viewport, &ctx, ui, &spaces_info);
+                        blueprint_panel_ui(&mut viewport, &ctx, ui);
                     },
                 );
 

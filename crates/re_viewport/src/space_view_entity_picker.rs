@@ -6,10 +6,7 @@ use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{EntityPathFilter, EntityPathRule};
 use re_viewer_context::{DataQueryResult, SpaceViewId, ViewerContext};
 
-use crate::{
-    determine_visualizable_entities, space_info::SpaceInfoCollection,
-    space_view::SpaceViewBlueprint, ViewportBlueprint,
-};
+use crate::{determine_visualizable_entities, space_view::SpaceViewBlueprint, ViewportBlueprint};
 
 /// Window for adding/removing entities from a space view.
 ///
@@ -59,13 +56,11 @@ impl SpaceViewEntityPicker {
 fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &SpaceViewBlueprint) {
     re_tracing::profile_function!();
 
-    let spaces_info = SpaceInfoCollection::new(ctx.entity_db);
     let tree = &ctx.entity_db.tree();
     // TODO(jleibs): Avoid clone
     let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
     let entity_path_filter = space_view.entity_path_filter();
-    let entities_add_info =
-        create_entity_add_info(ctx, tree, space_view, &query_result, &spaces_info);
+    let entities_add_info = create_entity_add_info(ctx, tree, space_view, &query_result);
 
     add_entities_tree_ui(
         ctx,
@@ -317,7 +312,6 @@ fn create_entity_add_info(
     tree: &EntityTree,
     space_view: &SpaceViewBlueprint,
     query_result: &DataQueryResult,
-    spaces_info: &SpaceInfoCollection,
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
@@ -335,20 +329,14 @@ fn create_entity_add_info(
     tree.visit_children_recursively(&mut |entity_path, _| {
         let can_add: CanAddToSpaceView =
             if visualizable_entities.iter().any(|(_, entities)| entities.contains(entity_path)) {
-                // TODO(andreas): (topological) reachability should be part of visualizability.
-                //                Yes, this means that once an entity is no longer visualizable (due to pinhole etc.) it stays this way.
-                match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
-                    Ok(()) => CanAddToSpaceView::Compatible {
-                        already_added: query_result.contains_any(entity_path),
-                    },
-                    Err(reason) => CanAddToSpaceView::No {
-                        reason: reason.to_string(),
-                    },
+                CanAddToSpaceView::Compatible {
+                    already_added: query_result.contains_any(entity_path),
                 }
             } else {
+                // TODO(#4826): This shouldn't necessarily prevent us from adding it.
                 CanAddToSpaceView::No {
                     reason: format!(
-                        "Entity can't be displayed by this class of Space View ({}), since it doesn't match any archetype that the Space View can process.",
+                        "Entity can't be displayed by any of the available visualizers in this class of Space View ({}).",
                         space_view.class_identifier()
                     ),
                 }

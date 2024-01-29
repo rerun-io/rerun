@@ -3,7 +3,7 @@ use egui::{Key, Ui};
 
 use re_ui::{ReUi, SyntaxHighlighting};
 use re_viewer_context::ViewerContext;
-use re_viewport::{SpaceInfoCollection, SpaceViewBlueprint};
+use re_viewport::SpaceViewBlueprint;
 
 /// State of the space origin widget.
 #[derive(Default, Clone)]
@@ -27,7 +27,6 @@ enum SpaceOriginEditState {
 pub(crate) fn space_view_space_origin_widget_ui(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
-    spaces_info: &SpaceInfoCollection,
     space_view: &SpaceViewBlueprint,
 ) {
     let is_editing_id = ui.make_persistent_id(space_view.id.hash());
@@ -55,7 +54,6 @@ pub(crate) fn space_view_space_origin_widget_ui(
             let keep_editing = space_view_space_origin_widget_editing_ui(
                 ui,
                 ctx,
-                spaces_info,
                 origin_string,
                 *entered_editing,
                 space_view,
@@ -77,7 +75,6 @@ pub(crate) fn space_view_space_origin_widget_ui(
 fn space_view_space_origin_widget_editing_ui(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
-    spaces_info: &SpaceInfoCollection,
     space_origin_string: &mut String,
     entered_editing: bool,
     space_view: &SpaceViewBlueprint,
@@ -92,9 +89,8 @@ fn space_view_space_origin_widget_editing_ui(
     // All suggestions for this class of space views.
     // TODO(#4895): we should have/use a much simpler heuristic API to get a list of compatible entity sub-tree
     let space_view_suggestions =
-        re_viewport::space_view_heuristics::all_possible_space_views(ctx, spaces_info)
+        re_viewport::space_view_heuristics::default_created_space_views(ctx)
             .into_iter()
-            .map(|(space_view, _)| space_view)
             .filter(|this_space_view| {
                 this_space_view.class_identifier() == space_view.class_identifier()
             })
