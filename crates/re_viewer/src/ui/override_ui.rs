@@ -25,7 +25,7 @@ pub fn override_ui(
     } = instance_path;
 
     // Because of how overrides are implemented the overridden-data must be an entity
-    // in the real store.  We would never show an override UI for a selected blueprint
+    // in the real store. We would never show an override UI for a selected blueprint
     // entity from the blueprint-inspector since it isn't "part" of a space-view to provide
     // the overrides.
     let query = ctx.current_query();
@@ -144,7 +144,7 @@ pub fn override_ui(
                             );
                         } else {
                             // TODO(jleibs): Is it possible to set an override to empty and not confuse
-                            // the situation with "not-overriden?". Maybe we hit this in cases of `[]` vs `[null]`.
+                            // the situation with "not-overridden?". Maybe we hit this in cases of `[]` vs `[null]`.
                             ui.weak("(empty)");
                         }
                     });
