@@ -478,6 +478,28 @@ fn insert_empty() {
     assert_deque_eq(&[&[], &[], &[]], &v);
 }
 
+// Simulate the bug that was making everything crash on the face tracking example (ultimately
+// caused by recursive clears).
+#[test]
+fn insert_some_and_empty() {
+    let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
+
+    assert_eq!(0, v.num_entries());
+    assert_eq!(0, v.num_values());
+
+    v.push_back([0]);
+    v.push_back([]);
+
+    v.push_back([1]);
+    v.push_back([]);
+
+    v.push_back([2]);
+    v.push_back([]);
+
+    // That used to crash.
+    assert_deque_eq(&[&[0], &[], &[1], &[], &[2], &[]], &v);
+}
+
 #[test]
 fn insert_many() {
     let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
