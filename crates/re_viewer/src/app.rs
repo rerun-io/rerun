@@ -612,6 +612,23 @@ impl App {
                     }
                 }
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::ClearPrimaryCache => {
+                if let Some(ctx) = store_context {
+                    if let Some(recording) = ctx.recording {
+                        recording.query_caches().clear();
+                    }
+                }
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::PrintPrimaryCache => {
+                if let Some(ctx) = store_context {
+                    if let Some(recording) = ctx.recording {
+                        println!("{:?}", recording.query_caches());
+                    }
+                }
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);
