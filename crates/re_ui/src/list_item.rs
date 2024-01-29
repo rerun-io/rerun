@@ -165,7 +165,7 @@ impl<'a> ListItem<'a> {
         self
     }
 
-    /// Make the item draggable and set its persistent ID.
+    /// Make the item draggable.
     #[inline]
     pub fn draggable(mut self, draggable: bool) -> Self {
         self.draggable = draggable;
@@ -386,7 +386,7 @@ impl<'a> ListItem<'a> {
         let (rect, mut response) = ui.allocate_at_least(
             desired_size,
             if self.draggable {
-                egui::Sense::drag()
+                egui::Sense::click_and_drag()
             } else {
                 egui::Sense::click()
             },
@@ -458,12 +458,9 @@ impl<'a> ListItem<'a> {
             }
 
             // Handle buttons
-            let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
-                && ui.input(|i| i.pointer.is_decidedly_dragging());
-            let button_response = if self.active
-                && ui.rect_contains_pointer(rect)
-                && !anything_being_decidedly_dragged
-            {
+            // Note: `response.hovered()` always returns `false` when a drag is in process, which is the desired
+            // behavior as we don't want to display the buttons while dragging.
+            let button_response = if self.active && response.hovered() {
                 if let Some(buttons) = self.buttons_fn {
                     let mut ui =
                         ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::Center));
