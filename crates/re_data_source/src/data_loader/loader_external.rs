@@ -132,7 +132,9 @@ impl crate::DataLoader for ExternalLoader {
             let tx = tx.clone();
             let tx_feedback = tx_feedback.clone();
 
-            rayon::spawn(move || {
+            // NOTE: This is completely IO bound (spawning and waiting for child process), it must run on a
+            // dedicated thread, not the shared rayon thread pool.
+            _ = std::thread::Builder::new().name(exe.to_string_lossy().to_string()).spawn(move || {
                 re_tracing::profile_function!(exe.to_string_lossy());
 
                 let child = Command::new(exe)
@@ -219,12 +221,8 @@ impl crate::DataLoader for ExternalLoader {
                                 break; // we still want to check for errors once it finally exits!
                             }
 
-                            // NOTE: This will busy loop if there's no work available in neither
-                            // the rayon threadpool nor the native OS threadpool.
-                            match rayon::yield_now() {
-                                Some(rayon::Yield::Executed) => {}
-                                _ => std::thread::yield_now(),
-                            }
+                            // NOTE: This will busy loop if there's no work available in the native OS threadpool.
+                            std::thread::yield_now();
 
                             continue;
                         }
@@ -259,7 +257,7 @@ impl crate::DataLoader for ExternalLoader {
                     re_log::debug!(loader = ?exe, ?filepath, "compatible external loader found");
                     tx_feedback.send(CompatibleLoaderFound).ok();
                 }
-            });
+            })?;
         }
 
         re_tracing::profile_wait!("compatible_loader");
