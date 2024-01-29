@@ -319,7 +319,7 @@ impl SpaceViewClassRegistry {
                         *id,
                         DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                             entry.entity_subscriber_handle,
-                            |subscriber| subscriber.indicator_matching_entities(store_id).cloned(),
+                            |subscriber| subscriber.indicated_entities(store_id).cloned(),
                         )
                         .flatten()
                         .unwrap_or_default(),
