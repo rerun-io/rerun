@@ -146,7 +146,6 @@ impl<'a> Visitor<'a> {
         let mut module_path = &path[..path.len() - 1];
         let name = path.last().unwrap();
         let item_path = match &kind {
-            ItemKind::Crate => unreachable!(),
             ItemKind::Module => {
                 format!("{name}/index.html")
             }
@@ -168,8 +167,8 @@ impl<'a> Visitor<'a> {
 
         let _ = self.documents.send(document(
             path.join("::"),
-            kind,
             format!("{}/{}/{}", self.base_url, module_path.join("/"), item_path),
+            self.krate.index[id].docs.clone().unwrap_or_default(),
         ));
     }
 
@@ -182,9 +181,11 @@ impl<'a> Visitor<'a> {
 
         let name = root_module_item.name.as_ref().unwrap().clone();
         let url = format!("{}/{name}/index.html", self.base_url);
-        let _ = self
-            .documents
-            .send(document(name.clone(), ItemKind::Crate, url));
+        let _ = self.documents.send(document(
+            name.clone(),
+            url,
+            root_module_item.docs.clone().unwrap_or_default(),
+        ));
 
         for item_id in &root_module.items {
             self.visit_item(false, item_id);
@@ -371,20 +372,18 @@ fn base_url(version: &Version, krate: &Crate) -> String {
     format!("https://docs.rs/{}/latest", krate.name())
 }
 
-fn document(path: String, kind: ItemKind, url: String) -> DocumentData {
-    let content = format!("{kind} {path}");
+fn document(path: String, url: String, docs: String) -> DocumentData {
     DocumentData {
         kind: DocumentKind::Rust,
         title: path,
-        tags: vec!["rust".into()],
-        content,
+        tags: vec![],
+        content: docs,
         url,
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 enum ItemKind {
-    Crate,
     Module,
     Struct,
     Enum,
@@ -399,7 +398,6 @@ enum ItemKind {
 impl Display for ItemKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            ItemKind::Crate => "crate",
             ItemKind::Module => "module",
             ItemKind::Struct => "struct",
             ItemKind::Enum => "enum",

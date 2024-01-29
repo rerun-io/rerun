@@ -18,7 +18,7 @@ pub fn run() -> anyhow::Result<Vec<Document>> {
     docs::ingest(&ctx)?;
     examples::ingest(&ctx)?;
     rustdoc::ingest(&ctx)?;
-    // griffe::ingest(ctx)?;
+    // griffe::ingest(&ctx)?;
     // doxygen::ingest(ctx)?;
     Ok(ctx.finish())
 }
