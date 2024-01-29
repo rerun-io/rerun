@@ -578,7 +578,7 @@ impl Viewport<'_, '_> {
 
         // Prepare the item description structure needed by `find_drop_target`. Here, we use
         // `Contents` for the "ItemId" generic type parameter.
-        let item_desc = re_ui::drag_and_drop::DropItemDescription {
+        let item_desc = re_ui::drag_and_drop::ItemContext {
             id: contents,
             is_container: matches!(contents, Contents::Container(_)),
             parent_id: Contents::Container(parent_container_id),
@@ -589,8 +589,8 @@ impl Viewport<'_, '_> {
         let drop_target = re_ui::drag_and_drop::find_drop_target(
             ui,
             &item_desc,
-            response,
-            body_response,
+            response.rect,
+            body_response.map(|r| r.rect),
             ReUi::list_item_height(),
         );
 

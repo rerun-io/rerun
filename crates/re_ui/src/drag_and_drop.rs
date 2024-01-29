@@ -1,8 +1,11 @@
-//! Helpers for drag and drop support. Works well in combination with [`crate::list_item::ListItem`].
+//! Helpers for drag and drop support for reordering hierarchical lists.
+//!
+//! Works well in combination with [`crate::list_item::ListItem`].
 
-/// Context information related to a candidate drop target, used by [`find_drop_target`] to compute the [`DropTarget`],
-/// if any.
-pub struct DropItemDescription<ItemId: Copy> {
+/// Context information about the hovered item.
+///
+/// This is used by [`find_drop_target`] to compute the [`DropTarget`], if any.
+pub struct ItemContext<ItemId: Copy> {
     /// ID of the item being hovered during drag
     pub id: ItemId,
 
@@ -52,6 +55,14 @@ impl<ItemId: Copy> DropTarget<ItemId> {
 }
 
 /// Compute the geometry of the drag cursor and where the dragged item should be inserted.
+///
+/// This function performs the following tasks:
+/// - based on `item_rect` and `body_rect`, establish the geometry of actual drop zones (see below)
+/// - test the mouse cursor against these zones
+/// - if one is a match:
+///   - compute the geometry of a drop insertion indicator
+///   - use the context provided in `item_context` to return the "logical" drop target (ie. the target container and
+///     position within it)
 ///
 /// This function implements the following logic:
 /// ```text
@@ -140,19 +151,19 @@ impl<ItemId: Copy> DropTarget<ItemId> {
 /// **Note**: in debug builds, press `Alt` to visualize the drag zones while dragging.
 pub fn find_drop_target<ItemId: Copy>(
     ui: &egui::Ui,
-    item_desc: &DropItemDescription<ItemId>,
-    response: &egui::Response,
-    body_response: Option<&egui::Response>,
+    item_context: &ItemContext<ItemId>,
+    item_rect: egui::Rect,
+    body_rect: Option<egui::Rect>,
     item_height: f32,
 ) -> Option<DropTarget<ItemId>> {
     let indent = ui.spacing().indent;
-    let item_id = item_desc.id;
-    let is_container = item_desc.is_container;
-    let parent_id = item_desc.parent_id;
-    let pos_in_parent = item_desc.position_index_in_parent;
+    let item_id = item_context.id;
+    let is_container = item_context.is_container;
+    let parent_id = item_context.parent_id;
+    let pos_in_parent = item_context.position_index_in_parent;
 
     // For both leaf and containers we have two drag zones on the upper half of the item.
-    let (top, mut bottom) = response.rect.split_top_bottom_at_fraction(0.5);
+    let (top, mut bottom) = item_rect.split_top_bottom_at_fraction(0.5);
     let (left_top, top) = top.split_left_right_at_x(top.left() + indent);
 
     // For the lower part of the item, the story is more complicated:
@@ -169,21 +180,21 @@ pub fn find_drop_target<ItemId: Copy>(
     //   left, which maps to "insert after me"
     // - leaf item: the entire body area, if any, cannot receive a drag (by definition) and thus homogeneously maps
     //   to "insert after me"
-    let body_insert_after_me_area = if let Some(body_response) = body_response {
-        if item_desc.is_container {
+    let body_insert_after_me_area = if let Some(body_rect) = body_rect {
+        if item_context.is_container {
             egui::Rect::from_two_pos(
-                body_response.rect.left_bottom() + egui::vec2(indent, -item_height / 2.0),
-                body_response.rect.left_bottom(),
+                body_rect.left_bottom() + egui::vec2(indent, -item_height / 2.0),
+                body_rect.left_bottom(),
             )
         } else {
-            body_response.rect
+            body_rect
         }
     } else {
         egui::Rect::NOTHING
     };
 
     // body rect, if any AND it actually contains something
-    let non_empty_body_rect = body_response.map(|r| r.rect).filter(|r| r.height() > 0.0);
+    let non_empty_body_rect = body_rect.filter(|r| r.height() > 0.0);
 
     // visualize the drag zones in debug builds, when the `Alt` key is pressed during drag
     #[cfg(debug_assertions)]
@@ -219,23 +230,23 @@ pub fn find_drop_target<ItemId: Copy>(
     if ui.rect_contains_pointer(left_top) {
         // insert before me
         Some(DropTarget::new(
-            response.rect.x_range(),
+            item_rect.x_range(),
             top.top(),
             parent_id,
             pos_in_parent,
         ))
     } else if ui.rect_contains_pointer(top) {
         // insert last in the previous container if any, else insert before me
-        if let Some(previous_container_id) = item_desc.previous_container_id {
+        if let Some(previous_container_id) = item_context.previous_container_id {
             Some(DropTarget::new(
-                (response.rect.left() + indent..=response.rect.right()).into(),
+                (item_rect.left() + indent..=item_rect.right()).into(),
                 top.top(),
                 previous_container_id,
                 usize::MAX,
             ))
         } else {
             Some(DropTarget::new(
-                response.rect.x_range(),
+                item_rect.x_range(),
                 top.top(),
                 parent_id,
                 pos_in_parent,
@@ -246,7 +257,7 @@ pub fn find_drop_target<ItemId: Copy>(
     else if ui.rect_contains_pointer(body_insert_after_me_area) {
         // insert after me in my parent
         Some(DropTarget::new(
-            response.rect.x_range(),
+            item_rect.x_range(),
             body_insert_after_me_area.bottom(),
             parent_id,
             pos_in_parent + 1,
@@ -263,7 +274,7 @@ pub fn find_drop_target<ItemId: Copy>(
 
             // insert after me
             Some(DropTarget::new(
-                response.rect.x_range(),
+                item_rect.x_range(),
                 position_y,
                 parent_id,
                 pos_in_parent + 1,
@@ -288,7 +299,7 @@ pub fn find_drop_target<ItemId: Copy>(
     } else if ui.rect_contains_pointer(left_bottom) {
         // insert after me in my parent
         Some(DropTarget::new(
-            response.rect.x_range(),
+            item_rect.x_range(),
             left_bottom.bottom(),
             parent_id,
             pos_in_parent + 1,
@@ -296,7 +307,7 @@ pub fn find_drop_target<ItemId: Copy>(
     } else if ui.rect_contains_pointer(bottom) {
         // insert at pos = 0 inside me
         Some(DropTarget::new(
-            (response.rect.left() + indent..=response.rect.right()).into(),
+            (item_rect.left() + indent..=item_rect.right()).into(),
             bottom.bottom(),
             item_id,
             0,
