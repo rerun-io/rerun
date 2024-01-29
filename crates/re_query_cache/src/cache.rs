@@ -5,6 +5,7 @@ use std::{
 };
 
 use ahash::{HashMap, HashSet};
+use itertools::Itertools;
 use parking_lot::RwLock;
 use paste::paste;
 use seq_macro::seq;
@@ -43,13 +44,47 @@ impl From<RangeQuery> for AnyQuery {
 // ---
 
 /// Maintains the top-level cache mappings.
-//
 pub struct Caches {
     /// The [`StoreId`] of the associated [`DataStore`].
     store_id: StoreId,
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>,
+}
+
+impl std::fmt::Debug for Caches {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            store_id,
+            per_cache_key,
+        } = self;
+
+        let mut strings = Vec::new();
+
+        strings.push(format!("[Caches({store_id})]"));
+
+        let per_cache_key = per_cache_key.read();
+        let per_cache_key: BTreeMap<_, _> = per_cache_key.iter().collect();
+
+        for (cache_key, caches_per_archetype) in &per_cache_key {
+            let caches_per_archetype = caches_per_archetype.read();
+            strings.push(format!(
+                "  [{cache_key:?} (pending_timeful={:?} pending_timeless={:?})]",
+                caches_per_archetype
+                    .pending_timeful_invalidation
+                    .map(|t| cache_key
+                        .timeline
+                        .format_time_range_utc(&TimeRange::new(t, TimeInt::MAX))),
+                caches_per_archetype.pending_timeless_invalidation,
+            ));
+            strings.push(indent::indent_all_by(
+                4,
+                format!("{caches_per_archetype:?}"),
+            ));
+        }
+
+        f.write_str(&strings.join("\n").replace("\n\n", "\n"))
+    }
 }
 
 impl std::ops::Deref for Caches {
@@ -118,10 +153,51 @@ pub struct CachesPerArchetype {
     pending_timeless_invalidation: bool,
 }
 
+impl std::fmt::Debug for CachesPerArchetype {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let CachesPerArchetype {
+            latest_at_per_archetype,
+            range_per_archetype,
+            pending_timeful_invalidation: _,
+            pending_timeless_invalidation: _,
+        } = self;
+
+        let mut strings = Vec::new();
+
+        {
+            let latest_at_per_archetype = latest_at_per_archetype.read();
+            let latest_at_per_archetype: BTreeMap<_, _> = latest_at_per_archetype.iter().collect();
+
+            for (archetype_name, latest_at_cache) in &latest_at_per_archetype {
+                let latest_at_cache = latest_at_cache.read();
+                strings.push(format!(
+                    "[latest_at for {archetype_name} ({})]",
+                    re_format::format_bytes(latest_at_cache.total_size_bytes() as _)
+                ));
+                strings.push(indent::indent_all_by(2, format!("{latest_at_cache:?}")));
+            }
+        }
+
+        {
+            let range_per_archetype = range_per_archetype.read();
+            let range_per_archetype: BTreeMap<_, _> = range_per_archetype.iter().collect();
+
+            for (archetype_name, range_cache) in &range_per_archetype {
+                let range_cache = range_cache.read();
+                strings.push(format!(
+                    "[range for {archetype_name} ({})]",
+                    re_format::format_bytes(range_cache.total_size_bytes() as _)
+                ));
+                strings.push(indent::indent_all_by(2, format!("{range_cache:?}")));
+            }
+        }
+
+        f.write_str(&strings.join("\n").replace("\n\n", "\n"))
+    }
+}
+
 impl Caches {
     /// Clears all caches.
-    //
-    // TODO(#4731): expose palette command.
     #[inline]
     pub fn clear(&self) {
         self.write().clear();
@@ -229,13 +305,24 @@ impl Caches {
 }
 
 /// Uniquely identifies cached query results in the [`Caches`].
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CacheKey {
     /// Which [`EntityPath`] is the query targeting?
     pub entity_path: EntityPath,
 
     /// Which [`Timeline`] is the query targeting?
     pub timeline: Timeline,
+}
+
+impl std::fmt::Debug for CacheKey {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            entity_path,
+            timeline,
+        } = self;
+        f.write_fmt(format_args!("{entity_path} on {}", timeline.name()))
+    }
 }
 
 impl CacheKey {
@@ -342,7 +429,7 @@ impl StoreSubscriber for Caches {
                         // NOTE: Do _NOT_ lock from within the if clause itself or the guard will live
                         // for the remainder of the if statement and hell will ensue.
                         // <https://rust-lang.github.io/rust-clippy/master/#if_let_mutex> is
-                        // supposed to catch but it didn't, I don't know why.
+                        // supposed to catch that but it doesn't, I don't know why.
                         let mut caches_per_archetype = caches_per_archetype.write();
                         if let Some(min_time) =
                             caches_per_archetype.pending_timeful_invalidation.as_mut()
@@ -465,6 +552,32 @@ pub struct CacheBucket {
     pub(crate) total_size_bytes: u64,
     //
     // TODO(cmc): secondary cache
+}
+
+impl std::fmt::Debug for CacheBucket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            data_times: _,
+            pov_instance_keys: _,
+            components,
+            total_size_bytes: _,
+        } = self;
+
+        let strings = components
+            .iter()
+            .filter(|(_, data)| data.dyn_num_values() > 0)
+            .map(|(name, data)| {
+                format!(
+                    "{} {name} values spread across {} entries ({})",
+                    data.dyn_num_values(),
+                    data.dyn_num_entries(),
+                    re_format::format_bytes(data.dyn_total_size_bytes() as _),
+                )
+            })
+            .collect_vec();
+
+        f.write_str(&strings.join("\n").replace("\n\n", "\n"))
+    }
 }
 
 impl CacheBucket {
