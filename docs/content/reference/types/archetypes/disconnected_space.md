@@ -2,12 +2,10 @@
 title: "DisconnectedSpace"
 ---
 
-Specifies that the entity path at which this is logged is disconnected from its parent.
+Specifies that the entity path at which this is logged is spatially disconnected from its parent, making it impossible to transform the entity path into its parent's space and vice versa.
 
+It *only* applies to space views that work with spatial transformations, i.e. 2D & 3D space views.
 This is useful for specifying that a subgraph is independent of the rest of the scene.
-
-If a transform or pinhole is logged on the same path, this archetype's components
-will be ignored.
 
 ## Components
 
