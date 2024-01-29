@@ -8,9 +8,8 @@ use re_entity_db::{EntityProperties, InstancePath};
 use re_log_types::{EntityPath, Timeline};
 use re_query::get_component_with_instances;
 use re_viewer_context::{
-    AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSystemExecutionError, SystemExecutionOutput, UiVerbosity, ViewQuery,
-    ViewerContext,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError,
+    SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
 };
 
 use crate::visualizer_system::EmptySystem;
@@ -53,13 +52,12 @@ impl SpaceViewClass for DataframeSpaceView {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
     }
 
-    fn auto_spawn_heuristic(
+    fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
-        _space_origin: &EntityPath,
-        _ent_paths: &PerSystemEntities,
-    ) -> re_viewer_context::AutoSpawnHeuristic {
-        AutoSpawnHeuristic::NeverSpawn
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        // Doesn't spawn anything by default.
+        Default::default()
     }
 
     fn selection_ui(

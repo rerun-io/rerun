@@ -36,6 +36,6 @@ pub trait DataQuery {
         &self,
         ctx: &StoreContext<'_>,
         visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
-        indicator_matching_entities_per_visualizer: &PerVisualizer<IndicatorMatchingEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatorMatchingEntities>,
     ) -> DataQueryResult;
 }

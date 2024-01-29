@@ -25,6 +25,7 @@ re_data_store.workspace = true
 re_log.workspace = true
 re_query.workspace = true
 re_renderer.workspace = true
+re_space_view.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
 re_ui.workspace = true

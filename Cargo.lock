@@ -4770,6 +4770,7 @@ dependencies = [
  "re_log",
  "re_query",
  "re_renderer",
+ "re_space_view",
  "re_tracing",
  "re_types",
  "re_ui",

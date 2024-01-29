@@ -3,7 +3,7 @@ use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
-    AutoSpawnHeuristic, PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId,
+    PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
     SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
@@ -114,13 +114,8 @@ pub trait DynSpaceViewClass: Send + Sync {
         entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext>;
 
-    /// Heuristic used to determine which space view is the best fit for a set of paths.
-    fn auto_spawn_heuristic(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
-    ) -> AutoSpawnHeuristic;
+    /// Determines which space views should be spawned by default for this class.
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
     /// Executed for all active space views on frame start (before any ui is drawn),
     /// can be use for heuristic & state updates before populating the scene.

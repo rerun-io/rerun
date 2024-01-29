@@ -629,14 +629,14 @@ mod tests {
                     .collect(),
                 )
             });
-        let indicator_matching_entities_per_visualizer = PerVisualizer::<IndicatorMatchingEntities>(
+        let indicated_entities_per_visualizer = PerVisualizer::<IndicatorMatchingEntities>(
             visualizable_entities
                 .0
                 .iter()
                 .map(|(id, entities)| {
                     (
                         *id,
-                        IndicatorMatchingEntities(entities.iter().map(|e| e.hash()).collect()),
+                        IndicatorMatchingEntities(entities.iter().cloned().collect()),
                     )
                 })
                 .collect(),
@@ -658,7 +658,7 @@ mod tests {
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
@@ -700,7 +700,7 @@ mod tests {
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
@@ -752,7 +752,7 @@ mod tests {
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
@@ -801,7 +801,7 @@ mod tests {
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
@@ -843,7 +843,7 @@ mod tests {
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 

@@ -1,16 +1,18 @@
+use egui::ahash::HashSet;
 use egui_plot::{Legend, Line, Plot, Points};
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{EntityPath, TimeZone};
+use re_log_types::{EntityPath, EntityPathFilter, TimeZone};
 use re_query::query_archetype;
 use re_space_view::controls;
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
+    SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::visualizer_system::{PlotSeriesKind, TimeSeriesSystem};
@@ -198,6 +200,58 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
                 ui.end_row();
             });
+    }
+
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
+
+        // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
+        let Some(indicated_entities) = ctx
+            .indicated_entities_per_visualizer
+            .get(&TimeSeriesSystem::identifier())
+        else {
+            return SpaceViewSpawnHeuristics::default();
+        };
+
+        // Spawn time series data at the root if there's time series data either
+        // directly at the root or one of its children.
+        // TODO(#4926): This seems to be unnecessarily complicated.
+        let subtree_of_root_entity = &ctx.entity_db.tree().children;
+        if indicated_entities.contains(&EntityPath::root())
+            || subtree_of_root_entity
+                .iter()
+                .any(|(_, subtree)| indicated_entities.contains(&subtree.path))
+        {
+            return SpaceViewSpawnHeuristics {
+                recommended_space_views: vec![RecommendedSpaceView {
+                    root: EntityPath::root(),
+                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
+                }],
+            };
+        }
+
+        // If there's other entities that have the right indicator & didn't match the above,
+        // spawn a time series view for each child of the root that has any entities with the right indicator.
+        let mut child_of_root_entities = HashSet::default();
+        for entity in indicated_entities.iter() {
+            if let Some(child_of_root) = entity.iter().next() {
+                child_of_root_entities.insert(child_of_root);
+            }
+        }
+        let recommended_space_views = child_of_root_entities
+            .into_iter()
+            .map(|path_part| {
+                let entity = EntityPath::new(vec![path_part.clone()]);
+                RecommendedSpaceView {
+                    query_filter: EntityPathFilter::subtree_entity_filter(&entity),
+                    root: entity,
+                }
+            })
+            .collect();
+
+        SpaceViewSpawnHeuristics {
+            recommended_space_views,
+        }
     }
 
     fn ui(
