@@ -1,4 +1,4 @@
-use egui::ahash::HashSet;
+use egui::ahash::{HashMap, HashSet};
 use egui_plot::{Legend, Line, Plot, Points};
 
 use re_data_store::TimeType;
@@ -353,10 +353,13 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
         }
 
+        let mut plot_item_id_to_entity_path = HashMap::default();
+
         let egui_plot::PlotResponse {
             inner: time_x,
             response,
             transform,
+            hovered_plot_item,
         } = plot.show(ui, |plot_ui| {
             if plot_ui.response().secondary_clicked() {
                 let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
@@ -376,19 +379,23 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                     .collect::<Vec<_>>();
 
                 let color = line.color;
+                let id = egui::Id::new(line.entity_path.hash());
+                plot_item_id_to_entity_path.insert(id, line.entity_path.clone());
 
                 match line.kind {
                     PlotSeriesKind::Continuous => plot_ui.line(
                         Line::new(points)
                             .name(&line.label)
                             .color(color)
-                            .width(line.width),
+                            .width(line.width)
+                            .id(id),
                     ),
                     PlotSeriesKind::Scatter => plot_ui.points(
                         Points::new(points)
                             .name(&line.label)
                             .color(color)
-                            .radius(line.width),
+                            .radius(line.width)
+                            .id(id),
                     ),
                     // Break up the chart. At some point we might want something fancier.
                     PlotSeriesKind::Clear => {}
@@ -417,6 +424,19 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 })
                 .map(|x| plot_ui.screen_from_plot([x, 0.0].into()).x)
         });
+
+        // Interact with the plot items (lines, scatters, etc.)
+        if let Some(hovered_plot_item) = hovered_plot_item {
+            if let Some(entity_path) = plot_item_id_to_entity_path.get(&hovered_plot_item) {
+                ctx.select_hovered_on_click(
+                    &response,
+                    re_viewer_context::Item::InstancePath(
+                        Some(query.space_view_id),
+                        entity_path.clone().into(),
+                    ),
+                );
+            }
+        }
 
         if let Some(time_x) = time_x {
             let interact_radius = ui.style().interaction.resize_grab_radius_side;

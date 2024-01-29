@@ -6,8 +6,7 @@ use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::SyntaxHighlighting;
 use re_viewer_context::{
-    DataQueryId, HoverHighlight, Item, Selection, SpaceViewId, SystemCommandSender, UiVerbosity,
-    ViewerContext,
+    DataQueryId, HoverHighlight, Item, Selection, SpaceViewId, UiVerbosity, ViewerContext,
 };
 
 use super::DataUi;
@@ -347,30 +346,8 @@ pub fn select_hovered_on_click(
     response: &egui::Response,
     selection: impl Into<Selection>,
 ) {
-    re_tracing::profile_function!();
-
-    let mut selection = selection.into();
-    selection.resolve_mono_instance_path_items(ctx);
-    let selection_state = ctx.selection_state();
-
-    if response.hovered() {
-        selection_state.set_hovered(selection.clone());
-    }
-
-    if response.double_clicked() {
-        if let Some((item, _)) = selection.first() {
-            ctx.command_sender
-                .send_system(re_viewer_context::SystemCommand::SetFocus(item.clone()));
-        }
-    }
-
-    if response.clicked() {
-        if response.ctx.input(|i| i.modifiers.command) {
-            selection_state.toggle_selection(selection);
-        } else {
-            selection_state.set_selection(selection);
-        }
-    }
+    // TODO: inline everywhere.
+    ctx.select_hovered_on_click(response, selection);
 }
 
 /// Displays the "hover card" (i.e. big tooltip) for an instance or an entity.
