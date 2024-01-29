@@ -343,7 +343,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             });
 
         if legend.visible {
-            plot = plot.legend(Legend::default().position(DEFAULT_LEGEND_CORNER));
+            plot = plot.legend(
+                Legend::default().position(legend.corner().unwrap_or(DEFAULT_LEGEND_CORNER)),
+            );
         }
 
         if timeline.typ() == TimeType::Time {
