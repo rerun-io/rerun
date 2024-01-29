@@ -260,6 +260,10 @@ impl<T> FlatVecDeque<T> {
             .skip(entry_range.start)
             .take(entry_range.len())
             .map(|offsets| {
+                if offsets.is_empty() {
+                    return &[] as &'_ [T];
+                }
+
                 // NOTE: We do not need `make_contiguous` here because we always guarantee
                 // that a single entry's worth of values is fully contained in either the left or
                 // right buffer, but never straddling across both.
