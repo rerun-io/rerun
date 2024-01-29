@@ -312,7 +312,7 @@ impl OrbitEye {
             // The user may be scrolling to move the camera closer, but are not realizing
             // the radius is now tiny.
             // TODO(emilk): inform the users somehow that scrolling won't help, and that they should use WSAD instead.
-            // It might be tempting to start moving the camera here on scoll, but that would is bad for other reasons.
+            // It might be tempting to start moving the camera here on scroll, but that would is bad for other reasons.
 
             // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
             // Max value is chosen with some generous margin of an observed crash due to infinity.
