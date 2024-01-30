@@ -101,6 +101,7 @@ impl Viewport<'_, '_> {
         .selected(ctx.selection().contains_item(&item))
         .draggable(true)
         .drop_target_style(self.state.is_candidate_drop_parent_container(container_id))
+        .label_style(re_ui::LabelStyle::Unnamed)
         .with_icon(crate::icon_for_container_kind(
             &container_blueprint.container_kind,
         ))

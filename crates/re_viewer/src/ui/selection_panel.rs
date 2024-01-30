@@ -739,6 +739,7 @@ fn show_list_item_for_container_child(
             (
                 Item::Container(*container_id),
                 ListItem::new(ctx.re_ui, format!("{:?}", container.container_kind))
+                    .label_style(re_ui::LabelStyle::Unnamed)
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
