@@ -49,7 +49,7 @@ pollster.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 web-time.workspace = true
 wgpu.workspace = true
-winit = { workspace = true, features = ["rwh_06"] }
+winit = { workspace = true, default-features = true, features = ["rwh_06"] }
 zip = { workspace = true, default-features = false, features = ["deflate"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
