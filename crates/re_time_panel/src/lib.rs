@@ -1285,7 +1285,7 @@ fn time_marker_ui(
 
     // show current time as a line:
     if let Some(time) = time_ctrl.time() {
-        if let Some(x) = time_ranges_ui.x_from_time_f32(time) {
+        if let Some(mut x) = time_ranges_ui.x_from_time_f32(time) {
             if timeline_rect.x_range().contains(x) {
                 let line_rect =
                     Rect::from_x_y_ranges(x..=x, timeline_rect.top()..=ui.max_rect().bottom())
@@ -1303,6 +1303,8 @@ fn time_marker_ui(
                             let time = time_ranges_ui.clamp_time(time);
                             time_ctrl.set_time(time);
                             time_ctrl.pause();
+
+                            x = pointer_pos.x; // avoid frame-delay
                         }
                     }
                 }
