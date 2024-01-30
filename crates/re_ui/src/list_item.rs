@@ -458,9 +458,14 @@ impl<'a> ListItem<'a> {
             }
 
             // Handle buttons
-            // Note: `response.hovered()` always returns `false` when a drag is in process, which is the desired
-            // behavior as we don't want to display the buttons while dragging.
-            let button_response = if self.active && response.hovered() {
+            // Note: We should be able to just use `response.hovered()` here, which only returns `true` if no drag is in
+            // progress. Due to the response merging we do above, this breaks though. This is why we do an explicit
+            // rectangle and drag payload check.
+            //TODO(ab): refactor responses to address that.
+            let should_show_buttons = self.active
+                && ui.rect_contains_pointer(rect)
+                && !egui::DragAndDrop::has_any_payload(ui.ctx());
+            let button_response = if should_show_buttons {
                 if let Some(buttons) = self.buttons_fn {
                     let mut ui =
                         ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::Center));
