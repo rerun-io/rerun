@@ -432,15 +432,13 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             if response.dragged() {
                 if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
                     let new_offset_time = transform.value_from_position(pointer_pos).x;
-                    let nbew_time = time_offset + new_offset_time.round() as i64;
+                    let new_time = time_offset + new_offset_time.round() as i64;
 
                     // Avoid frame-delay:
-                    time_x = transform
-                        .position_from_point(&PlotPoint::new(new_offset_time, 0.0))
-                        .x;
+                    time_x = pointer_pos.x;
 
                     let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-                    time_ctrl.set_time(nbew_time);
+                    time_ctrl.set_time(new_time);
                     time_ctrl.pause();
 
                     state.is_dragging_time_cursor = true;
