@@ -113,7 +113,7 @@ pub struct ListItem<'a> {
     re_ui: &'a ReUi,
     active: bool,
     selected: bool,
-    drag_id: Option<egui::Id>,
+    draggable: bool,
     drag_target: bool,
     subdued: bool,
     weak: bool,
@@ -136,7 +136,7 @@ impl<'a> ListItem<'a> {
             re_ui,
             active: true,
             selected: false,
-            drag_id: None,
+            draggable: false,
             drag_target: false,
             subdued: false,
             weak: false,
@@ -165,10 +165,10 @@ impl<'a> ListItem<'a> {
         self
     }
 
-    /// Make the item draggable and set its persistent ID.
+    /// Make the item draggable.
     #[inline]
-    pub fn draggable(mut self, drag_id: egui::Id) -> Self {
-        self.drag_id = Some(drag_id);
+    pub fn draggable(mut self, draggable: bool) -> Self {
+        self.draggable = draggable;
         self
     }
 
@@ -383,12 +383,14 @@ impl<'a> ListItem<'a> {
         };
 
         let desired_size = egui::vec2(desired_width, self.height);
-        let (rect, mut response) = ui.allocate_at_least(desired_size, egui::Sense::click());
-
-        // handle dragging
-        if let Some(drag_id) = self.drag_id {
-            response = ui.interact(response.rect, drag_id, egui::Sense::drag());
-        }
+        let (rect, mut response) = ui.allocate_at_least(
+            desired_size,
+            if self.draggable {
+                egui::Sense::click_and_drag()
+            } else {
+                egui::Sense::click()
+            },
+        );
 
         // compute the full-span background rect
         let mut bg_rect = rect;
@@ -456,7 +458,14 @@ impl<'a> ListItem<'a> {
             }
 
             // Handle buttons
-            let button_response = if self.active && ui.rect_contains_pointer(rect) {
+            // Note: We should be able to just use `response.hovered()` here, which only returns `true` if no drag is in
+            // progress. Due to the response merging we do above, this breaks though. This is why we do an explicit
+            // rectangle and drag payload check.
+            //TODO(ab): refactor responses to address that.
+            let should_show_buttons = self.active
+                && ui.rect_contains_pointer(rect)
+                && !egui::DragAndDrop::has_any_payload(ui.ctx());
+            let button_response = if should_show_buttons {
                 if let Some(buttons) = self.buttons_fn {
                     let mut ui =
                         ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::Center));

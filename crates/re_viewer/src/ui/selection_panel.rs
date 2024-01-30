@@ -768,7 +768,7 @@ fn show_list_item_for_container_child(
 
     if remove_contents {
         viewport.blueprint.mark_user_interaction(ctx);
-        viewport.blueprint.remove_contents(child_contents.clone());
+        viewport.blueprint.remove_contents(*child_contents);
     }
 
     true
