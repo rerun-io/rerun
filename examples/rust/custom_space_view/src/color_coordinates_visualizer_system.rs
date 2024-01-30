@@ -3,12 +3,10 @@ use re_viewer::external::{
     re_log_types::EntityPath,
     re_query::query_archetype,
     re_renderer,
-    re_types::{
-        self, components::InstanceKey, Archetype, ComponentName, ComponentNameSet, Loggable as _,
-    },
+    re_types::{self, components::InstanceKey, ComponentName, Loggable as _},
     re_viewer_context::{
         IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-        ViewSystemIdentifier, ViewerContext, VisualizerSystem,
+        ViewSystemIdentifier, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
     },
 };
 
@@ -44,11 +42,8 @@ impl IdentifiedViewSystem for InstanceColorSystem {
 }
 
 impl VisualizerSystem for InstanceColorSystem {
-    fn required_components(&self) -> ComponentNameSet {
-        ColorArchetype::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<ColorArchetype>()
     }
 
     /// Populates the scene part with data from the store.

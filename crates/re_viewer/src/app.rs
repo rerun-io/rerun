@@ -1,5 +1,3 @@
-use web_time::Instant;
-
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{FileSource, LogMsg, StoreKind};
@@ -603,7 +601,11 @@ impl App {
                         let table = recording.store().to_data_table();
                         match table {
                             Ok(table) => {
-                                println!("{table}");
+                                let text = format!("{table}");
+                                self.re_ui
+                                    .egui_ctx
+                                    .output_mut(|o| o.copied_text = text.clone());
+                                println!("{text}");
                             }
                             Err(err) => {
                                 println!("{err}");
@@ -612,6 +614,27 @@ impl App {
                     }
                 }
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::ClearPrimaryCache => {
+                if let Some(ctx) = store_context {
+                    if let Some(recording) = ctx.recording {
+                        recording.query_caches().clear();
+                    }
+                }
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::PrintPrimaryCache => {
+                if let Some(ctx) = store_context {
+                    if let Some(recording) = ctx.recording {
+                        let text = format!("{:?}", recording.query_caches());
+                        self.re_ui
+                            .egui_ctx
+                            .output_mut(|o| o.copied_text = text.clone());
+                        println!("{text}");
+                    }
+                }
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);
@@ -1103,7 +1126,10 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let frame_start = Instant::now();
+        if let Some(seconds) = frame.info().cpu_usage {
+            self.frame_time_history
+                .add(egui_ctx.input(|i| i.time), seconds);
+        }
 
         // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
         let mut store_hub = self.store_hub.take().unwrap();
@@ -1237,12 +1263,6 @@ impl eframe::App for App {
                 open_url.new_tab = true;
             }
         });
-
-        // Frame time measurer - must be last
-        self.frame_time_history.add(
-            egui_ctx.input(|i| i.time),
-            frame_start.elapsed().as_secs_f32(),
-        );
     }
 
     #[cfg(target_arch = "wasm32")]

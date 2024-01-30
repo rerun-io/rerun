@@ -11,9 +11,8 @@ use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::container::Contents;
 use crate::{
-    space_view_heuristics::all_possible_space_views, SpaceInfoCollection, SpaceViewBlueprint,
+    container::Contents, space_view_heuristics::default_created_space_views, SpaceViewBlueprint,
     Viewport,
 };
 
@@ -407,12 +406,7 @@ impl Viewport<'_, '_> {
         }
     }
 
-    pub fn add_new_spaceview_button_ui(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        spaces_info: &SpaceInfoCollection,
-    ) {
+    pub fn add_new_spaceview_button_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         ui.menu_image_button(
             re_ui::icons::ADD
                 .as_image()
@@ -458,12 +452,11 @@ impl Viewport<'_, '_> {
                     };
 
                 // Space view options proposed by heuristics
-                let mut possible_space_views = all_possible_space_views(ctx, spaces_info);
-                possible_space_views
-                    .sort_by_key(|(space_view, _)| space_view.space_origin.to_string());
+                let mut possible_space_views = default_created_space_views(ctx);
+                possible_space_views.sort_by_key(|space_view| space_view.space_origin.to_string());
 
                 let has_possible_space_views = !possible_space_views.is_empty();
-                for (space_view, _) in possible_space_views {
+                for space_view in possible_space_views {
                     add_space_view_item(ui, space_view, false);
                 }
 

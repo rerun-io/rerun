@@ -237,7 +237,7 @@ impl DataStore {
         } else {
             // Cache miss! Craft a new instance keys from the ground up.
 
-            // ...so we create it manually instead.
+            // …so we create it manually instead.
             let values =
                 arrow2::array::UInt64Array::from_vec((0..num_instances as u64).collect_vec())
                     .boxed();

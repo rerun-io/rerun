@@ -2,7 +2,6 @@ use nohash_hasher::IntMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityPropertyMap, EntityTree};
-use re_space_view::UnreachableTransformReason;
 use re_types::{
     components::{DisconnectedSpace, PinholeProjection, Transform3D, ViewCoordinates},
     ComponentNameSet, Loggable as _,
@@ -24,6 +23,15 @@ struct TransformInfo {
     /// None indicates that this entity is under the eye camera with no Pinhole camera in-between.
     /// Some indicates that the entity is under a pinhole camera at the given entity path that is not at the root of the space view.
     pub parent_pinhole: Option<EntityPath>,
+}
+
+#[derive(Clone, Copy)]
+enum UnreachableTransformReason {
+    /// More than one pinhole camera between this and the reference space.
+    NestedPinholeCameras,
+
+    /// Unknown transform between this and the reference space.
+    DisconnectedSpace,
 }
 
 /// Provides transforms from an entity to a chosen reference space for all elements in the scene
@@ -285,14 +293,6 @@ impl TransformContext {
             .get(ent_path)
             .and_then(|i| i.parent_pinhole.as_ref())
     }
-
-    // This method isn't currently implemented, but we might need it in the future.
-    // All the necessary data on why a subtree isn't reachable is already stored.
-    //
-    // Returns why (if actually) a path isn't reachable.
-    // pub fn unreachable_reason(&self, _entity_path: &EntityPath) -> Option<UnreachableTransformReason> {
-    //     None
-    // }
 }
 
 fn transform_at(

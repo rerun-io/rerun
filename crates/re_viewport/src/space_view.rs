@@ -518,6 +518,7 @@ impl SpaceViewBlueprint {
             property_overrides: Some(PropertyOverrides {
                 accumulated_properties,
                 individual_properties,
+                component_overrides: Default::default(),
                 override_path: entity_path,
             }),
         }
@@ -561,8 +562,7 @@ mod tests {
     use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
     use re_viewer_context::{
-        blueprint_timeline, IndicatorMatchingEntities, PerVisualizer, StoreContext,
-        VisualizableEntities,
+        blueprint_timeline, IndicatedEntities, PerVisualizer, StoreContext, VisualizableEntities,
     };
 
     use super::*;
@@ -629,16 +629,11 @@ mod tests {
                     .collect(),
                 )
             });
-        let indicator_matching_entities_per_visualizer = PerVisualizer::<IndicatorMatchingEntities>(
+        let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>(
             visualizable_entities
                 .0
                 .iter()
-                .map(|(id, entities)| {
-                    (
-                        *id,
-                        IndicatorMatchingEntities(entities.iter().map(|e| e.hash()).collect()),
-                    )
-                })
+                .map(|(id, entities)| (*id, IndicatedEntities(entities.iter().cloned().collect())))
                 .collect(),
         );
 
@@ -658,7 +653,7 @@ mod tests {
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
@@ -700,7 +695,7 @@ mod tests {
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
@@ -752,7 +747,7 @@ mod tests {
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
@@ -801,7 +796,7 @@ mod tests {
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
@@ -843,7 +838,7 @@ mod tests {
             let mut query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 

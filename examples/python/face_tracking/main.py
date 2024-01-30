@@ -237,13 +237,28 @@ class FaceLandmarkerLogger:
             if self._video_mode
             else self._detector.detect(image)
         )
-        rr.log("video/landmarker/faces", rr.Clear(recursive=True))
-        rr.log("reconstruction/faces", rr.Clear(recursive=True))
-        rr.log("blendshapes", rr.Clear(recursive=True))
+
+        def is_empty(i):  # type: ignore[no-untyped-def]
+            try:
+                next(i)
+                return False
+            except StopIteration:
+                return True
+
+        if is_empty(zip(detection_result.face_landmarks, detection_result.face_blendshapes)):
+            rr.log("video/landmarker/faces", rr.Clear(recursive=True))
+            rr.log("reconstruction/faces", rr.Clear(recursive=True))
+            rr.log("blendshapes", rr.Clear(recursive=True))
 
         for i, (landmark, blendshapes) in enumerate(
             zip(detection_result.face_landmarks, detection_result.face_blendshapes)
         ):
+            if len(landmark) == 0 or len(blendshapes) == 0:
+                rr.log(f"video/landmarker/faces/{i}/landmarks", rr.Clear(recursive=True))
+                rr.log(f"reconstruction/faces/{i}", rr.Clear(recursive=True))
+                rr.log(f"blendshapes/{i}", rr.Clear(recursive=True))
+                continue
+
             # MediaPipe's keypoints are normalized to [0, 1], so we need to scale them to get pixel coordinates.
             pts = [(math.floor(lm.x * width), math.floor(lm.y * height)) for lm in landmark]
             keypoint_ids = list(range(len(landmark)))

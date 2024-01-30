@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 
+use ahash::HashMap;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
-use re_log_types::{DataCell, DataRow, RowId};
-use re_types::Loggable;
+use re_log_types::{DataCell, DataRow, RowId, StoreKind};
+use re_types::{ComponentName, Loggable};
 use smallvec::SmallVec;
 
 use crate::{
@@ -22,6 +23,12 @@ pub struct PropertyOverrides {
 
     /// The individual property set in this `DataResult`, if any.
     pub individual_properties: Option<EntityProperties>,
+
+    /// An alternative store and entity path to use for the specified component.
+    // NOTE: StoreKind is easier to work with than a `StoreId`` or full `DataStore` but
+    // might still be ambiguous when we have multiple stores active at a time.
+    // TODO(jleibs): Consider something like `tinymap` for this.
+    pub component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back.
     pub override_path: EntityPath,

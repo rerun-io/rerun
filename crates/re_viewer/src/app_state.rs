@@ -10,10 +10,7 @@ use re_viewer_context::{
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
     SystemCommandSender as _, ViewerContext,
 };
-use re_viewport::{
-    determine_visualizable_entities, SpaceInfoCollection, Viewport, ViewportBlueprint,
-    ViewportState,
-};
+use re_viewport::{determine_visualizable_entities, Viewport, ViewportBlueprint, ViewportState};
 
 use crate::ui::recordings_panel_ui;
 use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
@@ -174,8 +171,8 @@ impl AppState {
 
         let applicable_entities_per_visualizer = space_view_class_registry
             .applicable_entities_for_visualizer_systems(entity_db.store_id());
-        let indicator_matching_entities_per_visualizer = space_view_class_registry
-            .indicator_matching_entities_per_visualizer(entity_db.store_id());
+        let indicated_entities_per_visualizer =
+            space_view_class_registry.indicated_entities_per_visualizer(entity_db.store_id());
 
         // Execute the queries for every `SpaceView`
         let mut query_results = {
@@ -206,7 +203,7 @@ impl AppState {
                                 query.execute_query(
                                     store_context,
                                     &visualizable_entities,
-                                    &indicator_matching_entities_per_visualizer,
+                                    &indicated_entities_per_visualizer,
                                 ),
                             )
                         })
@@ -223,7 +220,7 @@ impl AppState {
             entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
-            indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
+            indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
             blueprint_cfg,
@@ -237,9 +234,7 @@ impl AppState {
         // First update the viewport and thus all active space views.
         // This may update their heuristics, so that all panels that are shown in this frame,
         // have the latest information.
-        let spaces_info = SpaceInfoCollection::new(ctx.entity_db);
-
-        viewport.on_frame_start(&ctx, &spaces_info);
+        viewport.on_frame_start(&ctx);
 
         {
             re_tracing::profile_scope!("updated_query_results");
@@ -265,7 +260,7 @@ impl AppState {
             entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
-            indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
+            indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
             blueprint_cfg,
@@ -290,7 +285,6 @@ impl AppState {
             &ctx,
             ui,
             &mut viewport,
-            &spaces_info,
             app_blueprint.selection_panel_expanded,
         );
 
@@ -331,7 +325,7 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(&mut viewport, &ctx, ui, &spaces_info);
+                        blueprint_panel_ui(&mut viewport, &ctx, ui);
                     },
                 );
 

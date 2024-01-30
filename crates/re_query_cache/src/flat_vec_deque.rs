@@ -260,6 +260,10 @@ impl<T> FlatVecDeque<T> {
             .skip(entry_range.start)
             .take(entry_range.len())
             .map(|offsets| {
+                if offsets.is_empty() {
+                    return &[] as &'_ [T];
+                }
+
                 // NOTE: We do not need `make_contiguous` here because we always guarantee
                 // that a single entry's worth of values is fully contained in either the left or
                 // right buffer, but never straddling across both.
@@ -476,6 +480,28 @@ fn insert_empty() {
     v.push_back([]);
 
     assert_deque_eq(&[&[], &[], &[]], &v);
+}
+
+// Simulate the bug that was making everything crash on the face tracking example (ultimately
+// caused by recursive clears).
+#[test]
+fn insert_some_and_empty() {
+    let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
+
+    assert_eq!(0, v.num_entries());
+    assert_eq!(0, v.num_values());
+
+    v.push_back([0]);
+    v.push_back([]);
+
+    v.push_back([1]);
+    v.push_back([]);
+
+    v.push_back([2]);
+    v.push_back([]);
+
+    // That used to crash.
+    assert_deque_eq(&[&[0], &[], &[1], &[], &[2], &[]], &v);
 }
 
 #[test]

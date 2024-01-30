@@ -4,12 +4,11 @@ use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Arrows3D,
     components::{Position3D, Text, Vector3D},
-    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{picking_id_from_instance_key, process_annotations, SpatialViewVisualizerData};
@@ -170,15 +169,8 @@ impl IdentifiedViewSystem for Arrows3DVisualizer {
 }
 
 impl VisualizerSystem for Arrows3DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Arrows3D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Arrows3D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Arrows3D>()
     }
 
     fn filter_visualizable_entities(

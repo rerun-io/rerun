@@ -67,6 +67,10 @@ pub enum UICommand {
     ScreenshotWholeApp,
     #[cfg(not(target_arch = "wasm32"))]
     PrintDatastore,
+    #[cfg(not(target_arch = "wasm32"))]
+    ClearPrimaryCache,
+    #[cfg(not(target_arch = "wasm32"))]
+    PrintPrimaryCache,
 
     #[cfg(target_arch = "wasm32")]
     CopyDirectLink,
@@ -179,8 +183,19 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::PrintDatastore => (
                 "Print datastore",
-                "Prints the entire data store to the console. WARNING: this may be A LOT of text.",
+                "Prints the entire data store to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ClearPrimaryCache => (
+                "Clear primary cache",
+                "Clears the primary cache in its entirety.",
+            ),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintPrimaryCache => (
+                "Print primary cache",
+                "Prints the state of the entire primary cache to the console and clipboard. WARNING: this may be A LOT of text.",
+            ),
+
 
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => (
@@ -263,6 +278,10 @@ impl UICommand {
             Self::ScreenshotWholeApp => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::PrintDatastore => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ClearPrimaryCache => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintPrimaryCache => None,
 
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => None,

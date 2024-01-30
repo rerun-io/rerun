@@ -3,12 +3,11 @@ use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points2D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text},
-    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -143,13 +142,7 @@ impl Points2DVisualizer {
             re_tracing::profile_scope!("labels");
 
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors = process_color_slice(
-                data.colors,
-                data.positions.len(),
-                ent_path,
-                &annotation_infos,
-            )
-            .collect::<Vec<_>>();
+            let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
@@ -190,33 +183,16 @@ impl Points2DVisualizer {
         }: &Points2DComponentData<'_>,
         ent_path: &EntityPath,
     ) -> Vec<re_renderer::Size> {
-        re_tracing::profile_function!();
-        let radii = crate::visualizers::process_radius_slice(radii, positions.len(), ent_path);
-        {
-            re_tracing::profile_scope!("collect");
-            radii.collect()
-        }
+        crate::visualizers::process_radius_slice(radii, positions.len(), ent_path)
     }
 
     #[inline]
     pub fn load_colors(
-        &Points2DComponentData {
-            positions, colors, ..
-        }: &Points2DComponentData<'_>,
+        &Points2DComponentData { colors, .. }: &Points2DComponentData<'_>,
         ent_path: &EntityPath,
         annotation_infos: &ResolvedAnnotationInfos,
     ) -> Vec<re_renderer::Color32> {
-        re_tracing::profile_function!();
-        let colors = crate::visualizers::process_color_slice(
-            colors,
-            positions.len(),
-            ent_path,
-            annotation_infos,
-        );
-        {
-            re_tracing::profile_scope!("collect");
-            colors.collect()
-        }
+        crate::visualizers::process_color_slice(colors, ent_path, annotation_infos)
     }
 
     #[inline]
@@ -248,15 +224,8 @@ impl IdentifiedViewSystem for Points2DVisualizer {
 }
 
 impl VisualizerSystem for Points2DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Points2D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Points2D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Points2D>()
     }
 
     fn filter_visualizable_entities(

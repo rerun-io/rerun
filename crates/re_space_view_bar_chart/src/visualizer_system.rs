@@ -3,15 +3,10 @@ use std::collections::BTreeMap;
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_space_view::diff_component_filter;
-use re_types::{
-    archetypes::{BarChart, Tensor},
-    components::Color,
-    datatypes::TensorData,
-    Archetype, ComponentNameSet,
-};
+use re_types::{archetypes::BarChart, components::Color, datatypes::TensorData};
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerAdditionalApplicabilityFilter, VisualizerSystem,
+    ViewerContext, VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -37,20 +32,8 @@ impl VisualizerAdditionalApplicabilityFilter for BarChartVisualizerEntityFilter 
 }
 
 impl VisualizerSystem for BarChartVisualizerSystem {
-    fn required_components(&self) -> ComponentNameSet {
-        BarChart::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        // TODO(#3342): For now, we relax the indicator component heuristics on bar charts so that
-        // logging a 1D tensor also results in a bar chart view, rather than a broken viewer (see #3709).
-        // Ideally though, this should be implemented using an heuristic fallback mechanism.
-        [BarChart::indicator().name(), Tensor::indicator().name()]
-            .into_iter()
-            .collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<BarChart>()
     }
 
     fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {

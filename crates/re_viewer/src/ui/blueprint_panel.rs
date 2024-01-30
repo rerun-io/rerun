@@ -1,12 +1,11 @@
 use re_viewer_context::{SystemCommandSender as _, ViewerContext};
-use re_viewport::{SpaceInfoCollection, Viewport};
+use re_viewport::Viewport;
 
 /// Show the Blueprint section of the left panel based on the current [`Viewport`]
 pub fn blueprint_panel_ui(
     viewport: &mut Viewport<'_, '_>,
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    spaces_info: &SpaceInfoCollection,
 ) {
     ctx.re_ui.panel_content(ui, |_, ui| {
         ctx.re_ui.panel_title_bar_with_buttons(
@@ -14,7 +13,7 @@ pub fn blueprint_panel_ui(
             "Blueprint",
             Some("The Blueprint is where you can configure the Rerun Viewer"),
             |ui| {
-                viewport.add_new_spaceview_button_ui(ctx, ui, spaces_info);
+                viewport.add_new_spaceview_button_ui(ctx, ui);
                 reset_blueprint_button_ui(ctx, ui);
             },
         );

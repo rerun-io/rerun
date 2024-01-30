@@ -1,17 +1,23 @@
+use egui::ahash::HashSet;
 use egui_plot::{Legend, Line, Plot, Points};
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{EntityPath, TimeZone};
+use re_log_types::{EntityPath, EntityPathFilter, TimeZone};
 use re_query::query_archetype;
 use re_space_view::controls;
-use re_viewer_context::external::re_entity_db::EntityProperties;
+use re_viewer_context::external::re_entity_db::{
+    EditableAutoValue, EntityProperties, TimeSeriesAggregator,
+};
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
+    SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::visualizer_system::{PlotSeriesKind, TimeSeriesSystem};
+
+// ---
 
 #[derive(Clone, Default)]
 pub struct TimeSeriesSpaceViewState {
@@ -101,7 +107,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         _state: &mut Self::State,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
+        root_entity_properties: &mut EntityProperties,
     ) {
         let re_types::blueprint::archetypes::TimeSeries { legend } = query_archetype(
             ctx.store_context.blueprint.store(),
@@ -112,7 +118,32 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         .unwrap_or_default();
 
         ctx.re_ui
-            .selection_grid(ui, "time_series_selection_ui")
+            .selection_grid(ui, "time_series_selection_ui_aggregation")
+            .show(ui, |ui| {
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Aggregation")
+                    .on_hover_text("Configures the aggregation behavior of the plot when the zoom-level on the X axis goes below 1.0, i.e. a single pixel covers more than one tick worth of data.\nThis can greatly improve performance (and readability) in such situations as it prevents overdraw.");
+
+                let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
+
+                egui::ComboBox::from_id_source("aggregation_mode")
+                    .selected_text(agg_mode.to_string())
+                    .show_ui(ui, |ui| {
+                        ui.style_mut().wrap = Some(false);
+                        ui.set_min_width(64.0);
+
+                        for variant in TimeSeriesAggregator::variants() {
+                            ui.selectable_value(&mut agg_mode, variant, variant.to_string())
+                                .on_hover_text(variant.description());
+                        }
+                    });
+
+                root_entity_properties.time_series_aggregator =
+                    EditableAutoValue::UserEdited(agg_mode);
+            });
+
+        ctx.re_ui
+            .selection_grid(ui, "time_series_selection_ui_legend")
             .show(ui, |ui| {
                 ctx.re_ui.grid_left_hand_label(ui, "Legend");
 
@@ -166,8 +197,61 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                         ctx.save_blueprint_component(&space_view_id.as_entity_path(), edit_legend);
                     }
                 });
+
                 ui.end_row();
             });
+    }
+
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
+
+        // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
+        let Some(indicated_entities) = ctx
+            .indicated_entities_per_visualizer
+            .get(&TimeSeriesSystem::identifier())
+        else {
+            return SpaceViewSpawnHeuristics::default();
+        };
+
+        // Spawn time series data at the root if there's time series data either
+        // directly at the root or one of its children.
+        // TODO(#4926): This seems to be unnecessarily complicated.
+        let subtree_of_root_entity = &ctx.entity_db.tree().children;
+        if indicated_entities.contains(&EntityPath::root())
+            || subtree_of_root_entity
+                .iter()
+                .any(|(_, subtree)| indicated_entities.contains(&subtree.path))
+        {
+            return SpaceViewSpawnHeuristics {
+                recommended_space_views: vec![RecommendedSpaceView {
+                    root: EntityPath::root(),
+                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
+                }],
+            };
+        }
+
+        // If there's other entities that have the right indicator & didn't match the above,
+        // spawn a time series view for each child of the root that has any entities with the right indicator.
+        let mut child_of_root_entities = HashSet::default();
+        for entity in indicated_entities.iter() {
+            if let Some(child_of_root) = entity.iter().next() {
+                child_of_root_entities.insert(child_of_root);
+            }
+        }
+        let recommended_space_views = child_of_root_entities
+            .into_iter()
+            .map(|path_part| {
+                let entity = EntityPath::new(vec![path_part.clone()]);
+                RecommendedSpaceView {
+                    query_filter: EntityPathFilter::subtree_entity_filter(&entity),
+                    root: entity,
+                }
+            })
+            .collect();
+
+        SpaceViewSpawnHeuristics {
+            recommended_space_views,
+        }
     }
 
     fn ui(
@@ -176,7 +260,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
-        _query: &ViewQuery<'_>,
+        query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
@@ -184,7 +268,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let re_types::blueprint::archetypes::TimeSeries { legend } = query_archetype(
             ctx.store_context.blueprint.store(),
             ctx.blueprint_query,
-            &_query.space_view_id.as_entity_path(),
+            &query.space_view_id.as_entity_path(),
         )
         .and_then(|arch| arch.to_archetype())
         .unwrap_or_default();
@@ -201,6 +285,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let timeline_name = timeline.name().to_string();
 
         let time_series = system_output.view_systems.get::<TimeSeriesSystem>()?;
+
+        let aggregator = time_series.aggregator;
+        let aggregation_factor = time_series.aggregation_factor;
 
         // Get the minimum time/X value for the entire plot…
         let min_time = time_series.min_time.unwrap_or(0);
@@ -222,31 +309,43 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
+            .id(crate::plot_id(query.space_view_id))
             .allow_zoom([true, zoom_both_axis])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
-                    time as i64 + time_offset,
+                    time.value as i64 + time_offset,
                     time_zone_for_timestamps,
                 )
             })
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
+                let label = time_type.format(
+                    (value.x as i64 + time_offset).into(),
+                    time_zone_for_timestamps
+                );
+
                 let is_integer = value.y.round() == value.y;
                 let decimals = if is_integer { 0 } else { 5 };
-                format!(
-                    "{timeline_name}: {}\n{name}: {:.*}",
-                    time_type.format(
-                        (value.x as i64 + time_offset).into(),
-                        time_zone_for_timestamps
-                    ),
-                    decimals,
-                    value.y,
-                )
+
+                let agg_range_is_integer = aggregation_factor.round() == aggregation_factor;
+                let agg_range_decimals = if agg_range_is_integer { 0 } else { 5 };
+
+                if aggregator == TimeSeriesAggregator::Off || aggregation_factor <= 1.0 {
+                    format!("{timeline_name}: {label}\n{name}: {:.decimals$}", value.y)
+                } else {
+                    format!(
+                        "{timeline_name}: {label}\n{name}: {:.decimals$}\n\
+                         Y value aggregated using {aggregator} over {aggregation_factor:.agg_range_decimals$} X increments",
+                        value.y,
+                    )
+                }
             });
 
         if legend.visible {
-            plot = plot.legend(Legend::default().position(DEFAULT_LEGEND_CORNER));
+            plot = plot.legend(
+                Legend::default().position(legend.corner().unwrap_or(DEFAULT_LEGEND_CORNER)),
+            );
         }
 
         if timeline.typ() == TimeType::Time {
@@ -291,6 +390,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                             .color(color)
                             .radius(line.width),
                     ),
+                    // Break up the chart. At some point we might want something fancier.
+                    PlotSeriesKind::Clear => {}
                 }
             }
 

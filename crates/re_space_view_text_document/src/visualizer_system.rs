@@ -2,11 +2,11 @@ use re_data_store::LatestAtQuery;
 use re_query::{query_archetype, QueryError};
 use re_types::{
     archetypes::{self, TextDocument},
-    components, Archetype as _, ComponentNameSet,
+    components,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerSystem,
+    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -30,15 +30,8 @@ impl IdentifiedViewSystem for TextDocumentSystem {
 }
 
 impl VisualizerSystem for TextDocumentSystem {
-    fn required_components(&self) -> ComponentNameSet {
-        TextDocument::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(TextDocument::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<TextDocument>()
     }
 
     fn execute(

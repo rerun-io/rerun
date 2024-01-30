@@ -10,6 +10,7 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
+use re_types_core::components::InstanceKey;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
@@ -20,11 +21,13 @@ use re_viewer_context::{
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
-    Contents, SpaceInfoCollection, Viewport, ViewportBlueprint,
+    Contents, Viewport, ViewportBlueprint,
 };
 
-use crate::ui::add_space_view_or_container_modal::AddSpaceViewOrContainerModal;
 use crate::ui::visible_history::visible_history_ui;
+use crate::ui::{
+    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, override_ui::override_ui,
+};
 
 use super::selection_history_ui::SelectionHistoryUi;
 
@@ -71,7 +74,6 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
-        spaces_info: &SpaceInfoCollection,
         expanded: bool,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
@@ -121,7 +123,7 @@ impl SelectionPanel {
                 .show(ui, |ui| {
                     ui.add_space(ui.spacing().item_spacing.y);
                     ctx.re_ui.panel_content(ui, |_, ui| {
-                        self.contents(ctx, ui, viewport, spaces_info);
+                        self.contents(ctx, ui, viewport);
                     });
                 });
         });
@@ -133,7 +135,6 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
-        spaces_info: &SpaceInfoCollection,
     ) {
         re_tracing::profile_function!();
 
@@ -167,13 +168,7 @@ impl SelectionPanel {
                     }
 
                     Item::SpaceView(space_view_id) => {
-                        space_view_top_level_properties(
-                            ui,
-                            ctx,
-                            viewport.blueprint,
-                            spaces_info,
-                            space_view_id,
-                        );
+                        space_view_top_level_properties(ui, ctx, viewport.blueprint, space_view_id);
                     }
 
                     _ => {}
@@ -188,6 +183,31 @@ impl SelectionPanel {
                         };
                         data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, store);
                     });
+                }
+
+                // Special override section for space-view-entities
+                if let Item::InstancePath(Some(space_view_id), instance_path) = item {
+                    // Note: for now we only support overriding as a splat, rather than per-instance. So we
+                    // only show the UI when we've selected a full entity (indicated by splat) so as not to
+                    // me ambiguous as to what the override applies to.
+                    if instance_path.instance_key == InstanceKey::SPLAT {
+                        if let Some(space_view) = viewport.blueprint.space_views.get(space_view_id)
+                        {
+                            // TODO(jleibs): Overrides still require special handling inside the visualizers.
+                            // For now, only show the override section for TimeSeries until support is implemented
+                            // generically.
+                            if space_view.class_identifier() == TimeSeriesSpaceView::IDENTIFIER {
+                                ctx.re_ui.large_collapsing_header(
+                                    ui,
+                                    "Component Overrides",
+                                    true,
+                                    |ui| {
+                                        override_ui(ctx, space_view, instance_path, ui);
+                                    },
+                                );
+                            }
+                        }
+                    }
                 }
 
                 if has_blueprint_section(item) {
@@ -522,7 +542,6 @@ fn space_view_top_level_properties(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
-    spaces_info: &SpaceInfoCollection,
     space_view_id: &SpaceViewId,
 ) {
     if let Some(space_view) = viewport.space_view(space_view_id) {
@@ -546,10 +565,7 @@ fn space_view_top_level_properties(
                 );
 
                 super::space_view_space_origin_ui::space_view_space_origin_widget_ui(
-                    ui,
-                    ctx,
-                    spaces_info,
-                    space_view,
+                    ui, ctx, space_view,
                 );
 
                 ui.end_row();
@@ -687,6 +703,7 @@ fn show_list_item_for_container_child(
     viewport: &Viewport<'_, '_>,
     child_contents: &Contents,
 ) -> bool {
+    let mut remove_contents = false;
     let (item, mut list_item) = match child_contents {
         Contents::SpaceView(space_view_id) => {
             let Some(space_view) = viewport.blueprint.space_view(space_view_id) else {
@@ -699,7 +716,18 @@ fn show_list_item_for_container_child(
                 Item::SpaceView(*space_view_id),
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
                     .label_style(space_view_name.style())
-                    .with_icon(space_view.class(ctx.space_view_class_registry).icon()),
+                    .with_icon(space_view.class(ctx.space_view_class_registry).icon())
+                    .with_buttons(|re_ui, ui| {
+                        let response = re_ui
+                            .small_icon_button(ui, &re_ui::icons::REMOVE)
+                            .on_hover_text("Remove this Space View");
+
+                        if response.clicked() {
+                            remove_contents = true;
+                        }
+
+                        response
+                    }),
             )
         }
         Contents::Container(container_id) => {
@@ -711,7 +739,18 @@ fn show_list_item_for_container_child(
             (
                 Item::Container(*container_id),
                 ListItem::new(ctx.re_ui, format!("{:?}", container.container_kind))
-                    .with_icon(icon_for_container_kind(&container.container_kind)),
+                    .with_icon(icon_for_container_kind(&container.container_kind))
+                    .with_buttons(|re_ui, ui| {
+                        let response = re_ui
+                            .small_icon_button(ui, &re_ui::icons::REMOVE)
+                            .on_hover_text("Remove this Container");
+
+                        if response.clicked() {
+                            remove_contents = true;
+                        }
+
+                        response
+                    }),
             )
         }
     };
@@ -726,6 +765,11 @@ fn show_list_item_for_container_child(
     let response = list_item.show(ui);
 
     item_ui::select_hovered_on_click(ctx, &response, std::iter::once(item));
+
+    if remove_contents {
+        viewport.blueprint.mark_user_interaction(ctx);
+        viewport.blueprint.remove_contents(child_contents.clone());
+    }
 
     true
 }

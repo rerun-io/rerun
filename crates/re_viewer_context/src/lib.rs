@@ -43,20 +43,20 @@ pub use selection_state::{
     Selection, SelectionHighlight,
 };
 pub use space_view::{
-    AutoSpawnHeuristic, DataResult, DynSpaceViewClass, IdentifiedViewSystem, PerSystemDataResults,
-    PerSystemEntities, PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier,
+    DataResult, DynSpaceViewClass, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
+    PropertyOverrides, RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier,
     SpaceViewClassLayoutPriority, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
-    ViewContextCollection, ViewContextSystem, ViewQuery, ViewSystemIdentifier,
-    VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
-    VisualizerSystem,
+    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics,
+    SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    SystemExecutionOutput, ViewContextCollection, ViewContextSystem, ViewQuery,
+    ViewSystemIdentifier, VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
+    VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 pub use typed_entity_collections::{
-    ApplicableEntities, IndicatorMatchingEntities, PerVisualizer, VisualizableEntities,
+    ApplicableEntities, IndicatedEntities, PerVisualizer, VisualizableEntities,
 };
 pub use utils::{auto_color, level_to_rich_text, DefaultColor};
 pub use viewer_context::{RecordingConfig, ViewerContext};

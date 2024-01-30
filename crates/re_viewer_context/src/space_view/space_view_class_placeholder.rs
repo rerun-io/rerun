@@ -1,6 +1,7 @@
 use crate::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewSpawnHeuristics,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 use re_entity_db::EntityProperties;
 
@@ -31,6 +32,12 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
 
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
         crate::SpaceViewClassLayoutPriority::Low
+    }
+
+    fn spawn_heuristics(&self, _ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+        SpaceViewSpawnHeuristics {
+            recommended_space_views: Vec::new(),
+        }
     }
 
     fn selection_ui(

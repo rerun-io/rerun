@@ -20,10 +20,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install taplo-cli
-        uses: taiki-e/install-action@v2
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          tool: taplo-cli
+          pixi-version: v0.6.0
 
       - name: Install dependencies
         shell: bash
@@ -35,7 +34,7 @@ jobs:
         run: |
           python3 scripts/ci/crates.py version --bump prerelease
 
-      - run: taplo fmt
+      - run: pixi run toml-fmt
         shell: bash
 
       - name: Get bumped version

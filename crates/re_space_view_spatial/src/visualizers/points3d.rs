@@ -4,12 +4,11 @@ use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points3D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position3D, Radius, Text},
-    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     Annotations, ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -134,13 +133,7 @@ impl Points3DVisualizer {
             re_tracing::profile_scope!("labels");
 
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors = process_color_slice(
-                data.colors,
-                data.positions.len(),
-                ent_path,
-                &annotation_infos,
-            )
-            .collect::<Vec<_>>();
+            let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
@@ -172,15 +165,8 @@ impl IdentifiedViewSystem for Points3DVisualizer {
 }
 
 impl VisualizerSystem for Points3DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Points3D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Points3D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Points3D>()
     }
 
     fn filter_visualizable_entities(
@@ -325,33 +311,16 @@ impl LoadedPoints {
         }: &Points3DComponentData<'_>,
         ent_path: &EntityPath,
     ) -> Vec<re_renderer::Size> {
-        re_tracing::profile_function!();
-        let radii = crate::visualizers::process_radius_slice(radii, positions.len(), ent_path);
-        {
-            re_tracing::profile_scope!("collect");
-            radii.collect()
-        }
+        crate::visualizers::process_radius_slice(radii, positions.len(), ent_path)
     }
 
     #[inline]
     pub fn load_colors(
-        &Points3DComponentData {
-            positions, colors, ..
-        }: &Points3DComponentData<'_>,
+        &Points3DComponentData { colors, .. }: &Points3DComponentData<'_>,
         ent_path: &EntityPath,
         annotation_infos: &ResolvedAnnotationInfos,
     ) -> Vec<re_renderer::Color32> {
-        re_tracing::profile_function!();
-        let colors = crate::visualizers::process_color_slice(
-            colors,
-            positions.len(),
-            ent_path,
-            annotation_infos,
-        );
-        {
-            re_tracing::profile_scope!("collect");
-            colors.collect()
-        }
+        crate::visualizers::process_color_slice(colors, ent_path, annotation_infos)
     }
 
     #[inline]

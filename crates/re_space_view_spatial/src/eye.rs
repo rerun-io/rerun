@@ -1,6 +1,6 @@
 use egui::{lerp, NumExt as _, Rect};
 use glam::Affine3A;
-use macaw::{vec3, BoundingBox, IsoTransform, Mat4, Quat, Vec3};
+use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
 use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
@@ -164,10 +164,6 @@ pub struct OrbitEye {
 
     /// For controlling the eye with WSAD in a smooth way.
     pub velocity: Vec3,
-
-    /// Left over scroll delta that still needs to be applied (smoothed out over several frames)
-    #[serde(skip)]
-    unprocessed_scroll_delta: f32,
 }
 
 impl OrbitEye {
@@ -181,7 +177,6 @@ impl OrbitEye {
             fov_y: Eye::DEFAULT_FOV_Y,
             up,
             velocity: Vec3::ZERO,
-            unprocessed_scroll_delta: 0.0,
         }
     }
 
@@ -221,10 +216,6 @@ impl OrbitEye {
             fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
             up: self.up.lerp(other.up, t).normalize_or_zero(),
             velocity: self.velocity.lerp(other.velocity, t),
-            unprocessed_scroll_delta: lerp(
-                self.unprocessed_scroll_delta..=other.unprocessed_scroll_delta,
-                t,
-            ),
         }
     }
 
@@ -275,12 +266,7 @@ impl OrbitEye {
 
     /// Returns `true` if interaction occurred.
     /// I.e. the camera changed via user input.
-    pub fn update(
-        &mut self,
-        response: &egui::Response,
-        drag_threshold: f32,
-        scene_bbox: &BoundingBox,
-    ) -> bool {
+    pub fn update(&mut self, response: &egui::Response, drag_threshold: f32) -> bool {
         // Dragging even below the [`drag_threshold`] should be considered interaction.
         // Otherwise we flicker in and out of "has interacted" too quickly.
         let mut did_interact = response.drag_delta().length() > 0.0;
@@ -302,35 +288,15 @@ impl OrbitEye {
             }
         }
 
-        let (zoom_delta, raw_scroll_delta) = if response.hovered() {
-            self.keyboard_navigation(&response.ctx);
-            response.ctx.input(|i| (i.zoom_delta(), i.scroll_delta.y))
+        let (zoom_delta, scroll_delta) = if response.hovered() {
+            did_interact |= self.keyboard_navigation(&response.ctx);
+            response
+                .ctx
+                .input(|i| (i.zoom_delta(), i.smooth_scroll_delta.y))
         } else {
             (1.0, 0.0)
         };
-        if zoom_delta != 1.0 || raw_scroll_delta != 0.0 {
-            did_interact = true;
-        }
-
-        let scroll_delta;
-        {
-            // Mouse wheels often go very large steps.
-            // A single notch on a logitech mouse wheel connected to a Macbook returns 14.0 raw_scroll_delta.
-            // This makes the zoom speed feel clunky, so we smooth it out over several frames.
-
-            self.unprocessed_scroll_delta += raw_scroll_delta;
-
-            let dt = response.ctx.input(|i| i.stable_dt).at_most(0.1);
-            let t = egui::emath::exponential_smooth_factor(0.90, 0.1, dt); // reach _% in _ seconds
-
-            scroll_delta = t * self.unprocessed_scroll_delta;
-            self.unprocessed_scroll_delta -= scroll_delta;
-        }
-
-        if self.unprocessed_scroll_delta.abs() > 0.1 {
-            // We have a lot of unprocessed scroll delta, so we need to keep calling this function.
-            response.ctx.request_repaint();
-            // Also, we pretend this smoothing a user interaction for all other purposes.
+        if zoom_delta != 1.0 || scroll_delta.abs() > 0.1 {
             did_interact = true;
         }
 
@@ -338,18 +304,15 @@ impl OrbitEye {
         if zoom_factor != 1.0 {
             let new_radius = self.orbit_radius / zoom_factor;
 
-            let very_close = scene_bbox.size().length() / 100.0;
-            if very_close.is_finite() && new_radius < very_close && 1.0 < zoom_factor {
-                // The user may be scrolling to move the camera closer, but are not realizing
-                // the radius is now tiny.
-                // Switch to instead dolly the camera forward:
-                self.orbit_center += self.fwd() * very_close * zoom_factor.ln();
-            } else {
-                // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
-                // Max value is chosen with some generous margin of an observed crash due to infinity.
-                if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
-                    self.orbit_radius = new_radius;
-                }
+            // The user may be scrolling to move the camera closer, but are not realizing
+            // the radius is now tiny.
+            // TODO(emilk): inform the users somehow that scrolling won't help, and that they should use WSAD instead.
+            // It might be tempting to start moving the camera here on scroll, but that would is bad for other reasons.
+
+            // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
+            // Max value is chosen with some generous margin of an observed crash due to infinity.
+            if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
+                self.orbit_radius = new_radius;
             }
         }
 
@@ -357,15 +320,20 @@ impl OrbitEye {
     }
 
     /// Listen to WSAD and QE to move the eye.
-    fn keyboard_navigation(&mut self, egui_ctx: &egui::Context) {
+    ///
+    /// Returns `true` if we did anything.
+    fn keyboard_navigation(&mut self, egui_ctx: &egui::Context) -> bool {
         let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
         if anything_has_focus {
-            return; // e.g. we're typing in a TextField
+            return false; // e.g. we're typing in a TextField
         }
 
         let os = egui_ctx.os();
 
-        let requires_repaint = egui_ctx.input(|input| {
+        let mut did_interact = false;
+        let mut requires_repaint = false;
+
+        egui_ctx.input(|input| {
             let dt = input.stable_dt.at_most(0.1);
 
             // X=right, Y=up, Z=back
@@ -396,12 +364,17 @@ impl OrbitEye {
                 egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
             );
             self.orbit_center += self.velocity * dt;
-            local_movement != Vec3::ZERO || self.velocity.length() > 0.01 * speed
+
+            did_interact = local_movement != Vec3::ZERO;
+            requires_repaint =
+                local_movement != Vec3::ZERO || self.velocity.length() > 0.01 * speed;
         });
 
         if requires_repaint {
             egui_ctx.request_repaint();
         }
+
+        did_interact
     }
 
     /// Rotate based on a certain number of pixel delta.
