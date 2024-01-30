@@ -336,7 +336,13 @@
 
         check_for_panic();
 
-        handle.start("the_canvas_id").then(on_app_started).catch(on_wasm_error);
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceGraphics = urlParams.get("force-graphics");
+
+        handle
+          .start("the_canvas_id", null, null, forceGraphics)
+          .then(on_app_started)
+          .catch(on_wasm_error);
       }
 
       function on_app_started(handle) {

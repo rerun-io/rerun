@@ -21,7 +21,7 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
     )
 }
 
-pub fn eframe_options() -> eframe::NativeOptions {
+pub fn eframe_options(force_wgpu_backend: Option<String>) -> eframe::NativeOptions {
     re_tracing::profile_function!();
     eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -40,7 +40,7 @@ pub fn eframe_options() -> eframe::NativeOptions {
         default_theme: eframe::Theme::Dark,
 
         renderer: eframe::Renderer::Wgpu,
-        wgpu_options: crate::wgpu_options(),
+        wgpu_options: crate::wgpu_options(force_wgpu_backend),
         depth_buffer: 0,
         multisampling: 0, // the 3D views do their own MSAA
 
