@@ -661,7 +661,7 @@ pub fn picking(
         });
     };
 
-    item_ui::select_hovered_on_click(ctx, &response, re_viewer_context::Selection(hovered_items));
+    ctx.select_hovered_on_click( &response, re_viewer_context::Selection(hovered_items));
 
     Ok(response)
 }

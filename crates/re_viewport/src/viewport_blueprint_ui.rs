@@ -1,7 +1,6 @@
 use egui::{Response, Ui};
 use itertools::Itertools;
 
-use re_data_ui::item_ui;
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, EntityPathRule};
 use re_space_view::DataQueryBlueprint;
@@ -110,7 +109,7 @@ impl Viewport<'_, '_> {
         })
         .item_response;
 
-        item_ui::select_hovered_on_click(ctx, &response, item);
+        ctx.select_hovered_on_click(&response, item);
 
         if remove {
             self.blueprint.mark_user_interaction(ctx);
@@ -207,7 +206,7 @@ impl Viewport<'_, '_> {
             self.blueprint.focus_tab(space_view.id);
         }
 
-        item_ui::select_hovered_on_click(ctx, &response, item);
+        ctx.select_hovered_on_click(&response, item);
 
         if visibility_changed {
             if self.blueprint.auto_layout {
@@ -402,7 +401,7 @@ impl Viewport<'_, '_> {
             };
             data_result.save_override(Some(properties), ctx);
 
-            item_ui::select_hovered_on_click(ctx, &response, item);
+            ctx.select_hovered_on_click(&response, item);
         }
     }
 

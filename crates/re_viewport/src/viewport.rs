@@ -8,7 +8,6 @@ use ahash::HashMap;
 
 use egui_tiles::Behavior as _;
 use once_cell::sync::Lazy;
-use re_data_ui::item_ui;
 use re_entity_db::EntityPropertyMap;
 
 use re_ui::{Icon, ReUi};
@@ -580,7 +579,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         }
 
         if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
-            item_ui::select_hovered_on_click(self.ctx, &response, Item::SpaceView(*space_view_id));
+            self.ctx
+                .select_hovered_on_click(&response, Item::SpaceView(*space_view_id));
         }
 
         response

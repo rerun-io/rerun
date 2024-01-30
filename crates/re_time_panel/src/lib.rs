@@ -13,7 +13,6 @@ mod time_selection_ui;
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
-use re_data_ui::item_ui;
 use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart, TimeInt,
@@ -602,7 +601,7 @@ impl TimePanel {
             );
         });
 
-        item_ui::select_hovered_on_click(ctx, &response, item.to_item());
+        ctx.select_hovered_on_click(&response, item.to_item());
 
         let is_closed = body_response.is_none();
         let response_rect = response.rect;
@@ -713,7 +712,7 @@ impl TimePanel {
 
                 ui.set_clip_rect(clip_rect_save);
 
-                re_data_ui::item_ui::select_hovered_on_click(ctx, &response, item.to_item());
+                ctx.select_hovered_on_click(&response, item.to_item());
 
                 let response_rect = response.rect;
 
