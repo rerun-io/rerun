@@ -447,15 +447,13 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 }
             }
 
-            let stroke = if response.dragged() {
-                ui.style().visuals.widgets.active.fg_stroke
-            } else if response.hovered() {
-                ui.style().visuals.widgets.hovered.fg_stroke
-            } else {
-                ui.visuals().widgets.inactive.fg_stroke
-            };
-            ctx.re_ui
-                .paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
+            ctx.re_ui.paint_time_cursor(
+                ui,
+                ui.painter(),
+                &response,
+                time_x,
+                response.rect.y_range(),
+            );
         }
 
         Ok(())

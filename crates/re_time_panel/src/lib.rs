@@ -1281,7 +1281,7 @@ fn time_marker_ui(
     let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
-    let mut is_hovering = false;
+    let mut is_hovering_time_cursor = false;
 
     // show current time as a line:
     if let Some(time) = time_ctrl.time() {
@@ -1295,7 +1295,7 @@ fn time_marker_ui(
                     .interact(line_rect, time_drag_id, egui::Sense::drag())
                     .on_hover_and_drag_cursor(timeline_cursor_icon);
 
-                is_hovering = !is_anything_being_dragged && response.hovered();
+                is_hovering_time_cursor = response.hovered();
 
                 if response.dragged() {
                     if let Some(pointer_pos) = pointer_pos {
@@ -1309,18 +1309,12 @@ fn time_marker_ui(
                     }
                 }
 
-                let stroke = if response.dragged() {
-                    ui.style().visuals.widgets.active.fg_stroke
-                } else if is_hovering {
-                    ui.style().visuals.widgets.hovered.fg_stroke
-                } else {
-                    ui.visuals().widgets.inactive.fg_stroke
-                };
                 re_ui.paint_time_cursor(
+                    ui,
                     time_area_painter,
+                    &response,
                     x,
                     Rangef::new(timeline_rect.top(), ui.max_rect().bottom()),
-                    stroke,
                 );
             }
         }
@@ -1331,7 +1325,7 @@ fn time_marker_ui(
         let is_pointer_in_timeline_rect = timeline_rect.contains(pointer_pos);
 
         // Show preview?
-        if !is_hovering
+        if !is_hovering_time_cursor
             && is_pointer_in_timeline_rect
             && !is_anything_being_dragged
             && !is_hovering_the_loop_selection
