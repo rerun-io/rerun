@@ -22,6 +22,7 @@ default = []
 [dependencies]
 # Rerun dependencies:
 re_data_store.workspace = true
+re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
@@ -30,6 +31,7 @@ re_types_core.workspace = true
 
 # External dependencies:
 ahash.workspace = true
+indent.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true
 paste.workspace = true

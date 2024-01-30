@@ -601,7 +601,11 @@ impl App {
                         let table = recording.store().to_data_table();
                         match table {
                             Ok(table) => {
-                                println!("{table}");
+                                let text = format!("{table}");
+                                self.re_ui
+                                    .egui_ctx
+                                    .output_mut(|o| o.copied_text = text.clone());
+                                println!("{text}");
                             }
                             Err(err) => {
                                 println!("{err}");
@@ -610,6 +614,27 @@ impl App {
                     }
                 }
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::ClearPrimaryCache => {
+                if let Some(ctx) = store_context {
+                    if let Some(recording) = ctx.recording {
+                        recording.query_caches().clear();
+                    }
+                }
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::PrintPrimaryCache => {
+                if let Some(ctx) = store_context {
+                    if let Some(recording) = ctx.recording {
+                        let text = format!("{:?}", recording.query_caches());
+                        self.re_ui
+                            .egui_ctx
+                            .output_mut(|o| o.copied_text = text.clone());
+                        println!("{text}");
+                    }
+                }
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);

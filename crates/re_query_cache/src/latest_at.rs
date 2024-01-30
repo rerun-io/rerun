@@ -1,10 +1,11 @@
 use std::{collections::BTreeMap, sync::Arc};
 
+use ahash::HashMap;
 use paste::paste;
 use seq_macro::seq;
 
 use re_data_store::{DataStore, LatestAtQuery, TimeInt};
-use re_log_types::{EntityPath, RowId};
+use re_log_types::{EntityPath, RowId, Timeline};
 use re_query::query_archetype;
 use re_types_core::{components::InstanceKey, Archetype, Component, SizeBytes};
 
@@ -40,8 +41,51 @@ pub struct LatestAtCache {
     // timeful case.
     pub timeless: Option<CacheBucket>,
 
+    /// For debugging purposes.
+    pub(crate) timeline: Timeline,
+
     /// Total size of the data stored in this cache in bytes.
     total_size_bytes: u64,
+}
+
+impl std::fmt::Debug for LatestAtCache {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            per_query_time,
+            per_data_time,
+            timeless,
+            timeline,
+            total_size_bytes: _,
+        } = self;
+
+        let mut strings = Vec::new();
+
+        if let Some(bucket) = timeless.as_ref() {
+            strings.push(format!(
+                "query_time=<timeless> -> data_time=<timeless> ({})",
+                re_format::format_bytes(bucket.total_size_bytes as _),
+            ));
+        }
+
+        let data_times_per_bucket: HashMap<_, _> = per_data_time
+            .iter()
+            .map(|(time, bucket)| (Arc::as_ptr(bucket), *time))
+            .collect();
+
+        for (query_time, bucket) in per_query_time {
+            let query_time = timeline.typ().format_utc(*query_time);
+            let data_time = data_times_per_bucket
+                .get(&Arc::as_ptr(bucket))
+                .map_or_else(|| "MISSING?!".to_owned(), |t| timeline.typ().format_utc(*t));
+            strings.push(format!(
+                "query_time={query_time} -> data_time={data_time} ({})",
+                re_format::format_bytes(bucket.total_size_bytes as _),
+            ));
+            strings.push(indent::indent_all_by(2, format!("{bucket:?}")));
+        }
+
+        f.write_str(&strings.join("\n").replace("\n\n", "\n"))
+    }
 }
 
 impl SizeBytes for LatestAtCache {
@@ -65,6 +109,7 @@ impl LatestAtCache {
             per_query_time,
             per_data_time,
             timeless: _,
+            timeline: _,
             total_size_bytes,
         } = self;
 
@@ -187,7 +232,13 @@ macro_rules! impl_query_archetype_latest_at {
             let mut latest_at_callback = |query: &LatestAtQuery, latest_at_cache: &mut crate::LatestAtCache| {
                 re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
-                let crate::LatestAtCache { per_query_time, per_data_time, timeless, total_size_bytes } = latest_at_cache;
+                let crate::LatestAtCache {
+                    per_query_time,
+                    per_data_time,
+                    timeless,
+                    timeline: _,
+                    total_size_bytes,
+                } = latest_at_cache;
 
                 let query_time_bucket_at_query_time = match per_query_time.entry(query.at) {
                     std::collections::btree_map::Entry::Occupied(mut query_time_bucket_at_query_time) => {

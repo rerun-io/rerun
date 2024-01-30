@@ -2,7 +2,7 @@ use paste::paste;
 use seq_macro::seq;
 
 use re_data_store::{DataStore, RangeQuery, TimeInt};
-use re_log_types::{EntityPath, RowId, TimeRange};
+use re_log_types::{EntityPath, RowId, TimeRange, Timeline};
 use re_types_core::{components::InstanceKey, Archetype, Component, SizeBytes};
 
 use crate::{CacheBucket, Caches, MaybeCachedComponentData};
@@ -16,11 +16,58 @@ pub struct RangeCache {
     ///
     /// Query time is irrelevant for range queries.
     //
-    // TODO(cmc): bucketize
+    // TODO(#4810): bucketize
     pub per_data_time: CacheBucket,
 
     /// All timeless data.
     pub timeless: CacheBucket,
+
+    /// For debugging purposes.
+    pub(crate) timeline: Timeline,
+}
+
+impl std::fmt::Debug for RangeCache {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            per_data_time,
+            timeless,
+            timeline,
+        } = self;
+
+        let mut strings = Vec::new();
+
+        let mut data_time_min = TimeInt::MAX;
+        let mut data_time_max = TimeInt::MIN;
+
+        if !timeless.is_empty() {
+            data_time_min = TimeInt::MIN;
+        }
+
+        if !per_data_time.is_empty() {
+            data_time_min = TimeInt::min(
+                data_time_min,
+                per_data_time.data_times.front().map(|(t, _)| *t).unwrap(),
+            );
+            data_time_max = TimeInt::max(
+                data_time_max,
+                per_data_time.data_times.back().map(|(t, _)| *t).unwrap(),
+            );
+        }
+
+        strings.push(format!(
+            "{} ({})",
+            timeline
+                .typ()
+                .format_range_utc(TimeRange::new(data_time_min, data_time_max)),
+            re_format::format_bytes(
+                (timeless.total_size_bytes + per_data_time.total_size_bytes) as _
+            ),
+        ));
+        strings.push(indent::indent_all_by(2, format!("{timeless:?}")));
+        strings.push(indent::indent_all_by(2, format!("{per_data_time:?}")));
+
+        f.write_str(&strings.join("\n").replace("\n\n", "\n"))
+    }
 }
 
 impl SizeBytes for RangeCache {
@@ -29,6 +76,7 @@ impl SizeBytes for RangeCache {
         let Self {
             per_data_time,
             timeless,
+            timeline: _,
         } = self;
 
         per_data_time.total_size_bytes + timeless.total_size_bytes
@@ -48,6 +96,7 @@ impl RangeCache {
         let Self {
             per_data_time,
             timeless: _,
+            timeline: _,
         } = self;
 
         per_data_time.truncate_at_time(threshold)

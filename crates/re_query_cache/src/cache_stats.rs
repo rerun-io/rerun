@@ -171,6 +171,7 @@ impl Caches {
                             let range_cache @ RangeCache {
                                 per_data_time,
                                 timeless,
+                                timeline: _,
                             } = &*range_cache.read();
 
                             let total_rows = per_data_time.data_times.len() as u64;
