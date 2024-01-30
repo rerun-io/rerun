@@ -390,6 +390,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                             .color(color)
                             .radius(line.width),
                     ),
+                    // Break up the chart. At some point we might want something fancier.
+                    PlotSeriesKind::Clear => {}
                 }
             }
 
