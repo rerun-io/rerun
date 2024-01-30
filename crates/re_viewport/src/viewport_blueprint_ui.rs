@@ -4,8 +4,7 @@ use itertools::Itertools;
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, EntityPathRule};
 use re_space_view::DataQueryBlueprint;
-use re_ui::list_item::ListItem;
-use re_ui::ReUi;
+use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
@@ -29,13 +28,19 @@ impl Viewport<'_, '_> {
                         self.contents_ui(ctx, ui, &Contents::Container(root_container), true);
                     }
 
+                    let empty_space_response =
+                        ui.allocate_response(ui.available_size(), egui::Sense::click());
+
                     // clear selection upon clicking on empty space
-                    if ui
-                        .allocate_response(ui.available_size(), egui::Sense::click())
-                        .clicked()
-                    {
+                    if empty_space_response.clicked() {
                         ctx.selection_state().clear_current();
                     }
+
+                    // handle drag and drop interaction on empty space
+                    self.handle_empty_space_drag_and_drop_interaction(
+                        ui,
+                        empty_space_response.rect,
+                    );
                 });
             });
     }
@@ -84,12 +89,17 @@ impl Viewport<'_, '_> {
 
         let default_open = true;
 
-        let response = ListItem::new(
+        let re_ui::list_item::ShowCollapsingResponse {
+            item_response: response,
+            body_response,
+        } = ListItem::new(
             ctx.re_ui,
             format!("{:?}", container_blueprint.container_kind),
         )
         .subdued(!container_visible)
         .selected(ctx.selection().contains_item(&item))
+        .draggable(true)
+        .drop_target_style(self.state.is_candidate_drop_parent_container(container_id))
         .with_icon(crate::icon_for_container_kind(
             &container_blueprint.container_kind,
         ))
@@ -106,10 +116,17 @@ impl Viewport<'_, '_> {
             for child in &container_blueprint.contents {
                 self.contents_ui(ctx, ui, child, container_visible);
             }
-        })
-        .item_response;
+        });
 
         ctx.select_hovered_on_click(&response, item);
+
+        self.handle_drag_and_drop_interaction(
+            ctx,
+            ui,
+            Contents::Container(*container_id),
+            &response,
+            body_response.as_ref().map(|r| &r.response),
+        );
 
         if remove {
             self.blueprint.mark_user_interaction(ctx);
@@ -163,10 +180,14 @@ impl Viewport<'_, '_> {
 
         let space_view_name = space_view.display_name_or_default();
 
-        let response = ListItem::new(ctx.re_ui, space_view_name.as_ref())
+        let re_ui::list_item::ShowCollapsingResponse {
+            item_response: mut response,
+            body_response,
+        } = ListItem::new(ctx.re_ui, space_view_name.as_ref())
             .label_style(space_view_name.style())
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .selected(ctx.selection().contains_item(&item))
+            .draggable(true)
             .subdued(!space_view_visible)
             .force_hovered(is_item_hovered)
             .with_buttons(|re_ui, ui| {
@@ -198,15 +219,23 @@ impl Viewport<'_, '_> {
                 } else {
                     ui.label("No results");
                 }
-            })
-            .item_response
-            .on_hover_text("Space View");
+            });
+
+        response = response.on_hover_text("Space View");
 
         if response.clicked() {
             self.blueprint.focus_tab(space_view.id);
         }
 
         ctx.select_hovered_on_click(&response, item);
+
+        self.handle_drag_and_drop_interaction(
+            ctx,
+            ui,
+            Contents::SpaceView(*space_view_id),
+            &response,
+            body_response.as_ref().map(|r| &r.response),
+        );
 
         if visibility_changed {
             if self.blueprint.auto_layout {
@@ -482,6 +511,161 @@ impl Viewport<'_, '_> {
         )
         .response
         .on_hover_text("Add new Space View");
+    }
+
+    // ----------------------------------------------------------------------------
+    // drag and drop support
+
+    fn handle_drag_and_drop_interaction(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &egui::Ui,
+        contents: Contents,
+        response: &egui::Response,
+        body_response: Option<&egui::Response>,
+    ) {
+        //
+        // initiate drag and force single-selection
+        //
+
+        if response.drag_started() {
+            ctx.selection_state().set_selection(contents.as_item());
+            egui::DragAndDrop::set_payload(ui.ctx(), contents);
+        }
+
+        //
+        // check if a drag is in progress and set the cursor accordingly
+        //
+
+        let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| *payload)
+        else {
+            // nothing is being dragged, so nothing to do
+            return;
+        };
+
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+
+        //
+        // find our parent, our position within parent, and the previous container (if any)
+        //
+
+        let Some((parent_container_id, pos_in_parent)) =
+            self.blueprint.find_parent_and_position_index(&contents)
+        else {
+            return;
+        };
+
+        let previous_container = if pos_in_parent > 0 {
+            self.blueprint
+                .container(&parent_container_id)
+                .map(|container| container.contents[pos_in_parent - 1])
+                .filter(|contents| matches!(contents, Contents::Container(_)))
+        } else {
+            None
+        };
+
+        //
+        // find the drop target
+        //
+
+        // Prepare the item description structure needed by `find_drop_target`. Here, we use
+        // `Contents` for the "ItemId" generic type parameter.
+        let item_desc = re_ui::drag_and_drop::ItemContext {
+            id: contents,
+            is_container: matches!(contents, Contents::Container(_)),
+            parent_id: Contents::Container(parent_container_id),
+            position_index_in_parent: pos_in_parent,
+            previous_container_id: previous_container,
+        };
+
+        let drop_target = re_ui::drag_and_drop::find_drop_target(
+            ui,
+            &item_desc,
+            response.rect,
+            body_response.map(|r| r.rect),
+            ReUi::list_item_height(),
+        );
+
+        if let Some(drop_target) = drop_target {
+            self.handle_drop_target(ui, dragged_item_id, &drop_target);
+        }
+    }
+
+    fn handle_empty_space_drag_and_drop_interaction(&self, ui: &egui::Ui, empty_space: egui::Rect) {
+        //
+        // check if a drag is in progress and set the cursor accordingly
+        //
+
+        let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| *payload)
+        else {
+            // nothing is being dragged, so nothing to do
+            return;
+        };
+
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+
+        //
+        // prepare a drop target corresponding to "insert last in root container"
+        //
+        // TODO(ab): this is a rather primitive behavior. Ideally we should allow dropping in the last container based
+        //           on the horizontal position of the cursor.
+
+        let Some(root_container_id) = self.blueprint.root_container else {
+            return;
+        };
+
+        if ui.rect_contains_pointer(empty_space) {
+            let drop_target = re_ui::drag_and_drop::DropTarget::new(
+                // TODO(#4909): this indent is a visual hack that should be remove once #4909 is done
+                (empty_space.left() + ui.spacing().indent..=empty_space.right()).into(),
+                empty_space.top(),
+                Contents::Container(root_container_id),
+                usize::MAX,
+            );
+
+            self.handle_drop_target(ui, dragged_item_id, &drop_target);
+        }
+    }
+
+    fn handle_drop_target(
+        &self,
+        ui: &Ui,
+        dragged_item_id: Contents,
+        drop_target: &DropTarget<Contents>,
+    ) {
+        // We cannot allow the target location to be "inside" the dragged item, because that would amount moving
+        // myself inside of me.
+        if let Contents::Container(dragged_container_id) = &dragged_item_id {
+            if self
+                .blueprint
+                .is_contents_in_container(&drop_target.target_parent_id, dragged_container_id)
+            {
+                return;
+            }
+        }
+
+        ui.painter().hline(
+            drop_target.indicator_span_x,
+            drop_target.indicator_position_y,
+            (2.0, egui::Color32::WHITE),
+        );
+
+        let Contents::Container(target_container_id) = drop_target.target_parent_id else {
+            // this shouldn't append
+            return;
+        };
+
+        if ui.input(|i| i.pointer.any_released()) {
+            self.blueprint.move_contents(
+                dragged_item_id,
+                target_container_id,
+                drop_target.target_position_index,
+            );
+
+            egui::DragAndDrop::clear_payload(ui.ctx());
+        } else {
+            self.blueprint.set_drop_target(&target_container_id);
+        }
     }
 }
 

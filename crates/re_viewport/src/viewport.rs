@@ -5,11 +5,10 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-
 use egui_tiles::Behavior as _;
 use once_cell::sync::Lazy;
-use re_entity_db::EntityPropertyMap;
 
+use re_entity_db::EntityPropertyMap;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
     AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
@@ -37,6 +36,11 @@ pub struct PerSpaceViewState {
 pub struct ViewportState {
     space_view_entity_window: SpaceViewEntityPicker,
     space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
+
+    /// Current candidate parent container for the ongoing drop.
+    ///
+    /// See [`ViewportState::is_candidate_drop_parent_container`] for details.
+    candidate_drop_parent_container_id: Option<ContainerId>,
 }
 
 static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);
@@ -63,6 +67,14 @@ impl ViewportState {
             .get(&space_view_id)
             .map_or(&DEFAULT_PROPS, |state| &state.auto_properties)
     }
+
+    /// Is the provided container the current candidate parent container for the ongoing drag?
+    ///
+    /// When a drag is in progress, the candidate parent container for the dragged item should be highlighted. Note that
+    /// this can happen when hovering said container, its direct children, or even the item just after it.
+    pub fn is_candidate_drop_parent_container(&self, container_id: &ContainerId) -> bool {
+        self.candidate_drop_parent_container_id.as_ref() == Some(container_id)
+    }
 }
 
 /// Mutation actions to perform on the tree at the end of the frame. These messages are sent by the mutation APIs from
@@ -86,6 +98,19 @@ pub enum TreeAction {
 
     /// Simplify the container with the provided options
     SimplifyContainer(ContainerId, egui_tiles::SimplificationOptions),
+
+    /// Move some contents to a different container
+    MoveContents {
+        contents_to_move: Contents,
+        target_container: ContainerId,
+        target_position_in_container: usize,
+    },
+
+    /// Set the container that is currently identified as the drop target of an ongoing drag.
+    ///
+    /// This is used for highlighting the drop target in the UI. Note that the drop target container is reset at every
+    /// frame, so this command must be re-sent every frame as long as a drop target is identified.
+    SetDropTarget(ContainerId),
 }
 
 fn tree_simplification_option_for_app_options(
@@ -317,6 +342,9 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         let mut reset = false;
 
+        // always reset the drop target
+        self.state.candidate_drop_parent_container_id = None;
+
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
         for tree_action in self.tree_action_receiver.try_iter() {
             match tree_action {
@@ -397,7 +425,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     self.tree_edited = true;
                 }
                 TreeAction::RemoveContents(contents) => {
-                    let tile_id = contents.to_tile_id();
+                    let tile_id = contents.as_tile_id();
 
                     for tile in self.tree.remove_recursively(tile_id) {
                         re_log::trace!("Removing tile {tile_id:?}");
@@ -418,6 +446,30 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     let tile_id = blueprint_id_to_tile_id(&container_id);
                     self.tree.simplify_children_of_tile(tile_id, &options);
                     self.tree_edited = true;
+                }
+                TreeAction::MoveContents {
+                    contents_to_move,
+                    target_container,
+                    target_position_in_container,
+                } => {
+                    re_log::trace!(
+                        "Moving {contents_to_move:?} to container {target_container:?} at pos \
+                        {target_position_in_container}"
+                    );
+
+                    let contents_tile_id = contents_to_move.as_tile_id();
+                    let target_container_tile_id = blueprint_id_to_tile_id(&target_container);
+
+                    self.tree.move_tile_to_container(
+                        contents_tile_id,
+                        target_container_tile_id,
+                        target_position_in_container,
+                        true,
+                    );
+                    self.tree_edited = true;
+                }
+                TreeAction::SetDropTarget(container_id) => {
+                    self.state.candidate_drop_parent_container_id = Some(container_id);
                 }
             }
         }

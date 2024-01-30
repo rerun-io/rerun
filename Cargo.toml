@@ -294,6 +294,6 @@ emath = { git = "https://github.com/emilk/egui.git", rev = "ca513ce241c6511275e9
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b6e4fd457b2eee2c671747ead12f4a20feb380e8" } # Merge of: https://github.com/rerun-io/egui_tiles/pull/41
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "35e711283e7a021ca425d9fbd8e7581548971f49" } # master 2024-01-26
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "3d83a92f995a1d18ab1172d0b129d496e0eedaae" } # Update to egui 0.25 https://github.com/lampsitter/egui_commonmark/pull/27

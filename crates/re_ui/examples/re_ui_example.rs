@@ -666,21 +666,18 @@ mod drag_and_drop {
 
     impl ExampleDragAndDrop {
         pub fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
-            let mut source_item_position_index = None;
-            let mut target_item_position_index = None;
+            let mut swap: Option<(usize, usize)> = None;
 
             for (i, item_id) in self.items.iter().enumerate() {
                 //
                 // Draw the item
                 //
 
-                let id = egui::Id::new("drag_demo").with(*item_id);
-
                 let label = format!("Item {}", item_id.0);
                 let response = re_ui
                     .list_item(label.as_str())
                     .selected(self.selected_items.contains(item_id))
-                    .draggable(id)
+                    .draggable(true)
                     .show(ui);
 
                 //
@@ -702,24 +699,20 @@ mod drag_and_drop {
                 }
 
                 // Drag-and-drop of multiple items not (yet?) supported, so dragging resets selection to single item.
-                if response.dragged() {
+                if response.drag_started() {
                     self.selected_items.clear();
                     self.selected_items.insert(*item_id);
+
+                    response.dnd_set_drag_payload(i);
                 }
 
                 //
-                // Detect end-of-drag situation and prepare the swap command.
+                // Detect drag situation and run the swap if it ends.
                 //
 
-                if response.dragged() || response.drag_released() {
-                    source_item_position_index = Some(i);
-                }
+                let source_item_position_index = egui::DragAndDrop::payload(ui.ctx()).map(|i| *i);
 
-                // TODO(emilk/egui#3882): this feels like a common enough pattern that is should deserve its own API.
-                let anything_being_decidedly_dragged = ui
-                    .memory(|mem| mem.is_anything_being_dragged())
-                    && ui.input(|i| i.pointer.is_decidedly_dragging());
-                if anything_being_decidedly_dragged {
+                if let Some(source_item_position_index) = source_item_position_index {
                     ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
 
                     let (top, bottom) = response.rect.split_top_bottom_at_fraction(0.5);
@@ -732,16 +725,19 @@ mod drag_and_drop {
                         (None, None)
                     };
 
-                    if let Some(insert_y) = insert_y {
+                    if let (Some(insert_y), Some(target)) = (insert_y, target) {
                         ui.painter().hline(
                             ui.cursor().x_range(),
                             insert_y,
                             (2.0, egui::Color32::WHITE),
                         );
 
-                        // TODO(emilk/egui#3882): it would be nice to have a drag specific API for that
+                        // note: can't use `response.drag_released()` because we not the item which
+                        // started the drag
                         if ui.input(|i| i.pointer.any_released()) {
-                            target_item_position_index = target;
+                            swap = Some((source_item_position_index, target));
+
+                            egui::DragAndDrop::clear_payload(ui.ctx());
                         }
                     }
                 }
@@ -751,9 +747,7 @@ mod drag_and_drop {
             // Handle the swap command (if any)
             //
 
-            if let (Some(source), Some(target)) =
-                (source_item_position_index, target_item_position_index)
-            {
+            if let Some((source, target)) = swap {
                 if source != target {
                     let item = self.items.remove(source);
 
@@ -1054,7 +1048,7 @@ mod hierarchical_drag_and_drop {
                 .list_item(format!("Container {item_id:?}"))
                 .subdued(true)
                 .selected(self.selected(item_id))
-                .draggable(item_id.into())
+                .draggable(true)
                 .drop_target_style(self.target_container == Some(item_id))
                 .show_collapsing(ui, item_id.into(), true, |re_ui, ui| {
                     self.container_children_ui(re_ui, ui, children);
@@ -1092,7 +1086,7 @@ mod hierarchical_drag_and_drop {
             let response = re_ui
                 .list_item(label)
                 .selected(self.selected(item_id))
-                .draggable(item_id.into())
+                .draggable(true)
                 .show(ui);
 
             self.handle_interaction(ui, item_id, false, &response, None);
@@ -1122,307 +1116,86 @@ mod hierarchical_drag_and_drop {
             // handle drag
             //
 
-            if response.dragged() {
+            if response.drag_started() {
                 // Here, we support dragging a single item at a time, so we set the selection to the dragged item
                 // if/when we're dragging it proper.
                 self.send_command(Command::SetSelection(item_id));
+
+                egui::DragAndDrop::set_payload(ui.ctx(), item_id);
             }
 
             //
             // handle drop
             //
 
-            let anything_being_decidedly_dragged = ui.memory(|mem| mem.is_anything_being_dragged())
-                && ui.input(|i| i.pointer.is_decidedly_dragging());
-
-            if !anything_being_decidedly_dragged {
-                // nothing to do
-                return;
-            }
-
             // find the item being dragged
-            // TODO(ab): `mem.dragged_id()` now exists but there is no easy way to get the value out of and egui::Id
-            let Some(dragged_item_id) = ui.memory(|mem| {
-                self.items
-                    .keys()
-                    .find(|item_id| mem.is_being_dragged((**item_id).into()))
-                    .copied()
-            }) else {
-                // this shouldn't happen
+            let Some(dragged_item_id) =
+                egui::DragAndDrop::payload(ui.ctx()).map(|payload| (*payload))
+            else {
+                // nothing is being dragged, we're done here
                 return;
             };
 
             ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
 
-            let drag_target =
-                self.find_drop_target(ui, item_id, is_container, response, body_response);
+            let Some((parent_id, position_index_in_parent)) = self.parent_and_pos(item_id) else {
+                // this shouldn't happen
+                return;
+            };
 
-            if let Some(drag_target) = drag_target {
+            let previous_container_id = if position_index_in_parent > 0 {
+                self.container(parent_id)
+                    .map(|c| c[position_index_in_parent - 1])
+                    .filter(|id| self.container(*id).is_some())
+            } else {
+                None
+            };
+
+            let item_desc = re_ui::drag_and_drop::ItemContext {
+                id: item_id,
+                is_container,
+                parent_id,
+                position_index_in_parent,
+                previous_container_id,
+            };
+
+            let drop_target = re_ui::drag_and_drop::find_drop_target(
+                ui,
+                &item_desc,
+                response.rect,
+                body_response.map(|r| r.rect),
+                ReUi::list_item_height(),
+            );
+
+            if let Some(drop_target) = drop_target {
                 // We cannot allow the target location to be "inside" the dragged item, because that would amount moving
                 // myself inside of me.
 
-                if self.contains(dragged_item_id, drag_target.target_parent_id) {
+                if self.contains(dragged_item_id, drop_target.target_parent_id) {
                     return;
                 }
 
                 ui.painter().hline(
-                    drag_target.indicator_span_x,
-                    drag_target.indicator_position_y,
+                    drop_target.indicator_span_x,
+                    drop_target.indicator_position_y,
                     (2.0, egui::Color32::WHITE),
                 );
 
-                // TODO(emilk/egui#3882): it would be nice to have a drag specific API for `ctx().drag_stopped()`.
+                // note: can't use `response.drag_released()` because we not the item which
+                // started the drag
                 if ui.input(|i| i.pointer.any_released()) {
                     self.send_command(Command::MoveItem {
                         moved_item_id: dragged_item_id,
-                        target_container_id: drag_target.target_parent_id,
-                        target_position_index: drag_target.target_position_index,
+                        target_container_id: drop_target.target_parent_id,
+                        target_position_index: drop_target.target_position_index,
                     });
+
+                    egui::DragAndDrop::clear_payload(ui.ctx());
                 } else {
                     self.send_command(Command::HighlightTargetContainer(
-                        drag_target.target_parent_id,
+                        drop_target.target_parent_id,
                     ));
                 }
-            }
-        }
-
-        /// Compute the geometry of the drag cursor and where the dragged item should be inserted.
-        ///
-        /// This function implements the following logic:
-        /// ```text
-        ///
-        ///                     insert         insert last in container before me
-        ///                   before me           (if any) or insert before me
-        ///                       │                             │
-        ///                   ╔═══▼═════════════════════════════▼══════════════════╗
-        ///                   ║      │                                             ║
-        ///      leaf item    ║ ─────┴──────────────────────────────────────────── ║
-        ///                   ║                                                    ║
-        ///                   ╚═════════════════════▲══════════════════════════════╝
-        ///                                         │
-        ///                                  insert after me
-        ///
-        ///
-        ///
-        ///                     insert         insert last in container before me
-        ///                   before me           (if any) or insert before me
-        ///                       │                             │
-        ///                   ╔═══▼═════════════════════════════▼══════════════════╗
-        /// container item    ║      │                                             ║
-        ///  (no/collapsed    ║ ─────┼──────────────────────────────────────────── ║
-        ///          body)    ║      │                                             ║
-        ///                   ╚═══▲═════════════════════════════▲══════════════════╝
-        ///                       │                             │
-        ///                    insert                   insert inside me
-        ///                   after me                     at pos = 0
-        ///
-        ///
-        ///
-        ///                     insert         insert last in container before me
-        ///                   before me           (if any) or insert before me
-        ///                       │                             │
-        ///                   ╔═══▼═════════════════════════════▼══════════════════╗
-        /// container item    ║      │                                             ║
-        ///      with body    ║ ─────┴──────────────────────────────────────────── ║
-        ///                   ║                                                    ║
-        ///                   ╚══▲═══╦═════════════════════════════════════════════╣ ─┐
-        ///                      │   ║                                             ║  │
-        ///                  insert  ║                                             ║  │
-        ///               inside me  ║                                             ║  │
-        ///              at pos = 0  ╠══                                         ══╣  │
-        ///                          ║                same logic                   ║  │
-        ///                          ║               recursively                   ║  │ body
-        ///                  insert  ║               applied here                  ║  │
-        ///                after me  ╠══                                         ══╣  │
-        ///                      │   ║                                             ║  │
-        ///                   ┌──▼── ║                                             ║  │
-        ///                   │      ║                                             ║  │
-        ///                   └───── ╚═════════════════════════════════════════════╝ ─┘
-        ///
-        /// ```
-        ///
-        /// **Note**: press `Alt` to visualize the drag zones while dragging.
-        fn find_drop_target(
-            &self,
-            ui: &egui::Ui,
-            item_id: ItemId,
-            is_container: bool,
-            response: &egui::Response,
-            body_response: Option<&egui::Response>,
-        ) -> Option<DropTarget> {
-            let indent = ui.spacing().indent;
-
-            // For both leaf and containers we have two drag zones on the upper half of the item.
-            let (top, mut bottom) = response.rect.split_top_bottom_at_fraction(0.5);
-            let (left_top, top) = top.split_left_right_at_x(top.left() + indent);
-
-            // For the lower part of the item, the story is more complicated:
-            // - for leaf item, we have a single drag zone on the entire lower half
-            // - for container item, we must distinguish between the indent part and the rest, plus check some area in the
-            //   body
-            let mut left_bottom = egui::Rect::NOTHING;
-            if is_container {
-                (left_bottom, bottom) = bottom.split_left_right_at_x(bottom.left() + indent);
-            }
-
-            let mut content_left_bottom = egui::Rect::NOTHING;
-            if let Some(body_response) = body_response {
-                content_left_bottom = egui::Rect::from_two_pos(
-                    body_response.rect.left_bottom()
-                        + egui::vec2(indent, -ReUi::list_item_height() / 2.0),
-                    body_response.rect.left_bottom(),
-                );
-            }
-
-            // Visualize the drag zones
-            if ui.input(|i| i.modifiers.alt) {
-                ui.ctx()
-                    .debug_painter()
-                    .debug_rect(top, egui::Color32::RED, "t");
-                ui.ctx()
-                    .debug_painter()
-                    .debug_rect(bottom, egui::Color32::GREEN, "b");
-
-                ui.ctx().debug_painter().debug_rect(
-                    left_top,
-                    egui::Color32::RED.gamma_multiply(0.5),
-                    "lt",
-                );
-                ui.ctx().debug_painter().debug_rect(
-                    left_bottom,
-                    egui::Color32::GREEN.gamma_multiply(0.5),
-                    "lb",
-                );
-                ui.ctx().debug_painter().debug_rect(
-                    content_left_bottom,
-                    egui::Color32::YELLOW,
-                    "c",
-                );
-            }
-
-            let Some((parent_id, pos_in_parent)) = self.parent_and_pos(item_id) else {
-                // this shouldn't happen
-                return None;
-            };
-
-            if ui.rect_contains_pointer(left_top) {
-                // insert before me
-                Some(DropTarget::new(
-                    response.rect.x_range(),
-                    top.top(),
-                    parent_id,
-                    pos_in_parent,
-                ))
-            } else if ui.rect_contains_pointer(top) {
-                // insert last in the previous container if any, else insert before me
-                let previous_container_id = if pos_in_parent > 0 {
-                    self.container(parent_id)
-                        .map(|c| c[pos_in_parent - 1])
-                        .filter(|id| self.container(*id).is_some())
-                } else {
-                    None
-                };
-
-                if let Some(previous_container_id) = previous_container_id {
-                    Some(DropTarget::new(
-                        (response.rect.left() + indent..=response.rect.right()).into(),
-                        top.top(),
-                        previous_container_id,
-                        usize::MAX,
-                    ))
-                } else {
-                    Some(DropTarget::new(
-                        response.rect.x_range(),
-                        top.top(),
-                        parent_id,
-                        pos_in_parent,
-                    ))
-                }
-            } else if !is_container {
-                if ui.rect_contains_pointer(bottom) {
-                    // insert after me
-                    Some(DropTarget::new(
-                        response.rect.x_range(),
-                        bottom.bottom(),
-                        parent_id,
-                        pos_in_parent + 1,
-                    ))
-                } else {
-                    None
-                }
-            } else {
-                let body_rect = body_response.map(|r| r.rect).filter(|r| r.width() > 0.0);
-                if let Some(body_rect) = body_rect {
-                    if ui.rect_contains_pointer(left_bottom) || ui.rect_contains_pointer(bottom) {
-                        // insert at pos = 0 inside me
-                        Some(DropTarget::new(
-                            (body_rect.left() + indent..=body_rect.right()).into(),
-                            left_bottom.bottom(),
-                            item_id,
-                            0,
-                        ))
-                    } else if ui.rect_contains_pointer(content_left_bottom) {
-                        // insert after me in my parent
-                        Some(DropTarget::new(
-                            response.rect.x_range(),
-                            content_left_bottom.bottom(),
-                            parent_id,
-                            pos_in_parent + 1,
-                        ))
-                    } else {
-                        None
-                    }
-                } else if ui.rect_contains_pointer(left_bottom) {
-                    // insert after me in my parent
-                    Some(DropTarget::new(
-                        response.rect.x_range(),
-                        left_bottom.bottom(),
-                        parent_id,
-                        pos_in_parent + 1,
-                    ))
-                } else if ui.rect_contains_pointer(bottom) {
-                    // insert at pos = 0 inside me
-                    Some(DropTarget::new(
-                        (response.rect.left() + indent..=response.rect.right()).into(),
-                        bottom.bottom(),
-                        item_id,
-                        0,
-                    ))
-                } else {
-                    None
-                }
-            }
-        }
-    }
-
-    /// Gather information about a drop target, including the geometry of the drop indicator that should be
-    /// displayed, and the destination where the dragged items should be moved.
-    struct DropTarget {
-        /// Range of X coordinates for the drag target indicator
-        indicator_span_x: egui::Rangef,
-
-        /// Y coordinate for drag target indicator
-        indicator_position_y: f32,
-
-        /// Destination container ID
-        target_parent_id: ItemId,
-
-        /// Destination position within the container
-        target_position_index: usize,
-    }
-
-    impl DropTarget {
-        fn new(
-            indicator_span_x: egui::Rangef,
-            indicator_position_y: f32,
-            target_parent_id: ItemId,
-            target_position_index: usize,
-        ) -> Self {
-            Self {
-                indicator_span_x,
-                indicator_position_y,
-                target_parent_id,
-                target_position_index,
             }
         }
     }

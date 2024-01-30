@@ -3,6 +3,7 @@
 mod command;
 mod command_palette;
 mod design_tokens;
+pub mod drag_and_drop;
 pub mod egui_helpers;
 pub mod icons;
 mod layout_job_builder;
@@ -1073,11 +1074,20 @@ impl ReUi {
     #[allow(clippy::unused_self)]
     pub fn paint_time_cursor(
         &self,
+        ui: &egui::Ui,
         painter: &egui::Painter,
+        response: &egui::Response,
         x: f32,
         y: Rangef,
-        stroke: egui::Stroke,
     ) {
+        let stroke = if response.dragged() {
+            ui.style().visuals.widgets.active.fg_stroke
+        } else if response.hovered() {
+            ui.style().visuals.widgets.hovered.fg_stroke
+        } else {
+            ui.visuals().widgets.inactive.fg_stroke
+        };
+
         let Rangef {
             min: y_min,
             max: y_max,

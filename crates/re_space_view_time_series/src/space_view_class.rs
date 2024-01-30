@@ -1,5 +1,5 @@
 use egui::ahash::{HashMap, HashSet};
-use egui_plot::{Legend, Line, Plot, Points};
+use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
@@ -356,7 +356,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         let mut plot_item_id_to_entity_path = HashMap::default();
 
         let egui_plot::PlotResponse {
-            inner: time_x,
+            inner: _,
             response,
             transform,
             hovered_plot_item,
@@ -414,16 +414,16 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             }
 
             state.was_dragging_time_cursor = state.is_dragging_time_cursor;
-
-            // decide if the time cursor should be displayed, and if where
-            current_time
-                .map(|current_time| (current_time - time_offset) as f64)
-                .filter(|&x| {
-                    // only display the time cursor when it's actually above the plot area
-                    plot_ui.plot_bounds().min()[0] <= x && x <= plot_ui.plot_bounds().max()[0]
-                })
-                .map(|x| plot_ui.screen_from_plot([x, 0.0].into()).x)
         });
+
+        // Decide if the time cursor should be displayed, and if so where:
+        let time_x = current_time
+            .map(|current_time| (current_time - time_offset) as f64)
+            .filter(|&x| {
+                // only display the time cursor when it's actually above the plot area
+                transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
+            })
+            .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
         // Interact with the plot items (lines, scatters, etc.)
         if let Some(entity_path) = hovered_plot_item
@@ -438,7 +438,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             );
         }
 
-        if let Some(time_x) = time_x {
+        if let Some(mut time_x) = time_x {
             let interact_radius = ui.style().interaction.resize_grab_radius_side;
             let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
                 .expand(interact_radius);
@@ -451,27 +451,29 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             state.is_dragging_time_cursor = false;
             if response.dragged() {
                 if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
-                    let time =
-                        time_offset + transform.value_from_position(pointer_pos).x.round() as i64;
+                    let new_offset_time = transform.value_from_position(pointer_pos).x;
+                    let new_time = time_offset + new_offset_time.round() as i64;
+
+                    // Avoid frame-delay:
+                    time_x = pointer_pos.x;
 
                     let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-                    time_ctrl.set_time(time);
+                    time_ctrl.set_time(new_time);
                     time_ctrl.pause();
 
                     state.is_dragging_time_cursor = true;
                 }
             }
 
-            let stroke = if response.dragged() {
-                ui.style().visuals.widgets.active.fg_stroke
-            } else if response.hovered() {
-                ui.style().visuals.widgets.hovered.fg_stroke
-            } else {
-                ui.visuals().widgets.inactive.fg_stroke
-            };
-            ctx.re_ui
-                .paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
+            ctx.re_ui.paint_time_cursor(
+                ui,
+                ui.painter(),
+                &response,
+                time_x,
+                response.rect.y_range(),
+            );
         }
+
         Ok(())
     }
 }
