@@ -1,5 +1,5 @@
 use egui::ahash::HashSet;
-use egui_plot::{Legend, Line, Plot, Points};
+use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
@@ -354,7 +354,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         }
 
         let egui_plot::PlotResponse {
-            inner: time_x,
+            inner: _,
             response,
             transform,
         } = plot.show(ui, |plot_ui| {
@@ -407,16 +407,16 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             }
 
             state.was_dragging_time_cursor = state.is_dragging_time_cursor;
-
-            // decide if the time cursor should be displayed, and if where
-            current_time
-                .map(|current_time| (current_time - time_offset) as f64)
-                .filter(|&x| {
-                    // only display the time cursor when it's actually above the plot area
-                    plot_ui.plot_bounds().min()[0] <= x && x <= plot_ui.plot_bounds().max()[0]
-                })
-                .map(|x| plot_ui.screen_from_plot([x, 0.0].into()).x)
         });
+
+        // Decide if the time cursor should be displayed, and if so where:
+        let time_x = current_time
+            .map(|current_time| (current_time - time_offset) as f64)
+            .filter(|&x| {
+                // only display the time cursor when it's actually above the plot area
+                transform.bounds().min()[0] <= x && x <= transform.bounds().max()[0]
+            })
+            .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
         if let Some(time_x) = time_x {
             let interact_radius = ui.style().interaction.resize_grab_radius_side;
