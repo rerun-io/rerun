@@ -181,6 +181,21 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     #[clap(long, default_value_t = Default::default())]
     ws_server_port: RerunServerPort,
 
+    /// Override the default graphics backend and for a specific one instead.
+    ///
+    /// When using `--web-viewer` this should be one of:
+    /// * `webgpu`
+    /// * `webgl`
+    ///
+    /// When starting a native viewer instead this should be one of:
+    /// * `vulkan` (Linux & Windows only)
+    /// * `gl` (Linux & Windows only)
+    /// * `metal` (macOS only)
+    // Note that we don't compile with DX12 right now, but we could (we don't since this adds permutation and wgpu still has some issues with it).
+    // GL could be enabled on MacOS via `angle` but given prior issues with ANGLE this seems to be a bad idea!
+    #[clap(long)]
+    force_renderer: Option<String>,
+
     // ----------------------------------------------------------------------------
     // Debug-options:
     /// Ingest data and then quit once the goodbye message has been received.
@@ -499,6 +514,7 @@ async fn run_impl(
             } else {
                 None
             },
+            force_wgpu_backend: None,
         }
     };
 
@@ -534,6 +550,7 @@ async fn run_impl(
                 return host_web_viewer(
                     args.bind.clone(),
                     args.web_viewer_port,
+                    args.force_renderer,
                     true,
                     rerun_server_ws_url,
                 )
@@ -608,6 +625,7 @@ async fn run_impl(
                 let web_server_handle = tokio::spawn(host_web_viewer(
                     args.bind.clone(),
                     args.web_viewer_port,
+                    args.force_renderer,
                     open_browser,
                     _ws_server_url,
                 ));
@@ -620,23 +638,26 @@ async fn run_impl(
         }
     } else {
         #[cfg(feature = "native_viewer")]
-        return re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-            let mut app = re_viewer::App::new(
-                _build_info,
-                &call_source.app_env(),
-                startup_options,
-                re_ui,
-                cc.storage,
-            );
-            for rx in rx {
-                app.add_receiver(rx);
-            }
-            app.set_profiler(profiler);
-            if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
-                app.set_examples_manifest_url(url);
-            }
-            Box::new(app)
-        }))
+        return re_viewer::run_native_app(
+            Box::new(move |cc, re_ui| {
+                let mut app = re_viewer::App::new(
+                    _build_info,
+                    &call_source.app_env(),
+                    startup_options,
+                    re_ui,
+                    cc.storage,
+                );
+                for rx in rx {
+                    app.add_receiver(rx);
+                }
+                app.set_profiler(profiler);
+                if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
+                    app.set_examples_manifest_url(url);
+                }
+                Box::new(app)
+            }),
+            args.force_renderer,
+        )
         .map_err(|err| err.into());
 
         #[cfg(not(feature = "native_viewer"))]

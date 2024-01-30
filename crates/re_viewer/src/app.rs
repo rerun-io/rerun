@@ -56,6 +56,9 @@ pub struct StartupOptions {
     pub resolution_in_points: Option<[f32; 2]>,
 
     pub skip_welcome_screen: bool,
+
+    /// Forces wgpu backend to use the specified graphics API.
+    pub force_wgpu_backend: Option<String>,
 }
 
 impl Default for StartupOptions {
@@ -75,6 +78,7 @@ impl Default for StartupOptions {
             resolution_in_points: None,
 
             skip_welcome_screen: false,
+            force_wgpu_backend: None,
         }
     }
 }

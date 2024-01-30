@@ -218,15 +218,15 @@
         load_wasm();
       }
 
-      const forceGraphicsInfoParagraph = `
+      const forceWgpuBackendInfoParagraph = `
         <p>
             For graphics related issues, try forcing to render with WebGL<br>
-            <a href="${window.location}?force-graphics=webgl">
-              ${window.location}?force-graphics=webgl
+            <a href="${window.location}?renderer=webgl">
+              ${window.location}?renderer=webgl
             </a><br>
             or with WebGPU<br>
-            <a href="${window.location}?force-graphics=webgpu">
-              ${window.location}?force-graphics=webgpu
+            <a href="${window.location}?renderer=webgpu">
+              ${window.location}?renderer=webgpu
             </a>
         </p>`;
 
@@ -340,7 +340,7 @@
                   Reload the page to try again.<br>
                   Please consider filing a <a href=https://github.com/rerun-io/rerun/issues/new/>bug report<a>. Thank you!
               </p>
-              ${forceGraphicsInfoParagraph}
+              ${forceWgpuBackendInfoParagraph}
             `);
           } else {
             let delay_ms = 1000;
@@ -351,10 +351,10 @@
         check_for_panic();
 
         const urlParams = new URLSearchParams(window.location.search);
-        const forceGraphics = urlParams.get("force-graphics");
+        const forceWgpuBackend = urlParams.get("renderer");
 
         handle
-          .start("the_canvas_id", null, null, forceGraphics)
+          .start("the_canvas_id", null, null, forceWgpuBackend)
           .then(on_app_started)
           .catch(on_wasm_error);
       }
@@ -387,7 +387,7 @@
               Reload the page to try again.<br>
               Please consider filing a <a href=https://github.com/rerun-io/rerun/issues/new/>bug report<a>. Thank you!
           </p>
-          ${forceGraphicsInfoParagraph}
+          ${forceWgpuBackendInfoParagraph}
         `);
       }
     </script>

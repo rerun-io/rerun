@@ -7,8 +7,11 @@ type AppCreator =
     Box<dyn FnOnce(&eframe::CreationContext<'_>, re_ui::ReUi) -> Box<dyn eframe::App>>;
 
 // NOTE: the name of this function is hard-coded in `crates/rerun/src/crash_handler.rs`!
-pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
-    let native_options = eframe_options();
+pub fn run_native_app(
+    app_creator: AppCreator,
+    force_wgpu_backend: Option<String>,
+) -> eframe::Result<()> {
+    let native_options = eframe_options(force_wgpu_backend);
 
     let window_title = "Rerun Viewer";
     eframe::run_native(
@@ -92,9 +95,14 @@ pub fn run_native_viewer_with_messages(
     for log_msg in log_messages {
         tx.send(log_msg).ok();
     }
-    run_native_app(Box::new(move |cc, re_ui| {
-        let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
-        app.add_receiver(rx);
-        Box::new(app)
-    }))
+
+    let force_wgpu_backend = startup_options.force_wgpu_backend.clone();
+    run_native_app(
+        Box::new(move |cc, re_ui| {
+            let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
+            app.add_receiver(rx);
+            Box::new(app)
+        }),
+        force_wgpu_backend,
+    )
 }

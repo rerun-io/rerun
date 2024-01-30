@@ -278,15 +278,25 @@ pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result
             }
         }
         wgpu::Backend::Dx12 => {
-            if cfg!(target_arch = "wasm32") {
-                return Err("Can only run with WebGL or WebGPU on the web.");
-            }
-            if cfg!(target_os = "linux") || cfg!(target_os = "mac") {
-                return Err("Cannot run with DX12 backend on Linux & Mac.");
-            }
+            // We don't have DX12 enabled right now, but someone could.
+            // TODO(wgpu#5166): But if we get this wrong we might crash.
+            // TODO(wgpu#5167): And we also can't query the config.
+            return Err("DX12 backend is currently not supported.");
+
+            // if cfg!(target_arch = "wasm32") {
+            //     return Err("Can only run with WebGL or WebGPU on the web.");
+            // }
+            // if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
+            //     return Err("Cannot run with DX12 backend on Linux & Mac.");
+            // }
         }
         wgpu::Backend::Gl => {
-            // Through emulation and build configs GL may work everywhere.
+            // Using Angle Mac might actually run GL, but we don't enable this.
+            // TODO(wgpu#5166): But if we get this wrong we might crash.
+            // TODO(wgpu#5167): And we also can't query the config.
+            if cfg!(target_os = "macos") {
+                return Err("Cannot run with GL backend on Mac.");
+            }
         }
         wgpu::Backend::BrowserWebGpu => {
             if !cfg!(target_arch = "wasm32") {

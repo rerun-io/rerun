@@ -134,14 +134,14 @@ fn supported_graphics_backends(force_backend: Option<String>) -> wgpu::Backends 
         if let Some(backend) = re_renderer::config::parse_graphics_backend(&force_backend) {
             if let Err(err) = re_renderer::config::validate_graphics_backend_applicability(backend)
             {
-                re_log::error!("Failed to force rendering backend parsed from {force_backend:?}: {err}.\nWill use default backend instead.");
+                re_log::error!("Failed to force rendering backend parsed from {force_backend:?}: {err}\nUsing default backend instead.");
                 re_renderer::config::supported_backends()
             } else {
                 re_log::info!("Forcing graphics backend to {backend:?}.");
                 backend.into()
             }
         } else {
-            re_log::error!("Failed to parse rendering backend string {force_backend:?}. Will use default backend.");
+            re_log::error!("Failed to parse rendering backend string {force_backend:?}. Using default backend instead.");
             re_renderer::config::supported_backends()
         }
     } else {
