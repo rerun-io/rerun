@@ -6,7 +6,7 @@ use std::{
 
 use ahash::{HashMap, HashSet};
 use itertools::Itertools;
-use parking_lot::RwLock;
+use parking_lot::Mutex;
 use paste::paste;
 use seq_macro::seq;
 
@@ -49,7 +49,7 @@ pub struct Caches {
     store_id: StoreId,
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
-    per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>,
+    per_cache_key: Mutex<HashMap<CacheKey, Arc<Mutex<CachesPerArchetype>>>>,
 }
 
 impl std::fmt::Debug for Caches {
@@ -63,11 +63,11 @@ impl std::fmt::Debug for Caches {
 
         strings.push(format!("[Caches({store_id})]"));
 
-        let per_cache_key = per_cache_key.read();
+        let per_cache_key = per_cache_key.lock();
         let per_cache_key: BTreeMap<_, _> = per_cache_key.iter().collect();
 
         for (cache_key, caches_per_archetype) in &per_cache_key {
-            let caches_per_archetype = caches_per_archetype.read();
+            let caches_per_archetype = caches_per_archetype.lock();
             strings.push(format!(
                 "  [{cache_key:?} (pending_timeful={:?} pending_timeless={:?})]",
                 caches_per_archetype
@@ -88,7 +88,7 @@ impl std::fmt::Debug for Caches {
 }
 
 impl std::ops::Deref for Caches {
-    type Target = RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>;
+    type Target = Mutex<HashMap<CacheKey, Arc<Mutex<CachesPerArchetype>>>>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -119,7 +119,7 @@ pub struct CachesPerArchetype {
     //
     // TODO(cmc): At some point we should probably just store the PoV and optional components rather
     // than an `ArchetypeName`: the query system doesn't care about archetypes.
-    pub(crate) latest_at_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<LatestAtCache>>>>,
+    pub(crate) latest_at_per_archetype: Mutex<HashMap<ArchetypeName, Arc<Mutex<LatestAtCache>>>>,
 
     /// Which [`Archetype`] are we querying for?
     ///
@@ -132,7 +132,7 @@ pub struct CachesPerArchetype {
     //
     // TODO(cmc): At some point we should probably just store the PoV and optional components rather
     // than an `ArchetypeName`: the query system doesn't care about archetypes.
-    pub(crate) range_per_archetype: RwLock<HashMap<ArchetypeName, Arc<RwLock<RangeCache>>>>,
+    pub(crate) range_per_archetype: Mutex<HashMap<ArchetypeName, Arc<Mutex<RangeCache>>>>,
 
     /// Everything greater than or equal to this timestamp has been asynchronously invalidated.
     ///
@@ -165,11 +165,11 @@ impl std::fmt::Debug for CachesPerArchetype {
         let mut strings = Vec::new();
 
         {
-            let latest_at_per_archetype = latest_at_per_archetype.read();
+            let latest_at_per_archetype = latest_at_per_archetype.lock();
             let latest_at_per_archetype: BTreeMap<_, _> = latest_at_per_archetype.iter().collect();
 
             for (archetype_name, latest_at_cache) in &latest_at_per_archetype {
-                let latest_at_cache = latest_at_cache.read();
+                let latest_at_cache = latest_at_cache.lock();
                 strings.push(format!(
                     "[latest_at for {archetype_name} ({})]",
                     re_format::format_bytes(latest_at_cache.total_size_bytes() as _)
@@ -179,11 +179,11 @@ impl std::fmt::Debug for CachesPerArchetype {
         }
 
         {
-            let range_per_archetype = range_per_archetype.read();
+            let range_per_archetype = range_per_archetype.lock();
             let range_per_archetype: BTreeMap<_, _> = range_per_archetype.iter().collect();
 
             for (archetype_name, range_cache) in &range_per_archetype {
-                let range_cache = range_cache.read();
+                let range_cache = range_cache.lock();
                 strings.push(format!(
                     "[range for {archetype_name} ({})]",
                     re_format::format_bytes(range_cache.total_size_bytes() as _)
@@ -200,7 +200,7 @@ impl Caches {
     /// Clears all caches.
     #[inline]
     pub fn clear(&self) {
-        self.write().clear();
+        self.lock().clear();
     }
 
     /// Gives write access to the appropriate `LatestAtCache` according to the specified
@@ -227,10 +227,10 @@ impl Caches {
         let key = CacheKey::new(entity_path, query.timeline);
 
         let cache = {
-            let caches_per_archetype = Arc::clone(self.write().entry(key.clone()).or_default());
+            let caches_per_archetype = Arc::clone(self.lock().entry(key.clone()).or_default());
             // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
-            let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
+            let removed_bytes = caches_per_archetype.lock().handle_pending_invalidation();
             // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
             // same `CacheKey` but a different `ArchetypeName` can run once again.
             if removed_bytes > 0 {
@@ -242,14 +242,14 @@ impl Caches {
                 );
             }
 
-            let caches_per_archetype = caches_per_archetype.read();
-            let mut latest_at_per_archetype = caches_per_archetype.latest_at_per_archetype.write();
+            let caches_per_archetype = caches_per_archetype.lock();
+            let mut latest_at_per_archetype = caches_per_archetype.latest_at_per_archetype.lock();
             Arc::clone(latest_at_per_archetype.entry(A::name()).or_default())
             // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
             // can run once again.
         };
 
-        let mut cache = cache.write();
+        let mut cache = cache.lock();
         f(&mut cache)
     }
 
@@ -277,10 +277,10 @@ impl Caches {
         let key = CacheKey::new(entity_path, query.timeline);
 
         let cache = {
-            let caches_per_archetype = Arc::clone(self.write().entry(key.clone()).or_default());
+            let caches_per_archetype = Arc::clone(self.lock().entry(key.clone()).or_default());
             // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
-            let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
+            let removed_bytes = caches_per_archetype.lock().handle_pending_invalidation();
             // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
             // same `CacheKey` but a different `ArchetypeName` can run once again.
             if removed_bytes > 0 {
@@ -292,14 +292,14 @@ impl Caches {
                 );
             }
 
-            let caches_per_archetype = caches_per_archetype.read();
-            let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
+            let caches_per_archetype = caches_per_archetype.lock();
+            let mut range_per_archetype = caches_per_archetype.range_per_archetype.lock();
             Arc::clone(range_per_archetype.entry(A::name()).or_default())
             // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
             // can run once again.
         };
 
-        let mut cache = cache.write();
+        let mut cache = cache.lock();
         f(&mut cache)
     }
 }
@@ -400,7 +400,7 @@ impl StoreSubscriber for Caches {
                 }
             }
 
-            let caches = self.write();
+            let caches = self.lock();
             // NOTE: Don't release the top-level lock -- even though this cannot happen yet with
             // our current macro-architecture, we want to prevent queries from concurrently
             // running while we're updating the invalidation flags.
@@ -415,7 +415,7 @@ impl StoreSubscriber for Caches {
                 for entity_path in compacted.timeless {
                     for (key, caches_per_archetype) in caches.iter() {
                         if key.entity_path == entity_path {
-                            caches_per_archetype.write().pending_timeless_invalidation = true;
+                            caches_per_archetype.lock().pending_timeless_invalidation = true;
                         }
                     }
                 }
@@ -430,7 +430,7 @@ impl StoreSubscriber for Caches {
                         // for the remainder of the if statement and hell will ensue.
                         // <https://rust-lang.github.io/rust-clippy/master/#if_let_mutex> is
                         // supposed to catch that but it doesn't, I don't know why.
-                        let mut caches_per_archetype = caches_per_archetype.write();
+                        let mut caches_per_archetype = caches_per_archetype.lock();
                         if let Some(min_time) =
                             caches_per_archetype.pending_timeful_invalidation.as_mut()
                         {
@@ -474,15 +474,15 @@ impl CachesPerArchetype {
 
             let latest_at_removed_bytes = self
                 .latest_at_per_archetype
-                .read()
+                .lock()
                 .values()
-                .map(|latest_at_cache| latest_at_cache.read().total_size_bytes())
+                .map(|latest_at_cache| latest_at_cache.lock().total_size_bytes())
                 .sum::<u64>();
             let range_removed_bytes = self
                 .range_per_archetype
-                .read()
+                .lock()
                 .values()
-                .map(|range_cache| range_cache.read().total_size_bytes())
+                .map(|range_cache| range_cache.lock().total_size_bytes())
                 .sum::<u64>();
 
             *self = CachesPerArchetype::default();
@@ -494,14 +494,14 @@ impl CachesPerArchetype {
 
         let mut removed_bytes = 0u64;
 
-        for latest_at_cache in self.latest_at_per_archetype.read().values() {
-            let mut latest_at_cache = latest_at_cache.write();
+        for latest_at_cache in self.latest_at_per_archetype.lock().values() {
+            let mut latest_at_cache = latest_at_cache.lock();
             removed_bytes =
                 removed_bytes.saturating_add(latest_at_cache.truncate_at_time(time_threshold));
         }
 
-        for range_cache in self.range_per_archetype.read().values() {
-            let mut range_cache = range_cache.write();
+        for range_cache in self.range_per_archetype.lock().values() {
+            let mut range_cache = range_cache.lock();
             removed_bytes =
                 removed_bytes.saturating_add(range_cache.truncate_at_time(time_threshold));
         }
