@@ -226,28 +226,22 @@ impl Caches {
 
         let key = CacheKey::new(entity_path, query.timeline);
 
-        let cache = {
-            let caches_per_archetype = Arc::clone(self.lock().entry(key.clone()).or_default());
-            // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
+        let mut this = self.lock();
+        let caches_per_archetype = Arc::clone(this.entry(key.clone()).or_default());
 
-            let removed_bytes = caches_per_archetype.lock().handle_pending_invalidation();
-            // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
-            // same `CacheKey` but a different `ArchetypeName` can run once again.
-            if removed_bytes > 0 {
-                re_log::trace!(
-                    store_id=%self.store_id,
-                    entity_path = %key.entity_path,
-                    removed = removed_bytes,
-                    "invalidated latest-at caches"
-                );
-            }
+        let mut caches_per_archetype = caches_per_archetype.lock();
+        let removed_bytes = caches_per_archetype.handle_pending_invalidation();
+        if removed_bytes > 0 {
+            re_log::trace!(
+                store_id=%self.store_id,
+                entity_path = %key.entity_path,
+                removed = removed_bytes,
+                "invalidated latest-at caches"
+            );
+        }
 
-            let caches_per_archetype = caches_per_archetype.lock();
-            let mut latest_at_per_archetype = caches_per_archetype.latest_at_per_archetype.lock();
-            Arc::clone(latest_at_per_archetype.entry(A::name()).or_default())
-            // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
-            // can run once again.
-        };
+        let mut latest_at_per_archetype = caches_per_archetype.latest_at_per_archetype.lock();
+        let cache = Arc::clone(latest_at_per_archetype.entry(A::name()).or_default());
 
         let mut cache = cache.lock();
         f(&mut cache)
@@ -276,28 +270,22 @@ impl Caches {
 
         let key = CacheKey::new(entity_path, query.timeline);
 
-        let cache = {
-            let caches_per_archetype = Arc::clone(self.lock().entry(key.clone()).or_default());
-            // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
+        let mut this = self.lock();
+        let caches_per_archetype = Arc::clone(this.entry(key.clone()).or_default());
 
-            let removed_bytes = caches_per_archetype.lock().handle_pending_invalidation();
-            // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
-            // same `CacheKey` but a different `ArchetypeName` can run once again.
-            if removed_bytes > 0 {
-                re_log::trace!(
-                    store_id=%self.store_id,
-                    entity_path = %key.entity_path,
-                    removed = removed_bytes,
-                    "invalidated latest-at caches"
-                );
-            }
+        let mut caches_per_archetype = caches_per_archetype.lock();
+        let removed_bytes = caches_per_archetype.handle_pending_invalidation();
+        if removed_bytes > 0 {
+            re_log::trace!(
+                store_id=%self.store_id,
+                entity_path = %key.entity_path,
+                removed = removed_bytes,
+                "invalidated range caches"
+            );
+        }
 
-            let caches_per_archetype = caches_per_archetype.lock();
-            let mut range_per_archetype = caches_per_archetype.range_per_archetype.lock();
-            Arc::clone(range_per_archetype.entry(A::name()).or_default())
-            // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
-            // can run once again.
-        };
+        let mut range_per_archetype = caches_per_archetype.range_per_archetype.lock();
+        let cache = Arc::clone(range_per_archetype.entry(A::name()).or_default());
 
         let mut cache = cache.lock();
         f(&mut cache)
