@@ -183,7 +183,7 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::PrintDatastore => (
                 "Print datastore",
-                "Prints the entire data store to the console. WARNING: this may be A LOT of text.",
+                "Prints the entire data store to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
             #[cfg(not(target_arch = "wasm32"))]
             Self::ClearPrimaryCache => (
@@ -193,7 +193,7 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::PrintPrimaryCache => (
                 "Print primary cache",
-                "Prints the state of the entire primary cache to the console. WARNING: this may be A LOT of text.",
+                "Prints the state of the entire primary cache to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
 
 
