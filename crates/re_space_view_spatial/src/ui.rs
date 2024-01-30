@@ -393,13 +393,13 @@ pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
 
 pub fn screenshot_context_menu(
     _ctx: &ViewerContext<'_>,
-    response: egui::Response,
-) -> (egui::Response, Option<ScreenshotMode>) {
+    response: &egui::Response,
+) -> Option<ScreenshotMode> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         if _ctx.app_options.experimental_space_view_screenshots {
             let mut take_screenshot = None;
-            let response = response.context_menu(|ui| {
+            response.context_menu(|ui| {
                 ui.style_mut().wrap = Some(false);
                 if ui.button("Save screenshot to disk").clicked() {
                     take_screenshot = Some(ScreenshotMode::SaveAndCopyToClipboard);
@@ -409,14 +409,14 @@ pub fn screenshot_context_menu(
                     ui.close_menu();
                 }
             });
-            (response, take_screenshot)
+            take_screenshot
         } else {
-            (response, None)
+            None
         }
     }
     #[cfg(target_arch = "wasm32")]
     {
-        (response, None)
+        None
     }
 }
 
@@ -661,7 +661,7 @@ pub fn picking(
         });
     };
 
-    ctx.select_hovered_on_click( &response, re_viewer_context::Selection(hovered_items));
+    ctx.select_hovered_on_click(&response, re_viewer_context::Selection(hovered_items));
 
     Ok(response)
 }

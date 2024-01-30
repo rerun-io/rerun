@@ -426,16 +426,16 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         });
 
         // Interact with the plot items (lines, scatters, etc.)
-        if let Some(hovered_plot_item) = hovered_plot_item {
-            if let Some(entity_path) = plot_item_id_to_entity_path.get(&hovered_plot_item) {
-                ctx.select_hovered_on_click(
-                    &response,
-                    re_viewer_context::Item::InstancePath(
-                        Some(query.space_view_id),
-                        entity_path.clone().into(),
-                    ),
-                );
-            }
+        if let Some(entity_path) = hovered_plot_item
+            .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
+        {
+            ctx.select_hovered_on_click(
+                &response,
+                re_viewer_context::Item::InstancePath(
+                    Some(query.space_view_id),
+                    entity_path.clone().into(),
+                ),
+            );
         }
 
         if let Some(time_x) = time_x {
