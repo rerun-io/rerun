@@ -238,7 +238,7 @@ class FaceLandmarkerLogger:
             else self._detector.detect(image)
         )
 
-        def is_empty(i):
+        def is_empty(i):  # type: ignore[no-untyped-def]
             try:
                 next(i)
                 return False
