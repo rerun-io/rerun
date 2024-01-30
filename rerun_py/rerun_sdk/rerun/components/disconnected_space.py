@@ -27,8 +27,10 @@ __all__ = [
 @define(init=False)
 class DisconnectedSpace(DisconnectedSpaceExt):
     """
-    **Component**: Specifies that the entity path at which this is logged is spatially disconnected from its parent, making it impossible to transform the entity path into its parent's space and vice versa.
+    **Component**: Spatially disconnect this entity from its parent.
 
+    Specifies that the entity path at which this is logged is spatially disconnected from its parent,
+    making it impossible to transform the entity path into its parent's space and vice versa.
     It *only* applies to space views that work with spatial transformations, i.e. 2D & 3D space views.
     This is useful for specifying that a subgraph is independent of the rest of the scene.
     """
