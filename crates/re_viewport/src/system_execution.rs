@@ -70,7 +70,7 @@ pub fn execute_systems_for_space_views<'a>(
     re_tracing::profile_wait!("execute_systems");
 
     tree.active_tiles()
-        .into_par_iter()
+        .into_iter()
         .filter_map(|tile_id| {
             tree.tiles.get(tile_id).and_then(|tile| match tile {
                 egui_tiles::Tile::Pane(space_view_id) => {
