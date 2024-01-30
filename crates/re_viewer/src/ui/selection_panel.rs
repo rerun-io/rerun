@@ -21,7 +21,7 @@ use re_viewer_context::{
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
-    Contents, SpaceInfoCollection, Viewport, ViewportBlueprint,
+    Contents, Viewport, ViewportBlueprint,
 };
 
 use crate::ui::visible_history::visible_history_ui;
@@ -74,7 +74,6 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
-        spaces_info: &SpaceInfoCollection,
         expanded: bool,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
@@ -124,7 +123,7 @@ impl SelectionPanel {
                 .show(ui, |ui| {
                     ui.add_space(ui.spacing().item_spacing.y);
                     ctx.re_ui.panel_content(ui, |_, ui| {
-                        self.contents(ctx, ui, viewport, spaces_info);
+                        self.contents(ctx, ui, viewport);
                     });
                 });
         });
@@ -136,7 +135,6 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
-        spaces_info: &SpaceInfoCollection,
     ) {
         re_tracing::profile_function!();
 
@@ -170,13 +168,7 @@ impl SelectionPanel {
                     }
 
                     Item::SpaceView(space_view_id) => {
-                        space_view_top_level_properties(
-                            ui,
-                            ctx,
-                            viewport.blueprint,
-                            spaces_info,
-                            space_view_id,
-                        );
+                        space_view_top_level_properties(ui, ctx, viewport.blueprint, space_view_id);
                     }
 
                     _ => {}
@@ -550,7 +542,6 @@ fn space_view_top_level_properties(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
-    spaces_info: &SpaceInfoCollection,
     space_view_id: &SpaceViewId,
 ) {
     if let Some(space_view) = viewport.space_view(space_view_id) {
@@ -574,10 +565,7 @@ fn space_view_top_level_properties(
                 );
 
                 super::space_view_space_origin_ui::space_view_space_origin_widget_ui(
-                    ui,
-                    ctx,
-                    spaces_info,
-                    space_view,
+                    ui, ctx, space_view,
                 );
 
                 ui.end_row();
