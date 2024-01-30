@@ -3,12 +3,11 @@ use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes2D,
     components::{HalfSizes2D, Position2D, Text},
-    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -167,15 +166,8 @@ impl IdentifiedViewSystem for Boxes2DVisualizer {
 }
 
 impl VisualizerSystem for Boxes2DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Boxes2D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Boxes2D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Boxes2D>()
     }
 
     fn filter_visualizable_entities(

@@ -1,3 +1,4 @@
+use ahash::HashMap;
 use nohash_hasher::IntMap;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -7,9 +8,9 @@ use re_entity_db::{
     EntityPropertyMap, EntityTree,
 };
 use re_log_types::{
-    path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId,
+    path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, StoreKind,
 };
-use re_types_core::archetypes::Clear;
+use re_types_core::{archetypes::Clear, ComponentName};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
     DataResultNode, DataResultTree, IndicatorMatchingEntities, PerVisualizer, PropertyOverrides,
@@ -368,6 +369,9 @@ impl DataQueryPropertyResolver<'_> {
             }
         }
 
+        // TODO(jleibs): Should pass through an initial `ComponentOverrides` here
+        // if we were to support incrementally inheriting overrides from parent
+        // contexts such as the `SpaceView` or `Container`.
         EntityOverrideContext {
             root,
             individual: self.resolve_entity_overrides_for_path(
@@ -421,6 +425,8 @@ impl DataQueryPropertyResolver<'_> {
     /// with individual overrides at the leafs.
     fn update_overrides_recursive(
         &self,
+        ctx: &StoreContext<'_>,
+        query: &LatestAtQuery,
         query_result: &mut DataQueryResult,
         override_context: &EntityOverrideContext,
         accumulated: &EntityProperties,
@@ -442,6 +448,7 @@ impl DataQueryPropertyResolver<'_> {
                     node.data_result.property_overrides = Some(PropertyOverrides {
                         individual_properties: overridden_properties.cloned(),
                         accumulated_properties: accumulated_properties.clone(),
+                        component_overrides: Default::default(),
                         override_path: self
                             .recursive_override_root
                             .join(&node.data_result.entity_path),
@@ -459,12 +466,36 @@ impl DataQueryPropertyResolver<'_> {
                         accumulated.clone()
                     };
 
+                    let override_path = self
+                        .individual_override_root
+                        .join(&node.data_result.entity_path);
+
+                    let mut component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)> =
+                        Default::default();
+
+                    if let Some(override_subtree) = ctx.blueprint.tree().subtree(&override_path) {
+                        for component in override_subtree.entity.components.keys() {
+                            if let Some(component_data) = ctx
+                                .blueprint
+                                .store()
+                                .latest_at(query, &override_path, *component, &[*component])
+                                .and_then(|result| result.2[0].clone())
+                            {
+                                if !component_data.is_empty() {
+                                    component_overrides.insert(
+                                        *component,
+                                        (StoreKind::Blueprint, override_path.clone()),
+                                    );
+                                }
+                            }
+                        }
+                    }
+
                     node.data_result.property_overrides = Some(PropertyOverrides {
                         individual_properties: overridden_properties.cloned(),
                         accumulated_properties: accumulated_properties.clone(),
-                        override_path: self
-                            .individual_override_root
-                            .join(&node.data_result.entity_path),
+                        component_overrides,
+                        override_path,
                     });
 
                     None
@@ -473,6 +504,8 @@ impl DataQueryPropertyResolver<'_> {
         {
             for child in child_handles {
                 self.update_overrides_recursive(
+                    ctx,
+                    query,
                     query_result,
                     override_context,
                     &accumulated,
@@ -496,6 +529,8 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
 
         if let Some(root) = query_result.tree.root_handle() {
             self.update_overrides_recursive(
+                ctx,
+                query,
                 query_result,
                 &entity_overrides,
                 &entity_overrides.root,

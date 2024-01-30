@@ -3,11 +3,11 @@ use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes3D,
     components::{HalfSizes3D, Position3D, Rotation3D},
-    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{
@@ -127,15 +127,8 @@ impl IdentifiedViewSystem for Boxes3DVisualizer {
 }
 
 impl VisualizerSystem for Boxes3DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Boxes3D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Boxes3D::indicator().as_ref().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Boxes3D>()
     }
 
     fn filter_visualizable_entities(

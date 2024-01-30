@@ -4,12 +4,11 @@ use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
     components::{InstanceKey, Transform3D, ViewCoordinates},
-    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext, VisualizerSystem,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
@@ -189,15 +188,8 @@ impl CamerasVisualizer {
 }
 
 impl VisualizerSystem for CamerasVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        re_types::archetypes::Pinhole::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(re_types::archetypes::Pinhole::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Pinhole>()
     }
 
     fn filter_visualizable_entities(

@@ -25,6 +25,7 @@ re_tracing.workspace = true
 re_types_core.workspace = true
 re_viewer_context.workspace = true
 
+ahash.workspace = true
 egui.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true

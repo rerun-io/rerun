@@ -1,5 +1,3 @@
-use web_time::Instant;
-
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{FileSource, LogMsg, StoreKind};
@@ -1103,7 +1101,10 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let frame_start = Instant::now();
+        if let Some(seconds) = frame.info().cpu_usage {
+            self.frame_time_history
+                .add(egui_ctx.input(|i| i.time), seconds);
+        }
 
         // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
         let mut store_hub = self.store_hub.take().unwrap();
@@ -1237,12 +1238,6 @@ impl eframe::App for App {
                 open_url.new_tab = true;
             }
         });
-
-        // Frame time measurer - must be last
-        self.frame_time_history.add(
-            egui_ctx.input(|i| i.time),
-            frame_start.elapsed().as_secs_f32(),
-        );
     }
 
     #[cfg(target_arch = "wasm32")]

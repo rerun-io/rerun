@@ -4,6 +4,8 @@ use re_query::ComponentWithInstances;
 use re_types::external::arrow2::array::Utf8Array;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
 
+use crate::editors::register_editors;
+
 use super::EntityDataUi;
 
 pub fn create_component_ui_registry() -> ComponentUiRegistry {
@@ -28,6 +30,8 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add_to_registry::<re_types::components::ViewCoordinates>(&mut registry);
 
     add_to_registry::<re_types::blueprint::components::IncludedQueries>(&mut registry);
+
+    register_editors(&mut registry);
 
     registry
 }
