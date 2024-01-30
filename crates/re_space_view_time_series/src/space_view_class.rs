@@ -15,7 +15,8 @@ use re_viewer_context::{
     SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-use crate::visualizer_system::{PlotSeriesKind, TimeSeriesSystem};
+use crate::visualizer_system::TimeSeriesSystem;
+use crate::PlotSeriesKind;
 
 // ---
 
