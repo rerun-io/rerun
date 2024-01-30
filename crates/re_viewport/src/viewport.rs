@@ -38,7 +38,7 @@ pub struct ViewportState {
     space_view_entity_window: SpaceViewEntityPicker,
     space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
 
-    /// Current candidate parent container for the onging drop.
+    /// Current candidate parent container for the ongoing drop.
     ///
     /// See [`ViewportState::is_candidate_drop_parent_container`] for details.
     candidate_drop_parent_container_id: Option<ContainerId>,
