@@ -1,10 +1,10 @@
 use re_data_store::TimeRange;
-use re_log_types::{EntityPath, StoreKind, TimeInt};
+use re_log_types::{EntityPath, TimeInt};
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::{
     archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
-    Component, Loggable,
+    Loggable,
 };
 use re_viewer_context::{
     external::re_entity_db::TimeSeriesAggregator, AnnotationMap, DefaultColor,
@@ -14,6 +14,7 @@ use re_viewer_context::{
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
+    overrides::lookup_override,
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind,
 };
 
@@ -417,28 +418,6 @@ impl TimeSeriesSystem {
             self.lines.push(line);
         }
     }
-}
-
-fn lookup_override<C: Component>(
-    data_result: &re_viewer_context::DataResult,
-    ctx: &ViewerContext<'_>,
-) -> Option<C> {
-    data_result
-        .property_overrides
-        .as_ref()
-        .and_then(|p| p.component_overrides.get(&C::name()))
-        .and_then(|(store_kind, path)| match store_kind {
-            StoreKind::Blueprint => ctx
-                .store_context
-                .blueprint
-                .store()
-                .query_latest_component::<C>(path, ctx.blueprint_query),
-            StoreKind::Recording => ctx
-                .entity_db
-                .store()
-                .query_latest_component::<C>(path, &ctx.current_query()),
-        })
-        .map(|c| c.value)
 }
 
 // ---

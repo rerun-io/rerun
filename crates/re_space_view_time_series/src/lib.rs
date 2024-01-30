@@ -3,6 +3,7 @@
 //! A Space View that shows plots over Rerun timelines.
 
 mod aggregation;
+mod overrides;
 mod space_view_class;
 mod visualizer_system;
 
