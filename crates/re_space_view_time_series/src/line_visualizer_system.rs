@@ -1,10 +1,11 @@
 use re_data_store::TimeRange;
 use re_log_types::{EntityPath, TimeInt};
 use re_query_cache::{MaybeCachedComponentData, QueryError};
+use re_types::archetypes;
 use re_types::{
-    archetypes::TimeSeriesScalar,
-    components::{Color, Radius, Scalar, ScalarScattering, Text},
-    Loggable,
+    archetypes::SeriesLine,
+    components::{Color, Radius, Scalar, Text},
+    Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
     external::re_entity_db::TimeSeriesAggregator, AnnotationMap, DefaultColor,
@@ -18,22 +19,37 @@ use crate::{
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind,
 };
 
-/// The legacy system for rendering [`TimeSeriesScalars`] archetypes.
+/// The system for rendering [`SeriesLine`] archetypes.
 #[derive(Default, Debug)]
-pub struct LegacyTimeSeriesSystem {
+pub struct SeriesLineSystem {
     pub annotation_map: AnnotationMap,
     pub lines: Vec<PlotSeries>,
+
+    /// Earliest time an entity was recorded at on the current timeline.
+    pub min_time: Option<i64>,
+
+    /// What kind of aggregation was used to compute the graph?
+    pub aggregator: TimeSeriesAggregator,
+
+    /// `1.0` for raw data.
+    pub aggregation_factor: f64,
 }
 
-impl IdentifiedViewSystem for LegacyTimeSeriesSystem {
+impl IdentifiedViewSystem for SeriesLineSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "LegacyTimeSeries".into()
+        "SeriesLine".into()
     }
 }
 
-impl VisualizerSystem for LegacyTimeSeriesSystem {
+impl VisualizerSystem for SeriesLineSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<TimeSeriesScalar>()
+        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalar>();
+        let mut series_line_queried: ComponentNameSet = SeriesLine::all_components()
+            .iter()
+            .map(ToOwned::to_owned)
+            .collect::<ComponentNameSet>();
+        query_info.queried.append(&mut series_line_queried);
+        query_info
     }
 
     fn execute(
@@ -86,7 +102,7 @@ impl VisualizerSystem for LegacyTimeSeriesSystem {
     }
 }
 
-impl LegacyTimeSeriesSystem {
+impl SeriesLineSystem {
     fn load_scalars(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -162,86 +178,77 @@ impl LegacyTimeSeriesSystem {
                 let override_label =
                     lookup_override::<Text>(data_result, ctx).map(|t| t.to_string());
 
-                let override_scattered =
-                    lookup_override::<ScalarScattering>(data_result, ctx).map(|s| s.0);
-
                 let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
 
                 let query =
                     re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
-                query_caches.query_archetype_pov1_comp4::<
-                    TimeSeriesScalar,
-                    Scalar,
-                    ScalarScattering,
-                    Color,
-                    Radius,
-                    Text,
-                    _,
-                >(
-                    ctx.app_options.experimental_primary_caching_range,
-                    store,
-                    &query.clone().into(),
-                    &data_result.entity_path,
-                    |((time, _row_id), _, scalars, scatterings, colors, radii, labels)| {
-                        let Some(time) = time else {
-                            return;
-                        }; // scalars cannot be timeless
+                // TODO(jleibs): need to do a "joined" archetype query
+                query_caches
+                    .query_archetype_pov1_comp2::<archetypes::Scalar, Scalar, Color, Text, _>(
+                        ctx.app_options.experimental_primary_caching_range,
+                        store,
+                        &query.clone().into(),
+                        &data_result.entity_path,
+                        |((time, _row_id), _, scalars, colors, labels)| {
+                            let Some(time) = time else {
+                                return;
+                            }; // scalars cannot be timeless
 
-                        // This is a clear: we want to split the chart.
-                        if scalars.is_empty() {
-                            points.push(PlotPoint {
-                                time: time.as_i64(),
-                                value: 0.0,
-                                attrs: PlotPointAttrs {
-                                    label: None,
-                                    color: egui::Color32::BLACK,
-                                    radius: 0.0,
-                                    kind: PlotSeriesKind::Clear,
-                                },
-                            });
-                            return;
-                        }
+                            // This is a clear: we want to split the chart.
+                            if scalars.is_empty() {
+                                points.push(PlotPoint {
+                                    time: time.as_i64(),
+                                    value: 0.0,
+                                    attrs: PlotPointAttrs {
+                                        label: None,
+                                        color: egui::Color32::BLACK,
+                                        radius: 0.0,
+                                        kind: PlotSeriesKind::Clear,
+                                    },
+                                });
+                                return;
+                            }
 
-                        for (scalar, scattered, color, radius, label) in itertools::izip!(
-                            scalars.iter(),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&scatterings, scalars.len()),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
-                        ) {
-                            let color = override_color.unwrap_or_else(|| {
-                                annotation_info.color(color.map(|c| c.to_array()), default_color)
-                            });
-                            let label = override_label.clone().or_else(|| {
-                                annotation_info.label(label.as_ref().map(|l| l.as_str()))
-                            });
-                            let scattered = override_scattered
-                                .unwrap_or_else(|| scattered.map_or(false, |s| s.0));
-                            let radius = override_radius
-                                .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
+                            for (scalar, color, label) in itertools::izip!(
+                                scalars.iter(),
+                                MaybeCachedComponentData::iter_or_repeat_opt(
+                                    &colors,
+                                    scalars.len()
+                                ),
+                                //MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
+                                MaybeCachedComponentData::iter_or_repeat_opt(
+                                    &labels,
+                                    scalars.len()
+                                ),
+                            ) {
+                                // TODO(jleibs): Replace with StrokeWidth
+                                let radius: Option<Radius> = None;
+                                let color = override_color.unwrap_or_else(|| {
+                                    annotation_info
+                                        .color(color.map(|c| c.to_array()), default_color)
+                                });
+                                let label = override_label.clone().or_else(|| {
+                                    annotation_info.label(label.as_ref().map(|l| l.as_str()))
+                                });
+                                let radius = override_radius
+                                    .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
 
-                            let kind = if scattered {
-                                PlotSeriesKind::Scatter
-                            } else {
-                                PlotSeriesKind::Continuous
-                            };
+                                const DEFAULT_RADIUS: f32 = 0.75;
 
-                            const DEFAULT_RADIUS: f32 = 0.75;
-
-                            points.push(PlotPoint {
-                                time: time.as_i64(),
-                                value: scalar.0,
-                                attrs: PlotPointAttrs {
-                                    label,
-                                    color,
-                                    radius,
-                                    kind,
-                                },
-                            });
-                        }
-                    },
-                )?;
+                                points.push(PlotPoint {
+                                    time: time.as_i64(),
+                                    value: scalar.0,
+                                    attrs: PlotPointAttrs {
+                                        label,
+                                        color,
+                                        radius,
+                                        kind: PlotSeriesKind::Continuous,
+                                    },
+                                });
+                            }
+                        },
+                    )?;
             }
 
             if points.is_empty() {

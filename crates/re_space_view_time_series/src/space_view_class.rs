@@ -16,6 +16,7 @@ use re_viewer_context::{
 };
 
 use crate::legacy_visualizer_system::LegacyTimeSeriesSystem;
+use crate::line_visualizer_system::SeriesLineSystem;
 use crate::PlotSeriesKind;
 
 // ---
@@ -90,7 +91,9 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<LegacyTimeSeriesSystem>()
+        system_registry.register_visualizer::<LegacyTimeSeriesSystem>()?;
+        system_registry.register_visualizer::<SeriesLineSystem>()?;
+        Ok(())
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
@@ -285,13 +288,31 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let timeline_name = timeline.name().to_string();
 
-        let time_series = system_output.view_systems.get::<LegacyTimeSeriesSystem>()?;
+        let legacy_time_series = system_output.view_systems.get::<LegacyTimeSeriesSystem>()?;
+        let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
 
-        let aggregator = time_series.aggregator;
-        let aggregation_factor = time_series.aggregation_factor;
+        let all_lines: Vec<_> = legacy_time_series
+            .lines
+            .iter()
+            .chain(line_series.lines.iter())
+            .collect();
 
         // Get the minimum time/X value for the entire plot…
-        let min_time = time_series.min_time.unwrap_or(0);
+        let min_time = all_lines
+            .iter()
+            .map(|line| line.min_time)
+            .min()
+            .unwrap_or(0);
+
+        // TODO(jleibs): If this is allowed to be different, need to track it per line.
+        let aggregation_factor = all_lines
+            .first()
+            .map_or(1.0, |line| line.aggregation_factor);
+
+        let aggregator = all_lines
+            .first()
+            .map(|line| line.aggregator)
+            .unwrap_or_default();
 
         // …then use that as an offset to avoid nasty precision issues with
         // large times (nanos since epoch does not fit into a f64).
@@ -372,7 +393,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 time_ctrl_write.pause();
             }
 
-            for line in &time_series.lines {
+            for line in all_lines {
                 let points = line
                     .points
                     .iter()
