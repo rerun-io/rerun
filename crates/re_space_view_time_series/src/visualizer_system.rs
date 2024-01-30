@@ -19,7 +19,7 @@ pub struct PlotPointAttrs {
     pub label: Option<String>,
     pub color: egui::Color32,
     pub radius: f32,
-    pub scattered: bool,
+    pub kind: PlotSeriesKind,
 }
 
 impl PartialEq for PlotPointAttrs {
@@ -28,12 +28,12 @@ impl PartialEq for PlotPointAttrs {
             label,
             color,
             radius,
-            scattered,
+            kind,
         } = self;
         label.eq(&rhs.label)
             && color.eq(&rhs.color)
             && radius.total_cmp(&rhs.radius).is_eq()
-            && scattered.eq(&rhs.scattered)
+            && kind.eq(&rhs.kind)
     }
 }
 
@@ -46,10 +46,11 @@ struct PlotPoint {
     attrs: PlotPointAttrs,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlotSeriesKind {
     Continuous,
     Scatter,
+    Clear,
 }
 
 #[derive(Clone, Debug)]
@@ -240,6 +241,21 @@ impl TimeSeriesSystem {
                             return;
                         }; // scalars cannot be timeless
 
+                        // This is a clear: we want to split the chart.
+                        if scalars.is_empty() {
+                            points.push(PlotPoint {
+                                time: time.as_i64(),
+                                value: 0.0,
+                                attrs: PlotPointAttrs {
+                                    label: None,
+                                    color: egui::Color32::BLACK,
+                                    radius: 0.0,
+                                    kind: PlotSeriesKind::Clear,
+                                },
+                            });
+                            return;
+                        }
+
                         for (scalar, scattered, color, radius, label) in itertools::izip!(
                             scalars.iter(),
                             MaybeCachedComponentData::iter_or_repeat_opt(&scatterings, scalars.len()),
@@ -258,6 +274,12 @@ impl TimeSeriesSystem {
                             let radius = override_radius
                                 .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
 
+                            let kind = if scattered {
+                                PlotSeriesKind::Scatter
+                            } else {
+                                PlotSeriesKind::Continuous
+                            };
+
                             const DEFAULT_RADIUS: f32 = 0.75;
 
                             points.push(PlotPoint {
@@ -267,7 +289,7 @@ impl TimeSeriesSystem {
                                     label,
                                     color,
                                     radius,
-                                    scattered,
+                                    kind,
                                 },
                             });
                         }
@@ -385,12 +407,8 @@ impl TimeSeriesSystem {
             label: line_label.to_owned(),
             color: attrs.color,
             width: 2.0 * attrs.radius,
-            kind: if attrs.scattered {
-                PlotSeriesKind::Scatter
-            } else {
-                PlotSeriesKind::Continuous
-            },
             points: Vec::with_capacity(num_points),
+            kind: attrs.kind,
         };
 
         for (i, p) in points.into_iter().enumerate() {
@@ -402,31 +420,27 @@ impl TimeSeriesSystem {
                 // Attributes changed since last point, break up the current run into a
                 // line segment, and start the next one.
 
-                attrs = p.attrs.clone();
-                let kind = if attrs.scattered {
-                    PlotSeriesKind::Scatter
-                } else {
-                    PlotSeriesKind::Continuous
-                };
-
+                attrs = p.attrs;
                 let prev_line = std::mem::replace(
                     &mut line,
                     PlotSeries {
                         label: line_label.to_owned(),
                         color: attrs.color,
                         width: 2.0 * attrs.radius,
-                        kind,
+                        kind: attrs.kind,
                         points: Vec::with_capacity(num_points - i),
                     },
                 );
+
+                let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
+                let prev_continuous = matches!(prev_line.kind, PlotSeriesKind::Continuous);
+
                 let prev_point = *prev_line.points.last().unwrap();
                 self.lines.push(prev_line);
 
                 // If the previous point was continuous and the current point is continuous
                 // too, then we want the 2 segments to appear continuous even though they
                 // are actually split from a data standpoint.
-                let cur_continuous = matches!(kind, PlotSeriesKind::Continuous);
-                let prev_continuous = matches!(kind, PlotSeriesKind::Continuous);
                 if cur_continuous && prev_continuous {
                     line.points.push(prev_point);
                 }
@@ -656,7 +670,7 @@ fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, window_size: usize) 
         label,
         color,
         radius: _,
-        scattered,
+        kind,
     } = attrs;
 
     // We cannot aggregate two points that don't live in the same aggregation window to start with.
@@ -664,5 +678,5 @@ fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, window_size: usize) 
     time.abs_diff(point2.time) <= window_size as u64
         && *label == point2.attrs.label
         && *color == point2.attrs.color
-        && *scattered == point2.attrs.scattered
+        && *kind == point2.attrs.kind
 }
