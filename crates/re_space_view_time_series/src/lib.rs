@@ -3,9 +3,9 @@
 //! A Space View that shows plots over Rerun timelines.
 
 mod aggregation;
+mod legacy_visualizer_system;
 mod overrides;
 mod space_view_class;
-mod visualizer_system;
 
 use re_log_types::EntityPath;
 pub use space_view_class::TimeSeriesSpaceView;

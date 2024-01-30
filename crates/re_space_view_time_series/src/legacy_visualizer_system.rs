@@ -18,9 +18,9 @@ use crate::{
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind,
 };
 
-/// A scene for a time series plot, with everything needed to render it.
+/// The legacy system for rendering [`TimeSeriesScalars`] archetypes.
 #[derive(Default, Debug)]
-pub struct TimeSeriesSystem {
+pub struct LegacyTimeSeriesSystem {
     pub annotation_map: AnnotationMap,
     pub lines: Vec<PlotSeries>,
 
@@ -34,13 +34,13 @@ pub struct TimeSeriesSystem {
     pub aggregation_factor: f64,
 }
 
-impl IdentifiedViewSystem for TimeSeriesSystem {
+impl IdentifiedViewSystem for LegacyTimeSeriesSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "TimeSeries".into()
+        "LegacyTimeSeries".into()
     }
 }
 
-impl VisualizerSystem for TimeSeriesSystem {
+impl VisualizerSystem for LegacyTimeSeriesSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<TimeSeriesScalar>()
     }
@@ -95,7 +95,7 @@ impl VisualizerSystem for TimeSeriesSystem {
     }
 }
 
-impl TimeSeriesSystem {
+impl LegacyTimeSeriesSystem {
     fn load_scalars(
         &mut self,
         ctx: &ViewerContext<'_>,

@@ -15,7 +15,7 @@ use re_viewer_context::{
     SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-use crate::visualizer_system::TimeSeriesSystem;
+use crate::legacy_visualizer_system::LegacyTimeSeriesSystem;
 use crate::PlotSeriesKind;
 
 // ---
@@ -90,7 +90,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<TimeSeriesSystem>()
+        system_registry.register_visualizer::<LegacyTimeSeriesSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
@@ -209,7 +209,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
         let Some(indicated_entities) = ctx
             .indicated_entities_per_visualizer
-            .get(&TimeSeriesSystem::identifier())
+            .get(&LegacyTimeSeriesSystem::identifier())
         else {
             return SpaceViewSpawnHeuristics::default();
         };
@@ -285,7 +285,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let timeline_name = timeline.name().to_string();
 
-        let time_series = system_output.view_systems.get::<TimeSeriesSystem>()?;
+        let time_series = system_output.view_systems.get::<LegacyTimeSeriesSystem>()?;
 
         let aggregator = time_series.aggregator;
         let aggregation_factor = time_series.aggregation_factor;
