@@ -431,14 +431,16 @@ impl TimeSeriesSystem {
                         points: Vec::with_capacity(num_points - i),
                     },
                 );
+
+                let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
+                let prev_continuous = matches!(prev_line.kind, PlotSeriesKind::Continuous);
+
                 let prev_point = *prev_line.points.last().unwrap();
                 self.lines.push(prev_line);
 
                 // If the previous point was continuous and the current point is continuous
                 // too, then we want the 2 segments to appear continuous even though they
                 // are actually split from a data standpoint.
-                let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
-                let prev_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
                 if cur_continuous && prev_continuous {
                     line.points.push(prev_point);
                 }
