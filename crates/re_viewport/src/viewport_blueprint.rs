@@ -305,6 +305,37 @@ impl ViewportBlueprint {
         new_ids
     }
 
+    /// Walk the entire container and space view hierarchy.
+    ///
+    /// The passed function is not called for the root item.
+    pub fn for_each_contents(&self, f: &mut impl FnMut(&Contents)) {
+        if let Some(root_container) = self.root_container {
+            self.for_each_contents_in_container(f, &root_container);
+        }
+    }
+
+    /// Walk a subtree of the container and space view hierarchy.
+    ///
+    /// The passed function is not called for the provided container.
+    pub fn for_each_contents_in_container(
+        &self,
+        f: &mut impl FnMut(&Contents),
+        container_id: &ContainerId,
+    ) {
+        if let Some(container) = self.container(container_id) {
+            for contents in &container.contents {
+                f(contents);
+
+                match contents {
+                    Contents::Container(container_id) => {
+                        self.for_each_contents_in_container(f, container_id);
+                    }
+                    Contents::SpaceView(_) => {}
+                }
+            }
+        }
+    }
+
     /// Given a predicate, finds the (first) matching contents by recursively walking from the root
     /// container.
     pub fn find_contents_by(&self, predicate: &impl Fn(&Contents) -> bool) -> Option<Contents> {
