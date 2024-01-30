@@ -2,9 +2,9 @@ use ahash::{HashMap, HashSet};
 use re_data_store::DataStore;
 
 use crate::{
-    ApplicableEntities, DynSpaceViewClass, IdentifiedViewSystem, IndicatorMatchingEntities,
-    PerVisualizer, SpaceViewClassIdentifier, ViewContextCollection, ViewContextSystem,
-    ViewSystemIdentifier, VisualizerCollection, VisualizerSystem,
+    ApplicableEntities, DynSpaceViewClass, IdentifiedViewSystem, IndicatedEntities, PerVisualizer,
+    SpaceViewClassIdentifier, ViewContextCollection, ViewContextSystem, ViewSystemIdentifier,
+    VisualizerCollection, VisualizerSystem,
 };
 
 use super::{
@@ -308,10 +308,10 @@ impl SpaceViewClassRegistry {
     pub fn indicated_entities_per_visualizer(
         &self,
         store_id: &re_log_types::StoreId,
-    ) -> PerVisualizer<IndicatorMatchingEntities> {
+    ) -> PerVisualizer<IndicatedEntities> {
         re_tracing::profile_function!();
 
-        PerVisualizer::<IndicatorMatchingEntities>(
+        PerVisualizer::<IndicatedEntities>(
             self.visualizers
                 .iter()
                 .map(|(id, entry)| {
@@ -319,7 +319,7 @@ impl SpaceViewClassRegistry {
                         *id,
                         DataStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                             entry.entity_subscriber_handle,
-                            |subscriber| subscriber.indicator_matching_entities(store_id).cloned(),
+                            |subscriber| subscriber.indicated_entities(store_id).cloned(),
                         )
                         .flatten()
                         .unwrap_or_default(),

@@ -6,8 +6,8 @@ use re_entity_db::entity_db::EntityDb;
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
-    Caches, CommandSender, ComponentUiRegistry, DataQueryId, IndicatorMatchingEntities,
-    PerVisualizer, Selection, SpaceViewClassRegistry, StoreContext, TimeControl,
+    Caches, CommandSender, ComponentUiRegistry, DataQueryId, IndicatedEntities, PerVisualizer,
+    Selection, SpaceViewClassRegistry, StoreContext, TimeControl,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -42,7 +42,7 @@ pub struct ViewerContext<'a> {
     ///
     /// TODO(andreas): Should we always do the intersection with `applicable_entities_per_visualizer`
     ///                 or are we ever interested in a non-applicable but indicator-matching entity?
-    pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatorMatchingEntities>,
+    pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 
     /// All the query results for this frame
     pub query_results: &'a HashMap<DataQueryId, DataQueryResult>,

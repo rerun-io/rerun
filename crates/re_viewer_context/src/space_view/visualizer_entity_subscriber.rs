@@ -8,7 +8,7 @@ use re_log_types::{EntityPathHash, StoreId};
 use re_types::{ComponentName, ComponentNameSet};
 
 use crate::{
-    ApplicableEntities, IdentifiedViewSystem, IndicatorMatchingEntities, ViewSystemIdentifier,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, ViewSystemIdentifier,
     VisualizerSystem,
 };
 
@@ -79,7 +79,10 @@ struct VisualizerEntityMapping {
     applicable_entities: ApplicableEntities,
 
     /// List of all entities in this store that at some point in time had any of the indicator components.
-    indicator_matching_entities: IndicatorMatchingEntities,
+    ///
+    /// Special case:
+    /// If the visualizer has no indicator components, this list will contain all entities in the store.
+    indicated_entities: IndicatedEntities,
 }
 
 impl VisualizerEntitySubscriber {
@@ -114,13 +117,12 @@ impl VisualizerEntitySubscriber {
     ///
     /// Useful for quickly evaluating basic "should this visualizer apply by default"-heuristic.
     /// Does *not* imply that any of the given entities is also in the applicable-set!
-    pub fn indicator_matching_entities(
-        &self,
-        store: &StoreId,
-    ) -> Option<&IndicatorMatchingEntities> {
+    ///
+    /// If the visualizer has no indicator components, this list will contain all entities in the store.
+    pub fn indicated_entities(&self, store: &StoreId) -> Option<&IndicatedEntities> {
         self.per_store_mapping
             .get(store)
-            .map(|mapping| &mapping.indicator_matching_entities)
+            .map(|mapping| &mapping.indicated_entities)
     }
 }
 
@@ -159,13 +161,14 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
             let entity_path = &event.diff.entity_path;
 
             // Update indicator component tracking:
-            if self
-                .indicator_components
-                .iter()
-                .any(|component_name| event.diff.cells.keys().contains(component_name))
+            if self.indicator_components.is_empty()
+                || self
+                    .indicator_components
+                    .iter()
+                    .any(|component_name| event.diff.cells.keys().contains(component_name))
             {
                 store_mapping
-                    .indicator_matching_entities
+                    .indicated_entities
                     .0
                     .insert(entity_path.clone());
             }
