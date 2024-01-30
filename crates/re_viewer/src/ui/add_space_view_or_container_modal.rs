@@ -29,7 +29,7 @@ impl AddSpaceViewOrContainerModal {
                     .min_width(500.0)
                     .full_span_content(true)
             },
-            |_, ui, _| modal_ui(ui, ctx, viewport, self.target_container),
+            |_, ui, keep_open| modal_ui(ui, ctx, viewport, self.target_container, keep_open),
         );
     }
 }
@@ -39,6 +39,7 @@ fn modal_ui(
     ctx: &ViewerContext<'_>,
     viewport: &Viewport<'_, '_>,
     target_container: Option<ContainerId>,
+    keep_open: &mut bool,
 ) {
     let container_data = [
         (
@@ -67,6 +68,7 @@ fn modal_ui(
         if row_ui(ui, icon_for_container_kind(&kind), title, subtitle).clicked() {
             viewport.blueprint.add_container(kind, target_container);
             viewport.blueprint.mark_user_interaction(ctx);
+            *keep_open = false;
         }
     }
 
@@ -96,6 +98,7 @@ fn modal_ui(
                 .blueprint
                 .add_space_views(std::iter::once(space_view), ctx, target_container);
             viewport.blueprint.mark_user_interaction(ctx);
+            *keep_open = false;
         }
     }
 }
@@ -110,9 +113,9 @@ fn modal_ui(
 /// ┌───────────────────────────────────────────────────┐──▲
 /// │                                                   │  │  row_space/2
 /// │    ╔══════╦══════════════════════════════════╗────│──▼▲
-/// │    ║      ║                            ┌───┐ ║    │   │
-/// │    ║ Icon ║  Title and Subtitles       │ + │ ║    │   │ row_height
-/// │    ║      ║                            └───┘ ║    │   │
+/// │    ║      ║                                  ║    │   │
+/// │    ║ Icon ║  Title and Subtitles             ║    │   │ row_height
+/// │    ║      ║                                  ║    │   │
 /// │    ╚══════╩══════════════════════════════════╝────│──▲▼
 /// │                                                   │  │  row_space/2
 /// └───────────────────────────────────────────────────┘──▼
@@ -163,50 +166,35 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
                 ui.add(egui::Label::new(subtitle).wrap(false));
             });
 
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let right_coord = ui.cursor().max.x;
+            let right_coord = ui.cursor().max.x;
 
-                // interact with the entire row
-                let interact_rect = egui::Rect::from_min_max(
-                    top_left_corner,
-                    egui::pos2(right_coord, top_left_corner.y + row_height + row_space),
+            // interact with the entire row
+            let interact_rect = egui::Rect::from_min_max(
+                top_left_corner,
+                egui::pos2(right_coord, top_left_corner.y + row_height + row_space),
+            );
+
+            let response =
+                ui.interact(interact_rect, title.to_owned().into(), egui::Sense::click());
+
+            if response.hovered() {
+                let clip_rect = ui.clip_rect();
+
+                let bg_rect = interact_rect
+                    .with_min_x(clip_rect.min.x)
+                    .with_max_x(clip_rect.max.x);
+
+                ui.painter().set(
+                    background_frame,
+                    egui::Shape::rect_filled(
+                        bg_rect,
+                        0.0,
+                        ui.visuals().widgets.hovered.weak_bg_fill,
+                    ),
                 );
+            }
 
-                let response =
-                    ui.interact(interact_rect, title.to_owned().into(), egui::Sense::click());
-                let tint = if response.hovered() {
-                    ui.visuals().widgets.active.fg_stroke.color
-                } else {
-                    ui.visuals().widgets.inactive.fg_stroke.color
-                };
-
-                ui.add(
-                    re_ui::icons::ADD_BIG
-                        .as_image()
-                        .fit_to_exact_size(egui::vec2(24.0, 24.0))
-                        .tint(tint),
-                );
-
-                if response.hovered() {
-                    let clip_rect = ui.clip_rect();
-
-                    let bg_rect = interact_rect
-                        .with_min_x(clip_rect.min.x)
-                        .with_max_x(clip_rect.max.x);
-
-                    ui.painter().set(
-                        background_frame,
-                        egui::Shape::rect_filled(
-                            bg_rect,
-                            0.0,
-                            ui.visuals().widgets.hovered.weak_bg_fill,
-                        ),
-                    );
-                }
-
-                response
-            })
-            .inner
+            response
         })
         .inner;
 
