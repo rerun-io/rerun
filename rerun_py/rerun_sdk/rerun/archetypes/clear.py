@@ -24,8 +24,10 @@ class Clear(ClearExt, Archetype):
     Any logged components after the clear are unaffected by the clear.
 
     This implies that a range query that includes time points that are before the clear,
-    still returns all components at the given path(s), except those logged directly before the clear.
-    Meaning that in practice clears are ineffective for time series plots and other usages of visible time ranges.
+    still returns all components at the given path(s).
+    Meaning that in practice clears are ineffective when making use of visible time ranges.
+    Scalar plots are an exception: they track clears and use them to represent holes in the
+    data (i.e. discontinuous lines).
 
     Example
     -------
