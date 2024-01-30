@@ -17,7 +17,6 @@ mod spatial_topology;
 mod ui;
 mod ui_2d;
 mod ui_3d;
-mod unreachable_transform_reason;
 mod visualizers;
 
 use re_types::components::{Resolution, TensorData};
