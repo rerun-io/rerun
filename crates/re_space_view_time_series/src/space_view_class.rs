@@ -418,7 +418,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             })
             .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
-        if let Some(time_x) = time_x {
+        if let Some(mut time_x) = time_x {
             let interact_radius = ui.style().interaction.resize_grab_radius_side;
             let line_rect = egui::Rect::from_x_y_ranges(time_x..=time_x, response.rect.y_range())
                 .expand(interact_radius);
@@ -431,11 +431,16 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             state.is_dragging_time_cursor = false;
             if response.dragged() {
                 if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
-                    let time =
-                        time_offset + transform.value_from_position(pointer_pos).x.round() as i64;
+                    let new_offset_time = transform.value_from_position(pointer_pos).x;
+                    let nbew_time = time_offset + new_offset_time.round() as i64;
+
+                    // Avoid frame-delay:
+                    time_x = transform
+                        .position_from_point(&PlotPoint::new(new_offset_time, 0.0))
+                        .x;
 
                     let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
-                    time_ctrl.set_time(time);
+                    time_ctrl.set_time(nbew_time);
                     time_ctrl.pause();
 
                     state.is_dragging_time_cursor = true;
@@ -452,6 +457,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             ctx.re_ui
                 .paint_time_cursor(ui.painter(), time_x, response.rect.y_range(), stroke);
         }
+
         Ok(())
     }
 }
