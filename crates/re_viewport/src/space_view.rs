@@ -561,8 +561,7 @@ mod tests {
     use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
     use re_viewer_context::{
-        blueprint_timeline, IndicatorMatchingEntities, PerVisualizer, StoreContext,
-        VisualizableEntities,
+        blueprint_timeline, IndicatedEntities, PerVisualizer, StoreContext, VisualizableEntities,
     };
 
     use super::*;
@@ -629,16 +628,11 @@ mod tests {
                     .collect(),
                 )
             });
-        let indicated_entities_per_visualizer = PerVisualizer::<IndicatorMatchingEntities>(
+        let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>(
             visualizable_entities
                 .0
                 .iter()
-                .map(|(id, entities)| {
-                    (
-                        *id,
-                        IndicatorMatchingEntities(entities.iter().cloned().collect()),
-                    )
-                })
+                .map(|(id, entities)| (*id, IndicatedEntities(entities.iter().cloned().collect())))
                 .collect(),
         );
 

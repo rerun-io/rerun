@@ -8,7 +8,7 @@ use re_log_types::{EntityPathHash, StoreId};
 use re_types::{ComponentName, ComponentNameSet};
 
 use crate::{
-    ApplicableEntities, IdentifiedViewSystem, IndicatorMatchingEntities, ViewSystemIdentifier,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, ViewSystemIdentifier,
     VisualizerSystem,
 };
 
@@ -82,7 +82,7 @@ struct VisualizerEntityMapping {
     ///
     /// Special case:
     /// If the visualizer has no indicator components, this list will contain all entities in the store.
-    indicated_entities: IndicatorMatchingEntities,
+    indicated_entities: IndicatedEntities,
 }
 
 impl VisualizerEntitySubscriber {
@@ -117,7 +117,7 @@ impl VisualizerEntitySubscriber {
     /// Does *not* imply that any of the given entities is also in the applicable-set!
     ///
     /// If the visualizer has no indicator components, this list will contain all entities in the store.
-    pub fn indicated_entities(&self, store: &StoreId) -> Option<&IndicatorMatchingEntities> {
+    pub fn indicated_entities(&self, store: &StoreId) -> Option<&IndicatedEntities> {
         self.per_store_mapping
             .get(store)
             .map(|mapping| &mapping.indicated_entities)

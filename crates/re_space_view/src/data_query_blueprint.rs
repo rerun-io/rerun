@@ -12,7 +12,7 @@ use re_log_types::{
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
-    DataResultNode, DataResultTree, IndicatorMatchingEntities, PerVisualizer, PropertyOverrides,
+    DataResultNode, DataResultTree, IndicatedEntities, PerVisualizer, PropertyOverrides,
     SpaceViewClassIdentifier, SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _,
     ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
@@ -181,7 +181,7 @@ impl DataQuery for DataQueryBlueprint {
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
         visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizer<IndicatorMatchingEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
@@ -212,7 +212,7 @@ impl DataQuery for DataQueryBlueprint {
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
     visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
-    indicated_entities_per_visualizer: &'a IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>,
+    indicated_entities_per_visualizer: &'a IntMap<ViewSystemIdentifier, IndicatedEntities>,
     entity_path_filter: EntityPathFilter,
 }
 
@@ -220,10 +220,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
     fn new(
         blueprint: &'a DataQueryBlueprint,
         visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
-        indicated_entities_per_visualizer: &'a IntMap<
-            ViewSystemIdentifier,
-            IndicatorMatchingEntities,
-        >,
+        indicated_entities_per_visualizer: &'a IntMap<ViewSystemIdentifier, IndicatedEntities>,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -657,14 +654,11 @@ mod tests {
                 entity_path_filter: EntityPathFilter::parse_forgiving(filter),
             };
 
-            let indicated_entities_per_visualizer = PerVisualizer::<IndicatorMatchingEntities>(
+            let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>(
                 visualizable_entities_for_visualizer_systems
                     .iter()
                     .map(|(id, entities)| {
-                        (
-                            *id,
-                            IndicatorMatchingEntities(entities.0.iter().cloned().collect()),
-                        )
+                        (*id, IndicatedEntities(entities.0.iter().cloned().collect()))
                     })
                     .collect(),
             );
