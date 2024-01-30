@@ -218,6 +218,18 @@
         load_wasm();
       }
 
+      const forceGraphicsInfoParagraph = `
+        <p>
+            For graphics related issues, try forcing to render with WebGL<br>
+            <a href="${window.location}?force-graphics=webgl">
+              ${window.location}?force-graphics=webgl
+            </a><br>
+            or with WebGPU<br>
+            <a href="${window.location}?force-graphics=webgpu">
+              ${window.location}?force-graphics=webgpu
+            </a>
+        </p>`;
+
       function load_wasm() {
         // We'll defer our execution until the wasm is ready to go.
         // Here we tell bindgen the path to the wasm file so it can start
@@ -325,8 +337,10 @@
                   See the console for details.
               </p>
               <p>
-                  Reload the page to try again.
+                  Reload the page to try again.<br>
+                  Please consider filing a <a href=https://github.com/rerun-io/rerun/issues/new/>bug report<a>. Thank you!
               </p>
+              ${forceGraphicsInfoParagraph}
             `);
           } else {
             let delay_ms = 1000;
@@ -369,9 +383,11 @@
           <p style="font-family:Courier New">
               ${error}
           </p>
-          <p style="font-size:14px">
-                  Make sure you use a modern browser with either WebGL or WebGPU support enabled.
+          <p>
+              Reload the page to try again.<br>
+              Please consider filing a <a href=https://github.com/rerun-io/rerun/issues/new/>bug report<a>. Thank you!
           </p>
+          ${forceGraphicsInfoParagraph}
         `);
       }
     </script>
