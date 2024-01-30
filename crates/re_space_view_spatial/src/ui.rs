@@ -393,13 +393,13 @@ pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
 
 pub fn screenshot_context_menu(
     _ctx: &ViewerContext<'_>,
-    response: &egui::Response,
+    _response: &egui::Response,
 ) -> Option<ScreenshotMode> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         if _ctx.app_options.experimental_space_view_screenshots {
             let mut take_screenshot = None;
-            response.context_menu(|ui| {
+            _response.context_menu(|ui| {
                 ui.style_mut().wrap = Some(false);
                 if ui.button("Save screenshot to disk").clicked() {
                     take_screenshot = Some(ScreenshotMode::SaveAndCopyToClipboard);
