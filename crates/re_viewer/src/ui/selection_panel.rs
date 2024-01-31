@@ -807,12 +807,8 @@ fn blueprint_ui(
                     .on_hover_text("Create an exact duplicate of this Space View including all Blueprint settings")
                     .clicked()
                 {
-                    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-                        let new_space_view = space_view.duplicate();
-                        let new_ids = viewport.blueprint.add_space_views(std::iter::once(new_space_view), ctx, None);
-                        if let Some(new_id) = new_ids.first() {
-                            ctx.selection_state().set_selection(Item::SpaceView(*new_id));
-                        }
+                    if let Some(new_space_view_id) = viewport.blueprint.duplicate_space_view(space_view_id, ctx) {
+                        ctx.selection_state().set_selection(Item::SpaceView(new_space_view_id));
                         viewport.blueprint.mark_user_interaction(ctx);
                     }
                 }
