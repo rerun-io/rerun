@@ -26,19 +26,50 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Tensor elements are stored in a contiguous buffer of a single type.
 #[derive(Clone, PartialEq)]
 pub enum TensorBuffer {
+    /// 8bit unsigned integer.
     U8(::re_types_core::ArrowBuffer<u8>),
+
+    /// 16bit unsigned integer.
     U16(::re_types_core::ArrowBuffer<u16>),
+
+    /// 32bit unsigned integer.
     U32(::re_types_core::ArrowBuffer<u32>),
+
+    /// 64bit unsigned integer.
     U64(::re_types_core::ArrowBuffer<u64>),
+
+    /// 8bit signed integer.
     I8(::re_types_core::ArrowBuffer<i8>),
+
+    /// 16bit signed integer.
     I16(::re_types_core::ArrowBuffer<i16>),
+
+    /// 32bit signed integer.
     I32(::re_types_core::ArrowBuffer<i32>),
+
+    /// 64bit signed integer.
     I64(::re_types_core::ArrowBuffer<i64>),
+
+    /// 16bit IEEE-754 floating point, also known as `half`.
     F16(::re_types_core::ArrowBuffer<arrow2::types::f16>),
+
+    /// 32bit IEEE-754 floating point, also known as `float` or `single`.
     F32(::re_types_core::ArrowBuffer<f32>),
+
+    /// 64bit IEEE-754 floating point, also known as `double`.
     F64(::re_types_core::ArrowBuffer<f64>),
+
+    /// Raw bytes of a JPEG file.
     Jpeg(::re_types_core::ArrowBuffer<u8>),
+
+    /// NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
+    ///
+    /// First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
     Nv12(::re_types_core::ArrowBuffer<u8>),
+
+    /// YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
+    ///
+    /// The order of the channels is Y0, U0, Y1, V0.
     Yuy2(::re_types_core::ArrowBuffer<u8>),
 }
 

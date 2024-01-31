@@ -859,7 +859,6 @@ fn code_for_union(
         1,
         4,
     );
-    code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
 
     // if there are duplicate types, we need to add a `kind` field to disambiguate the union
     if has_duplicate_types {
@@ -874,6 +873,10 @@ fn code_for_union(
             1,
             4,
         );
+        code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
+    } else {
+        // Document `inner` only
+        code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
     }
 
     code.push_unindented_text(quote_union_aliases_from_object(obj, field_types.iter()), 1);

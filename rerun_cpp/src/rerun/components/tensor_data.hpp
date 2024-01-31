@@ -17,7 +17,19 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: A multi-dimensional `Tensor` with optionally named arguments.
+    /// **Component**: A multi-dimensional `Tensor` of data.
+    ///
+    /// The number of dimensions and their respective lengths is specified by the `shape` field.
+    /// The dimensions are ordered from outermost to innermost. For example, in the common case of
+    /// a 2D RGB Image, the shape would be `[height, width, channel]`.
+    ///
+    /// These dimensions are combined with an index to look up values from the `buffer` field,
+    /// which stores a contiguous array of typed values.
+    ///
+    /// Note that the buffer may be encoded in a compressed format such as `jpeg` or
+    /// in a chroma downsampled.
+    /// For file formats, the shape is used as a hint, for chroma downsampled format
+    /// the shape has to be the shape of the decoded image.
     struct TensorData {
         rerun::datatypes::TensorData data;
 

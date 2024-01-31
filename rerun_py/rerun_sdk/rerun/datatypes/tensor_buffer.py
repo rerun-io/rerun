@@ -45,32 +45,50 @@ class TensorBuffer(TensorBufferExt):
     )
     """
     U8 (npt.NDArray[np.uint8]):
+        8bit unsigned integer.
 
     U16 (npt.NDArray[np.uint16]):
+        16bit unsigned integer.
 
     U32 (npt.NDArray[np.uint32]):
+        32bit unsigned integer.
 
     U64 (npt.NDArray[np.uint64]):
+        64bit unsigned integer.
 
     I8 (npt.NDArray[np.int8]):
+        8bit signed integer.
 
     I16 (npt.NDArray[np.int16]):
+        16bit signed integer.
 
     I32 (npt.NDArray[np.int32]):
+        32bit signed integer.
 
     I64 (npt.NDArray[np.int64]):
+        64bit signed integer.
 
     F16 (npt.NDArray[np.float16]):
+        16bit IEEE-754 floating point, also known as `half`.
 
     F32 (npt.NDArray[np.float32]):
+        32bit IEEE-754 floating point, also known as `float` or `single`.
 
     F64 (npt.NDArray[np.float64]):
+        64bit IEEE-754 floating point, also known as `double`.
 
     JPEG (npt.NDArray[np.uint8]):
+        Raw bytes of a JPEG file.
 
     NV12 (npt.NDArray[np.uint8]):
+        NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
+
+        First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
 
     YUY2 (npt.NDArray[np.uint8]):
+        YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
+
+        The order of the channels is Y0, U0, Y1, V0.
     """
 
     kind: Literal[

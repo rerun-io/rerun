@@ -29,6 +29,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// These dimensions are combined with an index to look up values from the `buffer` field,
 /// which stores a contiguous array of typed values.
+///
+/// Note that the buffer may be encoded in a compressed format such as `jpeg` or
+/// in a chroma downsampled.
+/// For file formats, the shape is used as a hint, for chroma downsampled format
+/// the shape has to be the shape of the decoded image.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TensorData {
     pub shape: Vec<crate::datatypes::TensorDimension>,
