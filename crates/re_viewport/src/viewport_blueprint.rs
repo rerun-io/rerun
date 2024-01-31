@@ -305,6 +305,18 @@ impl ViewportBlueprint {
         new_ids
     }
 
+    /// Returns an iterator over all the contents (space views and containers) in the viewport.
+    pub fn contents_iter(&self) -> impl Iterator<Item = Contents> + '_ {
+        self.space_views
+            .keys()
+            .map(|space_view_id| Contents::SpaceView(*space_view_id))
+            .chain(
+                self.containers
+                    .keys()
+                    .map(|container_id| Contents::Container(*container_id)),
+            )
+    }
+
     /// Given a predicate, finds the (first) matching contents by recursively walking from the root
     /// container.
     pub fn find_contents_by(&self, predicate: &impl Fn(&Contents) -> bool) -> Option<Contents> {

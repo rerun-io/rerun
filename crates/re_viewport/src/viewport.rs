@@ -17,7 +17,7 @@ use re_viewer_context::{
 
 use crate::container::blueprint_id_to_tile_id;
 use crate::{
-    container::Contents, space_view_entity_picker::SpaceViewEntityPicker,
+    container::Contents, icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
     system_execution::execute_systems_for_space_views, SpaceViewBlueprint, ViewportBlueprint,
 };
@@ -237,6 +237,11 @@ impl<'a, 'b> Viewport<'a, 'b> {
         let executed_systems_per_space_view =
             execute_systems_for_space_views(ctx, tree, &blueprint.space_views);
 
+        let contents_per_tile_id = blueprint
+            .contents_iter()
+            .map(|contents| (contents.as_tile_id(), contents))
+            .collect();
+
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
 
@@ -249,6 +254,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 maximized: &mut maximized,
                 edited: false,
                 executed_systems_per_space_view,
+                contents_per_tile_id,
             };
 
             tree.ui(&mut tab_viewer, ui);
@@ -519,6 +525,9 @@ struct TabViewer<'a, 'b> {
     /// List of query & system execution results for each space view.
     executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
 
+    /// List of contents for each tile id
+    contents_per_tile_id: HashMap<egui_tiles::TileId, Contents>,
+
     /// The user edited the tree.
     edited: bool,
 }
@@ -591,26 +600,6 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         }
     }
 
-    fn tab_title_for_tile(
-        &mut self,
-        tiles: &egui_tiles::Tiles<SpaceViewId>,
-        tile_id: egui_tiles::TileId,
-    ) -> egui::WidgetText {
-        if let Some(tile) = tiles.get(tile_id) {
-            match tile {
-                egui_tiles::Tile::Pane(pane) => self.tab_title_for_pane(pane),
-
-                // E.g. a tab with a grid of other tiles
-                egui_tiles::Tile::Container(container) => {
-                    format!("{:?} Container", container.kind()).into()
-                }
-            }
-        } else {
-            re_log::warn_once!("SpaceViewId missing during tab_title_for_tile");
-            self.ctx.re_ui.error_text("Internal error").into()
-        }
-    }
-
     #[allow(clippy::fn_params_excessive_bools)]
     fn tab_ui(
         &mut self,
@@ -630,9 +619,22 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             tab_widget.paint(ui);
         }
 
-        if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
-            self.ctx
-                .select_hovered_on_click(&response, Item::SpaceView(*space_view_id));
+        match tiles.get(tile_id) {
+            Some(egui_tiles::Tile::Pane(space_view_id)) => {
+                self.ctx
+                    .select_hovered_on_click(&response, Item::SpaceView(*space_view_id));
+            }
+
+            Some(egui_tiles::Tile::Container(_)) => {
+                if let Some(Contents::Container(container_id)) =
+                    self.contents_per_tile_id.get(&tile_id)
+                {
+                    self.ctx
+                        .select_hovered_on_click(&response, Item::Container(*container_id));
+                }
+            }
+
+            None => {}
         }
 
         response
@@ -783,42 +785,89 @@ impl TabWidget {
         active: bool,
         gamma: f32,
     ) -> Self {
-        // Not all tabs are for tiles (space views) - some are for containers (e.g. a grid of space views).
-        let space_view = if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
-            tab_viewer.space_views.get(space_view_id)
-        } else {
-            None
-        };
-        let selected = space_view.map_or(false, |space_view| {
-            tab_viewer
-                .ctx
-                .selection()
-                .contains_item(&Item::SpaceView(space_view.id))
-        });
-        let named = space_view.map_or(false, |space_view| space_view.display_name.is_some());
+        struct TabDesc {
+            label: egui::WidgetText,
+            user_named: bool,
+            icon: &'static re_ui::Icon,
+            item: Option<Item>,
+        }
 
-        let hovered = space_view.map_or(false, |space_view| {
-            tab_viewer
-                .ctx
-                .hovered()
-                .contains_item(&Item::SpaceView(space_view.id))
-        });
+        let tab_desc = match tiles.get(tile_id) {
+            Some(egui_tiles::Tile::Pane(space_view_id)) => {
+                if let Some(space_view) = tab_viewer.space_views.get(space_view_id) {
+                    TabDesc {
+                        label: tab_viewer.tab_title_for_pane(space_view_id),
+                        user_named: space_view.display_name.is_some(),
+                        icon: space_view
+                            .class(tab_viewer.ctx.space_view_class_registry)
+                            .icon(),
+                        item: Some(Item::SpaceView(*space_view_id)),
+                    }
+                } else {
+                    re_log::warn_once!("Space View {space_view_id} not found");
+
+                    TabDesc {
+                        label: tab_viewer.ctx.re_ui.error_text("Unknown Space View").into(),
+                        icon: &re_ui::icons::SPACE_VIEW_GENERIC,
+                        user_named: false,
+                        item: None,
+                    }
+                }
+            }
+            Some(egui_tiles::Tile::Container(container)) => {
+                if let Some(Contents::Container(container_id)) =
+                    tab_viewer.contents_per_tile_id.get(&tile_id)
+                {
+                    TabDesc {
+                        label: format!("{:?}", container.kind()).into(),
+                        user_named: false,
+                        icon: icon_for_container_kind(&container.kind()),
+                        item: Some(Item::Container(*container_id)),
+                    }
+                } else {
+                    re_log::warn_once!("Container for tile ID {tile_id:?} not found");
+
+                    TabDesc {
+                        label: tab_viewer.ctx.re_ui.error_text("Unknown Container").into(),
+                        icon: &re_ui::icons::SPACE_VIEW_GENERIC,
+                        user_named: false,
+                        item: None,
+                    }
+                }
+            }
+            None => {
+                re_log::warn_once!("Tile {tile_id:?} not found");
+
+                TabDesc {
+                    label: tab_viewer.ctx.re_ui.error_text("Internal error").into(),
+                    icon: &re_ui::icons::SPACE_VIEW_UNKNOWN,
+                    user_named: false,
+                    item: None,
+                }
+            }
+        };
+
+        let hovered = tab_desc
+            .item
+            .as_ref()
+            .map_or(false, |item| tab_viewer.ctx.hovered().contains_item(item));
+        let selected = tab_desc
+            .item
+            .as_ref()
+            .map_or(false, |item| tab_viewer.ctx.selection().contains_item(item));
 
         // tab icon
         let icon_size = ReUi::small_icon_size();
         let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
-        let icon = space_view.map_or(&re_ui::icons::SPACE_VIEW_GENERIC, |space_view| {
-            space_view
-                .class(tab_viewer.ctx.space_view_class_registry)
-                .icon()
-        });
 
         // tab title
-        let mut text = tab_viewer.tab_title_for_tile(tiles, tile_id);
-        if !named {
+        let text = if !tab_desc.user_named {
             //TODO(ab): use design tokens
-            text = text.italics();
-        }
+            tab_desc.label.italics()
+        } else {
+            tab_desc.label
+        };
+
         let font_id = egui::TextStyle::Button.resolve(ui.style());
         let galley = text.into_galley(ui, Some(false), f32::INFINITY, font_id);
 
@@ -852,12 +901,12 @@ impl TabWidget {
             galley,
             rect,
             galley_rect,
-            icon,
+            icon: tab_desc.icon,
             icon_size,
             icon_rect,
             bg_color,
             text_color,
-            unnamed_style: !named,
+            unnamed_style: !tab_desc.user_named,
         }
     }
 
