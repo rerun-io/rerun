@@ -859,6 +859,7 @@ fn code_for_union(
         1,
         4,
     );
+    code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
 
     // if there are duplicate types, we need to add a `kind` field to disambiguate the union
     if has_duplicate_types {
@@ -873,10 +874,8 @@ fn code_for_union(
             1,
             4,
         );
-        code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
-    } else {
-        // Document `inner` only
-        code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
+
+        code.push_text(quote_union_kind_from_fields(fields), 0, 4);
     }
 
     code.push_unindented_text(quote_union_aliases_from_object(obj, field_types.iter()), 1);
@@ -1024,7 +1023,7 @@ fn quote_doc_lines(lines: Vec<String>) -> String {
 }
 
 fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String {
-    let mut lines = vec![];
+    let mut lines = vec!["Must be one of:".to_owned(), String::new()];
 
     for field in fields {
         let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
@@ -1040,10 +1039,42 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
             quote_examples(examples, &mut lines);
         }
         lines.push(format!(
-            "{} ({}):",
+            "* {} ({}):",
             field.name,
             quote_field_type_from_field(objects, field, false).0
         ));
+        lines.extend(content.into_iter().map(|line| format!("    {line}")));
+        lines.push(String::new());
+    }
+
+    if lines.is_empty() {
+        return String::new();
+    } else {
+        // remove last empty line
+        lines.pop();
+    }
+
+    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
+    let doc = lines
+        .into_iter()
+        .filter(|line| !line.starts_with(r#"""""#))
+        .collect_vec()
+        .join("\n");
+
+    format!("\"\"\"\n{doc}\n\"\"\"\n\n")
+}
+
+fn quote_union_kind_from_fields(fields: &Vec<ObjectField>) -> String {
+    let mut lines = vec!["Possible values:".to_owned(), String::new()];
+
+    for field in fields {
+        let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        for line in &mut content {
+            if line.starts_with(char::is_whitespace) {
+                line.remove(0);
+            }
+        }
+        lines.push(format!("* \"{}\":", field.name));
         lines.extend(content.into_iter().map(|line| format!("    {line}")));
         lines.push(String::new());
     }

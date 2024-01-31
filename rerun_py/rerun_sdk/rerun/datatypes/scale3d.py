@@ -40,10 +40,12 @@ class Scale3D(Scale3DExt):
         converter=Scale3DExt.inner__field_converter_override  # type: ignore[misc]
     )
     """
-    ThreeD (datatypes.Vec3D):
+    Must be one of:
+
+    * ThreeD (datatypes.Vec3D):
         Individual scaling factors for each axis, distorting the original object.
 
-    Uniform (float):
+    * Uniform (float):
         Uniform scaling factor along all axis.
     """
 

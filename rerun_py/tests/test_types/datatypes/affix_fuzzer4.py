@@ -22,14 +22,25 @@ class AffixFuzzer4:
 
     inner: Union[datatypes.AffixFuzzer3, list[datatypes.AffixFuzzer3]] = field()
     """
-    single_required (datatypes.AffixFuzzer3):
+    Must be one of:
 
-    many_required (list[datatypes.AffixFuzzer3]):
+    * single_required (datatypes.AffixFuzzer3):
 
-    many_optional (list[datatypes.AffixFuzzer3]):
+    * many_required (list[datatypes.AffixFuzzer3]):
+
+    * many_optional (list[datatypes.AffixFuzzer3]):
     """
 
     kind: Literal["single_required", "many_required", "many_optional"] = field(default="single_required")
+    """
+    Possible values:
+
+    * "single_required":
+
+    * "many_required":
+
+    * "many_optional":
+    """
 
 
 if TYPE_CHECKING:

@@ -24,14 +24,25 @@ class Angle(AngleExt):
 
     inner: float = field(converter=float)
     """
-    Radians (float):
+    Must be one of:
+
+    * Radians (float):
         3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
 
-    Degrees (float):
+    * Degrees (float):
         3D rotation angle in degrees. Only one of `degrees` or `radians` should be set.
     """
 
     kind: Literal["radians", "degrees"] = field(default="radians")
+    """
+    Possible values:
+
+    * "Radians":
+        3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
+
+    * "Degrees":
+        3D rotation angle in degrees. Only one of `degrees` or `radians` should be set.
+    """
 
 
 if TYPE_CHECKING:
