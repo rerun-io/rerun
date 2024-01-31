@@ -281,7 +281,7 @@ macro_rules! impl_query_archetype_range {
                     let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
                         store, &reduced_query, entity_path,
                         &[$(<$pov>::name(),)+],
-                        &[<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
+                        [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
                     );
                     upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.timeless)?;
 
@@ -298,7 +298,7 @@ macro_rules! impl_query_archetype_range {
                     let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
                         store, &reduced_query, entity_path,
                         &[$(<$pov>::name(),)+],
-                        &[<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
+                        [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
                     );
                     upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.per_data_time)?;
                 }

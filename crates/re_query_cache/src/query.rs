@@ -159,7 +159,7 @@ macro_rules! impl_query_archetype {
                     let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
                         store, query, entity_path,
                         &[$(<$pov>::name(),)+],
-                        &[<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
+                        [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
                     );
 
                     for arch_view in arch_views {

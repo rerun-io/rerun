@@ -30,7 +30,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     let povs: [ComponentName; 1] = A::required_components().into_owned().try_into().unwrap();
     let components: [ComponentName; N] = A::all_components().into_owned().try_into().unwrap();
 
-    range_component_set::<A, N>(store, query, ent_path, &povs, &components)
+    range_component_set::<A, N>(store, query, ent_path, &povs, components)
 }
 
 /// Iterates over the rows of any number of components and their respective cluster keys, all from
@@ -50,11 +50,9 @@ pub fn range_component_set<'a, A: Archetype + 'a, const N: usize>(
     query: &RangeQuery,
     ent_path: &'a EntityPath,
     povs: &[ComponentName],
-    comps: &[ComponentName],
+    components: [ComponentName; N],
 ) -> impl Iterator<Item = ArchetypeView<A>> + 'a {
     re_tracing::profile_function!();
-
-    let components: [ComponentName; N] = comps.to_owned().try_into().unwrap();
 
     let primary: ComponentName = povs[0];
     let cluster_key = store.cluster_key();
