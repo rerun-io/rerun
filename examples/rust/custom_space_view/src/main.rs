@@ -40,22 +40,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("Try for example to run: `cargo run -p minimal_options -- --connect` in another terminal instance.");
 
-    re_viewer::run_native_app(Box::new(move |cc, re_ui| {
-        let mut app = re_viewer::App::new(
-            re_viewer::build_info(),
-            &app_env,
-            startup_options,
-            re_ui,
-            cc.storage,
-        );
-        app.add_receiver(rx);
+    re_viewer::run_native_app(
+        Box::new(move |cc, re_ui| {
+            let mut app = re_viewer::App::new(
+                re_viewer::build_info(),
+                &app_env,
+                startup_options,
+                re_ui,
+                cc.storage,
+            );
+            app.add_receiver(rx);
 
-        // Register the custom space view
-        app.add_space_view_class::<color_coordinates_space_view::ColorCoordinatesSpaceView>()
-            .unwrap();
+            // Register the custom space view
+            app.add_space_view_class::<color_coordinates_space_view::ColorCoordinatesSpaceView>()
+                .unwrap();
 
-        Box::new(app)
-    }))?;
+            Box::new(app)
+        }),
+        None,
+    )?;
 
     Ok(())
 }
