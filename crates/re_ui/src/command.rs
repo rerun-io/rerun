@@ -74,6 +74,12 @@ pub enum UICommand {
 
     #[cfg(target_arch = "wasm32")]
     CopyDirectLink,
+
+    // Graphics options:
+    #[cfg(target_arch = "wasm32")]
+    RestartWithWebGl,
+    #[cfg(target_arch = "wasm32")]
+    RestartWithWebGpu,
 }
 
 impl UICommand {
@@ -201,7 +207,18 @@ impl UICommand {
             Self::CopyDirectLink => (
                 "Copy direct link",
                 "Copy a link to the viewer with the URL parameter set to the current .rrd data source."
-            )
+            ),
+
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGl => (
+                "Restart with WebGL",
+                "Reloads the webpage and force WebGL for rendering. All data will be lost."
+            ),
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGpu => (
+                "Restart with WebGPU",
+                "Reloads the webpage and force WebGPU for rendering. All data will be lost."
+            ),
         }
     }
 
@@ -285,6 +302,11 @@ impl UICommand {
 
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => None,
+
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGl => None,
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGpu => None,
         }
     }
 

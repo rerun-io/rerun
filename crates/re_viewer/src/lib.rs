@@ -129,19 +129,19 @@ impl AppEnvironment {
 
 // ---------------------------------------------------------------------------
 
-fn supported_graphics_backends(force_backend: Option<String>) -> wgpu::Backends {
-    if let Some(force_backend) = force_backend {
-        if let Some(backend) = re_renderer::config::parse_graphics_backend(&force_backend) {
+fn supported_graphics_backends(force_wgpu_backend: Option<String>) -> wgpu::Backends {
+    if let Some(force_wgpu_backend) = force_wgpu_backend {
+        if let Some(backend) = re_renderer::config::parse_graphics_backend(&force_wgpu_backend) {
             if let Err(err) = re_renderer::config::validate_graphics_backend_applicability(backend)
             {
-                re_log::error!("Failed to force rendering backend parsed from {force_backend:?}: {err}\nUsing default backend instead.");
+                re_log::error!("Failed to force rendering backend parsed from {force_wgpu_backend:?}: {err}\nUsing default backend instead.");
                 re_renderer::config::supported_backends()
             } else {
                 re_log::info!("Forcing graphics backend to {backend:?}.");
                 backend.into()
             }
         } else {
-            re_log::error!("Failed to parse rendering backend string {force_backend:?}. Using default backend instead.");
+            re_log::error!("Failed to parse rendering backend string {force_wgpu_backend:?}. Using default backend instead.");
             re_renderer::config::supported_backends()
         }
     } else {
@@ -149,7 +149,7 @@ fn supported_graphics_backends(force_backend: Option<String>) -> wgpu::Backends 
     }
 }
 
-pub(crate) fn wgpu_options(force_backend: Option<String>) -> egui_wgpu::WgpuConfiguration {
+pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::WgpuConfiguration {
     re_tracing::profile_function!();
 
     egui_wgpu::WgpuConfiguration {
@@ -171,7 +171,7 @@ pub(crate) fn wgpu_options(force_backend: Option<String>) -> egui_wgpu::WgpuConf
                     egui_wgpu::SurfaceErrorAction::SkipFrame
                 }
             }),
-            supported_backends: supported_graphics_backends(force_backend),
+            supported_backends: supported_graphics_backends(force_wgpu_backend),
             device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter(adapter).device_descriptor()),
             ..Default::default()
         }

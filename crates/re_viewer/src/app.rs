@@ -643,7 +643,34 @@ impl App {
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);
             }
+
+            #[cfg(target_arch = "wasm32")]
+            UICommand::RestartWithWebGl => {
+                if Self::set_url_parameter_and_refresh("renderer", "webgl").is_err() {
+                    re_log::error!("Failed to set URL parameter `renderer=webgl` & refresh page.");
+                }
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            UICommand::RestartWithWebGpu => {
+                if Self::set_url_parameter_and_refresh("renderer", "webgpu").is_err() {
+                    re_log::error!("Failed to set URL parameter `renderer=webgpu` & refresh page.");
+                }
+            }
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), wasm_bindgen::JsValue> {
+        let Some(window) = web_sys::window() else {
+            return Err("Failed to get window".into());
+        };
+        let location = window.location();
+
+        let mut url = web_sys::Url::new(&location.href()?)?;
+        url.search_params().set(key, value);
+
+        location.assign(&url.href())
     }
 
     fn run_time_control_command(
