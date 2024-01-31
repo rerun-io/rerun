@@ -785,50 +785,74 @@ impl TabWidget {
         active: bool,
         gamma: f32,
     ) -> Self {
-        let mut user_named = false;
-        let mut text: egui::WidgetText;
-        let icon;
-        let mut item = None;
+        struct TabDesc {
+            label: egui::WidgetText,
+            user_named: bool,
+            icon: &'static re_ui::Icon,
+            item: Option<Item>,
+        }
 
-        match tiles.get(tile_id) {
+        let tab_desc = match tiles.get(tile_id) {
             Some(egui_tiles::Tile::Pane(space_view_id)) => {
                 if let Some(space_view) = tab_viewer.space_views.get(space_view_id) {
-                    user_named = space_view.display_name.is_some();
-                    icon = space_view
-                        .class(tab_viewer.ctx.space_view_class_registry)
-                        .icon();
-                    text = tab_viewer.tab_title_for_pane(space_view_id);
-                    item = Some(Item::SpaceView(*space_view_id));
+                    TabDesc {
+                        label: tab_viewer.tab_title_for_pane(space_view_id),
+                        user_named: space_view.display_name.is_some(),
+                        icon: space_view
+                            .class(tab_viewer.ctx.space_view_class_registry)
+                            .icon(),
+                        item: Some(Item::SpaceView(*space_view_id)),
+                    }
                 } else {
                     re_log::warn_once!("Space View {space_view_id} not found");
-                    text = tab_viewer.ctx.re_ui.error_text("Unknown Space View").into();
-                    icon = &re_ui::icons::SPACE_VIEW_GENERIC;
+
+                    TabDesc {
+                        label: tab_viewer.ctx.re_ui.error_text("Unknown Space View").into(),
+                        icon: &re_ui::icons::SPACE_VIEW_GENERIC,
+                        user_named: false,
+                        item: None,
+                    }
                 }
             }
             Some(egui_tiles::Tile::Container(container)) => {
                 if let Some(Contents::Container(container_id)) =
                     tab_viewer.contents_per_tile_id.get(&tile_id)
                 {
-                    text = format!("{:?}", container.kind()).into();
-                    icon = icon_for_container_kind(&container.kind());
-                    item = Some(Item::Container(*container_id));
+                    TabDesc {
+                        label: format!("{:?}", container.kind()).into(),
+                        user_named: false,
+                        icon: icon_for_container_kind(&container.kind()),
+                        item: Some(Item::Container(*container_id)),
+                    }
                 } else {
                     re_log::warn_once!("Container for tile ID {tile_id:?} not found");
-                    text = tab_viewer.ctx.re_ui.error_text("Unknown Container").into();
-                    icon = &re_ui::icons::SPACE_VIEW_GENERIC;
+
+                    TabDesc {
+                        label: tab_viewer.ctx.re_ui.error_text("Unknown Container").into(),
+                        icon: &re_ui::icons::SPACE_VIEW_GENERIC,
+                        user_named: false,
+                        item: None,
+                    }
                 }
             }
             None => {
                 re_log::warn_once!("Tile {tile_id:?} not found");
-                text = tab_viewer.ctx.re_ui.error_text("Internal error").into();
-                icon = &re_ui::icons::SPACE_VIEW_UNKNOWN;
+
+                TabDesc {
+                    label: tab_viewer.ctx.re_ui.error_text("Internal error").into(),
+                    icon: &re_ui::icons::SPACE_VIEW_UNKNOWN,
+                    user_named: false,
+                    item: None,
+                }
             }
         };
 
-        let hovered = item
+        let hovered = tab_desc
+            .item
             .as_ref()
             .map_or(false, |item| tab_viewer.ctx.hovered().contains_item(item));
-        let selected = item
+        let selected = tab_desc
+            .item
             .as_ref()
             .map_or(false, |item| tab_viewer.ctx.selection().contains_item(item));
 
@@ -837,10 +861,13 @@ impl TabWidget {
         let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
 
         // tab title
-        if !user_named {
+        let text = if !tab_desc.user_named {
             //TODO(ab): use design tokens
-            text = text.italics();
-        }
+            tab_desc.label.italics()
+        } else {
+            tab_desc.label
+        };
+
         let font_id = egui::TextStyle::Button.resolve(ui.style());
         let galley = text.into_galley(ui, Some(false), f32::INFINITY, font_id);
 
@@ -874,12 +901,12 @@ impl TabWidget {
             galley,
             rect,
             galley_rect,
-            icon,
+            icon: tab_desc.icon,
             icon_size,
             icon_rect,
             bg_color,
             text_color,
-            unnamed_style: !user_named,
+            unnamed_style: !tab_desc.user_named,
         }
     }
 
