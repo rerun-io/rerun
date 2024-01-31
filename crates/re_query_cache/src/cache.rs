@@ -203,19 +203,27 @@ impl Caches {
         self.write().clear();
     }
 
-    /// Gives write access to the appropriate `LatestAtCache` according to the specified
+    /// Gives access to the appropriate `LatestAtCache` according to the specified
     /// query parameters.
+    ///
+    /// `upsert` is a user-defined callback that will be run first, with full mutable access to the cache.
+    /// `iter` is a user-defined callback that will be run last, with shared access.
+    ///
+    /// These callback semantics allow for reentrancy: you can use the same cache from multiple
+    /// query contexts (i.e. space views), even in a work-stealing environment.
     #[inline]
-    pub fn with_latest_at<A, F, R>(
+    pub fn with_latest_at<A, F1, F2, R1, R2>(
         &self,
         store: &DataStore,
         entity_path: EntityPath,
         query: &LatestAtQuery,
-        mut f: F,
-    ) -> R
+        mut upsert: F1,
+        mut iter: F2,
+    ) -> (Option<R1>, R2)
     where
         A: Archetype,
-        F: FnMut(&mut LatestAtCache) -> R,
+        F1: FnMut(&mut LatestAtCache) -> R1,
+        F2: FnMut(&LatestAtCache) -> R2,
     {
         assert!(
             self.store_id == *store.id(),
@@ -249,23 +257,65 @@ impl Caches {
             // can run once again.
         };
 
-        let mut cache = cache.write();
-        f(&mut cache)
+        // # Multithreading semantics
+        //
+        // There is only one situation where this `try_write()` might fail: there is another task that
+        // is already in the process of upserting that specific cache (e.g. a cloned space view).
+        //
+        // That task might be on the same thread (due to work-stealing), or a different one.
+        // Either way, we need to give up trying to upsert the cache in order to prevent a
+        // deadlock in case the other task is in fact running on the same thread.
+        //
+        // It's fine, though:
+        // - Best case scenario, the data we need is already cached.
+        // - Worst case scenario, the data is missing and we'll simply return the raw data instead.
+        //   It'll get cached at some point in an upcoming frame (statistically, we're bound to win
+        //   the race at some point).
+        //
+        // Data invalidation happens at the per-archetype cache layer, so this won't return
+        // out-of-date data in either scenario.
+        //
+        // There is a lot of complexity we could add to make this whole process more efficient:
+        // keep track of failed queries in a queue so we don't rely on probabilities, keep track
+        // of the thread-local reentrancy state to skip this logic when it's not needed, etc.
+        //
+        // In the end, this is a edge-case inherent to our current "immediate query" model that we
+        // already know we want -- and have to -- move away from; the extra complexity isn't worth it.
+        let r1 = cache.try_write().map(|mut cache| upsert(&mut cache));
+        // Implicitly releasing the write lock -- if any.
+
+        // # Multithreading semantics
+        //
+        // We need the reentrant lock because query contexts (i.e. space views) generally run on a
+        // work-stealing thread-pool and might swap a task on one thread with another task on the
+        // same thread, where both tasks happen to query the same exact data (e.g. cloned space views).
+        //
+        // See comment above for more details.
+        let r2 = iter(&cache.read_recursive());
+
+        (r1, r2)
     }
 
-    /// Gives write access to the appropriate `RangeCache` according to the specified
-    /// query parameters.
+    /// Gives access to the appropriate `RangeCache` according to the specified query parameters.
+    ///
+    /// `upsert` is a user-defined callback that will be run first, with full mutable access to the cache.
+    /// `iter` is a user-defined callback that will be run last, with shared access.
+    ///
+    /// These callback semantics allow for reentrancy: you can use the same cache from multiple
+    /// query contexts (i.e. space views), even in a work-stealing environment.
     #[inline]
-    pub fn with_range<A, F, R>(
+    pub fn with_range<A, F1, F2, R1, R2>(
         &self,
         store: &DataStore,
         entity_path: EntityPath,
         query: &RangeQuery,
-        mut f: F,
-    ) -> R
+        mut upsert: F1,
+        mut iter: F2,
+    ) -> (Option<R1>, R2)
     where
         A: Archetype,
-        F: FnMut(&mut RangeCache) -> R,
+        F1: FnMut(&mut RangeCache) -> R1,
+        F2: FnMut(&RangeCache) -> R2,
     {
         assert!(
             self.store_id == *store.id(),
@@ -288,7 +338,7 @@ impl Caches {
                     store_id=%self.store_id,
                     entity_path = %key.entity_path,
                     removed = removed_bytes,
-                    "invalidated latest-at caches"
+                    "invalidated range caches"
                 );
             }
 
@@ -299,8 +349,46 @@ impl Caches {
             // can run once again.
         };
 
-        let mut cache = cache.write();
-        f(&mut cache)
+        // # Multithreading semantics
+        //
+        // There is only one situation where this `try_write()` might fail: there is another task that
+        // is already in the process of upserting that specific cache (e.g. a cloned space view).
+        //
+        // That task might be on the same thread (due to work-stealing), or a different one.
+        // Either way, we need to give up trying to upsert the cache in order to prevent a
+        // deadlock in case the other task is in fact running on the same thread.
+        //
+        // It's fine, though:
+        // - Best case scenario, the data we need is already cached.
+        // - Worst case scenario, the data is missing and we'll be missing some data for the current
+        //   frame.
+        //   It'll get cached at some point in an upcoming frame (statistically, we're bound to win
+        //   the race at some point).
+        //
+        // Data invalidation happens at the per-archetype cache layer, so this won't return
+        // out-of-date data in either scenario.
+        //
+        // There is a lot of complexity we could add to make this whole process more efficient:
+        // keep track of failed queries in a queue so we don't rely on probabilities, keep track
+        // of the thread-local reentrancy state to skip this logic when it's not needed, keep track
+        // of min-max timestamp values per entity so we can clamp range queries and thus know
+        // whether the data is already cached or not, etc.
+        //
+        // In the end, this is a edge-case inherent to our current "immediate query" model that we
+        // already know we want -- and have to -- move away from; the extra complexity isn't worth it.
+        let r1 = cache.try_write().map(|mut cache| upsert(&mut cache));
+        // Implicitly releasing the write lock -- if any.
+
+        // # Multithreading semantics
+        //
+        // We need the reentrant lock because query contexts (i.e. space views) generally run on a
+        // work-stealing thread-pool and might swap a task on one thread with another task on the
+        // same thread, where both tasks happen to query the same exact data (e.g. cloned space views).
+        //
+        // See comment above for more details.
+        let r2 = iter(&cache.read_recursive());
+
+        (r1, r2)
     }
 }
 

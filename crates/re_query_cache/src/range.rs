@@ -189,8 +189,12 @@ macro_rules! impl_query_archetype_range {
                 ),
             ),
         {
-            let mut range_results =
-                |timeless: bool, bucket: &crate::CacheBucket, time_range: TimeRange| -> crate::Result<()> {
+            let range_results = |
+                timeless: bool,
+                bucket: &crate::CacheBucket,
+                time_range: TimeRange,
+                f: &mut F,
+            | -> crate::Result<()> {
                 re_tracing::profile_scope!("iter");
 
                 let entry_range = bucket.entry_range(time_range);
@@ -267,7 +271,7 @@ macro_rules! impl_query_archetype_range {
                 Ok(added_size_bytes)
             }
 
-            let mut range_callback = |query: &RangeQuery, range_cache: &mut crate::RangeCache| {
+            let upsert_callback = |query: &RangeQuery, range_cache: &mut crate::RangeCache| -> crate::Result<()> {
                 re_tracing::profile_scope!("range", format!("{query:?}"));
 
                 // NOTE: Same logic as what the store does.
@@ -284,10 +288,6 @@ macro_rules! impl_query_archetype_range {
                         [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
                     );
                     upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.timeless)?;
-
-                    if !range_cache.timeless.is_empty() {
-                        range_results(true, &range_cache.timeless, reduced_query.range)?;
-                    }
                 }
 
                 let mut query = query.clone();
@@ -303,20 +303,56 @@ macro_rules! impl_query_archetype_range {
                     upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.per_data_time)?;
                 }
 
+                Ok(())
+            };
+
+            let iter_callback = |query: &RangeQuery, range_cache: &crate::RangeCache, f: &mut F| -> crate::Result<()> {
+                re_tracing::profile_scope!("range", format!("{query:?}"));
+
+                // We don't bother implementing the slow path here (busy write lock), as that would
+                // require adding a bunch more complexity in order to know whether a range query is
+                // already cached (how can you know whether `TimeInt::MAX` is cached? you need to
+                // clamp queries based on store metadata first, etc).
+                //
+                // We can add the extra complexity if this proves to be glitchy in real-world
+                // scenarios -- otherwise all of this is giant hack meant to go away anyhow.
+
+                // NOTE: Same logic as what the store does.
+                if query.range.min <= TimeInt::MIN {
+                    let mut reduced_query = query.clone();
+                    // This is the reduced query corresponding to the timeless part of the data.
+                    // It is inclusive and so it will yield `MIN..=MIN` = `[MIN]`.
+                    reduced_query.range.max = TimeInt::MIN; // inclusive
+
+                    if !range_cache.timeless.is_empty() {
+                        range_results(true, &range_cache.timeless, reduced_query.range, f)?;
+                    }
+                }
+
+                let mut query = query.clone();
+                query.range.min = TimeInt::max((TimeInt::MIN.as_i64() + 1).into(), query.range.min);
+
                 if !range_cache.per_data_time.is_empty() {
-                    range_results(false, &range_cache.per_data_time, query.range)?;
+                    range_results(false, &range_cache.per_data_time, query.range, f)?;
                 }
 
                 Ok(())
             };
 
-
-            self.with_range::<A, _, _>(
+            let (res1, res2) = self.with_range::<A, _, _, _, _>(
                 store,
                 entity_path.clone(),
                 query,
-                |range_cache| range_callback(query, range_cache),
-            )
+                |range_cache| upsert_callback(query, range_cache),
+                |range_cache| iter_callback(query, range_cache, &mut f),
+            );
+
+            if let Some(res1) = res1 {
+                res1?;
+            }
+            res2?;
+
+            Ok(())
         } }
     };
 
