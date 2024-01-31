@@ -296,8 +296,13 @@ impl Caches {
         (r1, r2)
     }
 
-    /// Gives write access to the appropriate `RangeCache` according to the specified
-    /// query parameters.
+    /// Gives access to the appropriate `RangeCache` according to the specified query parameters.
+    ///
+    /// `upsert` is a user-defined callback that will be run first, with full mutable access to the cache.
+    /// `iter` is a user-defined callback that will be run last, with shared access.
+    ///
+    /// These callback semantics allow for reentrancy: you can use the same cache from multiple
+    /// query contexts (i.e. space views), even in a work-stealing environment.
     #[inline]
     pub fn with_range<A, F1, F2, R1, R2>(
         &self,
