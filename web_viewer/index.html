@@ -218,16 +218,18 @@
         load_wasm();
       }
 
+      var urlWebGl = new URL(window.location);
+      urlWebGl.searchParams.set("renderer", "webgl");
+
+      var urlWebGpu = new URL(window.location);
+      urlWebGpu.searchParams.set("renderer", "webgpu");
+
       const forceWgpuBackendInfoParagraph = `
         <p>
             For graphics related issues, try forcing to render with WebGL<br>
-            <a href="${window.location}?renderer=webgl">
-              ${window.location}?renderer=webgl
-            </a><br>
+            <a href="${urlWebGl}">${urlWebGl}</a><br>
             or with WebGPU<br>
-            <a href="${window.location}?renderer=webgpu">
-              ${window.location}?renderer=webgpu
-            </a>
+            <a href="${urlWebGpu}">${urlWebGpu}</a>
         </p>`;
 
       function load_wasm() {
