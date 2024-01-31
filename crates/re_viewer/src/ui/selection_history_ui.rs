@@ -43,7 +43,7 @@ impl SelectionHistoryUi {
                 ));
 
             let mut return_current = false;
-            let response = response.context_menu(|ui| {
+            response.context_menu(|ui| {
                 // undo: newest on top, oldest on bottom
                 let cur = history.current;
                 for i in (0..history.current).rev() {
@@ -93,7 +93,7 @@ impl SelectionHistoryUi {
                 ));
 
             let mut return_current = false;
-            let response = response.context_menu(|ui| {
+            response.context_menu(|ui| {
                 // redo: oldest on top, most recent on bottom
                 let cur = history.current;
                 for i in (history.current + 1)..history.stack.len() {

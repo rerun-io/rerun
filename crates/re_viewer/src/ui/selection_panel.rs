@@ -765,7 +765,7 @@ fn show_list_item_for_container_child(
 
     let response = list_item.show(ui);
 
-    item_ui::select_hovered_on_click(ctx, &response, std::iter::once(item));
+    ctx.select_hovered_on_click(&response, std::iter::once(item));
 
     if remove_contents {
         viewport.blueprint.mark_user_interaction(ctx);
