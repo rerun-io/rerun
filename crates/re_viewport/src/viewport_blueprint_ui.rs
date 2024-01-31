@@ -24,9 +24,7 @@ impl Viewport<'_, '_> {
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 ctx.re_ui.panel_content(ui, |_, ui| {
-                    if let Some(root_container) = self.blueprint.root_container {
-                        self.contents_ui(ctx, ui, &Contents::Container(root_container), true);
-                    }
+                    self.root_container_tree_ui(ctx, ui);
 
                     let empty_space_response =
                         ui.allocate_response(ui.available_size(), egui::Sense::click());
@@ -66,6 +64,70 @@ impl Viewport<'_, '_> {
                 self.space_view_entry_ui(ctx, ui, space_view_id, parent_visible);
             }
         };
+    }
+
+    /// Display the root container.
+    ///
+    /// The root container is different from other containers in that it cannot be removed or dragged, and it cannot be
+    /// collapsed, so it's drawn without a collapsing triangle..
+    fn root_container_tree_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+        let Some(container_id) = self.blueprint.root_container else {
+            // nothing to draw if there is no root container
+            return;
+        };
+
+        let Some(container_blueprint) = self.blueprint.containers.get(&container_id) else {
+            re_log::warn_once!("Cannot find root container {container_id}");
+            return;
+        };
+
+        let mut visibility_changed = false;
+        let mut visible = container_blueprint.visible;
+        let parent_visible = true;
+        let container_visible = visible;
+        let item = Item::Container(container_id);
+
+        let item_response = ListItem::new(
+            ctx.re_ui,
+            format!("Viewport ({:?})", container_blueprint.container_kind),
+        )
+        .subdued(!container_visible)
+        .selected(ctx.selection().contains_item(&item))
+        .draggable(false)
+        .drop_target_style(self.state.is_candidate_drop_parent_container(&container_id))
+        .label_style(re_ui::LabelStyle::Unnamed)
+        .with_icon(crate::icon_for_container_kind(
+            &container_blueprint.container_kind,
+        ))
+        .with_buttons(|re_ui, ui| {
+            let response = visibility_button_ui(re_ui, ui, parent_visible, &mut visible);
+            visibility_changed = response.changed();
+            response
+        })
+        .show(ui);
+
+        for child in &container_blueprint.contents {
+            self.contents_ui(ctx, ui, child, container_visible);
+        }
+
+        ctx.select_hovered_on_click(&item_response, item);
+
+        self.handle_root_container_drag_and_drop_interaction(
+            ui,
+            Contents::Container(container_id),
+            &item_response,
+        );
+
+        if visibility_changed {
+            if self.blueprint.auto_layout {
+                re_log::trace!("Root container visibility changed - will no longer auto-layout");
+            }
+
+            // Keep `auto_space_views` enabled.
+            self.blueprint.set_auto_layout(false, ctx);
+
+            container_blueprint.set_visible(ctx, visible);
+        }
     }
 
     fn container_tree_ui(
@@ -518,6 +580,49 @@ impl Viewport<'_, '_> {
     // ----------------------------------------------------------------------------
     // drag and drop support
 
+    fn handle_root_container_drag_and_drop_interaction(
+        &self,
+        ui: &egui::Ui,
+        contents: Contents,
+        response: &egui::Response,
+    ) {
+        //
+        // check if a drag is in progress and set the cursor accordingly
+        //
+
+        let Some(dragged_item_id) = egui::DragAndDrop::payload(ui.ctx()).map(|payload| *payload)
+        else {
+            // nothing is being dragged, so nothing to do
+            return;
+        };
+
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+
+        //
+        // find the drop target
+        //
+
+        // Prepare the item description structure needed by `find_drop_target`. Here, we use
+        // `Contents` for the "ItemId" generic type parameter.
+        let item_desc = re_ui::drag_and_drop::ItemContext {
+            id: contents,
+            item_kind: re_ui::drag_and_drop::ItemKind::RootContainer,
+            previous_container_id: None,
+        };
+
+        let drop_target = re_ui::drag_and_drop::find_drop_target(
+            ui,
+            &item_desc,
+            response.rect,
+            None,
+            ReUi::list_item_height(),
+        );
+
+        if let Some(drop_target) = drop_target {
+            self.handle_drop_target(ui, dragged_item_id, &drop_target);
+        }
+    }
+
     fn handle_drag_and_drop_interaction(
         &self,
         ctx: &ViewerContext<'_>,
@@ -551,16 +656,16 @@ impl Viewport<'_, '_> {
         // find our parent, our position within parent, and the previous container (if any)
         //
 
-        let Some((parent_container_id, pos_in_parent)) =
+        let Some((parent_container_id, position_index_in_parent)) =
             self.blueprint.find_parent_and_position_index(&contents)
         else {
             return;
         };
 
-        let previous_container = if pos_in_parent > 0 {
+        let previous_container = if position_index_in_parent > 0 {
             self.blueprint
                 .container(&parent_container_id)
-                .map(|container| container.contents[pos_in_parent - 1])
+                .map(|container| container.contents[position_index_in_parent - 1])
                 .filter(|contents| matches!(contents, Contents::Container(_)))
         } else {
             None
@@ -572,11 +677,19 @@ impl Viewport<'_, '_> {
 
         // Prepare the item description structure needed by `find_drop_target`. Here, we use
         // `Contents` for the "ItemId" generic type parameter.
+
         let item_desc = re_ui::drag_and_drop::ItemContext {
             id: contents,
-            is_container: matches!(contents, Contents::Container(_)),
-            parent_id: Contents::Container(parent_container_id),
-            position_index_in_parent: pos_in_parent,
+            item_kind: match contents {
+                Contents::Container(_) => re_ui::drag_and_drop::ItemKind::Container {
+                    parent_id: Contents::Container(parent_container_id),
+                    position_index_in_parent,
+                },
+                Contents::SpaceView(_) => re_ui::drag_and_drop::ItemKind::Leaf {
+                    parent_id: Contents::Container(parent_container_id),
+                    position_index_in_parent,
+                },
+            },
             previous_container_id: previous_container,
         };
 
@@ -618,8 +731,7 @@ impl Viewport<'_, '_> {
 
         if ui.rect_contains_pointer(empty_space) {
             let drop_target = re_ui::drag_and_drop::DropTarget::new(
-                // TODO(#4909): this indent is a visual hack that should be remove once #4909 is done
-                (empty_space.left() + ui.spacing().indent..=empty_space.right()).into(),
+                empty_space.x_range(),
                 empty_space.top(),
                 Contents::Container(root_container_id),
                 usize::MAX,

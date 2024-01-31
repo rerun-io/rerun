@@ -1153,9 +1153,17 @@ mod hierarchical_drag_and_drop {
 
             let item_desc = re_ui::drag_and_drop::ItemContext {
                 id: item_id,
-                is_container,
-                parent_id,
-                position_index_in_parent,
+                item_kind: if is_container {
+                    re_ui::drag_and_drop::ItemKind::Container {
+                        parent_id,
+                        position_index_in_parent,
+                    }
+                } else {
+                    re_ui::drag_and_drop::ItemKind::Leaf {
+                        parent_id,
+                        position_index_in_parent,
+                    }
+                },
                 previous_container_id,
             };
 

@@ -2,6 +2,26 @@
 //!
 //! Works well in combination with [`crate::list_item::ListItem`].
 
+pub enum ItemKind<ItemId: Copy> {
+    /// Root container item.
+    ///
+    /// Root container don't have a parent and are restricted when hovered as drop target (the dragged item can only go
+    /// _in_ the root container, not before or after).
+    RootContainer,
+
+    /// Container item.
+    Container {
+        parent_id: ItemId,
+        position_index_in_parent: usize,
+    },
+
+    /// Leaf item.
+    Leaf {
+        parent_id: ItemId,
+        position_index_in_parent: usize,
+    },
+}
+
 /// Context information about the hovered item.
 ///
 /// This is used by [`find_drop_target`] to compute the [`DropTarget`], if any.
@@ -9,14 +29,8 @@ pub struct ItemContext<ItemId: Copy> {
     /// ID of the item being hovered during drag
     pub id: ItemId,
 
-    /// Can this item "contain" the currently dragged item?
-    pub is_container: bool,
-
-    /// ID of the parent of this item.
-    pub parent_id: ItemId,
-
-    /// Position of this item within its parent.
-    pub position_index_in_parent: usize,
+    /// What kind of item is this?
+    pub item_kind: ItemKind<ItemId>,
 
     /// ID of the container just before this item within the parent, if such a container exists.
     pub previous_container_id: Option<ItemId>,
@@ -137,11 +151,23 @@ impl<ItemId: Copy> DropTarget<ItemId> {
 ///                      ┌─▼─── ║                                             ║  │
 ///                      │      ║                                             ║  │
 ///                      └───── ╚═════════════════════════════════════════════╝ ─┘
+///
+///                                              not a valid drop zone
+///                                                        │
+///                      ╔═════════════════════════════════▼══════════════════╗
+///    root container    ║                                                    ║
+///              item    ║ ────────────────────────────────────────────────── ║
+///                      ║                                                    ║
+///                      ╚════════════════════════▲═══════════════════════════╝
+///                                               │
+///                                       insert inside me
+///                                          at pos = 0
 /// ```
 ///
 /// Here are a few observations of the above that help navigate the "if-statement-of-death"
 /// in the implementation:
-/// - The top parts of the item are treated the same in all four cases.
+/// - The top parts of the item are treated the same in most cases (root container is an
+///   exception).
 /// - Handling of the body can be simplified by making the sensitive area either a small
 ///   corner (container case), or the entire body (leaf case). Then, that area always maps
 ///   to "insert after me".
@@ -158,20 +184,25 @@ pub fn find_drop_target<ItemId: Copy>(
 ) -> Option<DropTarget<ItemId>> {
     let indent = ui.spacing().indent;
     let item_id = item_context.id;
-    let is_container = item_context.is_container;
-    let parent_id = item_context.parent_id;
-    let pos_in_parent = item_context.position_index_in_parent;
+    let item_kind = &item_context.item_kind;
+    let is_non_root_container = matches!(item_kind, ItemKind::Container { .. });
 
     // For both leaf and containers we have two drag zones on the upper half of the item.
-    let (top, mut bottom) = item_rect.split_top_bottom_at_fraction(0.5);
-    let (left_top, top) = top.split_left_right_at_x(top.left() + indent);
+    let (mut top, mut bottom) = item_rect.split_top_bottom_at_fraction(0.5);
+
+    let mut left_top = egui::Rect::NOTHING;
+    if matches!(item_kind, ItemKind::RootContainer) {
+        top = egui::Rect::NOTHING;
+    } else {
+        (left_top, top) = top.split_left_right_at_x(top.left() + indent);
+    }
 
     // For the lower part of the item, the story is more complicated:
-    // - for leaf item, we have a single drag zone on the entire lower half
+    // - for leaf and root container items, we have a single drag zone on the entire lower half
     // - for container item, we must distinguish between the indent part and the rest, plus check some area in the
     //   body
     let mut left_bottom = egui::Rect::NOTHING;
-    if is_container {
+    if is_non_root_container {
         (left_bottom, bottom) = bottom.split_left_right_at_x(bottom.left() + indent);
     }
 
@@ -181,7 +212,7 @@ pub fn find_drop_target<ItemId: Copy>(
     // - leaf item: the entire body area, if any, cannot receive a drag (by definition) and thus homogeneously maps
     //   to "insert after me"
     let body_insert_after_me_area = if let Some(body_rect) = body_rect {
-        if item_context.is_container {
+        if is_non_root_container {
             egui::Rect::from_two_pos(
                 body_rect.left_bottom() + egui::vec2(indent, -item_height / 2.0),
                 body_rect.left_bottom(),
@@ -226,95 +257,120 @@ pub fn find_drop_target<ItemId: Copy>(
         }
     }
 
-    /* ===== TOP SECTIONS (same leaf/container items) ==== */
-    if ui.rect_contains_pointer(left_top) {
-        // insert before me
-        Some(DropTarget::new(
-            item_rect.x_range(),
-            top.top(),
-            parent_id,
-            pos_in_parent,
-        ))
-    } else if ui.rect_contains_pointer(top) {
-        // insert last in the previous container if any, else insert before me
-        if let Some(previous_container_id) = item_context.previous_container_id {
-            Some(DropTarget::new(
-                (item_rect.left() + indent..=item_rect.right()).into(),
-                top.top(),
-                previous_container_id,
-                usize::MAX,
-            ))
-        } else {
-            Some(DropTarget::new(
-                item_rect.x_range(),
-                top.top(),
-                parent_id,
-                pos_in_parent,
-            ))
-        }
-    }
-    /* ==== BODY SENSE AREA ==== */
-    else if ui.rect_contains_pointer(body_insert_after_me_area) {
-        // insert after me in my parent
-        Some(DropTarget::new(
-            item_rect.x_range(),
-            body_insert_after_me_area.bottom(),
-            parent_id,
-            pos_in_parent + 1,
-        ))
-    }
-    /* ==== BOTTOM SECTIONS (leaf item) ==== */
-    else if !is_container {
-        if ui.rect_contains_pointer(bottom) {
-            let position_y = if let Some(body_rect) = non_empty_body_rect {
-                body_rect.bottom()
+    match *item_kind {
+        ItemKind::RootContainer => {
+            // we just need to test the bottom section in this case.
+            if ui.rect_contains_pointer(bottom) {
+                Some(DropTarget::new(
+                    item_rect.x_range(),
+                    bottom.bottom(),
+                    item_id,
+                    0,
+                ))
             } else {
-                bottom.bottom()
-            };
+                None
+            }
+        }
 
-            // insert after me
-            Some(DropTarget::new(
-                item_rect.x_range(),
-                position_y,
-                parent_id,
-                pos_in_parent + 1,
-            ))
-        } else {
-            None
-        }
-    }
-    /* ==== BOTTOM SECTIONS (container item) ==== */
-    else if let Some(body_rect) = non_empty_body_rect {
-        if ui.rect_contains_pointer(left_bottom) || ui.rect_contains_pointer(bottom) {
-            // insert at pos = 0 inside me
-            Some(DropTarget::new(
-                (body_rect.left() + indent..=body_rect.right()).into(),
-                left_bottom.bottom(),
-                item_id,
-                0,
-            ))
-        } else {
-            None
-        }
-    } else if ui.rect_contains_pointer(left_bottom) {
-        // insert after me in my parent
-        Some(DropTarget::new(
-            item_rect.x_range(),
-            left_bottom.bottom(),
+        ItemKind::Container {
             parent_id,
-            pos_in_parent + 1,
-        ))
-    } else if ui.rect_contains_pointer(bottom) {
-        // insert at pos = 0 inside me
-        Some(DropTarget::new(
-            (item_rect.left() + indent..=item_rect.right()).into(),
-            bottom.bottom(),
-            item_id,
-            0,
-        ))
-    }
-    /* ==== Who knows where else the mouse cursor might wander… ¯\_(ツ)_/¯ ==== */
-    else {
-        None
+            position_index_in_parent,
+        }
+        | ItemKind::Leaf {
+            parent_id,
+            position_index_in_parent,
+        } => {
+            /* ===== TOP SECTIONS (same leaf/container items) ==== */
+            if ui.rect_contains_pointer(left_top) {
+                // insert before me
+                Some(DropTarget::new(
+                    item_rect.x_range(),
+                    top.top(),
+                    parent_id,
+                    position_index_in_parent,
+                ))
+            } else if ui.rect_contains_pointer(top) {
+                // insert last in the previous container if any, else insert before me
+                if let Some(previous_container_id) = item_context.previous_container_id {
+                    Some(DropTarget::new(
+                        (item_rect.left() + indent..=item_rect.right()).into(),
+                        top.top(),
+                        previous_container_id,
+                        usize::MAX,
+                    ))
+                } else {
+                    Some(DropTarget::new(
+                        item_rect.x_range(),
+                        top.top(),
+                        parent_id,
+                        position_index_in_parent,
+                    ))
+                }
+            }
+            /* ==== BODY SENSE AREA ==== */
+            else if ui.rect_contains_pointer(body_insert_after_me_area) {
+                // insert after me in my parent
+                Some(DropTarget::new(
+                    item_rect.x_range(),
+                    body_insert_after_me_area.bottom(),
+                    parent_id,
+                    position_index_in_parent + 1,
+                ))
+            }
+            /* ==== BOTTOM SECTIONS (leaf item) ==== */
+            else if !is_non_root_container {
+                if ui.rect_contains_pointer(bottom) {
+                    let position_y = if let Some(body_rect) = non_empty_body_rect {
+                        body_rect.bottom()
+                    } else {
+                        bottom.bottom()
+                    };
+
+                    // insert after me
+                    Some(DropTarget::new(
+                        item_rect.x_range(),
+                        position_y,
+                        parent_id,
+                        position_index_in_parent + 1,
+                    ))
+                } else {
+                    None
+                }
+            }
+            /* ==== BOTTOM SECTIONS (container item) ==== */
+            else if let Some(body_rect) = non_empty_body_rect {
+                if ui.rect_contains_pointer(left_bottom) || ui.rect_contains_pointer(bottom) {
+                    // insert at pos = 0 inside me
+                    Some(DropTarget::new(
+                        (body_rect.left() + indent..=body_rect.right()).into(),
+                        left_bottom.bottom(),
+                        item_id,
+                        0,
+                    ))
+                } else {
+                    None
+                }
+            } else if ui.rect_contains_pointer(left_bottom) {
+                // insert after me in my parent
+                Some(DropTarget::new(
+                    item_rect.x_range(),
+                    left_bottom.bottom(),
+                    parent_id,
+                    position_index_in_parent + 1,
+                ))
+            } else if ui.rect_contains_pointer(bottom) {
+                // insert at pos = 0 inside me
+                Some(DropTarget::new(
+                    (item_rect.left() + indent..=item_rect.right()).into(),
+                    bottom.bottom(),
+                    item_id,
+                    0,
+                ))
+            }
+            /* ==== Who knows where else the mouse cursor might wander… ¯\_(ツ)_/¯ ==== */
+            else {
+                None
+            }
+        }
     }
 }
