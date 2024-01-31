@@ -96,11 +96,6 @@ impl SizeBytes for LatestAtCache {
 }
 
 impl LatestAtCache {
-    #[inline]
-    pub fn is_cached(&self, query: &LatestAtQuery) -> bool {
-        self.per_query_time.contains_key(&query.at)
-    }
-
     /// Removes everything from the cache that corresponds to a time equal or greater than the
     /// specified `threshold`.
     ///
