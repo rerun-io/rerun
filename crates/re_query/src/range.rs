@@ -10,9 +10,6 @@ use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances}
 /// Iterates over the rows of any number of components and their respective cluster keys, all from
 /// the point-of-view of the required components, returning an iterator of [`ArchetypeView`]s.
 ///
-/// An initial entity-view is yielded with the latest-at state at the start of the time range, if
-/// there is any.
-///
 /// The iterator only ever yields entity-views iff a required component has changed: a change
 /// affecting only optional components will not yield an entity-view.
 /// However, the changes in those secondary components will be accumulated into the next yielded
@@ -30,9 +27,36 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     re_tracing::profile_function!();
 
     // TODO(jleibs) this shim is super gross
+    let povs: [ComponentName; 1] = A::required_components().into_owned().try_into().unwrap();
     let components: [ComponentName; N] = A::all_components().into_owned().try_into().unwrap();
 
-    let primary: ComponentName = A::required_components()[0];
+    range_component_set::<A, N>(store, query, ent_path, &povs, &components)
+}
+
+/// Iterates over the rows of any number of components and their respective cluster keys, all from
+/// the point-of-view of the `povs` components, returning an iterator of [`ArchetypeView`]s.
+///
+/// The iterator only ever yields entity-views iff a point-of-view component has changed: a change
+/// affecting only optional components will not yield an entity-view.
+/// However, the changes in those secondary components will be accumulated into the next yielded
+/// entity-view.
+///
+/// This is a streaming-join: every yielded [`ArchetypeView`] will be the result of joining the latest
+/// known state of all components, from their respective point-of-views.
+///
+/// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
+pub fn range_component_set<'a, A: Archetype + 'a, const N: usize>(
+    store: &'a DataStore,
+    query: &RangeQuery,
+    ent_path: &'a EntityPath,
+    povs: &[ComponentName],
+    comps: &[ComponentName],
+) -> impl Iterator<Item = ArchetypeView<A>> + 'a {
+    re_tracing::profile_function!();
+
+    let components: [ComponentName; N] = comps.to_owned().try_into().unwrap();
+
+    let primary: ComponentName = povs[0];
     let cluster_key = store.cluster_key();
 
     // TODO(cmc): Ideally, we'd want to simply add the cluster and primary key to the `components`
@@ -43,8 +67,8 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     // The alternative to these assertions (and thus putting the burden on the caller), for now,
     // would be to drop the constant sizes all the way down, which would be way more painful to
     // deal with.
-    assert!(components.contains(&cluster_key));
-    assert!(components.contains(&primary));
+    assert!(components.contains(&cluster_key), "{components:?}");
+    assert!(components.contains(&primary), "{components:?}");
 
     let cluster_col = components
         .iter()
