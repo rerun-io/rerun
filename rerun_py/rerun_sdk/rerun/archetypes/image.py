@@ -30,7 +30,7 @@ class Image(ImageExt, Archetype):
     Leading and trailing unit-dimensions are ignored, so that
     `1x640x480x3x1` is treated as a `640x480x3` RGB image.
 
-    For an easy way to pass in image formats or encoded images, see [ImageEncoded](../image_helpers/#rerun.ImageEncoded).
+    For an easy way to pass in image formats or encoded images, see [`rerun.ImageEncoded`][].
 
     Example
     -------
