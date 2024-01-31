@@ -2,7 +2,7 @@ use re_entity_db::{EntityPath, InstancePathHash};
 use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points2D,
-    components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text},
+    components::{ClassId, Color, DrawOrder, InstanceKey, KeypointId, Position2D, Radius, Text},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -243,13 +243,14 @@ impl VisualizerSystem for Points2DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        super::entity_iterator::process_archetype_pov1_comp5::<
+        super::entity_iterator::process_archetype_pov1_comp6::<
             Points2DVisualizer,
             Points2D,
             Position2D,
             Color,
             Radius,
             Text,
+            DrawOrder,
             re_types::components::KeypointId,
             re_types::components::ClassId,
             _,
@@ -268,6 +269,10 @@ impl VisualizerSystem for Points2DVisualizer {
              colors,
              radii,
              labels,
+             // NOTE: Not _directly_ used for now. Keep it around for A) type safety, B) because we
+             // have to match the number of components that `Points2D::NUM_COMPONENTS` report
+             // and C) because we're going to use it directly for transparency eventually anyhow.
+             _draw_order,
              keypoint_ids,
              class_ids| {
                 let data = Points2DComponentData {
