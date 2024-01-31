@@ -621,22 +621,16 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
         match tiles.get(tile_id) {
             Some(egui_tiles::Tile::Pane(space_view_id)) => {
-                self.ctx.select_hovered_on_click(
-                    self.ctx,
-                    &response,
-                    Item::SpaceView(*space_view_id),
-                );
+                self.ctx
+                    .select_hovered_on_click(&response, Item::SpaceView(*space_view_id));
             }
 
             Some(egui_tiles::Tile::Container(_)) => {
                 if let Some(Contents::Container(container_id)) =
                     self.contents_per_tile_id.get(&tile_id)
                 {
-                    self.ctx.select_hovered_on_click(
-                        self.ctx,
-                        &response,
-                        Item::Container(*container_id),
-                    );
+                    self.ctx
+                        .select_hovered_on_click(&response, Item::Container(*container_id));
                 }
             }
 
