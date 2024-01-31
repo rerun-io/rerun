@@ -61,7 +61,7 @@ impl AsRef<str> for SpaceViewName {
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new space view otherwise identical to an existing one, use
-/// [`SpaceViewBlueprint::duplicate`].
+/// [`crate::ViewportBlueprint::duplicate_space_view`].
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: Option<String>,
