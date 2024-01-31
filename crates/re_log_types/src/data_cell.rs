@@ -612,9 +612,14 @@ impl DataCell {
             return true;
         }
 
-        re_log::error_once!("cell size could _not_ be computed");
+        if self.inner.size_bytes == 0 {
+            re_log::error_once!(
+                "cell size could _not_ be computed (the cell has already been shared)"
+            );
+            return false;
+        }
 
-        false
+        true
     }
 }
 
