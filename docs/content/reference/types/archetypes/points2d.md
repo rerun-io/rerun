@@ -10,7 +10,7 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 
 **Recommended**: [`Radius`](../components/radius.md), [`Color`](../components/color.md)
 
-**Optional**: [`Text`](../components/text.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md), [`KeypointId`](../components/keypoint_id.md), [`InstanceKey`](../components/instance_key.md)
+**Optional**: [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`KeypointId`](../components/keypoint_id.md), [`InstanceKey`](../components/instance_key.md)
 
 ## Links
  * 🌊 [C++ API docs for `Points2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Points2D.html)

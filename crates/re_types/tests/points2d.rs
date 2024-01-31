@@ -21,7 +21,6 @@ fn roundtrip() {
             "hello".into(),  //
             "friend".into(), //
         ]),
-        draw_order: Some(components::DrawOrder(300.0)),
         class_ids: Some(vec![
             components::ClassId::from(126), //
             components::ClassId::from(127), //
@@ -40,7 +39,6 @@ fn roundtrip() {
         .with_radii([42.0, 43.0])
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_labels(["hello", "friend"])
-        .with_draw_order(300.0)
         .with_class_ids([126, 127])
         .with_keypoint_ids([2, 3])
         .with_instance_keys([u64::MAX - 1, u64::MAX]);

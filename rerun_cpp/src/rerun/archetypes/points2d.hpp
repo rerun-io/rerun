@@ -7,7 +7,6 @@
 #include "../compiler_utils.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
-#include "../components/draw_order.hpp"
 #include "../components/instance_key.hpp"
 #include "../components/keypoint_id.hpp"
 #include "../components/position2d.hpp"
@@ -81,11 +80,6 @@ namespace rerun::archetypes {
         /// Optional text labels for the points.
         std::optional<Collection<rerun::components::Text>> labels;
 
-        /// An optional floating point value that specifies the 2D drawing order.
-        ///
-        /// Objects with higher values are drawn on top of those with lower values.
-        std::optional<rerun::components::DrawOrder> draw_order;
-
         /// Optional class Ids for the points.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
@@ -134,15 +128,6 @@ namespace rerun::archetypes {
         /// Optional text labels for the points.
         Points2D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// An optional floating point value that specifies the 2D drawing order.
-        ///
-        /// Objects with higher values are drawn on top of those with lower values.
-        Points2D with_draw_order(rerun::components::DrawOrder _draw_order) && {
-            draw_order = std::move(_draw_order);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

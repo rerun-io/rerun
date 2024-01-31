@@ -23,5 +23,4 @@ Draw order for entities with the same draw order is generally undefined.
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`Image`](../archetypes/image.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
-* [`Points2D`](../archetypes/points2d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
