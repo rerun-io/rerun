@@ -6,6 +6,7 @@ mod aggregation;
 mod legacy_visualizer_system;
 mod line_visualizer_system;
 mod overrides;
+mod point_visualizer_system;
 mod space_view_class;
 
 use re_log_types::EntityPath;

@@ -17,6 +17,7 @@ use re_viewer_context::{
 
 use crate::legacy_visualizer_system::LegacyTimeSeriesSystem;
 use crate::line_visualizer_system::SeriesLineSystem;
+use crate::point_visualizer_system::SeriesPointSystem;
 use crate::PlotSeriesKind;
 
 // ---
@@ -93,6 +94,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     ) -> Result<(), SpaceViewClassRegistryError> {
         system_registry.register_visualizer::<LegacyTimeSeriesSystem>()?;
         system_registry.register_visualizer::<SeriesLineSystem>()?;
+        system_registry.register_visualizer::<SeriesPointSystem>()?;
         Ok(())
     }
 
@@ -290,11 +292,13 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let legacy_time_series = system_output.view_systems.get::<LegacyTimeSeriesSystem>()?;
         let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
+        let point_series = system_output.view_systems.get::<SeriesPointSystem>()?;
 
         let all_lines: Vec<_> = legacy_time_series
             .lines
             .iter()
             .chain(line_series.lines.iter())
+            .chain(point_series.lines.iter())
             .collect();
 
         // Get the minimum time/X value for the entire plot…
