@@ -667,7 +667,7 @@ impl App {
         };
         let location = window.location();
 
-        let mut url = web_sys::Url::new(&location.href()?)?;
+        let url = web_sys::Url::new(&location.href()?)?;
         url.search_params().set(key, value);
 
         location.assign(&url.href())
