@@ -6,8 +6,7 @@ use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::SyntaxHighlighting;
 use re_viewer_context::{
-    DataQueryId, HoverHighlight, Item, Selection, SpaceViewId, SystemCommandSender, UiVerbosity,
-    ViewerContext,
+    DataQueryId, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
 };
 
 use super::DataUi;
@@ -331,45 +330,13 @@ pub fn cursor_interact_with_selectable(
     let is_item_hovered =
         ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-    select_hovered_on_click(ctx, &response, item);
+    ctx.select_hovered_on_click(&response, item);
     // TODO(andreas): How to deal with shift click for selecting ranges?
 
     if is_item_hovered {
         response.highlight()
     } else {
         response
-    }
-}
-
-// TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
-pub fn select_hovered_on_click(
-    ctx: &ViewerContext<'_>,
-    response: &egui::Response,
-    selection: impl Into<Selection>,
-) {
-    re_tracing::profile_function!();
-
-    let mut selection = selection.into();
-    selection.resolve_mono_instance_path_items(ctx);
-    let selection_state = ctx.selection_state();
-
-    if response.hovered() {
-        selection_state.set_hovered(selection.clone());
-    }
-
-    if response.double_clicked() {
-        if let Some((item, _)) = selection.first() {
-            ctx.command_sender
-                .send_system(re_viewer_context::SystemCommand::SetFocus(item.clone()));
-        }
-    }
-
-    if response.clicked() {
-        if response.ctx.input(|i| i.modifiers.command) {
-            selection_state.toggle_selection(selection);
-        } else {
-            selection_state.set_selection(selection);
-        }
     }
 }
 
