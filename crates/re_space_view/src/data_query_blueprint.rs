@@ -10,7 +10,7 @@ use re_entity_db::{
 use re_log_types::{
     path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, StoreKind,
 };
-use re_types_core::{archetypes::Clear, ComponentName};
+use re_types_core::{archetypes::Clear, components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
     DataResultNode, DataResultTree, IndicatedEntities, PerVisualizer, PropertyOverrides,
@@ -254,6 +254,9 @@ impl<'a> QueryExpressionEvaluator<'a> {
 
         // Only populate visualizers if this is a match
         // Note that allowed prefixes that aren't matches can still create groups
+        // TODO(jleibs): It would be nice to lookup the override queries here, but we don't have
+        // access to a query context. Also the entity-override-path-joining is expensive and we don't want
+        // to do it during heuristic evaluation.
         let visualizers: SmallVec<_> = if any_match {
             self.visualizable_entities_for_visualizer_systems
                 .iter()
@@ -467,6 +470,20 @@ impl DataQueryPropertyResolver<'_> {
                         .individual_override_root
                         .join(&node.data_result.entity_path);
 
+                    // If the user has overridden the visualizers, update which visualizers are used.
+                    {
+                        re_tracing::profile_scope!("Update visualizers from overrides");
+
+                        if let Some(viz_override) = ctx
+                            .blueprint
+                            .store()
+                            .query_latest_component::<VisualizerOverrides>(&override_path, query)
+                            .map(|c| c.value)
+                        {
+                            node.data_result.visualizers =
+                                viz_override.0.iter().map(|v| v.as_str().into()).collect();
+                        }
+                    }
                     let mut component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)> =
                         Default::default();
 

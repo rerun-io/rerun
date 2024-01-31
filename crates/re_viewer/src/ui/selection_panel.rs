@@ -24,10 +24,10 @@ use re_viewport::{
     Contents, Viewport, ViewportBlueprint,
 };
 
-use crate::ui::visible_history::visible_history_ui;
 use crate::ui::{
     add_space_view_or_container_modal::AddSpaceViewOrContainerModal, override_ui::override_ui,
 };
+use crate::ui::{override_ui::override_visualizer_ui, visible_history::visible_history_ui};
 
 use super::selection_history_ui::SelectionHistoryUi;
 
@@ -197,6 +197,10 @@ impl SelectionPanel {
                             // For now, only show the override section for TimeSeries until support is implemented
                             // generically.
                             if space_view.class_identifier() == TimeSeriesSpaceView::IDENTIFIER {
+                                ctx.re_ui
+                                    .large_collapsing_header(ui, "Visualizers", true, |ui| {
+                                        override_visualizer_ui(ctx, space_view, instance_path, ui);
+                                    });
                                 ctx.re_ui.large_collapsing_header(
                                     ui,
                                     "Component Overrides",
