@@ -173,7 +173,8 @@ impl Viewport<'_, '_> {
 
         let root_node = result_tree.first_interesting_root();
 
-        let default_open = root_node.map_or(false, Self::default_open_for_data_result);
+        // empty space views should display as open by default to highlight the fact that they are empty
+        let default_open = root_node.map_or(true, Self::default_open_for_data_result);
 
         let collapsing_header_id = ui.id().with(space_view.id);
         let is_item_hovered =
@@ -218,7 +219,7 @@ impl Viewport<'_, '_> {
                         space_view_visible,
                     );
                 } else {
-                    ui.label("No results");
+                    ui.label("No data");
                 }
             });
 
