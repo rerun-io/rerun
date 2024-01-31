@@ -238,10 +238,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
         let executed_systems_per_space_view =
             execute_systems_for_space_views(ctx, tree, &blueprint.space_views);
 
-        let mut contents_per_tile_id = HashMap::default();
-        blueprint.for_each_contents(&mut |contents| {
-            contents_per_tile_id.insert(contents.as_tile_id(), *contents);
-        });
+        let contents_per_tile_id = blueprint
+            .contents_iter()
+            .map(|contents| (contents.as_tile_id(), contents))
+            .collect();
 
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
