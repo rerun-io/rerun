@@ -57,7 +57,8 @@ impl VisibleHistory {
         to: VisibleHistoryBoundary::Infinite,
     };
 
-    pub fn from(&self, cursor: TimeInt) -> TimeInt {
+    /// Do not use this to build a [`TimeRange`], use [`Self::time_range`].
+    fn from(&self, cursor: TimeInt) -> TimeInt {
         match self.from {
             VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
             VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
@@ -65,12 +66,25 @@ impl VisibleHistory {
         }
     }
 
-    pub fn to(&self, cursor: TimeInt) -> TimeInt {
+    /// Do not use this to build a [`TimeRange`], use [`Self::time_range`].
+    fn to(&self, cursor: TimeInt) -> TimeInt {
         match self.to {
             VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
             VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
             VisibleHistoryBoundary::Infinite => TimeInt::MAX,
         }
+    }
+
+    pub fn time_range(&self, cursor: TimeInt) -> TimeRange {
+        let mut from = self.from(cursor);
+        let mut to = self.to(cursor);
+
+        // TODO(#4993): visible time range UI can yield inverted ranges
+        if from > to {
+            std::mem::swap(&mut from, &mut to);
+        }
+
+        TimeRange::new(from, to)
     }
 }
 
@@ -116,16 +130,15 @@ pub fn query_archetype_with_history<'a, A: Archetype + 'a, const N: usize>(
         re_log_types::TimeType::Sequence => history.sequences,
     };
 
-    let min_time = visible_history.from(*time);
-    let max_time = visible_history.to(*time);
+    let time_range = visible_history.time_range(*time);
 
-    if !history.enabled || min_time == max_time {
-        let latest_query = LatestAtQuery::new(*timeline, min_time);
+    if !history.enabled || time_range.min == time_range.max {
+        let latest_query = LatestAtQuery::new(*timeline, time_range.min);
         let latest = query_archetype::<A>(store, &latest_query, ent_path)?;
 
         Ok(itertools::Either::Left(std::iter::once(latest)))
     } else {
-        let range_query = RangeQuery::new(*timeline, TimeRange::new(min_time, max_time));
+        let range_query = RangeQuery::new(*timeline, time_range);
 
         let range = range_archetype::<A, N>(store, &range_query, ent_path);
 

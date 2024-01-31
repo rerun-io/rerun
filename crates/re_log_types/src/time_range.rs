@@ -26,6 +26,10 @@ impl TimeRange {
 
     #[inline]
     pub fn new(min: TimeInt, max: TimeInt) -> Self {
+        debug_assert!(
+            min <= max,
+            "a TimeRange has to be monotonically increasing, got {min:?}..={max:?} instead"
+        );
         Self { min, max }
     }
 
