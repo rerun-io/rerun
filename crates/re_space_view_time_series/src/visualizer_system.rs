@@ -1,5 +1,5 @@
 use re_data_store::TimeRange;
-use re_log_types::{StoreKind, TimeInt};
+use re_log_types::{EntityPath, StoreKind, TimeInt};
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::{
     archetypes::TimeSeriesScalar,
@@ -60,6 +60,7 @@ pub struct PlotSeries {
     pub width: f32,
     pub kind: PlotSeriesKind,
     pub points: Vec<(i64, f64)>,
+    pub entity_path: EntityPath,
 }
 
 /// A scene for a time series plot, with everything needed to render it.
@@ -384,9 +385,10 @@ impl TimeSeriesSystem {
                     width: 2.0 * points[0].attrs.radius,
                     kind: PlotSeriesKind::Scatter,
                     points: vec![(points[0].time, points[0].value)],
+                    entity_path: data_result.entity_path.clone(),
                 });
             } else {
-                self.add_line_segments(&line_label, points);
+                self.add_line_segments(&line_label, points, &data_result.entity_path);
             }
         }
 
@@ -398,7 +400,12 @@ impl TimeSeriesSystem {
     // A line segment is a continuous run of points with identical attributes: each time
     // we notice a change in attributes, we need a new line segment.
     #[inline(never)] // Better callstacks on crashes
-    fn add_line_segments(&mut self, line_label: &str, points: Vec<PlotPoint>) {
+    fn add_line_segments(
+        &mut self,
+        line_label: &str,
+        points: Vec<PlotPoint>,
+        entity_path: &EntityPath,
+    ) {
         re_tracing::profile_function!();
 
         let num_points = points.len();
@@ -409,6 +416,7 @@ impl TimeSeriesSystem {
             width: 2.0 * attrs.radius,
             points: Vec::with_capacity(num_points),
             kind: attrs.kind,
+            entity_path: entity_path.clone(),
         };
 
         for (i, p) in points.into_iter().enumerate() {
@@ -429,6 +437,7 @@ impl TimeSeriesSystem {
                         width: 2.0 * attrs.radius,
                         kind: attrs.kind,
                         points: Vec::with_capacity(num_points - i),
+                        entity_path: entity_path.clone(),
                     },
                 );
 

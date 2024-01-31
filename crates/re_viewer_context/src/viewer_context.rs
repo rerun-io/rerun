@@ -7,7 +7,7 @@ use re_entity_db::entity_db::EntityDb;
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
     Caches, CommandSender, ComponentUiRegistry, DataQueryId, IndicatedEntities, PerVisualizer,
-    Selection, SpaceViewClassRegistry, StoreContext, TimeControl,
+    Selection, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, TimeControl,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -90,6 +90,38 @@ impl<'a> ViewerContext<'a> {
     /// The current time query, based on the current time control.
     pub fn current_query(&self) -> re_data_store::LatestAtQuery {
         self.rec_cfg.time_ctrl.read().current_query()
+    }
+
+    /// Set hover/select/focus for a given selection based on an egui response.
+    pub fn select_hovered_on_click(
+        &self,
+        response: &egui::Response,
+        selection: impl Into<Selection>,
+    ) {
+        re_tracing::profile_function!();
+
+        let mut selection = selection.into();
+        selection.resolve_mono_instance_path_items(self);
+        let selection_state = self.selection_state();
+
+        if response.hovered() {
+            selection_state.set_hovered(selection.clone());
+        }
+
+        if response.double_clicked() {
+            if let Some((item, _)) = selection.first() {
+                self.command_sender
+                    .send_system(crate::SystemCommand::SetFocus(item.clone()));
+            }
+        }
+
+        if response.clicked() {
+            if response.ctx.input(|i| i.modifiers.command) {
+                selection_state.toggle_selection(selection);
+            } else {
+                selection_state.set_selection(selection);
+            }
+        }
     }
 }
 
