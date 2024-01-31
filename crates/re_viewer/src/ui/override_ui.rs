@@ -48,14 +48,41 @@ pub fn override_ui(
         .map(|props| props.component_overrides.keys().cloned().collect())
         .unwrap_or_default();
 
+    let view_systems = ctx
+        .space_view_class_registry
+        .new_visualizer_collection(*space_view.class_identifier());
+
+    let mut component_to_vis: BTreeMap<ComponentName, ViewSystemIdentifier> = Default::default();
+
+    // Accumulate the components across all visualizers and track which visualizer
+    // each component came from so we can use it for defaults later.
+    //
+    // If two visualizers have the same component, the first one wins.
+    // TODO(jleibs): We can do something fancier in the future such as presenting both
+    // options once we have a motivating use-case.
+    for vis in &data_result.visualizers {
+        let Some(queried) = view_systems
+            .get_by_identifier(*vis)
+            .ok()
+            .map(|vis| vis.visualizer_query_info().queried)
+        else {
+            continue;
+        };
+
+        for component in queried {
+            component_to_vis.entry(component).or_insert_with(|| *vis);
+        }
+    }
+
     add_new_override(
         ctx,
         &query,
         store,
         ui,
-        space_view,
-        &data_result,
+        &view_systems,
+        &component_to_vis,
         &active_overrides,
+        &data_result,
     );
 
     ui.end_row();
@@ -68,7 +95,7 @@ pub fn override_ui(
         .component_overrides
         .into_iter()
         .sorted_by_key(|(c, _)| *c)
-        .filter(|(c, _)| is_component_visible_in_ui(c))
+        .filter(|(c, _)| component_to_vis.contains_key(c) && is_component_visible_in_ui(c))
         .collect();
 
     egui_extras::TableBuilder::new(ui)
@@ -154,142 +181,131 @@ pub fn override_ui(
         });
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn add_new_override(
     ctx: &ViewerContext<'_>,
     query: &LatestAtQuery,
     store: &DataStore,
     ui: &mut egui::Ui,
-    space_view: &SpaceViewBlueprint,
-    data_result: &DataResult,
+    view_systems: &re_viewer_context::VisualizerCollection,
+    component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
     active_overrides: &BTreeSet<ComponentName>,
+    data_result: &DataResult,
 ) {
-    let mut opened = false;
-    let menu = ui
-        .menu_button("Add new override", |ui| {
-            opened = true;
-            ui.style_mut().wrap = Some(false);
+    let remaining_components = component_to_vis
+        .keys()
+        .filter(|c| !active_overrides.contains(*c))
+        .collect::<Vec<_>>();
 
-            let view_systems = ctx
-                .space_view_class_registry
-                .new_visualizer_collection(*space_view.class_identifier());
+    let enabled = !remaining_components.is_empty();
 
-            let mut component_to_vis: BTreeMap<ComponentName, ViewSystemIdentifier> =
-                Default::default();
+    ui.add_enabled_ui(enabled, |ui| {
+        let mut opened = false;
+        let menu = ui
+            .menu_button("Add", |ui| {
+                opened = true;
+                ui.style_mut().wrap = Some(false);
 
-            // Accumulate the components across all visualizers and track which visualizer
-            // each component came from so we can use it for defaults later.
-            //
-            // If two visualizers have the same component, the first one wins.
-            // TODO(jleibs): We can do something fancier in the future such as presenting both
-            // options once we have a motivating use-case.
-            for vis in &data_result.visualizers {
-                let Some(queried) = view_systems
-                    .get_by_identifier(*vis)
-                    .ok()
-                    .map(|vis| vis.visualizer_query_info().queried)
-                else {
-                    continue;
-                };
-
-                for component in queried.difference(active_overrides) {
-                    component_to_vis.entry(*component).or_insert_with(|| *vis);
-                }
-            }
-
-            // Present the option to add new components for each component that doesn't
-            // already have an active override.
-            for (component, viz) in component_to_vis {
-                // If we don't have an override_path we can't set up an initial override
-                // this shouldn't happen if the `DataResult` is valid.
-                let Some(override_path) = data_result.override_path() else {
-                    if cfg!(debug_assertions) {
-                        re_log::error!("No override path for: {}", component);
+                // Present the option to add new components for each component that doesn't
+                // already have an active override.
+                for (component, viz) in component_to_vis {
+                    if active_overrides.contains(component) {
+                        continue;
                     }
-                    continue;
-                };
+                    // If we don't have an override_path we can't set up an initial override
+                    // this shouldn't happen if the `DataResult` is valid.
+                    let Some(override_path) = data_result.override_path() else {
+                        if cfg!(debug_assertions) {
+                            re_log::error!("No override path for: {}", component);
+                        }
+                        continue;
+                    };
 
-                // If there is no registered editor, don't let the user create an override
-                if !ctx.component_ui_registry.has_registered_editor(&component) {
-                    continue;
-                }
+                    // If there is no registered editor, don't let the user create an override
+                    if !ctx.component_ui_registry.has_registered_editor(component) {
+                        continue;
+                    }
 
-                if ui.button(component.as_str()).clicked() {
-                    // We are creating a new override. We need to decide what initial value to give it.
-                    // - First see if there's an existing splat in the recording.
-                    // - Next see if visualizer system wants to provide a value.
-                    // - Finally, fall back on the default value from the component registry.
+                    if ui.button(component.as_str()).clicked() {
+                        // We are creating a new override. We need to decide what initial value to give it.
+                        // - First see if there's an existing splat in the recording.
+                        // - Next see if visualizer system wants to provide a value.
+                        // - Finally, fall back on the default value from the component registry.
 
-                    let components = [component];
+                        let components = [*component];
 
-                    let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
-                    splat_cell.compute_size_bytes();
+                        let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
+                        splat_cell.compute_size_bytes();
 
-                    let Some(mut initial_data) = store
-                        .latest_at(query, &data_result.entity_path, component, &components)
-                        .and_then(|result| result.2[0].clone())
-                        .and_then(|cell| {
-                            if cell.num_instances() == 1 {
-                                Some(cell)
-                            } else {
-                                None
-                            }
-                        })
-                        .or_else(|| {
-                            view_systems.get_by_identifier(viz).ok().and_then(|sys| {
-                                sys.initial_override_value(
+                        let Some(mut initial_data) = store
+                            .latest_at(query, &data_result.entity_path, *component, &components)
+                            .and_then(|result| result.2[0].clone())
+                            .and_then(|cell| {
+                                if cell.num_instances() == 1 {
+                                    Some(cell)
+                                } else {
+                                    None
+                                }
+                            })
+                            .or_else(|| {
+                                view_systems.get_by_identifier(*viz).ok().and_then(|sys| {
+                                    sys.initial_override_value(
+                                        ctx,
+                                        query,
+                                        store,
+                                        &data_result.entity_path,
+                                        component,
+                                    )
+                                })
+                            })
+                            .or_else(|| {
+                                ctx.component_ui_registry.default_value(
                                     ctx,
                                     query,
                                     store,
                                     &data_result.entity_path,
-                                    &component,
+                                    component,
                                 )
                             })
-                        })
-                        .or_else(|| {
-                            ctx.component_ui_registry.default_value(
-                                ctx,
-                                query,
-                                store,
-                                &data_result.entity_path,
-                                &component,
-                            )
-                        })
-                    else {
-                        re_log::warn!("Could not identify an initial value for: {}", component);
-                        return;
-                    };
+                        else {
+                            re_log::warn!("Could not identify an initial value for: {}", component);
+                            return;
+                        };
 
-                    initial_data.compute_size_bytes();
+                        initial_data.compute_size_bytes();
 
-                    match DataRow::from_cells(
-                        RowId::new(),
-                        blueprint_timepoint_for_writes(),
-                        override_path.clone(),
-                        1,
-                        [splat_cell, initial_data],
-                    ) {
-                        Ok(row) => ctx
-                            .command_sender
-                            .send_system(SystemCommand::UpdateBlueprint(
-                                ctx.store_context.blueprint.store_id().clone(),
-                                vec![row],
-                            )),
-                        Err(err) => {
-                            re_log::warn!(
-                                "Failed to create DataRow for blueprint component: {}",
-                                err
-                            );
+                        match DataRow::from_cells(
+                            RowId::new(),
+                            blueprint_timepoint_for_writes(),
+                            override_path.clone(),
+                            1,
+                            [splat_cell, initial_data],
+                        ) {
+                            Ok(row) => {
+                                ctx.command_sender
+                                    .send_system(SystemCommand::UpdateBlueprint(
+                                        ctx.store_context.blueprint.store_id().clone(),
+                                        vec![row],
+                                    ));
+                            }
+                            Err(err) => {
+                                re_log::warn!(
+                                    "Failed to create DataRow for blueprint component: {}",
+                                    err
+                                );
+                            }
                         }
-                    }
 
-                    ui.close_menu();
+                        ui.close_menu();
+                    }
                 }
-            }
-        })
-        .response;
-    if !opened {
-        menu.on_hover_text("Choose a component to specify an override value.".to_owned());
-    }
+            })
+            .response
+            .on_disabled_hover_text("No additional components available.");
+        if !opened {
+            menu.on_hover_text("Choose a component to specify an override value.".to_owned());
+        }
+    });
 }
 
 // ---
