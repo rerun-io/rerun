@@ -277,10 +277,12 @@ macro_rules! impl_query_archetype_range {
                     // It is inclusive and so it will yield `MIN..=MIN` = `[MIN]`.
                     reduced_query.range.max = TimeInt::MIN; // inclusive
 
-                    // NOTE: `+ 2` because we always grab the indicator component as well as the
-                    // instance keys.
-                    let arch_views =
-                        ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, &reduced_query, entity_path);
+                    // NOTE: `+ 1` because we always grab the instance keys.
+                    let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
+                        store, &reduced_query, entity_path,
+                        &[$(<$pov>::name(),)+],
+                        [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
+                    );
                     upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.timeless)?;
 
                     if !range_cache.timeless.is_empty() {
@@ -292,10 +294,12 @@ macro_rules! impl_query_archetype_range {
                 query.range.min = TimeInt::max((TimeInt::MIN.as_i64() + 1).into(), query.range.min);
 
                 for reduced_query in range_cache.compute_queries(&query) {
-                    // NOTE: `+ 2` because we always grab the indicator component as well as the
-                    // instance keys.
-                    let arch_views =
-                        ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, &reduced_query, entity_path);
+                    // NOTE: `+ 1` because we always grab the instance keys.
+                    let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
+                        store, &reduced_query, entity_path,
+                        &[$(<$pov>::name(),)+],
+                        [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
+                    );
                     upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.per_data_time)?;
                 }
 

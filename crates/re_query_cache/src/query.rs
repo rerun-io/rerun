@@ -155,9 +155,12 @@ macro_rules! impl_query_archetype {
                 AnyQuery::Range(query) if !cached => {
                     re_tracing::profile_scope!("range", format!("{query:?}"));
 
-                    // NOTE: `+ 2` because we always grab the indicator component as well as the
-                    // instance keys.
-                    let arch_views = ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, query, entity_path);
+                    // NOTE: `+ 1` because we always grab the instance keys.
+                    let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
+                        store, query, entity_path,
+                        &[$(<$pov>::name(),)+],
+                        [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
+                    );
 
                     for arch_view in arch_views {
                         let data = (
