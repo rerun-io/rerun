@@ -1,26 +1,28 @@
 use super::Rgba32;
 
 impl Rgba32 {
+    pub const WHITE: Self = Self::from_rgb(255, 255, 255);
+
     #[inline]
-    pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::from([r, g, b, 255])
+    pub const fn from_rgb(r: u8, g: u8, b: u8) -> Self {
+        Self::from_unmultiplied_rgba(r, g, b, 255)
     }
 
     #[inline]
-    pub fn from_unmultiplied_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+    pub const fn from_unmultiplied_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         let [r, g, b, a] = [r as u32, g as u32, b as u32, a as u32];
         Self(r << 24 | g << 16 | b << 8 | a)
     }
 
     /// Most significant byte is `r`, least significant byte is `a`.
     #[inline]
-    pub fn from_u32(rgba: u32) -> Self {
+    pub const fn from_u32(rgba: u32) -> Self {
         Self(rgba)
     }
 
     /// `[r, g, b, a]`
     #[inline]
-    pub fn to_array(self) -> [u8; 4] {
+    pub const fn to_array(self) -> [u8; 4] {
         [
             (self.0 >> 24) as u8,
             (self.0 >> 16) as u8,
@@ -31,7 +33,7 @@ impl Rgba32 {
 
     /// Most significant byte is `r`, least significant byte is `a`.
     #[inline]
-    pub fn to_u32(self) -> u32 {
+    pub const fn to_u32(self) -> u32 {
         self.0
     }
 }
