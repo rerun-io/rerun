@@ -67,11 +67,11 @@ rerun reset
 [known driver issues](https://github.com/gfx-rs/wgpu/wiki/Known-Driver-Issues) and workarounds for them.
 
 The configuration we use for wgpu can be influenced in the following ways:
-* pass `--force-renderer=<backend>` on startup: `<backend>` must be one of `vulkan`, `metal` or `gl` for native and
+* pass `--renderer=<backend>` on startup: `<backend>` must be one of `vulkan`, `metal` or `gl` for native and
   either `webgl` or `webgpu` for the web viewer (see also `--web-viewer` argument).
   Naturally, support depends on your OS. The default backend is `vulkan` everywhere except on Mac where we use `metal`.
   On the web we prefer WebGPU and fall back automatically to WebGL if no support for WebGPU was detected.
-    * For instance, you can try `rerun --force-renderer=gl` or for the web viewer respectively `rerun --web-viewer --force-renderer=webgl`.
+    * For instance, you can try `rerun --renderer=gl` or for the web viewer respectively `rerun --web-viewer --renderer=webgl`.
     * Alternatively, for the native viewer you can also use the `WGPU_BACKEND` environment variable with the above values.
     * The web viewer is configured by the `renderer=<backend>` url argument, e.g. [https://app.rerun.io/?renderer=webgl]
 * `WGPU_POWER_PREF`: Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)

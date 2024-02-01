@@ -194,7 +194,7 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     // Note that we don't compile with DX12 right now, but we could (we don't since this adds permutation and wgpu still has some issues with it).
     // GL could be enabled on MacOS via `angle` but given prior issues with ANGLE this seems to be a bad idea!
     #[clap(long)]
-    force_renderer: Option<String>,
+    renderer: Option<String>,
 
     // ----------------------------------------------------------------------------
     // Debug-options:
@@ -550,7 +550,7 @@ async fn run_impl(
                 return host_web_viewer(
                     args.bind.clone(),
                     args.web_viewer_port,
-                    args.force_renderer,
+                    args.renderer,
                     true,
                     rerun_server_ws_url,
                 )
@@ -625,7 +625,7 @@ async fn run_impl(
                 let web_server_handle = tokio::spawn(host_web_viewer(
                     args.bind.clone(),
                     args.web_viewer_port,
-                    args.force_renderer,
+                    args.renderer,
                     open_browser,
                     _ws_server_url,
                 ));
@@ -656,7 +656,7 @@ async fn run_impl(
                 }
                 Box::new(app)
             }),
-            args.force_renderer,
+            args.renderer,
         )
         .map_err(|err| err.into());
 
