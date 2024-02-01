@@ -39,7 +39,7 @@ pub struct LatestAtCache {
     //
     // NOTE: Lives separately so we don't pay the extra `Option` cost in the much more common
     // timeful case.
-    pub timeless: Option<CacheBucket>,
+    pub timeless: Option<Arc<CacheBucket>>,
 
     /// For debugging purposes.
     pub(crate) timeline: Timeline,
@@ -275,8 +275,9 @@ macro_rules! impl_query_archetype_latest_at {
                         return Ok(());
                     }
                 } else {
-                    if timeless.is_some() {
+                    if let Some(timeless) = timeless.as_ref() {
                         re_log::trace!(query_time=?query.at, "cache hit (data time, timeless)");
+                        query_time_bucket_at_query_time.insert(std::sync::Arc::clone(timeless));
                         return Ok(());
                     }
                 }
@@ -301,7 +302,7 @@ macro_rules! impl_query_archetype_latest_at {
                     let bucket = create_and_fill_bucket(TimeInt::MIN, &arch_view)?;
                     *total_size_bytes += bucket.total_size_bytes;
 
-                    *timeless = Some(bucket);
+                    *timeless = Some(Arc::new(bucket));
 
                     Ok(())
                 }
