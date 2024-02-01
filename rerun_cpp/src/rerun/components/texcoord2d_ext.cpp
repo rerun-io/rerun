@@ -1,4 +1,4 @@
-#include "texcoord2D.hpp"
+#include "texcoord2d.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
