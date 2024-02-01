@@ -256,7 +256,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
         // Note that allowed prefixes that aren't matches can still create groups
         // TODO(jleibs): It would be nice to lookup the override queries here, but we don't have
         // access to a query context. Also the entity-override-path-joining is expensive and we don't want
-        // to do it during heuristic evaluation.
+        // to do it during heuristic evaluation. Instead this currently happens in `update_overrides_recursive`.
         let visualizers: SmallVec<_> = if any_match {
             self.visualizable_entities_for_visualizer_systems
                 .iter()
