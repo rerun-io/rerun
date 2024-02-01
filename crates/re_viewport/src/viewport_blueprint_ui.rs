@@ -81,17 +81,12 @@ impl Viewport<'_, '_> {
             return;
         };
 
-        let mut visibility_changed = false;
-        let mut visible = container_blueprint.visible;
-        let parent_visible = true;
-        let container_visible = visible;
         let item = Item::Container(container_id);
 
         let item_response = ListItem::new(
             ctx.re_ui,
             format!("Viewport ({:?})", container_blueprint.container_kind),
         )
-        .subdued(!container_visible)
         .selected(ctx.selection().contains_item(&item))
         .draggable(false)
         .drop_target_style(self.state.is_candidate_drop_parent_container(&container_id))
@@ -99,15 +94,10 @@ impl Viewport<'_, '_> {
         .with_icon(crate::icon_for_container_kind(
             &container_blueprint.container_kind,
         ))
-        .with_buttons(|re_ui, ui| {
-            let response = visibility_button_ui(re_ui, ui, parent_visible, &mut visible);
-            visibility_changed = response.changed();
-            response
-        })
         .show(ui);
 
         for child in &container_blueprint.contents {
-            self.contents_ui(ctx, ui, child, container_visible);
+            self.contents_ui(ctx, ui, child, true);
         }
 
         ctx.select_hovered_on_click(&item_response, item);
@@ -117,17 +107,6 @@ impl Viewport<'_, '_> {
             Contents::Container(container_id),
             &item_response,
         );
-
-        if visibility_changed {
-            if self.blueprint.auto_layout {
-                re_log::trace!("Root container visibility changed - will no longer auto-layout");
-            }
-
-            // Keep `auto_space_views` enabled.
-            self.blueprint.set_auto_layout(false, ctx);
-
-            container_blueprint.set_visible(ctx, visible);
-        }
     }
 
     fn container_tree_ui(
