@@ -39,6 +39,10 @@ impl std::ops::Deref for IndicatedEntities {
 /// List of entities that can be visualized at some point in time on any timeline
 /// by a concrete visualizer in the context of a specific instantiated space view.
 ///
+/// It gets invalidated whenever any properties of the respective space view instance
+/// change, e.g. its origin.
+/// TODO(andreas): Unclear if any of the space view's configuring blueprint entities are included in this!
+///
 /// This is a subset of [`ApplicableEntities`] and differs on a
 /// per space view instance base.
 #[derive(Default)]
