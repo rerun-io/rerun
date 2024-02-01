@@ -318,7 +318,7 @@ impl TimeSeriesSystem {
                 //
                 // MinMax does zig-zag between min and max, which causes a very jagged look.
                 // It can be mitigated by lowering the aggregation duration, but that causes
-                // a lot more for for the tessellator and renderer.
+                // a lot more work for the tessellator and renderer.
                 // TODO(#4969): output a thicker line instead of zig-zagging.
                 let aggregation_duration = time_per_pixel; // aggregate all points covering one physical pixel
 
