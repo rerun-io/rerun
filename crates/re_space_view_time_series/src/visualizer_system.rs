@@ -76,6 +76,9 @@ pub struct TimeSeriesSystem {
     pub aggregator: TimeSeriesAggregator,
 
     /// `1.0` for raw data.
+    ///
+    /// How many raw data points were aggregated into a single step of the graph?
+    /// This is an average.
     pub aggregation_factor: f64,
 }
 
@@ -155,11 +158,14 @@ impl TimeSeriesSystem {
 
         let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.space_view_id));
         let plot_bounds = plot_mem.as_ref().map(|mem| *mem.bounds());
-        // What's the delta in value of X across two adjacent UI points?
-        // I.e. think of GLSL's `dpdx()`.
-        let plot_value_delta = plot_mem.as_ref().map_or(1.0, |mem| {
-            1.0 / mem.transform().dpos_dvalue_x().max(f64::EPSILON)
-        });
+
+        // How many ui points per time unit?
+        let points_per_time = plot_mem
+            .as_ref()
+            .map_or(1.0, |mem| mem.transform().dpos_dvalue_x());
+        let pixels_per_time = egui_ctx.pixels_per_point() as f64 * points_per_time;
+        // How many time units per physical pixel?
+        let time_per_pixel = 1.0 / pixels_per_time.max(f64::EPSILON);
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
@@ -302,7 +308,10 @@ impl TimeSeriesSystem {
                 continue;
             }
 
-            let (aggregation_factor, points) = {
+            // Aggregate over this many time units.
+            let aggrgation_duration = time_per_pixel; // aggregate all points covering one physical pixel
+
+            let (actual_aggregation_factor, points) = {
                 let aggregator = data_result
                     .accumulated_properties()
                     .time_series_aggregator
@@ -310,30 +319,28 @@ impl TimeSeriesSystem {
 
                 // So it can be displayed in the UI by the SpaceViewClass.
                 self.aggregator = *aggregator;
-
-                let aggregation_factor = plot_value_delta;
                 let num_points_before = points.len() as f64;
 
-                let points = if aggregation_factor > 2.0 {
+                let points = if aggrgation_duration > 2.0 {
                     re_tracing::profile_scope!("aggregate", aggregator.to_string());
 
                     #[allow(clippy::match_same_arms)] // readability
                     match aggregator {
                         TimeSeriesAggregator::Off => points,
                         TimeSeriesAggregator::Average => {
-                            AverageAggregator::aggregate(aggregation_factor, &points)
+                            AverageAggregator::aggregate(aggrgation_duration, &points)
                         }
                         TimeSeriesAggregator::Min => {
-                            MinMaxAggregator::Min.aggregate(aggregation_factor, &points)
+                            MinMaxAggregator::Min.aggregate(aggrgation_duration, &points)
                         }
                         TimeSeriesAggregator::Max => {
-                            MinMaxAggregator::Max.aggregate(aggregation_factor, &points)
+                            MinMaxAggregator::Max.aggregate(aggrgation_duration, &points)
                         }
                         TimeSeriesAggregator::MinMax => {
-                            MinMaxAggregator::MinMax.aggregate(aggregation_factor, &points)
+                            MinMaxAggregator::MinMax.aggregate(aggrgation_duration, &points)
                         }
                         TimeSeriesAggregator::MinMaxAverage => {
-                            MinMaxAggregator::MinMaxAverage.aggregate(aggregation_factor, &points)
+                            MinMaxAggregator::MinMaxAverage.aggregate(aggrgation_duration, &points)
                         }
                     }
                 } else {
@@ -345,9 +352,8 @@ impl TimeSeriesSystem {
 
                 re_log::trace!(
                     id = %query.space_view_id,
-                    plot_value_delta,
                     ?aggregator,
-                    aggregation_factor,
+                    aggrgation_duration,
                     num_points_before,
                     num_points_after,
                     actual_aggregation_factor,
@@ -357,7 +363,7 @@ impl TimeSeriesSystem {
             };
 
             // So it can be displayed in the UI by the SpaceViewClass.
-            self.aggregation_factor = aggregation_factor;
+            self.aggregation_factor = actual_aggregation_factor;
 
             re_tracing::profile_scope!("secondary", &data_result.entity_path.to_string());
 
@@ -493,6 +499,7 @@ fn lookup_override<C: Component>(
 struct AverageAggregator;
 
 impl AverageAggregator {
+    /// `aggregation_factor`: the width of the aggregation window.
     #[inline]
     fn aggregate(aggregation_factor: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
@@ -582,18 +589,18 @@ enum MinMaxAggregator {
 
 impl MinMaxAggregator {
     #[inline]
-    fn aggregate(&self, aggregation_factor: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
+    fn aggregate(&self, aggregation_window_size: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
+        // NOTE: `round()` since this can only handle discrete window sizes.
+        let window_size = usize::max(1, aggregation_window_size.round() as usize);
+
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
         let max_time = points.last().map_or(i64::MAX, |p| p.time);
 
-        let capacity = (points.len() as f64 / aggregation_factor) as usize;
+        let capacity = (points.len() as f64 / window_size as f64) as usize;
         let mut aggregated = match self {
             MinMaxAggregator::MinMax => Vec::with_capacity(capacity * 2),
             _ => Vec::with_capacity(capacity),
         };
-
-        // NOTE: `round()` since this can only handle discrete window sizes.
-        let window_size = usize::max(1, aggregation_factor.round() as usize);
 
         let mut i = 0;
         while i < points.len() {
