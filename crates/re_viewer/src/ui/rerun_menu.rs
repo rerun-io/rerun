@@ -392,7 +392,7 @@ fn experimental_feature_ui(
             &mut app_options.experimental_primary_caching_latest_at,
             "Primary caching: latest-at queries",
         )
-        .on_hover_text("Toggle primary caching for latest-at queries.\nApplies to the 2D/3D point cloud, text log and time series space views.");
+        .on_hover_text("Toggle primary caching for latest-at queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
 
     re_ui
         .checkbox(
@@ -400,7 +400,7 @@ fn experimental_feature_ui(
             &mut app_options.experimental_primary_caching_range,
             "Primary caching: range queries",
         )
-        .on_hover_text("Toggle primary caching for range queries.\nApplies to the 2D/3D point cloud, text log and time series space views.");
+        .on_hover_text("Toggle primary caching for range queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
 }
 
 #[cfg(debug_assertions)]
