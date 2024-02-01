@@ -10,6 +10,9 @@ rerun-release = "run --package rerun-cli --no-default-features --features native
 # `cargo rerun-web` is short a convenient shorthand for building & starting the web viewer.
 rerun-web = "run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer"
 
+# `cargo rerun-release-web` is short a convenient shorthand for building & starting the web viewer in release mode.
+rerun-release-web = "run --package rerun-cli --no-default-features --features web_viewer --release -- --web-viewer"
+
 # Run the codegen. Optionally pass `--profile` to it.
 # NOTE: there are several CI jobs with `command: codegen` with the cargo action
 codegen = "run --package re_types_builder --"
