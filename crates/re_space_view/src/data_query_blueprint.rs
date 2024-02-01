@@ -419,7 +419,7 @@ impl DataQueryPropertyResolver<'_> {
     /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
     ///
     /// This will accumulate the group properties at each step down the tree, and then finally merge
-    /// with individual overrides at the leafs.
+    /// with individual overrides at the leaves.
     fn update_overrides_recursive(
         &self,
         ctx: &StoreContext<'_>,
