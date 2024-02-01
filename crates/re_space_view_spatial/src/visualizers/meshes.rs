@@ -3,7 +3,9 @@ use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Mesh3D,
-    components::{Color, InstanceKey, Material, MeshProperties, Position3D, Texcoord2D, Vector3D},
+    components::{
+        Color, InstanceKey, Material, MeshProperties, Position3D, TensorData, Texcoord2D, Vector3D,
+    },
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -94,6 +96,7 @@ impl Mesh3DVisualizer {
                 },
                 mesh_properties: arch_view.raw_optional_mono_component::<MeshProperties>()?,
                 mesh_material: arch_view.raw_optional_mono_component::<Material>()?,
+                albedo_texture: arch_view.raw_optional_mono_component::<TensorData>()?,
                 class_ids: None,
                 instance_keys: None,
             }

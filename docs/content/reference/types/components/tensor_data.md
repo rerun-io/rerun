@@ -19,5 +19,6 @@ A multi-dimensional `Tensor` with optionally named arguments.
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`Image`](../archetypes/image.md)
+* [`Mesh3D`](../archetypes/mesh3d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
 * [`Tensor`](../archetypes/tensor.md)

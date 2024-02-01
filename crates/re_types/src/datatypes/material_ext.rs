@@ -7,7 +7,6 @@ impl Material {
     pub fn from_albedo_factor(color: impl Into<Rgba32>) -> Self {
         Self {
             albedo_factor: Some(color.into()),
-            albedo_texture: None,
         }
     }
 }

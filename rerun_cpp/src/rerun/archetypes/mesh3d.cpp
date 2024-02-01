@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(9);
+        cells.reserve(10);
 
         {
             auto result = DataCell::from_loggable(archetype.vertex_positions);
@@ -43,6 +43,11 @@ namespace rerun {
         }
         if (archetype.mesh_material.has_value()) {
             auto result = DataCell::from_loggable(archetype.mesh_material.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.albedo_texture.has_value()) {
+            auto result = DataCell::from_loggable(archetype.albedo_texture.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

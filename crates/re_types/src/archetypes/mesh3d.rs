@@ -77,6 +77,13 @@ pub struct Mesh3D {
     /// Optional material properties for the mesh as a whole.
     pub mesh_material: Option<crate::components::Material>,
 
+    /// Optional albedo texture.
+    ///
+    /// Used with `vertex_texcoords` on `Mesh3D`.
+    /// Currently supports only sRGB(A) textures, ignoring alpha.
+    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    pub albedo_texture: Option<crate::components::TensorData>,
+
     /// Optional class Ids for the vertices.
     ///
     /// The class ID provides colors and labels if not specified explicitly.
@@ -95,6 +102,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
             + self.vertex_colors.heap_size_bytes()
             + self.vertex_texcoords.heap_size_bytes()
             + self.mesh_material.heap_size_bytes()
+            + self.albedo_texture.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
             + self.instance_keys.heap_size_bytes()
     }
@@ -107,6 +115,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Texcoord2D>>>::is_pod()
             && <Option<crate::components::Material>>::is_pod()
+            && <Option<crate::components::TensorData>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
             && <Option<Vec<crate::components::InstanceKey>>>::is_pod()
     }
@@ -124,18 +133,19 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
+            "rerun.components.TensorData".into(),
             "rerun.components.Texcoord2D".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
@@ -146,12 +156,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
+            "rerun.components.TensorData".into(),
             "rerun.components.Texcoord2D".into(),
         ]
     });
 
 impl Mesh3D {
-    pub const NUM_COMPONENTS: usize = 9usize;
+    pub const NUM_COMPONENTS: usize = 10usize;
 }
 
 /// Indicator component for the [`Mesh3D`] [`::re_types_core::Archetype`]
@@ -269,6 +280,16 @@ impl ::re_types_core::Archetype for Mesh3D {
         } else {
             None
         };
+        let albedo_texture = if let Some(array) = arrays_by_name.get("rerun.components.TensorData")
+        {
+            <crate::components::TensorData>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.Mesh3D#albedo_texture")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
                 <crate::components::ClassId>::from_arrow_opt(&**array)
@@ -301,6 +322,7 @@ impl ::re_types_core::Archetype for Mesh3D {
             vertex_colors,
             vertex_texcoords,
             mesh_material,
+            albedo_texture,
             class_ids,
             instance_keys,
         })
@@ -327,6 +349,9 @@ impl ::re_types_core::AsComponents for Mesh3D {
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.mesh_material
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.albedo_texture
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.class_ids
@@ -358,6 +383,7 @@ impl Mesh3D {
             vertex_colors: None,
             vertex_texcoords: None,
             mesh_material: None,
+            albedo_texture: None,
             class_ids: None,
             instance_keys: None,
         }
@@ -405,6 +431,15 @@ impl Mesh3D {
         mesh_material: impl Into<crate::components::Material>,
     ) -> Self {
         self.mesh_material = Some(mesh_material.into());
+        self
+    }
+
+    #[inline]
+    pub fn with_albedo_texture(
+        mut self,
+        albedo_texture: impl Into<crate::components::TensorData>,
+    ) -> Self {
+        self.albedo_texture = Some(albedo_texture.into());
         self
     }
 

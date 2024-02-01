@@ -11,7 +11,7 @@ namespace rerun.components;
 
 /// Material properties of a mesh.
 table Material (
-  "attr.rust.derive": "PartialEq"
+  "attr.rust.derive": "PartialEq, Eq"
 ) {
   material: rerun.datatypes.Material (order: 100);
 }

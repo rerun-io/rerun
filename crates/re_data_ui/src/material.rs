@@ -19,20 +19,6 @@ impl DataUi for Material {
                 ui.weak("(empty)");
             }
         };
-        let show_optional_albedo_texture = |ui: &mut egui::Ui| {
-            if let Some(albedo_texture) = &self.albedo_texture {
-                // TODO(andreas): Either we rethink this so that albedo texture is a regular image,
-                //                or we pluck apart the image preview code to be re-usable here,
-                //                so that we can show an image preview.
-                if let Some([height, width, _]) = albedo_texture.image_height_width_channels() {
-                    ui.weak(format!("[{height} x {width}]"));
-                } else {
-                    ui.weak("(not an image)");
-                }
-            } else {
-                ui.weak("(empty)");
-            }
-        };
 
         match verbosity {
             UiVerbosity::Small | UiVerbosity::Reduced => {
@@ -42,9 +28,6 @@ impl DataUi for Material {
                 egui::Grid::new("material").num_columns(2).show(ui, |ui| {
                     ui.label("albedo_factor");
                     show_optional_albedo_factor(ui);
-                    ui.end_row();
-                    ui.label("albedo_texture");
-                    show_optional_albedo_texture(ui);
                     ui.end_row();
                 });
             }

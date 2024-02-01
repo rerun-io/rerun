@@ -11,6 +11,7 @@
 #include "../components/material.hpp"
 #include "../components/mesh_properties.hpp"
 #include "../components/position3d.hpp"
+#include "../components/tensor_data.hpp"
 #include "../components/texcoord2d.hpp"
 #include "../components/vector3d.hpp"
 #include "../data_cell.hpp"
@@ -84,6 +85,13 @@ namespace rerun::archetypes {
         /// Optional material properties for the mesh as a whole.
         std::optional<rerun::components::Material> mesh_material;
 
+        /// Optional albedo texture.
+        ///
+        /// Used with `vertex_texcoords` on `Mesh3D`.
+        /// Currently supports only sRGB(A) textures, ignoring alpha.
+        /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+        std::optional<rerun::components::TensorData> albedo_texture;
+
         /// Optional class Ids for the vertices.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
@@ -139,6 +147,17 @@ namespace rerun::archetypes {
         /// Optional material properties for the mesh as a whole.
         Mesh3D with_mesh_material(rerun::components::Material _mesh_material) && {
             mesh_material = std::move(_mesh_material);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional albedo texture.
+        ///
+        /// Used with `vertex_texcoords` on `Mesh3D`.
+        /// Currently supports only sRGB(A) textures, ignoring alpha.
+        /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+        Mesh3D with_albedo_texture(rerun::components::TensorData _albedo_texture) && {
+            albedo_texture = std::move(_albedo_texture);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

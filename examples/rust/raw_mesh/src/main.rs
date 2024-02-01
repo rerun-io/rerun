@@ -55,7 +55,6 @@ impl From<GltfPrimitive> for Mesh3D {
             mesh = mesh.with_mesh_material(rerun::datatypes::Material {
                 albedo_factor: albedo_factor
                     .map(|[r, g, b, a]| ecolor::Rgba::from_rgba_unmultiplied(r, g, b, a).into()),
-                albedo_texture: None, // TODO(andreas): This would require loading the right texture file and converting it to `TensorData`.
             });
         }
 

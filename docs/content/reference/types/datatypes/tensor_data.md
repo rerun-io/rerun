@@ -25,4 +25,3 @@ which stores a contiguous array of typed values.
 ## Used by
 
 * [`TensorData`](../components/tensor_data.md)
-* [`Material`](../datatypes/material.md)

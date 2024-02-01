@@ -102,6 +102,7 @@ impl LoadedMesh {
             mesh_material,
             class_ids: _,
             instance_keys: _,
+            albedo_texture,
         } = mesh3d;
 
         let vertex_positions: &[glam::Vec3] = bytemuck::cast_slice(vertex_positions.as_slice());
@@ -157,11 +158,8 @@ impl LoadedMesh {
             macaw::BoundingBox::from_points(vertex_positions.iter().copied())
         };
 
-        let albedo = if let Some(albedo_texture) = mesh_material
-            .as_ref()
-            .and_then(|mat| mat.albedo_texture.as_ref())
-        {
-            mesh_texture_from_tensor_data(albedo_texture, render_ctx, texture_key)?
+        let albedo = if let Some(albedo_texture) = &albedo_texture {
+            mesh_texture_from_tensor_data(&albedo_texture.0, render_ctx, texture_key)?
         } else {
             render_ctx
                 .texture_manager_2d

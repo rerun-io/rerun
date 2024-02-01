@@ -3,12 +3,29 @@ use std::collections::HashMap;
 use re_types::{
     archetypes::Mesh3D,
     components::{ClassId, InstanceKey, Position3D, Texcoord2D, Vector3D},
-    datatypes::{Material, MeshProperties, Rgba32, Vec2D, Vec3D},
+    datatypes::{
+        Material, MeshProperties, Rgba32, TensorBuffer, TensorData, TensorDimension, Vec2D, Vec3D,
+    },
     Archetype as _, AsComponents as _,
 };
 
 #[test]
 fn roundtrip() {
+    let tensor_data: re_types::components::TensorData = TensorData {
+        shape: vec![
+            TensorDimension {
+                size: 2,
+                name: Some("height".into()),
+            },
+            TensorDimension {
+                size: 3,
+                name: Some("width".into()),
+            },
+        ],
+        buffer: TensorBuffer::U8(vec![1, 2, 3, 4, 5, 6].into()),
+    }
+    .into();
+
     let expected = Mesh3D {
         vertex_positions: vec![
             Position3D(Vec3D([1.0, 2.0, 3.0])),
@@ -35,10 +52,10 @@ fn roundtrip() {
         mesh_material: Some(
             Material {
                 albedo_factor: Some(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33)),
-                albedo_texture: None,
             }
             .into(),
         ),
+        albedo_texture: Some(tensor_data.clone()),
         class_ids: Some(vec![
             ClassId::from(126), //
             ClassId::from(127), //
@@ -59,7 +76,8 @@ fn roundtrip() {
         .with_vertex_texcoords([[0.0, 1.0], [2.0, 3.0]])
         .with_mesh_material(Material::from_albedo_factor(0xEE112233))
         .with_class_ids([126, 127])
-        .with_instance_keys([u64::MAX - 1, u64::MAX]);
+        .with_instance_keys([u64::MAX - 1, u64::MAX])
+        .with_albedo_texture(tensor_data);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [

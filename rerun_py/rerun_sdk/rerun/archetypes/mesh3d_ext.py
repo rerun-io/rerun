@@ -20,6 +20,7 @@ class Mesh3DExt:
         vertex_normals: datatypes.Vec3DArrayLike | None = None,
         vertex_colors: datatypes.Rgba32ArrayLike | None = None,
         vertex_texcoords: datatypes.Vec2DArrayLike | None = None,
+        albedo_texture: datatypes.TensorDataLike | None = None,
         mesh_material: datatypes.MaterialLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         instance_keys: components.InstanceKeyArrayLike | None = None,
@@ -49,6 +50,10 @@ class Mesh3DExt:
             An optional color for each vertex.
         mesh_material:
             Optional material properties for the mesh as a whole.
+        albedo_texture:
+            Optional albedo texture. Used with `vertex_texcoords` on `Mesh3D`.
+            Currently supports only sRGB(A) textures, ignoring alpha.
+            (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
         class_ids:
             Optional class Ids for the vertices.
             The class ID provides colors and labels if not specified explicitly.
@@ -68,6 +73,7 @@ class Mesh3DExt:
                 vertex_normals=vertex_normals,
                 vertex_colors=vertex_colors,
                 vertex_texcoords=vertex_texcoords,
+                albedo_texture=albedo_texture,
                 mesh_material=mesh_material,
                 class_ids=class_ids,
                 instance_keys=instance_keys,
