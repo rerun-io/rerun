@@ -17,7 +17,7 @@ __all__ = ["Visible", "VisibleArrayLike", "VisibleBatch", "VisibleLike", "Visibl
 
 @define(init=False)
 class Visible:
-    """**Component**: Whether the container or space view is currently visible."""
+    """**Component**: Whether the container, space view, entity or instance is currently visible."""
 
     def __init__(self: Any, visible: VisibleLike):
         """Create a new instance of the Visible component."""
