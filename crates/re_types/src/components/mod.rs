@@ -24,6 +24,7 @@ mod line_strip2d_ext;
 mod line_strip3d;
 mod line_strip3d_ext;
 mod marker_shape;
+mod marker_shape_ext;
 mod material;
 mod material_ext;
 mod media_type;
