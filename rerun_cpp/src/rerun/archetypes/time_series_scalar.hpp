@@ -25,6 +25,11 @@ namespace rerun::archetypes {
     /// The current simulation time will be used for the time/X-axis, hence scalars
     /// cannot be timeless!
     ///
+    /// This archetype is in the process of being deprecated. Prefer usage of
+    /// `Scalar`, `SeriesLine`, and `SeriesPoint` instead.
+    ///
+    /// See also `rerun::archetypes::Scalar`, `rerun::archetypes::SeriesPoint`, `rerun::archetypes::SeriesLine`.
+    ///
     /// ## Example
     ///
     /// ### Simple line plot

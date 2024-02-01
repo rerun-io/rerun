@@ -24,12 +24,12 @@ class Scalar(Archetype):
     The current timeline value will be used for the time/X-axis, hence scalars
     cannot be timeless.
 
-    WHen used to produce a plot, this archetytpe is used to provide the data that
+    When used to produce a plot, this archetytpe is used to provide the data that
     is referenced by the `SeriesLine` or `SeriesPoint` archetypes. You can do
     this by logging both archetypes to the same path, or alternatively configuring
     the plot-specific archetypes through the blueprint.
 
-    See also [`SeriesLine`][rerun.archetypes.SeriesLine].
+    See also  [`SeriesPoint`][rerun.archetypes.SeriesPoint], [`SeriesLine`][rerun.archetypes.SeriesLine].
 
     Example
     -------

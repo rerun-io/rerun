@@ -7,6 +7,9 @@ Log a double-precision scalar that will be visualized as a time-series plot.
 The current simulation time will be used for the time/X-axis, hence scalars
 cannot be timeless!
 
+This archetype is in the process of being deprecated. Prefer usage of
+`Scalar`, `SeriesLine`, and `SeriesPoint` instead.
+
 ## Components
 
 **Required**: [`Scalar`](../components/scalar.md)
