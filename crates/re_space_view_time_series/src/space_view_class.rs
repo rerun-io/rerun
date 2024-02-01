@@ -1,4 +1,3 @@
-use egui::accesskit::Point;
 use egui::ahash::{HashMap, HashSet};
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
