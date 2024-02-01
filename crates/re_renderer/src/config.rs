@@ -282,13 +282,6 @@ pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result
             // TODO(wgpu#5166): But if we get this wrong we might crash.
             // TODO(wgpu#5167): And we also can't query the config.
             return Err("DX12 backend is currently not supported.");
-
-            // if cfg!(target_arch = "wasm32") {
-            //     return Err("Can only run with WebGL or WebGPU on the web.");
-            // }
-            // if cfg!(target_os = "linux") || cfg!(target_os = "macos") {
-            //     return Err("Cannot run with DX12 backend on Linux & Mac.");
-            // }
         }
         wgpu::Backend::Gl => {
             // Using Angle Mac might actually run GL, but we don't enable this.
