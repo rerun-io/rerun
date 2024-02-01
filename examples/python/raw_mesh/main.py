@@ -68,18 +68,17 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
             try:
                 albedo_texture = mesh.visual.material.baseColorTexture
             except Exception:
-                pass
-
-            try:
-                colors = mesh.visual.to_color().vertex_colors
-                if len(colors) == 4:
-                    # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
-                    # as an albedo factor for the whole primitive.
-                    mesh_material = Material(albedo_factor=np.array(colors))
-                else:
-                    vertex_colors = colors
-            except Exception:
-                pass
+                # Try vertex colors instead.
+                try:
+                    colors = mesh.visual.to_color().vertex_colors
+                    if len(colors) == 4:
+                        # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
+                        # as an albedo factor for the whole primitive.
+                        mesh_material = Material(albedo_factor=np.array(colors))
+                    else:
+                        vertex_colors = colors
+                except Exception:
+                    pass
 
             rr.log(
                 path,
