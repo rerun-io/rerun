@@ -315,41 +315,37 @@ impl TimeSeriesSystem {
                     .get();
 
                 // Aggregate over this many time units.
-                let aggrgation_duration = if aggregator == TimeSeriesAggregator::MinMax {
-                    // min-max does zig-zag between min and max, which causes a very jagged look,
-                    // so we aggregate over a shorter duration to smooth it out.
-                    // It still looks jagged, but slighly less so.
-                    // TODO(#4969): output a thicker line instead of zig-zagging.
-                    0.5 * time_per_pixel
-                } else {
-                    // aggregate all points covering one physical pixel
-                    time_per_pixel
-                };
+                //
+                // MinMax does zig-zag between min and max, which causes a very jagged look.
+                // It can be mitigated by lowering the aggregation duration, but that causes
+                // a lot more for for the tessellator and renderer.
+                // TODO(#4969): output a thicker line instead of zig-zagging.
+                let aggregation_duration = time_per_pixel; // aggregate all points covering one physical pixel
 
                 // So it can be displayed in the UI by the SpaceViewClass.
                 self.aggregator = aggregator;
                 let num_points_before = points.len() as f64;
 
-                let points = if aggrgation_duration > 2.0 {
+                let points = if aggregation_duration > 2.0 {
                     re_tracing::profile_scope!("aggregate", aggregator.to_string());
 
                     #[allow(clippy::match_same_arms)] // readability
                     match aggregator {
                         TimeSeriesAggregator::Off => points,
                         TimeSeriesAggregator::Average => {
-                            AverageAggregator::aggregate(aggrgation_duration, &points)
+                            AverageAggregator::aggregate(aggregation_duration, &points)
                         }
                         TimeSeriesAggregator::Min => {
-                            MinMaxAggregator::Min.aggregate(aggrgation_duration, &points)
+                            MinMaxAggregator::Min.aggregate(aggregation_duration, &points)
                         }
                         TimeSeriesAggregator::Max => {
-                            MinMaxAggregator::Max.aggregate(aggrgation_duration, &points)
+                            MinMaxAggregator::Max.aggregate(aggregation_duration, &points)
                         }
                         TimeSeriesAggregator::MinMax => {
-                            MinMaxAggregator::MinMax.aggregate(aggrgation_duration, &points)
+                            MinMaxAggregator::MinMax.aggregate(aggregation_duration, &points)
                         }
                         TimeSeriesAggregator::MinMaxAverage => {
-                            MinMaxAggregator::MinMaxAverage.aggregate(aggrgation_duration, &points)
+                            MinMaxAggregator::MinMaxAverage.aggregate(aggregation_duration, &points)
                         }
                     }
                 } else {
@@ -362,7 +358,7 @@ impl TimeSeriesSystem {
                 re_log::trace!(
                     id = %query.space_view_id,
                     ?aggregator,
-                    aggrgation_duration,
+                    aggregation_duration,
                     num_points_before,
                     num_points_after,
                     actual_aggregation_factor,
