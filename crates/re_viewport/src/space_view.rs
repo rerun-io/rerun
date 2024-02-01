@@ -61,7 +61,7 @@ impl AsRef<str> for SpaceViewName {
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new space view otherwise identical to an existing one, use
-/// [`SpaceViewBlueprint::duplicate`].
+/// [`crate::ViewportBlueprint::duplicate_space_view`].
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: Option<String>,
@@ -253,10 +253,13 @@ impl SpaceViewBlueprint {
             ));
     }
 
-    /// Creates a new [`SpaceViewBlueprint`] with a the same contents, but a different [`SpaceViewId`]
+    /// Creates a new [`SpaceViewBlueprint`] with the same contents, but a different [`SpaceViewId`]
     ///
-    /// Also duplicates all of the queries in the space view.
-    pub fn duplicate(&self) -> Self {
+    /// Also duplicates all the queries in the space view.
+    ///
+    /// Note that this function is a very partial implementation of proper space view cloning. See
+    /// [`crate::ViewportBlueprint::duplicate_space_view`].
+    pub(crate) fn duplicate(&self) -> Self {
         Self {
             id: SpaceViewId::random(),
             display_name: self.display_name.clone(),

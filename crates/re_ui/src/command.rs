@@ -66,7 +66,9 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     ScreenshotWholeApp,
     #[cfg(not(target_arch = "wasm32"))]
-    PrintDatastore,
+    PrintDataStore,
+    #[cfg(not(target_arch = "wasm32"))]
+    PrintBlueprintStore,
     #[cfg(not(target_arch = "wasm32"))]
     ClearPrimaryCache,
     #[cfg(not(target_arch = "wasm32"))]
@@ -74,6 +76,12 @@ pub enum UICommand {
 
     #[cfg(target_arch = "wasm32")]
     CopyDirectLink,
+
+    // Graphics options:
+    #[cfg(target_arch = "wasm32")]
+    RestartWithWebGl,
+    #[cfg(target_arch = "wasm32")]
+    RestartWithWebGpu,
 }
 
 impl UICommand {
@@ -181,9 +189,14 @@ impl UICommand {
                 "Copy screenshot of the whole app to clipboard",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintDatastore => (
+            Self::PrintDataStore => (
                 "Print datastore",
                 "Prints the entire data store to the console and clipboard. WARNING: this may be A LOT of text.",
+            ),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintBlueprintStore => (
+                "Print blueprint store",
+                "Prints the entire blueprint store to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
             #[cfg(not(target_arch = "wasm32"))]
             Self::ClearPrimaryCache => (
@@ -201,7 +214,18 @@ impl UICommand {
             Self::CopyDirectLink => (
                 "Copy direct link",
                 "Copy a link to the viewer with the URL parameter set to the current .rrd data source."
-            )
+            ),
+
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGl => (
+                "Restart with WebGL",
+                "Reloads the webpage and force WebGL for rendering. All data will be lost."
+            ),
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGpu => (
+                "Restart with WebGPU",
+                "Reloads the webpage and force WebGPU for rendering. All data will be lost."
+            ),
         }
     }
 
@@ -277,7 +301,9 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => None,
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintDatastore => None,
+            Self::PrintDataStore => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintBlueprintStore => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::ClearPrimaryCache => None,
             #[cfg(not(target_arch = "wasm32"))]
@@ -285,6 +311,11 @@ impl UICommand {
 
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => None,
+
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGl => None,
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGpu => None,
         }
     }
 

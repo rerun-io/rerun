@@ -121,8 +121,10 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             .selection_grid(ui, "time_series_selection_ui_aggregation")
             .show(ui, |ui| {
                 ctx.re_ui
-                    .grid_left_hand_label(ui, "Aggregation")
-                    .on_hover_text("Configures the aggregation behavior of the plot when the zoom-level on the X axis goes below 1.0, i.e. a single pixel covers more than one tick worth of data.\nThis can greatly improve performance (and readability) in such situations as it prevents overdraw.");
+                    .grid_left_hand_label(ui, "Zoom Aggregation")
+                    .on_hover_text("Configures the zoom-dependent scalar aggregation.\n
+This is done only if steps on the X axis go below 1.0, i.e. a single pixel covers more than one tick worth of data.\n
+It can greatly improve performance (and readability) in such situations as it prevents overdraw.");
 
                 let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
 
@@ -322,21 +324,18 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
                     (value.x as i64 + time_offset).into(),
-                    time_zone_for_timestamps
+                    time_zone_for_timestamps,
                 );
 
                 let is_integer = value.y.round() == value.y;
                 let decimals = if is_integer { 0 } else { 5 };
-
-                let agg_range_is_integer = aggregation_factor.round() == aggregation_factor;
-                let agg_range_decimals = if agg_range_is_integer { 0 } else { 5 };
 
                 if aggregator == TimeSeriesAggregator::Off || aggregation_factor <= 1.0 {
                     format!("{timeline_name}: {label}\n{name}: {:.decimals$}", value.y)
                 } else {
                     format!(
                         "{timeline_name}: {label}\n{name}: {:.decimals$}\n\
-                         Y value aggregated using {aggregator} over {aggregation_factor:.agg_range_decimals$} X increments",
+                        {aggregator} aggregation over approx. {aggregation_factor:.1} time points",
                         value.y,
                     )
                 }

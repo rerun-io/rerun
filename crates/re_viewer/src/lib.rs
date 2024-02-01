@@ -55,6 +55,9 @@ pub use native::{run_native_app, run_native_viewer_with_messages};
 #[cfg(target_arch = "wasm32")]
 mod web;
 
+#[cfg(target_arch = "wasm32")]
+mod web_tools;
+
 // ---------------------------------------------------------------------------
 
 /// Information about this version of the crate.
@@ -129,8 +132,29 @@ impl AppEnvironment {
 
 // ---------------------------------------------------------------------------
 
-pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
+fn supported_graphics_backends(force_wgpu_backend: Option<String>) -> wgpu::Backends {
+    if let Some(force_wgpu_backend) = force_wgpu_backend {
+        if let Some(backend) = re_renderer::config::parse_graphics_backend(&force_wgpu_backend) {
+            if let Err(err) = re_renderer::config::validate_graphics_backend_applicability(backend)
+            {
+                re_log::error!("Failed to force rendering backend parsed from {force_wgpu_backend:?}: {err}\nUsing default backend instead.");
+                re_renderer::config::supported_backends()
+            } else {
+                re_log::info!("Forcing graphics backend to {backend:?}.");
+                backend.into()
+            }
+        } else {
+            re_log::error!("Failed to parse rendering backend string {force_wgpu_backend:?}. Using default backend instead.");
+            re_renderer::config::supported_backends()
+        }
+    } else {
+        re_renderer::config::supported_backends()
+    }
+}
+
+pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::WgpuConfiguration {
     re_tracing::profile_function!();
+
     egui_wgpu::WgpuConfiguration {
             // When running wgpu on native debug builds, we want some extra control over how
             // and when a poisoned surface gets recreated.
@@ -150,7 +174,7 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
                     egui_wgpu::SurfaceErrorAction::SkipFrame
                 }
             }),
-            supported_backends: re_renderer::config::supported_backends(),
+            supported_backends: supported_graphics_backends(force_wgpu_backend),
             device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter(adapter).device_descriptor()),
             ..Default::default()
         }

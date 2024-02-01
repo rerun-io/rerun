@@ -31,17 +31,19 @@ impl WebHandle {
 
     /// - `url` is an optional URL to either an .rrd file over http, or a Rerun WebSocket server.
     /// - `manifest_url` is an optional URL to an `examples_manifest.json` file over http.
+    /// - `force_wgpu_backend` is an optional string to force a specific backend, either `webgl` or `webgpu`.
     #[wasm_bindgen]
     pub async fn start(
         &self,
         canvas_id: &str,
         url: Option<String>,
         manifest_url: Option<String>,
+        force_wgpu_backend: Option<String>,
     ) -> Result<(), wasm_bindgen::JsValue> {
         let web_options = eframe::WebOptions {
             follow_system_theme: false,
             default_theme: eframe::Theme::Dark,
-            wgpu_options: crate::wgpu_options(),
+            wgpu_options: crate::wgpu_options(force_wgpu_backend),
             depth_buffer: 0,
             ..Default::default()
         };
@@ -119,6 +121,7 @@ fn create_app(
         persist_state: get_persist_state(&cc.integration_info),
         is_in_notebook: is_in_notebook(&cc.integration_info),
         skip_welcome_screen: false,
+        force_wgpu_backend: None,
     };
     let re_ui = crate::customize_eframe(cc);
 

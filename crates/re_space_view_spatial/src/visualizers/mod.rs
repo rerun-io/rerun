@@ -28,7 +28,7 @@ pub use points3d::{LoadedPoints, Points3DComponentData};
 use ahash::HashMap;
 
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_types::components::{Color, InstanceKey, Text};
+use re_types::components::{Color, InstanceKey};
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
 use re_viewer_context::{
@@ -132,7 +132,6 @@ pub fn process_color_slice<'a>(
 ) -> Vec<egui::Color32> {
     // This can be rather slow for colors with transparency, since we need to pre-multiply the alpha.
     re_tracing::profile_function!();
-    use rayon::prelude::*;
 
     let default_color = DefaultColor::EntityPath(ent_path);
 
@@ -146,7 +145,7 @@ pub fn process_color_slice<'a>(
         (None, ResolvedAnnotationInfos::Many(annotation_infos)) => {
             re_tracing::profile_scope!("no-colors, many annotations");
             annotation_infos
-                .par_iter()
+                .iter()
                 .map(|annotation_info| annotation_info.color(None, default_color))
                 .collect()
         }
@@ -155,7 +154,7 @@ pub fn process_color_slice<'a>(
             re_tracing::profile_scope!("many-colors, same annotation");
             debug_assert_eq!(colors.len(), *count);
             colors
-                .par_iter()
+                .iter()
                 .map(|color| annotation_info.color(color.map(|c| c.to_array()), default_color))
                 .collect()
         }
@@ -163,8 +162,8 @@ pub fn process_color_slice<'a>(
         (Some(colors), ResolvedAnnotationInfos::Many(annotation_infos)) => {
             re_tracing::profile_scope!("many-colors, many annotations");
             colors
-                .par_iter()
-                .zip(annotation_infos.par_iter())
+                .iter()
+                .zip(annotation_infos.iter())
                 .map(move |(color, annotation_info)| {
                     annotation_info.color(color.map(|c| c.to_array()), default_color)
                 })
@@ -173,19 +172,22 @@ pub fn process_color_slice<'a>(
     }
 }
 
-/// Process [`Text`] components using annotations.
-#[allow(dead_code)]
-pub fn process_labels<'a, A: Archetype>(
-    arch_view: &'a re_query::ArchetypeView<A>,
-    annotation_infos: &'a ResolvedAnnotationInfos,
-) -> Result<impl Iterator<Item = Option<String>> + 'a, re_query::QueryError> {
+/// Process `Text` components using annotations.
+pub fn process_label_slice(
+    labels: Option<&[Option<re_types::components::Text>]>,
+    default_len: usize,
+    annotation_infos: &ResolvedAnnotationInfos,
+) -> Vec<Option<String>> {
     re_tracing::profile_function!();
 
-    Ok(itertools::izip!(
-        annotation_infos.iter(),
-        arch_view.iter_optional_component::<Text>()?,
-    )
-    .map(move |(annotation_info, text)| annotation_info.label(text.as_ref().map(|t| t.as_str()))))
+    match labels {
+        None => vec![None; default_len],
+        Some(labels) => itertools::izip!(annotation_infos.iter(), labels)
+            .map(move |(annotation_info, text)| {
+                annotation_info.label(text.as_ref().map(|t| t.as_str()))
+            })
+            .collect(),
+    }
 }
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
@@ -209,8 +211,6 @@ pub fn process_radius_slice(
     ent_path: &EntityPath,
 ) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
-    use rayon::prelude::*;
-
     let ent_path = ent_path.clone();
 
     match radii {
@@ -218,7 +218,7 @@ pub fn process_radius_slice(
             vec![re_renderer::Size::AUTO; default_len]
         }
         Some(radii) => radii
-            .par_iter()
+            .iter()
             .map(|radius| process_radius(&ent_path, radius))
             .collect(),
     }

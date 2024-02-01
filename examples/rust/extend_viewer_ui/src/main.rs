@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_app_id("rerun_extend_viewer_ui_example"),
-        ..re_viewer::native::eframe_options()
+        ..re_viewer::native::eframe_options(None)
     };
 
     let startup_options = re_viewer::StartupOptions::default();

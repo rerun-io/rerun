@@ -1,8 +1,9 @@
 use re_entity_db::EntityPath;
-use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes3D,
-    components::{HalfSizes3D, Position3D, Rotation3D},
+    components::{
+        ClassId, Color, HalfSizes3D, InstanceKey, KeypointId, Position3D, Radius, Rotation3D, Text,
+    },
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -17,9 +18,9 @@ use crate::{
 };
 
 use super::{
-    entity_iterator::process_archetype_views, filter_visualizable_3d_entities,
-    picking_id_from_instance_key, process_annotations, process_colors, process_labels,
-    process_radii, SpatialViewVisualizerData,
+    filter_visualizable_3d_entities, picking_id_from_instance_key,
+    process_annotation_and_keypoint_slices, process_color_slice, process_label_slice,
+    process_radius_slice, SpatialViewVisualizerData,
 };
 
 pub struct Boxes3DVisualizer(SpatialViewVisualizerData);
@@ -33,30 +34,44 @@ impl Default for Boxes3DVisualizer {
 }
 
 impl Boxes3DVisualizer {
-    fn process_arch_view(
+    fn process_data(
         &mut self,
         query: &ViewQuery<'_>,
-        arch_view: &ArchetypeView<Boxes3D>,
+        data: &Boxes3DComponentData<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError> {
-        let annotation_infos = process_annotations::<HalfSizes3D, Boxes3D>(
-            query,
-            arch_view,
+    ) {
+        let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+            query.latest_at,
+            data.instance_keys,
+            data.keypoint_ids,
+            data.class_ids,
+            data.half_sizes.iter().map(|_| glam::Vec3::ZERO),
             &ent_context.annotations,
-        )?;
+        );
 
-        let instance_keys = arch_view.iter_instance_keys();
-        let half_sizes = arch_view.iter_required_component::<HalfSizes3D>()?;
-        let positions = arch_view
-            .iter_optional_component::<Position3D>()?
-            .map(|position| position.unwrap_or(Position3D::ZERO));
-        let rotation = arch_view
-            .iter_optional_component::<Rotation3D>()?
-            .map(|position| position.unwrap_or(Rotation3D::IDENTITY));
-        let radii = process_radii(arch_view, ent_path)?;
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let labels = process_labels(arch_view, &annotation_infos)?;
+        let centers = || {
+            data.centers
+                .as_ref()
+                .map_or(
+                    itertools::Either::Left(std::iter::repeat(&None).take(data.half_sizes.len())),
+                    |data| itertools::Either::Right(data.iter()),
+                )
+                .map(|center| center.unwrap_or(Position3D::ZERO))
+        };
+        let rotations = || {
+            data.rotations
+                .as_ref()
+                .map_or(
+                    itertools::Either::Left(std::iter::repeat(&None).take(data.half_sizes.len())),
+                    |data| itertools::Either::Right(data.iter()),
+                )
+                .map(|center| center.clone().unwrap_or(Rotation3D::IDENTITY))
+        };
+
+        let radii = process_radius_slice(data.radii, data.half_sizes.len(), ent_path);
+        let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
+        let labels = process_label_slice(data.labels, data.half_sizes.len(), &annotation_infos);
 
         let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
@@ -68,31 +83,31 @@ impl Boxes3DVisualizer {
 
         let mut bounding_box = macaw::BoundingBox::nothing();
 
-        for (instance_key, half_extent, position, rotation, radius, color, label) in itertools::izip!(
-            instance_keys,
-            half_sizes,
-            positions,
-            rotation,
+        for (instance_key, half_size, center, rotation, radius, color, label) in itertools::izip!(
+            data.instance_keys,
+            data.half_sizes,
+            centers(),
+            rotations(),
             radii,
             colors,
-            labels
+            labels,
         ) {
-            let instance_hash = re_entity_db::InstancePathHash::instance(ent_path, instance_key);
+            let instance_hash = re_entity_db::InstancePathHash::instance(ent_path, *instance_key);
 
-            bounding_box.extend(half_extent.box_min(position));
-            bounding_box.extend(half_extent.box_max(position));
+            bounding_box.extend(half_size.box_min(center));
+            bounding_box.extend(half_size.box_max(center));
 
-            let position = position.into();
+            let center = center.into();
 
             let box3d = line_batch
                 .add_box_outline_from_transform(glam::Affine3A::from_scale_rotation_translation(
-                    glam::Vec3::from(half_extent) * 2.0,
+                    glam::Vec3::from(*half_size) * 2.0,
                     rotation.into(),
-                    position,
+                    center,
                 ))
                 .color(color)
                 .radius(radius)
-                .picking_instance_id(picking_id_from_instance_key(instance_key));
+                .picking_instance_id(picking_id_from_instance_key(*instance_key));
             if let Some(outline_mask_ids) = ent_context
                 .highlight
                 .instances
@@ -106,7 +121,7 @@ impl Boxes3DVisualizer {
                     text,
                     color,
                     target: UiLabelTarget::Position3D(
-                        ent_context.world_from_entity.transform_point3(position),
+                        ent_context.world_from_entity.transform_point3(center),
                     ),
                     labeled_instance: instance_hash,
                 });
@@ -115,9 +130,21 @@ impl Boxes3DVisualizer {
 
         self.0
             .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
-
-        Ok(())
     }
+}
+
+// ---
+
+struct Boxes3DComponentData<'a> {
+    pub instance_keys: &'a [InstanceKey],
+    pub half_sizes: &'a [HalfSizes3D],
+    pub centers: Option<&'a [Option<Position3D>]>,
+    pub rotations: Option<&'a [Option<Rotation3D>]>,
+    pub colors: Option<&'a [Option<Color>]>,
+    pub radii: Option<&'a [Option<Radius>]>,
+    pub labels: Option<&'a [Option<Text>]>,
+    pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
+    pub class_ids: Option<&'a [Option<ClassId>]>,
 }
 
 impl IdentifiedViewSystem for Boxes3DVisualizer {
@@ -146,13 +173,50 @@ impl VisualizerSystem for Boxes3DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Boxes3DVisualizer, Boxes3D, { Boxes3D::NUM_COMPONENTS }, _>(
+        super::entity_iterator::process_archetype_pov1_comp7::<
+            Boxes3DVisualizer,
+            Boxes3D,
+            HalfSizes3D,
+            Position3D,
+            Rotation3D,
+            Color,
+            Radius,
+            Text,
+            re_types::components::KeypointId,
+            re_types::components::ClassId,
+            _,
+        >(
             ctx,
             query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.box2d,
-            |_ctx, ent_path, _ent_props, arch_view, ent_context| {
-                self.process_arch_view(query, &arch_view, ent_path, ent_context)
+            view_ctx.get::<EntityDepthOffsets>()?.points,
+            |_ctx,
+             ent_path,
+             _ent_props,
+             ent_context,
+             (_time, _row_id),
+             instance_keys,
+             half_sizes,
+             centers,
+             rotations,
+             colors,
+             radii,
+             labels,
+             keypoint_ids,
+             class_ids| {
+                let data = Boxes3DComponentData {
+                    instance_keys,
+                    half_sizes,
+                    centers,
+                    rotations,
+                    colors,
+                    radii,
+                    labels,
+                    keypoint_ids,
+                    class_ids,
+                };
+                self.process_data(query, &data, ent_path, ent_context);
+                Ok(())
             },
         )?;
 

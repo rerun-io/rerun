@@ -84,13 +84,13 @@ def log_parabola() -> None:
 
 def log_trig() -> None:
     # Log a time series
-    for t in range(0, int(tau * 2 * 100.0)):
+    for t in range(0, int(tau * 2 * 1000.0)):
         rr.set_time_sequence("frame_nr", t)
 
-        sin_of_t = sin(float(t) / 100.0)
+        sin_of_t = sin(float(t) / 1000.0)
         rr.log("trig/sin", rr.TimeSeriesScalar(sin_of_t, label="sin(0.01t)", color=[255, 0, 0]))
 
-        cos_of_t = cos(float(t) / 100.0)
+        cos_of_t = cos(float(t) / 1000.0)
         rr.log("trig/cos", rr.TimeSeriesScalar(cos_of_t, label="cos(0.01t)", color=[0, 255, 0]))
 
 

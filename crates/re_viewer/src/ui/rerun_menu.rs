@@ -83,6 +83,7 @@ impl App {
                     &self.command_sender,
                     &self.re_ui,
                     ui,
+                    frame,
                     &mut self.state.app_options,
                 );
             });
@@ -236,7 +237,7 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 
         egui::Grid::new("adapter_info").show(ui, |ui| {
             ui.label("Backend");
-            ui.label(format!("{backend:?}"));
+            ui.label(backend.to_str()); // TODO(wgpu#5170): Use std::fmt::Display for backend.
             ui.end_row();
 
             ui.label("Device Type");
@@ -274,7 +275,8 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 
     let wgpu_adapter_ui = |ui: &mut egui::Ui, adapter: &eframe::wgpu::Adapter| {
         let info = &adapter.get_info();
-        ui.label(format!("{:?}", info.backend)).on_hover_ui(|ui| {
+        // TODO(wgpu#5170): Use std::fmt::Display for backend.
+        ui.label(info.backend.to_str()).on_hover_ui(|ui| {
             wgpu_adapter_details_ui(ui, adapter);
         });
     };
@@ -303,6 +305,7 @@ fn options_menu_ui(
     command_sender: &re_viewer_context::CommandSender,
     re_ui: &ReUi,
     ui: &mut egui::Ui,
+    frame: &eframe::Frame,
     app_options: &mut re_viewer_context::AppOptions,
 ) {
     re_ui
@@ -337,6 +340,23 @@ fn options_menu_ui(
         ui.add_space(SPACING);
         ui.label("Experimental features:");
         experimental_feature_ui(command_sender, re_ui, ui, app_options);
+    }
+
+    if let Some(_backend) = frame
+        .wgpu_render_state()
+        .map(|state| state.adapter.get_info().backend)
+    {
+        // Adapter switching only implemented for web so far.
+        // For native it's less well defined since the application may be embedded in another application that reads arguments differently.
+        #[cfg(target_arch = "wasm32")]
+        {
+            ui.add_space(SPACING);
+            if _backend == wgpu::Backend::BrowserWebGpu {
+                UICommand::RestartWithWebGl.menu_button_ui(ui, command_sender);
+            } else {
+                UICommand::RestartWithWebGpu.menu_button_ui(ui, command_sender);
+            }
+        }
     }
 }
 
@@ -392,7 +412,7 @@ fn experimental_feature_ui(
             &mut app_options.experimental_primary_caching_latest_at,
             "Primary caching: latest-at queries",
         )
-        .on_hover_text("Toggle primary caching for latest-at queries.\nApplies to the 2D/3D point cloud, text log and time series space views.");
+        .on_hover_text("Toggle primary caching for latest-at queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
 
     re_ui
         .checkbox(
@@ -400,7 +420,7 @@ fn experimental_feature_ui(
             &mut app_options.experimental_primary_caching_range,
             "Primary caching: range queries",
         )
-        .on_hover_text("Toggle primary caching for range queries.\nApplies to the 2D/3D point cloud, text log and time series space views.");
+        .on_hover_text("Toggle primary caching for range queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
 }
 
 #[cfg(debug_assertions)]

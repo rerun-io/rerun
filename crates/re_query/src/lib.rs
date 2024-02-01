@@ -7,7 +7,7 @@ mod util;
 
 pub use self::archetype_view::{ArchetypeView, ComponentWithInstances};
 pub use self::query::{get_component_with_instances, query_archetype};
-pub use self::range::range_archetype;
+pub use self::range::{range_archetype, range_component_set};
 pub use self::util::{
     query_archetype_with_history, ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary,
 };
