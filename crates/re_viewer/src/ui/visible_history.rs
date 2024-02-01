@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response, Ui};
 
 use re_entity_db::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
-use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
+use re_log_types::{EntityPath, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
@@ -137,8 +137,12 @@ pub fn visible_history_ui(
         };
 
         if visible_history_prop.enabled {
-            let current_low_boundary = visible_history.from(current_time.into()).as_i64();
-            let current_high_boundary = visible_history.to(current_time.into()).as_i64();
+            let current_low_boundary = visible_history
+                .range_start_from_cursor(current_time.into())
+                .as_i64();
+            let current_high_boundary = visible_history
+                .range_end_from_cursor(current_time.into())
+                .as_i64();
 
             interacting_with_controls |= ui
                 .horizontal(|ui| {
@@ -226,10 +230,8 @@ pub fn visible_history_ui(
                 (false, false) => resolved_visible_history_prop.nanos,
             };
 
-            ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(TimeRange::new(
-                visible_history.from(current_time),
-                visible_history.to(current_time),
-            ));
+            ctx.rec_cfg.time_ctrl.write().highlighted_range =
+                Some(visible_history.time_range(current_time));
         }
     }
 
@@ -252,17 +254,12 @@ fn current_range_ui(
         (TimeType::Time, "time")
     };
 
-    let from_formatted = time_type.format(
-        visible_history.from(current_time.into()),
-        ctx.app_options.time_zone_for_timestamps,
-    );
+    let time_range = visible_history.time_range(current_time.into());
+    let from_formatted = time_type.format(time_range.min, ctx.app_options.time_zone_for_timestamps);
 
     ui.label(format!(
         "Showing data between {quantity_name}s {from_formatted} and {} (included).",
-        time_type.format(
-            visible_history.to(current_time.into()),
-            ctx.app_options.time_zone_for_timestamps
-        )
+        time_type.format(time_range.max, ctx.app_options.time_zone_for_timestamps)
     ));
 }
 

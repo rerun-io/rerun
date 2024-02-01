@@ -1,7 +1,7 @@
 use paste::paste;
 use seq_macro::seq;
 
-use re_data_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange, Timeline};
+use re_data_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, Timeline};
 use re_log_types::{EntityPath, RowId};
 use re_query::{ExtraQueryHistory, VisibleHistory};
 use re_types_core::{components::InstanceKey, Archetype, Component};
@@ -308,9 +308,7 @@ macro_rules! impl_query_archetype_with_history {
                     format!("cached={cached_range} arch={} pov={} comp={}", A::name(), $N, $M)
                 );
 
-                let min_time = visible_history.from(*time);
-                let max_time = visible_history.to(*time);
-                let query = RangeQuery::new(*timeline, TimeRange::new(min_time, max_time));
+                let query = RangeQuery::new(*timeline, visible_history.time_range(*time));
                 self.[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
                     cached_range,
                     store,

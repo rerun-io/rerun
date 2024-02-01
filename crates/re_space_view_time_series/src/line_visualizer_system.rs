@@ -139,14 +139,10 @@ impl SeriesLineSystem {
                 }
             };
 
-            let (mut from, mut to) = if data_result.accumulated_properties().visible_history.enabled
-            {
-                (
-                    visible_history.from(query.latest_at),
-                    visible_history.to(query.latest_at),
-                )
+            let mut time_range = if data_result.accumulated_properties().visible_history.enabled {
+                visible_history.time_range(query.latest_at)
             } else {
-                (TimeInt::MIN, TimeInt::MAX)
+                TimeRange::new(TimeInt::MIN, TimeInt::MAX)
             };
 
             // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
@@ -155,9 +151,14 @@ impl SeriesLineSystem {
             // Just try it out and you'll see what I mean.
             if false {
                 if let Some(plot_bounds) = plot_bounds {
-                    from =
-                        TimeInt::max(from, (plot_bounds.range_x().start().floor() as i64).into());
-                    to = TimeInt::min(to, (plot_bounds.range_x().end().ceil() as i64).into());
+                    time_range.min = TimeInt::max(
+                        time_range.min,
+                        (plot_bounds.range_x().start().floor() as i64).into(),
+                    );
+                    time_range.max = TimeInt::min(
+                        time_range.max,
+                        (plot_bounds.range_x().end().ceil() as i64).into(),
+                    );
                 }
             }
 
@@ -180,8 +181,7 @@ impl SeriesLineSystem {
 
                 let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
 
-                let query =
-                    re_data_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
+                let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
                 query_caches
