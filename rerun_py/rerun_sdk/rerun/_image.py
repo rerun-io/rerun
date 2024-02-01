@@ -49,10 +49,8 @@ class ImageFormat:
     """
     Raw NV12 encoded image.
 
-    Parameters
-    ----------
-    size_hint:
-        A tuple of (height, width), specifying the RGB size of the image
+    The type comes with a `size_hint` attribute, a tuple of (height, width)
+    which has to be specified specifying in order to set the RGB size of the image.
     """
 
     YUY2: type[YUY2]
@@ -61,11 +59,8 @@ class ImageFormat:
 
     YUY2 is a YUV422 encoding with bytes ordered as `yuyv`.
 
-
-    Parameters
-    ----------
-    size_hint:
-        A tuple of (height, width), specifying the RGB size of the image
+    The type comes with a `size_hint` attribute, a tuple of (height, width)
+    which has to be specified specifying in order to set the RGB size of the image.
     """
 
     def __init__(self, name: str):
