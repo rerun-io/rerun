@@ -56,6 +56,9 @@ pub struct StartupOptions {
     pub resolution_in_points: Option<[f32; 2]>,
 
     pub skip_welcome_screen: bool,
+
+    /// Forces wgpu backend to use the specified graphics API.
+    pub force_wgpu_backend: Option<String>,
 }
 
 impl Default for StartupOptions {
@@ -75,6 +78,7 @@ impl Default for StartupOptions {
             resolution_in_points: None,
 
             skip_welcome_screen: false,
+            force_wgpu_backend: None,
         }
     }
 }
@@ -656,6 +660,20 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            UICommand::RestartWithWebGl => {
+                if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgl").is_err() {
+                    re_log::error!("Failed to set URL parameter `renderer=webgl` & refresh page.");
+                }
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            UICommand::RestartWithWebGpu => {
+                if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgpu").is_err() {
+                    re_log::error!("Failed to set URL parameter `renderer=webgpu` & refresh page.");
+                }
             }
         }
     }

@@ -356,15 +356,12 @@ It can greatly improve performance (and readability) in such situations as it pr
                 let is_integer = value.y.round() == value.y;
                 let decimals = if is_integer { 0 } else { 5 };
 
-                let agg_range_is_integer = aggregation_factor.round() == aggregation_factor;
-                let agg_range_decimals = if agg_range_is_integer { 0 } else { 4 };
-
                 if aggregator == TimeSeriesAggregator::Off || aggregation_factor <= 1.0 {
                     format!("{timeline_name}: {label}\n{name}: {:.decimals$}", value.y)
                 } else {
                     format!(
                         "{timeline_name}: {label}\n{name}: {:.decimals$}\n\
-                        {aggregator} over x-range {aggregation_factor:.agg_range_decimals$}",
+                        {aggregator} aggregation over approx. {aggregation_factor:.1} time points",
                         value.y,
                     )
                 }

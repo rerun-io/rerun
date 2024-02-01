@@ -83,5 +83,8 @@ pub struct PlotSeries {
     pub aggregator: TimeSeriesAggregator,
 
     /// `1.0` for raw data.
+    ///
+    /// How many raw data points were aggregated into a single step of the graph?
+    /// This is an average.
     pub aggregation_factor: f64,
 }

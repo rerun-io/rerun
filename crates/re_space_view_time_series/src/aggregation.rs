@@ -4,6 +4,7 @@ use crate::{PlotPoint, PlotPointAttrs};
 pub struct AverageAggregator;
 
 impl AverageAggregator {
+    /// `aggregation_factor`: the width of the aggregation window.
     #[inline]
     pub fn aggregate(aggregation_factor: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
@@ -93,18 +94,18 @@ pub enum MinMaxAggregator {
 
 impl MinMaxAggregator {
     #[inline]
-    pub fn aggregate(&self, aggregation_factor: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
+    pub fn aggregate(&self, aggregation_window_size: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
+        // NOTE: `round()` since this can only handle discrete window sizes.
+        let window_size = usize::max(1, aggregation_window_size.round() as usize);
+
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
         let max_time = points.last().map_or(i64::MAX, |p| p.time);
 
-        let capacity = (points.len() as f64 / aggregation_factor) as usize;
+        let capacity = (points.len() as f64 / window_size as f64) as usize;
         let mut aggregated = match self {
             MinMaxAggregator::MinMax => Vec::with_capacity(capacity * 2),
             _ => Vec::with_capacity(capacity),
         };
-
-        // NOTE: `round()` since this can only handle discrete window sizes.
-        let window_size = usize::max(1, aggregation_factor.round() as usize);
 
         let mut i = 0;
         while i < points.len() {

@@ -7,7 +7,7 @@ use crate::{
 };
 
 /// Find the plot bounds and the per-ui-point delta from egui.
-pub fn determine_plot_bounds_and_delta(
+pub fn determine_plot_bounds_and_time_per_pixel(
     ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
 ) -> (Option<egui_plot::PlotBounds>, f64) {
@@ -15,12 +15,15 @@ pub fn determine_plot_bounds_and_delta(
 
     let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.space_view_id));
     let plot_bounds = plot_mem.as_ref().map(|mem| *mem.bounds());
-    // What's the delta in value of X across two adjacent UI points?
-    // I.e. think of GLSL's `dpdx()`.
-    let plot_value_delta = plot_mem.as_ref().map_or(1.0, |mem| {
-        1.0 / mem.transform().dpos_dvalue_x().max(f64::EPSILON)
-    });
-    (plot_bounds, plot_value_delta)
+
+    // How many ui points per time unit?
+    let points_per_time = plot_mem
+        .as_ref()
+        .map_or(1.0, |mem| mem.transform().dpos_dvalue_x());
+    let pixels_per_time = egui_ctx.pixels_per_point() as f64 * points_per_time;
+    // How many time units per physical pixel?
+    let time_per_pixel = 1.0 / pixels_per_time.max(f64::EPSILON);
+    (plot_bounds, time_per_pixel)
 }
 
 pub fn determine_time_range(
@@ -68,7 +71,7 @@ pub fn determine_time_range(
 // we notice a change in attributes, we need a new series.
 pub fn points_to_series(
     data_result: &re_viewer_context::DataResult,
-    plot_value_delta: f64,
+    time_per_pixel: f64,
     points: Vec<PlotPoint>,
     store: &re_data_store::DataStore,
     query: &ViewQuery<'_>,
@@ -83,10 +86,11 @@ pub fn points_to_series(
         .accumulated_properties()
         .time_series_aggregator
         .get();
-    let (aggregation_factor, points) = apply_aggregation(aggregator, plot_value_delta, points);
+    let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
     let min_time = store
         .entity_min_time(&query.timeline, &data_result.entity_path)
         .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
+
     let same_label = |points: &[PlotPoint]| -> Option<String> {
         let label = points[0].attrs.label.as_ref()?;
         (points.iter().all(|p| p.attrs.label.as_ref() == Some(label))).then(|| label.clone())
@@ -126,38 +130,58 @@ pub fn points_to_series(
 /// Apply the given aggregation to the provided points.
 pub fn apply_aggregation(
     aggregator: TimeSeriesAggregator,
-    plot_value_delta: f64,
+    time_per_pixel: f64,
     points: Vec<PlotPoint>,
+    query: &ViewQuery<'_>,
 ) -> (f64, Vec<PlotPoint>) {
-    let aggregation_factor = plot_value_delta;
+    // Aggregate over this many time units.
+    //
+    // MinMax does zig-zag between min and max, which causes a very jagged look.
+    // It can be mitigated by lowering the aggregation duration, but that causes
+    // a lot more work for the tessellator and renderer.
+    // TODO(#4969): output a thicker line instead of zig-zagging.
+    let aggregation_duration = time_per_pixel; // aggregate all points covering one physical pixel
+
+    // So it can be displayed in the UI by the SpaceViewClass.
     let num_points_before = points.len() as f64;
-    let points = if aggregation_factor > 2.0 {
+
+    let points = if aggregation_duration > 2.0 {
         re_tracing::profile_scope!("aggregate", aggregator.to_string());
 
         #[allow(clippy::match_same_arms)] // readability
         match aggregator {
             TimeSeriesAggregator::Off => points,
             TimeSeriesAggregator::Average => {
-                AverageAggregator::aggregate(aggregation_factor, &points)
+                AverageAggregator::aggregate(aggregation_duration, &points)
             }
             TimeSeriesAggregator::Min => {
-                MinMaxAggregator::Min.aggregate(aggregation_factor, &points)
+                MinMaxAggregator::Min.aggregate(aggregation_duration, &points)
             }
             TimeSeriesAggregator::Max => {
-                MinMaxAggregator::Max.aggregate(aggregation_factor, &points)
+                MinMaxAggregator::Max.aggregate(aggregation_duration, &points)
             }
             TimeSeriesAggregator::MinMax => {
-                MinMaxAggregator::MinMax.aggregate(aggregation_factor, &points)
+                MinMaxAggregator::MinMax.aggregate(aggregation_duration, &points)
             }
             TimeSeriesAggregator::MinMaxAverage => {
-                MinMaxAggregator::MinMaxAverage.aggregate(aggregation_factor, &points)
+                MinMaxAggregator::MinMaxAverage.aggregate(aggregation_duration, &points)
             }
         }
     } else {
         points
     };
+
     let num_points_after = points.len() as f64;
     let actual_aggregation_factor = num_points_before / num_points_after;
+
+    re_log::trace!(
+        id = %query.space_view_id,
+        ?aggregator,
+        aggregation_duration,
+        num_points_before,
+        num_points_after,
+        actual_aggregation_factor,
+    );
 
     (actual_aggregation_factor, points)
 }

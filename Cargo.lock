@@ -1559,7 +1559,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=ca513ce241c6511275e92b05b2953c38fa6086e1#ca513ce241c6511275e92b05b2953c38fa6086e1"
+source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1568,7 +1568,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=ca513ce241c6511275e92b05b2953c38fa6086e1#ca513ce241c6511275e92b05b2953c38fa6086e1"
+source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1602,7 +1602,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=ca513ce241c6511275e92b05b2953c38fa6086e1#ca513ce241c6511275e92b05b2953c38fa6086e1"
+source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
 dependencies = [
  "accesskit",
  "ahash",
@@ -1618,7 +1618,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=ca513ce241c6511275e92b05b2953c38fa6086e1#ca513ce241c6511275e92b05b2953c38fa6086e1"
+source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1635,7 +1635,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=ca513ce241c6511275e92b05b2953c38fa6086e1#ca513ce241c6511275e92b05b2953c38fa6086e1"
+source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -1664,7 +1664,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=ca513ce241c6511275e92b05b2953c38fa6086e1#ca513ce241c6511275e92b05b2953c38fa6086e1"
+source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
 dependencies = [
  "egui",
  "ehttp",
@@ -1679,7 +1679,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=ca513ce241c6511275e92b05b2953c38fa6086e1#ca513ce241c6511275e92b05b2953c38fa6086e1"
+source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1691,12 +1691,13 @@ dependencies = [
  "raw-window-handle 0.5.2",
  "wasm-bindgen",
  "web-sys",
+ "winit",
 ]
 
 [[package]]
 name = "egui_plot"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=ca513ce241c6511275e92b05b2953c38fa6086e1#ca513ce241c6511275e92b05b2953c38fa6086e1"
+source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
 dependencies = [
  "egui",
 ]
@@ -1738,7 +1739,7 @@ checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 [[package]]
 name = "emath"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=ca513ce241c6511275e92b05b2953c38fa6086e1#ca513ce241c6511275e92b05b2953c38fa6086e1"
+source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1839,7 +1840,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=ca513ce241c6511275e92b05b2953c38fa6086e1#ca513ce241c6511275e92b05b2953c38fa6086e1"
+source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -1849,6 +1850,8 @@ dependencies = [
  "log",
  "nohash-hasher",
  "parking_lot",
+ "puffin",
+ "rayon",
  "serde",
 ]
 
@@ -3235,6 +3238,7 @@ dependencies = [
  "log",
  "ndk-sys",
  "num_enum",
+ "raw-window-handle 0.5.2",
  "raw-window-handle 0.6.0",
  "thiserror",
 ]
@@ -5038,7 +5042,9 @@ dependencies = [
  "serde_json",
  "thiserror",
  "time",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
  "web-time",
  "wgpu",
 ]
@@ -7425,6 +7431,7 @@ dependencies = [
  "once_cell",
  "orbclient",
  "percent-encoding",
+ "raw-window-handle 0.5.2",
  "raw-window-handle 0.6.0",
  "redox_syscall 0.3.5",
  "rustix 0.38.24",

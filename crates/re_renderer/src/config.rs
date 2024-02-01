@@ -230,3 +230,72 @@ pub fn supported_backends() -> wgpu::Backends {
         wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
     }
 }
+
+/// Generous parsing of a graphics backend string.
+pub fn parse_graphics_backend(backend: &str) -> Option<wgpu::Backend> {
+    match backend.to_lowercase().as_str() {
+        // "vulcan" is a common typo that we just swallow. We know what you mean ;)
+        "vulcan" | "vulkan" | "vk" => Some(wgpu::Backend::Vulkan),
+
+        "metal" | "apple" | "mtl" => Some(wgpu::Backend::Metal),
+
+        "dx12" | "dx" | "d3d" | "d3d12" | "directx" => Some(wgpu::Backend::Dx12),
+
+        // We don't want to lie - e.g. `webgl1` should not work!
+        // This means that `gles`/`gles3` stretches it a bit, but it's still close enough.
+        // Similarly, we accept both `webgl` & `opengl` on each desktop & web.
+        // This is a bit dubious but also too much hassle to forbid.
+        "webgl2" | "webgl" | "opengl" | "gles" | "gles3" | "gl" => Some(wgpu::Backend::Gl),
+
+        "browserwebgpu" | "webgpu" => Some(wgpu::Backend::BrowserWebGpu),
+
+        _ => None,
+    }
+}
+
+/// Validates that the given backend is applicable for the current build.
+///
+/// This is meant as a sanity check of first resort.
+/// There are still many other reasons why a backend may not work on a given platform/build combination.
+pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result<(), &'static str> {
+    match backend {
+        wgpu::Backend::Empty => {
+            // This should never happen.
+            return Err("Cannot run with empty backend.");
+        }
+        wgpu::Backend::Vulkan => {
+            // Through emulation and build configs Vulkan may work everywhere except the web.
+            if cfg!(target_arch = "wasm32") {
+                return Err("Can only run with WebGL or WebGPU on the web.");
+            }
+        }
+        wgpu::Backend::Metal => {
+            if cfg!(target_arch = "wasm32") {
+                return Err("Can only run with WebGL or WebGPU on the web.");
+            }
+            if cfg!(target_os = "linux") || cfg!(target_os = "windows") {
+                return Err("Cannot run with DX12 backend on Linux & Windows.");
+            }
+        }
+        wgpu::Backend::Dx12 => {
+            // We don't have DX12 enabled right now, but someone could.
+            // TODO(wgpu#5166): But if we get this wrong we might crash.
+            // TODO(wgpu#5167): And we also can't query the config.
+            return Err("DX12 backend is currently not supported.");
+        }
+        wgpu::Backend::Gl => {
+            // Using Angle Mac might actually run GL, but we don't enable this.
+            // TODO(wgpu#5166): But if we get this wrong we might crash.
+            // TODO(wgpu#5167): And we also can't query the config.
+            if cfg!(target_os = "macos") {
+                return Err("Cannot run with GL backend on Mac.");
+            }
+        }
+        wgpu::Backend::BrowserWebGpu => {
+            if !cfg!(target_arch = "wasm32") {
+                return Err("Cannot run with WebGPU backend on native application.");
+            }
+        }
+    }
+    Ok(())
+}

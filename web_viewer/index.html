@@ -218,6 +218,20 @@
         load_wasm();
       }
 
+      var urlWebGl = new URL(window.location);
+      urlWebGl.searchParams.set("renderer", "webgl");
+
+      var urlWebGpu = new URL(window.location);
+      urlWebGpu.searchParams.set("renderer", "webgpu");
+
+      const forceWgpuBackendInfoParagraph = `
+        <p>
+            For graphics related issues, try forcing to render with WebGL<br>
+            <a href="${urlWebGl}">${urlWebGl}</a><br>
+            or with WebGPU<br>
+            <a href="${urlWebGpu}">${urlWebGpu}</a>
+        </p>`;
+
       function load_wasm() {
         // We'll defer our execution until the wasm is ready to go.
         // Here we tell bindgen the path to the wasm file so it can start
@@ -325,8 +339,10 @@
                   See the console for details.
               </p>
               <p>
-                  Reload the page to try again.
+                  Reload the page to try again.<br>
+                  Please consider filing a <a href=https://github.com/rerun-io/rerun/issues/new/>bug report<a>. Thank you!
               </p>
+              ${forceWgpuBackendInfoParagraph}
             `);
           } else {
             let delay_ms = 1000;
@@ -336,7 +352,13 @@
 
         check_for_panic();
 
-        handle.start("the_canvas_id").then(on_app_started).catch(on_wasm_error);
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceWgpuBackend = urlParams.get("renderer");
+
+        handle
+          .start("the_canvas_id", null, null, forceWgpuBackend)
+          .then(on_app_started)
+          .catch(on_wasm_error);
       }
 
       function on_app_started(handle) {
@@ -363,9 +385,11 @@
           <p style="font-family:Courier New">
               ${error}
           </p>
-          <p style="font-size:14px">
-                  Make sure you use a modern browser with either WebGL or WebGPU support enabled.
+          <p>
+              Reload the page to try again.<br>
+              Please consider filing a <a href=https://github.com/rerun-io/rerun/issues/new/>bug report<a>. Thank you!
           </p>
+          ${forceWgpuBackendInfoParagraph}
         `);
       }
     </script>

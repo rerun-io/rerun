@@ -11,7 +11,7 @@ use re_viewer_context::{
 
 use crate::{
     overrides::{initial_override_color, lookup_override},
-    util::{determine_plot_bounds_and_delta, determine_time_range, points_to_series},
+    util::{determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series},
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind,
 };
 
@@ -86,7 +86,7 @@ impl LegacyTimeSeriesSystem {
         let query_caches = ctx.entity_db.query_caches();
         let store = ctx.entity_db.store();
 
-        let (plot_bounds, plot_value_delta) = determine_plot_bounds_and_delta(ctx, query);
+        let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
@@ -195,7 +195,7 @@ impl LegacyTimeSeriesSystem {
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             points_to_series(
                 data_result,
-                plot_value_delta,
+                time_per_pixel,
                 points,
                 store,
                 query,

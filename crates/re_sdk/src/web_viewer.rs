@@ -79,6 +79,7 @@ impl WebViewerSink {
 pub async fn host_web_viewer(
     bind_ip: String,
     web_port: WebViewerServerPort,
+    force_wgpu_backend: Option<String>,
     open_browser: bool,
     source_url: String,
 ) -> anyhow::Result<()> {
@@ -86,7 +87,10 @@ pub async fn host_web_viewer(
     let http_web_viewer_url = web_server.server_url();
     let web_server_handle = web_server.serve();
 
-    let viewer_url = format!("{http_web_viewer_url}?url={source_url}");
+    let mut viewer_url = format!("{http_web_viewer_url}?url={source_url}");
+    if let Some(force_graphics) = force_wgpu_backend {
+        viewer_url = format!("{viewer_url}&renderer={force_graphics}");
+    }
 
     re_log::info!("Hosting a web-viewer at {viewer_url}");
     if open_browser {
