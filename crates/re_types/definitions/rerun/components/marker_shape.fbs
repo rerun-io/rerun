@@ -1,0 +1,33 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// TODO(#3384)
+/*
+enum MarkerShape: byte {
+    Circle = 1,
+    Diamond = 2,
+    Square = 3,
+    Cross = 4,
+    Plus = 5,
+    Up = 6,
+    Down = 7,
+    Left = 8,
+    Right = 9,
+    Asterisk = 10,
+}
+*/
+
+/// Shape of a marker.
+struct MarkerShape (
+    "attr.docs.unreleased",
+    "attr.rust.derive": "PartialEq, Eq, PartialOrd, Copy",
+    "attr.rust.repr": "transparent"
+) {
+    shape: ubyte (order: 100);
+}
