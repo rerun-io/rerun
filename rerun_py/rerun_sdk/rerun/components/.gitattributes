@@ -16,6 +16,7 @@ instance_key.py linguist-generated=true
 keypoint_id.py linguist-generated=true
 line_strip2d.py linguist-generated=true
 line_strip3d.py linguist-generated=true
+marker_shape.py linguist-generated=true
 material.py linguist-generated=true
 media_type.py linguist-generated=true
 mesh_properties.py linguist-generated=true

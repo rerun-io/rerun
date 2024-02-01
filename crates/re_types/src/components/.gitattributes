@@ -13,6 +13,7 @@ half_sizes3d.rs linguist-generated=true
 keypoint_id.rs linguist-generated=true
 line_strip2d.rs linguist-generated=true
 line_strip3d.rs linguist-generated=true
+marker_shape.rs linguist-generated=true
 material.rs linguist-generated=true
 media_type.rs linguist-generated=true
 mesh_properties.rs linguist-generated=true
