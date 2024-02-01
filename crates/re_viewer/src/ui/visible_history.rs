@@ -137,8 +137,12 @@ pub fn visible_history_ui(
         };
 
         if visible_history_prop.enabled {
-            let current_low_boundary = visible_history.range_start_from_cursor(current_time.into()).as_i64();
-            let current_high_boundary = visible_history.range_end_from_cursor(current_time.into()).as_i64();
+            let current_low_boundary = visible_history
+                .range_start_from_cursor(current_time.into())
+                .as_i64();
+            let current_high_boundary = visible_history
+                .range_end_from_cursor(current_time.into())
+                .as_i64();
 
             interacting_with_controls |= ui
                 .horizontal(|ui| {
