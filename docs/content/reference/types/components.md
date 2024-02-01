@@ -40,3 +40,4 @@ Archetypes are bundles of components
 * [`Vector2D`](components/vector2d.md)
 * [`Vector3D`](components/vector3d.md)
 * [`ViewCoordinates`](components/view_coordinates.md)
+* [`VisualizerOverrides`](components/visualizer_overrides.md)

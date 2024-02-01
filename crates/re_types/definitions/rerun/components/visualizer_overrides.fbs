@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// The name of a visualizer.
+table VisualizerOverrides (
+    "attr.docs.unreleased",
+    "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.repr": "transparent",
+    "attr.rust.override_crate": "re_types_core"
+) {
+    // TODO(jleibs): Can we do this with numeric type-ids instead?
+    value: [string] (order: 100);
+}

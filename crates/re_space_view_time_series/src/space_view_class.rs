@@ -10,12 +10,15 @@ use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, IndicatedEntities, RecommendedSpaceView, SpaceViewClass,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-use crate::visualizer_system::{PlotSeriesKind, TimeSeriesSystem};
+use crate::line_visualizer_system::SeriesLineSystem;
+use crate::point_visualizer_system::SeriesPointSystem;
+use crate::visualizer_system::LegacyTimeSeriesSystem;
+use crate::PlotSeriesKind;
 
 // ---
 
@@ -89,7 +92,10 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<TimeSeriesSystem>()
+        system_registry.register_visualizer::<LegacyTimeSeriesSystem>()?;
+        system_registry.register_visualizer::<SeriesLineSystem>()?;
+        system_registry.register_visualizer::<SeriesPointSystem>()?;
+        Ok(())
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
@@ -208,12 +214,22 @@ It can greatly improve performance (and readability) in such situations as it pr
         re_tracing::profile_function!();
 
         // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
-        let Some(indicated_entities) = ctx
-            .indicated_entities_per_visualizer
-            .get(&TimeSeriesSystem::identifier())
-        else {
+        let mut indicated_entities = IndicatedEntities::default();
+
+        for indicated in [
+            LegacyTimeSeriesSystem::identifier(),
+            SeriesLineSystem::identifier(),
+            SeriesPointSystem::identifier(),
+        ]
+        .iter()
+        .filter_map(|&system_id| ctx.indicated_entities_per_visualizer.get(&system_id))
+        {
+            indicated_entities.0.extend(indicated.0.iter().cloned());
+        }
+
+        if indicated_entities.0.is_empty() {
             return SpaceViewSpawnHeuristics::default();
-        };
+        }
 
         // Spawn time series data at the root if there's time series data either
         // directly at the root or one of its children.
@@ -286,13 +302,33 @@ It can greatly improve performance (and readability) in such situations as it pr
 
         let timeline_name = timeline.name().to_string();
 
-        let time_series = system_output.view_systems.get::<TimeSeriesSystem>()?;
+        let legacy_time_series = system_output.view_systems.get::<LegacyTimeSeriesSystem>()?;
+        let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
+        let point_series = system_output.view_systems.get::<SeriesPointSystem>()?;
 
-        let aggregator = time_series.aggregator;
-        let aggregation_factor = time_series.aggregation_factor;
+        let all_plot_series: Vec<_> = legacy_time_series
+            .all_series
+            .iter()
+            .chain(line_series.all_series.iter())
+            .chain(point_series.all_series.iter())
+            .collect();
 
         // Get the minimum time/X value for the entire plot…
-        let min_time = time_series.min_time.unwrap_or(0);
+        let min_time = all_plot_series
+            .iter()
+            .map(|line| line.min_time)
+            .min()
+            .unwrap_or(0);
+
+        // TODO(jleibs): If this is allowed to be different, need to track it per line.
+        let aggregation_factor = all_plot_series
+            .first()
+            .map_or(1.0, |line| line.aggregation_factor);
+
+        let aggregator = all_plot_series
+            .first()
+            .map(|line| line.aggregator)
+            .unwrap_or_default();
 
         // …then use that as an offset to avoid nasty precision issues with
         // large times (nanos since epoch does not fit into a f64).
@@ -370,7 +406,7 @@ It can greatly improve performance (and readability) in such situations as it pr
                 time_ctrl_write.pause();
             }
 
-            for line in &time_series.lines {
+            for line in all_plot_series {
                 let points = line
                     .points
                     .iter()

@@ -1,0 +1,21 @@
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+// ---
+
+/// Define the style properties for a line series in a chart.
+table SeriesLine (
+    "attr.docs.unreleased"
+) {
+    // --- Required ---
+
+    // --- Optional ---
+
+    /// Color for the corresponding series.
+    // TODO(jleibs): This should be batch if we make a batch Scalars loggable.
+    color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 1000);
+}

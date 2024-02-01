@@ -35,3 +35,4 @@ transform3d.py linguist-generated=true
 vector2d.py linguist-generated=true
 vector3d.py linguist-generated=true
 view_coordinates.py linguist-generated=true
+visualizer_overrides.py linguist-generated=true

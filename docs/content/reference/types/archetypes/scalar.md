@@ -1,27 +1,27 @@
 ---
-title: "TimeSeriesScalar"
+title: "Scalar"
 ---
 
-Log a double-precision scalar that will be visualized as a time-series plot.
+Log a double-precision scalar.
 
-The current simulation time will be used for the time/X-axis, hence scalars
-cannot be timeless!
+The current timeline value will be used for the time/X-axis, hence scalars
+cannot be timeless.
 
-This archetype is in the process of being deprecated. Prefer usage of
-`Scalar`, `SeriesLine`, and `SeriesPoint` instead.
+When used to produce a plot, this archetype is used to provide the data that
+is referenced by the `SeriesLine` or `SeriesPoint` archetypes. You can do
+this by logging both archetypes to the same path, or alternatively configuring
+the plot-specific archetypes through the blueprint.
 
 ## Components
 
 **Required**: [`Scalar`](../components/scalar.md)
 
-**Recommended**: [`Radius`](../components/radius.md), [`Color`](../components/color.md)
-
-**Optional**: [`Text`](../components/text.md), [`ScalarScattering`](../components/scalar_scattering.md)
+**Optional**: [`Text`](../components/text.md)
 
 ## Links
- * 🌊 [C++ API docs for `TimeSeriesScalar`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TimeSeriesScalar.html)
- * 🐍 [Python API docs for `TimeSeriesScalar`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TimeSeriesScalar)
- * 🦀 [Rust API docs for `TimeSeriesScalar`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TimeSeriesScalar.html)
+ * 🌊 [C++ API docs for `Scalar`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Scalar.html?speculative-link)
+ * 🐍 [Python API docs for `Scalar`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Scalar)
+ * 🦀 [Rust API docs for `Scalar`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Scalar.html?speculative-link)
 
 ## Examples
 

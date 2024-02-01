@@ -12,6 +12,13 @@ namespace rerun.archetypes;
 /// The current simulation time will be used for the time/X-axis, hence scalars
 /// cannot be timeless!
 ///
+/// This archetype is in the process of being deprecated. Prefer usage of
+/// `Scalar`, `SeriesLine`, and `SeriesPoint` instead.
+///
+/// \py See also [`Scalar`][rerun.archetypes.Scalar], [`SeriesPoint`][rerun.archetypes.SeriesPoint], [`SeriesLine`][rerun.archetypes.SeriesLine].
+/// \rs See also [`Scalar`][crate::archetypes.Scalar], [`SeriesPoint`][crate::archetypes::SeriesPoint], [`SeriesLine`][crate::archetypes::SeriesLine].
+/// \cpp See also `rerun::archetypes::Scalar`, `rerun::archetypes::SeriesPoint`, `rerun::archetypes::SeriesLine`.
+///
 /// \example scalar_simple title="Simple line plot" image="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1200w.png"
 /// \example scalar_multiple_plots !api title="Multiple time series plots" image="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/1200w.png"
 table TimeSeriesScalar (

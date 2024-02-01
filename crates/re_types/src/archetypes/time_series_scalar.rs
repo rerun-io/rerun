@@ -26,6 +26,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// The current simulation time will be used for the time/X-axis, hence scalars
 /// cannot be timeless!
 ///
+/// This archetype is in the process of being deprecated. Prefer usage of
+/// `Scalar`, `SeriesLine`, and `SeriesPoint` instead.
+///
+/// See also [`Scalar`][crate::archetypes.Scalar], [`SeriesPoint`][crate::archetypes::SeriesPoint], [`SeriesLine`][crate::archetypes::SeriesLine].
+///
 /// ## Example
 ///
 /// ### Simple line plot
