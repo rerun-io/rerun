@@ -28,7 +28,7 @@ pub use points3d::{LoadedPoints, Points3DComponentData};
 use ahash::HashMap;
 
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_types::components::{Color, InstanceKey, Text};
+use re_types::components::{Color, InstanceKey};
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
 use re_viewer_context::{
@@ -172,19 +172,22 @@ pub fn process_color_slice<'a>(
     }
 }
 
-/// Process [`Text`] components using annotations.
-#[allow(dead_code)]
-pub fn process_labels<'a, A: Archetype>(
-    arch_view: &'a re_query::ArchetypeView<A>,
-    annotation_infos: &'a ResolvedAnnotationInfos,
-) -> Result<impl Iterator<Item = Option<String>> + 'a, re_query::QueryError> {
+/// Process `Text` components using annotations.
+pub fn process_label_slice(
+    labels: Option<&[Option<re_types::components::Text>]>,
+    default_len: usize,
+    annotation_infos: &ResolvedAnnotationInfos,
+) -> Vec<Option<String>> {
     re_tracing::profile_function!();
 
-    Ok(itertools::izip!(
-        annotation_infos.iter(),
-        arch_view.iter_optional_component::<Text>()?,
-    )
-    .map(move |(annotation_info, text)| annotation_info.label(text.as_ref().map(|t| t.as_str()))))
+    match labels {
+        None => vec![None; default_len],
+        Some(labels) => itertools::izip!(annotation_infos.iter(), labels)
+            .map(move |(annotation_info, text)| {
+                annotation_info.label(text.as_ref().map(|t| t.as_str()))
+            })
+            .collect(),
+    }
 }
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
