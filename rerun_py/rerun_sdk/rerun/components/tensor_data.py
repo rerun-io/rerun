@@ -23,7 +23,7 @@ class TensorData(datatypes.TensorData):
     which stores a contiguous array of typed values.
 
     Note that the buffer may be encoded in a compressed format such as `jpeg` or
-    in a chroma downsampled.
+    in a format with downsampled chroma, such as NV12 or YUY2.
     For file formats, the shape is used as a hint, for chroma downsampled format
     the shape has to be the shape of the decoded image.
     """
