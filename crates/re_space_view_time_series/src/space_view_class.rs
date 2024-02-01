@@ -1,3 +1,4 @@
+use egui::accesskit::Point;
 use egui::ahash::{HashMap, HashSet};
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
@@ -10,9 +11,9 @@ use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, IndicatedEntities, RecommendedSpaceView, SpaceViewClass,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::line_visualizer_system::SeriesLineSystem;
@@ -214,12 +215,22 @@ It can greatly improve performance (and readability) in such situations as it pr
         re_tracing::profile_function!();
 
         // For all following lookups, checking indicators is enough, since we know that this is enough to infer visualizability here.
-        let Some(indicated_entities) = ctx
-            .indicated_entities_per_visualizer
-            .get(&LegacyTimeSeriesSystem::identifier())
-        else {
+        let mut indicated_entities = IndicatedEntities::default();
+
+        for indicated in [
+            LegacyTimeSeriesSystem::identifier(),
+            SeriesLineSystem::identifier(),
+            SeriesPointSystem::identifier(),
+        ]
+        .iter()
+        .filter_map(|&system_id| ctx.indicated_entities_per_visualizer.get(&system_id))
+        {
+            indicated_entities.0.extend(indicated.0.iter().cloned());
+        }
+
+        if indicated_entities.0.is_empty() {
             return SpaceViewSpawnHeuristics::default();
-        };
+        }
 
         // Spawn time series data at the root if there's time series data either
         // directly at the root or one of its children.
