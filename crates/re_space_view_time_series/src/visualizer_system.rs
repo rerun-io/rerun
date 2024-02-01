@@ -308,17 +308,26 @@ impl TimeSeriesSystem {
                 continue;
             }
 
-            // Aggregate over this many time units.
-            let aggrgation_duration = time_per_pixel; // aggregate all points covering one physical pixel
-
             let (actual_aggregation_factor, points) = {
-                let aggregator = data_result
+                let aggregator = *data_result
                     .accumulated_properties()
                     .time_series_aggregator
                     .get();
 
+                // Aggregate over this many time units.
+                let aggrgation_duration = if aggregator == TimeSeriesAggregator::MinMax {
+                    // min-max does zig-zag between min and max, which causes a very jagged look,
+                    // so we aggregate over a shorter duration to smooth it out.
+                    // It still looks jagged, but slighly less so.
+                    // TODO(#4969): output a thicker line instead of zig-zagging.
+                    0.5 * time_per_pixel
+                } else {
+                    // aggregate all points covering one physical pixel
+                    time_per_pixel
+                };
+
                 // So it can be displayed in the UI by the SpaceViewClass.
-                self.aggregator = *aggregator;
+                self.aggregator = aggregator;
                 let num_points_before = points.len() as f64;
 
                 let points = if aggrgation_duration > 2.0 {
