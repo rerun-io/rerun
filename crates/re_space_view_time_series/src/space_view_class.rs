@@ -15,9 +15,9 @@ use re_viewer_context::{
     SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-use crate::legacy_visualizer_system::LegacyTimeSeriesSystem;
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
+use crate::visualizer_system::LegacyTimeSeriesSystem;
 use crate::PlotSeriesKind;
 
 // ---
