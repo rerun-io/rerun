@@ -17,6 +17,8 @@ include "./archetypes/points2d.fbs";
 include "./archetypes/points3d.fbs";
 include "./archetypes/scalar.fbs";
 include "./archetypes/segmentation_image.fbs";
+include "./archetypes/series_line.fbs";
+include "./archetypes/series_point.fbs";
 include "./archetypes/tensor.fbs";
 include "./archetypes/text_document.fbs";
 include "./archetypes/text_log.fbs";
