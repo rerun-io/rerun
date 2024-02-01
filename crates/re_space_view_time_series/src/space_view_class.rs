@@ -7,8 +7,9 @@ use re_log_types::{EntityPath, EntityPathFilter, TimeZone};
 use re_query::query_archetype;
 use re_space_view::controls;
 use re_types::blueprint::components::Corner2D;
+use re_types::Archetype;
 use re_viewer_context::external::re_entity_db::{
-    EditableAutoValue, EntityProperties, TimeSeriesAggregator,
+    EditableAutoValue, EntityProperties, EntityTree, TimeSeriesAggregator,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, IndicatedEntities, RecommendedSpaceView, SpaceViewClass,
@@ -219,16 +220,13 @@ It can greatly improve performance (and readability) in such situations as it pr
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let re_types::blueprint::archetypes::PlotLegend {
-            visible: legend_visible,
-            corner: legend_corner,
-        } = query_archetype(
-            ctx.store_context.blueprint.store(),
-            ctx.blueprint_query,
-            &query.space_view_id.as_entity_path(),
-        )
-        .and_then(|arch| arch.to_archetype())
-        .unwrap_or_default();
+        let (
+            re_types::blueprint::archetypes::PlotLegend {
+                visible: legend_visible,
+                corner: legend_corner,
+            },
+            _,
+        ) = query_space_view_sub_archetype(ctx, query.space_view_id);
 
         let (current_time, time_type, timeline) = {
             // Avoid holding the lock for long
@@ -460,13 +458,8 @@ It can greatly improve performance (and readability) in such situations as it pr
 fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
     // TODO: use editors
 
-    let re_types::blueprint::archetypes::PlotLegend { visible, corner } = query_archetype(
-        ctx.store_context.blueprint.store(),
-        ctx.blueprint_query,
-        &space_view_id.as_entity_path(),
-    )
-    .and_then(|arch| arch.to_archetype())
-    .unwrap_or_default();
+    let (re_types::blueprint::archetypes::PlotLegend { visible, corner }, blueprint_path) =
+        query_space_view_sub_archetype(ctx, space_view_id);
 
     ctx.re_ui
         .selection_grid(ui, "time_series_selection_ui_legend")
@@ -478,7 +471,7 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
                 let mut edit_visibility = visible;
                 ctx.re_ui.checkbox(ui, &mut edit_visibility.0, "Visible");
                 if visible != edit_visibility {
-                    ctx.save_blueprint_component(&space_view_id.as_entity_path(), edit_visibility);
+                    ctx.save_blueprint_component(&blueprint_path, edit_visibility);
                 }
 
                 let corner = corner.unwrap_or(DEFAULT_LEGEND_CORNER.into());
@@ -511,7 +504,7 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
                         );
                     });
                 if corner != edit_corner {
-                    ctx.save_blueprint_component(&space_view_id.as_entity_path(), edit_corner);
+                    ctx.save_blueprint_component(&blueprint_path, edit_corner);
                 }
             });
 
@@ -577,4 +570,38 @@ fn ns_grid_spacer(
 fn round_ns_to_start_of_day(ns: i64) -> i64 {
     let ns_per_day = 24 * 60 * 60 * 1_000_000_000;
     (ns + ns_per_day / 2) / ns_per_day * ns_per_day
+}
+
+fn entity_path_for_space_view_sub_archetype<T: Archetype>(
+    space_view_id: SpaceViewId,
+    _blueprint_entity_tree: &EntityTree,
+) -> EntityPath {
+    // TODO(andreas/jleibs):
+    // We want to search the subtree for occurences of the property archetype here.
+    // Only if none is found we make up a new (standardized) path.
+    // There's some nuances to figure out what happens when we find the archetype several times.
+    // Also, we need to specify what it means to "find" the archetype (likely just matching the indicator?).
+    let space_view_blueprint_path = space_view_id.as_entity_path();
+    space_view_blueprint_path.join(&EntityPath::from_single_string(T::name().full_name()))
+}
+
+fn query_space_view_sub_archetype<T: Archetype + Default>(
+    ctx: &ViewerContext<'_>,
+    space_view_id: SpaceViewId,
+) -> (T, EntityPath) {
+    let path = entity_path_for_space_view_sub_archetype::<T>(
+        space_view_id,
+        ctx.store_context.blueprint.tree(),
+    );
+
+    (
+        query_archetype(
+            ctx.store_context.blueprint.store(),
+            ctx.blueprint_query,
+            &path,
+        )
+        .and_then(|arch| arch.to_archetype())
+        .unwrap_or_default(),
+        path,
+    )
 }
