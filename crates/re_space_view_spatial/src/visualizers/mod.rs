@@ -172,7 +172,7 @@ pub fn process_color_slice<'a>(
     }
 }
 
-/// Process [`Text`] components using annotations.
+/// Process `Text` components using annotations.
 pub fn process_label_slice(
     labels: Option<&[Option<re_types::components::Text>]>,
     default_len: usize,
