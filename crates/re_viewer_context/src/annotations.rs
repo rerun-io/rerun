@@ -66,8 +66,6 @@ impl Annotations {
         &self,
         class_id: Option<re_types::components::ClassId>,
     ) -> ResolvedClassDescription<'_> {
-        re_tracing::profile_function!();
-
         let found = class_id.and_then(|class_id| self.class_map.get(&class_id.0));
         ResolvedClassDescription {
             class_id: class_id.map(|id| id.0),
