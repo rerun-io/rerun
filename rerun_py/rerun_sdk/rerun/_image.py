@@ -21,12 +21,47 @@ class ImageFormat:
     name: str
 
     BMP: ImageFormat
+    """
+    BMP file format.
+    """
+
     GIF: ImageFormat
+    """
+    JPEG/JPG file format.
+    """
+
     JPEG: ImageFormat
+    """
+    JPEG/JPG file format.
+    """
+
     PNG: ImageFormat
+    """
+    PNG file format.
+    """
+
     TIFF: ImageFormat
+    """
+    TIFF file format.
+    """
+
     NV12: type[NV12]
+    """
+    Raw NV12 encoded image.
+
+    The type comes with a `size_hint` attribute, a tuple of (height, width)
+    which has to be specified specifying in order to set the RGB size of the image.
+    """
+
     YUY2: type[YUY2]
+    """
+    Raw YUY2 encoded image.
+
+    YUY2 is a YUV422 encoding with bytes ordered as `yuyv`.
+
+    The type comes with a `size_hint` attribute, a tuple of (height, width)
+    which has to be specified specifying in order to set the RGB size of the image.
+    """
 
     def __init__(self, name: str):
         self.name = name
@@ -114,8 +149,9 @@ class ImageEncoded(AsComponents):
             The contents of the file. Can be a BufferedReader, BytesIO, or
             bytes. Mutually exclusive with `path`.
         format:
-            The format of the image file. If not provided, it will be inferred
-            from the file extension.
+            The format of the image file or image encoding.
+            If not provided, it will be inferred from the file extension if a path is specified.
+            Note that encodings like NV12 and YUY2 can not be inferred from the file extension.
         draw_order:
             An optional floating point value that specifies the 2D drawing
             order. Objects with higher values are drawn on top of those with

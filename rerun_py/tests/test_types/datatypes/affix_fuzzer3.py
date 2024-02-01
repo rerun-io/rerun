@@ -24,16 +24,29 @@ class AffixFuzzer3:
 
     inner: Union[float, list[datatypes.AffixFuzzer1], npt.NDArray[np.float32]] = field()
     """
-    degrees (float):
+    Must be one of:
 
-    radians (float):
+    * degrees (float):
 
-    craziness (list[datatypes.AffixFuzzer1]):
+    * radians (float):
 
-    fixed_size_shenanigans (npt.NDArray[np.float32]):
+    * craziness (list[datatypes.AffixFuzzer1]):
+
+    * fixed_size_shenanigans (npt.NDArray[np.float32]):
     """
 
     kind: Literal["degrees", "radians", "craziness", "fixed_size_shenanigans"] = field(default="degrees")
+    """
+    Possible values:
+
+    * "degrees":
+
+    * "radians":
+
+    * "craziness":
+
+    * "fixed_size_shenanigans":
+    """
 
 
 if TYPE_CHECKING:

@@ -27,10 +27,12 @@ class Rotation3D(Rotation3DExt):
         converter=Rotation3DExt.inner__field_converter_override  # type: ignore[misc]
     )
     """
-    Quaternion (datatypes.Quaternion):
+    Must be one of:
+
+    * Quaternion (datatypes.Quaternion):
         Rotation defined by a quaternion.
 
-    AxisAngle (datatypes.RotationAxisAngle):
+    * AxisAngle (datatypes.RotationAxisAngle):
         Rotation defined with an axis and an angle.
     """
 

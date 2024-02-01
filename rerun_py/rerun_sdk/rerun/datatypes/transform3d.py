@@ -25,9 +25,11 @@ class Transform3D(Transform3DExt):
 
     inner: Union[datatypes.TranslationAndMat3x3, datatypes.TranslationRotationScale3D] = field()
     """
-    TranslationAndMat3x3 (datatypes.TranslationAndMat3x3):
+    Must be one of:
 
-    TranslationRotationScale (datatypes.TranslationRotationScale3D):
+    * TranslationAndMat3x3 (datatypes.TranslationAndMat3x3):
+
+    * TranslationRotationScale (datatypes.TranslationRotationScale3D):
     """
 
 
