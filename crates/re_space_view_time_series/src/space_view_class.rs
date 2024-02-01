@@ -582,7 +582,9 @@ fn entity_path_for_space_view_sub_archetype<T: Archetype>(
     // There's some nuances to figure out what happens when we find the archetype several times.
     // Also, we need to specify what it means to "find" the archetype (likely just matching the indicator?).
     let space_view_blueprint_path = space_view_id.as_entity_path();
-    space_view_blueprint_path.join(&EntityPath::from_single_string(T::name().full_name()))
+
+    // Use short_name instead of full_name since full_name has dots and looks too much like an indicator component.
+    space_view_blueprint_path.join(&EntityPath::from_single_string(T::name().short_name()))
 }
 
 fn query_space_view_sub_archetype<T: Archetype + Default>(
