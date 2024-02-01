@@ -137,9 +137,8 @@ pub fn visible_history_ui(
         };
 
         if visible_history_prop.enabled {
-            let time_range = visible_history.time_range(current_time.into());
-            let current_low_boundary = time_range.min.as_i64();
-            let current_high_boundary = time_range.max.as_i64();
+            let current_low_boundary = visible_history.from(current_time.into()).as_i64();
+            let current_high_boundary = visible_history.to(current_time.into()).as_i64();
 
             interacting_with_controls |= ui
                 .horizontal(|ui| {
