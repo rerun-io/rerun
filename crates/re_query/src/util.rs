@@ -57,12 +57,12 @@ impl VisibleHistory {
         to: VisibleHistoryBoundary::Infinite,
     };
 
-    /// Returns the start boundary of the time range.
+    /// Returns the start boundary of the time range given an input cursor position.
     ///
     /// This is not guaranteed to be lesser than or equal to [`Self::to`].
     /// Do not use this to build a [`TimeRange`], use [`Self::time_range`].
     #[doc(hidden)]
-    pub fn from(&self, cursor: TimeInt) -> TimeInt {
+    pub fn range_start_from_cursor(&self, cursor: TimeInt) -> TimeInt {
         match self.from {
             VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
             VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
@@ -70,12 +70,12 @@ impl VisibleHistory {
         }
     }
 
-    /// Returns the end boundary of the time range.
+    /// Returns the end boundary of the time range given an input cursor position.
     ///
     /// This is not guaranteed to be greater than [`Self::from`].
     /// Do not use this to build a [`TimeRange`], use [`Self::time_range`].
     #[doc(hidden)]
-    pub fn to(&self, cursor: TimeInt) -> TimeInt {
+    pub fn range_end_from_cursor(&self, cursor: TimeInt) -> TimeInt {
         match self.to {
             VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
             VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
@@ -85,8 +85,8 @@ impl VisibleHistory {
 
     /// Returns a _sanitized_ [`TimeRange`], i.e. guaranteed to be monotonically increasing.
     pub fn time_range(&self, cursor: TimeInt) -> TimeRange {
-        let mut from = self.from(cursor);
-        let mut to = self.to(cursor);
+        let mut from = self.range_start_from_cursor(cursor);
+        let mut to = self.range_end_from_cursor(cursor);
 
         // TODO(#4993): visible time range UI can yield inverted ranges
         if from > to {
