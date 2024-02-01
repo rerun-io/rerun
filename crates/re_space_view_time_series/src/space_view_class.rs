@@ -6,6 +6,7 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, EntityPathFilter, TimeZone};
 use re_query::query_archetype;
 use re_space_view::controls;
+use re_types::blueprint::components::Corner2D;
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
@@ -115,99 +116,34 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         space_view_id: SpaceViewId,
         root_entity_properties: &mut EntityProperties,
     ) {
-        let re_types::blueprint::archetypes::TimeSeries { legend } = query_archetype(
-            ctx.store_context.blueprint.store(),
-            ctx.blueprint_query,
-            &space_view_id.as_entity_path(),
-        )
-        .and_then(|arch| arch.to_archetype())
-        .unwrap_or_default();
-
         ctx.re_ui
-            .selection_grid(ui, "time_series_selection_ui_aggregation")
-            .show(ui, |ui| {
-                ctx.re_ui
-                    .grid_left_hand_label(ui, "Zoom Aggregation")
-                    .on_hover_text("Configures the zoom-dependent scalar aggregation.\n
+        .selection_grid(ui, "time_series_selection_ui_aggregation")
+        .show(ui, |ui| {
+            ctx.re_ui
+                .grid_left_hand_label(ui, "Zoom Aggregation")
+                .on_hover_text("Configures the zoom-dependent scalar aggregation.\n
 This is done only if steps on the X axis go below 1.0, i.e. a single pixel covers more than one tick worth of data.\n
 It can greatly improve performance (and readability) in such situations as it prevents overdraw.");
 
-                let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
+            let mut agg_mode = *root_entity_properties.time_series_aggregator.get();
 
-                egui::ComboBox::from_id_source("aggregation_mode")
-                    .selected_text(agg_mode.to_string())
-                    .show_ui(ui, |ui| {
-                        ui.style_mut().wrap = Some(false);
-                        ui.set_min_width(64.0);
+            egui::ComboBox::from_id_source("aggregation_mode")
+                .selected_text(agg_mode.to_string())
+                .show_ui(ui, |ui| {
+                    ui.style_mut().wrap = Some(false);
+                    ui.set_min_width(64.0);
 
-                        for variant in TimeSeriesAggregator::variants() {
-                            ui.selectable_value(&mut agg_mode, variant, variant.to_string())
-                                .on_hover_text(variant.description());
-                        }
-                    });
-
-                root_entity_properties.time_series_aggregator =
-                    EditableAutoValue::UserEdited(agg_mode);
-            });
-
-        ctx.re_ui
-            .selection_grid(ui, "time_series_selection_ui_legend")
-            .show(ui, |ui| {
-                ctx.re_ui.grid_left_hand_label(ui, "Legend");
-
-                ui.vertical(|ui| {
-                    let mut edit_legend = legend.clone();
-
-                    ctx.re_ui
-                        .checkbox(ui, &mut edit_legend.0.visible, "Visible");
-
-                    let mut corner = legend.corner().unwrap_or(DEFAULT_LEGEND_CORNER);
-
-                    egui::ComboBox::from_id_source("legend_corner")
-                        .selected_text(re_types::blueprint::components::Legend::to_str(corner))
-                        .show_ui(ui, |ui| {
-                            ui.style_mut().wrap = Some(false);
-                            ui.set_min_width(64.0);
-
-                            ui.selectable_value(
-                                &mut corner,
-                                egui_plot::Corner::LeftTop,
-                                re_types::blueprint::components::Legend::to_str(
-                                    egui_plot::Corner::LeftTop,
-                                ),
-                            );
-                            ui.selectable_value(
-                                &mut corner,
-                                egui_plot::Corner::RightTop,
-                                re_types::blueprint::components::Legend::to_str(
-                                    egui_plot::Corner::RightTop,
-                                ),
-                            );
-                            ui.selectable_value(
-                                &mut corner,
-                                egui_plot::Corner::LeftBottom,
-                                re_types::blueprint::components::Legend::to_str(
-                                    egui_plot::Corner::LeftBottom,
-                                ),
-                            );
-                            ui.selectable_value(
-                                &mut corner,
-                                egui_plot::Corner::RightBottom,
-                                re_types::blueprint::components::Legend::to_str(
-                                    egui_plot::Corner::RightBottom,
-                                ),
-                            );
-                        });
-
-                    edit_legend.set_corner(corner);
-
-                    if legend != edit_legend {
-                        ctx.save_blueprint_component(&space_view_id.as_entity_path(), edit_legend);
+                    for variant in TimeSeriesAggregator::variants() {
+                        ui.selectable_value(&mut agg_mode, variant, variant.to_string())
+                            .on_hover_text(variant.description());
                     }
                 });
 
-                ui.end_row();
-            });
+            root_entity_properties.time_series_aggregator =
+                EditableAutoValue::UserEdited(agg_mode);
+        });
+
+        legend_ui(ctx, space_view_id, ui);
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
@@ -283,7 +219,10 @@ It can greatly improve performance (and readability) in such situations as it pr
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let re_types::blueprint::archetypes::TimeSeries { legend } = query_archetype(
+        let re_types::blueprint::archetypes::PlotLegend {
+            visible: legend_visible,
+            corner: legend_corner,
+        } = query_archetype(
             ctx.store_context.blueprint.store(),
             ctx.blueprint_query,
             &query.space_view_id.as_entity_path(),
@@ -377,9 +316,14 @@ It can greatly improve performance (and readability) in such situations as it pr
                 }
             });
 
-        if legend.visible {
+        if legend_visible.unwrap_or(true.into()).0 {
             plot = plot.legend(
-                Legend::default().position(legend.corner().unwrap_or(DEFAULT_LEGEND_CORNER)),
+                Legend::default().position(
+                    legend_corner
+                        .unwrap_or_default()
+                        .try_into()
+                        .unwrap_or(DEFAULT_LEGEND_CORNER),
+                ),
             );
         }
 
@@ -511,6 +455,68 @@ It can greatly improve performance (and readability) in such situations as it pr
 
         Ok(())
     }
+}
+
+fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
+    // TODO: use editors
+
+    let re_types::blueprint::archetypes::PlotLegend { visible, corner } = query_archetype(
+        ctx.store_context.blueprint.store(),
+        ctx.blueprint_query,
+        &space_view_id.as_entity_path(),
+    )
+    .and_then(|arch| arch.to_archetype())
+    .unwrap_or_default();
+
+    ctx.re_ui
+        .selection_grid(ui, "time_series_selection_ui_legend")
+        .show(ui, |ui| {
+            ctx.re_ui.grid_left_hand_label(ui, "Legend");
+
+            ui.vertical(|ui| {
+                let visible = visible.unwrap_or(true.into());
+                let mut edit_visibility = visible;
+                ctx.re_ui.checkbox(ui, &mut edit_visibility.0, "Visible");
+                if visible != edit_visibility {
+                    ctx.save_blueprint_component(&space_view_id.as_entity_path(), edit_visibility);
+                }
+
+                let corner = corner.unwrap_or(DEFAULT_LEGEND_CORNER.into());
+                let mut edit_corner = corner;
+                egui::ComboBox::from_id_source("legend_corner")
+                    .selected_text(format!("{corner}"))
+                    .show_ui(ui, |ui| {
+                        ui.style_mut().wrap = Some(false);
+                        ui.set_min_width(64.0);
+
+                        ui.selectable_value(
+                            &mut edit_corner,
+                            egui_plot::Corner::LeftTop.into(),
+                            format!("{}", Corner2D::from(egui_plot::Corner::LeftTop)),
+                        );
+                        ui.selectable_value(
+                            &mut edit_corner,
+                            egui_plot::Corner::RightTop.into(),
+                            format!("{}", Corner2D::from(egui_plot::Corner::RightTop)),
+                        );
+                        ui.selectable_value(
+                            &mut edit_corner,
+                            egui_plot::Corner::LeftBottom.into(),
+                            format!("{}", Corner2D::from(egui_plot::Corner::LeftBottom)),
+                        );
+                        ui.selectable_value(
+                            &mut edit_corner,
+                            egui_plot::Corner::RightBottom.into(),
+                            format!("{}", Corner2D::from(egui_plot::Corner::RightBottom)),
+                        );
+                    });
+                if corner != edit_corner {
+                    ctx.save_blueprint_component(&space_view_id.as_entity_path(), edit_corner);
+                }
+            });
+
+            ui.end_row();
+        });
 }
 
 fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: TimeZone) -> String {
