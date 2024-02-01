@@ -11,14 +11,14 @@ use re_viewer_context::{
 };
 
 use crate::overrides::initial_override_color;
-use crate::util::{determine_time_range, points_to_lines};
+use crate::util::{determine_time_range, points_to_series};
 use crate::{overrides::lookup_override, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
 /// The system for rendering [`SeriesPoint`] archetypes.
 #[derive(Default, Debug)]
 pub struct SeriesPointSystem {
     pub annotation_map: AnnotationMap,
-    pub lines: Vec<PlotSeries>,
+    pub all_series: Vec<PlotSeries>,
 }
 
 impl IdentifiedViewSystem for SeriesPointSystem {
@@ -30,11 +30,11 @@ impl IdentifiedViewSystem for SeriesPointSystem {
 impl VisualizerSystem for SeriesPointSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalar>();
-        let mut series_line_queried: ComponentNameSet = SeriesPoint::all_components()
+        let mut series_point_queried: ComponentNameSet = SeriesPoint::all_components()
             .iter()
             .map(ToOwned::to_owned)
             .collect::<ComponentNameSet>();
-        query_info.queried.append(&mut series_line_queried);
+        query_info.queried.append(&mut series_point_queried);
         query_info
     }
 
@@ -196,14 +196,14 @@ impl SeriesPointSystem {
                     )?;
             }
 
-            // Now convert the `PlotPoints` into lines
-            points_to_lines(
+            // Now convert the `PlotPoints` into `Vec<PlotSeries>`
+            points_to_series(
                 data_result,
                 plot_value_delta,
                 points,
                 store,
                 query,
-                &mut self.lines,
+                &mut self.all_series,
             );
         }
 

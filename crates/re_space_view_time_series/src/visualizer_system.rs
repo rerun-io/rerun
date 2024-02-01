@@ -11,7 +11,7 @@ use re_viewer_context::{
 
 use crate::{
     overrides::{initial_override_color, lookup_override},
-    util::{determine_time_range, points_to_lines},
+    util::{determine_time_range, points_to_series},
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind,
 };
 
@@ -19,7 +19,7 @@ use crate::{
 #[derive(Default, Debug)]
 pub struct LegacyTimeSeriesSystem {
     pub annotation_map: AnnotationMap,
-    pub lines: Vec<PlotSeries>,
+    pub all_series: Vec<PlotSeries>,
 }
 
 impl IdentifiedViewSystem for LegacyTimeSeriesSystem {
@@ -200,14 +200,14 @@ impl LegacyTimeSeriesSystem {
                 )?;
             }
 
-            // Now convert the `PlotPoints` into lines
-            points_to_lines(
+            // Now convert the `PlotPoints` into `Vec<PlotSeries>`
+            points_to_series(
                 data_result,
                 plot_value_delta,
                 points,
                 store,
                 query,
-                &mut self.lines,
+                &mut self.all_series,
             );
         }
 

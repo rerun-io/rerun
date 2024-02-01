@@ -296,26 +296,26 @@ It can greatly improve performance (and readability) in such situations as it pr
         let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
         let point_series = system_output.view_systems.get::<SeriesPointSystem>()?;
 
-        let all_lines: Vec<_> = legacy_time_series
-            .lines
+        let all_plot_series: Vec<_> = legacy_time_series
+            .all_series
             .iter()
-            .chain(line_series.lines.iter())
-            .chain(point_series.lines.iter())
+            .chain(line_series.all_series.iter())
+            .chain(point_series.all_series.iter())
             .collect();
 
         // Get the minimum time/X value for the entire plot…
-        let min_time = all_lines
+        let min_time = all_plot_series
             .iter()
             .map(|line| line.min_time)
             .min()
             .unwrap_or(0);
 
         // TODO(jleibs): If this is allowed to be different, need to track it per line.
-        let aggregation_factor = all_lines
+        let aggregation_factor = all_plot_series
             .first()
             .map_or(1.0, |line| line.aggregation_factor);
 
-        let aggregator = all_lines
+        let aggregator = all_plot_series
             .first()
             .map(|line| line.aggregator)
             .unwrap_or_default();
@@ -399,7 +399,7 @@ It can greatly improve performance (and readability) in such situations as it pr
                 time_ctrl_write.pause();
             }
 
-            for line in all_lines {
+            for line in all_plot_series {
                 let points = line
                     .points
                     .iter()

@@ -46,16 +46,16 @@ pub fn determine_time_range(
     time_range
 }
 
-// We have a bunch of raw points, and now we need to group them into individual line segments.
-// A line segment is a continuous run of points with identical attributes: each time
-// we notice a change in attributes, we need a new line segment.
-pub fn points_to_lines(
+// We have a bunch of raw points, and now we need to group them into individual series.
+// A series is a continuous run of points with identical attributes: each time
+// we notice a change in attributes, we need a new series.
+pub fn points_to_series(
     data_result: &re_viewer_context::DataResult,
     plot_value_delta: f64,
     points: Vec<PlotPoint>,
     store: &re_data_store::DataStore,
     query: &ViewQuery<'_>,
-    lines: &mut Vec<PlotSeries>,
+    all_series: &mut Vec<PlotSeries>,
 ) {
     re_tracing::profile_scope!("secondary", &data_result.entity_path.to_string());
     if points.is_empty() {
@@ -74,7 +74,7 @@ pub fn points_to_lines(
         let label = points[0].attrs.label.as_ref()?;
         (points.iter().all(|p| p.attrs.label.as_ref() == Some(label))).then(|| label.clone())
     };
-    let line_label = same_label(&points).unwrap_or_else(|| data_result.entity_path.to_string());
+    let series_label = same_label(&points).unwrap_or_else(|| data_result.entity_path.to_string());
     if points.len() == 1 {
         // Can't draw a single point as a continuous line, so fall back on scatter
         let mut kind = points[0].attrs.kind;
@@ -82,8 +82,8 @@ pub fn points_to_lines(
             kind = PlotSeriesKind::Scatter;
         }
 
-        lines.push(PlotSeries {
-            label: line_label,
+        all_series.push(PlotSeries {
+            label: series_label,
             color: points[0].attrs.color,
             width: 2.0 * points[0].attrs.radius,
             kind,
@@ -94,14 +94,14 @@ pub fn points_to_lines(
             min_time,
         });
     } else {
-        add_line_segments(
-            &line_label,
+        add_series_runs(
+            &series_label,
             points,
             &data_result.entity_path,
             aggregator,
             aggregation_factor,
             min_time,
-            lines,
+            all_series,
         );
     }
 }
@@ -146,21 +146,21 @@ pub fn apply_aggregation(
 }
 
 #[inline(never)] // Better callstacks on crashes
-fn add_line_segments(
-    line_label: &str,
+fn add_series_runs(
+    series_label: &str,
     points: Vec<PlotPoint>,
     entity_path: &EntityPath,
     aggregator: TimeSeriesAggregator,
     aggregation_factor: f64,
     min_time: i64,
-    lines: &mut Vec<PlotSeries>,
+    all_series: &mut Vec<PlotSeries>,
 ) {
     re_tracing::profile_function!();
 
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
-    let mut line: PlotSeries = PlotSeries {
-        label: line_label.to_owned(),
+    let mut series: PlotSeries = PlotSeries {
+        label: series_label.to_owned(),
         color: attrs.color,
         width: 2.0 * attrs.radius,
         points: Vec::with_capacity(num_points),
@@ -173,18 +173,18 @@ fn add_line_segments(
 
     for (i, p) in points.into_iter().enumerate() {
         if p.attrs == attrs {
-            // Same attributes, just add to the current line segment.
+            // Same attributes, just add to the current series.
 
-            line.points.push((p.time, p.value));
+            series.points.push((p.time, p.value));
         } else {
             // Attributes changed since last point, break up the current run into a
-            // line segment, and start the next one.
+            // its own series, and start the next one.
 
             attrs = p.attrs;
-            let prev_line = std::mem::replace(
-                &mut line,
+            let prev_series = std::mem::replace(
+                &mut series,
                 PlotSeries {
-                    label: line_label.to_owned(),
+                    label: series_label.to_owned(),
                     color: attrs.color,
                     width: 2.0 * attrs.radius,
                     kind: attrs.kind,
@@ -197,24 +197,24 @@ fn add_line_segments(
             );
 
             let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
-            let prev_continuous = matches!(prev_line.kind, PlotSeriesKind::Continuous);
+            let prev_continuous = matches!(prev_series.kind, PlotSeriesKind::Continuous);
 
-            let prev_point = *prev_line.points.last().unwrap();
-            lines.push(prev_line);
+            let prev_point = *prev_series.points.last().unwrap();
+            all_series.push(prev_series);
 
             // If the previous point was continuous and the current point is continuous
             // too, then we want the 2 segments to appear continuous even though they
             // are actually split from a data standpoint.
             if cur_continuous && prev_continuous {
-                line.points.push(prev_point);
+                series.points.push(prev_point);
             }
 
             // Add the point that triggered the split to the new segment.
-            line.points.push((p.time, p.value));
+            series.points.push((p.time, p.value));
         }
     }
 
-    if !line.points.is_empty() {
-        lines.push(line);
+    if !series.points.is_empty() {
+        all_series.push(series);
     }
 }

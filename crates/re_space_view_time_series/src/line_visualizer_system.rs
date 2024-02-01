@@ -11,14 +11,14 @@ use re_viewer_context::{
 };
 
 use crate::overrides::initial_override_color;
-use crate::util::{determine_time_range, points_to_lines};
+use crate::util::{determine_time_range, points_to_series};
 use crate::{overrides::lookup_override, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
 /// The system for rendering [`SeriesLine`] archetypes.
 #[derive(Default, Debug)]
 pub struct SeriesLineSystem {
     pub annotation_map: AnnotationMap,
-    pub lines: Vec<PlotSeries>,
+    pub all_series: Vec<PlotSeries>,
 }
 
 impl IdentifiedViewSystem for SeriesLineSystem {
@@ -196,14 +196,14 @@ impl SeriesLineSystem {
                     )?;
             }
 
-            // Now convert the `PlotPoints` into lines
-            points_to_lines(
+            // Now convert the `PlotPoints` into `Vec<PlotSeries>`
+            points_to_series(
                 data_result,
                 plot_value_delta,
                 points,
                 store,
                 query,
-                &mut self.lines,
+                &mut self.all_series,
             );
         }
 
