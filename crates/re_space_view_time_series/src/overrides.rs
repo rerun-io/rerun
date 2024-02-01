@@ -1,6 +1,6 @@
-use re_log_types::StoreKind;
-use re_types::Component;
-use re_viewer_context::ViewerContext;
+use re_log_types::{EntityPath, StoreKind};
+use re_types::{components::Color, Component};
+use re_viewer_context::{DefaultColor, ResolvedAnnotationInfo, ViewerContext};
 
 pub fn lookup_override<C: Component>(
     data_result: &re_viewer_context::DataResult,
@@ -22,4 +22,16 @@ pub fn lookup_override<C: Component>(
                 .query_latest_component::<C>(path, &ctx.current_query()),
         })
         .map(|c| c.value)
+}
+
+pub fn initial_override_color(entity_path: &EntityPath) -> Color {
+    let default_color = DefaultColor::EntityPath(entity_path);
+
+    let annotation_info = ResolvedAnnotationInfo::default();
+
+    let color = annotation_info.color(None, default_color);
+
+    let [r, g, b, a] = color.to_array();
+
+    Color::from_unmultiplied_rgba(r, g, b, a)
 }

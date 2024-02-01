@@ -8,6 +8,7 @@ mod line_visualizer_system;
 mod overrides;
 mod point_visualizer_system;
 mod space_view_class;
+mod util;
 
 use re_log_types::EntityPath;
 use re_viewer_context::external::re_entity_db::TimeSeriesAggregator;
