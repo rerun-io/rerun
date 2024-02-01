@@ -226,6 +226,32 @@ impl ViewportBlueprint {
         ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
     }
 
+    /// Duplicates a space view and its entity property overrides.
+    ///
+    /// TODO(#4977): much more than just entity properties must be cloned: overrides, etc.
+    pub fn duplicate_space_view(
+        &self,
+        space_view_id: &SpaceViewId,
+        ctx: &ViewerContext<'_>,
+    ) -> Option<SpaceViewId> {
+        let Some(space_view) = self.space_view(space_view_id) else {
+            return None;
+        };
+
+        let new_space_view = space_view.duplicate();
+        let new_space_view_id = new_space_view.id;
+
+        // copy entity properties from the old space view
+        let data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
+        let new_data_result =
+            new_space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
+        new_data_result.save_override(data_result.individual_properties().cloned(), ctx);
+
+        self.add_space_views(std::iter::once(new_space_view), ctx, None);
+
+        Some(new_space_view_id)
+    }
+
     /// If `false`, the item is referring to data that is not present in this blueprint.
     pub fn is_item_valid(&self, item: &Item) -> bool {
         match item {

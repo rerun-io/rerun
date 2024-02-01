@@ -174,7 +174,7 @@ macro_rules! impl_query_archetype_latest_at {
                 ),
             ),
         {
-            let mut iter_results = |timeless: bool, bucket: &crate::CacheBucket| -> crate::Result<()> {
+            let iter_results = |timeless: bool, bucket: &crate::CacheBucket, f: &mut F| -> crate::Result<()> {
                 re_tracing::profile_scope!("iter");
 
                 let it = itertools::izip!(
@@ -201,9 +201,9 @@ macro_rules! impl_query_archetype_latest_at {
             };
 
             let create_and_fill_bucket = |
-                    data_time: TimeInt,
-                    arch_view: &::re_query::ArchetypeView<A>,
-                | -> crate::Result< crate::CacheBucket> {
+                data_time: TimeInt,
+                arch_view: &::re_query::ArchetypeView<A>,
+            | -> crate::Result<crate::CacheBucket> {
                 re_log::trace!(data_time=?data_time, ?data_time, "fill");
 
                 // Grabbing the current time is quite costly on web.
@@ -229,7 +229,7 @@ macro_rules! impl_query_archetype_latest_at {
                 Ok(bucket)
             };
 
-            let mut latest_at_callback = |query: &LatestAtQuery, latest_at_cache: &mut crate::LatestAtCache| {
+            let upsert_callback = |query: &LatestAtQuery, latest_at_cache: &mut crate::LatestAtCache| -> crate::Result<()> {
                 re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
                 let crate::LatestAtCache {
@@ -241,15 +241,14 @@ macro_rules! impl_query_archetype_latest_at {
                 } = latest_at_cache;
 
                 let query_time_bucket_at_query_time = match per_query_time.entry(query.at) {
-                    std::collections::btree_map::Entry::Occupied(mut query_time_bucket_at_query_time) => {
+                    std::collections::btree_map::Entry::Occupied(_) => {
                         // Fastest path: we have an entry for this exact query time, no need to look any
                         // further.
                         re_log::trace!(query_time=?query.at, "cache hit (query time)");
-                        return iter_results(false, query_time_bucket_at_query_time.get_mut());
+                        return Ok(());
                     }
                     std::collections::btree_map::Entry::Vacant(entry) => entry,
                 };
-
 
                 let arch_view = query_archetype::<A>(store, &query, entity_path)?;
                 let data_time = arch_view.data_time();
@@ -270,15 +269,14 @@ macro_rules! impl_query_archetype_latest_at {
                             .and_modify(|v| *v = std::sync::Arc::clone(&data_time_bucket_at_data_time))
                             .or_insert(std::sync::Arc::clone(&data_time_bucket_at_data_time));
 
-                        return iter_results(false, &data_time_bucket_at_data_time);
+                        return Ok(());
                     }
                 } else {
-                    if let Some(timeless_bucket) = timeless.as_ref() {
+                    if timeless.is_some() {
                         re_log::trace!(query_time=?query.at, "cache hit (data time, timeless)");
-                        return iter_results(true, timeless_bucket);
+                        return Ok(());
                     }
                 }
-
 
                 // Slowest path: this is a complete cache miss.
                 if let Some(data_time) = data_time { // Reminder: `None` means timeless.
@@ -293,14 +291,12 @@ macro_rules! impl_query_archetype_latest_at {
                         .and_modify(|v| *v = std::sync::Arc::clone(&query_time_bucket_at_query_time))
                         .or_insert(std::sync::Arc::clone(&query_time_bucket_at_query_time));
 
-                    iter_results(false, &query_time_bucket_at_query_time)
+                    Ok(())
                 } else {
                     re_log::trace!(query_time=?query.at, "cache miss (timeless)");
 
                     let bucket = create_and_fill_bucket(TimeInt::MIN, &arch_view)?;
                     *total_size_bytes += bucket.total_size_bytes;
-
-                    iter_results(true, &bucket)?;
 
                     *timeless = Some(bucket);
 
@@ -308,13 +304,58 @@ macro_rules! impl_query_archetype_latest_at {
                 }
             };
 
+            let iter_callback = |query: &LatestAtQuery, latest_at_cache: &crate::LatestAtCache, f: &mut F| {
+                re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
-            self.with_latest_at::<A, _, _>(
+                let crate::LatestAtCache {
+                    per_query_time,
+                    per_data_time: _,
+                    timeless: _,
+                    timeline: _,
+                    total_size_bytes: _,
+                } = latest_at_cache;
+
+                // Expected path: cache was properly upserted.
+                if let Some(query_time_bucket_at_query_time) = per_query_time.get(&query.at) {
+                    // TODO(#4832): might or might not be timeless at this point…
+                    return iter_results(false, query_time_bucket_at_query_time, f);
+                }
+
+                // Racy path: the write lock was busy.
+                let arch_view = query_archetype::<A>(store, &query, entity_path)?;
+                let data = (
+                    (arch_view.data_time(), arch_view.primary_row_id()),
+                    MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
+                    $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
+                    $(Some(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect())),)*
+                );
+                f(data);
+
+                re_log::debug!(
+                    store_id = %store.id(),
+                    %entity_path,
+                    ?query,
+                    "coudn't upsert cache -- write lock was busy"
+                );
+
+                Ok(())
+            };
+
+
+            let (res1, res2) = self.with_latest_at::<A, _, _, _, _>(
                 store,
                 entity_path.clone(),
                 query,
-                |latest_at_cache| latest_at_callback(query, latest_at_cache),
-            )
+                |latest_at_cache| upsert_callback(query, latest_at_cache),
+                |latest_at_cache| iter_callback(query, latest_at_cache, &mut f),
+            );
+
+            if let Some(res1) = res1 {
+                res1?;
+            }
+            res2?;
+
+            Ok(())
         } }
     };
 

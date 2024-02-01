@@ -1,7 +1,7 @@
 use paste::paste;
 use seq_macro::seq;
 
-use re_data_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange, Timeline};
+use re_data_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, Timeline};
 use re_log_types::{EntityPath, RowId};
 use re_query::{ExtraQueryHistory, VisibleHistory};
 use re_types_core::{components::InstanceKey, Archetype, Component};
@@ -155,9 +155,12 @@ macro_rules! impl_query_archetype {
                 AnyQuery::Range(query) if !cached => {
                     re_tracing::profile_scope!("range", format!("{query:?}"));
 
-                    // NOTE: `+ 2` because we always grab the indicator component as well as the
-                    // instance keys.
-                    let arch_views = ::re_query::range_archetype::<A, { $N + $M + 2 }>(store, query, entity_path);
+                    // NOTE: `+ 1` because we always grab the instance keys.
+                    let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
+                        store, query, entity_path,
+                        &[$(<$pov>::name(),)+],
+                        [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
+                    );
 
                     for arch_view in arch_views {
                         let data = (
@@ -305,9 +308,7 @@ macro_rules! impl_query_archetype_with_history {
                     format!("cached={cached_range} arch={} pov={} comp={}", A::name(), $N, $M)
                 );
 
-                let min_time = visible_history.from(*time);
-                let max_time = visible_history.to(*time);
-                let query = RangeQuery::new(*timeline, TimeRange::new(min_time, max_time));
+                let query = RangeQuery::new(*timeline, visible_history.time_range(*time));
                 self.[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
                     cached_range,
                     store,
