@@ -15,7 +15,7 @@ use crate::{
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind,
 };
 
-/// The legacy system for rendering [`TimeSeriesScalars`] archetypes.
+/// The legacy system for rendering [`TimeSeriesScalar`] archetypes.
 #[derive(Default, Debug)]
 pub struct LegacyTimeSeriesSystem {
     pub annotation_map: AnnotationMap,
