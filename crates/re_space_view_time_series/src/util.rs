@@ -1,10 +1,27 @@
 use re_log_types::{EntityPath, TimeInt, TimeRange};
-use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery};
+use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
     PlotPoint, PlotSeries, PlotSeriesKind,
 };
+
+/// Find the plot bounds and the per-ui-point delta from egui.
+pub fn determine_plot_bounds_and_delta(
+    ctx: &ViewerContext<'_>,
+    query: &ViewQuery<'_>,
+) -> (Option<egui_plot::PlotBounds>, f64) {
+    let egui_ctx = &ctx.re_ui.egui_ctx;
+
+    let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.space_view_id));
+    let plot_bounds = plot_mem.as_ref().map(|mem| *mem.bounds());
+    // What's the delta in value of X across two adjacent UI points?
+    // I.e. think of GLSL's `dpdx()`.
+    let plot_value_delta = plot_mem.as_ref().map_or(1.0, |mem| {
+        1.0 / mem.transform().dpos_dvalue_x().max(f64::EPSILON)
+    });
+    (plot_bounds, plot_value_delta)
+}
 
 pub fn determine_time_range(
     query: &ViewQuery<'_>,

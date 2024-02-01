@@ -11,7 +11,7 @@ use re_viewer_context::{
 
 use crate::{
     overrides::{initial_override_color, lookup_override},
-    util::{determine_time_range, points_to_series},
+    util::{determine_plot_bounds_and_delta, determine_time_range, points_to_series},
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind,
 };
 
@@ -86,15 +86,7 @@ impl LegacyTimeSeriesSystem {
         let query_caches = ctx.entity_db.query_caches();
         let store = ctx.entity_db.store();
 
-        let egui_ctx = &ctx.re_ui.egui_ctx;
-
-        let plot_mem = egui_plot::PlotMemory::load(egui_ctx, crate::plot_id(query.space_view_id));
-        let plot_bounds = plot_mem.as_ref().map(|mem| *mem.bounds());
-        // What's the delta in value of X across two adjacent UI points?
-        // I.e. think of GLSL's `dpdx()`.
-        let plot_value_delta = plot_mem.as_ref().map_or(1.0, |mem| {
-            1.0 / mem.transform().dpos_dvalue_x().max(f64::EPSILON)
-        });
+        let (plot_bounds, plot_value_delta) = determine_plot_bounds_and_delta(ctx, query);
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
