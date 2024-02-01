@@ -1,5 +1,6 @@
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::archetypes;
+use re_types::components::MarkerShape;
 use re_types::{
     archetypes::SeriesPoint,
     components::{Color, Radius, Scalar, Text},
@@ -14,6 +15,7 @@ use crate::overrides::initial_override_color;
 use crate::util::{
     determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series,
 };
+use crate::ScatterAttrs;
 use crate::{overrides::lookup_override, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
 /// The system for rendering [`SeriesPoint`] archetypes.
@@ -29,6 +31,10 @@ impl IdentifiedViewSystem for SeriesPointSystem {
     }
 }
 
+// We use a larger default radius for scatter plots so the marker is
+// visible.
+const DEFAULT_RADIUS: f32 = 3.0;
+
 impl VisualizerSystem for SeriesPointSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalar>();
@@ -37,6 +43,8 @@ impl VisualizerSystem for SeriesPointSystem {
             .map(ToOwned::to_owned)
             .collect::<ComponentNameSet>();
         query_info.queried.append(&mut series_point_queried);
+        // TODO(jleibs): Use StrokeWidth instead
+        query_info.queried.insert(Radius::name());
         query_info
     }
 
@@ -76,6 +84,8 @@ impl VisualizerSystem for SeriesPointSystem {
     ) -> Option<re_log_types::DataCell> {
         if *component == Color::name() {
             Some([initial_override_color(entity_path)].into())
+        } else if *component == Radius::name() {
+            Some([Radius(DEFAULT_RADIUS)].into())
         } else {
             None
         }
@@ -120,16 +130,18 @@ impl SeriesPointSystem {
 
                 let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
 
+                let override_marker = lookup_override::<MarkerShape>(data_result, ctx);
+
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
                 query_caches
-                    .query_archetype_pov1_comp2::<archetypes::Scalar, Scalar, Color, Text, _>(
+                    .query_archetype_pov1_comp3::<archetypes::Scalar, Scalar, Color, MarkerShape, Text, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
                         &data_result.entity_path,
-                        |((time, _row_id), _, scalars, colors, labels)| {
+                        |((time, _row_id), _, scalars, colors, markers, labels)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
@@ -149,10 +161,14 @@ impl SeriesPointSystem {
                                 return;
                             }
 
-                            for (scalar, color, label) in itertools::izip!(
+                            for (scalar, color, marker, label) in itertools::izip!(
                                 scalars.iter(),
                                 MaybeCachedComponentData::iter_or_repeat_opt(
                                     &colors,
+                                    scalars.len()
+                                ),
+                                MaybeCachedComponentData::iter_or_repeat_opt(
+                                    &markers,
                                     scalars.len()
                                 ),
                                 //MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
@@ -173,7 +189,9 @@ impl SeriesPointSystem {
                                 let radius = override_radius
                                     .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
 
-                                const DEFAULT_RADIUS: f32 = 0.75;
+                                let marker = override_marker.unwrap_or(marker.unwrap_or_default());
+
+
 
                                 points.push(PlotPoint {
                                     time: time.as_i64(),
@@ -182,7 +200,7 @@ impl SeriesPointSystem {
                                         label,
                                         color,
                                         radius,
-                                        kind: PlotSeriesKind::Scatter,
+                                        kind: PlotSeriesKind::Scatter(ScatterAttrs{marker}),
                                     },
                                 });
                             }

@@ -11,6 +11,7 @@ mod util;
 mod visualizer_system;
 
 use re_log_types::EntityPath;
+use re_types::components::MarkerShape;
 use re_viewer_context::external::re_entity_db::TimeSeriesAggregator;
 pub use space_view_class::TimeSeriesSpaceView;
 
@@ -34,6 +35,11 @@ pub struct PlotPointAttrs {
     pub color: egui::Color32,
     pub radius: f32,
     pub kind: PlotSeriesKind,
+}
+
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+pub struct ScatterAttrs {
+    pub marker: MarkerShape,
 }
 
 impl PartialEq for PlotPointAttrs {
@@ -63,7 +69,7 @@ struct PlotPoint {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlotSeriesKind {
     Continuous,
-    Scatter,
+    Scatter(ScatterAttrs),
     Clear,
 }
 

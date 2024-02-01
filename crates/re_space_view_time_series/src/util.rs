@@ -3,7 +3,7 @@ use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery,
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
-    PlotPoint, PlotSeries, PlotSeriesKind,
+    PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
 /// Find the plot bounds and the per-ui-point delta from egui.
@@ -100,7 +100,7 @@ pub fn points_to_series(
         // Can't draw a single point as a continuous line, so fall back on scatter
         let mut kind = points[0].attrs.kind;
         if kind == PlotSeriesKind::Continuous {
-            kind = PlotSeriesKind::Scatter;
+            kind = PlotSeriesKind::Scatter(ScatterAttrs::default());
         }
 
         all_series.push(PlotSeries {

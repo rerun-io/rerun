@@ -406,30 +406,31 @@ It can greatly improve performance (and readability) in such situations as it pr
                 time_ctrl_write.pause();
             }
 
-            for line in all_plot_series {
-                let points = line
+            for series in all_plot_series {
+                let points = series
                     .points
                     .iter()
                     .map(|p| [(p.0 - time_offset) as _, p.1])
                     .collect::<Vec<_>>();
 
-                let color = line.color;
-                let id = egui::Id::new(line.entity_path.hash());
-                plot_item_id_to_entity_path.insert(id, line.entity_path.clone());
+                let color = series.color;
+                let id = egui::Id::new(series.entity_path.hash());
+                plot_item_id_to_entity_path.insert(id, series.entity_path.clone());
 
-                match line.kind {
+                match series.kind {
                     PlotSeriesKind::Continuous => plot_ui.line(
                         Line::new(points)
-                            .name(&line.label)
+                            .name(&series.label)
                             .color(color)
-                            .width(line.width)
+                            .width(series.width)
                             .id(id),
                     ),
-                    PlotSeriesKind::Scatter => plot_ui.points(
+                    PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
                         Points::new(points)
-                            .name(&line.label)
+                            .name(&series.label)
                             .color(color)
-                            .radius(line.width)
+                            .radius(series.width)
+                            .shape(scatter_attrs.marker.into())
                             .id(id),
                     ),
                     // Break up the chart. At some point we might want something fancier.

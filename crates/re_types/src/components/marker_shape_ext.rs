@@ -17,19 +17,23 @@ fn egui_to_u8(marker: egui_plot::MarkerShape) -> u8 {
 }
 
 #[cfg(feature = "egui_plot")]
-fn u8_to_egui(marker: u8) -> Result<egui_plot::MarkerShape, String> {
+fn u8_to_egui(marker: u8) -> egui_plot::MarkerShape {
     match marker {
-        1 => Ok(egui_plot::MarkerShape::Circle),
-        2 => Ok(egui_plot::MarkerShape::Diamond),
-        3 => Ok(egui_plot::MarkerShape::Square),
-        4 => Ok(egui_plot::MarkerShape::Cross),
-        5 => Ok(egui_plot::MarkerShape::Plus),
-        6 => Ok(egui_plot::MarkerShape::Up),
-        7 => Ok(egui_plot::MarkerShape::Down),
-        8 => Ok(egui_plot::MarkerShape::Left),
-        9 => Ok(egui_plot::MarkerShape::Right),
-        10 => Ok(egui_plot::MarkerShape::Asterisk),
-        _ => Err("Could not interpret {marker} as egui_plot::MarkerShape.".to_owned()),
+        1 => egui_plot::MarkerShape::Circle,
+        2 => egui_plot::MarkerShape::Diamond,
+        3 => egui_plot::MarkerShape::Square,
+        4 => egui_plot::MarkerShape::Cross,
+        5 => egui_plot::MarkerShape::Plus,
+        6 => egui_plot::MarkerShape::Up,
+        7 => egui_plot::MarkerShape::Down,
+        8 => egui_plot::MarkerShape::Left,
+        9 => egui_plot::MarkerShape::Right,
+        10 => egui_plot::MarkerShape::Asterisk,
+        _ => {
+            re_log::error_once!("Could not interpret {marker} as egui_plot::MarkerShape.");
+            // Fall back on Circle
+            egui_plot::MarkerShape::Circle
+        }
     }
 }
 
@@ -41,12 +45,18 @@ impl From<egui_plot::MarkerShape> for MarkerShape {
     }
 }
 
-impl TryFrom<MarkerShape> for egui_plot::MarkerShape {
-    type Error = String;
-
+#[cfg(feature = "egui_plot")]
+impl From<MarkerShape> for egui_plot::MarkerShape {
     #[inline]
-    fn try_from(value: MarkerShape) -> Result<Self, Self::Error> {
+    fn from(value: MarkerShape) -> Self {
         u8_to_egui(value.0)
+    }
+}
+
+impl Default for MarkerShape {
+    #[inline]
+    fn default() -> Self {
+        Self(1)
     }
 }
 
@@ -65,5 +75,9 @@ impl MarkerShape {
             10 => "Asterisk",
             _ => "Unknown",
         }
+    }
+
+    pub fn all_markers() -> Vec<MarkerShape> {
+        (1..=10).map(MarkerShape).collect()
     }
 }
