@@ -55,6 +55,9 @@ pub use native::{run_native_app, run_native_viewer_with_messages};
 #[cfg(target_arch = "wasm32")]
 mod web;
 
+#[cfg(target_arch = "wasm32")]
+mod web_tools;
+
 // ---------------------------------------------------------------------------
 
 /// Information about this version of the crate.
