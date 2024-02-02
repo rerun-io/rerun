@@ -677,10 +677,12 @@ impl std::fmt::Debug for CacheBucket {
 impl CacheBucket {
     // Check invariants in debug builds
     fn sanity_check(&self) {
-        debug_assert_eq!(self.data_times.len(), self.pov_instance_keys.num_entries());
-        let n = self.data_times.len();
-        for (name, data) in &self.components {
-            debug_assert_eq!(data.dyn_num_entries(), n, "{name}");
+        if cfg!(debug_assertions) {
+            assert_eq!(self.data_times.len(), self.pov_instance_keys.num_entries());
+            let n = self.data_times.len();
+            for (name, data) in &self.components {
+                assert_eq!(data.dyn_num_entries(), n, "{name}");
+            }
         }
     }
 
@@ -964,7 +966,7 @@ impl CacheBucket {
         arch_view: &ArchetypeView<A>,
     ) -> re_query::Result<u64> {
         re_tracing::profile_function!(C::name());
-        // no sanity checks here - we are called while in an invariant-breakign state!
+        // no sanity checks here - we are called while in an invariant-breaking state!
 
         let num_entries = self.data_times.len();
 
@@ -1003,7 +1005,7 @@ impl CacheBucket {
         arch_view: &ArchetypeView<A>,
     ) -> re_query::Result<u64> {
         re_tracing::profile_function!(C::name());
-        // no sanity checks here - we are called while in an invariant-breakign state!
+        // no sanity checks here - we are called while in an invariant-breaking state!
 
         let num_entries = self.num_entries();
 
