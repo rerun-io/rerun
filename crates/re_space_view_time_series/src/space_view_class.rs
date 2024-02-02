@@ -456,7 +456,7 @@ It can greatly improve performance (and readability) in such situations as it pr
 }
 
 fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
-    // TODO: use editors
+    // TODO(jleibs): use editors
 
     let (re_types::blueprint::archetypes::PlotLegend { visible, corner }, blueprint_path) =
         query_space_view_sub_archetype(ctx, space_view_id);
@@ -576,8 +576,8 @@ fn entity_path_for_space_view_sub_archetype<T: Archetype>(
     space_view_id: SpaceViewId,
     _blueprint_entity_tree: &EntityTree,
 ) -> EntityPath {
-    // TODO(andreas/jleibs):
-    // We want to search the subtree for occurences of the property archetype here.
+    // TODO(andreas,jleibs):
+    // We want to search the subtree for occurrences of the property archetype here.
     // Only if none is found we make up a new (standardized) path.
     // There's some nuances to figure out what happens when we find the archetype several times.
     // Also, we need to specify what it means to "find" the archetype (likely just matching the indicator?).
