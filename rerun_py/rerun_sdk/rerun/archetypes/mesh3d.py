@@ -60,7 +60,9 @@ class Mesh3D(Mesh3DExt, Archetype):
             mesh_properties=None,  # type: ignore[arg-type]
             vertex_normals=None,  # type: ignore[arg-type]
             vertex_colors=None,  # type: ignore[arg-type]
+            vertex_texcoords=None,  # type: ignore[arg-type]
             mesh_material=None,  # type: ignore[arg-type]
+            albedo_texture=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
             instance_keys=None,  # type: ignore[arg-type]
         )
@@ -111,12 +113,34 @@ class Mesh3D(Mesh3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
+    vertex_texcoords: components.Texcoord2DBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.Texcoord2DBatch._optional,  # type: ignore[misc]
+    )
+    # An optional uv texture coordinate for each vertex.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     mesh_material: components.MaterialBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.MaterialBatch._optional,  # type: ignore[misc]
     )
     # Optional material properties for the mesh as a whole.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_texture: components.TensorDataBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.TensorDataBatch._optional,  # type: ignore[misc]
+    )
+    # Optional albedo texture.
+    #
+    # Used with `vertex_texcoords` on `Mesh3D`.
+    # Currently supports only sRGB(A) textures, ignoring alpha.
+    # (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -53,6 +53,7 @@ from .scalar_scattering import (
     ScalarScatteringType,
 )
 from .tensor_data import TensorData, TensorDataBatch, TensorDataType
+from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
 from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
 from .transform3d import Transform3D, Transform3DBatch, Transform3DType
@@ -179,6 +180,9 @@ __all__ = [
     "TensorData",
     "TensorDataBatch",
     "TensorDataType",
+    "Texcoord2D",
+    "Texcoord2DBatch",
+    "Texcoord2DType",
     "Text",
     "TextBatch",
     "TextLogLevel",

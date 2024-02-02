@@ -2,7 +2,7 @@ include "arrow/attributes.fbs";
 include "fbs/attributes.fbs";
 
 include "./tensor_dimension.fbs";
-include "./tensor_data.fbs";
+include "./tensor_buffer.fbs";
 
 namespace rerun.datatypes;
 

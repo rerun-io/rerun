@@ -31,7 +31,7 @@ impl From<GltfPrimitive> for Mesh3D {
             vertex_positions,
             vertex_colors,
             vertex_normals,
-            vertex_texcoords: _, // TODO(cmc): support mesh texturing
+            vertex_texcoords,
         } = primitive;
 
         let mut mesh = Mesh3D::new(vertex_positions);
@@ -47,6 +47,9 @@ impl From<GltfPrimitive> for Mesh3D {
         }
         if let Some(vertex_colors) = vertex_colors {
             mesh = mesh.with_vertex_colors(vertex_colors);
+        }
+        if let Some(vertex_texcoords) = vertex_texcoords {
+            mesh = mesh.with_vertex_texcoords(vertex_texcoords);
         }
         if albedo_factor.is_some() {
             mesh = mesh.with_mesh_material(rerun::datatypes::Material {
@@ -268,6 +271,8 @@ fn node_primitives<'data>(
 
             let vertex_texcoords = reader.read_tex_coords(0); // TODO(cmc): pick correct set
             let vertex_texcoords = vertex_texcoords.map(|texcoords| texcoords.into_f32().collect());
+
+            // TODO(cmc): support for albedo textures
 
             GltfPrimitive {
                 albedo_factor,

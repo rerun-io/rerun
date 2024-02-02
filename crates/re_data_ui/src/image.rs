@@ -65,7 +65,7 @@ impl EntityDataUi for re_types::components::TensorData {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn tensor_ui(
+pub fn tensor_ui(
     ctx: &ViewerContext<'_>,
     query: &re_data_store::LatestAtQuery,
     store: &re_data_store::DataStore,
