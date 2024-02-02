@@ -419,7 +419,7 @@ impl<T> FlatVecDeque<T> {
         self.push_back_deque(rhs);
         self.push_back_deque(right);
 
-        debug_assert!(self.iter_offset_ranges().all(|r| r.start < r.end));
+        debug_assert!(self.iter_offset_ranges().all(|r| r.start <= r.end));
     }
 }
 
