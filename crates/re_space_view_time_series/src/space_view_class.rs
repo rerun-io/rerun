@@ -26,7 +26,7 @@ use crate::PlotSeriesKind;
 
 // ---
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct TimeSeriesSpaceViewState {
     /// Is the user dragging the cursor this frame?
     is_dragging_time_cursor: bool,
@@ -36,6 +36,24 @@ pub struct TimeSeriesSpaceViewState {
 
     /// State of egui_plot's auto bounds before the user started dragging the time cursor.
     saved_auto_bounds: egui::Vec2b,
+
+    /// State of egui_plot's bounds
+    saved_y_axis_range: [f64; 2],
+
+    /// To track when the range has been edited
+    last_range: Option<Range1D>,
+}
+
+impl Default for TimeSeriesSpaceViewState {
+    fn default() -> Self {
+        Self {
+            is_dragging_time_cursor: false,
+            was_dragging_time_cursor: false,
+            saved_auto_bounds: Default::default(),
+            saved_y_axis_range: [0.0, 1.0],
+            last_range: None,
+        }
+    }
 }
 
 impl SpaceViewState for TimeSeriesSpaceViewState {
@@ -114,7 +132,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut Self::State,
+        state: &mut Self::State,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
         root_entity_properties: &mut EntityProperties,
@@ -147,7 +165,7 @@ It can greatly improve performance (and readability) in such situations as it pr
         });
 
         legend_ui(ctx, space_view_id, ui);
-        axis_ui(ctx, space_view_id, ui);
+        axis_ui(ctx, space_view_id, ui, state);
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
@@ -365,29 +383,31 @@ It can greatly improve performance (and readability) in such situations as it pr
                 time_ctrl_write.pause();
             }
 
+            let range_was_edited = state.last_range != y_range;
+            state.last_range = y_range;
             let is_resetting = plot_ui.response().double_clicked();
             let current_auto = plot_ui.auto_bounds();
 
             if let Some(y_range) = y_range {
                 // If we have a y_range, there are a few cases where we want to adjust the bounds.
-                // - The bounds were in auto last frame, but now an auto_y is specified.
+                // - The range was just edited
                 // - The zoom behavior is in LockToRange
                 // - The user double-clicked
-                if current_auto[1] || locked_range || is_resetting {
+                if range_was_edited || locked_range || is_resetting {
                     let current_bounds = plot_ui.plot_bounds();
                     let mut min = current_bounds.min();
                     let mut max = current_bounds.max();
 
                     // Pad the range by 5% on each side.
-                    min[1] = y_range.0[0] as f64;
-                    max[1] = y_range.0[1] as f64;
+                    min[1] = y_range.0[0];
+                    max[1] = y_range.0[1];
                     let new_bounds = egui_plot::PlotBounds::from_min_max(min, max);
                     plot_ui.set_plot_bounds(new_bounds);
                     // If we are resetting, we still want the X value to be auto for
                     // this frame.
                     plot_ui.set_auto_bounds([current_auto[0] || is_resetting, false].into());
                 }
-            } else if locked_range {
+            } else if locked_range || range_was_edited {
                 // If we are using auto range, but the range is locked, always
                 // force the y-bounds to be auto to prevent scrolling / zooming in y.
                 plot_ui.set_auto_bounds([current_auto[0] || is_resetting, true].into());
@@ -437,6 +457,8 @@ It can greatly improve performance (and readability) in such situations as it pr
             }
 
             state.was_dragging_time_cursor = state.is_dragging_time_cursor;
+            let bounds = plot_ui.plot_bounds().range_y();
+            state.saved_y_axis_range = [*bounds.start(), *bounds.end()];
         });
 
         // Decide if the time cursor should be displayed, and if so where:
@@ -558,7 +580,12 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
         });
 }
 
-fn axis_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
+fn axis_ui(
+    ctx: &ViewerContext<'_>,
+    space_view_id: SpaceViewId,
+    ui: &mut egui::Ui,
+    state: &TimeSeriesSpaceViewState,
+) {
     // TODO(jleibs): use editors
 
     let (
@@ -588,7 +615,8 @@ fn axis_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::U
 
                 if !auto_range {
                     // TODO(jleibs): Initial range needs to come from the real data.
-                    let mut range_edit = range.unwrap_or(Range1D([0.0, 1.0]));
+                    let mut range_edit =
+                        range.unwrap_or_else(|| range.unwrap_or(Range1D(state.saved_y_axis_range)));
 
                     ui.horizontal(|ui| {
                         let speed_min = (range_edit.0[0].abs() * 0.01).at_least(0.001);
