@@ -314,15 +314,18 @@ macro_rules! impl_query_archetype_latest_at {
                 let crate::LatestAtCache {
                     per_query_time,
                     per_data_time: _,
-                    timeless: _,
+                    timeless,
                     timeline: _,
                     total_size_bytes: _,
                 } = latest_at_cache;
 
                 // Expected path: cache was properly upserted.
                 if let Some(query_time_bucket_at_query_time) = per_query_time.get(&query.at) {
-                    // TODO(#4832): might or might not be timeless at this point…
-                    return iter_results(false, query_time_bucket_at_query_time, f);
+                    let is_timeless = std::ptr::eq(
+                        Arc::as_ptr(query_time_bucket_at_query_time),
+                        timeless.as_ref().map_or(std::ptr::null(), |bucket| Arc::as_ptr(bucket)),
+                    );
+                    return iter_results(is_timeless, query_time_bucket_at_query_time, f);
                 }
 
                 // Racy path: the write lock was busy.
