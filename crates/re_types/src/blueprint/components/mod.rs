@@ -15,6 +15,7 @@ mod space_view_class_ext;
 mod space_view_origin;
 mod visible;
 mod zoom_behavior;
+mod zoom_behavior_ext;
 
 pub use self::active_tab::ActiveTab;
 pub use self::column_shares::ColumnShares;

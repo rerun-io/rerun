@@ -1,4 +1,5 @@
 use egui::ahash::{HashMap, HashSet};
+use egui::NumExt as _;
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
 use re_data_store::TimeType;
@@ -6,7 +7,8 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, EntityPathFilter, TimeZone};
 use re_query::query_archetype;
 use re_space_view::controls;
-use re_types::blueprint::components::Corner2D;
+use re_types::blueprint::components::{Corner2D, ZoomBehavior};
+use re_types::components::Range1D;
 use re_types::Archetype;
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, EntityTree, TimeSeriesAggregator,
@@ -145,6 +147,7 @@ It can greatly improve performance (and readability) in such situations as it pr
         });
 
         legend_ui(ctx, space_view_id, ui);
+        axis_ui(ctx, space_view_id, ui);
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
@@ -507,6 +510,85 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
                 if corner != edit_corner {
                     ctx.save_blueprint_component(&blueprint_path, edit_corner);
                 }
+            });
+
+            ui.end_row();
+        });
+}
+
+fn axis_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
+    // TODO(jleibs): use editors
+
+    let (
+        re_types::blueprint::archetypes::AxisY {
+            range,
+            zoom_behavior,
+        },
+        blueprint_path,
+    ) = query_space_view_sub_archetype(ctx, space_view_id);
+
+    ctx.re_ui
+        .selection_grid(ui, "time_series_selection_ui_axis_y")
+        .show(ui, |ui| {
+            ctx.re_ui.grid_left_hand_label(ui, "Axis Y");
+
+            ui.vertical(|ui| {
+                let mut auto_range = range.is_none();
+
+                ui.horizontal(|ui| {
+                    ctx.re_ui
+                        .radio_value(ui, &mut auto_range, true, "Auto")
+                        .on_hover_text("Automatically adjust the Y axis to fit the data.");
+                    ctx.re_ui
+                        .radio_value(ui, &mut auto_range, false, "Override")
+                        .on_hover_text("Manually specify a min and max Y value.");
+                });
+
+                if !auto_range {
+                    // TODO(jleibs): Initial range needs to come from the real data.
+                    let mut range_edit = range.unwrap_or(Range1D([0.0, 1.0]));
+
+                    ui.horizontal(|ui| {
+                        let speed_min = (range_edit.0[0] * 0.01).at_least(0.001);
+                        let speed_max = (range_edit.0[1] * 0.01).at_least(0.001);
+                        ui.label("Min");
+                        ui.add(egui::DragValue::new(&mut range_edit.0[0]).speed(speed_min));
+                        ui.label("Max");
+                        ui.add(egui::DragValue::new(&mut range_edit.0[1]).speed(speed_max));
+                    });
+
+                    if range != Some(range_edit) {
+                        ctx.save_blueprint_component(&blueprint_path, range_edit);
+                    }
+                } else if range.is_some() {
+                    ctx.save_empty_blueprint_component::<Range1D>(&blueprint_path);
+                }
+
+                ui.horizontal(|ui| {
+                    let zoom_behavior = zoom_behavior.unwrap_or_default();
+                    let mut edit_behavior = zoom_behavior;
+                    egui::ComboBox::from_id_source("zoom_behavior")
+                        .selected_text(format!("{edit_behavior}"))
+                        .show_ui(ui, |ui| {
+                            ui.style_mut().wrap = Some(false);
+                            ui.set_min_width(64.0);
+
+                            ui.selectable_value(
+                                &mut edit_behavior,
+                                ZoomBehavior::PreserveAspectRatio,
+                                format!("{}", ZoomBehavior::PreserveAspectRatio),
+                            );
+
+                            ui.selectable_value(
+                                &mut edit_behavior,
+                                ZoomBehavior::LockToRange,
+                                format!("{}", ZoomBehavior::LockToRange),
+                            );
+                        });
+                    if zoom_behavior != edit_behavior {
+                        ctx.save_blueprint_component(&blueprint_path, edit_behavior);
+                    }
+                });
             });
 
             ui.end_row();
