@@ -84,6 +84,7 @@ from .viewport_layout import (
     ViewportLayoutType,
 )
 from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
+from .zoom_behavior import ZoomBehavior, ZoomBehaviorArrayLike, ZoomBehaviorBatch, ZoomBehaviorLike, ZoomBehaviorType
 
 __all__ = [
     "ActiveTab",
@@ -188,4 +189,9 @@ __all__ = [
     "VisibleBatch",
     "VisibleLike",
     "VisibleType",
+    "ZoomBehavior",
+    "ZoomBehaviorArrayLike",
+    "ZoomBehaviorBatch",
+    "ZoomBehaviorLike",
+    "ZoomBehaviorType",
 ]

@@ -15,6 +15,7 @@ pub use re_types::blueprint::components::RowShares;
 pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::Visible;
+pub use re_types::blueprint::components::ZoomBehavior;
 pub use re_viewport::blueprint::components::AutoLayout;
 pub use re_viewport::blueprint::components::AutoSpaceViews;
 pub use re_viewport::blueprint::components::ContainerKind;
@@ -50,4 +51,5 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<SpaceViewOrigin>(blueprint)
         && validate_component::<ViewportLayout>(blueprint)
         && validate_component::<Visible>(blueprint)
+        && validate_component::<ZoomBehavior>(blueprint)
 }

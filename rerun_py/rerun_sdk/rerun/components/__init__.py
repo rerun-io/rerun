@@ -43,6 +43,7 @@ from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, Pinho
 from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
 from .radius import Radius, RadiusArrayLike, RadiusBatch, RadiusLike, RadiusType
+from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
 from .scalar import Scalar, ScalarArrayLike, ScalarBatch, ScalarLike, ScalarType
@@ -167,6 +168,11 @@ __all__ = [
     "RadiusBatch",
     "RadiusLike",
     "RadiusType",
+    "Range1D",
+    "Range1DArrayLike",
+    "Range1DBatch",
+    "Range1DLike",
+    "Range1DType",
     "Resolution",
     "ResolutionBatch",
     "ResolutionType",

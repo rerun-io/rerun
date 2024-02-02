@@ -45,3 +45,5 @@ viewport_layout.cpp linguist-generated=true
 viewport_layout.hpp linguist-generated=true
 visible.cpp linguist-generated=true
 visible.hpp linguist-generated=true
+zoom_behavior.cpp linguist-generated=true
+zoom_behavior.hpp linguist-generated=true
