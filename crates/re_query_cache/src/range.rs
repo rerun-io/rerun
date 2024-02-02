@@ -205,7 +205,10 @@ macro_rules! impl_query_archetype_range {
                     $(bucket.range_component::<$pov>(entry_range.clone())
                         .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
                     $(bucket.range_component_opt::<$comp>(entry_range.clone())
-                        .ok_or_else(|| re_query::ComponentNotFoundError(<$comp>::name()))?,)*
+                        .map_or_else(
+                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<$comp>])),
+                            |it| itertools::Either::Right(it)),
+                    )*
                 ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
                     (
                         ((!timeless).then_some(*time), *row_id),
@@ -258,7 +261,7 @@ macro_rules! impl_query_archetype_range {
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
-                {
+                if added_entries > 0 {
                     let elapsed = now.elapsed();
                     ::re_log::trace!(
                         archetype=%A::name(),
