@@ -143,6 +143,19 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     skip_welcome_screen: bool,
 
+    /// The number of compute threads to use.
+    ///
+    /// If zero, the same number of threads as the number of cores will be used.
+    /// If negative, will use that much fewer threads than cores.
+    ///
+    /// Rerun will still use some additional threads for I/O.
+    #[clap(
+        long,
+        short = 'j',
+        default_value = "-2", // save some CPU for the main thread and the rest of the users system
+    )]
+    threads: i32,
+
     #[clap(long_help = r"Any combination of:
 - A WebSocket url to a Rerun Server
 - An HTTP(S) URL to an .rrd file to load
@@ -329,6 +342,8 @@ where
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
 
+    initialize_thead_pool(args.threads);
+
     if args.web_viewer {
         args.serve = true;
     }
@@ -383,6 +398,31 @@ where
 
         // Unclean failure -- re-raise exception
         Err(err) => Err(err),
+    }
+}
+
+fn initialize_thead_pool(threads_args: i32) {
+    // Name the rayon threads for the benefit of debuggers and profilers:
+    let mut builder = rayon::ThreadPoolBuilder::new().thread_name(|i| format!("rayon-{i}"));
+
+    if threads_args < 0 {
+        match std::thread::available_parallelism() {
+            Ok(cores) => {
+                let threads = cores.get().saturating_sub((-threads_args) as _).max(1);
+                re_log::debug!("Detected {cores} cores. Using {threads} compute threads.");
+                builder = builder.num_threads(threads);
+            }
+            Err(err) => {
+                re_log::warn!("Failed to query system of the number of cores: {err}");
+            }
+        }
+    } else {
+        // 0 means "use all cores", and rayon understands that
+        builder = builder.num_threads(threads_args as usize);
+    }
+
+    if let Err(err) = builder.build_global() {
+        re_log::warn!("Failed to initialize rayon thread pool: {err}");
     }
 }
 

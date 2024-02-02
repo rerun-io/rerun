@@ -20,12 +20,6 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 async fn main() -> std::process::ExitCode {
     re_log::setup_logging();
 
-    // Name the rayon threads for the benefit of debuggers and profilers:
-    rayon::ThreadPoolBuilder::new()
-        .thread_name(|i| format!("rayon-{i}"))
-        .build_global()
-        .unwrap();
-
     let build_info = re_build_info::build_info!();
 
     let result = rerun::run(build_info, rerun::CallSource::Cli, std::env::args()).await;

@@ -148,6 +148,7 @@ warn = [
 ]
 
 allow = [
+  "clippy::comparison_chain",      # annoying
   "clippy::manual_range_contains", # this one is just worse imho
 
   # TODO(emilk): enable more of these lints:
