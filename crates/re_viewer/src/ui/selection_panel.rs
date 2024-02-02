@@ -1,8 +1,9 @@
-use egui::NumExt as _;
+use egui::{NumExt as _, Ui};
 
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_entity_db::{
-    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
+    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
+    VisibleHistory,
 };
 use re_log_types::{DataRow, EntityPathFilter, RowId};
 use re_space_view_time_series::TimeSeriesSpaceView;
@@ -16,8 +17,8 @@ use re_ui::ReUi;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{
     blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId,
-    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand,
-    SystemCommandSender as _, UiVerbosity, ViewerContext,
+    DataQueryId, HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId,
+    SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
@@ -797,202 +798,240 @@ fn blueprint_ui(
 ) {
     match item {
         Item::SpaceView(space_view_id) => {
-            ui.horizontal(|ui| {
-                if ui
-                    .button("Edit Entity Query")
-                    .on_hover_text("Adjust the query expressions to add or remove Entities from the Space View")
-                    .clicked()
-                {
-                    viewport
-                        .show_add_remove_entities_window(*space_view_id);
-                }
-
-                if ui
-                    .button("Clone Space View")
-                    .on_hover_text("Create an exact duplicate of this Space View including all Blueprint settings")
-                    .clicked()
-                {
-                    if let Some(new_space_view_id) = viewport.blueprint.duplicate_space_view(space_view_id, ctx) {
-                        ctx.selection_state().set_selection(Item::SpaceView(new_space_view_id));
-                        viewport.blueprint.mark_user_interaction(ctx);
-                    }
-                }
-            });
-
-            if ctx.app_options.experimental_entity_filter_editor {
-                if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-                    if let Some(query) = space_view.queries.first() {
-                        if let Some(new_entity_path_filter) =
-                            entity_path_filter_ui(ui, &query.entity_path_filter)
-                        {
-                            let timepoint = blueprint_timepoint_for_writes();
-                            let expressions_component =
-                                QueryExpressions::from(&new_entity_path_filter);
-
-                            let row = DataRow::from_cells1_sized(
-                                RowId::new(),
-                                query.id.as_entity_path(),
-                                timepoint,
-                                1,
-                                [expressions_component],
-                            )
-                            .unwrap();
-
-                            ctx.command_sender
-                                .send_system(SystemCommand::UpdateBlueprint(
-                                    ctx.store_context.blueprint.store_id().clone(),
-                                    vec![row],
-                                ));
-
-                            space_view.set_entity_determined_by_user(ctx);
-                        }
-                    }
-                }
-            }
-
-            ui.add_space(ui.spacing().item_spacing.y);
-
-            if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-                let space_view_class = *space_view.class_identifier();
-
-                let space_view_state = viewport.state.space_view_state_mut(
-                    ctx.space_view_class_registry,
-                    space_view.id,
-                    space_view.class_identifier(),
-                );
-
-                // Space View don't inherit properties.
-                let mut resolved_entity_props = EntityProperties::default();
-
-                // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
-                if space_view_class == TimeSeriesSpaceView::IDENTIFIER {
-                    resolved_entity_props.visible_history.sequences = VisibleHistory::ALL;
-                    resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
-                }
-
-                let root_data_result =
-                    space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
-                let mut props = root_data_result
-                    .individual_properties()
-                    .cloned()
-                    .unwrap_or(resolved_entity_props.clone());
-
-                let cursor = ui.cursor();
-
-                space_view
-                    .class(ctx.space_view_class_registry)
-                    .selection_ui(
-                        ctx,
-                        ui,
-                        space_view_state.space_view_state.as_mut(),
-                        &space_view.space_origin,
-                        space_view.id,
-                        &mut props,
-                    );
-
-                if cursor != ui.cursor() {
-                    // add some space if something was rendered by selection_ui
-                    //TODO(ab): use design token
-                    ui.add_space(16.0);
-                }
-
-                visible_history_ui(
-                    ctx,
-                    ui,
-                    &space_view_class,
-                    true,
-                    None,
-                    &mut props.visible_history,
-                    &resolved_entity_props.visible_history,
-                );
-
-                root_data_result.save_override(Some(props), ctx);
-            }
+            blueprint_ui_for_space_view(ui, ctx, viewport, space_view_id);
         }
 
         Item::InstancePath(space_view_id, instance_path) => {
-            if let Some(space_view_id) = space_view_id {
-                if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-                    if instance_path.instance_key.is_specific() {
-                        let (query, store) = guess_query_and_store_for_selected_entity(
-                            ctx,
-                            &instance_path.entity_path,
-                        );
-                        ui.horizontal(|ui| {
-                            ui.label("Part of");
-                            item_ui::entity_path_button(
-                                ctx,
-                                &query,
-                                store,
-                                ui,
-                                Some(*space_view_id),
-                                &instance_path.entity_path,
-                            );
-                        });
-                        // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
-                    } else {
-                        // splat - the whole entity
-                        let space_view_class = *space_view.class_identifier();
-                        let entity_path = &instance_path.entity_path;
-                        let as_group = false;
-
-                        let query_result = ctx.lookup_query_result(space_view.query_id());
-                        if let Some(data_result) = query_result
-                            .tree
-                            .lookup_result_by_path_and_group(entity_path, as_group)
-                            .cloned()
-                        {
-                            let mut props = data_result
-                                .individual_properties()
-                                .cloned()
-                                .unwrap_or_default();
-                            entity_props_ui(
-                                ctx,
-                                ui,
-                                &space_view_class,
-                                Some(entity_path),
-                                &mut props,
-                                data_result.accumulated_properties(),
-                            );
-                            data_result.save_override(Some(props), ctx);
-                        }
-                    }
-                }
-            }
+            blueprint_ui_for_instance_path(
+                ui,
+                ctx,
+                viewport,
+                space_view_id.as_ref(),
+                instance_path,
+            );
         }
 
         Item::DataBlueprintGroup(space_view_id, query_id, group_path) => {
-            if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-                let as_group = true;
+            blueprint_ui_for_group(ui, ctx, viewport, space_view_id, query_id, group_path);
+        }
 
-                let query_result = ctx.lookup_query_result(*query_id);
+        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) => {}
+    }
+}
+
+fn blueprint_ui_for_space_view(
+    ui: &mut Ui,
+    ctx: &ViewerContext<'_>,
+    viewport: &mut Viewport<'_, '_>,
+    space_view_id: &SpaceViewId,
+) {
+    ui.horizontal(|ui| {
+        if ui
+            .button("Edit Entity Query")
+            .on_hover_text(
+                "Adjust the query expressions to add or remove Entities from the Space View",
+            )
+            .clicked()
+        {
+            viewport.show_add_remove_entities_window(*space_view_id);
+        }
+
+        if ui
+            .button("Clone Space View")
+            .on_hover_text(
+                "Create an exact duplicate of this Space View including all Blueprint settings",
+            )
+            .clicked()
+        {
+            if let Some(new_space_view_id) =
+                viewport.blueprint.duplicate_space_view(space_view_id, ctx)
+            {
+                ctx.selection_state()
+                    .set_selection(Item::SpaceView(new_space_view_id));
+                viewport.blueprint.mark_user_interaction(ctx);
+            }
+        }
+    });
+
+    if ctx.app_options.experimental_entity_filter_editor {
+        if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+            if let Some(query) = space_view.queries.first() {
+                if let Some(new_entity_path_filter) =
+                    entity_path_filter_ui(ui, &query.entity_path_filter)
+                {
+                    let timepoint = blueprint_timepoint_for_writes();
+                    let expressions_component = QueryExpressions::from(&new_entity_path_filter);
+
+                    let row = DataRow::from_cells1_sized(
+                        RowId::new(),
+                        query.id.as_entity_path(),
+                        timepoint,
+                        1,
+                        [expressions_component],
+                    )
+                    .unwrap();
+
+                    ctx.command_sender
+                        .send_system(SystemCommand::UpdateBlueprint(
+                            ctx.store_context.blueprint.store_id().clone(),
+                            vec![row],
+                        ));
+
+                    space_view.set_entity_determined_by_user(ctx);
+                }
+            }
+        }
+    }
+
+    ui.add_space(ui.spacing().item_spacing.y);
+
+    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+        let space_view_class = *space_view.class_identifier();
+
+        let space_view_state = viewport.state.space_view_state_mut(
+            ctx.space_view_class_registry,
+            space_view.id,
+            space_view.class_identifier(),
+        );
+
+        // Space View don't inherit properties.
+        let mut resolved_entity_props = EntityProperties::default();
+
+        // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
+        if space_view_class == TimeSeriesSpaceView::IDENTIFIER {
+            resolved_entity_props.visible_history.sequences = VisibleHistory::ALL;
+            resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
+        }
+
+        let root_data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
+        let mut props = root_data_result
+            .individual_properties()
+            .cloned()
+            .unwrap_or(resolved_entity_props.clone());
+
+        let cursor = ui.cursor();
+
+        space_view
+            .class(ctx.space_view_class_registry)
+            .selection_ui(
+                ctx,
+                ui,
+                space_view_state.space_view_state.as_mut(),
+                &space_view.space_origin,
+                space_view.id,
+                &mut props,
+            );
+
+        if cursor != ui.cursor() {
+            // add some space if something was rendered by selection_ui
+            //TODO(ab): use design token
+            ui.add_space(16.0);
+        }
+
+        visible_history_ui(
+            ctx,
+            ui,
+            &space_view_class,
+            true,
+            None,
+            &mut props.visible_history,
+            &resolved_entity_props.visible_history,
+        );
+
+        root_data_result.save_override(Some(props), ctx);
+    }
+}
+
+fn blueprint_ui_for_instance_path(
+    ui: &mut Ui,
+    ctx: &ViewerContext<'_>,
+    viewport: &Viewport<'_, '_>,
+    space_view_id: Option<&SpaceViewId>,
+    instance_path: &InstancePath,
+) {
+    if let Some(space_view_id) = space_view_id {
+        if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+            if instance_path.instance_key.is_specific() {
+                let (query, store) =
+                    guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
+                ui.horizontal(|ui| {
+                    ui.label("Part of");
+                    item_ui::entity_path_button(
+                        ctx,
+                        &query,
+                        store,
+                        ui,
+                        Some(*space_view_id),
+                        &instance_path.entity_path,
+                    );
+                });
+                // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
+            } else {
+                // splat - the whole entity
+                let space_view_class = *space_view.class_identifier();
+                let entity_path = &instance_path.entity_path;
+                let as_group = false;
+
+                let query_result = ctx.lookup_query_result(space_view.query_id());
                 if let Some(data_result) = query_result
                     .tree
-                    .lookup_result_by_path_and_group(group_path, as_group)
+                    .lookup_result_by_path_and_group(entity_path, as_group)
                     .cloned()
                 {
-                    let space_view_class = *space_view.class_identifier();
                     let mut props = data_result
                         .individual_properties()
                         .cloned()
                         .unwrap_or_default();
-
                     entity_props_ui(
                         ctx,
                         ui,
                         &space_view_class,
-                        None,
+                        Some(entity_path),
                         &mut props,
                         data_result.accumulated_properties(),
                     );
                     data_result.save_override(Some(props), ctx);
                 }
-            } else {
-                ctx.selection_state().clear_current();
             }
         }
+    }
+}
 
-        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) => {}
+fn blueprint_ui_for_group(
+    ui: &mut Ui,
+    ctx: &ViewerContext<'_>,
+    viewport: &Viewport<'_, '_>,
+    space_view_id: &SpaceViewId,
+    query_id: &DataQueryId,
+    group_path: &EntityPath,
+) {
+    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+        let as_group = true;
+
+        let query_result = ctx.lookup_query_result(*query_id);
+        if let Some(data_result) = query_result
+            .tree
+            .lookup_result_by_path_and_group(group_path, as_group)
+            .cloned()
+        {
+            let space_view_class = *space_view.class_identifier();
+            let mut props = data_result
+                .individual_properties()
+                .cloned()
+                .unwrap_or_default();
+
+            entity_props_ui(
+                ctx,
+                ui,
+                &space_view_class,
+                None,
+                &mut props,
+                data_result.accumulated_properties(),
+            );
+            data_result.save_override(Some(props), ctx);
+        }
+    } else {
+        ctx.selection_state().clear_current();
     }
 }
 
