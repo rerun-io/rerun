@@ -638,11 +638,13 @@ impl<T> FlatVecDeque<T> {
     /// Shortens the deque, keeping all entries up to `entry_index` (excluded), and
     /// dropping the rest.
     ///
-    /// Panics if `entry_index` is out of bounds.
+    /// If `entry_index` is greater or equal to [`Self::num_entries`], this has no effect.
     #[inline]
     pub fn truncate(&mut self, entry_index: usize) {
-        self.values.truncate(self.value_offset(entry_index));
-        self.offsets.truncate(entry_index);
+        if entry_index < self.num_entries() {
+            self.values.truncate(self.value_offset(entry_index));
+            self.offsets.truncate(entry_index);
+        }
     }
 
     /// Removes the entry at `entry_index` from the deque.
