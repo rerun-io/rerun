@@ -24,9 +24,7 @@ use re_viewport::{
     Contents, Viewport, ViewportBlueprint,
 };
 
-use crate::ui::{
-    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, override_ui::override_ui,
-};
+use crate::ui::override_ui::override_ui;
 use crate::ui::{override_ui::override_visualizer_ui, visible_history::visible_history_ui};
 
 use super::selection_history_ui::SelectionHistoryUi;
@@ -38,9 +36,6 @@ use super::selection_history_ui::SelectionHistoryUi;
 #[serde(default)]
 pub(crate) struct SelectionPanel {
     selection_state_ui: SelectionHistoryUi,
-
-    #[serde(skip)]
-    add_space_view_or_container_modal: AddSpaceViewOrContainerModal,
 }
 
 /// The current time query, based on the current time control and an `entity_path`
@@ -163,7 +158,7 @@ impl SelectionPanel {
                         // blueprints feature
                         if ctx.app_options.experimental_additive_workflow {
                             ui.add_space(12.0);
-                            self.container_children(ui, ctx, viewport, container_id);
+                            container_children(ui, ctx, viewport, container_id);
                         }
                     }
 
@@ -227,71 +222,67 @@ impl SelectionPanel {
                 }
             });
         }
-
-        self.add_space_view_or_container_modal
-            .ui(ui.ctx(), ctx, viewport);
     }
+}
 
-    fn container_children(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &ViewerContext<'_>,
-        viewport: &Viewport<'_, '_>,
-        container_id: &ContainerId,
-    ) {
-        let Some(container) = viewport.blueprint.container(container_id) else {
-            return;
-        };
+fn container_children(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    viewport: &mut Viewport<'_, '_>,
+    container_id: &ContainerId,
+) {
+    let Some(container) = viewport.blueprint.container(container_id) else {
+        return;
+    };
 
-        ui.horizontal(|ui| {
-            ui.strong("Contents");
+    ui.horizontal(|ui| {
+        ui.strong("Contents");
 
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ctx
-                    .re_ui
-                    .small_icon_button(ui, &re_ui::icons::ADD)
-                    .clicked()
-                {
-                    self.add_space_view_or_container_modal.open(*container_id);
-                }
-            });
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ctx
+                .re_ui
+                .small_icon_button(ui, &re_ui::icons::ADD)
+                .clicked()
+            {
+                viewport.show_add_space_view_or_container_modal(*container_id);
+            }
         });
+    });
 
-        let show_content = |ui: &mut egui::Ui| {
-            let mut has_child = false;
-            for child_contents in &container.contents {
-                has_child |= show_list_item_for_container_child(ui, ctx, viewport, child_contents);
-            }
+    let show_content = |ui: &mut egui::Ui| {
+        let mut has_child = false;
+        for child_contents in &container.contents {
+            has_child |= show_list_item_for_container_child(ui, ctx, viewport, child_contents);
+        }
 
-            if !has_child {
-                ListItem::new(ctx.re_ui, "empty — use the + button to add content")
-                    .weak(true)
-                    .italics(true)
-                    .active(false)
-                    .show(ui);
-            }
-        };
+        if !has_child {
+            ListItem::new(ctx.re_ui, "empty — use the + button to add content")
+                .weak(true)
+                .italics(true)
+                .active(false)
+                .show(ui);
+        }
+    };
+
+    egui::Frame {
+        outer_margin: egui::Margin::ZERO,
+        inner_margin: egui::Margin::ZERO,
+        stroke: ui.visuals().widgets.noninteractive.bg_stroke,
+        ..Default::default()
+    }
+    .show(ui, |ui| {
+        let clip_rect = ui.clip_rect();
+        ui.set_clip_rect(ui.max_rect());
+        ui.spacing_mut().item_spacing.y = 0.0;
 
         egui::Frame {
-            outer_margin: egui::Margin::ZERO,
-            inner_margin: egui::Margin::ZERO,
-            stroke: ui.visuals().widgets.noninteractive.bg_stroke,
+            inner_margin: egui::Margin::symmetric(4.0, 0.0),
             ..Default::default()
         }
-        .show(ui, |ui| {
-            let clip_rect = ui.clip_rect();
-            ui.set_clip_rect(ui.max_rect());
-            ui.spacing_mut().item_spacing.y = 0.0;
+        .show(ui, show_content);
 
-            egui::Frame {
-                inner_margin: egui::Margin::symmetric(4.0, 0.0),
-                ..Default::default()
-            }
-            .show(ui, show_content);
-
-            ui.set_clip_rect(clip_rect);
-        });
-    }
+        ui.set_clip_rect(clip_rect);
+    });
 }
 
 fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
@@ -804,7 +795,7 @@ fn blueprint_ui(
                     .clicked()
                 {
                     viewport
-                        .show_add_remove_entities_window(*space_view_id);
+                        .show_add_remove_entities_modal(*space_view_id);
                 }
 
                 if ui
