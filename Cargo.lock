@@ -1559,7 +1559,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
+source = "git+https://github.com/emilk/egui.git?rev=c5352cf6c16b28d00432e5abe2c6410f23a70d03#c5352cf6c16b28d00432e5abe2c6410f23a70d03"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1568,7 +1568,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
+source = "git+https://github.com/emilk/egui.git?rev=c5352cf6c16b28d00432e5abe2c6410f23a70d03#c5352cf6c16b28d00432e5abe2c6410f23a70d03"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1602,7 +1602,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
+source = "git+https://github.com/emilk/egui.git?rev=c5352cf6c16b28d00432e5abe2c6410f23a70d03#c5352cf6c16b28d00432e5abe2c6410f23a70d03"
 dependencies = [
  "accesskit",
  "ahash",
@@ -1618,7 +1618,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
+source = "git+https://github.com/emilk/egui.git?rev=c5352cf6c16b28d00432e5abe2c6410f23a70d03#c5352cf6c16b28d00432e5abe2c6410f23a70d03"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1635,7 +1635,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
+source = "git+https://github.com/emilk/egui.git?rev=c5352cf6c16b28d00432e5abe2c6410f23a70d03#c5352cf6c16b28d00432e5abe2c6410f23a70d03"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -1664,7 +1664,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
+source = "git+https://github.com/emilk/egui.git?rev=c5352cf6c16b28d00432e5abe2c6410f23a70d03#c5352cf6c16b28d00432e5abe2c6410f23a70d03"
 dependencies = [
  "egui",
  "ehttp",
@@ -1679,7 +1679,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
+source = "git+https://github.com/emilk/egui.git?rev=c5352cf6c16b28d00432e5abe2c6410f23a70d03#c5352cf6c16b28d00432e5abe2c6410f23a70d03"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1697,7 +1697,7 @@ dependencies = [
 [[package]]
 name = "egui_plot"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
+source = "git+https://github.com/emilk/egui.git?rev=c5352cf6c16b28d00432e5abe2c6410f23a70d03#c5352cf6c16b28d00432e5abe2c6410f23a70d03"
 dependencies = [
  "egui",
 ]
@@ -1739,7 +1739,7 @@ checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 [[package]]
 name = "emath"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
+source = "git+https://github.com/emilk/egui.git?rev=c5352cf6c16b28d00432e5abe2c6410f23a70d03#c5352cf6c16b28d00432e5abe2c6410f23a70d03"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1840,7 +1840,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.25.0"
-source = "git+https://github.com/emilk/egui.git?rev=520b28ce22a0daa20e13767af6061e9e40796f2a#520b28ce22a0daa20e13767af6061e9e40796f2a"
+source = "git+https://github.com/emilk/egui.git?rev=c5352cf6c16b28d00432e5abe2c6410f23a70d03#c5352cf6c16b28d00432e5abe2c6410f23a70d03"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -3849,9 +3849,9 @@ dependencies = [
 
 [[package]]
 name = "profiling"
-version = "1.0.13"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d135ede8821cf6376eb7a64148901e1690b788c11ae94dc297ae917dbc91dc0e"
+checksum = "0f0f7f43585c34e4fdd7497d746bc32e14458cf11c69341cc0587b1d825dde42"
 dependencies = [
  "profiling-procmacros",
  "puffin",
@@ -3859,9 +3859,9 @@ dependencies = [
 
 [[package]]
 name = "profiling-procmacros"
-version = "1.0.13"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b322d7d65c1ab449be3c890fcbd0db6e1092d0dd05d79dba2dd28032cebeb05"
+checksum = "ce97fecd27bc49296e5e20518b5a1bb54a14f7d5fe6228bc9686ee2a74915cc8"
 dependencies = [
  "quote",
  "syn 2.0.48",
@@ -3933,9 +3933,9 @@ dependencies = [
 
 [[package]]
 name = "puffin"
-version = "0.18.1"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02330f795caafc2007510f742624c10aa813b8c3097c77ff344b1b86eb6be846"
+checksum = "b9f76ad4bb049fded4e572df72cbb6381ff5d1f41f85c3a04b56e4eca287a02f"
 dependencies = [
  "anyhow",
  "bincode",
@@ -3949,13 +3949,14 @@ dependencies = [
 
 [[package]]
 name = "puffin_http"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcf8e52cf00569807b02e8089a85e859c00476182730cda9718c94b12cdc31b8"
+checksum = "4936c085e48efc86f6d96609dc5086d1d236afe3ec4676f09b157a4f4be83ff6"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
  "log",
+ "parking_lot",
  "puffin",
 ]
 
