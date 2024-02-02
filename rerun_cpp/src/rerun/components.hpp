@@ -29,6 +29,7 @@
 #include "components/rotation3d.hpp"
 #include "components/scalar.hpp"
 #include "components/scalar_scattering.hpp"
+#include "components/stroke_width.hpp"
 #include "components/tensor_data.hpp"
 #include "components/texcoord2d.hpp"
 #include "components/text.hpp"
