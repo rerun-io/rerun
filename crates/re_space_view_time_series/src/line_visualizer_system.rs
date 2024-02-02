@@ -184,7 +184,7 @@ impl SeriesLineSystem {
                                     time: time.as_i64(),
                                     value: scalar.0,
                                     attrs: PlotPointAttrs {
-                                        label,
+                                        label: label.map(Into::into), // TODO
                                         color,
                                         radius,
                                         kind: PlotSeriesKind::Continuous,
