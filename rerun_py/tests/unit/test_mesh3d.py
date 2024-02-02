@@ -5,6 +5,7 @@ from typing import Any, Optional, cast
 
 import rerun as rr
 from rerun.components import InstanceKeyArrayLike, MaterialBatch, MeshPropertiesBatch, Position3DBatch, Vector3DBatch
+from rerun.components.texcoord2d import Texcoord2DBatch
 from rerun.datatypes import (
     ClassIdArrayLike,
     Material,
@@ -12,6 +13,7 @@ from rerun.datatypes import (
     MeshProperties,
     MeshPropertiesLike,
     Rgba32ArrayLike,
+    Vec2DArrayLike,
     Vec3DArrayLike,
 )
 
@@ -23,6 +25,8 @@ from .common_arrays import (
     instance_keys_arrays,
     instance_keys_expected,
     none_empty_or_value,
+    vec2ds_arrays,
+    vec2ds_expected,
     vec3ds_arrays,
     vec3ds_expected,
 )
@@ -55,11 +59,13 @@ def test_mesh3d() -> None:
     vertex_positions_arrays = vec3ds_arrays
     vertex_normals_arrays = vec3ds_arrays
     vertex_colors_arrays = colors_arrays
+    vertex_texcoord_arrays = vec2ds_arrays
 
     all_arrays = itertools.zip_longest(
         vertex_positions_arrays,
         vertex_normals_arrays,
         vertex_colors_arrays,
+        vertex_texcoord_arrays,
         mesh_properties_objects,
         mesh_materials,
         class_ids_arrays,
@@ -70,6 +76,7 @@ def test_mesh3d() -> None:
         vertex_positions,
         vertex_normals,
         vertex_colors,
+        vertex_texcoords,
         mesh_properties,
         mesh_material,
         class_ids,
@@ -81,6 +88,7 @@ def test_mesh3d() -> None:
         vertex_positions = cast(Vec3DArrayLike, vertex_positions)
         vertex_normals = cast(Optional[Vec3DArrayLike], vertex_normals)
         vertex_colors = cast(Optional[Rgba32ArrayLike], vertex_colors)
+        vertex_texcoords = cast(Optional[Vec2DArrayLike], vertex_texcoords)
         mesh_properties = cast(Optional[MeshPropertiesLike], mesh_properties)
         mesh_material = cast(Optional[MaterialLike], mesh_material)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
@@ -88,9 +96,10 @@ def test_mesh3d() -> None:
 
         print(
             f"E: rr.Mesh3D(\n"
-            f"    vertex_normals={vertex_positions}\n"
+            f"    vertex_positions={vertex_positions}\n"
             f"    vertex_normals={vertex_normals}\n"
             f"    vertex_colors={vertex_colors}\n"
+            f"    vertex_texcoords={vertex_texcoords}\n"
             f"    mesh_properties={mesh_properties_objects}\n"
             f"    mesh_material={mesh_material}\n"
             f"    class_ids={class_ids}\n"
@@ -101,6 +110,7 @@ def test_mesh3d() -> None:
             vertex_positions=vertex_positions,
             vertex_normals=vertex_normals,
             vertex_colors=vertex_colors,
+            vertex_texcoords=vertex_texcoords,
             mesh_properties=mesh_properties,
             mesh_material=mesh_material,
             class_ids=class_ids,
@@ -111,6 +121,7 @@ def test_mesh3d() -> None:
         assert arch.vertex_positions == vec3ds_expected(vertex_positions, Position3DBatch)
         assert arch.vertex_normals == vec3ds_expected(vertex_normals, Vector3DBatch)
         assert arch.vertex_colors == colors_expected(vertex_colors)
+        assert arch.vertex_texcoords == vec2ds_expected(vertex_texcoords, Texcoord2DBatch)
         assert arch.mesh_properties == mesh_properties_expected(mesh_properties)
         assert arch.mesh_material == mesh_material_expected(mesh_material)
         assert arch.class_ids == class_ids_expected(class_ids)
@@ -124,11 +135,20 @@ def test_nullable_albedo_factor() -> None:
             MaterialBatch(
                 [
                     Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
+                ]
+            )
+        )
+        == 1
+    )
+    assert (
+        len(
+            MaterialBatch(
+                [
                     Material(),
                 ]
             )
         )
-        == 2
+        == 1
     )
 
 

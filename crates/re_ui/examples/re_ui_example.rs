@@ -243,7 +243,7 @@ impl eframe::App for ExampleApp {
 
                             self.modal_handler.ui(
                                 &self.re_ui,
-                                ui,
+                                ui.ctx(),
                                 || re_ui::modal::Modal::new("Modal window"),
                                 |_, ui, _| ui.label("This is a modal window."),
                             );
@@ -256,7 +256,7 @@ impl eframe::App for ExampleApp {
 
                             self.full_span_modal_handler.ui(
                                 &self.re_ui,
-                                ui,
+                                ui.ctx(),
                                 || re_ui::modal::Modal::new("Modal window").full_span_content(true),
                                 |_, ui, _| {
                                     for idx in 0..10 {
