@@ -622,12 +622,18 @@ pub struct CacheBucket {
     /// data, unless the raw data itself in the store has a hole at that particular point in time).
     ///
     /// Reminder: within a single timestamp, rows are sorted according to their [`RowId`]s.
+    ///
+    /// Invariant: `data_times.len() == pov_instance_keys.num_entries()`
     pub(crate) data_times: VecDeque<(TimeInt, RowId)>,
 
     /// The [`InstanceKey`]s of the point-of-view components.
+    ///
+    /// Invariant: `data_times.len() == pov_instance_keys.num_entries()`
     pub(crate) pov_instance_keys: FlatVecDeque<InstanceKey>,
 
     /// The resulting component data, pre-deserialized, pre-joined.
+    ///
+    /// All the contained FlatVecDeques have the same length as `data_times`.
     //
     // TODO(#4733): Don't denormalize auto-generated instance keys.
     // TODO(#4734): Don't denormalize splatted values.
@@ -669,6 +675,15 @@ impl std::fmt::Debug for CacheBucket {
 }
 
 impl CacheBucket {
+    // Check invariants in debug builds
+    fn sanity_check(&self) {
+        debug_assert_eq!(self.data_times.len(), self.pov_instance_keys.num_entries());
+        let n = self.data_times.len();
+        for (name, data) in &self.components {
+            debug_assert_eq!(data.dyn_num_entries(), n, "{name}");
+        }
+    }
+
     #[inline]
     pub fn time_range(&self) -> Option<TimeRange> {
         let first_time = self.data_times.front().map(|(t, _)| *t)?;
@@ -812,6 +827,8 @@ impl CacheBucket {
     /// Returns the number of bytes removed.
     #[inline]
     pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
+        self.sanity_check();
+
         let Self {
             data_times,
             pov_instance_keys,
@@ -841,15 +858,6 @@ impl CacheBucket {
             removed_bytes += total_size_bytes_before - data.dyn_total_size_bytes();
         }
 
-        debug_assert!({
-            let expected_num_entries = data_times.len();
-            data_times.len() == expected_num_entries
-                && pov_instance_keys.num_entries() == expected_num_entries
-                && components
-                    .values()
-                    .all(|data| data.dyn_num_entries() == expected_num_entries)
-        });
-
         *total_size_bytes = total_size_bytes
             .checked_sub(removed_bytes)
             .unwrap_or_else(|| {
@@ -860,6 +868,8 @@ impl CacheBucket {
                 );
                 u64::MIN
             });
+
+        self.sanity_check();
 
         removed_bytes
     }
@@ -886,6 +896,8 @@ macro_rules! impl_insert {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!("CacheBucket::insert", format!("arch={} pov={} comp={}", A::name(), $N, $M));
 
+            self.sanity_check();
+
             let pov_row_id = arch_view.primary_row_id();
             let index = self.data_times.partition_point(|t| t < &(query_time, pov_row_id));
 
@@ -907,6 +919,8 @@ macro_rules! impl_insert {
 
             $(added_size_bytes += self.insert_component::<A, $pov>(index, arch_view)?;)+
             $(added_size_bytes += self.insert_component_opt::<A, $comp>(index, arch_view)?;)*
+
+            self.sanity_check();
 
             self.total_size_bytes += added_size_bytes;
 
@@ -951,6 +965,8 @@ impl CacheBucket {
     ) -> re_query::Result<u64> {
         re_tracing::profile_function!(C::name());
 
+        self.sanity_check();
+
         let num_entries = self.num_entries();
 
         let data = self.components.entry(C::name()).or_insert_with(|| {
@@ -958,6 +974,8 @@ impl CacheBucket {
                 std::iter::repeat(vec![]).take(num_entries),
             ))
         });
+
+        debug_assert!(at <= data.dyn_num_entries());
 
         // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
         // instead, that way we can efficiently compute its size while we're at it.
@@ -971,6 +989,8 @@ impl CacheBucket {
         let data = data.as_any_mut().downcast_mut::<FlatVecDeque<C>>().unwrap();
         data.insert_deque(at, added);
 
+        self.sanity_check();
+
         Ok(added_size_bytes)
     }
 
@@ -983,6 +1003,8 @@ impl CacheBucket {
     ) -> re_query::Result<u64> {
         re_tracing::profile_function!(C::name());
 
+        self.sanity_check();
+
         let num_entries = self.num_entries();
 
         let data = self.components.entry(C::name()).or_insert_with(|| {
@@ -990,6 +1012,8 @@ impl CacheBucket {
                 std::iter::repeat(vec![]).take(num_entries),
             ))
         });
+
+        debug_assert!(at <= data.dyn_num_entries());
 
         let added: FlatVecDeque<Option<C>> = if arch_view.has_component::<C>() {
             // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
@@ -1013,6 +1037,8 @@ impl CacheBucket {
             .downcast_mut::<FlatVecDeque<Option<C>>>()
             .unwrap();
         data.insert_deque(at, added);
+
+        self.sanity_check();
 
         Ok(added_size_bytes)
     }
