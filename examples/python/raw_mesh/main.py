@@ -67,6 +67,8 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
 
             try:
                 albedo_texture = mesh.visual.material.baseColorTexture
+                if mesh.visual.material.baseColorTexture is None:
+                    raise ValueError()
             except Exception:
                 # Try vertex colors instead.
                 try:
