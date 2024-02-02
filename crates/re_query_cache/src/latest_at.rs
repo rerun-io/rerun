@@ -262,22 +262,22 @@ macro_rules! impl_query_archetype_latest_at {
                     if let Some(data_time_bucket_at_data_time) = per_data_time.get(&data_time) {
                         re_log::trace!(query_time=?query.at, ?data_time, "cache hit (data time)");
 
-                        query_time_bucket_at_query_time.insert(std::sync::Arc::clone(&data_time_bucket_at_data_time));
+                        query_time_bucket_at_query_time.insert(Arc::clone(&data_time_bucket_at_data_time));
 
                         // We now know for a fact that a query at that data time would yield the same
                         // results: copy the bucket accordingly so that the next cache hit for that query
                         // time ends up taking the fastest path.
                         let query_time_bucket_at_data_time = per_query_time.entry(data_time);
                         query_time_bucket_at_data_time
-                            .and_modify(|v| *v = std::sync::Arc::clone(&data_time_bucket_at_data_time))
-                            .or_insert(std::sync::Arc::clone(&data_time_bucket_at_data_time));
+                            .and_modify(|v| *v = Arc::clone(&data_time_bucket_at_data_time))
+                            .or_insert(Arc::clone(&data_time_bucket_at_data_time));
 
                         return Ok(());
                     }
                 } else {
                     if let Some(timeless) = timeless.as_ref() {
                         re_log::trace!(query_time=?query.at, "cache hit (data time, timeless)");
-                        query_time_bucket_at_query_time.insert(std::sync::Arc::clone(timeless));
+                        query_time_bucket_at_query_time.insert(Arc::clone(timeless));
                         return Ok(());
                     }
                 }
@@ -292,8 +292,8 @@ macro_rules! impl_query_archetype_latest_at {
 
                     let data_time_bucket_at_data_time = per_data_time.entry(data_time);
                     data_time_bucket_at_data_time
-                        .and_modify(|v| *v = std::sync::Arc::clone(&query_time_bucket_at_query_time))
-                        .or_insert(std::sync::Arc::clone(&query_time_bucket_at_query_time));
+                        .and_modify(|v| *v = Arc::clone(&query_time_bucket_at_query_time))
+                        .or_insert(Arc::clone(&query_time_bucket_at_query_time));
 
                     Ok(())
                 } else {
