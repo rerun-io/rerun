@@ -14,7 +14,7 @@ from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 from .._converters import (
-    to_np_float32,
+    to_np_float64,
 )
 
 __all__ = ["Range1D", "Range1DArrayLike", "Range1DBatch", "Range1DLike", "Range1DType"]
@@ -30,7 +30,7 @@ class Range1D:
         # You can define your own __init__ function as a member of Range1DExt in range1d_ext.py
         self.__attrs_init__(range=range)
 
-    range: npt.NDArray[np.float32] = field(converter=to_np_float32)
+    range: npt.NDArray[np.float64] = field(converter=to_np_float64)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of Range1DExt in range1d_ext.py
@@ -49,7 +49,7 @@ class Range1DType(BaseExtensionType):
 
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 2), self._TYPE_NAME
+            self, pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2), self._TYPE_NAME
         )
 
 

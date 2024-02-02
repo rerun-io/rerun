@@ -11,7 +11,7 @@ namespace rerun::components {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::Range1D>::arrow_datatype() {
         static const auto datatype =
-            arrow::fixed_size_list(arrow::field("item", arrow::float32(), false), 2);
+            arrow::fixed_size_list(arrow::field("item", arrow::float64(), false), 2);
         return datatype;
     }
 
@@ -29,7 +29,7 @@ namespace rerun {
             );
         }
 
-        auto value_builder = static_cast<arrow::FloatBuilder*>(builder->value_builder());
+        auto value_builder = static_cast<arrow::DoubleBuilder*>(builder->value_builder());
 
         ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
         static_assert(sizeof(elements[0].range) == sizeof(elements[0]));

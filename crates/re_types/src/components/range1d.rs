@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A 1D range, specifying a lower and upper bound.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
-pub struct Range1D(pub [f32; 2usize]);
+pub struct Range1D(pub [f64; 2usize]);
 
 impl ::re_types_core::SizeBytes for Range1D {
     #[inline]
@@ -34,18 +34,18 @@ impl ::re_types_core::SizeBytes for Range1D {
 
     #[inline]
     fn is_pod() -> bool {
-        <[f32; 2usize]>::is_pod()
+        <[f64; 2usize]>::is_pod()
     }
 }
 
-impl From<[f32; 2usize]> for Range1D {
+impl From<[f64; 2usize]> for Range1D {
     #[inline]
-    fn from(range: [f32; 2usize]) -> Self {
+    fn from(range: [f64; 2usize]) -> Self {
         Self(range)
     }
 }
 
-impl From<Range1D> for [f32; 2usize] {
+impl From<Range1D> for [f64; 2usize] {
     #[inline]
     fn from(value: Range1D) -> Self {
         value.0
@@ -69,7 +69,7 @@ impl ::re_types_core::Loggable for Range1D {
         DataType::FixedSizeList(
             std::sync::Arc::new(Field {
                 name: "item".to_owned(),
-                data_type: DataType::Float32,
+                data_type: DataType::Float64,
                 is_nullable: false,
                 metadata: [].into(),
             }),
@@ -126,7 +126,7 @@ impl ::re_types_core::Loggable for Range1D {
                 FixedSizeListArray::new(
                     Self::arrow_datatype(),
                     PrimitiveArray::new(
-                        DataType::Float32,
+                        DataType::Float64,
                         data0_inner_data
                             .into_iter()
                             .map(|v| v.unwrap_or_default())
@@ -159,7 +159,7 @@ impl ::re_types_core::Loggable for Range1D {
                         DataType::FixedSizeList(
                             std::sync::Arc::new(Field {
                                 name: "item".to_owned(),
-                                data_type: DataType::Float32,
+                                data_type: DataType::Float64,
                                 is_nullable: false,
                                 metadata: [].into(),
                             }),
@@ -179,10 +179,10 @@ impl ::re_types_core::Loggable for Range1D {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
                         .as_any()
-                        .downcast_ref::<Float32Array>()
+                        .downcast_ref::<Float64Array>()
                         .ok_or_else(|| {
                             DeserializationError::datatype_mismatch(
-                                DataType::Float32,
+                                DataType::Float64,
                                 arrow_data_inner.data_type().clone(),
                             )
                         })
@@ -248,7 +248,7 @@ impl ::re_types_core::Loggable for Range1D {
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field {
                                     name: "item".to_owned(),
-                                    data_type: DataType::Float32,
+                                    data_type: DataType::Float64,
                                     is_nullable: false,
                                     metadata: [].into(),
                                 }),
@@ -262,10 +262,10 @@ impl ::re_types_core::Loggable for Range1D {
                 bytemuck::cast_slice::<_, [_; 2usize]>(
                     arrow_data_inner
                         .as_any()
-                        .downcast_ref::<Float32Array>()
+                        .downcast_ref::<Float64Array>()
                         .ok_or_else(|| {
                             DeserializationError::datatype_mismatch(
-                                DataType::Float32,
+                                DataType::Float64,
                                 arrow_data_inner.data_type().clone(),
                             )
                         })

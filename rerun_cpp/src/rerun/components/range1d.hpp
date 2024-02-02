@@ -18,14 +18,14 @@ namespace arrow {
 namespace rerun::components {
     /// **Component**: A 1D range, specifying a lower and upper bound.
     struct Range1D {
-        std::array<float, 2> range;
+        std::array<double, 2> range;
 
       public:
         Range1D() = default;
 
-        Range1D(std::array<float, 2> range_) : range(range_) {}
+        Range1D(std::array<double, 2> range_) : range(range_) {}
 
-        Range1D& operator=(std::array<float, 2> range_) {
+        Range1D& operator=(std::array<double, 2> range_) {
             range = range_;
             return *this;
         }
