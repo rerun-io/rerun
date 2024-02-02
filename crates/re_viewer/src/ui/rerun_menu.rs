@@ -421,6 +421,14 @@ fn experimental_feature_ui(
             "Primary caching: range queries",
         )
         .on_hover_text("Toggle primary caching for range queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
+
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_plot_query_clamping,
+            "Plots: query clamping",
+        )
+        .on_hover_text("Toggle query clamping for the plot visualizers.");
 }
 
 #[cfg(debug_assertions)]
