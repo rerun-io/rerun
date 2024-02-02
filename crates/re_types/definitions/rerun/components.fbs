@@ -21,6 +21,7 @@ include "./components/pinhole_projection.fbs";
 include "./components/position2d.fbs";
 include "./components/position3d.fbs";
 include "./components/radius.fbs";
+include "./components/range1d.fbs";
 include "./components/resolution.fbs";
 include "./components/rotation3d.fbs";
 include "./components/scalar_scattering.fbs";
