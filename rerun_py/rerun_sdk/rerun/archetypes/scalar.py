@@ -43,7 +43,7 @@ class Scalar(Archetype):
 
     for step in range(0, 64):
         rr.set_time_sequence("step", step)
-        rr.log("scalar", rr.archetypes.Scalar(math.sin(step / 10.0)))
+        rr.log("scalar", rr.TimeSeriesScalar(math.sin(step / 10.0)))
     ```
     <center>
     <picture>

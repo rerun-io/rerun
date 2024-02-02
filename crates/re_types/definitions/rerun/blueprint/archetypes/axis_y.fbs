@@ -19,6 +19,8 @@ table AxisY (
     // --- Optional ---
 
     /// The default range of the y-axis of the plot.
+    ///
+    /// If unset, the range well be automatically determined based on the data.
     range: rerun.components.Range1D ("attr.rerun.component_optional", nullable, order: 2100);
 
     /// How the axis should scale as the plot is zoomed.

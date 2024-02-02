@@ -33,6 +33,8 @@ class AxisY(Archetype):
         ----------
         range:
             The default range of the y-axis of the plot.
+
+            If unset, the range well be automatically determined based on the data.
         zoom_behavior:
             How the axis should scale as the plot is zoomed.
         """
@@ -63,6 +65,8 @@ class AxisY(Archetype):
         converter=components.Range1DBatch._optional,  # type: ignore[misc]
     )
     # The default range of the y-axis of the plot.
+    #
+    # If unset, the range well be automatically determined based on the data.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

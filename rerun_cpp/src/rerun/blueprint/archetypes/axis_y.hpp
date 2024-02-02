@@ -20,6 +20,8 @@ namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the legend of a plot.
     struct AxisY {
         /// The default range of the y-axis of the plot.
+        ///
+        /// If unset, the range well be automatically determined based on the data.
         std::optional<rerun::components::Range1D> range;
 
         /// How the axis should scale as the plot is zoomed.
@@ -37,6 +39,8 @@ namespace rerun::blueprint::archetypes {
         AxisY(AxisY&& other) = default;
 
         /// The default range of the y-axis of the plot.
+        ///
+        /// If unset, the range well be automatically determined based on the data.
         AxisY with_range(rerun::components::Range1D _range) && {
             range = std::move(_range);
             // See: https://github.com/rerun-io/rerun/issues/4027

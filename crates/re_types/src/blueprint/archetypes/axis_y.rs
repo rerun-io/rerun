@@ -25,6 +25,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default)]
 pub struct AxisY {
     /// The default range of the y-axis of the plot.
+    ///
+    /// If unset, the range well be automatically determined based on the data.
     pub range: Option<crate::components::Range1D>,
 
     /// How the axis should scale as the plot is zoomed.
