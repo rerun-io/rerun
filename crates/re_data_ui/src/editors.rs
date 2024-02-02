@@ -5,10 +5,12 @@ use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::EntityPath;
 use re_query::ComponentWithInstances;
 use re_types::{
-    components::{Color, Radius, ScalarScattering, Text},
+    components::{Color, MarkerShape, Radius, ScalarScattering, Text},
     Component, Loggable,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
+
+// ----
 
 #[allow(clippy::too_many_arguments)]
 fn edit_color_ui(
@@ -55,6 +57,8 @@ fn default_color(
     Color::from_rgb(255, 255, 255)
 }
 
+// ----
+
 #[allow(clippy::too_many_arguments)]
 fn edit_text_ui(
     ctx: &ViewerContext<'_>,
@@ -93,6 +97,8 @@ fn default_text(
 ) -> Text {
     Text::from(entity_path.to_string())
 }
+
+// ----
 
 #[allow(clippy::too_many_arguments)]
 fn edit_scatter_ui(
@@ -141,6 +147,8 @@ fn default_scatter(
     ScalarScattering::from(false)
 }
 
+// ----
+
 #[allow(clippy::too_many_arguments)]
 fn edit_radius_ui(
     ctx: &ViewerContext<'_>,
@@ -186,6 +194,55 @@ fn default_radius(
     Radius::from(1.0)
 }
 
+// ----
+
+#[allow(clippy::too_many_arguments)]
+fn edit_marker_shape_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _verbosity: UiVerbosity,
+    query: &LatestAtQuery,
+    store: &DataStore,
+    entity_path: &EntityPath,
+    override_path: &EntityPath,
+    component: &ComponentWithInstances,
+    instance_key: &re_types::components::InstanceKey,
+) {
+    let current_marker = component
+        .lookup::<MarkerShape>(instance_key)
+        .ok()
+        .unwrap_or_else(|| default_marker_shape(ctx, query, store, entity_path));
+
+    let mut edit_marker = current_marker;
+
+    let marker_text = edit_marker.as_str();
+
+    egui::ComboBox::from_id_source("marker_shape")
+        .selected_text(marker_text)
+        .show_ui(ui, |ui| {
+            ui.style_mut().wrap = Some(false);
+            for marker in MarkerShape::all_markers() {
+                ui.selectable_value(&mut edit_marker, marker, marker.as_str());
+            }
+        });
+
+    if edit_marker != current_marker {
+        ctx.save_blueprint_component(override_path, edit_marker);
+    }
+}
+
+#[inline]
+fn default_marker_shape(
+    _ctx: &ViewerContext<'_>,
+    _query: &LatestAtQuery,
+    _store: &DataStore,
+    _entity_path: &EntityPath,
+) -> MarkerShape {
+    MarkerShape::default()
+}
+
+// ----
+
 fn register_editor<'a, C: Component + Loggable + 'static>(
     registry: &mut re_viewer_context::ComponentUiRegistry,
     default: fn(&ViewerContext<'_>, &LatestAtQuery, &DataStore, &EntityPath) -> C,
@@ -218,4 +275,5 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<Text>(registry, default_text, edit_text_ui);
     register_editor::<ScalarScattering>(registry, default_scatter, edit_scatter_ui);
     register_editor::<Radius>(registry, default_radius, edit_radius_ui);
+    register_editor::<MarkerShape>(registry, default_marker_shape, edit_marker_shape_ui);
 }

@@ -26,17 +26,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct SeriesPoint {
     /// Color for the corresponding series.
     pub color: Option<crate::components::Color>,
+
+    /// What shape to use to represent the point
+    pub marker: Option<crate::components::MarkerShape>,
 }
 
 impl ::re_types_core::SizeBytes for SeriesPoint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.color.heap_size_bytes()
+        self.color.heap_size_bytes() + self.marker.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <Option<crate::components::Color>>::is_pod()
+            && <Option<crate::components::MarkerShape>>::is_pod()
     }
 }
 
@@ -46,25 +50,27 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SeriesPointIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
+            "rerun.components.MarkerShape".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.SeriesPointIndicator".into(),
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
+            "rerun.components.MarkerShape".into(),
         ]
     });
 
 impl SeriesPoint {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`SeriesPoint`] [`::re_types_core::Archetype`]
@@ -123,7 +129,16 @@ impl ::re_types_core::Archetype for SeriesPoint {
         } else {
             None
         };
-        Ok(Self { color })
+        let marker = if let Some(array) = arrays_by_name.get("rerun.components.MarkerShape") {
+            <crate::components::MarkerShape>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.SeriesPoint#marker")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        Ok(Self { color, marker })
     }
 }
 
@@ -134,6 +149,9 @@ impl ::re_types_core::AsComponents for SeriesPoint {
         [
             Some(Self::indicator()),
             self.color
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.marker
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -150,12 +168,21 @@ impl ::re_types_core::AsComponents for SeriesPoint {
 
 impl SeriesPoint {
     pub fn new() -> Self {
-        Self { color: None }
+        Self {
+            color: None,
+            marker: None,
+        }
     }
 
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
+        self
+    }
+
+    #[inline]
+    pub fn with_marker(mut self, marker: impl Into<crate::components::MarkerShape>) -> Self {
+        self.marker = Some(marker.into());
         self
     }
 }

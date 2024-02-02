@@ -20,7 +20,9 @@ __all__ = ["SeriesPoint"]
 class SeriesPoint(Archetype):
     """**Archetype**: Define the style properties for a point series in a chart."""
 
-    def __init__(self: Any, *, color: datatypes.Rgba32Like | None = None):
+    def __init__(
+        self: Any, *, color: datatypes.Rgba32Like | None = None, marker: components.MarkerShapeLike | None = None
+    ):
         """
         Create a new instance of the SeriesPoint archetype.
 
@@ -28,11 +30,13 @@ class SeriesPoint(Archetype):
         ----------
         color:
             Color for the corresponding series.
+        marker:
+            What shape to use to represent the point
         """
 
         # You can define your own __init__ function as a member of SeriesPointExt in series_point_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(color=color)
+            self.__attrs_init__(color=color, marker=marker)
             return
         self.__attrs_clear__()
 
@@ -40,6 +44,7 @@ class SeriesPoint(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             color=None,  # type: ignore[arg-type]
+            marker=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -55,6 +60,15 @@ class SeriesPoint(Archetype):
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     # Color for the corresponding series.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    marker: components.MarkerShapeBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.MarkerShapeBatch._optional,  # type: ignore[misc]
+    )
+    # What shape to use to represent the point
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
