@@ -33,7 +33,7 @@ impl AverageAggregator {
                 let point = &points[i + j];
 
                 acc.value += point.value;
-                acc.attrs.radius += point.attrs.radius;
+                acc.attrs.stroke_width += point.attrs.stroke_width;
 
                 ratio += 1.0;
                 j += 1;
@@ -48,14 +48,14 @@ impl AverageAggregator {
 
                 let w = aggregation_factor_fract;
                 acc.value += point.value * w;
-                acc.attrs.radius += (point.attrs.radius as f64 * w) as f32;
+                acc.attrs.stroke_width += (point.attrs.stroke_width as f64 * w) as f32;
 
                 ratio += aggregation_factor_fract;
                 j += 1;
             }
 
             acc.value /= ratio;
-            acc.attrs.radius = (acc.attrs.radius as f64 / ratio) as _;
+            acc.attrs.stroke_width = (acc.attrs.stroke_width as f64 / ratio) as _;
 
             aggregated.push(acc);
 
@@ -124,17 +124,21 @@ impl MinMaxAggregator {
                 match self {
                     MinMaxAggregator::MinMax | MinMaxAggregator::MinMaxAverage => {
                         acc_min.value = f64::min(acc_min.value, point.value);
-                        acc_min.attrs.radius = f32::min(acc_min.attrs.radius, point.attrs.radius);
+                        acc_min.attrs.stroke_width =
+                            f32::min(acc_min.attrs.stroke_width, point.attrs.stroke_width);
                         acc_max.value = f64::max(acc_max.value, point.value);
-                        acc_max.attrs.radius = f32::max(acc_max.attrs.radius, point.attrs.radius);
+                        acc_max.attrs.stroke_width =
+                            f32::max(acc_max.attrs.stroke_width, point.attrs.stroke_width);
                     }
                     MinMaxAggregator::Min => {
                         acc_min.value = f64::min(acc_min.value, point.value);
-                        acc_min.attrs.radius = f32::min(acc_min.attrs.radius, point.attrs.radius);
+                        acc_min.attrs.stroke_width =
+                            f32::min(acc_min.attrs.stroke_width, point.attrs.stroke_width);
                     }
                     MinMaxAggregator::Max => {
                         acc_max.value = f64::max(acc_max.value, point.value);
-                        acc_max.attrs.radius = f32::max(acc_max.attrs.radius, point.attrs.radius);
+                        acc_max.attrs.stroke_width =
+                            f32::max(acc_max.attrs.stroke_width, point.attrs.stroke_width);
                     }
                 }
 
@@ -153,7 +157,8 @@ impl MinMaxAggregator {
                     // Don't average a single point with itself.
                     if j > 1 {
                         acc_min.value = (acc_min.value + acc_max.value) * 0.5;
-                        acc_min.attrs.radius = (acc_min.attrs.radius + acc_max.attrs.radius) * 0.5;
+                        acc_min.attrs.stroke_width =
+                            (acc_min.attrs.stroke_width + acc_max.attrs.stroke_width) * 0.5;
                     }
                     aggregated.push(acc_min);
                 }
@@ -190,7 +195,7 @@ fn are_aggregatable(point1: &PlotPoint, point2: &PlotPoint, window_size: usize) 
     let PlotPointAttrs {
         label,
         color,
-        radius: _,
+        stroke_width: _,
         kind,
     } = attrs;
 

@@ -33,7 +33,7 @@ pub(crate) fn plot_id(space_view_id: re_viewer_context::SpaceViewId) -> egui::Id
 pub struct PlotPointAttrs {
     pub label: Option<String>,
     pub color: egui::Color32,
-    pub radius: f32,
+    pub stroke_width: f32,
     pub kind: PlotSeriesKind,
 }
 
@@ -47,12 +47,12 @@ impl PartialEq for PlotPointAttrs {
         let Self {
             label,
             color,
-            radius,
+            stroke_width: radius,
             kind,
         } = self;
         label.eq(&rhs.label)
             && color.eq(&rhs.color)
-            && radius.total_cmp(&rhs.radius).is_eq()
+            && radius.total_cmp(&rhs.stroke_width).is_eq()
             && kind.eq(&rhs.kind)
     }
 }
