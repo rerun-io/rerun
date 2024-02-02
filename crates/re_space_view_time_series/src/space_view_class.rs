@@ -231,6 +231,14 @@ It can greatly improve performance (and readability) in such situations as it pr
             _,
         ) = query_space_view_sub_archetype(ctx, query.space_view_id);
 
+        let (
+            re_types::blueprint::archetypes::AxisY {
+                range: y_range,
+                zoom_behavior,
+            },
+            _,
+        ) = query_space_view_sub_archetype(ctx, query.space_view_id);
+
         let (current_time, time_type, timeline) = {
             // Avoid holding the lock for long
             let time_ctrl = ctx.rec_cfg.time_ctrl.read();
@@ -283,12 +291,18 @@ It can greatly improve performance (and readability) in such situations as it pr
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
+        let locked_range = zoom_behavior.unwrap_or_default() == ZoomBehavior::LockToRange;
+
+        let zoom_y =
+            !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER)) && !locked_range;
 
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.space_view_id))
-            .allow_zoom([true, zoom_both_axis])
+            .allow_zoom([true, zoom_y])
+            // Although counter-intuitive we set auto-y to true for the default bounds.
+            // this way when range_y is set we can update the bounds inside of Show.
+            .auto_bounds([true, true].into())
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
@@ -349,6 +363,34 @@ It can greatly improve performance (and readability) in such situations as it pr
                     plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
                 );
                 time_ctrl_write.pause();
+            }
+
+            let is_resetting = plot_ui.response().double_clicked();
+            let current_auto = plot_ui.auto_bounds();
+
+            if let Some(y_range) = y_range {
+                // If we have a y_range, there are a few cases where we want to adjust the bounds.
+                // - The bounds were in auto last frame, but now an auto_y is specified.
+                // - The zoom behavior is in LockToRange
+                // - The user double-clicked
+                if current_auto[1] || locked_range || is_resetting {
+                    let current_bounds = plot_ui.plot_bounds();
+                    let mut min = current_bounds.min();
+                    let mut max = current_bounds.max();
+
+                    // Pad the range by 5% on each side.
+                    min[1] = y_range.0[0] as f64;
+                    max[1] = y_range.0[1] as f64;
+                    let new_bounds = egui_plot::PlotBounds::from_min_max(min, max);
+                    plot_ui.set_plot_bounds(new_bounds);
+                    // If we are resetting, we still want the X value to be auto for
+                    // this frame.
+                    plot_ui.set_auto_bounds([current_auto[0] || is_resetting, false].into());
+                }
+            } else if locked_range {
+                // If we are using auto range, but the range is locked, always
+                // force the y-bounds to be auto to prevent scrolling / zooming in y.
+                plot_ui.set_auto_bounds([current_auto[0] || is_resetting, true].into());
             }
 
             for series in all_plot_series {
@@ -549,8 +591,8 @@ fn axis_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::U
                     let mut range_edit = range.unwrap_or(Range1D([0.0, 1.0]));
 
                     ui.horizontal(|ui| {
-                        let speed_min = (range_edit.0[0] * 0.01).at_least(0.001);
-                        let speed_max = (range_edit.0[1] * 0.01).at_least(0.001);
+                        let speed_min = (range_edit.0[0].abs() * 0.01).at_least(0.001);
+                        let speed_max = (range_edit.0[1].abs() * 0.01).at_least(0.001);
                         ui.label("Min");
                         ui.add(egui::DragValue::new(&mut range_edit.0[0]).speed(speed_min));
                         ui.label("Max");
