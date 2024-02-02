@@ -478,6 +478,32 @@ impl Viewport<'_, '_> {
     }
 
     pub fn add_new_spaceview_button_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+        if ctx.app_options.experimental_additive_workflow {
+            if ctx
+                .re_ui
+                .small_icon_button(ui, &re_ui::icons::ADD)
+                .on_hover_text("Add a new Space View or Container")
+                .clicked()
+            {
+                // If a single container is selected, we use it as target. Otherwise, we target the
+                // root container.
+                let target_container_id =
+                    if let Some(Item::Container(container_id)) = ctx.selection().single_item() {
+                        Some(*container_id)
+                    } else {
+                        self.blueprint.root_container
+                    };
+
+                if let Some(target_container_id) = target_container_id {
+                    self.show_add_space_view_or_container_modal(target_container_id);
+                }
+            }
+        } else {
+            self.legacy_add_new_spaceview_popup_menu(ctx, ui);
+        }
+    }
+
+    fn legacy_add_new_spaceview_popup_menu(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         ui.menu_image_button(
             re_ui::icons::ADD
                 .as_image()
