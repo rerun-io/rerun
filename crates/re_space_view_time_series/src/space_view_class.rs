@@ -314,13 +314,13 @@ It can greatly improve performance (and readability) in such situations as it pr
         let zoom_y =
             !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER)) && !locked_range;
 
+        let auto_y = y_range.is_none();
+
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.space_view_id))
             .allow_zoom([true, zoom_y])
-            // Although counter-intuitive we set auto-y to true for the default bounds.
-            // this way when range_y is set we can update the bounds inside of Show.
-            .auto_bounds([true, true].into())
+            .auto_bounds([true, auto_y].into())
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
