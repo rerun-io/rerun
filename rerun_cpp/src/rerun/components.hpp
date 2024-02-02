@@ -30,6 +30,7 @@
 #include "components/scalar.hpp"
 #include "components/scalar_scattering.hpp"
 #include "components/tensor_data.hpp"
+#include "components/texcoord2d.hpp"
 #include "components/text.hpp"
 #include "components/text_log_level.hpp"
 #include "components/transform3d.hpp"

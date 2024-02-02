@@ -9,7 +9,7 @@ use crate::mesh_loader::LoadedMesh;
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct MeshCacheKey {
     pub versioned_instance_path_hash: VersionedInstancePathHash,
     pub media_type: Option<MediaType>,
@@ -24,7 +24,13 @@ pub struct MeshCache(ahash::HashMap<MeshCacheKey, Option<Arc<LoadedMesh>>>);
 #[derive(Debug, Clone, Copy)]
 pub enum AnyMesh<'a> {
     Asset(&'a re_types::archetypes::Asset3D),
-    Mesh(&'a re_types::archetypes::Mesh3D),
+    Mesh {
+        mesh: &'a re_types::archetypes::Mesh3D,
+
+        /// If there are any textures associated with that mesh (albedo etc), they use this
+        /// hash for texture manager lookup.
+        texture_key: u64,
+    },
 }
 
 impl MeshCache {

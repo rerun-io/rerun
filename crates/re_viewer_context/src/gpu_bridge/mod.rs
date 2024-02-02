@@ -8,6 +8,7 @@ pub use colormap::colormap_dropdown_button_ui;
 pub use re_renderer_callback::new_renderer_callback;
 pub use tensor_to_gpu::{
     class_id_tensor_to_gpu, color_tensor_to_gpu, depth_tensor_to_gpu, tensor_to_gpu,
+    texture_height_width_channels,
 };
 
 use crate::TensorStats;

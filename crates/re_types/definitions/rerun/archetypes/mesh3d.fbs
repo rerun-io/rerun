@@ -41,14 +41,24 @@ table Mesh3D (
   /// An optional color for each vertex.
   vertex_colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
 
+  /// An optional uv texture coordinate for each vertex.
+  vertex_texcoords: [rerun.components.Texcoord2D] ("attr.rerun.component_optional", nullable, order: 3200);
+
   /// Optional material properties for the mesh as a whole.
-  mesh_material: rerun.components.Material ("attr.rerun.component_optional", nullable, order: 3200);
+  mesh_material: rerun.components.Material ("attr.rerun.component_optional", nullable, order: 3300);
+
+  /// Optional albedo texture.
+  ///
+  /// Used with `vertex_texcoords` on `Mesh3D`.
+  /// Currently supports only sRGB(A) textures, ignoring alpha.
+  /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+  albedo_texture: rerun.components.TensorData ("attr.rerun.component_optional", nullable, order: 3400);
 
   /// Optional class Ids for the vertices.
   ///
   /// The class ID provides colors and labels if not specified explicitly.
-  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3500);
 
   /// Unique identifiers for each individual vertex in the mesh.
-  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
+  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3600);
 }

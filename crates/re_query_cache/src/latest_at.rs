@@ -183,7 +183,10 @@ macro_rules! impl_query_archetype_latest_at {
                     $(bucket.iter_component::<$pov>()
                         .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
                     $(bucket.iter_component_opt::<$comp>()
-                        .ok_or_else(|| re_query::ComponentNotFoundError(<$comp>::name()))?,)*
+                        .map_or_else(
+                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<$comp>])),
+                            |it| itertools::Either::Right(it)),
+                    )*
                 ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
                     (
                         ((!timeless).then_some(*time), *row_id),

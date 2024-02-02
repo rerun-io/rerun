@@ -75,6 +75,7 @@ doc-valid-idents = [
   "macOS",
   "NaN",
   "OBJ",
+  "OpenGL",
   "PyPI",
   "sRGB",
   "sRGBA",
