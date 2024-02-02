@@ -964,14 +964,17 @@ impl CacheBucket {
         arch_view: &ArchetypeView<A>,
     ) -> re_query::Result<u64> {
         re_tracing::profile_function!(C::name());
+        // no sanity checks here - we are called while in an invariant-breakign state!
 
-        self.sanity_check();
-
-        let num_entries = self.num_entries();
+        let num_entries = self.data_times.len();
 
         let data = self.components.entry(C::name()).or_insert_with(|| {
             Box::new(FlatVecDeque::<C>::from_vecs(
-                std::iter::repeat(vec![]).take(num_entries),
+                std::iter::repeat(vec![]).take(
+                    num_entries
+                        .checked_sub(1)
+                        .expect("We should have been called AFTER inserting to data_times"),
+                ),
             ))
         });
 
@@ -989,8 +992,6 @@ impl CacheBucket {
         let data = data.as_any_mut().downcast_mut::<FlatVecDeque<C>>().unwrap();
         data.insert_deque(at, added);
 
-        self.sanity_check();
-
         Ok(added_size_bytes)
     }
 
@@ -1002,14 +1003,17 @@ impl CacheBucket {
         arch_view: &ArchetypeView<A>,
     ) -> re_query::Result<u64> {
         re_tracing::profile_function!(C::name());
-
-        self.sanity_check();
+        // no sanity checks here - we are called while in an invariant-breakign state!
 
         let num_entries = self.num_entries();
 
         let data = self.components.entry(C::name()).or_insert_with(|| {
             Box::new(FlatVecDeque::<Option<C>>::from_vecs(
-                std::iter::repeat(vec![]).take(num_entries),
+                std::iter::repeat(vec![]).take(
+                    num_entries
+                        .checked_sub(1)
+                        .expect("We should have been called AFTER inserting to data_times"),
+                ),
             ))
         });
 
@@ -1037,8 +1041,6 @@ impl CacheBucket {
             .downcast_mut::<FlatVecDeque<Option<C>>>()
             .unwrap();
         data.insert_deque(at, added);
-
-        self.sanity_check();
 
         Ok(added_size_bytes)
     }
