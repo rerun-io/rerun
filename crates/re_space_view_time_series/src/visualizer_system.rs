@@ -104,26 +104,22 @@ impl LegacyTimeSeriesSystem {
                 lookup_override::<ScalarScattering>(data_result, ctx).map(|s| s.0);
             let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
 
-            // Pre-allocate everything and pre-fill with either the overriden value or the default
-            // one.
-            let mut points = vec![
-                PlotPoint {
-                    time: 0,
-                    value: 0.0,
-                    attrs: PlotPointAttrs {
-                        label: override_label.clone(), // default is nothing
-                        color: annotation_info.color(override_color, default_color),
-                        radius: override_radius.unwrap_or(DEFAULT_RADIUS),
-                        kind: if override_scattered.unwrap_or(false) {
-                            PlotSeriesKind::Scatter(ScatterAttrs::default())
-                        } else {
-                            PlotSeriesKind::Continuous
-                        },
+            let default_point = PlotPoint {
+                time: 0,
+                value: 0.0,
+                attrs: PlotPointAttrs {
+                    label: override_label.clone(), // default is nothing
+                    color: annotation_info.color(override_color, default_color),
+                    radius: override_radius.unwrap_or(DEFAULT_RADIUS),
+                    kind: if override_scattered.unwrap_or(false) {
+                        PlotSeriesKind::Scatter(ScatterAttrs::default())
+                    } else {
+                        PlotSeriesKind::Continuous
                     },
-                };
-                1_000_000 // TODO: in the real world: ask the cache for this value
-            ];
-            let mut idx = 0;
+                },
+            };
+
+            let mut points = Vec::new();
 
             let time_range = determine_time_range(
                 query,
@@ -157,8 +153,9 @@ impl LegacyTimeSeriesSystem {
 
                         // This is a clear: we want to split the chart.
                         if scalars.is_empty() {
-                            points[idx].attrs.kind = PlotSeriesKind::Clear;
-                            idx += 1;
+                            let mut point = default_point.clone();
+                            point.attrs.kind = PlotSeriesKind::Clear;
+                            points.push(point);
                             return;
                         }
 
@@ -169,9 +166,10 @@ impl LegacyTimeSeriesSystem {
                             MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
                             MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
                         ) {
+                            let mut point = default_point.clone();
 
-                            points[idx].time = time.as_i64();
-                            points[idx].value = scalar.0;
+                            point.time = time.as_i64();
+                            point.value = scalar.0;
 
                             if override_color.is_none() {
                                 if let Some(color) = color.map(|c| {
@@ -183,35 +181,33 @@ impl LegacyTimeSeriesSystem {
                                         re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
                                     }
                                 }) {
-                                    points[idx].attrs.color = color;
+                                    point.attrs.color = color;
                                 }
                             }
 
                             if override_label.is_none() {
                                 if let Some(label) = label.as_ref().cloned() {
-                                    points[idx].attrs.label = Some(label);
+                                    point.attrs.label = Some(label);
                                 }
                             }
 
                             if override_scattered.is_none() {
                                 if scattered.map_or(false, |s| s.0) {
-                                    points[idx].attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
+                                    point.attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
                                 };
                             }
 
                             if override_radius.is_none() {
                                 if let Some(radius) = radius.map(|r| r.0) {
-                                    points[idx].attrs.radius = radius;
+                                    point.attrs.radius = radius;
                                 }
                             }
 
-                            idx += 1;
+                            points.push(point);
                         }
                     },
                 )?;
             }
-
-            points.truncate(idx);
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             points_to_series(
