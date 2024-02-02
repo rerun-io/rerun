@@ -951,10 +951,13 @@ impl CacheBucket {
     ) -> re_query::Result<u64> {
         re_tracing::profile_function!(C::name());
 
-        let data = self
-            .components
-            .entry(C::name())
-            .or_insert_with(|| Box::new(FlatVecDeque::<C>::new()));
+        let num_entries = self.num_entries();
+
+        let data = self.components.entry(C::name()).or_insert_with(|| {
+            Box::new(FlatVecDeque::<C>::from_vecs(
+                std::iter::repeat(vec![]).take(num_entries),
+            ))
+        });
 
         // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
         // instead, that way we can efficiently compute its size while we're at it.
@@ -980,10 +983,13 @@ impl CacheBucket {
     ) -> re_query::Result<u64> {
         re_tracing::profile_function!(C::name());
 
-        let data = self
-            .components
-            .entry(C::name())
-            .or_insert_with(|| Box::new(FlatVecDeque::<Option<C>>::new()));
+        let num_entries = self.num_entries();
+
+        let data = self.components.entry(C::name()).or_insert_with(|| {
+            Box::new(FlatVecDeque::<Option<C>>::from_vecs(
+                std::iter::repeat(vec![]).take(num_entries),
+            ))
+        });
 
         let added: FlatVecDeque<Option<C>> = if arch_view.has_component::<C>() {
             // The `FlatVecDeque` will have to collect the data one way or another: do it ourselves
