@@ -20,10 +20,15 @@ impl AddSpaceViewOrContainerModal {
         self.modal_handler.open();
     }
 
-    pub fn ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, viewport: &Viewport<'_, '_>) {
+    pub fn ui(
+        &mut self,
+        egui_ctx: &egui::Context,
+        ctx: &ViewerContext<'_>,
+        viewport: &Viewport<'_, '_>,
+    ) {
         self.modal_handler.ui(
             ctx.re_ui,
-            ui,
+            egui_ctx,
             || {
                 re_ui::modal::Modal::new("Add Space View or Container")
                     .min_width(500.0)

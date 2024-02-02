@@ -19,7 +19,7 @@ use egui::NumExt;
 ///     modal_handler.open();
 /// }
 ///
-/// modal_handler.ui(re_ui, ui, || Modal::new("Modal Window"), |_, ui, _| {
+/// modal_handler.ui(re_ui, ui.ctx(), || Modal::new("Modal Window"), |_, ui, _| {
 ///     ui.label("Modal content");
 /// });
 /// # });
@@ -40,7 +40,7 @@ impl ModalHandler {
     pub fn ui<R>(
         &mut self,
         re_ui: &crate::ReUi,
-        ui: &mut egui::Ui,
+        ctx: &egui::Context,
         make_modal: impl FnOnce() -> Modal,
         content_ui: impl FnOnce(&crate::ReUi, &mut egui::Ui, &mut bool) -> R,
     ) -> Option<R> {
@@ -50,7 +50,7 @@ impl ModalHandler {
         }
 
         if let Some(modal) = &mut self.modal {
-            let ModalResponse { inner, open } = modal.ui(re_ui, ui, content_ui);
+            let ModalResponse { inner, open } = modal.ui(re_ui, ctx, content_ui);
 
             if !open {
                 self.modal = None;
@@ -161,29 +161,27 @@ impl Modal {
     pub fn ui<R>(
         &mut self,
         re_ui: &crate::ReUi,
-        ui: &mut egui::Ui,
+        ctx: &egui::Context,
         content_ui: impl FnOnce(&crate::ReUi, &mut egui::Ui, &mut bool) -> R,
     ) -> ModalResponse<R> {
-        Self::dim_background(ui);
+        Self::dim_background(ctx);
 
-        let mut open = ui.input(|i| !i.key_pressed(egui::Key::Escape));
+        let mut open = ctx.input(|i| !i.key_pressed(egui::Key::Escape));
 
-        let screen_height = ui.ctx().screen_rect().height();
+        let screen_height = ctx.screen_rect().height();
         let modal_vertical_margins = (75.0).at_most(screen_height * 0.1);
 
         let mut window = egui::Window::new(&self.title)
             .pivot(egui::Align2::CENTER_TOP)
-            .fixed_pos(
-                ui.ctx().screen_rect().center_top() + egui::vec2(0.0, modal_vertical_margins),
-            )
-            .constrain_to(ui.ctx().screen_rect())
+            .fixed_pos(ctx.screen_rect().center_top() + egui::vec2(0.0, modal_vertical_margins))
+            .constrain_to(ctx.screen_rect())
             .max_height(screen_height - 2.0 * modal_vertical_margins)
             .collapsible(false)
             .resizable(true)
             .frame(egui::Frame {
                 // Note: inner margin are kept to zero so the clip rect is set to the same size as the modal itself,
                 // which is needed for the full-span highlighting behavior.
-                fill: ui.visuals().panel_fill,
+                fill: ctx.style().visuals.panel_fill,
                 ..Default::default()
             })
             .title_bar(false);
@@ -200,7 +198,7 @@ impl Modal {
             window = window.default_height(default_height);
         }
 
-        let response = window.show(ui.ctx(), |ui| {
+        let response = window.show(ctx, |ui| {
             let item_spacing_y = ui.spacing().item_spacing.y;
             ui.spacing_mut().item_spacing.y = 0.0;
 
@@ -242,11 +240,11 @@ impl Modal {
         let cursor_was_over_window = response
             .as_ref()
             .and_then(|response| {
-                ui.input(|i| i.pointer.interact_pos())
+                ctx.input(|i| i.pointer.interact_pos())
                     .map(|interact_pos| response.response.rect.contains(interact_pos))
             })
             .unwrap_or(false);
-        if !cursor_was_over_window && ui.input(|i| i.pointer.any_pressed()) {
+        if !cursor_was_over_window && ctx.input(|i| i.pointer.any_pressed()) {
             open = false;
         }
 
@@ -258,14 +256,14 @@ impl Modal {
 
     /// Dim the background to indicate that the window is modal.
     #[allow(clippy::needless_pass_by_ref_mut)]
-    fn dim_background(ui: &mut egui::Ui) {
+    fn dim_background(ctx: &egui::Context) {
         let painter = egui::Painter::new(
-            ui.ctx().clone(),
+            ctx.clone(),
             egui::LayerId::new(egui::Order::PanelResizeLine, egui::Id::new("DimLayer")),
             egui::Rect::EVERYTHING,
         );
         painter.add(egui::Shape::rect_filled(
-            ui.ctx().screen_rect(),
+            ctx.screen_rect(),
             egui::Rounding::ZERO,
             egui::Color32::from_black_alpha(128),
         ));

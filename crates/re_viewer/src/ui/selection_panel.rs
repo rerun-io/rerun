@@ -228,7 +228,8 @@ impl SelectionPanel {
             });
         }
 
-        self.add_space_view_or_container_modal.ui(ui, ctx, viewport);
+        self.add_space_view_or_container_modal
+            .ui(ui.ctx(), ctx, viewport);
     }
 
     fn container_children(

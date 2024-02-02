@@ -26,13 +26,13 @@ impl SpaceViewEntityPicker {
     #[allow(clippy::unused_self)]
     pub fn ui(
         &mut self,
-        ui: &mut egui::Ui,
+        egui_ctx: &egui::Context,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
     ) {
         self.modal_handler.ui(
             ctx.re_ui,
-            ui,
+            egui_ctx,
             || re_ui::modal::Modal::new("Add/remove Entities").default_height(640.0),
             |_, ui, open| {
                 let Some(space_view_id) = &self.space_view_id else {
