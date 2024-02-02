@@ -272,6 +272,8 @@ fn node_primitives<'data>(
             let vertex_texcoords = reader.read_tex_coords(0); // TODO(cmc): pick correct set
             let vertex_texcoords = vertex_texcoords.map(|texcoords| texcoords.into_f32().collect());
 
+            // TODO(cmc): support for albedo textures
+
             GltfPrimitive {
                 albedo_factor,
                 vertex_positions,
