@@ -825,39 +825,11 @@ fn blueprint_ui_for_space_view(
     viewport: &mut Viewport<'_, '_>,
     space_view_id: &SpaceViewId,
 ) {
-    ui.horizontal(|ui| {
-        if ui
-            .button("Edit Entity Query")
-            .on_hover_text(
-                "Adjust the query expressions to add or remove Entities from the Space View",
-            )
-            .clicked()
-        {
-            viewport.show_add_remove_entities_window(*space_view_id);
-        }
-
-        if ui
-            .button("Clone Space View")
-            .on_hover_text(
-                "Create an exact duplicate of this Space View including all Blueprint settings",
-            )
-            .clicked()
-        {
-            if let Some(new_space_view_id) =
-                viewport.blueprint.duplicate_space_view(space_view_id, ctx)
-            {
-                ctx.selection_state()
-                    .set_selection(Item::SpaceView(new_space_view_id));
-                viewport.blueprint.mark_user_interaction(ctx);
-            }
-        }
-    });
-
     if ctx.app_options.experimental_entity_filter_editor {
         if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
             if let Some(query) = space_view.queries.first() {
                 if let Some(new_entity_path_filter) =
-                    entity_path_filter_ui(ui, &query.entity_path_filter)
+                    entity_path_filter_ui(ui, viewport, space_view_id, &query.entity_path_filter)
                 {
                     let timepoint = blueprint_timepoint_for_writes();
                     let expressions_component = QueryExpressions::from(&new_entity_path_filter);
@@ -879,11 +851,38 @@ fn blueprint_ui_for_space_view(
 
                     space_view.set_entity_determined_by_user(ctx);
                 }
+
+                ui.add_space(ui.spacing().item_spacing.y);
             }
+        }
+    } else {
+        let response = ui.button("Add/remove Entity").on_hover_text(
+            "Adjust the query expressions to add or remove Entities from the Space View",
+        );
+
+        if response.clicked() {
+            viewport.show_add_remove_entities_window(*space_view_id);
         }
     }
 
-    ui.add_space(ui.spacing().item_spacing.y);
+    if ui
+        .button("Clone Space View")
+        .on_hover_text(
+            "Create an exact duplicate of this Space View including all Blueprint settings",
+        )
+        .clicked()
+    {
+        if let Some(new_space_view_id) = viewport.blueprint.duplicate_space_view(space_view_id, ctx)
+        {
+            ctx.selection_state()
+                .set_selection(Item::SpaceView(new_space_view_id));
+            viewport.blueprint.mark_user_interaction(ctx);
+        }
+    }
+
+    ui.add_space(ui.spacing().item_spacing.y / 2.0);
+    ReUi::full_span_separator(ui);
+    ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
     if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
         let space_view_class = *space_view.class_identifier();
@@ -1036,12 +1035,17 @@ fn blueprint_ui_for_group(
 }
 
 /// Returns a new filter when the editing is done, and there has been a change.
-fn entity_path_filter_ui(ui: &mut egui::Ui, filter: &EntityPathFilter) -> Option<EntityPathFilter> {
+fn entity_path_filter_ui(
+    ui: &mut egui::Ui,
+    viewport: &mut Viewport<'_, '_>,
+    space_view_id: &SpaceViewId,
+    filter: &EntityPathFilter,
+) -> Option<EntityPathFilter> {
     fn entity_path_filter_help_ui(ui: &mut egui::Ui) {
         let markdown = r#"
-A way to filter a set of `EntityPath`s.
+# Entity path query syntax
 
-This implements as simple set of include/exclude rules:
+Entity path queries are described as a list of include/exclude rules that act on paths:
 
 ```diff
 + /world/**           # add everything…
@@ -1049,7 +1053,7 @@ This implements as simple set of include/exclude rules:
 + /world/roads/main   # …but show main road
 ```
 
-If there is multiple matching rules, the most specific rule wins.
+If there are multiple matching rules, the most specific rule wins.
 If there are multiple rules of the same specificity, the last one wins.
 If no rules match, the path is excluded.
 
@@ -1075,7 +1079,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     "#
         .trim();
 
-        re_ui::markdownm_ui(ui, egui::Id::new("entity_path_filter_help_ui"), markdown);
+        re_ui::markdown_ui(ui, egui::Id::new("entity_path_filter_help_ui"), markdown);
     }
 
     fn syntax_highlight_entity_path_filter(
@@ -1126,10 +1130,34 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             .clone()
     });
 
+    let rightmost_x = ui.cursor().min.x;
     ui.horizontal(|ui| {
-        ui.label("Entity path filter");
-        re_ui::help_hover_button(ui).on_hover_ui(entity_path_filter_help_ui);
+        ui.label("Entity path query").on_hover_text(
+            "The entity path query consists of a list of include/exclude rules \
+            that determines what entities are part of this space view",
+        );
+
+        let current_x = ui.cursor().min.x;
+        // Compute a width that results in these things to be right-aligned with the following text edit.
+        let desired_width = (ui.available_width() - ui.spacing().item_spacing.x)
+            .at_most(ui.spacing().text_edit_width - (current_x - rightmost_x));
+
+        ui.allocate_ui_with_layout(
+            egui::vec2(desired_width, ui.available_height()),
+            egui::Layout::right_to_left(egui::Align::Center),
+            |ui| {
+                re_ui::help_hover_button(ui).on_hover_ui(entity_path_filter_help_ui);
+                if ui
+                    .button("Edit")
+                    .on_hover_text("Modify the entity query using the editor")
+                    .clicked()
+                {
+                    viewport.show_add_remove_entities_window(*space_view_id);
+                }
+            },
+        );
     });
+
     let response =
         ui.add(egui::TextEdit::multiline(&mut filter_string).layouter(&mut text_layouter));
 
