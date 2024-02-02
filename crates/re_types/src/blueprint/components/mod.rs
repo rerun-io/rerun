@@ -2,11 +2,11 @@
 
 mod active_tab;
 mod column_shares;
+mod corner2d;
+mod corner2d_ext;
 mod entities_determined_by_user;
 mod included_contents;
 mod included_queries;
-mod legend;
-mod legend_ext;
 mod name;
 mod name_ext;
 mod row_shares;
@@ -17,10 +17,10 @@ mod visible;
 
 pub use self::active_tab::ActiveTab;
 pub use self::column_shares::ColumnShares;
+pub use self::corner2d::Corner2D;
 pub use self::entities_determined_by_user::EntitiesDeterminedByUser;
 pub use self::included_contents::IncludedContents;
 pub use self::included_queries::IncludedQueries;
-pub use self::legend::Legend;
 pub use self::name::Name;
 pub use self::row_shares::RowShares;
 pub use self::space_view_class::SpaceViewClass;

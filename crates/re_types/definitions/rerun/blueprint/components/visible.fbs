@@ -9,7 +9,7 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Whether the container or space view is currently visible.
+/// Whether the container, space view, entity or instance is currently visible.
 struct Visible (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",

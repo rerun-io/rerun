@@ -162,6 +162,8 @@ impl ArchetypeName {
         let full_name = self.0.as_str();
         if let Some(short_name) = full_name.strip_prefix("rerun.archetypes.") {
             short_name
+        } else if let Some(short_name) = full_name.strip_prefix("rerun.blueprint.archetypes.") {
+            short_name
         } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
             short_name
         } else {

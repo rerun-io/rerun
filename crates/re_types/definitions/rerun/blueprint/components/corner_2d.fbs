@@ -2,11 +2,7 @@ include "arrow/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
 
-include "rerun/datatypes.fbs";
-include "rerun/attributes.fbs";
-
-namespace rerun.blueprint.datatypes;
-
+namespace rerun.blueprint.components;
 
 // TODO(#3384)
 /*
@@ -18,16 +14,14 @@ enum LegendPosition: byte {
 }
 */
 
-// ---
-
-/// Configuration for the legend of a plot.
-table Legend (
+/// One of four 2D corners, typically used to align objects.
+table Corner2D (
+    "attr.docs.unreleased",
+    "attr.arrow.transparent",
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord"
+    "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.tuple_struct"
 ) {
-    /// Whether or not the legend should be displayed.
-    visible: bool (order: 100);
-
     /// Where should the legend be located.
     ///
     /// Allowed values:
@@ -35,5 +29,5 @@ table Legend (
     ///  - RightTop = 2,
     ///  - LeftBottom = 3,
     ///  - RightBottom = 4
-    location: ubyte (order: 200, nullable);
+    location: ubyte (order: 200);
 }
