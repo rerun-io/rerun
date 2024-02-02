@@ -5,7 +5,7 @@ use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::EntityPath;
 use re_query::ComponentWithInstances;
 use re_types::{
-    components::{Color, MarkerShape, Radius, ScalarScattering, Text},
+    components::{Color, MarkerShape, Radius, ScalarScattering, StrokeWidth, Text},
     Component, Loggable,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -243,6 +243,53 @@ fn default_marker_shape(
 
 // ----
 
+#[allow(clippy::too_many_arguments)]
+fn edit_stroke_width_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _verbosity: UiVerbosity,
+    query: &LatestAtQuery,
+    store: &DataStore,
+    entity_path: &EntityPath,
+    override_path: &EntityPath,
+    component: &ComponentWithInstances,
+    instance_key: &re_types::components::InstanceKey,
+) {
+    let current_stroke_width = component
+        .lookup::<StrokeWidth>(instance_key)
+        .ok()
+        .unwrap_or_else(|| default_stroke_width(ctx, query, store, entity_path));
+
+    let current_stroke_width = current_stroke_width.0;
+    let mut edit_stroke_width = current_stroke_width;
+
+    let speed = (current_stroke_width * 0.01).at_least(0.001);
+
+    ui.add(
+        egui::DragValue::new(&mut edit_stroke_width)
+            .clamp_range(0.0..=f64::INFINITY)
+            .speed(speed),
+    );
+
+    if edit_stroke_width != current_stroke_width {
+        let new_stroke_width = StrokeWidth::from(edit_stroke_width);
+
+        ctx.save_blueprint_component(override_path, new_stroke_width);
+    }
+}
+
+#[inline]
+fn default_stroke_width(
+    _ctx: &ViewerContext<'_>,
+    _query: &LatestAtQuery,
+    _store: &DataStore,
+    _entity_path: &EntityPath,
+) -> StrokeWidth {
+    StrokeWidth::from(1.0)
+}
+
+// ----
+
 fn register_editor<'a, C: Component + Loggable + 'static>(
     registry: &mut re_viewer_context::ComponentUiRegistry,
     default: fn(&ViewerContext<'_>, &LatestAtQuery, &DataStore, &EntityPath) -> C,
@@ -272,8 +319,9 @@ fn register_editor<'a, C: Component + Loggable + 'static>(
 
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<Color>(registry, default_color, edit_color_ui);
-    register_editor::<Text>(registry, default_text, edit_text_ui);
-    register_editor::<ScalarScattering>(registry, default_scatter, edit_scatter_ui);
-    register_editor::<Radius>(registry, default_radius, edit_radius_ui);
     register_editor::<MarkerShape>(registry, default_marker_shape, edit_marker_shape_ui);
+    register_editor::<Radius>(registry, default_radius, edit_radius_ui);
+    register_editor::<ScalarScattering>(registry, default_scatter, edit_scatter_ui);
+    register_editor::<StrokeWidth>(registry, default_stroke_width, edit_stroke_width_ui);
+    register_editor::<Text>(registry, default_text, edit_text_ui);
 }
