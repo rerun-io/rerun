@@ -507,7 +507,7 @@ fn query_and_compare(
             .collect_vec();
 
         // Keep this around for the next unlucky chap.
-        // eprintln!("(expected={expected_data_time:?}, uncached={uncached_data_time:?}, cached={cached_data_time:?})");
+        eprintln!("(expected={expected_data_time:?}, uncached={uncached_data_time:?}, cached={cached_data_time:?})");
 
         similar_asserts::assert_eq!(expected_data_time, uncached_data_time);
         similar_asserts::assert_eq!(expected_instance_keys, uncached_instance_keys);
