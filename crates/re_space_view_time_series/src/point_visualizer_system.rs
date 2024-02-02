@@ -99,7 +99,12 @@ impl SeriesPointSystem {
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let mut points = Vec::new();
 
-            let time_range = determine_time_range(query, data_result, plot_bounds);
+            let time_range = determine_time_range(
+                query,
+                data_result,
+                plot_bounds,
+                ctx.app_options.experimental_plot_query_clamping,
+            );
 
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());

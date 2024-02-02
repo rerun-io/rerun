@@ -32,6 +32,9 @@ pub struct AppOptions {
     /// Applies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.
     pub experimental_primary_caching_range: bool,
 
+    /// Toggle query clamping for the plot visualizers.
+    pub experimental_plot_query_clamping: bool,
+
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -64,6 +67,8 @@ impl Default for AppOptions {
 
             experimental_primary_caching_latest_at: true,
             experimental_primary_caching_range: true,
+
+            experimental_plot_query_clamping: false,
 
             show_picking_debug_overlay: false,
 
