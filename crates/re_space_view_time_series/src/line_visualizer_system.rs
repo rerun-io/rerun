@@ -1,5 +1,6 @@
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::archetypes;
+use re_types::components::MarkerShape;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Radius, Scalar, Text},
@@ -129,12 +130,16 @@ impl SeriesLineSystem {
 
                 // TODO(jleibs): need to do a "joined" archetype query
                 query_caches
-                    .query_archetype_pov1_comp2::<archetypes::Scalar, Scalar, Color, Text, _>(
+                    // NOTE: We query for `MarkerShape` even though we don't use it because the
+                    // cache considers that each archetype has a unique query associated with it.
+                    // The `Scalar` archetype queries for `MarkerShape` in the point visualizer,
+                    // and so it must do so here also.
+                    .query_archetype_pov1_comp3::<archetypes::Scalar, Scalar, Color, MarkerShape, Text, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
                         &data_result.entity_path,
-                        |((time, _row_id), _, scalars, colors, labels)| {
+                        |((time, _row_id), _, scalars, colors, _, labels)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
