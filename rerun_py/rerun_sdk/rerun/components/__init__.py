@@ -54,6 +54,7 @@ from .scalar_scattering import (
     ScalarScatteringLike,
     ScalarScatteringType,
 )
+from .stroke_width import StrokeWidth, StrokeWidthArrayLike, StrokeWidthBatch, StrokeWidthLike, StrokeWidthType
 from .tensor_data import TensorData, TensorDataBatch, TensorDataType
 from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
 from .text import Text, TextBatch, TextType
@@ -189,6 +190,11 @@ __all__ = [
     "ScalarScatteringLike",
     "ScalarScatteringType",
     "ScalarType",
+    "StrokeWidth",
+    "StrokeWidthArrayLike",
+    "StrokeWidthBatch",
+    "StrokeWidthLike",
+    "StrokeWidthType",
     "TensorData",
     "TensorDataBatch",
     "TensorDataType",

@@ -1166,7 +1166,7 @@ pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {
 }
 
 /// Show some markdown
-pub fn markdownm_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
+pub fn markdown_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
     use parking_lot::Mutex;
     use std::sync::Arc;
 

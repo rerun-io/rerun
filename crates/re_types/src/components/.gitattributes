@@ -28,6 +28,7 @@ resolution.rs linguist-generated=true
 rotation3d.rs linguist-generated=true
 scalar.rs linguist-generated=true
 scalar_scattering.rs linguist-generated=true
+stroke_width.rs linguist-generated=true
 tensor_data.rs linguist-generated=true
 texcoord2d.rs linguist-generated=true
 text.rs linguist-generated=true

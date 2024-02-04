@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../components/color.hpp"
+#include "../components/stroke_width.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -21,6 +22,9 @@ namespace rerun::archetypes {
         /// Color for the corresponding series.
         std::optional<rerun::components::Color> color;
 
+        /// Stroke width for the corresponding series.
+        std::optional<rerun::components::StrokeWidth> width;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.components.SeriesLineIndicator";
@@ -35,6 +39,13 @@ namespace rerun::archetypes {
         /// Color for the corresponding series.
         SeriesLine with_color(rerun::components::Color _color) && {
             color = std::move(_color);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Stroke width for the corresponding series.
+        SeriesLine with_width(rerun::components::StrokeWidth _width) && {
+            width = std::move(_width);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
