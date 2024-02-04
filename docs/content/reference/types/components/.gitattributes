@@ -28,6 +28,7 @@ resolution.md linguist-generated=true
 rotation3d.md linguist-generated=true
 scalar.md linguist-generated=true
 scalar_scattering.md linguist-generated=true
+stroke_width.md linguist-generated=true
 tensor_data.md linguist-generated=true
 texcoord2d.md linguist-generated=true
 text.md linguist-generated=true

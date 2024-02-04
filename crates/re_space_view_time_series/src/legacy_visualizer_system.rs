@@ -157,7 +157,7 @@ impl LegacyTimeSeriesSystem {
                                 attrs: PlotPointAttrs {
                                     label: None,
                                     color: egui::Color32::BLACK,
-                                    radius: 0.0,
+                                    stroke_width: 0.0,
                                     kind: PlotSeriesKind::Clear,
                                 },
                             });
@@ -196,7 +196,7 @@ impl LegacyTimeSeriesSystem {
                                 attrs: PlotPointAttrs {
                                     label,
                                     color,
-                                    radius,
+                                    stroke_width: radius,
                                     kind,
                                 },
                             });
