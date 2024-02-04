@@ -142,6 +142,7 @@ impl SeriesLineSystem {
                         &data_result.entity_path,
                         // The `Scalar` archetype queries for `MarkerShape` in the point visualizer,
                         // and so it must do so here also.
+                        // See https://github.com/rerun-io/rerun/pull/5029
                         |((time, _row_id), _, scalars, colors, stroke_width, _, labels)| {
                             let Some(time) = time else {
                                 return;
