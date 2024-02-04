@@ -3,7 +3,7 @@ use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery,
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
-    PlotPoint, PlotSeries, PlotSeriesKind,
+    PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
 /// Find the plot bounds and the per-ui-point delta from egui.
@@ -30,6 +30,7 @@ pub fn determine_time_range(
     query: &ViewQuery<'_>,
     data_result: &re_viewer_context::DataResult,
     plot_bounds: Option<egui_plot::PlotBounds>,
+    enable_query_clamping: bool,
 ) -> TimeRange {
     let visible_history = match query.timeline.typ() {
         re_log_types::TimeType::Time => data_result.accumulated_properties().visible_history.nanos,
@@ -51,7 +52,7 @@ pub fn determine_time_range(
     // the plot widget handles zoom after we provide it with data for the current frame,
     // this results in an extremely jarring frame delay.
     // Just try it out and you'll see what I mean.
-    if false {
+    if enable_query_clamping {
         if let Some(plot_bounds) = plot_bounds {
             time_range.min = TimeInt::max(
                 time_range.min,
@@ -100,7 +101,7 @@ pub fn points_to_series(
         // Can't draw a single point as a continuous line, so fall back on scatter
         let mut kind = points[0].attrs.kind;
         if kind == PlotSeriesKind::Continuous {
-            kind = PlotSeriesKind::Scatter;
+            kind = PlotSeriesKind::Scatter(ScatterAttrs::default());
         }
 
         all_series.push(PlotSeries {

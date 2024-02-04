@@ -39,7 +39,7 @@ pub struct LatestAtCache {
     //
     // NOTE: Lives separately so we don't pay the extra `Option` cost in the much more common
     // timeful case.
-    pub timeless: Option<CacheBucket>,
+    pub timeless: Option<Arc<CacheBucket>>,
 
     /// For debugging purposes.
     pub(crate) timeline: Timeline,
@@ -183,7 +183,10 @@ macro_rules! impl_query_archetype_latest_at {
                     $(bucket.iter_component::<$pov>()
                         .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
                     $(bucket.iter_component_opt::<$comp>()
-                        .ok_or_else(|| re_query::ComponentNotFoundError(<$comp>::name()))?,)*
+                        .map_or_else(
+                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<$comp>])),
+                            |it| itertools::Either::Right(it)),
+                    )*
                 ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
                     (
                         ((!timeless).then_some(*time), *row_id),
@@ -259,21 +262,22 @@ macro_rules! impl_query_archetype_latest_at {
                     if let Some(data_time_bucket_at_data_time) = per_data_time.get(&data_time) {
                         re_log::trace!(query_time=?query.at, ?data_time, "cache hit (data time)");
 
-                        query_time_bucket_at_query_time.insert(std::sync::Arc::clone(&data_time_bucket_at_data_time));
+                        query_time_bucket_at_query_time.insert(Arc::clone(&data_time_bucket_at_data_time));
 
                         // We now know for a fact that a query at that data time would yield the same
                         // results: copy the bucket accordingly so that the next cache hit for that query
                         // time ends up taking the fastest path.
                         let query_time_bucket_at_data_time = per_query_time.entry(data_time);
                         query_time_bucket_at_data_time
-                            .and_modify(|v| *v = std::sync::Arc::clone(&data_time_bucket_at_data_time))
-                            .or_insert(std::sync::Arc::clone(&data_time_bucket_at_data_time));
+                            .and_modify(|v| *v = Arc::clone(&data_time_bucket_at_data_time))
+                            .or_insert(Arc::clone(&data_time_bucket_at_data_time));
 
                         return Ok(());
                     }
                 } else {
-                    if timeless.is_some() {
+                    if let Some(timeless) = timeless.as_ref() {
                         re_log::trace!(query_time=?query.at, "cache hit (data time, timeless)");
+                        query_time_bucket_at_query_time.insert(Arc::clone(timeless));
                         return Ok(());
                     }
                 }
@@ -288,8 +292,8 @@ macro_rules! impl_query_archetype_latest_at {
 
                     let data_time_bucket_at_data_time = per_data_time.entry(data_time);
                     data_time_bucket_at_data_time
-                        .and_modify(|v| *v = std::sync::Arc::clone(&query_time_bucket_at_query_time))
-                        .or_insert(std::sync::Arc::clone(&query_time_bucket_at_query_time));
+                        .and_modify(|v| *v = Arc::clone(&query_time_bucket_at_query_time))
+                        .or_insert(Arc::clone(&query_time_bucket_at_query_time));
 
                     Ok(())
                 } else {
@@ -298,7 +302,7 @@ macro_rules! impl_query_archetype_latest_at {
                     let bucket = create_and_fill_bucket(TimeInt::MIN, &arch_view)?;
                     *total_size_bytes += bucket.total_size_bytes;
 
-                    *timeless = Some(bucket);
+                    *timeless = Some(Arc::new(bucket));
 
                     Ok(())
                 }
@@ -310,15 +314,18 @@ macro_rules! impl_query_archetype_latest_at {
                 let crate::LatestAtCache {
                     per_query_time,
                     per_data_time: _,
-                    timeless: _,
+                    timeless,
                     timeline: _,
                     total_size_bytes: _,
                 } = latest_at_cache;
 
                 // Expected path: cache was properly upserted.
                 if let Some(query_time_bucket_at_query_time) = per_query_time.get(&query.at) {
-                    // TODO(#4832): might or might not be timeless at this point…
-                    return iter_results(false, query_time_bucket_at_query_time, f);
+                    let is_timeless = std::ptr::eq(
+                        Arc::as_ptr(query_time_bucket_at_query_time),
+                        timeless.as_ref().map_or(std::ptr::null(), |bucket| Arc::as_ptr(bucket)),
+                    );
+                    return iter_results(is_timeless, query_time_bucket_at_query_time, f);
                 }
 
                 // Racy path: the write lock was busy.

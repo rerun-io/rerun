@@ -3,6 +3,6 @@
 #pragma once
 
 #include "blueprint/archetypes/container_blueprint.hpp"
+#include "blueprint/archetypes/plot_legend.hpp"
 #include "blueprint/archetypes/space_view_blueprint.hpp"
-#include "blueprint/archetypes/time_series.hpp"
 #include "blueprint/archetypes/viewport_blueprint.hpp"

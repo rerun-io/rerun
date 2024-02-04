@@ -19,6 +19,7 @@ from .container_kind import (
     ContainerKindLike,
     ContainerKindType,
 )
+from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
 from .entities_determined_by_user import (
     EntitiesDeterminedByUser,
     EntitiesDeterminedByUserArrayLike,
@@ -55,7 +56,6 @@ from .included_space_views import (
     IncludedSpaceViewsLike,
     IncludedSpaceViewsType,
 )
-from .legend import Legend, LegendBatch, LegendType
 from .name import Name, NameArrayLike, NameBatch, NameLike, NameType
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
 from .query_expressions import (
@@ -109,6 +109,11 @@ __all__ = [
     "ContainerKindBatch",
     "ContainerKindLike",
     "ContainerKindType",
+    "Corner2D",
+    "Corner2DArrayLike",
+    "Corner2DBatch",
+    "Corner2DLike",
+    "Corner2DType",
     "EntitiesDeterminedByUser",
     "EntitiesDeterminedByUserArrayLike",
     "EntitiesDeterminedByUserBatch",
@@ -139,9 +144,6 @@ __all__ = [
     "IncludedSpaceViewsBatch",
     "IncludedSpaceViewsLike",
     "IncludedSpaceViewsType",
-    "Legend",
-    "LegendBatch",
-    "LegendType",
     "Name",
     "NameArrayLike",
     "NameBatch",

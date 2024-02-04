@@ -12,7 +12,7 @@ use re_viewer_context::{
 use crate::{
     overrides::{initial_override_color, lookup_override},
     util::{determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series},
-    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind,
+    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
 /// The legacy system for rendering [`TimeSeriesScalar`] archetypes.
@@ -92,7 +92,12 @@ impl LegacyTimeSeriesSystem {
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let mut points = Vec::new();
 
-            let time_range = determine_time_range(query, data_result, plot_bounds);
+            let time_range = determine_time_range(
+                query,
+                data_result,
+                plot_bounds,
+                ctx.app_options.experimental_plot_query_clamping,
+            );
 
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
@@ -169,8 +174,8 @@ impl LegacyTimeSeriesSystem {
                             let radius = override_radius
                                 .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
 
-                            let kind = if scattered {
-                                PlotSeriesKind::Scatter
+                            let kind= if scattered {
+                                PlotSeriesKind::Scatter(ScatterAttrs::default())
                             } else {
                                 PlotSeriesKind::Continuous
                             };

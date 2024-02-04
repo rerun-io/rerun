@@ -5,10 +5,12 @@ use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::EntityPath;
 use re_query::ComponentWithInstances;
 use re_types::{
-    components::{Color, Radius, ScalarScattering, Text},
+    components::{Color, MarkerShape, Radius, ScalarScattering, Text},
     Component, Loggable,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
+
+// ----
 
 #[allow(clippy::too_many_arguments)]
 fn edit_color_ui(
@@ -55,6 +57,8 @@ fn default_color(
     Color::from_rgb(255, 255, 255)
 }
 
+// ----
+
 #[allow(clippy::too_many_arguments)]
 fn edit_text_ui(
     ctx: &ViewerContext<'_>,
@@ -93,6 +97,8 @@ fn default_text(
 ) -> Text {
     Text::from(entity_path.to_string())
 }
+
+// ----
 
 #[allow(clippy::too_many_arguments)]
 fn edit_scatter_ui(
@@ -141,6 +147,8 @@ fn default_scatter(
     ScalarScattering::from(false)
 }
 
+// ----
+
 #[allow(clippy::too_many_arguments)]
 fn edit_radius_ui(
     ctx: &ViewerContext<'_>,
@@ -186,6 +194,91 @@ fn default_radius(
     Radius::from(1.0)
 }
 
+// ----
+
+#[allow(clippy::too_many_arguments)]
+fn edit_marker_shape_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _verbosity: UiVerbosity,
+    query: &LatestAtQuery,
+    store: &DataStore,
+    entity_path: &EntityPath,
+    override_path: &EntityPath,
+    component: &ComponentWithInstances,
+    instance_key: &re_types::components::InstanceKey,
+) {
+    let current_marker = component
+        .lookup::<MarkerShape>(instance_key)
+        .ok()
+        .unwrap_or_else(|| default_marker_shape(ctx, query, store, entity_path));
+
+    let mut edit_marker = current_marker;
+
+    let marker_text = edit_marker.as_str();
+
+    egui::ComboBox::from_id_source("marker_shape")
+        .selected_text(marker_text) // TODO(emilk): Show marker shape in the selected text
+        .width(100.0)
+        .height(320.0)
+        .show_ui(ui, |ui| {
+            // Hack needed for ListItem to click its highlight bg rect correctly:
+            ui.set_clip_rect(
+                ui.clip_rect()
+                    .with_max_x(ui.max_rect().max.x + ui.spacing().menu_margin.right),
+            );
+
+            for marker in MarkerShape::all_markers() {
+                let list_item = re_ui::list_item::ListItem::new(ctx.re_ui, marker.as_str())
+                    .with_icon_fn(|_re_ui, ui, rect, visuals| {
+                        paint_marker(ui, marker.into(), rect, visuals.text_color());
+                    })
+                    .selected(edit_marker == marker);
+                if list_item.show(ui).clicked() {
+                    edit_marker = marker;
+                }
+            }
+        });
+
+    if edit_marker != current_marker {
+        ctx.save_blueprint_component(override_path, edit_marker);
+    }
+}
+
+#[inline]
+fn default_marker_shape(
+    _ctx: &ViewerContext<'_>,
+    _query: &LatestAtQuery,
+    _store: &DataStore,
+    _entity_path: &EntityPath,
+) -> MarkerShape {
+    MarkerShape::default()
+}
+
+fn paint_marker(
+    ui: &egui::Ui,
+    marker: egui_plot::MarkerShape,
+    rect: egui::Rect,
+    color: egui::Color32,
+) {
+    use egui_plot::PlotItem as _;
+
+    let points = egui_plot::Points::new([0.0, 0.0])
+        .shape(marker)
+        .color(color)
+        .radius(rect.size().min_elem() / 2.0)
+        .filled(true);
+
+    let bounds = egui_plot::PlotBounds::new_symmetrical(0.5);
+    let transform = egui_plot::PlotTransform::new(rect, bounds, true, true);
+
+    let mut shapes = vec![];
+    points.shapes(ui, &transform, &mut shapes);
+    ui.painter().extend(shapes);
+}
+
+// ----
+
 fn register_editor<'a, C: Component + Loggable + 'static>(
     registry: &mut re_viewer_context::ComponentUiRegistry,
     default: fn(&ViewerContext<'_>, &LatestAtQuery, &DataStore, &EntityPath) -> C,
@@ -218,4 +311,5 @@ pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<Text>(registry, default_text, edit_text_ui);
     register_editor::<ScalarScattering>(registry, default_scatter, edit_scatter_ui);
     register_editor::<Radius>(registry, default_radius, edit_radius_ui);
+    register_editor::<MarkerShape>(registry, default_marker_shape, edit_marker_shape_ui);
 }

@@ -16,6 +16,7 @@
 #include "components/keypoint_id.hpp"
 #include "components/line_strip2d.hpp"
 #include "components/line_strip3d.hpp"
+#include "components/marker_shape.hpp"
 #include "components/material.hpp"
 #include "components/media_type.hpp"
 #include "components/mesh_properties.hpp"
