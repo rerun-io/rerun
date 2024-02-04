@@ -4,6 +4,7 @@
 
 pub const VIEWPORT_PATH: &str = "viewport";
 
+mod add_space_view_or_container_modal;
 mod auto_layout;
 mod container;
 mod space_view;
@@ -19,7 +20,7 @@ mod viewport_blueprint_ui;
 ///
 /// They all implement the [`re_types_core::Component`] trait.
 ///
-/// Unstable. Used for the ongoing blueprint experimentations.
+/// Unstable. Used for the ongoing blueprint experimentation.
 pub mod blueprint;
 
 pub use container::{ContainerBlueprint, Contents};

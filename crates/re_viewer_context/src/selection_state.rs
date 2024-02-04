@@ -131,6 +131,15 @@ impl Selection {
         self.0.first().map(|(item, _)| item)
     }
 
+    /// Check if the selection contains a single item and returns it if so.
+    pub fn single_item(&self) -> Option<&Item> {
+        if self.0.len() == 1 {
+            Some(&self.0[0].0)
+        } else {
+            None
+        }
+    }
+
     pub fn iter_items(&self) -> impl Iterator<Item = &Item> {
         self.0.iter().map(|(item, _)| item)
     }

@@ -20,7 +20,9 @@ __all__ = ["SeriesLine"]
 class SeriesLine(Archetype):
     """**Archetype**: Define the style properties for a line series in a chart."""
 
-    def __init__(self: Any, *, color: datatypes.Rgba32Like | None = None):
+    def __init__(
+        self: Any, *, color: datatypes.Rgba32Like | None = None, width: components.StrokeWidthLike | None = None
+    ):
         """
         Create a new instance of the SeriesLine archetype.
 
@@ -28,11 +30,13 @@ class SeriesLine(Archetype):
         ----------
         color:
             Color for the corresponding series.
+        width:
+            Stroke width for the corresponding series.
         """
 
         # You can define your own __init__ function as a member of SeriesLineExt in series_line_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(color=color)
+            self.__attrs_init__(color=color, width=width)
             return
         self.__attrs_clear__()
 
@@ -40,6 +44,7 @@ class SeriesLine(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             color=None,  # type: ignore[arg-type]
+            width=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -55,6 +60,15 @@ class SeriesLine(Archetype):
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
     # Color for the corresponding series.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    width: components.StrokeWidthBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.StrokeWidthBatch._optional,  # type: ignore[misc]
+    )
+    # Stroke width for the corresponding series.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

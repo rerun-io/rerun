@@ -9,9 +9,9 @@ from typing import Any
 
 from attrs import define, field
 
+from ... import blueprint
 from ..._baseclasses import Archetype
 from ...error_utils import catch_and_log_exceptions
-from .. import components
 
 __all__ = ["PlotLegend"]
 
@@ -21,7 +21,10 @@ class PlotLegend(Archetype):
     """**Archetype**: Configuration for the legend of a plot."""
 
     def __init__(
-        self: Any, *, corner: components.Corner2DLike | None = None, visible: components.VisibleLike | None = None
+        self: Any,
+        *,
+        corner: blueprint.components.Corner2DLike | None = None,
+        visible: blueprint.components.VisibleLike | None = None,
     ):
         """
         Create a new instance of the PlotLegend archetype.
@@ -58,10 +61,10 @@ class PlotLegend(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    corner: components.Corner2DBatch | None = field(
+    corner: blueprint.components.Corner2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Corner2DBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.Corner2DBatch._optional,  # type: ignore[misc]
     )
     # To what corner the legend is aligned.
     #
@@ -69,10 +72,10 @@ class PlotLegend(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    visible: components.VisibleBatch | None = field(
+    visible: blueprint.components.VisibleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.VisibleBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.VisibleBatch._optional,  # type: ignore[misc]
     )
     # Whether the legend is shown at all.
     #

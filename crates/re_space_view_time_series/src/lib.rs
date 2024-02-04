@@ -3,12 +3,12 @@
 //! A Space View that shows plots over Rerun timelines.
 
 mod aggregation;
+mod legacy_visualizer_system;
 mod line_visualizer_system;
 mod overrides;
 mod point_visualizer_system;
 mod space_view_class;
 mod util;
-mod visualizer_system;
 
 use re_log_types::EntityPath;
 use re_types::components::MarkerShape;
@@ -33,7 +33,7 @@ pub(crate) fn plot_id(space_view_id: re_viewer_context::SpaceViewId) -> egui::Id
 pub struct PlotPointAttrs {
     pub label: Option<String>,
     pub color: egui::Color32,
-    pub radius: f32,
+    pub stroke_width: f32,
     pub kind: PlotSeriesKind,
 }
 
@@ -47,12 +47,12 @@ impl PartialEq for PlotPointAttrs {
         let Self {
             label,
             color,
-            radius,
+            stroke_width: radius,
             kind,
         } = self;
         label.eq(&rhs.label)
             && color.eq(&rhs.color)
-            && radius.total_cmp(&rhs.radius).is_eq()
+            && radius.total_cmp(&rhs.stroke_width).is_eq()
             && kind.eq(&rhs.kind)
     }
 }

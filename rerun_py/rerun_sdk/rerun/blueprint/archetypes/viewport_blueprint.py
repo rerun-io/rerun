@@ -9,10 +9,9 @@ from typing import Any
 
 from attrs import define, field
 
-from ... import datatypes
+from ... import blueprint, datatypes
 from ..._baseclasses import Archetype
 from ...error_utils import catch_and_log_exceptions
-from .. import components
 
 __all__ = ["ViewportBlueprint"]
 
@@ -23,13 +22,13 @@ class ViewportBlueprint(Archetype):
 
     def __init__(
         self: Any,
-        space_views: components.IncludedSpaceViewsLike,
+        space_views: blueprint.components.IncludedSpaceViewsLike,
         *,
-        layout: components.ViewportLayoutLike | None = None,
+        layout: blueprint.components.ViewportLayoutLike | None = None,
         root_container: datatypes.UuidLike | None = None,
         maximized: datatypes.UuidLike | None = None,
-        auto_layout: components.AutoLayoutLike | None = None,
-        auto_space_views: components.AutoSpaceViewsLike | None = None,
+        auto_layout: blueprint.components.AutoLayoutLike | None = None,
+        auto_space_views: blueprint.components.AutoSpaceViewsLike | None = None,
     ):
         """
         Create a new instance of the ViewportBlueprint archetype.
@@ -83,45 +82,45 @@ class ViewportBlueprint(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    space_views: components.IncludedSpaceViewsBatch = field(
+    space_views: blueprint.components.IncludedSpaceViewsBatch = field(
         metadata={"component": "required"},
-        converter=components.IncludedSpaceViewsBatch._required,  # type: ignore[misc]
+        converter=blueprint.components.IncludedSpaceViewsBatch._required,  # type: ignore[misc]
     )
     # All of the space-views that belong to the viewport.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    layout: components.ViewportLayoutBatch | None = field(
+    layout: blueprint.components.ViewportLayoutBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ViewportLayoutBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.ViewportLayoutBatch._optional,  # type: ignore[misc]
     )
     # The layout of the space-views
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    root_container: components.RootContainerBatch | None = field(
+    root_container: blueprint.components.RootContainerBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RootContainerBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.RootContainerBatch._optional,  # type: ignore[misc]
     )
     # The layout of the space-views
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    maximized: components.SpaceViewMaximizedBatch | None = field(
+    maximized: blueprint.components.SpaceViewMaximizedBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.SpaceViewMaximizedBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.SpaceViewMaximizedBatch._optional,  # type: ignore[misc]
     )
     # Show one tab as maximized?
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    auto_layout: components.AutoLayoutBatch | None = field(
+    auto_layout: blueprint.components.AutoLayoutBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.AutoLayoutBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.AutoLayoutBatch._optional,  # type: ignore[misc]
     )
     # Whether the viewport layout is determined automatically.
     #
@@ -129,10 +128,10 @@ class ViewportBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    auto_space_views: components.AutoSpaceViewsBatch | None = field(
+    auto_space_views: blueprint.components.AutoSpaceViewsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.AutoSpaceViewsBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.AutoSpaceViewsBatch._optional,  # type: ignore[misc]
     )
     # Whether or not space views should be created automatically.
     #

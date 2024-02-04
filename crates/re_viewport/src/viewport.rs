@@ -17,7 +17,8 @@ use re_viewer_context::{
 
 use crate::container::blueprint_id_to_tile_id;
 use crate::{
-    container::Contents, icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
+    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, container::Contents,
+    icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
     system_execution::execute_systems_for_space_views, SpaceViewBlueprint, ViewportBlueprint,
 };
@@ -34,7 +35,12 @@ pub struct PerSpaceViewState {
 /// is not saved.
 #[derive(Default)]
 pub struct ViewportState {
-    space_view_entity_window: SpaceViewEntityPicker,
+    /// State for the "Add Entity" modal.
+    space_view_entity_modal: SpaceViewEntityPicker,
+
+    /// State for the "Add Space View or Container" modal.
+    add_space_view_container_modal: AddSpaceViewOrContainerModal,
+
     space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
 
     /// Current candidate parent container for the ongoing drop.
@@ -193,13 +199,23 @@ impl<'a, 'b> Viewport<'a, 'b> {
         }
     }
 
-    pub fn show_add_remove_entities_window(&mut self, space_view_id: SpaceViewId) {
-        self.state.space_view_entity_window.open(space_view_id);
+    pub fn show_add_remove_entities_modal(&mut self, space_view_id: SpaceViewId) {
+        self.state.space_view_entity_modal.open(space_view_id);
+    }
+
+    pub fn show_add_space_view_or_container_modal(&mut self, target_container: ContainerId) {
+        self.state
+            .add_space_view_container_modal
+            .open(target_container);
     }
 
     pub fn viewport_ui(&mut self, ui: &mut egui::Ui, ctx: &'a ViewerContext<'_>) {
+        // run modals (these are noop if the modals are not active)
         self.state
-            .space_view_entity_window
+            .space_view_entity_modal
+            .ui(ui.ctx(), ctx, self.blueprint);
+        self.state
+            .add_space_view_container_modal
             .ui(ui.ctx(), ctx, self.blueprint);
 
         let Viewport {

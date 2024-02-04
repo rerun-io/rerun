@@ -18,4 +18,8 @@ table SeriesLine (
     /// Color for the corresponding series.
     // TODO(jleibs): This should be batch if we make a batch Scalars loggable.
     color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 1000);
+
+    /// Stroke width for the corresponding series.
+    // TODO(jleibs): This should be batch if we make a batch Scalars loggable.
+    width: rerun.components.StrokeWidth ("attr.rerun.component_optional", nullable, order: 2000);
 }

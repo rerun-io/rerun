@@ -1,9 +1,9 @@
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::archetypes;
-use re_types::components::MarkerShape;
+use re_types::components::{MarkerShape, StrokeWidth};
 use re_types::{
     archetypes::SeriesLine,
-    components::{Color, Radius, Scalar, Text},
+    components::{Color, Scalar, Text},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
@@ -29,6 +29,8 @@ impl IdentifiedViewSystem for SeriesLineSystem {
         "SeriesLine".into()
     }
 }
+
+const DEFAULT_STROKE_WIDTH: f32 = 0.75;
 
 impl VisualizerSystem for SeriesLineSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
@@ -77,6 +79,8 @@ impl VisualizerSystem for SeriesLineSystem {
     ) -> Option<re_log_types::DataCell> {
         if *component == Color::name() {
             Some([initial_override_color(entity_path)].into())
+        } else if *component == StrokeWidth::name() {
+            Some([StrokeWidth(DEFAULT_STROKE_WIDTH)].into())
         } else {
             None
         }
@@ -124,22 +128,21 @@ impl SeriesLineSystem {
                 let override_label =
                     lookup_override::<Text>(data_result, ctx).map(|t| t.to_string());
 
-                let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
+                let override_stroke_width =
+                    lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
 
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
                 query_caches
-                    // NOTE: We query for `MarkerShape` even though we don't use it because the
-                    // cache considers that each archetype has a unique query associated with it.
-                    // The `Scalar` archetype queries for `MarkerShape` in the point visualizer,
-                    // and so it must do so here also.
-                    .query_archetype_pov1_comp3::<archetypes::Scalar, Scalar, Color, MarkerShape, Text, _>(
+                    .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, Text, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
                         &data_result.entity_path,
-                        |((time, _row_id), _, scalars, colors, _, labels)| {
+                        // The `Scalar` archetype queries for `MarkerShape` in the point visualizer,
+                        // and so it must do so here also.
+                        |((time, _row_id), _, scalars, colors, stroke_width, _, labels)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
@@ -152,17 +155,21 @@ impl SeriesLineSystem {
                                     attrs: PlotPointAttrs {
                                         label: None,
                                         color: egui::Color32::BLACK,
-                                        radius: 0.0,
+                                        stroke_width: 0.0,
                                         kind: PlotSeriesKind::Clear,
                                     },
                                 });
                                 return;
                             }
 
-                            for (scalar, color, label) in itertools::izip!(
+                            for (scalar, color, stoke_width, label) in itertools::izip!(
                                 scalars.iter(),
                                 MaybeCachedComponentData::iter_or_repeat_opt(
                                     &colors,
+                                    scalars.len()
+                                ),
+                                MaybeCachedComponentData::iter_or_repeat_opt(
+                                    &stroke_width,
                                     scalars.len()
                                 ),
                                 //MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
@@ -171,8 +178,6 @@ impl SeriesLineSystem {
                                     scalars.len()
                                 ),
                             ) {
-                                // TODO(jleibs): Replace with StrokeWidth
-                                let radius: Option<Radius> = None;
                                 let color = override_color.unwrap_or_else(|| {
                                     annotation_info
                                         .color(color.map(|c| c.to_array()), default_color)
@@ -180,10 +185,9 @@ impl SeriesLineSystem {
                                 let label = override_label.clone().or_else(|| {
                                     annotation_info.label(label.as_ref().map(|l| l.as_str()))
                                 });
-                                let radius = override_radius
-                                    .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
-
-                                const DEFAULT_RADIUS: f32 = 0.75;
+                                let stroke_width = override_stroke_width.unwrap_or_else(|| {
+                                    stoke_width.map_or(DEFAULT_STROKE_WIDTH, |r| r.0)
+                                });
 
                                 points.push(PlotPoint {
                                     time: time.as_i64(),
@@ -191,7 +195,7 @@ impl SeriesLineSystem {
                                     attrs: PlotPointAttrs {
                                         label,
                                         color,
-                                        radius,
+                                        stroke_width,
                                         kind: PlotSeriesKind::Continuous,
                                     },
                                 });

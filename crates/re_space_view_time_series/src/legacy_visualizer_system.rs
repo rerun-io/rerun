@@ -2,7 +2,7 @@ use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::{
     archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
-    Loggable,
+    Archetype, Loggable,
 };
 use re_viewer_context::{
     AnnotationMap, DefaultColor, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewQuery,
@@ -30,7 +30,15 @@ impl IdentifiedViewSystem for LegacyTimeSeriesSystem {
 
 impl VisualizerSystem for LegacyTimeSeriesSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<TimeSeriesScalar>()
+        let mut query_info = VisualizerQueryInfo::from_archetype::<TimeSeriesScalar>();
+        // Although we don't normally include indicator components in required components,
+        // we don't want to show this legacy visualizer unless a user is actively using
+        // the legacy archetype for their logging. Users just working with Scalar will
+        // only see the new visualizer options.
+        query_info
+            .required
+            .insert(TimeSeriesScalar::indicator().name());
+        query_info
     }
 
     fn execute(
@@ -149,7 +157,7 @@ impl LegacyTimeSeriesSystem {
                                 attrs: PlotPointAttrs {
                                     label: None,
                                     color: egui::Color32::BLACK,
-                                    radius: 0.0,
+                                    stroke_width: 0.0,
                                     kind: PlotSeriesKind::Clear,
                                 },
                             });
@@ -188,7 +196,7 @@ impl LegacyTimeSeriesSystem {
                                 attrs: PlotPointAttrs {
                                     label,
                                     color,
-                                    radius,
+                                    stroke_width: radius,
                                     kind,
                                 },
                             });

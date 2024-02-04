@@ -9,10 +9,9 @@ from typing import Any
 
 from attrs import define, field
 
-from ... import datatypes
+from ... import blueprint, datatypes
 from ..._baseclasses import Archetype
 from ...error_utils import catch_and_log_exceptions
-from .. import components
 
 __all__ = ["SpaceViewBlueprint"]
 
@@ -23,13 +22,13 @@ class SpaceViewBlueprint(Archetype):
 
     def __init__(
         self: Any,
-        class_identifier: components.SpaceViewClassLike,
+        class_identifier: blueprint.components.SpaceViewClassLike,
         *,
-        display_name: components.NameLike | None = None,
+        display_name: blueprint.components.NameLike | None = None,
         space_origin: datatypes.EntityPathLike | None = None,
-        entities_determined_by_user: components.EntitiesDeterminedByUserLike | None = None,
-        contents: components.IncludedQueriesLike | None = None,
-        visible: components.VisibleLike | None = None,
+        entities_determined_by_user: blueprint.components.EntitiesDeterminedByUserLike | None = None,
+        contents: blueprint.components.IncludedQueriesLike | None = None,
+        visible: blueprint.components.VisibleLike | None = None,
     ):
         """
         Create a new instance of the SpaceViewBlueprint archetype.
@@ -89,27 +88,27 @@ class SpaceViewBlueprint(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    class_identifier: components.SpaceViewClassBatch = field(
+    class_identifier: blueprint.components.SpaceViewClassBatch = field(
         metadata={"component": "required"},
-        converter=components.SpaceViewClassBatch._required,  # type: ignore[misc]
+        converter=blueprint.components.SpaceViewClassBatch._required,  # type: ignore[misc]
     )
     # The class of the view.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    display_name: components.NameBatch | None = field(
+    display_name: blueprint.components.NameBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.NameBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.NameBatch._optional,  # type: ignore[misc]
     )
     # The name of the view.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    space_origin: components.SpaceViewOriginBatch | None = field(
+    space_origin: blueprint.components.SpaceViewOriginBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.SpaceViewOriginBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.SpaceViewOriginBatch._optional,  # type: ignore[misc]
     )
     # The "anchor point" of this space view.
     #
@@ -119,19 +118,19 @@ class SpaceViewBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    entities_determined_by_user: components.EntitiesDeterminedByUserBatch | None = field(
+    entities_determined_by_user: blueprint.components.EntitiesDeterminedByUserBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.EntitiesDeterminedByUserBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.EntitiesDeterminedByUserBatch._optional,  # type: ignore[misc]
     )
     # True if the user is has added entities themselves. False otherwise.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    contents: components.IncludedQueriesBatch | None = field(
+    contents: blueprint.components.IncludedQueriesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.IncludedQueriesBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.IncludedQueriesBatch._optional,  # type: ignore[misc]
     )
     # `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
     #
@@ -139,10 +138,10 @@ class SpaceViewBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    visible: components.VisibleBatch | None = field(
+    visible: blueprint.components.VisibleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.VisibleBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.VisibleBatch._optional,  # type: ignore[misc]
     )
     # Whether this space view is visible.
     #
