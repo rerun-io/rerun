@@ -582,8 +582,13 @@ fn code_for_struct(
     // Delegating component inheritance comes after the `ExtensionClass`
     // This way if a component needs to override `__init__` it still can.
     if obj.is_delegating_component() {
+        let delegate = obj.delegate_datatype(objects).unwrap();
+        let scope = match delegate.scope() {
+            Some(scope) => format!("{scope}."),
+            None => String::new(),
+        };
         superclasses.push(format!(
-            "datatypes.{}",
+            "{scope}datatypes.{}",
             obj.delegate_datatype(objects).unwrap().name
         ));
     }
@@ -1286,17 +1291,17 @@ fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) ->
         if from.starts_with("rerun.datatypes") {
             "from ... import datatypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.datatypes").as_str()) {
-            "from .. import datatypes".to_owned()
+            format!("from ... import {scope}")
         } else if from.starts_with("rerun.components") {
             "from ... import components".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.components").as_str()) {
-            "from .. import components".to_owned()
+            format!("from ... import {scope}")
         } else if from.starts_with("rerun.archetypes") {
             // NOTE: This is assuming importing other archetypes is legal… which whether it is or
             // isn't for this code generator to say.
             "from ... import archetypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.archetytpes").as_str()) {
-            "from .. import archetypes".to_owned()
+            "from .. import {scope}".to_owned()
         } else if from.is_empty() {
             format!("from . import {class}")
         } else {
@@ -1502,9 +1507,9 @@ fn fqname_to_type(fqname: &str) -> String {
         ["rerun", "datatypes", name] => format!("datatypes.{name}"),
         ["rerun", "components", name] => format!("components.{name}"),
         ["rerun", "archetypes", name] => format!("archetypes.{name}"),
-        ["rerun", _scope, "datatypes", name] => format!("datatypes.{name}"),
-        ["rerun", _scope, "components", name] => format!("components.{name}"),
-        ["rerun", _scope, "archetypes", name] => format!("archetypes.{name}"),
+        ["rerun", scope, "datatypes", name] => format!("{scope}.datatypes.{name}"),
+        ["rerun", scope, "components", name] => format!("{scope}.components.{name}"),
+        ["rerun", scope, "archetypes", name] => format!("{scope}.archetypes.{name}"),
         _ => {
             panic!("Unexpected fqname: {fqname}");
         }
@@ -1554,7 +1559,11 @@ fn quote_arrow_support_from_obj(
     let mut batch_superclasses: Vec<String> = vec![];
 
     let many_aliases = if let Some(data_type) = obj.delegate_datatype(objects) {
-        format!("datatypes.{}ArrayLike", data_type.name)
+        let scope = match data_type.scope() {
+            Some(scope) => format!("{scope}."),
+            None => String::new(),
+        };
+        format!("{scope}datatypes{}ArrayLike", data_type.name)
     } else {
         format!("{name}ArrayLike")
     };
@@ -1564,8 +1573,12 @@ fn quote_arrow_support_from_obj(
         batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
     } else if obj.kind == ObjectKind::Component {
         if let Some(data_type) = obj.delegate_datatype(objects) {
-            let data_extension_type = format!("datatypes.{}Type", data_type.name);
-            let data_extension_array = format!("datatypes.{}Batch", data_type.name);
+            let scope = match data_type.scope() {
+                Some(scope) => format!("{scope}."),
+                None => String::new(),
+            };
+            let data_extension_type = format!("{scope}datatypes.{}Type", data_type.name);
+            let data_extension_array = format!("{scope}datatypes.{}Batch", data_type.name);
             type_superclasses.push(data_extension_type);
             batch_superclasses.push(data_extension_array);
         } else {
