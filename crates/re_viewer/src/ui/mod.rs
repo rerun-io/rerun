@@ -7,7 +7,6 @@ mod selection_history_ui;
 mod top_panel;
 mod welcome_screen;
 
-pub(crate) mod add_space_view_or_container_modal;
 pub(crate) mod memory_panel;
 pub(crate) mod selection_panel;
 pub(crate) mod space_view_space_origin_ui;

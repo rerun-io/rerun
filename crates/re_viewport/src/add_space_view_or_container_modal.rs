@@ -2,11 +2,11 @@
 
 use itertools::Itertools;
 
+use crate::{icon_for_container_kind, SpaceViewBlueprint, ViewportBlueprint};
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_space_view::DataQueryBlueprint;
 use re_ui::ReUi;
 use re_viewer_context::{ContainerId, ViewerContext};
-use re_viewport::{icon_for_container_kind, SpaceViewBlueprint, Viewport};
 
 #[derive(Default)]
 pub struct AddSpaceViewOrContainerModal {
@@ -15,16 +15,16 @@ pub struct AddSpaceViewOrContainerModal {
 }
 
 impl AddSpaceViewOrContainerModal {
-    pub fn open(&mut self, target_container: ContainerId) {
+    pub(crate) fn open(&mut self, target_container: ContainerId) {
         self.target_container = Some(target_container);
         self.modal_handler.open();
     }
 
-    pub fn ui(
+    pub(crate) fn ui(
         &mut self,
         egui_ctx: &egui::Context,
         ctx: &ViewerContext<'_>,
-        viewport: &Viewport<'_, '_>,
+        viewport: &ViewportBlueprint,
     ) {
         self.modal_handler.ui(
             ctx.re_ui,
@@ -42,7 +42,7 @@ impl AddSpaceViewOrContainerModal {
 fn modal_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    viewport: &Viewport<'_, '_>,
+    viewport: &ViewportBlueprint,
     target_container: Option<ContainerId>,
     keep_open: &mut bool,
 ) {
@@ -71,8 +71,8 @@ fn modal_ui(
 
     for (title, subtitle, kind) in container_data {
         if row_ui(ui, icon_for_container_kind(&kind), title, subtitle).clicked() {
-            viewport.blueprint.add_container(kind, target_container);
-            viewport.blueprint.mark_user_interaction(ctx);
+            viewport.add_container(kind, target_container);
+            viewport.mark_user_interaction(ctx);
             *keep_open = false;
         }
     }
@@ -99,10 +99,8 @@ fn modal_ui(
         let subtitle = format!("Create a new Space View to display {title} content.");
 
         if row_ui(ui, icon, title, &subtitle).clicked() {
-            viewport
-                .blueprint
-                .add_space_views(std::iter::once(space_view), ctx, target_container);
-            viewport.blueprint.mark_user_interaction(ctx);
+            viewport.add_space_views(std::iter::once(space_view), ctx, target_container);
+            viewport.mark_user_interaction(ctx);
             *keep_open = false;
         }
     }
