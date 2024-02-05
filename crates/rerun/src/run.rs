@@ -413,7 +413,10 @@ fn initialize_thread_pool(threads_args: i32) {
                 builder = builder.num_threads(threads);
             }
             Err(err) => {
-                re_log::warn!("Failed to query system of the number of cores: {err}");
+                re_log::warn!("Failed to query system of the number of cores: {err}.");
+                // Let rayon decide for itself how many threads to use.
+                // It's default is to use as many threads as we have cores,
+                // (if rayon manages to figure out how many cores we have).
             }
         }
     } else {
