@@ -56,6 +56,13 @@ from .included_space_views import (
     IncludedSpaceViewsLike,
     IncludedSpaceViewsType,
 )
+from .lock_range_during_zoom import (
+    LockRangeDuringZoom,
+    LockRangeDuringZoomArrayLike,
+    LockRangeDuringZoomBatch,
+    LockRangeDuringZoomLike,
+    LockRangeDuringZoomType,
+)
 from .name import Name, NameArrayLike, NameBatch, NameLike, NameType
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
 from .query_expressions import (
@@ -84,7 +91,6 @@ from .viewport_layout import (
     ViewportLayoutType,
 )
 from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
-from .zoom_behavior import ZoomBehavior, ZoomBehaviorArrayLike, ZoomBehaviorBatch, ZoomBehaviorLike, ZoomBehaviorType
 
 __all__ = [
     "ActiveTab",
@@ -145,6 +151,11 @@ __all__ = [
     "IncludedSpaceViewsBatch",
     "IncludedSpaceViewsLike",
     "IncludedSpaceViewsType",
+    "LockRangeDuringZoom",
+    "LockRangeDuringZoomArrayLike",
+    "LockRangeDuringZoomBatch",
+    "LockRangeDuringZoomLike",
+    "LockRangeDuringZoomType",
     "Name",
     "NameArrayLike",
     "NameBatch",
@@ -189,9 +200,4 @@ __all__ = [
     "VisibleBatch",
     "VisibleLike",
     "VisibleType",
-    "ZoomBehavior",
-    "ZoomBehaviorArrayLike",
-    "ZoomBehaviorBatch",
-    "ZoomBehaviorLike",
-    "ZoomBehaviorType",
 ]
