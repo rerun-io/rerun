@@ -1,6 +1,6 @@
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::archetypes;
-use re_types::components::MarkerShape;
+use re_types::components::{MarkerShape, StrokeWidth};
 use re_types::{
     archetypes::SeriesPoint,
     components::{Color, Radius, Scalar, Text},
@@ -140,13 +140,16 @@ impl SeriesPointSystem {
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
+                // The `Scalar` archetype queries for `StrokeWidth` in the line visualizer,
+                // and so it must do so here also.
+                // See https://github.com/rerun-io/rerun/pull/5029
                 query_caches
-                    .query_archetype_pov1_comp3::<archetypes::Scalar, Scalar, Color, MarkerShape, Text, _>(
+                    .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, Text, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
                         &data_result.entity_path,
-                        |((time, _row_id), _, scalars, colors, markers, labels)| {
+                        |((time, _row_id), _, scalars, colors, _, markers, labels)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
