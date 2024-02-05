@@ -621,10 +621,23 @@ fn axis_ui(
                     ui.horizontal(|ui| {
                         let speed_min = (range_edit.0[0].abs() * 0.01).at_least(0.001);
                         let speed_max = (range_edit.0[1].abs() * 0.01).at_least(0.001);
+
+                        // Max < Min is not supported.
+                        // Also, egui_plot doesn't handle min==max (it ends up picking a default range instead then)
+                        let prev_min = crate::util::next_up_f64(range_edit.0[0]);
+                        let prev_max = range_edit.0[1];
                         ui.label("Min");
-                        ui.add(egui::DragValue::new(&mut range_edit.0[0]).speed(speed_min));
+                        ui.add(
+                            egui::DragValue::new(&mut range_edit.0[0])
+                                .speed(speed_min)
+                                .clamp_range(std::f64::MIN..=prev_max),
+                        );
                         ui.label("Max");
-                        ui.add(egui::DragValue::new(&mut range_edit.0[1]).speed(speed_max));
+                        ui.add(
+                            egui::DragValue::new(&mut range_edit.0[1])
+                                .speed(speed_max)
+                                .clamp_range(prev_min..=std::f64::MAX),
+                        );
                     });
 
                     if range != Some(range_edit) {

@@ -260,3 +260,53 @@ fn add_series_runs(
         all_series.push(series);
     }
 }
+
+/// Returns the least number greater than `self`.
+///
+/// Unstable feature in Rust. This is a copy of the implementation from the standard library.
+///
+/// Let `TINY` be the smallest representable positive `f64`. Then,
+///  - if `self.is_nan()`, this returns `self`;
+///  - if `self` is [`NEG_INFINITY`], this returns [`MIN`];
+///  - if `self` is `-TINY`, this returns -0.0;
+///  - if `self` is -0.0 or +0.0, this returns `TINY`;
+///  - if `self` is [`MAX`] or [`INFINITY`], this returns [`INFINITY`];
+///  - otherwise the unique least value greater than `self` is returned.
+///
+/// The identity `x.next_up() == -(-x).next_down()` holds for all non-NaN `x`. When `x`
+/// is finite `x == x.next_up().next_down()` also holds.
+///
+/// ```rust
+/// #![feature(float_next_up_down)]
+/// // f64::EPSILON is the difference between 1.0 and the next number up.
+/// assert_eq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
+/// // But not for most numbers.
+/// assert!(0.1f64.next_up() < 0.1 + f64::EPSILON);
+/// assert_eq!(9007199254740992f64.next_up(), 9007199254740994.0);
+/// ```
+///
+/// [`NEG_INFINITY`]: Self::NEG_INFINITY
+/// [`INFINITY`]: Self::INFINITY
+/// [`MIN`]: Self::MIN
+/// [`MAX`]: Self::MAX
+pub fn next_up_f64(this: f64) -> f64 {
+    // We must use strictly integer arithmetic to prevent denormals from
+    // flushing to zero after an arithmetic operation on some platforms.
+    const TINY_BITS: u64 = 0x1; // Smallest positive f64.
+    const CLEAR_SIGN_MASK: u64 = 0x7fff_ffff_ffff_ffff;
+
+    let bits = this.to_bits();
+    if this.is_nan() || bits == f64::INFINITY.to_bits() {
+        return this;
+    }
+
+    let abs = bits & CLEAR_SIGN_MASK;
+    let next_bits = if abs == 0 {
+        TINY_BITS
+    } else if bits == abs {
+        bits + 1
+    } else {
+        bits - 1
+    };
+    f64::from_bits(next_bits)
+}
