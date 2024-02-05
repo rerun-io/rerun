@@ -8,7 +8,7 @@ use re_log_types::{EntityPath, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
-use re_ui::ReUi;
+use re_ui::{markdown_ui, ReUi};
 use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, TimeControl, ViewerContext};
 
 /// These space views support the Visible History feature.
@@ -201,23 +201,6 @@ pub fn visible_history_ui(
                 resolved_visible_history,
             );
         }
-
-        ui.add(
-            egui::Label::new(
-                egui::RichText::new(if is_sequence_timeline {
-                    "These settings apply to all sequence timelines."
-                } else {
-                    "These settings apply to all temporal timelines."
-                })
-                .italics()
-                .weak(),
-            )
-            .wrap(true),
-        )
-        .on_hover_text(
-            "Visible Time Range properties are stored separately for each types of timelines. \
-            They may differ depending on whether the current timeline is temporal or a sequence.",
-        );
     });
 
     // Add spacer after the visible history section.
@@ -255,10 +238,25 @@ pub fn visible_history_ui(
         }
     }
 
-    collapsing_response.header_response.on_hover_text(
-        "Controls the time range used to display data in the Space View.\n\n\
-        Note that the data current as of the time range starting time is included.",
+    let markdown = format!("# Visible Time Range\n
+This feature controls the time range used to display data in the Space View.
+
+The settings are inherited from parent Group(s) or enclosing Space View if not overridden.
+
+Visible Time Range properties are stored separately of each _types_ of timelines. The may differ depending on \
+whether the current timeline is temporal or a sequence. The current settings apply to all {} timelines.
+
+Notes that the data current as of the time range starting time is included.",
+        if is_sequence_timeline {
+            "sequence"
+        } else {
+            "temporal"
+        }
     );
+
+    collapsing_response.header_response.on_hover_ui(|ui| {
+        markdown_ui(ui, egui::Id::new(markdown.as_str()), &markdown);
+    });
 }
 
 fn current_range_ui(
