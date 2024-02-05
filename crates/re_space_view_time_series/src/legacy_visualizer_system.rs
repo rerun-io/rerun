@@ -121,8 +121,7 @@ impl LegacyTimeSeriesSystem {
                     egui::Color32::from_rgba_unmultiplied(arr[0], arr[1], arr[2], arr[3])
                 });
 
-                let override_label =
-                    lookup_override::<Text>(data_result, ctx).map(|t| t.to_string());
+                let override_label = lookup_override::<Text>(data_result, ctx).map(|t| t.0);
 
                 let override_scattered =
                     lookup_override::<ScalarScattering>(data_result, ctx).map(|s| s.0);
@@ -175,14 +174,14 @@ impl LegacyTimeSeriesSystem {
                                 annotation_info.color(color.map(|c| c.to_array()), default_color)
                             });
                             let label = override_label.clone().or_else(|| {
-                                annotation_info.label(label.as_ref().map(|l| l.as_str()))
+                                annotation_info.label_utf8(label.as_deref().cloned())
                             });
                             let scattered = override_scattered
                                 .unwrap_or_else(|| scattered.map_or(false, |s| s.0));
                             let radius = override_radius
                                 .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
 
-                            let kind= if scattered {
+                            let kind = if scattered {
                                 PlotSeriesKind::Scatter(ScatterAttrs::default())
                             } else {
                                 PlotSeriesKind::Continuous

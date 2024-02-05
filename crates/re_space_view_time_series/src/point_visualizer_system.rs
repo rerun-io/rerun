@@ -130,8 +130,7 @@ impl SeriesPointSystem {
                     egui::Color32::from_rgba_unmultiplied(arr[0], arr[1], arr[2], arr[3])
                 });
 
-                let override_label =
-                    lookup_override::<Text>(data_result, ctx).map(|t| t.to_string());
+                let override_label = lookup_override::<Text>(data_result, ctx).map(|t| t.0);
 
                 let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
 
@@ -192,14 +191,12 @@ impl SeriesPointSystem {
                                         .color(color.map(|c| c.to_array()), default_color)
                                 });
                                 let label = override_label.clone().or_else(|| {
-                                    annotation_info.label(label.as_ref().map(|l| l.as_str()))
+                                    annotation_info.label_utf8(label.as_deref().cloned())
                                 });
                                 let radius = override_radius
                                     .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
 
                                 let marker = override_marker.unwrap_or(marker.unwrap_or_default());
-
-
 
                                 points.push(PlotPoint {
                                     time: time.as_i64(),

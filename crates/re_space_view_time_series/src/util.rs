@@ -1,4 +1,5 @@
 use re_log_types::{EntityPath, TimeInt, TimeRange};
+use re_types::datatypes::Utf8;
 use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
 
 use crate::{
@@ -92,11 +93,12 @@ pub fn points_to_series(
         .entity_min_time(&query.timeline, &data_result.entity_path)
         .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
 
-    let same_label = |points: &[PlotPoint]| -> Option<String> {
+    let same_label = |points: &[PlotPoint]| -> Option<Utf8> {
         let label = points[0].attrs.label.as_ref()?;
         (points.iter().all(|p| p.attrs.label.as_ref() == Some(label))).then(|| label.clone())
     };
-    let series_label = same_label(&points).unwrap_or_else(|| data_result.entity_path.to_string());
+    let series_label =
+        same_label(&points).unwrap_or_else(|| data_result.entity_path.to_string().into());
     if points.len() == 1 {
         // Can't draw a single point as a continuous line, so fall back on scatter
         let mut kind = points[0].attrs.kind;
@@ -189,7 +191,7 @@ pub fn apply_aggregation(
 
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
-    series_label: &str,
+    series_label: &Utf8,
     points: Vec<PlotPoint>,
     entity_path: &EntityPath,
     aggregator: TimeSeriesAggregator,
@@ -202,7 +204,7 @@ fn add_series_runs(
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
-        label: series_label.to_owned(),
+        label: series_label.clone(),
         color: attrs.color,
         width: 2.0 * attrs.stroke_width,
         points: Vec::with_capacity(num_points),
@@ -226,7 +228,7 @@ fn add_series_runs(
             let prev_series = std::mem::replace(
                 &mut series,
                 PlotSeries {
-                    label: series_label.to_owned(),
+                    label: series_label.clone(),
                     color: attrs.color,
                     width: 2.0 * attrs.stroke_width,
                     kind: attrs.kind,
