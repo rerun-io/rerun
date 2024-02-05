@@ -8,6 +8,7 @@ use re_log_types::{EntityPath, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
+use re_ui::ReUi;
 use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, TimeControl, ViewerContext};
 
 /// These space views support the Visible History feature.
@@ -91,7 +92,7 @@ pub fn visible_history_ui(
 
     let mut interacting_with_controls = false;
 
-    let collapsing_response = re_ui.collapsing_header(ui, "Visible Time Range", true, |ui| {
+    let collapsing_response = re_ui.collapsing_header(ui, "Visible Time Range", false, |ui| {
         ui.horizontal(|ui| {
             re_ui
                 .radio_value(ui, &mut visible_history_prop.enabled, false, "Default")
@@ -218,6 +219,16 @@ pub fn visible_history_ui(
             They may differ depending on whether the current timeline is temporal or a sequence.",
         );
     });
+
+    // Add spacer after the visible history section.
+    //TODO(ab): figure out why `item_spacing.y` is added _only_ in collapsed state.
+    if collapsing_response.body_response.is_some() {
+        ui.add_space(ui.spacing().item_spacing.y / 2.0);
+    } else {
+        ui.add_space(-ui.spacing().item_spacing.y / 2.0);
+    }
+    ReUi::full_span_separator(ui);
+    ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
     // Decide when to show the visible history highlight in the timeline. The trick is that when
     // interacting with the controls, the mouse might end up outside the collapsing header rect,
