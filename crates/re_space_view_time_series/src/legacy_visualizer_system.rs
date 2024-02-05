@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::{
     archetypes::TimeSeriesScalar,
@@ -143,7 +144,7 @@ impl LegacyTimeSeriesSystem {
 
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-                query_caches.query_archetype_pov1_comp4::<
+                query_caches.query_archetype_xxx_pov1_comp4::<
                     TimeSeriesScalar,
                     Scalar,
                     ScalarScattering,
@@ -156,77 +157,91 @@ impl LegacyTimeSeriesSystem {
                     store,
                     &query.clone().into(),
                     &data_result.entity_path,
-                    |((time, _row_id), _, scalars, scatterings, colors, radii, labels)| {
-                        let Some(time) = time else {
-                            return;
-                        }; // scalars cannot be timeless
+                    |entry_range, (times, _, scalars, scatterings, colors, radii, labels)| {
+                        // for (time, scalar, scattered, color, radius, label) in itertools::izip!(
+                        //     times, scalars.iter(), scatterings, colors, radii, labels
+                        // ) {
+                        //     //
+                        // }
 
-                        // This is a clear: we want to split the chart.
-                        if scalars.is_empty() {
-                            points.push(PlotPoint {
-                                time: time.as_i64(),
-                                value: 0.0,
-                                attrs: PlotPointAttrs {
-                                    label: None,
-                                    color: egui::Color32::BLACK,
-                                    stroke_width: 0.0,
-                                    kind: PlotSeriesKind::Clear,
-                                },
-                            });
-                            return;
-                        }
+                        // TODO: how do we handle a disabled cache???
 
-                        for (scalar, scattered, color, radius, label) in itertools::izip!(
-                            scalars.iter(),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&scatterings, scalars.len()),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
-                        ) {
-                            let mut point = PlotPoint {
-                                time: time.as_i64(),
-                                value: scalar.0,
-                                ..default_point.clone()
-                            };
+                        let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
+                        let scalars = scalars.range(entry_range.clone());
+                        let scatterings = scatterings.map_or_else(
+                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<ScalarScattering>])),
+                            |scatterings| itertools::Either::Right(scatterings.range(entry_range.clone())),
+                        );
+                        let colors = colors.map_or_else(
+                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<Color>])),
+                            |colors| itertools::Either::Right(colors.range(entry_range.clone())),
+                        );
+                        let radii = radii.map_or_else(
+                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<Radius>])),
+                            |radii| itertools::Either::Right(radii.range(entry_range.clone())),
+                        );
+                        let labels = labels.map_or_else(
+                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<Text>])),
+                            |labels| itertools::Either::Right(labels.range(entry_range.clone())),
+                        );
 
-                            // Make it as clear as possible to the optimizer that some parameters
-                            // go completely unused as soon as overrides have been defined.
-
-                            if override_color.is_none() {
-                                if let Some(color) = color.map(|c| {
-                                    let [r,g,b,a] = c.to_array();
-                                    if a == 255 {
-                                        // Common-case optimization
-                                        re_renderer::Color32::from_rgb(r, g, b)
-                                    } else {
-                                        re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                        points = itertools::izip!(times, scalars, scatterings, colors, radii, labels)
+                            .map(|(time, scalar, scattered, color, radius, label)| {
+                                // TODO: warn if len>1 -> is is costly?
+                                scalar.first().map_or_else(|| {
+                                    PlotPoint {
+                                        time,
+                                        value: 0.0,
+                                        attrs: PlotPointAttrs {
+                                            label: None,
+                                            color: egui::Color32::BLACK,
+                                            stroke_width: 0.0,
+                                            kind: PlotSeriesKind::Clear,
+                                        },
                                     }
-                                }) {
-                                    point.attrs.color = color;
-                                }
-                            }
+                                }, |s| {
+                                    let mut point = PlotPoint {
+                                        time,
+                                        value: s.0,
+                                        ..default_point.clone()
+                                    };
 
-                            if override_label.is_none() {
-                                if let Some(label) = label.as_ref().map(|l| l.0.clone()) {
-                                    point.attrs.label = Some(label);
-                                }
-                            }
+                                    if override_color.is_none() {
+                                        if let Some(color) = color.first().copied().flatten().map(|c| {
+                                            let [r,g,b,a] = c.to_array();
+                                            if a == 255 {
+                                                // Common-case optimization
+                                                re_renderer::Color32::from_rgb(r, g, b)
+                                            } else {
+                                                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                                            }
+                                        }) {
+                                            point.attrs.color = color;
+                                        }
+                                    }
 
-                            #[allow(clippy::collapsible_if)] // readability
-                            if override_scattered.is_none() {
-                                if scattered.map_or(false, |s| s.0) {
-                                    point.attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
-                                };
-                            }
+                                    if override_label.is_none() {
+                                        if let Some(label) = label.first().cloned().flatten().map(|l| l.0) {
+                                            point.attrs.label = Some(label);
+                                        }
+                                    }
 
-                            if override_radius.is_none() {
-                                if let Some(radius) = radius.map(|r| r.0) {
-                                    point.attrs.stroke_width = radius;
-                                }
-                            }
+                                    #[allow(clippy::collapsible_if)] // readability
+                                    if override_scattered.is_none() {
+                                        if scattered.first().copied().flatten().map_or(false, |s| s.0) {
+                                            point.attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
+                                        };
+                                    }
 
-                            points.push(point);
-                        }
+                                    if override_radius.is_none() {
+                                        if let Some(radius) = radius.first().copied().flatten().map(|r| r.0) {
+                                            point.attrs.stroke_width = radius;
+                                        }
+                                    }
+
+                                    point
+                                })
+                        }).collect_vec();
                     },
                 )?;
             }
