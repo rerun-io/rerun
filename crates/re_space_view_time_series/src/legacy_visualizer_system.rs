@@ -159,8 +159,6 @@ impl LegacyTimeSeriesSystem {
                     |_timeless, entry_range, (times, _, scalars, scatterings, colors, radii, labels)| {
                         let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
 
-                        // TODO: asserts
-
                         // Allocate all points.
                         points = times.map(|time| PlotPoint {
                             time,
@@ -179,6 +177,10 @@ impl LegacyTimeSeriesSystem {
                         if override_scattered.is_none() {
                             if let Some(scatterings) = scatterings {
                                 for (i, scattered) in scatterings.range(entry_range.clone()).enumerate() {
+                                    if i >= points.len() {
+                                        re_log::debug_once!("more scatterings attributes than points -- that's a bug");
+                                        break;
+                                    }
                                     if scattered.first().copied().flatten().map_or(false, |s| s.0) {
                                         points[i].attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
                                     };
@@ -190,6 +192,10 @@ impl LegacyTimeSeriesSystem {
                         if override_color.is_none() {
                             if let Some(colors) = colors {
                                 for (i, color) in colors.range(entry_range.clone()).enumerate() {
+                                    if i >= points.len() {
+                                        re_log::debug_once!("more color attributes than points -- that's a bug");
+                                        break;
+                                    }
                                     if let Some(color) = color.first().copied().flatten().map(|c| {
                                         let [r,g,b,a] = c.to_array();
                                         if a == 255 {
@@ -209,6 +215,10 @@ impl LegacyTimeSeriesSystem {
                         if override_radius.is_none() {
                             if let Some(radii) = radii {
                                 for (i, radius) in radii.range(entry_range.clone()).enumerate() {
+                                    if i >= radii.num_entries() {
+                                        re_log::debug_once!("more radius attributes than points -- that's a bug");
+                                        break;
+                                    }
                                     if let Some(radius) = radius.first().copied().flatten().map(|r| r.0) {
                                         points[i].attrs.stroke_width = radius;
                                     }
@@ -220,6 +230,10 @@ impl LegacyTimeSeriesSystem {
                         if override_label.is_none() {
                             if let Some(labels) = labels {
                                 for (i, label) in labels.range(entry_range.clone()).enumerate() {
+                                    if i >= labels.num_entries() {
+                                        re_log::debug_once!("more label attributes than points -- that's a bug");
+                                        break;
+                                    }
                                     if let Some(label) = label.first().cloned().flatten().map(|l| l.0) {
                                         points[i].attrs.label = Some(label);
                                     }
