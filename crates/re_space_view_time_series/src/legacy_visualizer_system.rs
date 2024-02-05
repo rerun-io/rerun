@@ -220,7 +220,7 @@ impl LegacyTimeSeriesSystem {
                                         break;
                                     }
                                     if let Some(radius) = radius.first().copied().flatten().map(|r| r.0) {
-                                        points[i].attrs.stroke_width = radius;
+                                        points[i].attrs.marker_size = radius;
                                     }
                                 }
                             }

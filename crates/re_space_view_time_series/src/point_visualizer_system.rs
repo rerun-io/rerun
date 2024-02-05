@@ -1,4 +1,6 @@
-use re_query_cache::{MaybeCachedComponentData, QueryError};
+use itertools::Itertools as _;
+
+use re_query_cache::QueryError;
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar, StrokeWidth},
@@ -149,49 +151,74 @@ impl SeriesPointSystem {
                 // The `Scalar` archetype queries for `StrokeWidth` in the line visualizer,
                 // and so it must do so here also.
                 // See https://github.com/rerun-io/rerun/pull/5029
-                query_caches
-                    .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerSize, MarkerShape, _>(
-                        ctx.app_options.experimental_primary_caching_range,
-                        store,
-                        &query.clone().into(),
-                        &data_result.entity_path,
-                        |((time, _row_id), _, scalars, colors, _, marker_sizes, markers)| {
-                            let Some(time) = time else {
-                                return;
-                            }; // scalars cannot be timeless
+                query_caches.query_archetype_range_pov1_comp4::<
+                    archetypes::Scalar,
+                    Scalar,
+                    Color,
+                    StrokeWidth, // unused
+                    MarkerSize,
+                    MarkerShape,
+                    _,
+                >(
+                    store,
+                    &query,
+                    &data_result.entity_path,
+                    |_timeless, entry_range, (times, _, scalars, colors, _, marker_sizes, markers)| {
+                        let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
 
-                            // This is a clear: we want to split the chart.
-                            if scalars.is_empty() {
-                                points.push(PlotPoint {
-                                    time: time.as_i64(),
-                                    value: 0.0,
-                                    attrs: PlotPointAttrs {
-                                        label: None,
-                                        color: egui::Color32::BLACK,
-                                        marker_size: 0.0,
-                                        kind: PlotSeriesKind::Clear,
-                                    },
-                                });
-                                return;
+                        // Allocate all points.
+                        points = times.map(|time| PlotPoint {
+                            time,
+                            ..default_point.clone()
+                        }).collect_vec();
+
+                        // Fill in values.
+                        for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
+                            if scalar.len() > 1 {
+                                re_log::warn_once!("found a scalar batch -- those have no effect");
                             }
+                            points[i].value = scalar.first().map_or(0.0, |s| s.0);
+                        }
 
-                            for (scalar, color, marker_size, marker) in itertools::izip!(
-                                scalars.iter(),
-                                MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
-                                MaybeCachedComponentData::iter_or_repeat_opt(&marker_sizes, scalars.len()),
-                                MaybeCachedComponentData::iter_or_repeat_opt(&markers, scalars.len()),
-                            ) {
-                                let mut point = PlotPoint {
-                                    time: time.as_i64(),
-                                    value: scalar.0,
-                                    ..default_point.clone()
-                                };
+                        // Fill in marker sizes -- if available _and_ not overridden.
+                        if override_marker_size.is_none() {
+                            if let Some(marker_sizes) = marker_sizes {
+                                for (i, marker_size) in marker_sizes.range(entry_range.clone()).enumerate() {
+                                    if i >= points.len() {
+                                        re_log::debug_once!("more marker size attributes than points -- that's a bug");
+                                        break;
+                                    }
+                                    if let Some(marker_size) = marker_size.first().copied().flatten() {
+                                        points[i].attrs.marker_size = marker_size.0;
+                                    };
+                                }
+                            }
+                        }
 
-                                // Make it as clear as possible to the optimizer that some parameters
-                                // go completely unused as soon as overrides have been defined.
+                        // Fill in marker shapes -- if available _and_ not overridden.
+                        if override_marker.is_none() {
+                            if let Some(markers) = markers {
+                                for (i, marker) in markers.range(entry_range.clone()).enumerate() {
+                                    if i >= points.len() {
+                                        re_log::debug_once!("more marker attributes than points -- that's a bug");
+                                        break;
+                                    }
+                                    if let Some(marker) = marker.first().copied().flatten() {
+                                        points[i].attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs { marker });
+                                    };
+                                }
+                            }
+                        }
 
-                                if override_color.is_none() {
-                                    if let Some(color) = color.map(|c| {
+                        // Fill in colors -- if available _and_ not overridden.
+                        if override_color.is_none() {
+                            if let Some(colors) = colors {
+                                for (i, color) in colors.range(entry_range.clone()).enumerate() {
+                                    if i >= points.len() {
+                                        re_log::debug_once!("more color attributes than points -- that's a bug");
+                                        break;
+                                    }
+                                    if let Some(color) = color.first().copied().flatten().map(|c| {
                                         let [r,g,b,a] = c.to_array();
                                         if a == 255 {
                                             // Common-case optimization
@@ -200,26 +227,13 @@ impl SeriesPointSystem {
                                             re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
                                         }
                                     }) {
-                                        point.attrs.color = color;
+                                        points[i].attrs.color = color;
                                     }
                                 }
-
-                                if override_marker_size.is_none() {
-                                    if let Some(marker_size) = marker_size.map(|r| r.0) {
-                                        point.attrs.marker_size = marker_size;
-                                    }
-                                }
-
-                                if override_marker.is_none() {
-                                    if let Some(marker) = marker {
-                                        point.attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs { marker: *marker });
-                                    }
-                                }
-
-                                points.push(point);
                             }
-                        },
-                    )?;
+                        }
+                    },
+                )?;
             }
 
             // Check for an explicit label if any.
