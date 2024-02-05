@@ -12,9 +12,10 @@ use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, EntityTree, TimeSeriesAggregator,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, IndicatedEntities, RecommendedSpaceView, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, IndicatedEntities, PerVisualizer, RecommendedSpaceView,
+    SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError, SystemExecutionOutput,
+    ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 
 use crate::legacy_visualizer_system::LegacyTimeSeriesSystem;
@@ -164,6 +165,15 @@ It can greatly improve performance (and readability) in such situations as it pr
             indicated_entities.0.extend(indicated.0.iter().cloned());
         }
 
+        // Because SeriesLine is our fallback visualizer, also include any entities for which
+        // SeriesLine is applicable, even if not indicated.
+        if let Some(applicable) = ctx
+            .applicable_entities_per_visualizer
+            .get(&SeriesLineSystem::identifier())
+        {
+            indicated_entities.0.extend(applicable.iter().cloned());
+        }
+
         if indicated_entities.0.is_empty() {
             return SpaceViewSpawnHeuristics::default();
         }
@@ -207,6 +217,47 @@ It can greatly improve performance (and readability) in such situations as it pr
         SpaceViewSpawnHeuristics {
             recommended_space_views,
         }
+    }
+
+    /// Choose the default visualizers to enable for this entity.
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVisualizerSet {
+        let available_visualizers: HashSet<&ViewSystemIdentifier> =
+            visualizable_entities_per_visualizer
+                .iter()
+                .filter_map(|(visualizer, ents)| {
+                    if ents.contains(entity_path) {
+                        Some(visualizer)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+        let mut visualizers: SmallVisualizerSet = available_visualizers
+            .iter()
+            .filter_map(|visualizer| {
+                if indicated_entities_per_visualizer
+                    .get(*visualizer)
+                    .map_or(false, |matching_list| matching_list.contains(entity_path))
+                {
+                    Some(**visualizer)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if visualizers.is_empty() && available_visualizers.contains(&SeriesLineSystem::identifier())
+        {
+            visualizers.insert(0, SeriesLineSystem::identifier());
+        }
+
+        visualizers
     }
 
     fn ui(

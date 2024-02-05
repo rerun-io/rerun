@@ -30,7 +30,9 @@ pub use space_view_class_registry::{
 pub use spawn_heuristics::{RecommendedSpaceView, SpaceViewSpawnHeuristics};
 pub use system_execution_output::SystemExecutionOutput;
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
-pub use view_query::{DataResult, PerSystemDataResults, PropertyOverrides, ViewQuery};
+pub use view_query::{
+    DataResult, PerSystemDataResults, PropertyOverrides, SmallVisualizerSet, ViewQuery,
+};
 pub use visualizer_entity_subscriber::VisualizerAdditionalApplicabilityFilter;
 pub use visualizer_system::{VisualizerCollection, VisualizerQueryInfo, VisualizerSystem};
 
