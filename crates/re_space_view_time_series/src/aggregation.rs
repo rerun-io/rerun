@@ -1,4 +1,4 @@
-use crate::{PlotPoint, PlotPointAttrs, PlotPoints};
+use crate::{PlotPoint, PlotPointAttrs};
 
 /// Implements aggregation behaviors corresponding to [`TimeSeriesAggregator`][re_viewer_context::external::re_entity_db::TimeSeriesAggregator]:
 /// `Average`

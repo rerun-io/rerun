@@ -12,11 +12,8 @@ use re_viewer_context::{
 
 use crate::{
     overrides::{initial_override_color, lookup_override},
-    util::{
-        determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series,
-        points_to_series_soa,
-    },
-    PlotPoint, PlotPointAttrs, PlotPoints, PlotSeries, PlotSeriesKind, ScatterAttrs,
+    util::{determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series},
+    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
 /// The legacy system for rendering [`TimeSeriesScalar`] archetypes.
@@ -133,7 +130,7 @@ impl LegacyTimeSeriesSystem {
                 },
             };
 
-            let mut points: PlotPoints = Default::default();
+            let mut points = Vec::new();
 
             let time_range = determine_time_range(
                 query,
@@ -163,34 +160,25 @@ impl LegacyTimeSeriesSystem {
                         let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
 
                         // Allocate all points.
-                        let times = times.collect_vec();
-                        let n = times.len();
+                        points = times.map(|time| PlotPoint {
+                            time,
+                            ..default_point.clone()
+                        }).collect_vec();
 
                         // Fill in values.
-                        let values =
-                            scalars.range(entry_range.clone()).map(|scalars| scalars.first().map_or(0.0, |s| s.0)).collect();
-
-                        points = PlotPoints {
-                            times,
-                            values,
-                            labels: vec![None; n],
-                            colors: vec![annotation_info.color(override_color, default_color); n],
-                            stroke_widths: vec![override_radius.unwrap_or(DEFAULT_RADIUS); n],
-                            kinds: vec![if override_scattered.unwrap_or(false) {
-                                    PlotSeriesKind::Scatter(ScatterAttrs::default())
-                                } else {
-                                    PlotSeriesKind::Continuous
-                                }; n],
-                            };
-
-                        // TODO: need len assertions everywhere really
+                        for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
+                            if scalar.len() > 1 {
+                                re_log::warn_once!("found a scalar batch -- those have no effect");
+                            }
+                            points[i].value = scalar.first().map_or(0.0, |s| s.0);
+                        }
 
                         // Fill in series kind -- if available _and_ not overridden.
                         if override_scattered.is_none() {
                             if let Some(scatterings) = scatterings {
                                 for (i, scattered) in scatterings.range(entry_range.clone()).enumerate() {
                                     if scattered.first().copied().flatten().map_or(false, |s| s.0) {
-                                        points.kinds[i] = PlotSeriesKind::Scatter(ScatterAttrs::default());
+                                        points[i].attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
                                     };
                                 }
                             }
@@ -209,7 +197,7 @@ impl LegacyTimeSeriesSystem {
                                             re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
                                         }
                                     }) {
-                                        points.colors[i] = color;
+                                        points[i].attrs.color = color;
                                     }
                                 }
                             }
@@ -220,7 +208,7 @@ impl LegacyTimeSeriesSystem {
                             if let Some(radii) = radii {
                                 for (i, radius) in radii.range(entry_range.clone()).enumerate() {
                                     if let Some(radius) = radius.first().copied().flatten().map(|r| r.0) {
-                                        points.stroke_widths[i] = radius;
+                                        points[i].attrs.stroke_width = radius;
                                     }
                                 }
                             }
@@ -231,7 +219,7 @@ impl LegacyTimeSeriesSystem {
                             if let Some(labels) = labels {
                                 for (i, label) in labels.range(entry_range.clone()).enumerate() {
                                     if let Some(label) = label.first().cloned().flatten().map(|l| l.0) {
-                                        points.labels[i] = Some(label);
+                                        points[i].attrs.label = Some(label);
                                     }
                                 }
                             }
@@ -241,7 +229,7 @@ impl LegacyTimeSeriesSystem {
             }
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
-            points_to_series_soa(
+            points_to_series(
                 data_result,
                 time_per_pixel,
                 points,

@@ -66,37 +66,6 @@ struct PlotPoint {
     attrs: PlotPointAttrs,
 }
 
-#[derive(Default, Clone, Debug)]
-struct PlotPoints {
-    times: Vec<i64>,
-    values: Vec<f64>,
-    labels: Vec<Option<Utf8>>,
-    colors: Vec<egui::Color32>,
-    stroke_widths: Vec<f32>,
-    kinds: Vec<PlotSeriesKind>,
-}
-
-impl PlotPoints {
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.times.len()
-    }
-
-    #[inline]
-    pub fn get(&self, i: usize) -> PlotPoint {
-        PlotPoint {
-            time: self.times[i],
-            value: self.values[i],
-            attrs: PlotPointAttrs {
-                label: self.labels[i].clone(),
-                color: self.colors[i],
-                stroke_width: self.stroke_widths[i],
-                kind: self.kinds[i],
-            },
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlotSeriesKind {
     Continuous,
