@@ -306,6 +306,9 @@ impl AppState {
                     .min_width(120.0)
                     .default_width((0.35 * ui.ctx().screen_rect().width()).min(200.0).round());
 
+                let show_welcome =
+                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
+
                 left_panel.show_animated_inside(
                     ui,
                     app_blueprint.blueprint_panel_expanded,
@@ -325,7 +328,9 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(&mut viewport, &ctx, ui);
+                        if !show_welcome {
+                            blueprint_panel_ui(&mut viewport, &ctx, ui);
+                        }
                     },
                 );
 
@@ -333,9 +338,6 @@ impl AppState {
                     fill: ui.style().visuals.panel_fill,
                     ..Default::default()
                 };
-
-                let show_welcome =
-                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
