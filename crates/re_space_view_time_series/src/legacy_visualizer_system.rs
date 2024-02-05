@@ -144,7 +144,8 @@ impl LegacyTimeSeriesSystem {
 
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-                query_caches.query_archetype_xxx_pov1_comp4::<
+                // TODO: how do we handle a disabled cache???
+                query_caches.query_archetype_range_xxx_pov1_comp4::<
                     TimeSeriesScalar,
                     Scalar,
                     ScalarScattering,
@@ -153,95 +154,74 @@ impl LegacyTimeSeriesSystem {
                     Text,
                     _,
                 >(
-                    ctx.app_options.experimental_primary_caching_range,
                     store,
-                    &query.clone().into(),
+                    &query,
                     &data_result.entity_path,
                     |entry_range, (times, _, scalars, scatterings, colors, radii, labels)| {
-                        // for (time, scalar, scattered, color, radius, label) in itertools::izip!(
-                        //     times, scalars.iter(), scatterings, colors, radii, labels
-                        // ) {
-                        //     //
-                        // }
-
-                        // TODO: how do we handle a disabled cache???
-
                         let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
-                        let scalars = scalars.range(entry_range.clone());
-                        let scatterings = scatterings.map_or_else(
-                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<ScalarScattering>])),
-                            |scatterings| itertools::Either::Right(scatterings.range(entry_range.clone())),
-                        );
-                        let colors = colors.map_or_else(
-                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<Color>])),
-                            |colors| itertools::Either::Right(colors.range(entry_range.clone())),
-                        );
-                        let radii = radii.map_or_else(
-                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<Radius>])),
-                            |radii| itertools::Either::Right(radii.range(entry_range.clone())),
-                        );
-                        let labels = labels.map_or_else(
-                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<Text>])),
-                            |labels| itertools::Either::Right(labels.range(entry_range.clone())),
-                        );
 
-                        points = itertools::izip!(times, scalars, scatterings, colors, radii, labels)
-                            .map(|(time, scalar, scattered, color, radius, label)| {
-                                // TODO: warn if len>1 -> is is costly?
-                                scalar.first().map_or_else(|| {
-                                    PlotPoint {
-                                        time,
-                                        value: 0.0,
-                                        attrs: PlotPointAttrs {
-                                            label: None,
-                                            color: egui::Color32::BLACK,
-                                            stroke_width: 0.0,
-                                            kind: PlotSeriesKind::Clear,
-                                        },
-                                    }
-                                }, |s| {
-                                    let mut point = PlotPoint {
-                                        time,
-                                        value: s.0,
-                                        ..default_point.clone()
-                                    };
-
-                                    if override_color.is_none() {
-                                        if let Some(color) = color.first().copied().flatten().map(|c| {
-                                            let [r,g,b,a] = c.to_array();
-                                            if a == 255 {
-                                                // Common-case optimization
-                                                re_renderer::Color32::from_rgb(r, g, b)
-                                            } else {
-                                                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
-                                            }
-                                        }) {
-                                            point.attrs.color = color;
-                                        }
-                                    }
-
-                                    if override_label.is_none() {
-                                        if let Some(label) = label.first().cloned().flatten().map(|l| l.0) {
-                                            point.attrs.label = Some(label);
-                                        }
-                                    }
-
-                                    #[allow(clippy::collapsible_if)] // readability
-                                    if override_scattered.is_none() {
-                                        if scattered.first().copied().flatten().map_or(false, |s| s.0) {
-                                            point.attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
-                                        };
-                                    }
-
-                                    if override_radius.is_none() {
-                                        if let Some(radius) = radius.first().copied().flatten().map(|r| r.0) {
-                                            point.attrs.stroke_width = radius;
-                                        }
-                                    }
-
-                                    point
-                                })
+                        // Allocate all points.
+                        points = times.map(|time| PlotPoint {
+                            time,
+                            ..default_point.clone()
                         }).collect_vec();
+
+                        // Fill in values.
+                        for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
+                            points[i].value = scalar.first().map_or(0.0, |s| s.0);
+                        }
+
+                        // Fill in series kind -- if available _and_ not overridden.
+                        if override_scattered.is_none() {
+                            if let Some(scatterings) = scatterings {
+                                for (i, scattered) in scatterings.range(entry_range.clone()).enumerate() {
+                                    if scattered.first().copied().flatten().map_or(false, |s| s.0) {
+                                        points[i].attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
+                                    };
+                                }
+                            }
+                        }
+
+                        // Fill in colors -- if available _and_ not overridden.
+                        if override_color.is_none() {
+                            if let Some(colors) = colors {
+                                for (i, color) in colors.range(entry_range.clone()).enumerate() {
+                                    if let Some(color) = color.first().copied().flatten().map(|c| {
+                                        let [r,g,b,a] = c.to_array();
+                                        if a == 255 {
+                                            // Common-case optimization
+                                            re_renderer::Color32::from_rgb(r, g, b)
+                                        } else {
+                                            re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                                        }
+                                    }) {
+                                        points[i].attrs.color = color;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Fill in radii -- if available _and_ not overridden.
+                        if override_radius.is_none() {
+                            if let Some(radii) = radii {
+                                for (i, radius) in radii.range(entry_range.clone()).enumerate() {
+                                    if let Some(radius) = radius.first().copied().flatten().map(|r| r.0) {
+                                        points[i].attrs.stroke_width = radius;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Fill in labels -- if available _and_ not overridden.
+                        if override_label.is_none() {
+                            if let Some(labels) = labels {
+                                for (i, label) in labels.range(entry_range.clone()).enumerate() {
+                                    if let Some(label) = label.first().cloned().flatten().map(|l| l.0) {
+                                        points[i].attrs.label = Some(label);
+                                    }
+                                }
+                            }
+                        }
                     },
                 )?;
             }
