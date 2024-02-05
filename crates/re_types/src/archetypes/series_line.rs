@@ -29,18 +29,24 @@ pub struct SeriesLine {
 
     /// Stroke width for the corresponding series.
     pub width: Option<crate::components::StrokeWidth>,
+
+    /// Display name of the series.
+    ///
+    /// Used in the legend.
+    pub name: Option<crate::components::Name>,
 }
 
 impl ::re_types_core::SizeBytes for SeriesLine {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.color.heap_size_bytes() + self.width.heap_size_bytes()
+        self.color.heap_size_bytes() + self.width.heap_size_bytes() + self.name.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <Option<crate::components::Color>>::is_pod()
             && <Option<crate::components::StrokeWidth>>::is_pod()
+            && <Option<crate::components::Name>>::is_pod()
     }
 }
 
@@ -50,27 +56,29 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SeriesLineIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
+            "rerun.components.Name".into(),
             "rerun.components.StrokeWidth".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.SeriesLineIndicator".into(),
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
+            "rerun.components.Name".into(),
             "rerun.components.StrokeWidth".into(),
         ]
     });
 
 impl SeriesLine {
-    pub const NUM_COMPONENTS: usize = 4usize;
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`SeriesLine`] [`::re_types_core::Archetype`]
@@ -138,7 +146,16 @@ impl ::re_types_core::Archetype for SeriesLine {
         } else {
             None
         };
-        Ok(Self { color, width })
+        let name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
+            <crate::components::Name>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.SeriesLine#name")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        Ok(Self { color, width, name })
     }
 }
 
@@ -152,6 +169,9 @@ impl ::re_types_core::AsComponents for SeriesLine {
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.width
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.name
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -171,6 +191,7 @@ impl SeriesLine {
         Self {
             color: None,
             width: None,
+            name: None,
         }
     }
 
@@ -183,6 +204,12 @@ impl SeriesLine {
     #[inline]
     pub fn with_width(mut self, width: impl Into<crate::components::StrokeWidth>) -> Self {
         self.width = Some(width.into());
+        self
+    }
+
+    #[inline]
+    pub fn with_name(mut self, name: impl Into<crate::components::Name>) -> Self {
+        self.name = Some(name.into());
         self
     }
 }

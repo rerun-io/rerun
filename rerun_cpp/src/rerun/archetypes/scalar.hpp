@@ -57,6 +57,9 @@ namespace rerun::archetypes {
         ///
         /// TODO(#1289): This won't show up on points at the moment, as our plots don't yet
         /// support displaying labels for individual points.
+        ///
+        /// If you want to instead set the name of a series, use `SeriesLine`'s or `SeriesPoint`'s
+        /// name component instead.
         std::optional<rerun::components::Text> text;
 
       public:
@@ -75,6 +78,9 @@ namespace rerun::archetypes {
         ///
         /// TODO(#1289): This won't show up on points at the moment, as our plots don't yet
         /// support displaying labels for individual points.
+        ///
+        /// If you want to instead set the name of a series, use `SeriesLine`'s or `SeriesPoint`'s
+        /// name component instead.
         Scalar with_text(rerun::components::Text _text) && {
             text = std::move(_text);
             // See: https://github.com/rerun-io/rerun/issues/4027

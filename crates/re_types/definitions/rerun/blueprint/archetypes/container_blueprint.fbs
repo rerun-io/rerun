@@ -21,7 +21,7 @@ table ContainerBlueprint (
     // --- Optional ---
 
     /// The name of the container.
-    display_name: rerun.blueprint.components.Name ("attr.rerun.component_optional", nullable, order: 200);
+    display_name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 200);
 
     /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
     contents: rerun.blueprint.components.IncludedContents ("attr.rerun.component_optional", nullable, order: 300);

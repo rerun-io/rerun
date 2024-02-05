@@ -69,6 +69,9 @@ class Scalar(Archetype):
 
             TODO(#1289): This won't show up on points at the moment, as our plots don't yet
             support displaying labels for individual points.
+
+            If you want to instead set the name of a series, use `SeriesLine`'s or `SeriesPoint`'s
+            name component instead.
         """
 
         # You can define your own __init__ function as a member of ScalarExt in scalar_ext.py
@@ -108,6 +111,9 @@ class Scalar(Archetype):
     #
     # TODO(#1289): This won't show up on points at the moment, as our plots don't yet
     # support displaying labels for individual points.
+    #
+    # If you want to instead set the name of a series, use `SeriesLine`'s or `SeriesPoint`'s
+    # name component instead.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

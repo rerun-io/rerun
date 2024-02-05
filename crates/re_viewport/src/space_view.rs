@@ -8,7 +8,8 @@ use re_query::query_archetype;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQueryBlueprint, ScreenshotMode};
 use re_space_view_time_series::TimeSeriesSpaceView;
-use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin, Visible};
+use re_types::blueprint::components::{EntitiesDeterminedByUser, SpaceViewOrigin, Visible};
+use re_types::components::Name;
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataQueryId, DataResult, DynSpaceViewClass,

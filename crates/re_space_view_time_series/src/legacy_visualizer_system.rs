@@ -238,6 +238,7 @@ impl LegacyTimeSeriesSystem {
                 points,
                 store,
                 query,
+                None, // Legacy visualizer labels its scalars, not the series.
                 &mut self.all_series,
             );
         }
