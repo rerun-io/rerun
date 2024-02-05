@@ -1,11 +1,13 @@
 use re_entity_db::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
 use re_types::ComponentName;
+use smallvec::SmallVec;
 
 use crate::{
-    DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    DynSpaceViewClass, IndicatedEntities, PerSystemEntities, PerVisualizer,
+    SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
+    SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    SystemExecutionOutput, ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
     VisualizableFilterContext,
 };
 
@@ -74,6 +76,38 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
         _entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext> {
         Box::new(())
+    }
+
+    /// Choose the default visualizers to enable for this entity.
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVec<[ViewSystemIdentifier; 4]> {
+        let available_visualizers =
+            visualizable_entities_per_visualizer
+                .iter()
+                .filter_map(|(visualizer, ents)| {
+                    if ents.contains(entity_path) {
+                        Some(visualizer)
+                    } else {
+                        None
+                    }
+                });
+
+        available_visualizers
+            .filter_map(|visualizer| {
+                if indicated_entities_per_visualizer
+                    .get(visualizer)
+                    .map_or(false, |matching_list| matching_list.contains(entity_path))
+                {
+                    Some(*visualizer)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     /// Determines which space views should be spawned by default for this class.
@@ -185,6 +219,20 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext> {
         self.visualizable_filter_context(space_origin, entity_db)
+    }
+
+    #[inline]
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVec<[ViewSystemIdentifier; 4]> {
+        self.choose_default_visualizers(
+            entity_path,
+            visualizable_entities_per_visualizer,
+            indicated_entities_per_visualizer,
+        )
     }
 
     #[inline]

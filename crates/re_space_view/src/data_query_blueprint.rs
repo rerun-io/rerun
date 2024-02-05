@@ -14,12 +14,13 @@ use re_types_core::{archetypes::Clear, components::VisualizerOverrides, Componen
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
     DataResultNode, DataResultTree, IndicatedEntities, PerVisualizer, PropertyOverrides,
-    SpaceViewClassIdentifier, SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _,
+    SpaceViewClassIdentifier, StoreContext, SystemCommand, SystemCommandSender as _,
     ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 
 use crate::{
     blueprint::components::QueryExpressions, DataQuery, EntityOverrideContext, PropertyResolver,
+    SpaceViewBlueprint,
 };
 
 /// An implementation of [`DataQuery`] that is built from a collection of [`QueryExpressions`]
@@ -114,8 +115,11 @@ impl DataQueryBlueprint {
 
     pub fn build_resolver<'a>(
         &self,
-        container: SpaceViewId,
+        space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
+        space_view: &'a SpaceViewBlueprint,
         auto_properties: &'a EntityPropertyMap,
+        visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
     ) -> DataQueryPropertyResolver<'a> {
         let base_override_root = self.id.as_entity_path().clone();
         let individual_override_root =
@@ -123,10 +127,14 @@ impl DataQueryBlueprint {
         let recursive_override_root =
             base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
         DataQueryPropertyResolver {
+            space_view_class_registry,
+            space_view,
             auto_properties,
-            default_stack: vec![container.as_entity_path(), self.id.as_entity_path()],
+            default_stack: vec![space_view.entity_path(), self.id.as_entity_path()],
             individual_override_root,
             recursive_override_root,
+            visualizable_entities_per_visualizer,
+            indicated_entities_per_visualizer,
         }
     }
 
@@ -337,10 +345,14 @@ impl<'a> QueryExpressionEvaluator<'a> {
 }
 
 pub struct DataQueryPropertyResolver<'a> {
+    space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
+    space_view: &'a SpaceViewBlueprint,
     auto_properties: &'a EntityPropertyMap,
     default_stack: Vec<EntityPath>,
     individual_override_root: EntityPath,
     recursive_override_root: EntityPath,
+    visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
+    indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 }
 
 impl DataQueryPropertyResolver<'_> {
@@ -470,10 +482,10 @@ impl DataQueryPropertyResolver<'_> {
                         .individual_override_root
                         .join(&node.data_result.entity_path);
 
-                    // If the user has overridden the visualizers, update which visualizers are used.
                     {
                         re_tracing::profile_scope!("Update visualizers from overrides");
 
+                        // If the user has overridden the visualizers, update which visualizers are used.
                         if let Some(viz_override) = ctx
                             .blueprint
                             .store()
@@ -482,6 +494,16 @@ impl DataQueryPropertyResolver<'_> {
                         {
                             node.data_result.visualizers =
                                 viz_override.0.iter().map(|v| v.as_str().into()).collect();
+                        } else {
+                            // Otherwise ask the SpaceView class to choose.
+                            node.data_result.visualizers = self
+                                .space_view
+                                .class(self.space_view_class_registry)
+                                .choose_default_visualizers(
+                                    &node.data_result.entity_path,
+                                    self.visualizable_entities_per_visualizer,
+                                    self.indicated_entities_per_visualizer,
+                                );
                         }
                     }
                     let mut component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)> =

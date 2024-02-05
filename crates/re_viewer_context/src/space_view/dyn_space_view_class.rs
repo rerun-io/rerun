@@ -1,10 +1,12 @@
 use re_entity_db::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
 use re_types::ComponentName;
+use smallvec::SmallVec;
 
 use crate::{
-    PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    IndicatedEntities, PerSystemEntities, PerVisualizer, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSpawnHeuristics, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
 };
 
 re_string_interner::declare_new_type!(
@@ -113,6 +115,14 @@ pub trait DynSpaceViewClass: Send + Sync {
         space_origin: &EntityPath,
         entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext>;
+
+    /// Choose the default visualizers to enable for this entity.
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVec<[ViewSystemIdentifier; 4]>;
 
     /// Determines which space views should be spawned by default for this class.
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
