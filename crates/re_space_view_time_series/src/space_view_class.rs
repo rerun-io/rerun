@@ -252,6 +252,7 @@ It can greatly improve performance (and readability) in such situations as it pr
             })
             .collect();
 
+        // If there were no other visualizers, but the SeriesLineSystem is available, use it.
         if visualizers.is_empty() && available_visualizers.contains(&SeriesLineSystem::identifier())
         {
             visualizers.insert(0, SeriesLineSystem::identifier());

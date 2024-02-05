@@ -457,7 +457,7 @@ impl DataQueryPropertyResolver<'_> {
                             node.data_result.visualizers =
                                 viz_override.0.iter().map(|v| v.as_str().into()).collect();
                         } else {
-                            // Otherwise ask the SpaceView class to choose.
+                            // Otherwise ask the `SpaceViewClass` to choose.
                             node.data_result.visualizers = self
                                 .space_view
                                 .class(self.space_view_class_registry)

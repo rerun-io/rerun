@@ -116,6 +116,15 @@ pub trait DynSpaceViewClass: Send + Sync {
     ) -> Box<dyn VisualizableFilterContext>;
 
     /// Choose the default visualizers to enable for this entity.
+    ///
+    /// Helpful for customizing fallback behavior for types that are insufficient
+    /// to determine indicated on their own.
+    ///
+    /// Will only be called for entities where the selected visualizers have not
+    /// been overridden by the blueprint.
+    ///
+    /// This interface provides a default implementation which will return all visualizers
+    /// which are both visualizable and indicated for the given entity.
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
