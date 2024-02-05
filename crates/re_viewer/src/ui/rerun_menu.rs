@@ -409,22 +409,6 @@ fn experimental_feature_ui(
     re_ui
         .checkbox(
             ui,
-            &mut app_options.experimental_primary_caching_latest_at,
-            "Primary caching: latest-at queries",
-        )
-        .on_hover_text("Toggle primary caching for latest-at queries.\nApplies to the 2D/3D point cloud and 2D/3D box space views.");
-
-    re_ui
-        .checkbox(
-            ui,
-            &mut app_options.experimental_primary_caching_range,
-            "Primary caching: range queries",
-        )
-        .on_hover_text("Toggle primary caching for range queries.\nApplies to the 2D/3D point cloud, 2D/3D box and text log space views.\nRange caching is always enabled for time series, independent of this setting.");
-
-    re_ui
-        .checkbox(
-            ui,
             &mut app_options.experimental_plot_query_clamping,
             "Plots: query clamping",
         )
