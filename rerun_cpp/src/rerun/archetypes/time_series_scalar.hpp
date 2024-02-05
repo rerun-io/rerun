@@ -44,9 +44,6 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_scalar");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     // Set up plot styling: Logged timeless since it never changes and affects all timelines.
-    ///     rec.log_timeless("scalar", rerun::SeriesPoint());
-    ///
     ///     // Log the data on a timeline called "step".
     ///     for (int step = 0; step <64; ++step) {
     ///         rec.set_time_sequence("step", step);
