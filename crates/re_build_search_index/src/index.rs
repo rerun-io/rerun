@@ -1,9 +1,7 @@
-use argh::FromArgs;
-
 use crate::{ingest, meili, DEFAULT_KEY, DEFAULT_URL};
 
 /// Index documentation, examples, and API references for all languages
-#[derive(FromArgs)]
+#[derive(argh::FromArgs)]
 #[argh(subcommand, name = "index")]
 pub struct Index {
     /// name of the meilisearch index to create/query

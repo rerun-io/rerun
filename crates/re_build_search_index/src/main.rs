@@ -6,8 +6,6 @@ mod ingest;
 mod meili;
 mod repl;
 
-use argh::FromArgs;
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args: Args = argh::from_env();
@@ -19,13 +17,13 @@ async fn main() -> anyhow::Result<()> {
 }
 
 /// Meilisearch indexer and REPL
-#[derive(FromArgs)]
+#[derive(argh::FromArgs)]
 struct Args {
     #[argh(subcommand)]
     cmd: Cmd,
 }
 
-#[derive(FromArgs)]
+#[derive(argh::FromArgs)]
 #[argh(subcommand)]
 enum Cmd {
     Repl(repl::Repl),

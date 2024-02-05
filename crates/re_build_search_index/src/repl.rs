@@ -1,7 +1,6 @@
 use crate::meili::SearchClient;
 use crate::{ingest, meili, DEFAULT_KEY, DEFAULT_URL};
 
-use argh::FromArgs;
 use std::io::stdout;
 use std::io::Write as _;
 use std::ops::ControlFlow;
@@ -11,7 +10,7 @@ use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
 
 /// Simple terminal search client
-#[derive(FromArgs)]
+#[derive(argh::FromArgs)]
 #[argh(subcommand, name = "repl")]
 pub struct Repl {
     /// name of the meilisearch index to create/query

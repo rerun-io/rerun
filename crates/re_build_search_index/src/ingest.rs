@@ -1,7 +1,7 @@
 mod docs;
 mod doxygen;
 mod examples;
-mod griffe;
+mod python;
 mod rustdoc;
 
 use camino::Utf8Path;
@@ -15,10 +15,10 @@ use std::time::Duration;
 
 pub fn run() -> anyhow::Result<Vec<Document>> {
     let ctx = Context::new()?;
-    docs::ingest(&ctx)?;
-    examples::ingest(&ctx)?;
-    rustdoc::ingest(&ctx)?;
-    // griffe::ingest(&ctx)?;
+    // docs::ingest(&ctx)?;
+    // examples::ingest(&ctx)?;
+    // rustdoc::ingest(&ctx)?;
+    python::ingest(&ctx)?;
     // doxygen::ingest(ctx)?;
     Ok(ctx.finish())
 }
