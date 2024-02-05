@@ -309,10 +309,10 @@ It can greatly improve performance (and readability) in such situations as it pr
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let locked_range = zoom_behavior.unwrap_or_default() == ZoomBehavior::LockToRange;
+        let locked_range = zoom_behavior.unwrap_or_default() == ZoomBehavior::LockToRange
+            || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
-        let zoom_y =
-            !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER)) && !locked_range;
+        let zoom_y = !locked_range;
 
         let auto_y = y_range.is_none();
 
