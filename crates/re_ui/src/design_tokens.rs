@@ -190,6 +190,9 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     egui_style.visuals.image_loading_spinners = false;
 
+    // set a reasonable time to show tooltips
+    egui_style.interaction.tooltip_delay = 0.3;
+
     ctx.set_style(egui_style);
 
     DesignTokens {
