@@ -797,7 +797,7 @@ impl CacheBucket {
         self.pov_instance_keys.range(entry_range)
     }
 
-    // TODO
+    /// Get the raw batches for the specified non-optional component.
     #[inline]
     pub fn component<C: Component + Send + Sync + 'static>(&self) -> Option<&FlatVecDeque<C>> {
         let data = self
@@ -820,7 +820,7 @@ impl CacheBucket {
         Some(data.range(entry_range))
     }
 
-    // TODO
+    /// Get the raw batches for the specified optional component.
     #[inline]
     pub fn component_opt<C: Component + Send + Sync + 'static>(
         &self,
