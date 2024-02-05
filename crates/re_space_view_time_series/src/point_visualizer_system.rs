@@ -3,7 +3,7 @@ use re_types::archetypes;
 use re_types::components::{MarkerShape, StrokeWidth};
 use re_types::{
     archetypes::SeriesPoint,
-    components::{Color, Radius, Scalar, Text},
+    components::{Color, Scalar, Text},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
@@ -31,9 +31,9 @@ impl IdentifiedViewSystem for SeriesPointSystem {
     }
 }
 
-// We use a larger default radius for scatter plots so the marker is
+// We use a larger default stroke width for scatter plots so the marker is
 // visible.
-const DEFAULT_RADIUS: f32 = 3.0;
+const DEFAULT_STROKE_WIDTH: f32 = 3.0;
 
 impl VisualizerSystem for SeriesPointSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
@@ -43,8 +43,7 @@ impl VisualizerSystem for SeriesPointSystem {
             .map(ToOwned::to_owned)
             .collect::<ComponentNameSet>();
         query_info.queried.append(&mut series_point_queried);
-        // TODO(jleibs): Use StrokeWidth instead
-        query_info.queried.insert(Radius::name());
+        query_info.queried.insert(StrokeWidth::name());
         query_info
     }
 
@@ -84,8 +83,8 @@ impl VisualizerSystem for SeriesPointSystem {
     ) -> Option<re_log_types::DataCell> {
         if *component == Color::name() {
             Some([initial_override_color(entity_path)].into())
-        } else if *component == Radius::name() {
-            Some([Radius(DEFAULT_RADIUS)].into())
+        } else if *component == StrokeWidth::name() {
+            Some([StrokeWidth(DEFAULT_STROKE_WIDTH)].into())
         } else {
             None
         }
@@ -107,6 +106,33 @@ impl SeriesPointSystem {
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
+            let annotations = self.annotation_map.find(&data_result.entity_path);
+            let annotation_info = annotations
+                .resolved_class_description(None)
+                .annotation_info();
+            let default_color = DefaultColor::EntityPath(&data_result.entity_path);
+
+            let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
+            let override_label = lookup_override::<Text>(data_result, ctx).map(|t| t.0);
+            let override_stroke_width =
+                lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
+            let override_marker = lookup_override::<MarkerShape>(data_result, ctx);
+
+            // All the default values for a `PlotPoint`, accounting for both overrides and default
+            // values.
+            let default_point = PlotPoint {
+                time: 0,
+                value: 0.0,
+                attrs: PlotPointAttrs {
+                    label: override_label.clone(), // default value is simply None
+                    color: annotation_info.color(override_color, default_color),
+                    stroke_width: override_stroke_width.unwrap_or(DEFAULT_STROKE_WIDTH),
+                    kind: PlotSeriesKind::Scatter(ScatterAttrs {
+                        marker: override_marker.unwrap_or_default(),
+                    }),
+                },
+            };
+
             let mut points = Vec::new();
 
             let time_range = determine_time_range(
@@ -118,23 +144,6 @@ impl SeriesPointSystem {
 
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
-
-                let annotations = self.annotation_map.find(&data_result.entity_path);
-                let annotation_info = annotations
-                    .resolved_class_description(None)
-                    .annotation_info();
-                let default_color = DefaultColor::EntityPath(&data_result.entity_path);
-
-                let override_color = lookup_override::<Color>(data_result, ctx).map(|c| {
-                    let arr = c.to_array();
-                    egui::Color32::from_rgba_unmultiplied(arr[0], arr[1], arr[2], arr[3])
-                });
-
-                let override_label = lookup_override::<Text>(data_result, ctx).map(|t| t.0);
-
-                let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
-
-                let override_marker = lookup_override::<MarkerShape>(data_result, ctx);
 
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
@@ -148,7 +157,7 @@ impl SeriesPointSystem {
                         store,
                         &query.clone().into(),
                         &data_result.entity_path,
-                        |((time, _row_id), _, scalars, colors, _, markers, labels)| {
+                        |((time, _row_id), _, scalars, colors, stroke_widths, markers, labels)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
@@ -168,46 +177,55 @@ impl SeriesPointSystem {
                                 return;
                             }
 
-                            for (scalar, color, marker, label) in itertools::izip!(
+                            for (scalar, color, stroke_width, marker, label) in itertools::izip!(
                                 scalars.iter(),
-                                MaybeCachedComponentData::iter_or_repeat_opt(
-                                    &colors,
-                                    scalars.len()
-                                ),
-                                MaybeCachedComponentData::iter_or_repeat_opt(
-                                    &markers,
-                                    scalars.len()
-                                ),
-                                //MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
-                                MaybeCachedComponentData::iter_or_repeat_opt(
-                                    &labels,
-                                    scalars.len()
-                                ),
+                                MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
+                                MaybeCachedComponentData::iter_or_repeat_opt(&stroke_widths, scalars.len()),
+                                MaybeCachedComponentData::iter_or_repeat_opt(&markers, scalars.len()),
+                                MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
                             ) {
-                                // TODO(jleibs): Replace with StrokeWidth
-                                let radius: Option<Radius> = None;
-                                let color = override_color.unwrap_or_else(|| {
-                                    annotation_info
-                                        .color(color.map(|c| c.to_array()), default_color)
-                                });
-                                let label = override_label.clone().or_else(|| {
-                                    annotation_info.label_utf8(label.as_deref().cloned())
-                                });
-                                let radius = override_radius
-                                    .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
-
-                                let marker = override_marker.unwrap_or(marker.unwrap_or_default());
-
-                                points.push(PlotPoint {
+                                let mut point = PlotPoint {
                                     time: time.as_i64(),
                                     value: scalar.0,
-                                    attrs: PlotPointAttrs {
-                                        label,
-                                        color,
-                                        stroke_width: radius,
-                                        kind: PlotSeriesKind::Scatter(ScatterAttrs{marker}),
-                                    },
-                                });
+                                    ..default_point.clone()
+                                };
+
+                                // Make it as clear as possible to the optimizer that some parameters
+                                // go completely unused as soon as overrides have been defined.
+
+                                if override_color.is_none() {
+                                    if let Some(color) = color.map(|c| {
+                                        let [r,g,b,a] = c.to_array();
+                                        if a == 255 {
+                                            // Common-case optimization
+                                            re_renderer::Color32::from_rgb(r, g, b)
+                                        } else {
+                                            re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                                        }
+                                    }) {
+                                        point.attrs.color = color;
+                                    }
+                                }
+
+                                if override_label.is_none() {
+                                    if let Some(label) = label.as_ref().map(|l| l.0.clone()) {
+                                        point.attrs.label = Some(label);
+                                    }
+                                }
+
+                                if override_stroke_width.is_none() {
+                                    if let Some(stroke_width) = stroke_width.map(|r| r.0) {
+                                        point.attrs.stroke_width = stroke_width;
+                                    }
+                                }
+
+                                if override_marker.is_none() {
+                                    if let Some(marker) = marker {
+                                        point.attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs { marker: *marker });
+                                    }
+                                }
+
+                                points.push(point);
                             }
                         },
                     )?;

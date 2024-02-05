@@ -102,6 +102,30 @@ impl SeriesLineSystem {
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
+            let annotations = self.annotation_map.find(&data_result.entity_path);
+            let annotation_info = annotations
+                .resolved_class_description(None)
+                .annotation_info();
+            let default_color = DefaultColor::EntityPath(&data_result.entity_path);
+
+            let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
+            let override_label = lookup_override::<Text>(data_result, ctx).map(|t| t.0);
+            let override_stroke_width =
+                lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
+
+            // All the default values for a `PlotPoint`, accounting for both overrides and default
+            // values.
+            let default_point = PlotPoint {
+                time: 0,
+                value: 0.0,
+                attrs: PlotPointAttrs {
+                    label: override_label.clone(), // default value is simply None
+                    color: annotation_info.color(override_color, default_color),
+                    stroke_width: override_stroke_width.unwrap_or(DEFAULT_STROKE_WIDTH),
+                    kind: PlotSeriesKind::Continuous,
+                },
+            };
+
             let mut points = Vec::new();
 
             let time_range = determine_time_range(
@@ -113,23 +137,6 @@ impl SeriesLineSystem {
 
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
-
-                let annotations = self.annotation_map.find(&data_result.entity_path);
-                let annotation_info = annotations
-                    .resolved_class_description(None)
-                    .annotation_info();
-                let default_color = DefaultColor::EntityPath(&data_result.entity_path);
-
-                let override_color = lookup_override::<Color>(data_result, ctx).map(|c| {
-                    let arr = c.to_array();
-                    egui::Color32::from_rgba_unmultiplied(arr[0], arr[1], arr[2], arr[3])
-                });
-
-                let override_label = lookup_override::<Text>(data_result, ctx).map(|t| t.0);
-
-                let override_stroke_width =
-                    lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
-
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
@@ -142,7 +149,7 @@ impl SeriesLineSystem {
                         // The `Scalar` archetype queries for `MarkerShape` in the point visualizer,
                         // and so it must do so here also.
                         // See https://github.com/rerun-io/rerun/pull/5029
-                        |((time, _row_id), _, scalars, colors, stroke_width, _, labels)| {
+                        |((time, _row_id), _, scalars, colors, stroke_widths, _, labels)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
@@ -162,43 +169,48 @@ impl SeriesLineSystem {
                                 return;
                             }
 
-                            for (scalar, color, stoke_width, label) in itertools::izip!(
+                            for (scalar, color, stroke_width, label) in itertools::izip!(
                                 scalars.iter(),
-                                MaybeCachedComponentData::iter_or_repeat_opt(
-                                    &colors,
-                                    scalars.len()
-                                ),
-                                MaybeCachedComponentData::iter_or_repeat_opt(
-                                    &stroke_width,
-                                    scalars.len()
-                                ),
-                                //MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
-                                MaybeCachedComponentData::iter_or_repeat_opt(
-                                    &labels,
-                                    scalars.len()
-                                ),
+                                MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
+                                MaybeCachedComponentData::iter_or_repeat_opt(&stroke_widths, scalars.len()),
+                                MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
                             ) {
-                                let color = override_color.unwrap_or_else(|| {
-                                    annotation_info
-                                        .color(color.map(|c| c.to_array()), default_color)
-                                });
-                                let label = override_label.clone().or_else(|| {
-                                    annotation_info.label_utf8(label.as_deref().cloned())
-                                });
-                                let stroke_width = override_stroke_width.unwrap_or_else(|| {
-                                    stoke_width.map_or(DEFAULT_STROKE_WIDTH, |r| r.0)
-                                });
-
-                                points.push(PlotPoint {
+                                let mut point = PlotPoint {
                                     time: time.as_i64(),
                                     value: scalar.0,
-                                    attrs: PlotPointAttrs {
-                                        label,
-                                        color,
-                                        stroke_width,
-                                        kind: PlotSeriesKind::Continuous,
-                                    },
-                                });
+                                    ..default_point.clone()
+                                };
+
+                                // Make it as clear as possible to the optimizer that some parameters
+                                // go completely unused as soon as overrides have been defined.
+
+                                if override_color.is_none() {
+                                    if let Some(color) = color.map(|c| {
+                                        let [r,g,b,a] = c.to_array();
+                                        if a == 255 {
+                                            // Common-case optimization
+                                            re_renderer::Color32::from_rgb(r, g, b)
+                                        } else {
+                                            re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                                        }
+                                    }) {
+                                        point.attrs.color = color;
+                                    }
+                                }
+
+                                if override_label.is_none() {
+                                    if let Some(label) = label.as_ref().map(|l| l.0.clone()) {
+                                        point.attrs.label = Some(label);
+                                    }
+                                }
+
+                                if override_stroke_width.is_none() {
+                                    if let Some(stroke_width) = stroke_width.map(|r| r.0) {
+                                        point.attrs.stroke_width = stroke_width;
+                                    }
+                                }
+
+                                points.push(point);
                             }
                         },
                     )?;
