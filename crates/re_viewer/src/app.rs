@@ -126,7 +126,7 @@ pub struct App {
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 
-    style_panel_open: bool,
+    egui_debug_panel_open: bool,
 
     pub(crate) latest_queue_interest: web_time::Instant,
 
@@ -238,7 +238,7 @@ impl App {
             memory_panel: Default::default(),
             memory_panel_open: false,
 
-            style_panel_open: false,
+            egui_debug_panel_open: false,
 
             latest_queue_interest: long_time_ago,
 
@@ -524,8 +524,8 @@ impl App {
             }
 
             #[cfg(debug_assertions)]
-            UICommand::ToggleStylePanel => {
-                self.style_panel_open ^= true;
+            UICommand::ToggleEguiDebugPanel => {
+                self.egui_debug_panel_open ^= true;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -771,14 +771,26 @@ impl App {
             });
     }
 
-    fn style_panel_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    fn egui_debug_panel_ui(&mut self, ui: &mut egui::Ui) {
+        let egui_ctx = ui.ctx().clone();
+
         egui::SidePanel::left("style_panel")
             .default_width(300.0)
             .resizable(true)
             .frame(self.re_ui.top_panel_frame())
-            .show_animated_inside(ui, self.style_panel_open, |ui| {
+            .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    ctx.settings_ui(ui);
+                    egui::CollapsingHeader::new("egui settings")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            egui_ctx.settings_ui(ui);
+                        });
+
+                    egui::CollapsingHeader::new("egui inspection")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            egui_ctx.inspection_ui(ui);
+                        });
                 });
             });
     }
@@ -820,7 +832,7 @@ impl App {
 
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
-                self.style_panel_ui(egui_ctx, ui);
+                self.egui_debug_panel_ui(ui);
 
                 if let Some(store_view) = store_context {
                     static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
