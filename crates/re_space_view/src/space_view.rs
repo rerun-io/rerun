@@ -48,7 +48,7 @@ impl AsRef<str> for SpaceViewName {
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new space view otherwise identical to an existing one, use
-/// [`crate::ViewportBlueprint::duplicate_space_view`].
+/// `re_viewport::ViewportBlueprint::duplicate_space_view`.
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: Option<String>,
@@ -124,7 +124,7 @@ impl SpaceViewBlueprint {
     /// Returns this space view's display name
     ///
     /// When returning [`SpaceViewName::Placeholder`], the UI should display the resulting name using
-    /// [`re_ui::LabelStyle::Unnamed`].
+    /// `re_ui::LabelStyle::Unnamed`.
     pub fn display_name_or_default(&self) -> SpaceViewName {
         self.display_name.clone().map_or_else(
             || SpaceViewName::Placeholder(self.missing_name_placeholder()),
@@ -245,7 +245,7 @@ impl SpaceViewBlueprint {
     /// Also duplicates all the queries in the space view.
     ///
     /// Note that this function is a very partial implementation of proper space view cloning. See
-    /// [`crate::ViewportBlueprint::duplicate_space_view`].
+    /// `re_viewport::ViewportBlueprint::duplicate_space_view`.
     pub fn duplicate(&self) -> Self {
         Self {
             id: SpaceViewId::random(),
