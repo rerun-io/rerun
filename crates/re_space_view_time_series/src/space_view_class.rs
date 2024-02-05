@@ -7,7 +7,7 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, EntityPathFilter, TimeZone};
 use re_query::query_archetype;
 use re_space_view::controls;
-use re_types::blueprint::components::{Corner2D, ZoomBehavior};
+use re_types::blueprint::components::Corner2D;
 use re_types::components::Range1D;
 use re_types::Archetype;
 use re_viewer_context::external::re_entity_db::{
@@ -94,11 +94,12 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         layout.add("Scroll + ");
         layout.add(controls::ASPECT_SCROLL_MODIFIER);
-        layout.add(" to change the aspect ratio.\n");
+        layout.add(" to zoom only the temporal axis while holding the y-range fixed.\n");
 
         layout.add("Drag ");
         layout.add(controls::SELECTION_RECT_ZOOM_BUTTON);
         layout.add(" to zoom in/out using a selection.\n");
+        layout.add(" Not available when zoom-behavior has a locked range.\n");
 
         layout.add("Click ");
         layout.add(controls::MOVE_TIME_CURSOR_BUTTON);
@@ -250,9 +251,9 @@ It can greatly improve performance (and readability) in such situations as it pr
         ) = query_space_view_sub_archetype(ctx, query.space_view_id);
 
         let (
-            re_types::blueprint::archetypes::AxisY {
+            re_types::blueprint::archetypes::ScalarAxis {
                 range: y_range,
-                zoom_behavior,
+                lock_range_during_zoom: y_lock_range_during_zoom,
             },
             _,
         ) = query_space_view_sub_archetype(ctx, query.space_view_id);
@@ -309,19 +310,18 @@ It can greatly improve performance (and readability) in such situations as it pr
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let locked_range = zoom_behavior.unwrap_or_default() == ZoomBehavior::LockToRange
+        let lock_y_during_zoom = y_lock_range_during_zoom.map_or(false, |v| v.0)
             || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
-
-        let zoom_y = !locked_range;
 
         let auto_y = y_range.is_none();
 
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.space_view_id))
-            .allow_zoom([true, zoom_y])
             .auto_bounds([true, auto_y].into())
-            .allow_scroll(!locked_range)
+            .allow_zoom([true, !lock_y_during_zoom])
+            .allow_boxed_zoom(!lock_y_during_zoom)
+            .allow_scroll(!lock_y_during_zoom)
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
@@ -394,7 +394,7 @@ It can greatly improve performance (and readability) in such situations as it pr
                 // - The range was just edited
                 // - The zoom behavior is in LockToRange
                 // - The user double-clicked
-                if range_was_edited || locked_range || is_resetting {
+                if range_was_edited || lock_y_during_zoom || is_resetting {
                     let current_bounds = plot_ui.plot_bounds();
                     let mut min = current_bounds.min();
                     let mut max = current_bounds.max();
@@ -408,7 +408,7 @@ It can greatly improve performance (and readability) in such situations as it pr
                     // this frame.
                     plot_ui.set_auto_bounds([current_auto[0] || is_resetting, false].into());
                 }
-            } else if locked_range || range_was_edited {
+            } else if lock_y_during_zoom || range_was_edited {
                 // If we are using auto range, but the range is locked, always
                 // force the y-bounds to be auto to prevent scrolling / zooming in y.
                 plot_ui.set_auto_bounds([current_auto[0] || is_resetting, true].into());
@@ -590,20 +590,20 @@ fn axis_ui(
     // TODO(jleibs): use editors
 
     let (
-        re_types::blueprint::archetypes::AxisY {
-            range,
-            zoom_behavior,
+        re_types::blueprint::archetypes::ScalarAxis {
+            range: y_range,
+            lock_range_during_zoom: y_lock_range_during_zoom,
         },
         blueprint_path,
     ) = query_space_view_sub_archetype(ctx, space_view_id);
 
     ctx.re_ui
-        .selection_grid(ui, "time_series_selection_ui_axis_y")
+        .selection_grid(ui, "time_series_selection_ui_y_axis_range")
         .show(ui, |ui| {
-            ctx.re_ui.grid_left_hand_label(ui, "Axis Y");
+            ctx.re_ui.grid_left_hand_label(ui, "Y Axis Range");
 
             ui.vertical(|ui| {
-                let mut auto_range = range.is_none();
+                let mut auto_range = y_range.is_none();
 
                 ui.horizontal(|ui| {
                     ctx.re_ui
@@ -611,68 +611,64 @@ fn axis_ui(
                         .on_hover_text("Automatically adjust the Y axis to fit the data.");
                     ctx.re_ui
                         .radio_value(ui, &mut auto_range, false, "Override")
-                        .on_hover_text("Manually specify a min and max Y value.");
+                        .on_hover_text("Manually specify a min and max Y value. This will define the range when resetting or locking the view range.");
                 });
 
                 if !auto_range {
                     // TODO(jleibs): Initial range needs to come from the real data.
-                    let mut range_edit =
-                        range.unwrap_or_else(|| range.unwrap_or(Range1D(state.saved_y_axis_range)));
+                    let mut range_edit = y_range
+                        .unwrap_or_else(|| y_range.unwrap_or(Range1D(state.saved_y_axis_range)));
 
                     ui.horizontal(|ui| {
-                        let speed_min = (range_edit.0[0].abs() * 0.01).at_least(0.001);
-                        let speed_max = (range_edit.0[1].abs() * 0.01).at_least(0.001);
-
                         // Max < Min is not supported.
                         // Also, egui_plot doesn't handle min==max (it ends up picking a default range instead then)
                         let prev_min = crate::util::next_up_f64(range_edit.0[0]);
                         let prev_max = range_edit.0[1];
+                        // Scale the speed to the size of the range
+                        let speed = ((prev_max - prev_min) * 0.01).at_least(0.001);
                         ui.label("Min");
                         ui.add(
                             egui::DragValue::new(&mut range_edit.0[0])
-                                .speed(speed_min)
+                                .speed(speed)
                                 .clamp_range(std::f64::MIN..=prev_max),
                         );
                         ui.label("Max");
                         ui.add(
                             egui::DragValue::new(&mut range_edit.0[1])
-                                .speed(speed_max)
+                                .speed(speed)
                                 .clamp_range(prev_min..=std::f64::MAX),
                         );
                     });
 
-                    if range != Some(range_edit) {
+                    if y_range != Some(range_edit) {
                         ctx.save_blueprint_component(&blueprint_path, range_edit);
                     }
-                } else if range.is_some() {
+                } else if y_range.is_some() {
                     ctx.save_empty_blueprint_component::<Range1D>(&blueprint_path);
                 }
+            });
 
+            ui.end_row();
+        });
+
+    ctx.re_ui
+        .selection_grid(ui, "time_series_selection_ui_y_axis_zoom")
+        .show(ui, |ui| {
+            ctx.re_ui.grid_left_hand_label(ui, "Y Axis Zoom Behavior");
+
+            ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    let zoom_behavior = zoom_behavior.unwrap_or_default();
-                    let mut edit_behavior = zoom_behavior;
-                    egui::ComboBox::from_id_source("zoom_behavior")
-                        .selected_text(format!("{edit_behavior}"))
-                        .show_ui(ui, |ui| {
-                            ui.style_mut().wrap = Some(false);
-                            ui.set_min_width(64.0);
-
-                            ui.selectable_value(
-                                &mut edit_behavior,
-                                ZoomBehavior::PreserveAspectRatio,
-                                format!("{}", ZoomBehavior::PreserveAspectRatio),
-                            );
-
-                            ui.selectable_value(
-                                &mut edit_behavior,
-                                ZoomBehavior::LockToRange,
-                                format!("{}", ZoomBehavior::LockToRange),
-                            );
-                        });
-                    if zoom_behavior != edit_behavior {
-                        ctx.save_blueprint_component(&blueprint_path, edit_behavior);
+                    let y_lock_zoom = y_lock_range_during_zoom.unwrap_or(false.into());
+                    let mut edit_locked = y_lock_zoom;
+                    ctx.re_ui
+                        .checkbox(ui, &mut edit_locked.0, "Lock Range")
+                        .on_hover_text(
+                        "If set, when zooming, the Y axis range will remain locked to the specified range.",
+                    );
+                    if y_lock_zoom != edit_locked {
+                        ctx.save_blueprint_component(&blueprint_path, edit_locked);
                     }
-                });
+                })
             });
 
             ui.end_row();
