@@ -204,11 +204,7 @@ impl AppState {
                         .map(|query| {
                             (
                                 query.id,
-                                query.execute_query(
-                                    store_context,
-                                    &visualizable_entities,
-                                    &indicated_entities_per_visualizer,
-                                ),
+                                query.execute_query(store_context, &visualizable_entities),
                             )
                         })
                         .collect::<Vec<_>>()

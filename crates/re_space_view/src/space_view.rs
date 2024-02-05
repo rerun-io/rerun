@@ -554,11 +554,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
+            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
@@ -596,11 +592,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
+            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent_group = query_result
@@ -648,11 +640,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
+            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
@@ -697,11 +685,7 @@ mod tests {
                 recording: Some(&recording),
                 all_recordings: vec![],
             };
-            let mut query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
+            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
@@ -739,11 +723,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
+            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
