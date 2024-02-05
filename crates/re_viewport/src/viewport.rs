@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use egui_tiles::Behavior as _;
+use egui_tiles::{Behavior as _, EditAction};
 use once_cell::sync::Lazy;
 
 use re_entity_db::EntityPropertyMap;
@@ -166,6 +166,11 @@ pub struct Viewport<'a, 'b> {
     /// We delay any modifications to the tree until the end of the frame,
     /// so that we don't mutate something while inspecting it.
     tree_action_receiver: std::sync::mpsc::Receiver<TreeAction>,
+
+    /// Tree action sender
+    ///
+    /// Used to pass along `TabViewer`.
+    tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 }
 
 impl<'a, 'b> Viewport<'a, 'b> {
@@ -174,6 +179,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         state: &'b mut ViewportState,
         space_view_class_registry: &SpaceViewClassRegistry,
         tree_action_receiver: std::sync::mpsc::Receiver<TreeAction>,
+        tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -196,6 +202,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             tree,
             tree_edited: edited,
             tree_action_receiver,
+            tree_action_sender,
         }
     }
 
@@ -271,6 +278,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 edited: false,
                 executed_systems_per_space_view,
                 contents_per_tile_id,
+                tree_action_sender: self.tree_action_sender.clone(),
+                root_container_id: self.blueprint.root_container,
             };
 
             tree.ui(&mut tab_viewer, ui);
@@ -537,6 +546,8 @@ struct TabViewer<'a, 'b> {
     ctx: &'a ViewerContext<'b>,
     space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
+    root_container_id: Option<ContainerId>,
+    tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 
     /// List of query & system execution results for each space view.
     executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
@@ -770,8 +781,47 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
     // Callbacks:
 
-    fn on_edit(&mut self) {
-        self.edited = true;
+    fn on_edit(&mut self, edit_action: egui_tiles::EditAction) {
+        match edit_action {
+            EditAction::TileResized | EditAction::TileDragged => {}
+            EditAction::TileDropped => {
+                // TODO(ab): when we finally stop using egui_tiles as application-level data
+                //                  structure, this work-around should be unnecessary.
+
+                // The continuous simplification options are considerably reduced when the additive
+                // workflow is enabled. Due to the egui_tiles -> blueprint synchronisation process,
+                // drag and drop operation often lead to many spurious empty containers. To work
+                // around this, we run a simplification pass when a drop occurs.
+                if self.ctx.app_options.experimental_additive_workflow {
+                    if let Some(root_container_id) = self.root_container_id {
+                        if self
+                            .tree_action_sender
+                            .send(TreeAction::SimplifyContainer(
+                                root_container_id,
+                                egui_tiles::SimplificationOptions {
+                                    prune_empty_tabs: true,
+                                    prune_empty_containers: false,
+                                    prune_single_child_tabs: true,
+                                    prune_single_child_containers: false,
+                                    all_panes_must_have_tabs: true,
+                                    join_nested_linear_containers: false,
+                                },
+                            ))
+                            .is_err()
+                        {
+                            re_log::warn_once!(
+                                "Channel between ViewportBlueprint and Viewport is broken"
+                            );
+                        }
+                    }
+                }
+
+                self.edited = true;
+            }
+            EditAction::TabSelected => {
+                self.edited = true;
+            }
+        }
     }
 }
 
