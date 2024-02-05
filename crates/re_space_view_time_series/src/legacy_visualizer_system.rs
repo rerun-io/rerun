@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use re_query_cache::{MaybeCachedComponentData, QueryError};
+use re_query_cache::QueryError;
 use re_types::{
     archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
@@ -144,7 +144,7 @@ impl LegacyTimeSeriesSystem {
 
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-                query_caches.query_archetype_range_xxx_pov1_comp4::<
+                query_caches.query_archetype_range_pov1_comp4::<
                     TimeSeriesScalar,
                     Scalar,
                     ScalarScattering,
@@ -156,8 +156,10 @@ impl LegacyTimeSeriesSystem {
                     store,
                     &query,
                     &data_result.entity_path,
-                    |entry_range, (times, _, scalars, scatterings, colors, radii, labels)| {
+                    |_timeless, entry_range, (times, _, scalars, scatterings, colors, radii, labels)| {
                         let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
+
+                        // TODO: asserts
 
                         // Allocate all points.
                         points = times.map(|time| PlotPoint {
