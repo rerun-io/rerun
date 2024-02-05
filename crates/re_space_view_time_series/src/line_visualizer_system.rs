@@ -40,6 +40,7 @@ impl VisualizerSystem for SeriesLineSystem {
             .map(ToOwned::to_owned)
             .collect::<ComponentNameSet>();
         query_info.queried.append(&mut series_line_queried);
+        query_info.indicators = std::iter::once(SeriesLine::indicator().name()).collect();
         query_info
     }
 

@@ -44,6 +44,7 @@ impl VisualizerSystem for SeriesPointSystem {
             .collect::<ComponentNameSet>();
         query_info.queried.append(&mut series_point_queried);
         query_info.queried.insert(StrokeWidth::name());
+        query_info.indicators = std::iter::once(SeriesPoint::indicator().name()).collect();
         query_info
     }
 
