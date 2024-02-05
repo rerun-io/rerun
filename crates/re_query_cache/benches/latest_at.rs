@@ -328,7 +328,7 @@ fn query_and_visit_strings(
                 &query.clone().into(),
                 path,
                 |(_, _, _, labels)| {
-                    for label in labels.unwrap().iter() {
+                    for label in labels.unwrap() {
                         strings.push(SaveString {
                             _label: label.clone(),
                         });

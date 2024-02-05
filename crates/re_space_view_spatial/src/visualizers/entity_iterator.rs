@@ -192,7 +192,7 @@ macro_rules! impl_process_archetype {
                     |(t, keys, $($pov,)+ $($comp,)*)| {
                         counter
                             .num_primitives
-                            .fetch_add(keys.as_slice().len(), std::sync::atomic::Ordering::Relaxed);
+                            .fetch_add(keys.len(), std::sync::atomic::Ordering::Relaxed);
 
                         if let Err(err) = f(
                             ctx,
@@ -200,8 +200,8 @@ macro_rules! impl_process_archetype {
                             data_result.accumulated_properties(),
                             &entity_context,
                             t,
-                            keys.as_slice(),
-                            $($pov.as_slice(),)+
+                            keys,
+                            $($pov,)+
                             $($comp.as_deref(),)*
                         ) {
                             re_log::error_once!(

@@ -9,7 +9,7 @@ use re_log_types::{EntityPath, RowId, Timeline};
 use re_query::query_archetype;
 use re_types_core::{components::InstanceKey, Archetype, Component, SizeBytes};
 
-use crate::{CacheBucket, Caches, MaybeCachedComponentData};
+use crate::{CacheBucket, Caches};
 
 // --- Data structures ---
 
@@ -168,9 +168,9 @@ macro_rules! impl_query_archetype_latest_at {
             F: FnMut(
                 (
                     (Option<TimeInt>, RowId),
-                    MaybeCachedComponentData<'_, InstanceKey>,
-                    $(MaybeCachedComponentData<'_, $pov>,)+
-                    $(Option<MaybeCachedComponentData<'_, Option<$comp>>>,)*
+                    &[InstanceKey],
+                    $(&[$pov],)+
+                    $(Option<&[Option<$comp>]>,)*
                 ),
             ),
         {
@@ -190,9 +190,9 @@ macro_rules! impl_query_archetype_latest_at {
                 ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
                     (
                         ((!timeless).then_some(*time), *row_id),
-                        MaybeCachedComponentData::Cached(instance_keys),
-                        $(MaybeCachedComponentData::Cached($pov),)+
-                        $((!$comp.is_empty()).then_some(MaybeCachedComponentData::Cached($comp)),)*
+                        instance_keys,
+                        $($pov,)+
+                        $((!$comp.is_empty()).then_some($comp),)*
                     )
                 });
 
@@ -327,16 +327,6 @@ macro_rules! impl_query_archetype_latest_at {
                     );
                     return iter_results(is_timeless, query_time_bucket_at_query_time, f);
                 }
-
-                // Racy path: the write lock was busy.
-                let arch_view = query_archetype::<A>(store, &query, entity_path)?;
-                let data = (
-                    (arch_view.data_time(), arch_view.primary_row_id()),
-                    MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
-                    $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
-                    $(Some(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect())),)*
-                );
-                f(data);
 
                 re_log::debug!(
                     store_id = %store.id(),

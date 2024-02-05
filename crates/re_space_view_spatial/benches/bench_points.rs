@@ -86,7 +86,7 @@ fn bench_points(c: &mut criterion::Criterion) {
                     &latest_at,
                     &ent_path,
                     |(_, keys, _, _, _, _, _, _)| {
-                        assert_eq!(keys.as_slice().len(), NUM_POINTS);
+                        assert_eq!(keys.len(), NUM_POINTS);
                     },
                 )
                 .unwrap();
@@ -109,13 +109,13 @@ fn bench_points(c: &mut criterion::Criterion) {
         &ent_path,
         |(_, instance_keys, positions, colors, radii, labels, keypoint_ids, class_ids)| {
             let data = Points3DComponentData {
-                instance_keys: instance_keys.as_slice(),
-                positions: positions.as_slice(),
-                colors: colors.as_deref(),
-                radii: radii.as_deref(),
-                labels: labels.as_deref(),
-                keypoint_ids: keypoint_ids.as_deref(),
-                class_ids: class_ids.as_deref(),
+                instance_keys,
+                positions,
+                colors,
+                radii,
+                labels,
+                keypoint_ids,
+                class_ids,
             };
             assert_eq!(data.instance_keys.len(), NUM_POINTS);
 

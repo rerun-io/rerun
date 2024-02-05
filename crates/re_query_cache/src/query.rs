@@ -10,54 +10,16 @@ use crate::{AnyQuery, Caches};
 
 // ---
 
-/// Either a reference to a slice of data residing in the cache, or some data being deserialized
-/// just-in-time from an [`re_query::ArchetypeView`].
-#[derive(Debug, Clone)]
-pub enum MaybeCachedComponentData<'a, C> {
-    Cached(&'a [C]),
-    // TODO(cmc): Ideally, this would be a reference to a `dyn Iterator` that is the result of
-    // calling `ArchetypeView::iter_{required|optional}_component`.
-    // In practice this enters lifetime invariance hell for, from what I can see, no particular gains
-    // (rustc is pretty good at optimizing out collections into obvious temporary variables).
-    Raw(Vec<C>),
-}
-
-impl<'a, C> MaybeCachedComponentData<'a, Option<C>> {
-    /// Iterates over the data of an optional component, or repeat `None` values if it's missing.
-    #[inline]
-    pub fn iter_or_repeat_opt(
-        this: &Option<Self>,
-        len: usize,
-    ) -> impl Iterator<Item = &Option<C>> + '_ {
-        this.as_ref().map_or(
-            itertools::Either::Left(std::iter::repeat(&None).take(len)),
-            |data| itertools::Either::Right(data.iter()),
-        )
-    }
-}
-
-impl<'a, C> std::ops::Deref for MaybeCachedComponentData<'a, C> {
-    type Target = [C];
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.as_slice()
-    }
-}
-
-impl<'a, C> MaybeCachedComponentData<'a, C> {
-    #[inline]
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = &C> + '_ {
-        self.as_slice().iter()
-    }
-
-    #[inline]
-    pub fn as_slice(&self) -> &[C] {
-        match self {
-            MaybeCachedComponentData::Cached(data) => data,
-            MaybeCachedComponentData::Raw(data) => data.as_slice(),
-        }
-    }
+/// Iterates over the data of an optional component, or repeat `None` values if it's missing.
+#[inline]
+pub fn iter_or_repeat_opt<C>(
+    this: Option<&[Option<C>]>,
+    len: usize,
+) -> impl Iterator<Item = &Option<C>> + '_ {
+    this.as_ref().map_or(
+        itertools::Either::Left(std::iter::repeat(&None).take(len)),
+        |data| itertools::Either::Right(data.iter()),
+    )
 }
 
 // ---
@@ -78,13 +40,7 @@ impl Caches {
     where
         A: Archetype + 'a,
         R1: Component + Send + Sync + 'static,
-        F: FnMut(
-            (
-                (Option<TimeInt>, RowId),
-                MaybeCachedComponentData<'_, InstanceKey>,
-                MaybeCachedComponentData<'_, R1>,
-            ),
-        ),
+        F: FnMut(((Option<TimeInt>, RowId), &[InstanceKey], &[R1])),
     {
         self.query_archetype_pov1_comp0::<A, R1, F>(store, query, entity_path, f)
     }
@@ -109,9 +65,9 @@ macro_rules! impl_query_archetype {
             F: FnMut(
                 (
                     (Option<TimeInt>, RowId),
-                    MaybeCachedComponentData<'_, InstanceKey>,
-                    $(MaybeCachedComponentData<'_, $pov>,)+
-                    $(Option<MaybeCachedComponentData<'_, Option<$comp>>>,)*
+                    &[InstanceKey],
+                    $(&[$pov],)+
+                    $(Option<&[Option<$comp>]>,)*
                 ),
             ),
         {
@@ -152,9 +108,9 @@ macro_rules! impl_query_archetype {
                             ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
                                 (
                                     ((!timeless).then_some(*time), *row_id),
-                                    MaybeCachedComponentData::Cached(instance_keys),
-                                    $(MaybeCachedComponentData::Cached($pov),)+
-                                    $((!$comp.is_empty()).then_some(MaybeCachedComponentData::Cached($comp)),)*
+                                    instance_keys,
+                                    $($pov,)+
+                                    $((!$comp.is_empty()).then_some($comp),)*
                                 )
                             });
 
@@ -204,13 +160,7 @@ impl Caches {
     where
         A: Archetype + 'a,
         R1: Component + Send + Sync + 'static,
-        F: FnMut(
-            (
-                (Option<TimeInt>, RowId),
-                MaybeCachedComponentData<'_, InstanceKey>,
-                MaybeCachedComponentData<'_, R1>,
-            ),
-        ),
+        F: FnMut(((Option<TimeInt>, RowId), &[InstanceKey], &[R1])),
     {
         self.query_archetype_with_history_pov1_comp0::<A, R1, F>(
             store, timeline, time, history, ent_path, f,
@@ -241,9 +191,9 @@ macro_rules! impl_query_archetype_with_history {
             F: FnMut(
                 (
                     (Option<TimeInt>, RowId),
-                    MaybeCachedComponentData<'_, InstanceKey>,
-                    $(MaybeCachedComponentData<'_, $pov>,)+
-                    $(Option<MaybeCachedComponentData<'_, Option<$comp>>>,)*
+                    &[InstanceKey],
+                    $(&[$pov],)+
+                    $(Option<&[Option<$comp>]>,)*
                 ),
             ),
         {
