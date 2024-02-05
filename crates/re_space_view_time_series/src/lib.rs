@@ -11,7 +11,7 @@ mod space_view_class;
 mod util;
 
 use re_log_types::EntityPath;
-use re_types::components::MarkerShape;
+use re_types::{components::MarkerShape, datatypes::Utf8};
 use re_viewer_context::external::re_entity_db::TimeSeriesAggregator;
 pub use space_view_class::TimeSeriesSpaceView;
 
@@ -31,7 +31,7 @@ pub(crate) fn plot_id(space_view_id: re_viewer_context::SpaceViewId) -> egui::Id
 
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {
-    pub label: Option<String>,
+    pub label: Option<Utf8>,
     pub color: egui::Color32,
     pub stroke_width: f32,
     pub kind: PlotSeriesKind,
@@ -75,7 +75,7 @@ pub enum PlotSeriesKind {
 
 #[derive(Clone, Debug)]
 pub struct PlotSeries {
-    pub label: String,
+    pub label: Utf8,
     pub color: egui::Color32,
     pub width: f32,
     pub kind: PlotSeriesKind,

@@ -97,6 +97,10 @@ def main() -> None:
         # Just generate random numbers rather than crash
         values = np.random.normal(size=values_shape)
 
+    for plot_path in plot_paths:
+        for series_path in series_paths:
+            rr.log(f"{plot_path}/{series_path}", rr.SeriesLine())
+
     for time_step, sim_time in enumerate(sim_times):
         rr.set_time_seconds("sim_time", sim_time)
 
@@ -105,7 +109,7 @@ def main() -> None:
         for plot_idx, plot_path in enumerate(plot_paths):
             for series_idx, series_path in enumerate(series_paths):
                 value = values[time_step, plot_idx, series_idx]
-                rr.log(f"{plot_path}/{series_path}", rr.TimeSeriesScalar(value))
+                rr.log(f"{plot_path}/{series_path}", rr.Scalar(value))
 
         # Progress report
 
