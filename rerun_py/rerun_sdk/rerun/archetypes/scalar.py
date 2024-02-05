@@ -9,7 +9,7 @@ from typing import Any
 
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import Archetype
 from ..error_utils import catch_and_log_exceptions
 
@@ -56,7 +56,7 @@ class Scalar(Archetype):
     </center>
     """
 
-    def __init__(self: Any, scalar: components.ScalarLike, *, text: datatypes.Utf8Like | None = None):
+    def __init__(self: Any, scalar: components.ScalarLike):
         """
         Create a new instance of the Scalar archetype.
 
@@ -64,19 +64,11 @@ class Scalar(Archetype):
         ----------
         scalar:
             The scalar value to log.
-        text:
-            An optional label for the scalar.
-
-            TODO(#1289): This won't show up on points at the moment, as our plots don't yet
-            support displaying labels for individual points.
-
-            If you want to instead set the name of a series, use `SeriesLine`'s or `SeriesPoint`'s
-            name component instead.
         """
 
         # You can define your own __init__ function as a member of ScalarExt in scalar_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(scalar=scalar, text=text)
+            self.__attrs_init__(scalar=scalar)
             return
         self.__attrs_clear__()
 
@@ -84,7 +76,6 @@ class Scalar(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             scalar=None,  # type: ignore[arg-type]
-            text=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -99,21 +90,6 @@ class Scalar(Archetype):
         converter=components.ScalarBatch._required,  # type: ignore[misc]
     )
     # The scalar value to log.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    text: components.TextBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.TextBatch._optional,  # type: ignore[misc]
-    )
-    # An optional label for the scalar.
-    #
-    # TODO(#1289): This won't show up on points at the moment, as our plots don't yet
-    # support displaying labels for individual points.
-    #
-    # If you want to instead set the name of a series, use `SeriesLine`'s or `SeriesPoint`'s
-    # name component instead.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

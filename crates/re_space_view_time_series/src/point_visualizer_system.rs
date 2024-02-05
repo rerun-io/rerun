@@ -3,7 +3,7 @@ use re_types::archetypes;
 use re_types::components::{MarkerShape, Name, StrokeWidth};
 use re_types::{
     archetypes::SeriesPoint,
-    components::{Color, Scalar, Text},
+    components::{Color, Scalar},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
@@ -114,7 +114,6 @@ impl SeriesPointSystem {
             let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
             let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
-            let override_label = lookup_override::<Text>(data_result, ctx).map(|t| t.0);
             let override_series_name = lookup_override::<Name>(data_result, ctx).map(|t| t.0);
             let override_stroke_width =
                 lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
@@ -126,7 +125,7 @@ impl SeriesPointSystem {
                 time: 0,
                 value: 0.0,
                 attrs: PlotPointAttrs {
-                    label: override_label.clone(), // default value is simply None
+                    label: None,
                     color: annotation_info.color(override_color, default_color),
                     stroke_width: override_stroke_width.unwrap_or(DEFAULT_STROKE_WIDTH),
                     kind: PlotSeriesKind::Scatter(ScatterAttrs {
@@ -154,12 +153,12 @@ impl SeriesPointSystem {
                 // and so it must do so here also.
                 // See https://github.com/rerun-io/rerun/pull/5029
                 query_caches
-                    .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, Text, _>(
+                    .query_archetype_pov1_comp3::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
                         &data_result.entity_path,
-                        |((time, _row_id), _, scalars, colors, stroke_widths, markers, labels)| {
+                        |((time, _row_id), _, scalars, colors, stroke_widths, markers)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
@@ -179,12 +178,11 @@ impl SeriesPointSystem {
                                 return;
                             }
 
-                            for (scalar, color, stroke_width, marker, label) in itertools::izip!(
+                            for (scalar, color, stroke_width, marker) in itertools::izip!(
                                 scalars.iter(),
                                 MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
                                 MaybeCachedComponentData::iter_or_repeat_opt(&stroke_widths, scalars.len()),
                                 MaybeCachedComponentData::iter_or_repeat_opt(&markers, scalars.len()),
-                                MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
                             ) {
                                 let mut point = PlotPoint {
                                     time: time.as_i64(),
@@ -206,12 +204,6 @@ impl SeriesPointSystem {
                                         }
                                     }) {
                                         point.attrs.color = color;
-                                    }
-                                }
-
-                                if override_label.is_none() {
-                                    if let Some(label) = label.as_ref().map(|l| l.0.clone()) {
-                                        point.attrs.label = Some(label);
                                     }
                                 }
 

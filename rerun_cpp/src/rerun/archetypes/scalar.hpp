@@ -4,15 +4,12 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../compiler_utils.hpp"
 #include "../components/scalar.hpp"
-#include "../components/text.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -53,15 +50,6 @@ namespace rerun::archetypes {
         /// The scalar value to log.
         rerun::components::Scalar scalar;
 
-        /// An optional label for the scalar.
-        ///
-        /// TODO(#1289): This won't show up on points at the moment, as our plots don't yet
-        /// support displaying labels for individual points.
-        ///
-        /// If you want to instead set the name of a series, use `SeriesLine`'s or `SeriesPoint`'s
-        /// name component instead.
-        std::optional<rerun::components::Text> text;
-
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.ScalarIndicator";
 
@@ -73,19 +61,6 @@ namespace rerun::archetypes {
         Scalar(Scalar&& other) = default;
 
         explicit Scalar(rerun::components::Scalar _scalar) : scalar(std::move(_scalar)) {}
-
-        /// An optional label for the scalar.
-        ///
-        /// TODO(#1289): This won't show up on points at the moment, as our plots don't yet
-        /// support displaying labels for individual points.
-        ///
-        /// If you want to instead set the name of a series, use `SeriesLine`'s or `SeriesPoint`'s
-        /// name component instead.
-        Scalar with_text(rerun::components::Text _text) && {
-            text = std::move(_text);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
 
         /// Returns the number of primary instances of this archetype.
         size_t num_instances() const {

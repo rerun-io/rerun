@@ -64,26 +64,17 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct Scalar {
     /// The scalar value to log.
     pub scalar: crate::components::Scalar,
-
-    /// An optional label for the scalar.
-    ///
-    /// TODO(#1289): This won't show up on points at the moment, as our plots don't yet
-    /// support displaying labels for individual points.
-    ///
-    /// If you want to instead set the name of a series, use `SeriesLine`'s or `SeriesPoint`'s
-    /// name component instead.
-    pub text: Option<crate::components::Text>,
 }
 
 impl ::re_types_core::SizeBytes for Scalar {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.scalar.heap_size_bytes() + self.text.heap_size_bytes()
+        self.scalar.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::components::Scalar>::is_pod() && <Option<crate::components::Text>>::is_pod()
+        <crate::components::Scalar>::is_pod()
     }
 }
 
@@ -93,26 +84,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.ScalarIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.InstanceKey".into(),
-            "rerun.components.Text".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Scalar".into(),
             "rerun.components.ScalarIndicator".into(),
             "rerun.components.InstanceKey".into(),
-            "rerun.components.Text".into(),
         ]
     });
 
 impl Scalar {
-    pub const NUM_COMPONENTS: usize = 4usize;
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`Scalar`] [`::re_types_core::Archetype`]
@@ -175,16 +160,7 @@ impl ::re_types_core::Archetype for Scalar {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Scalar#scalar")?
         };
-        let text = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
-            <crate::components::Text>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Scalar#text")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        Ok(Self { scalar, text })
+        Ok(Self { scalar })
     }
 }
 
@@ -195,9 +171,6 @@ impl ::re_types_core::AsComponents for Scalar {
         [
             Some(Self::indicator()),
             Some((&self.scalar as &dyn ComponentBatch).into()),
-            self.text
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -214,13 +187,6 @@ impl Scalar {
     pub fn new(scalar: impl Into<crate::components::Scalar>) -> Self {
         Self {
             scalar: scalar.into(),
-            text: None,
         }
-    }
-
-    #[inline]
-    pub fn with_text(mut self, text: impl Into<crate::components::Text>) -> Self {
-        self.text = Some(text.into());
-        self
     }
 }
