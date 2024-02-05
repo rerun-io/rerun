@@ -10,19 +10,19 @@ namespace rerun.blueprint.archetypes;
 
 // ---
 
-/// Configuration for the legend of a plot.
-table AxisY (
+/// Configuration for for the scalar axis of a plot.
+table ScalarAxis (
     "attr.docs.unreleased",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 ) {
     // --- Optional ---
 
-    /// The default range of the y-axis of the plot.
+    /// The range of the axis.
     ///
-    /// If unset, the range well be automatically determined based on the data.
+    /// If unset, the range well be automatically determined based on the queried data.
     range: rerun.components.Range1D ("attr.rerun.component_optional", nullable, order: 2100);
 
-    /// How the axis should scale as the plot is zoomed.
-    zoom_behavior: rerun.blueprint.components.ZoomBehavior ("attr.rerun.component_optional", nullable, order: 2200);
+    /// Whether to lock the range of the axis during zoom.
+    lock_range_during_zoom: rerun.blueprint.components.LockRangeDuringZoom ("attr.rerun.component_optional", nullable, order: 2200);
 }

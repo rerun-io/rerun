@@ -8,16 +8,11 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.components;
 
 // ---
-// TODO(#3384)
-/*
-enum ZoomBehavior: byte {
-    PreserveAspectRatio = 1,
-    LockToRange = 2,
-}
-*/
 
-/// How the axis behaves when the user zooms.
-struct ZoomBehavior (
+/// Indicate whether the range should be locked when zooming in on the data.
+///
+/// Default is `false`, i.e. zoom will change the visualized range.
+struct LockRangeDuringZoom (
     "attr.docs.unreleased",
     "attr.arrow.transparent",
     "attr.rerun.scope": "blueprint",
@@ -25,5 +20,5 @@ struct ZoomBehavior (
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"
 ) {
-    behavior: ubyte (order: 100);
+    lock_range: bool (order: 100);
 }

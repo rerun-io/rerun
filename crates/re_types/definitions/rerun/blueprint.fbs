@@ -20,11 +20,11 @@ include "./blueprint/components/space_view_origin.fbs";
 include "./blueprint/components/viewport_layout.fbs";
 include "./blueprint/components/visible.fbs";
 include "./blueprint/components/corner_2d.fbs";
-include "./blueprint/components/zoom_behavior.fbs";
+include "./blueprint/components/lock_range_during_zoom.fbs";
 
 include "./blueprint/archetypes/container_blueprint.fbs";
 include "./blueprint/archetypes/space_view_blueprint.fbs";
 include "./blueprint/archetypes/viewport_blueprint.fbs";
 
 include "./blueprint/archetypes/plot_legend.fbs";
-include "./blueprint/archetypes/axis_y.fbs";
+include "./blueprint/archetypes/scalar_axis.fbs";
