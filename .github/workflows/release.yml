@@ -209,10 +209,12 @@ jobs:
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
       CONCURRENCY: ${{ github.ref_name }}
-      PY_AND_CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
+      PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
+      CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
       RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
-      UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
       RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
+      RELEASE_VERSION: ${{ needs.version.outputs.final }}
+      UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
     secrets: inherit
 
   publish-crates:
