@@ -342,7 +342,7 @@ where
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
 
-    initialize_thead_pool(args.threads);
+    initialize_thread_pool(args.threads);
 
     if args.web_viewer {
         args.serve = true;
@@ -401,7 +401,7 @@ where
     }
 }
 
-fn initialize_thead_pool(threads_args: i32) {
+fn initialize_thread_pool(threads_args: i32) {
     // Name the rayon threads for the benefit of debuggers and profilers:
     let mut builder = rayon::ThreadPoolBuilder::new().thread_name(|i| format!("rayon-{i}"));
 
