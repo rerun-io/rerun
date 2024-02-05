@@ -144,7 +144,6 @@ impl LegacyTimeSeriesSystem {
 
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-                // TODO: how do we handle a disabled cache???
                 query_caches.query_archetype_range_xxx_pov1_comp4::<
                     TimeSeriesScalar,
                     Scalar,
@@ -168,6 +167,9 @@ impl LegacyTimeSeriesSystem {
 
                         // Fill in values.
                         for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
+                            if scalar.len() > 1 {
+                                re_log::warn_once!("found a scalar batch -- those have no effect");
+                            }
                             points[i].value = scalar.first().map_or(0.0, |s| s.0);
                         }
 
