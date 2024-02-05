@@ -9,6 +9,9 @@ use egui_tiles::Behavior as _;
 use once_cell::sync::Lazy;
 
 use re_entity_db::EntityPropertyMap;
+use re_renderer::ScreenshotProcessor;
+use re_space_view::ScreenshotMode;
+use re_space_view::SpaceViewBlueprint;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
     AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
@@ -20,7 +23,7 @@ use crate::{
     add_space_view_or_container_modal::AddSpaceViewOrContainerModal, container::Contents,
     icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
-    system_execution::execute_systems_for_space_views, SpaceViewBlueprint, ViewportBlueprint,
+    system_execution::execute_systems_for_all_space_views, ViewportBlueprint,
 };
 
 // State for each `SpaceView` including both the auto properties and
@@ -251,7 +254,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         };
 
         let executed_systems_per_space_view =
-            execute_systems_for_space_views(ctx, tree, &blueprint.space_views);
+            execute_systems_for_all_space_views(ctx, tree, &blueprint.space_views);
 
         let contents_per_tile_id = blueprint
             .contents_iter()
@@ -307,6 +310,14 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 space_view.id,
                 space_view.class_identifier(),
             );
+
+            while ScreenshotProcessor::next_readback_result(
+                ctx.render_ctx,
+                space_view.id.gpu_readback_id(),
+                |data, extent, mode| handle_pending_screenshots(space_view, data, extent, mode),
+            )
+            .is_some()
+            {}
 
             space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
         }
@@ -951,5 +962,57 @@ impl TabWidget {
             self.galley,
             label_color,
         );
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+fn handle_pending_screenshots(
+    space_view: &SpaceViewBlueprint,
+    data: &[u8],
+    extent: glam::UVec2,
+    mode: ScreenshotMode,
+) {
+    // Set to clipboard.
+    #[cfg(not(target_arch = "wasm32"))]
+    re_viewer_context::Clipboard::with(|clipboard| {
+        clipboard.set_image([extent.x as _, extent.y as _], data);
+    });
+    if mode == ScreenshotMode::CopyToClipboard {
+        return;
+    }
+
+    // Get next available file name.
+    fn is_safe_filename_char(c: char) -> bool {
+        c.is_alphanumeric() || matches!(c, ' ' | '-' | '_')
+    }
+    let safe_display_name = space_view
+        .display_name_or_default()
+        .as_ref()
+        .replace(|c: char| !is_safe_filename_char(c), "");
+    let mut i = 1;
+    let filename = loop {
+        let filename = format!("Screenshot {safe_display_name} - {i}.png");
+        if !std::path::Path::new(&filename).exists() {
+            break filename;
+        }
+        i += 1;
+    };
+    let filename = std::path::Path::new(&filename);
+
+    match image::save_buffer(filename, data, extent.x, extent.y, image::ColorType::Rgba8) {
+        Ok(_) => {
+            re_log::info!(
+                "Saved screenshot to {:?}.",
+                filename.canonicalize().unwrap_or(filename.to_path_buf())
+            );
+        }
+        Err(err) => {
+            re_log::error!(
+                "Failed to safe screenshot to {:?}: {}",
+                filename.canonicalize().unwrap_or(filename.to_path_buf()),
+                err
+            );
+        }
     }
 }

@@ -22,7 +22,7 @@ use re_viewer_context::{
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
-    Contents, Viewport, ViewportBlueprint,
+    space_view_name_style, Contents, Viewport, ViewportBlueprint,
 };
 
 use crate::ui::override_ui::override_ui;
@@ -299,7 +299,7 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
 fn space_view_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view: &re_viewport::SpaceViewBlueprint,
+    space_view: &re_space_view::SpaceViewBlueprint,
 ) -> egui::Response {
     let item = Item::SpaceView(space_view.id);
     let is_selected = ctx.selection().contains_item(&item);
@@ -312,7 +312,7 @@ fn space_view_button(
             space_view.class(ctx.space_view_class_registry).icon(),
             space_view_name.as_ref(),
             is_selected,
-            space_view_name.style(),
+            space_view_name_style(&space_view_name),
         )
         .on_hover_text("Space View");
     item_ui::cursor_interact_with_selectable(ctx, response, item)
@@ -408,7 +408,7 @@ fn what_is_selected_ui(
 
                 let space_view_name = space_view.display_name_or_default();
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(space_view_name.style())
+                    .label_style(space_view_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_height(ReUi::title_bar_height())
                     .selected(true)
@@ -712,7 +712,7 @@ fn show_list_item_for_container_child(
             (
                 Item::SpaceView(*space_view_id),
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(space_view_name.style())
+                    .label_style(space_view_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui

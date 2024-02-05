@@ -3,11 +3,14 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use rayon::prelude::*;
 
+use re_log_types::TimeInt;
 use re_viewer_context::{
-    SpaceViewClassIdentifier, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewerContext,
+    PerSystemDataResults, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId,
+    SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-use crate::{space_view_highlights::highlights_for_space_view, SpaceViewBlueprint};
+use crate::space_view_highlights::highlights_for_space_view;
+use re_space_view::SpaceViewBlueprint;
 
 pub fn create_and_run_space_view_systems(
     ctx: &ViewerContext<'_>,
@@ -58,7 +61,7 @@ pub fn create_and_run_space_view_systems(
     }
 }
 
-pub fn execute_systems_for_space_views<'a>(
+pub fn execute_systems_for_all_space_views<'a>(
     ctx: &'a ViewerContext<'a>,
     tree: &egui_tiles::Tree<SpaceViewId>,
     space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
@@ -76,8 +79,12 @@ pub fn execute_systems_for_space_views<'a>(
                 egui_tiles::Tile::Pane(space_view_id) => {
                     space_views.get(space_view_id).map(|space_view_blueprint| {
                         let highlights = highlights_for_space_view(ctx, *space_view_id);
-                        let output =
-                            space_view_blueprint.execute_systems(ctx, time_int, highlights);
+                        let output = execute_systems_for_space_view(
+                            ctx,
+                            space_view_blueprint,
+                            time_int,
+                            highlights,
+                        );
                         (*space_view_id, output)
                     })
                 }
@@ -85,4 +92,46 @@ pub fn execute_systems_for_space_views<'a>(
             })
         })
         .collect::<HashMap<_, _>>()
+}
+
+fn execute_systems_for_space_view<'a>(
+    ctx: &'a ViewerContext<'_>,
+    space_view: &'a SpaceViewBlueprint,
+    latest_at: TimeInt,
+    highlights: SpaceViewHighlights,
+) -> (ViewQuery<'a>, SystemExecutionOutput) {
+    re_tracing::profile_function!(space_view.class_identifier().as_str());
+
+    let class = space_view.class(ctx.space_view_class_registry);
+
+    let query_result = ctx.lookup_query_result(space_view.query_id());
+
+    let mut per_system_data_results = PerSystemDataResults::default();
+    {
+        re_tracing::profile_scope!("per_system_data_results");
+
+        query_result.tree.visit(&mut |handle| {
+            if let Some(result) = query_result.tree.lookup_result(handle) {
+                for system in &result.visualizers {
+                    per_system_data_results
+                        .entry(*system)
+                        .or_default()
+                        .push(result);
+                }
+            }
+        });
+    }
+
+    let query = re_viewer_context::ViewQuery {
+        space_view_id: space_view.id,
+        space_origin: &space_view.space_origin,
+        per_system_data_results,
+        timeline: *ctx.rec_cfg.time_ctrl.read().timeline(),
+        latest_at,
+        highlights,
+    };
+
+    let system_output = create_and_run_space_view_systems(ctx, class.identifier(), &query);
+
+    (query, system_output)
 }

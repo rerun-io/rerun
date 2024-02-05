@@ -6,13 +6,14 @@ use re_data_ui::{is_component_visible_in_ui, item_ui, temporary_style_ui_for_com
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataCell, DataRow, RowId, StoreKind};
 use re_query_cache::external::re_query::get_component_with_instances;
+use re_space_view::SpaceViewBlueprint;
 use re_types_core::components::VisualizerOverrides;
 use re_types_core::{components::InstanceKey, ComponentName};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataResult, SystemCommand, SystemCommandSender as _,
     UiVerbosity, ViewSystemIdentifier, ViewerContext,
 };
-use re_viewport::{determine_visualizable_entities, SpaceViewBlueprint};
+use re_viewport::determine_visualizable_entities;
 
 pub fn override_ui(
     ctx: &ViewerContext<'_>,

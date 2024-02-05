@@ -4,15 +4,22 @@ use itertools::Itertools;
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, EntityPathRule};
 use re_space_view::DataQueryBlueprint;
+use re_space_view::SpaceViewBlueprint;
+use re_space_view::SpaceViewName;
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::{
-    container::Contents, space_view_heuristics::default_created_space_views, SpaceViewBlueprint,
-    Viewport,
-};
+use crate::{container::Contents, space_view_heuristics::default_created_space_views, Viewport};
+
+/// The style to use for displaying this space view name in the UI.
+pub fn space_view_name_style(name: &SpaceViewName) -> re_ui::LabelStyle {
+    match name {
+        SpaceViewName::Named(_) => re_ui::LabelStyle::Normal,
+        SpaceViewName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
+    }
+}
 
 impl Viewport<'_, '_> {
     /// Show the blueprint panel tree view.
@@ -227,7 +234,7 @@ impl Viewport<'_, '_> {
             item_response: mut response,
             body_response,
         } = ListItem::new(ctx.re_ui, space_view_name.as_ref())
-            .label_style(space_view_name.style())
+            .label_style(space_view_name_style(&space_view_name))
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)

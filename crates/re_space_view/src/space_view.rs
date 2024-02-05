@@ -1,23 +1,20 @@
 use itertools::{FoldWhile, Itertools};
 use re_data_store::LatestAtQuery;
-use re_entity_db::{EntityDb, EntityPath, EntityProperties, TimeInt, VisibleHistory};
+use re_entity_db::{EntityDb, EntityPath, EntityProperties, VisibleHistory};
 use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 
+use crate::DataQueryBlueprint;
 use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId};
 use re_query::query_archetype;
-use re_renderer::ScreenshotProcessor;
-use re_space_view::{DataQueryBlueprint, ScreenshotMode};
-use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin, Visible};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, DataQueryId, DataResult, DynSpaceViewClass,
-    PerSystemDataResults, PerSystemEntities, PropertyOverrides, SpaceViewClass,
-    SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState, StoreContext,
+    blueprint_timepoint_for_writes, DataQueryId, DataResult, DynSpaceViewClass, PerSystemEntities,
+    PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
     SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-use crate::system_execution::create_and_run_space_view_systems;
+//use crate::system_execution::create_and_run_space_view_systems;
 
 // ----------------------------------------------------------------------------
 
@@ -31,16 +28,6 @@ pub enum SpaceViewName {
 
     /// This space view is unnamed and should be displayed with this placeholder name.
     Placeholder(String),
-}
-
-impl SpaceViewName {
-    /// The style to use for displaying this space view name in the UI.
-    pub fn style(&self) -> re_ui::LabelStyle {
-        match self {
-            SpaceViewName::Named(_) => re_ui::LabelStyle::Normal,
-            SpaceViewName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
-        }
-    }
 }
 
 impl AsRef<str> for SpaceViewName {
@@ -259,7 +246,7 @@ impl SpaceViewBlueprint {
     ///
     /// Note that this function is a very partial implementation of proper space view cloning. See
     /// [`crate::ViewportBlueprint::duplicate_space_view`].
-    pub(crate) fn duplicate(&self) -> Self {
+    pub fn duplicate(&self) -> Self {
         Self {
             id: SpaceViewId::random(),
             display_name: self.display_name.clone(),
@@ -336,14 +323,6 @@ impl SpaceViewBlueprint {
         view_state: &mut dyn SpaceViewState,
         view_props: &mut EntityPropertyMap,
     ) {
-        while ScreenshotProcessor::next_readback_result(
-            ctx.render_ctx,
-            self.id.gpu_readback_id(),
-            |data, extent, mode| self.handle_pending_screenshots(data, extent, mode),
-        )
-        .is_some()
-        {}
-
         let query_result = ctx.lookup_query_result(self.query_id()).clone();
 
         let mut per_system_entities = PerSystemEntities::default();
@@ -370,94 +349,7 @@ impl SpaceViewBlueprint {
         );
     }
 
-    fn handle_pending_screenshots(&self, data: &[u8], extent: glam::UVec2, mode: ScreenshotMode) {
-        // Set to clipboard.
-        #[cfg(not(target_arch = "wasm32"))]
-        re_viewer_context::Clipboard::with(|clipboard| {
-            clipboard.set_image([extent.x as _, extent.y as _], data);
-        });
-        if mode == ScreenshotMode::CopyToClipboard {
-            return;
-        }
-
-        // Get next available file name.
-        fn is_safe_filename_char(c: char) -> bool {
-            c.is_alphanumeric() || matches!(c, ' ' | '-' | '_')
-        }
-        let safe_display_name = self
-            .display_name_or_default()
-            .as_ref()
-            .replace(|c: char| !is_safe_filename_char(c), "");
-        let mut i = 1;
-        let filename = loop {
-            let filename = format!("Screenshot {safe_display_name} - {i}.png");
-            if !std::path::Path::new(&filename).exists() {
-                break filename;
-            }
-            i += 1;
-        };
-        let filename = std::path::Path::new(&filename);
-
-        match image::save_buffer(filename, data, extent.x, extent.y, image::ColorType::Rgba8) {
-            Ok(_) => {
-                re_log::info!(
-                    "Saved screenshot to {:?}.",
-                    filename.canonicalize().unwrap_or(filename.to_path_buf())
-                );
-            }
-            Err(err) => {
-                re_log::error!(
-                    "Failed to safe screenshot to {:?}: {}",
-                    filename.canonicalize().unwrap_or(filename.to_path_buf()),
-                    err
-                );
-            }
-        }
-    }
-
-    pub(crate) fn execute_systems<'a>(
-        &'a self,
-        ctx: &'a ViewerContext<'_>,
-        latest_at: TimeInt,
-        highlights: SpaceViewHighlights,
-    ) -> (ViewQuery<'a>, SystemExecutionOutput) {
-        re_tracing::profile_function!(self.class_identifier.as_str());
-
-        let class = self.class(ctx.space_view_class_registry);
-
-        let query_result = ctx.lookup_query_result(self.query_id());
-
-        let mut per_system_data_results = PerSystemDataResults::default();
-        {
-            re_tracing::profile_scope!("per_system_data_results");
-
-            query_result.tree.visit(&mut |handle| {
-                if let Some(result) = query_result.tree.lookup_result(handle) {
-                    for system in &result.visualizers {
-                        per_system_data_results
-                            .entry(*system)
-                            .or_default()
-                            .push(result);
-                    }
-                }
-            });
-        }
-
-        let query = re_viewer_context::ViewQuery {
-            space_view_id: self.id,
-            space_origin: &self.space_origin,
-            per_system_data_results,
-            timeline: *ctx.rec_cfg.time_ctrl.read().timeline(),
-            latest_at,
-            highlights,
-        };
-
-        let system_output = create_and_run_space_view_systems(ctx, class.identifier(), &query);
-
-        (query, system_output)
-    }
-
-    pub(crate) fn scene_ui(
+    pub fn scene_ui(
         &self,
         view_state: &mut dyn SpaceViewState,
         ctx: &ViewerContext<'_>,
@@ -506,7 +398,7 @@ impl SpaceViewBlueprint {
             let mut props = EntityProperties::default();
             // better defaults for the time series space view
             // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
-            if self.class_identifier == TimeSeriesSpaceView::IDENTIFIER {
+            if self.class_identifier == "Time Series" {
                 props.visible_history.nanos = VisibleHistory::ALL;
                 props.visible_history.sequences = VisibleHistory::ALL;
             }
@@ -560,9 +452,9 @@ impl SpaceViewBlueprint {
 
 #[cfg(test)]
 mod tests {
+    use crate::{DataQuery as _, PropertyResolver as _};
     use re_entity_db::EntityDb;
     use re_log_types::{DataCell, DataRow, EntityPathFilter, RowId, StoreId, TimePoint};
-    use re_space_view::{DataQuery as _, PropertyResolver as _};
     use re_types::archetypes::Points3D;
     use re_viewer_context::{
         blueprint_timeline, IndicatedEntities, PerVisualizer, StoreContext, VisualizableEntities,
