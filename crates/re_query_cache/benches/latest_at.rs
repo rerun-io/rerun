@@ -287,7 +287,6 @@ fn query_and_visit_points(
     for path in paths {
         caches
             .query_archetype_pov1_comp1::<Points2D, Position2D, Color, _>(
-                true, // cached?
                 store,
                 &query.clone().into(),
                 path,
@@ -325,7 +324,6 @@ fn query_and_visit_strings(
     for path in paths {
         caches
             .query_archetype_pov1_comp1::<Points2D, Position2D, Text, _>(
-                true, // cached?
                 store,
                 &query.clone().into(),
                 path,

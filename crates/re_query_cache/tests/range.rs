@@ -583,36 +583,12 @@ fn query_and_compare(
     ent_path: &EntityPath,
 ) {
     for _ in 0..3 {
-        let mut uncached_data_times = Vec::new();
-        let mut uncached_instance_keys = Vec::new();
-        let mut uncached_positions = Vec::new();
-        let mut uncached_colors = Vec::new();
-        caches
-            .query_archetype_pov1_comp2::<MyPoints, MyPoint, MyColor, MyLabel, _>(
-                false, // cached?
-                store,
-                &query.clone().into(),
-                ent_path,
-                |((data_time, _), instance_keys, positions, colors, _)| {
-                    uncached_data_times.push(data_time);
-                    uncached_instance_keys.push(instance_keys.to_vec());
-                    uncached_positions.push(positions.to_vec());
-                    uncached_colors.push(
-                        MaybeCachedComponentData::iter_or_repeat_opt(&colors, positions.len())
-                            .copied()
-                            .collect_vec(),
-                    );
-                },
-            )
-            .unwrap();
-
         let mut cached_data_times = Vec::new();
         let mut cached_instance_keys = Vec::new();
         let mut cached_positions = Vec::new();
         let mut cached_colors = Vec::new();
         caches
             .query_archetype_pov1_comp2::<MyPoints, MyPoint, MyColor, MyLabel, _>(
-                true, // cached?
                 store,
                 &query.clone().into(),
                 ent_path,
@@ -654,13 +630,8 @@ fn query_and_compare(
         }
 
         // Keep this around for the next unlucky chap.
-        // eprintln!("(expected={expected_data_times:?}, uncached={uncached_data_times:?}, cached={cached_data_times:?})");
+        // eprintln!("(expected={expected_data_times:?}, cached={cached_data_times:?})");
         // eprintln!("{}", store.to_data_table().unwrap());
-
-        similar_asserts::assert_eq!(expected_data_times, uncached_data_times);
-        similar_asserts::assert_eq!(expected_instance_keys, uncached_instance_keys);
-        similar_asserts::assert_eq!(expected_positions, uncached_positions);
-        similar_asserts::assert_eq!(expected_colors, uncached_colors);
 
         similar_asserts::assert_eq!(expected_data_times, cached_data_times);
         similar_asserts::assert_eq!(expected_instance_keys, cached_instance_keys);

@@ -184,8 +184,6 @@ macro_rules! impl_process_archetype {
                 };
 
                 match ctx.entity_db.query_caches().[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    true, // TODO
-                    true, // TODO
                     ctx.entity_db.store(),
                     &query.timeline,
                     &query.latest_at,

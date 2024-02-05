@@ -70,7 +70,6 @@ impl Caches {
     #[inline]
     pub fn query_archetype_pov1<'a, A, R1, F>(
         &self,
-        cached: bool,
         store: &'a DataStore,
         query: &AnyQuery,
         entity_path: &'a EntityPath,
@@ -87,7 +86,7 @@ impl Caches {
             ),
         ),
     {
-        self.query_archetype_pov1_comp0::<A, R1, F>(cached, store, query, entity_path, f)
+        self.query_archetype_pov1_comp0::<A, R1, F>(store, query, entity_path, f)
     }
 }
 
@@ -98,7 +97,6 @@ macro_rules! impl_query_archetype {
         #[allow(non_snake_case)]
         pub fn [<query_archetype_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
             &self,
-            cached: bool,
             store: &'a DataStore,
             query: &AnyQuery,
             entity_path: &'a EntityPath,
@@ -120,27 +118,10 @@ macro_rules! impl_query_archetype {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!(
                 "query_archetype",
-                format!("cached={cached} arch={} pov={} comp={}", A::name(), $N, $M)
+                format!("cached=true arch={} pov={} comp={}", A::name(), $N, $M)
             );
 
             match &query {
-                AnyQuery::LatestAt(query) if !cached => {
-                    re_tracing::profile_scope!("latest_at", format!("{query:?}"));
-
-                    let arch_view = ::re_query::query_archetype::<A>(store, query, entity_path)?;
-
-                    let data = (
-                        (arch_view.data_time(), arch_view.primary_row_id()),
-                        MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
-                        $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
-                        $(Some(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect())),)*
-                    );
-
-                    f(data);
-
-                    Ok(())
-                }
-
                 AnyQuery::LatestAt(query) => {
                     re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
@@ -150,30 +131,6 @@ macro_rules! impl_query_archetype {
                         entity_path,
                         f,
                     )
-                }
-
-                AnyQuery::Range(query) if !cached => {
-                    re_tracing::profile_scope!("range", format!("{query:?}"));
-
-                    // NOTE: `+ 1` because we always grab the instance keys.
-                    let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
-                        store, query, entity_path,
-                        &[$(<$pov>::name(),)+],
-                        [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
-                    );
-
-                    for arch_view in arch_views {
-                        let data = (
-                            (arch_view.data_time(), arch_view.primary_row_id()),
-                            MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
-                            $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
-                            $(Some(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect())),)*
-                        );
-
-                        f(data);
-                    }
-
-                    Ok(())
                 }
 
                 AnyQuery::Range(query) => {
@@ -237,8 +194,6 @@ impl Caches {
     #[inline]
     pub fn query_archetype_with_history_pov1<'a, A, R1, F>(
         &self,
-        cached_latest_at: bool,
-        cached_range: bool,
         store: &'a DataStore,
         timeline: &'a Timeline,
         time: &'a TimeInt,
@@ -258,14 +213,7 @@ impl Caches {
         ),
     {
         self.query_archetype_with_history_pov1_comp0::<A, R1, F>(
-            cached_latest_at,
-            cached_range,
-            store,
-            timeline,
-            time,
-            history,
-            ent_path,
-            f,
+            store, timeline, time, history, ent_path, f,
         )
     }
 }
@@ -279,8 +227,6 @@ macro_rules! impl_query_archetype_with_history {
         #[allow(clippy::too_many_arguments)]
         pub fn [<query_archetype_with_history_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
             &self,
-            cached_latest_at: bool,
-            cached_range: bool,
             store: &'a DataStore,
             timeline: &'a Timeline,
             time: &'a TimeInt,
@@ -311,12 +257,11 @@ macro_rules! impl_query_archetype_with_history {
                 // NOTE: not `profile_function!` because we want them merged together.
                 re_tracing::profile_scope!(
                     "query_archetype_with_history",
-                    format!("cached={cached_latest_at} arch={} pov={} comp={}", A::name(), $N, $M)
+                    format!("cached=true arch={} pov={} comp={}", A::name(), $N, $M)
                 );
 
                 let query = LatestAtQuery::new(*timeline, *time);
                 self.[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    cached_latest_at,
                     store,
                     &query.clone().into(),
                     ent_path,
@@ -326,12 +271,11 @@ macro_rules! impl_query_archetype_with_history {
                 // NOTE: not `profile_function!` because we want them merged together.
                 re_tracing::profile_scope!(
                     "query_archetype_with_history",
-                    format!("cached={cached_range} arch={} pov={} comp={}", A::name(), $N, $M)
+                    format!("cached=true arch={} pov={} comp={}", A::name(), $N, $M)
                 );
 
                 let query = RangeQuery::new(*timeline, visible_history.time_range(*time));
                 self.[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    cached_range,
                     store,
                     &query.clone().into(),
                     ent_path,
