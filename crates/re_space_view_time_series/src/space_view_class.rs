@@ -321,6 +321,7 @@ It can greatly improve performance (and readability) in such situations as it pr
             .id(crate::plot_id(query.space_view_id))
             .allow_zoom([true, zoom_y])
             .auto_bounds([true, auto_y].into())
+            .allow_scroll(!locked_range)
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
