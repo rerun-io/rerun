@@ -205,6 +205,71 @@ impl Caches {
     });
 }
 
+macro_rules! impl_query_archetype_xxx {
+    (for N=$N:expr, M=$M:expr => povs=[$($pov:ident)+] comps=[$($comp:ident)*]) => { paste! {
+        #[doc = "Cached implementation of [`re_query::query_archetype_xxx`] and [`re_query::range_archetype`]"]
+        #[doc = "(combined) for `" $N "` point-of-view components and `" $M "` optional components."]
+        #[allow(non_snake_case)]
+        pub fn [<query_archetype_xxx_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
+            &self,
+            cached: bool,
+            store: &'a DataStore,
+            query: &AnyQuery,
+            entity_path: &'a EntityPath,
+            mut f: F,
+        ) -> ::re_query::Result<()>
+        where
+            A: Archetype + 'a,
+            $($pov: Component + Send + Sync + 'static,)+
+            $($comp: Component + Send + Sync + 'static,)*
+            F: FnMut(
+                std::ops::Range<usize>,
+                (
+                    &'_ std::collections::VecDeque<(re_data_store::TimeInt, re_log_types::RowId)>,
+                    &'_ crate::FlatVecDeque<InstanceKey>,
+                    $(&'_ crate::FlatVecDeque<$pov>,)+
+                    $(Option<&'_ crate::FlatVecDeque<Option<$comp>>>,)*
+                )
+            ),
+        {
+            // NOTE: not `profile_function!` because we want them merged together.
+            re_tracing::profile_scope!(
+                "query_archetype_xxx",
+                format!("cached={cached} arch={} pov={} comp={}", A::name(), $N, $M)
+            );
+
+            match &query {
+                AnyQuery::Range(query) => {
+                    re_tracing::profile_scope!("range", format!("{query:?}"));
+
+                    self.[<query_archetype_range_xxx_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* F>(
+                        store,
+                        query,
+                        entity_path,
+                        f,
+                    )
+                }
+
+                _ => unreachable!(),
+            }
+        } }
+    };
+
+    // TODO(cmc): Supporting N>1 generically is quite painful due to limitations in declarative macros,
+    // not that we care at the moment.
+    (for N=1, M=$M:expr) => {
+        seq!(COMP in 1..=$M {
+            impl_query_archetype_xxx!(for N=1, M=$M => povs=[R1] comps=[#(C~COMP)*]);
+        });
+    };
+}
+
+impl Caches {
+    seq!(NUM_COMP in 0..10 {
+        impl_query_archetype_xxx!(for N=1, M=NUM_COMP);
+    });
+}
+
 // ---
 
 /// Cached implementation of [`re_query::query_archetype_with_history`] for 1 point-of-view component
