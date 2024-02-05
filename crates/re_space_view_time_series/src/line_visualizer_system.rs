@@ -1,6 +1,6 @@
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::archetypes;
-use re_types::components::StrokeWidth;
+use re_types::components::{MarkerShape, StrokeWidth};
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Scalar, Text},
@@ -135,12 +135,15 @@ impl SeriesLineSystem {
 
                 // TODO(jleibs): need to do a "joined" archetype query
                 query_caches
-                    .query_archetype_pov1_comp3::<archetypes::Scalar, Scalar, Color, StrokeWidth, Text, _>(
+                    .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, Text, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
                         &data_result.entity_path,
-                        |((time, _row_id), _, scalars, colors, stroke_width, labels)| {
+                        // The `Scalar` archetype queries for `MarkerShape` in the point visualizer,
+                        // and so it must do so here also.
+                        // See https://github.com/rerun-io/rerun/pull/5029
+                        |((time, _row_id), _, scalars, colors, stroke_width, _, labels)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
@@ -183,8 +186,9 @@ impl SeriesLineSystem {
                                 let label = override_label.clone().or_else(|| {
                                     annotation_info.label(label.as_ref().map(|l| l.as_str()))
                                 });
-                                let stroke_width = override_stroke_width
-                                    .unwrap_or_else(|| stoke_width.map_or(DEFAULT_STROKE_WIDTH, |r| r.0));
+                                let stroke_width = override_stroke_width.unwrap_or_else(|| {
+                                    stoke_width.map_or(DEFAULT_STROKE_WIDTH, |r| r.0)
+                                });
 
                                 points.push(PlotPoint {
                                     time: time.as_i64(),
