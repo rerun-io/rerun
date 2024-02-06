@@ -5,10 +5,12 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use egui_tiles::Behavior as _;
+use egui_tiles::{Behavior as _, EditAction};
 use once_cell::sync::Lazy;
 
 use re_entity_db::EntityPropertyMap;
+use re_renderer::ScreenshotProcessor;
+use re_space_view::SpaceViewBlueprint;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
     AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
@@ -16,11 +18,12 @@ use re_viewer_context::{
 };
 
 use crate::container::blueprint_id_to_tile_id;
+use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
     add_space_view_or_container_modal::AddSpaceViewOrContainerModal, container::Contents,
     icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
-    system_execution::execute_systems_for_space_views, SpaceViewBlueprint, ViewportBlueprint,
+    system_execution::execute_systems_for_all_space_views, ViewportBlueprint,
 };
 
 // State for each `SpaceView` including both the auto properties and
@@ -166,6 +169,11 @@ pub struct Viewport<'a, 'b> {
     /// We delay any modifications to the tree until the end of the frame,
     /// so that we don't mutate something while inspecting it.
     tree_action_receiver: std::sync::mpsc::Receiver<TreeAction>,
+
+    /// Tree action sender
+    ///
+    /// Used to pass along `TabViewer`.
+    tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 }
 
 impl<'a, 'b> Viewport<'a, 'b> {
@@ -174,6 +182,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         state: &'b mut ViewportState,
         space_view_class_registry: &SpaceViewClassRegistry,
         tree_action_receiver: std::sync::mpsc::Receiver<TreeAction>,
+        tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -196,6 +205,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             tree,
             tree_edited: edited,
             tree_action_receiver,
+            tree_action_sender,
         }
     }
 
@@ -251,7 +261,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         };
 
         let executed_systems_per_space_view =
-            execute_systems_for_space_views(ctx, tree, &blueprint.space_views);
+            execute_systems_for_all_space_views(ctx, tree, &blueprint.space_views);
 
         let contents_per_tile_id = blueprint
             .contents_iter()
@@ -271,6 +281,8 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 edited: false,
                 executed_systems_per_space_view,
                 contents_per_tile_id,
+                tree_action_sender: self.tree_action_sender.clone(),
+                root_container_id: self.blueprint.root_container,
             };
 
             tree.ui(&mut tab_viewer, ui);
@@ -307,6 +319,17 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 space_view.id,
                 space_view.class_identifier(),
             );
+
+            #[allow(clippy::blocks_in_if_conditions)]
+            while ScreenshotProcessor::next_readback_result(
+                ctx.render_ctx,
+                space_view.id.gpu_readback_id(),
+                |data, extent, mode| {
+                    handle_pending_space_view_screenshots(space_view, data, extent, mode);
+                },
+            )
+            .is_some()
+            {}
 
             space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
         }
@@ -537,6 +560,8 @@ struct TabViewer<'a, 'b> {
     ctx: &'a ViewerContext<'b>,
     space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
+    root_container_id: Option<ContainerId>,
+    tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 
     /// List of query & system execution results for each space view.
     executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
@@ -566,24 +591,37 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             return Default::default();
         }
 
-        if self.ctx.rec_cfg.time_ctrl.read().time_int().is_none() {
+        let Some(latest_at) = self.ctx.rec_cfg.time_ctrl.read().time_int() else {
             ui.centered_and_justified(|ui| {
                 ui.weak("No time selected");
             });
             return Default::default();
         };
 
-        let Some((query, system_output)) =
-            self.executed_systems_per_space_view.remove(space_view_id)
-        else {
+        let (query, system_output) =
+            self.executed_systems_per_space_view.remove(space_view_id).unwrap_or_else(|| {
             // The space view's systems haven't been executed.
-            // This should never happen, but if it does anyways we can't display the space view.
-            re_log::error_once!(
+            // This may indicate that the egui_tiles tree is not in sync
+            // with the blueprint tree.
+            // This shouldn't happen, but better safe than sorry:
+            // TODO(#4433): This should go to analytics
+
+            if cfg!(debug_assertions) {
+                re_log::warn_once!(
                 "Visualizers for space view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
                 space_view_blueprint.display_name_or_default()
-            ); // TODO(#4433): This should go to analytics
-            return Default::default();
-        };
+            );
+            }
+
+            let highlights =
+                crate::space_view_highlights::highlights_for_space_view(self.ctx, *space_view_id);
+            crate::system_execution::execute_systems_for_space_view(
+                self.ctx,
+                space_view_blueprint,
+                latest_at,
+                highlights,
+            )
+        });
 
         let PerSpaceViewState {
             auto_properties: _,
@@ -770,8 +808,50 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
     // Callbacks:
 
-    fn on_edit(&mut self) {
-        self.edited = true;
+    fn on_edit(&mut self, edit_action: egui_tiles::EditAction) {
+        match edit_action {
+            EditAction::TileDropped => {
+                // TODO(ab): when we finally stop using egui_tiles as application-level data
+                //                  structure, this work-around should be unnecessary.
+
+                // The continuous simplification options are considerably reduced when the additive
+                // workflow is enabled. Due to the egui_tiles -> blueprint synchronisation process,
+                // drag and drop operation often lead to many spurious empty containers. To work
+                // around this, we run a simplification pass when a drop occurs.
+                if self.ctx.app_options.experimental_additive_workflow {
+                    if let Some(root_container_id) = self.root_container_id {
+                        if self
+                            .tree_action_sender
+                            .send(TreeAction::SimplifyContainer(
+                                root_container_id,
+                                egui_tiles::SimplificationOptions {
+                                    prune_empty_tabs: true,
+                                    prune_empty_containers: false,
+                                    prune_single_child_tabs: true,
+                                    prune_single_child_containers: false,
+                                    all_panes_must_have_tabs: true,
+                                    join_nested_linear_containers: false,
+                                },
+                            ))
+                            .is_err()
+                        {
+                            re_log::warn_once!(
+                                "Channel between ViewportBlueprint and Viewport is broken"
+                            );
+                        }
+                    }
+                }
+
+                self.edited = true;
+            }
+            EditAction::TabSelected | EditAction::TileResized => {
+                self.edited = true;
+            }
+            EditAction::TileDragged => {
+                // No synchronization needed, because TileDragged happens when a drag starts, so no tiles are actually
+                // modified. When the drag completes, then we get `TileDropped` and run the synchronization.
+            }
+        }
     }
 }
 

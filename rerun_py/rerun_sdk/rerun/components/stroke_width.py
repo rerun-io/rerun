@@ -13,12 +13,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .stroke_width_ext import StrokeWidthExt
 
 __all__ = ["StrokeWidth", "StrokeWidthArrayLike", "StrokeWidthBatch", "StrokeWidthLike", "StrokeWidthType"]
 
 
 @define(init=False)
-class StrokeWidth:
+class StrokeWidth(StrokeWidthExt):
     """**Component**: The width of a stroke specified in UI points."""
 
     def __init__(self: Any, width: StrokeWidthLike):
@@ -57,4 +58,4 @@ class StrokeWidthBatch(BaseBatch[StrokeWidthArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: StrokeWidthArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in stroke_width_ext.py
+        return StrokeWidthExt.native_to_pa_array_override(data, data_type)

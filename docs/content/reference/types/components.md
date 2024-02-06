@@ -22,6 +22,7 @@ Archetypes are bundles of components
 * [`LineStrip2D`](components/line_strip2d.md)
 * [`LineStrip3D`](components/line_strip3d.md)
 * [`MarkerShape`](components/marker_shape.md)
+* [`MarkerSize`](components/marker_size.md)
 * [`Material`](components/material.md)
 * [`MediaType`](components/media_type.md)
 * [`MeshProperties`](components/mesh_properties.md)

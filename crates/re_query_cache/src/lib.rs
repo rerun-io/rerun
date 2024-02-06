@@ -10,7 +10,7 @@ mod range;
 pub use self::cache::{AnyQuery, Caches};
 pub use self::cache_stats::{CachedComponentStats, CachedEntityStats, CachesStats};
 pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
-pub use self::query::MaybeCachedComponentData;
+pub use self::query::iter_or_repeat_opt;
 
 pub(crate) use self::cache::CacheBucket;
 pub(crate) use self::latest_at::LatestAtCache;

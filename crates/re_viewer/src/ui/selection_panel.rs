@@ -3,7 +3,6 @@ use egui::{NumExt as _, Ui};
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
-    VisibleHistory,
 };
 use re_log_types::{DataRow, EntityPathFilter, RowId};
 use re_space_view_time_series::TimeSeriesSpaceView;
@@ -22,7 +21,7 @@ use re_viewer_context::{
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
-    Contents, Viewport, ViewportBlueprint,
+    space_view_name_style, Contents, Viewport, ViewportBlueprint,
 };
 
 use crate::ui::override_ui::override_ui;
@@ -299,7 +298,7 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
 fn space_view_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view: &re_viewport::SpaceViewBlueprint,
+    space_view: &re_space_view::SpaceViewBlueprint,
 ) -> egui::Response {
     let item = Item::SpaceView(space_view.id);
     let is_selected = ctx.selection().contains_item(&item);
@@ -312,7 +311,7 @@ fn space_view_button(
             space_view.class(ctx.space_view_class_registry).icon(),
             space_view_name.as_ref(),
             is_selected,
-            space_view_name.style(),
+            space_view_name_style(&space_view_name),
         )
         .on_hover_text("Space View");
     item_ui::cursor_interact_with_selectable(ctx, response, item)
@@ -408,7 +407,7 @@ fn what_is_selected_ui(
 
                 let space_view_name = space_view.display_name_or_default();
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(space_view_name.style())
+                    .label_style(space_view_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_height(ReUi::title_bar_height())
                     .selected(true)
@@ -712,7 +711,7 @@ fn show_list_item_for_container_child(
             (
                 Item::SpaceView(*space_view_id),
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(space_view_name.style())
+                    .label_style(space_view_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
@@ -885,21 +884,22 @@ fn blueprint_ui_for_space_view(
         );
 
         // Space View don't inherit properties.
-        let mut resolved_entity_props = EntityProperties::default();
-
-        // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
-        if space_view_class == TimeSeriesSpaceView::IDENTIFIER {
-            resolved_entity_props.visible_history.sequences = VisibleHistory::ALL;
-            resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
-        }
-
         let root_data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
+
         let mut props = root_data_result
             .individual_properties()
             .cloned()
-            .unwrap_or(resolved_entity_props.clone());
+            .unwrap_or_default();
 
-        let cursor = ui.cursor();
+        visible_history_ui(
+            ctx,
+            ui,
+            &space_view_class,
+            true,
+            None,
+            &mut props.visible_history,
+            &root_data_result.accumulated_properties().visible_history,
+        );
 
         space_view
             .class(ctx.space_view_class_registry)
@@ -911,22 +911,6 @@ fn blueprint_ui_for_space_view(
                 space_view.id,
                 &mut props,
             );
-
-        if cursor != ui.cursor() {
-            // add some space if something was rendered by selection_ui
-            //TODO(ab): use design token
-            ui.add_space(16.0);
-        }
-
-        visible_history_ui(
-            ctx,
-            ui,
-            &space_view_class,
-            true,
-            None,
-            &mut props.visible_history,
-            &resolved_entity_props.visible_history,
-        );
 
         root_data_result.save_override(Some(props), ctx);
     }

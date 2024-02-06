@@ -4,13 +4,13 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
-use re_space_view::{DataQuery as _, PropertyResolver as _};
+use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyResolver as _};
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
     SystemCommandSender as _, ViewerContext,
 };
-use re_viewport::{determine_visualizable_entities, Viewport, ViewportBlueprint, ViewportState};
+use re_viewport::{Viewport, ViewportBlueprint, ViewportState};
 
 use crate::ui::recordings_panel_ui;
 use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
@@ -140,13 +140,17 @@ impl AppState {
         // this, which gives us interior mutability (only a shared reference of `ViewportBlueprint`
         // is available to the UI code) and, if needed in the future, concurrency.
         let (sender, receiver) = std::sync::mpsc::channel();
-        let viewport_blueprint =
-            ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query, sender);
+        let viewport_blueprint = ViewportBlueprint::try_from_db(
+            store_context.blueprint,
+            &blueprint_query,
+            sender.clone(),
+        );
         let mut viewport = Viewport::new(
             &viewport_blueprint,
             viewport_state,
             space_view_class_registry,
             receiver,
+            sender,
         );
 
         // If the blueprint is invalid, reset it.
@@ -200,11 +204,7 @@ impl AppState {
                         .map(|query| {
                             (
                                 query.id,
-                                query.execute_query(
-                                    store_context,
-                                    &visualizable_entities,
-                                    &indicated_entities_per_visualizer,
-                                ),
+                                query.execute_query(store_context, &visualizable_entities),
                             )
                         })
                         .collect::<Vec<_>>()
@@ -242,8 +242,26 @@ impl AppState {
             for space_view in viewport.blueprint.space_views.values() {
                 for query in &space_view.queries {
                     if let Some(query_result) = query_results.get_mut(&query.id) {
+                        // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
+                        // Note that right now we determine *all* visualizable entities, not just the queried ones.
+                        // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+                        let visualizable_entities = determine_visualizable_entities(
+                            &applicable_entities_per_visualizer,
+                            entity_db,
+                            &space_view_class_registry
+                                .new_visualizer_collection(*space_view.class_identifier()),
+                            space_view.class(space_view_class_registry),
+                            &space_view.space_origin,
+                        );
+
                         let props = viewport.state.space_view_props(space_view.id);
-                        let resolver = query.build_resolver(space_view.id, props);
+                        let resolver = query.build_resolver(
+                            space_view_class_registry,
+                            space_view,
+                            props,
+                            &visualizable_entities,
+                            &indicated_entities_per_visualizer,
+                        );
                         resolver.update_overrides(store_context, &blueprint_query, query_result);
                     }
                 }
@@ -306,6 +324,9 @@ impl AppState {
                     .min_width(120.0)
                     .default_width((0.35 * ui.ctx().screen_rect().width()).min(200.0).round());
 
+                let show_welcome =
+                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
+
                 left_panel.show_animated_inside(
                     ui,
                     app_blueprint.blueprint_panel_expanded,
@@ -325,7 +346,9 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(&mut viewport, &ctx, ui);
+                        if !show_welcome {
+                            blueprint_panel_ui(&mut viewport, &ctx, ui);
+                        }
                     },
                 );
 
@@ -333,9 +356,6 @@ impl AppState {
                     fill: ui.style().visuals.panel_fill,
                     ..Default::default()
                 };
-
-                let show_welcome =
-                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)

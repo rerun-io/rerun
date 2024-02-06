@@ -139,12 +139,6 @@ int main(int argc, char** argv) {
 
     auto tick_start_time = std::chrono::high_resolution_clock::now();
 
-    for (auto plot_path : plot_paths) {
-        for (auto series_path : series_paths) {
-            rec.log_timeless(plot_path + "/" + series_path, rerun::SeriesLine());
-        }
-    }
-
     size_t time_step = 0;
     for (auto sim_time : sim_times) {
         rec.set_time_seconds("sim_time", sim_time);

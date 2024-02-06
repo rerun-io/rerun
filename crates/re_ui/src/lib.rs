@@ -156,7 +156,7 @@ impl ReUi {
     }
 
     pub fn table_line_height() -> f32 {
-        14.0
+        16.0 // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
     }
 
     pub fn table_header_height() -> f32 {

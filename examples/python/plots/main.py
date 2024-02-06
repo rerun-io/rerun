@@ -29,17 +29,19 @@ The [bar chart](recording://bar_chart) is created by logging the [rr.BarChart ar
 
 ### Time series
 All other plots are created using the
-[rr.TimeSeriesScalar archetype](https://www.rerun.io/docs/reference/types/archetypes/bar_chart)
-with different settings. Each plot is created by logging scalars at different time steps (i.e., the x-axis).
+[rr.Scalar archetype](https://www.rerun.io/docs/reference/types/archetypes/scalar?speculative-link)
+archetype.
+Each plot is created by logging scalars at different time steps (i.e., the x-axis).
+Additionally, the plots are styled using the
+[rr.SeriesLine](https://www.rerun.io/docs/reference/types/archetypes/series_line?speculative-link) and
+[rr.SeriesPoint](https://www.rerun.io/docs/reference/types/archetypes/series_point?speculative-link)
+archetypes respectively.
 
-For the [parabola](recording://curves/parabola) the radius and color is changed over time.
+For the [parabola](recording://curves/parabola) the radius and color is changed over time,
+the other plots use timeless for their styling properties where possible.
 
 [sin](recording://trig/sin) and [cos](recording://trig/cos) are logged with the same parent entity (i.e.,
 `trig/{cos,sin}`) which will put them in the same view by default.
-
-For the [classification samples](recording://classification/samples) `rr.TimeSeriesScalar(..., scatter=True)` is used to
-create separate points that do not connect over time. Note, that in the other plots the logged scalars are connected
-over time by lines.
 """.strip()
 
 
@@ -59,12 +61,15 @@ def log_bar_chart() -> None:
 
 
 def log_parabola() -> None:
+    # Name never changes, log it only once.
+    rr.log("curves/parabola", rr.SeriesLine(name="f(t) = (0.01t - 3)³ + 1"), timeless=True)
+
     # Log a parabola as a time series
     for t in range(0, 1000, 10):
         rr.set_time_sequence("frame_nr", t)
 
         f_of_t = (t * 0.01 - 5) ** 3 + 1
-        radius = clamp(abs(f_of_t) * 0.1, 0.5, 10.0)
+        width = clamp(abs(f_of_t) * 0.1, 0.5, 10.0)
         color = [255, 255, 0]
         if f_of_t < -10.0:
             color = [255, 0, 0]
@@ -73,35 +78,35 @@ def log_parabola() -> None:
 
         rr.log(
             "curves/parabola",
-            rr.TimeSeriesScalar(
-                f_of_t,
-                label="f(t) = (0.01t - 3)³ + 1",
-                radius=radius,
-                color=color,
-            ),
+            rr.Scalar(f_of_t),
+            rr.SeriesLine(width=width, color=color),
         )
 
 
 def log_trig() -> None:
-    # Log a time series
+    # Styling doesn't change over time, log it once with timeless=True.
+    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), timeless=True)
+    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), timeless=True)
+
     for t in range(0, int(tau * 2 * 1000.0)):
         rr.set_time_sequence("frame_nr", t)
 
         sin_of_t = sin(float(t) / 1000.0)
-        rr.log("trig/sin", rr.TimeSeriesScalar(sin_of_t, label="sin(0.01t)", color=[255, 0, 0]))
+        rr.log("trig/sin", rr.Scalar(sin_of_t))
 
         cos_of_t = cos(float(t) / 1000.0)
-        rr.log("trig/cos", rr.TimeSeriesScalar(cos_of_t, label="cos(0.01t)", color=[0, 255, 0]))
+        rr.log("trig/cos", rr.Scalar(cos_of_t))
 
 
 def log_classification() -> None:
-    # Log a time series
+    # Log components that don't change only once:
+    rr.log("classification/line", rr.SeriesLine(color=[255, 255, 0], width=3.0), timeless=True)
+
     for t in range(0, 1000, 2):
         rr.set_time_sequence("frame_nr", t)
 
         f_of_t = (2 * 0.01 * t) + 2
-        color = [255, 255, 0]
-        rr.log("classification/line", rr.TimeSeriesScalar(f_of_t, color=color, radius=3.0))
+        rr.log("classification/line", rr.Scalar(f_of_t))
 
         g_of_t = f_of_t + random.uniform(-5.0, 5.0)
         if g_of_t < f_of_t - 1.5:
@@ -110,8 +115,8 @@ def log_classification() -> None:
             color = [0, 255, 0]
         else:
             color = [255, 255, 255]
-        radius = abs(g_of_t - f_of_t)
-        rr.log("classification/samples", rr.TimeSeriesScalar(g_of_t, color=color, scattered=True, radius=radius))
+        marker_size = abs(g_of_t - f_of_t)
+        rr.log("classification/samples", rr.Scalar(g_of_t), rr.SeriesPoint(color=color, marker_size=marker_size))
 
 
 def main() -> None:

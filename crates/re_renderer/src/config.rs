@@ -72,6 +72,11 @@ pub struct DeviceCaps {
     /// Since this has a direct effect on the image sizes & screen resolution a user can use, we always pick the highest possible.
     pub max_texture_dimension2d: u32,
 
+    /// Maximum buffer size in bytes.
+    ///
+    /// Since this has a direct effect on how much data a user can wrangle on the gpu, we always pick the highest possible.
+    pub max_buffer_size: u64,
+
     /// Wgpu backend type.
     ///
     /// Prefer using `tier` and other properties of this struct for distinguishing between abilities.
@@ -132,6 +137,7 @@ impl DeviceCaps {
         Self {
             tier,
             max_texture_dimension2d: adapter.limits().max_texture_dimension_2d,
+            max_buffer_size: adapter.limits().max_buffer_size,
             backend_type,
         }
     }
@@ -140,6 +146,7 @@ impl DeviceCaps {
     pub fn limits(&self) -> wgpu::Limits {
         wgpu::Limits {
             max_texture_dimension_2d: self.max_texture_dimension2d,
+            max_buffer_size: self.max_buffer_size,
             ..wgpu::Limits::downlevel_webgl2_defaults()
         }
     }

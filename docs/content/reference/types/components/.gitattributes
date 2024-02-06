@@ -16,6 +16,7 @@ keypoint_id.md linguist-generated=true
 line_strip2d.md linguist-generated=true
 line_strip3d.md linguist-generated=true
 marker_shape.md linguist-generated=true
+marker_size.md linguist-generated=true
 material.md linguist-generated=true
 media_type.md linguist-generated=true
 mesh_properties.md linguist-generated=true

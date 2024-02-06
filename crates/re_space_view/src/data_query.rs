@@ -1,7 +1,5 @@
 use re_entity_db::{external::re_data_store::LatestAtQuery, EntityProperties, EntityPropertyMap};
-use re_viewer_context::{
-    DataQueryResult, IndicatedEntities, PerVisualizer, StoreContext, VisualizableEntities,
-};
+use re_viewer_context::{DataQueryResult, PerVisualizer, StoreContext, VisualizableEntities};
 
 pub struct EntityOverrideContext {
     pub root: EntityProperties,
@@ -36,6 +34,5 @@ pub trait DataQuery {
         &self,
         ctx: &StoreContext<'_>,
         visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
-        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> DataQueryResult;
 }

@@ -1,9 +1,9 @@
 use eframe::emath::NumExt;
 use egui::{Key, Ui};
 
+use re_space_view::SpaceViewBlueprint;
 use re_ui::{ReUi, SyntaxHighlighting};
 use re_viewer_context::ViewerContext;
-use re_viewport::SpaceViewBlueprint;
 
 /// State of the space origin widget.
 #[derive(Default, Clone)]

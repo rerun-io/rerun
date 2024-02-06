@@ -5,6 +5,7 @@ use egui_tiles::{SimplificationOptions, TileId};
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_query::query_archetype;
+use re_space_view::SpaceViewBlueprint;
 use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
 
 use crate::{
@@ -13,7 +14,6 @@ use crate::{
         ViewportLayout,
     },
     container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
-    space_view::SpaceViewBlueprint,
     viewport::TreeAction,
     VIEWPORT_PATH,
 };

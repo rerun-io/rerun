@@ -3,8 +3,9 @@ use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
-    PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    IndicatedEntities, PerSystemEntities, PerVisualizer, SmallVisualizerSet,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemRegistrator,
+    SystemExecutionOutput, ViewQuery, ViewerContext, VisualizableEntities,
 };
 
 re_string_interner::declare_new_type!(
@@ -113,6 +114,23 @@ pub trait DynSpaceViewClass: Send + Sync {
         space_origin: &EntityPath,
         entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext>;
+
+    /// Choose the default visualizers to enable for this entity.
+    ///
+    /// Helpful for customizing fallback behavior for types that are insufficient
+    /// to determine indicated on their own.
+    ///
+    /// Will only be called for entities where the selected visualizers have not
+    /// been overridden by the blueprint.
+    ///
+    /// This interface provides a default implementation which will return all visualizers
+    /// which are both visualizable and indicated for the given entity.
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVisualizerSet;
 
     /// Determines which space views should be spawned by default for this class.
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;

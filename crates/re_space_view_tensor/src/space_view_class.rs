@@ -459,6 +459,7 @@ impl Default for TextureSettings {
                 // This is best for low-res depth-images and the like
                 magnification: egui::TextureFilter::Nearest,
                 minification: egui::TextureFilter::Linear,
+                wrap_mode: egui::TextureWrapMode::ClampToEdge,
             },
         }
     }

@@ -34,6 +34,8 @@ pub struct PropertyOverrides {
     pub override_path: EntityPath,
 }
 
+pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
+
 /// This is the primary mechanism through which data is passed to a `SpaceView`.
 ///
 /// It contains everything necessary to properly use this data in the context of the
@@ -49,7 +51,7 @@ pub struct DataResult {
     pub entity_path: EntityPath,
 
     /// Which `ViewSystems`s to pass the `DataResult` to.
-    pub visualizers: SmallVec<[ViewSystemIdentifier; 4]>,
+    pub visualizers: SmallVisualizerSet,
 
     /// This DataResult represents a group
     // TODO(jleibs): Maybe make this an enum instead?

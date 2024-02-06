@@ -72,7 +72,7 @@ impl App {
                 UICommand::ToggleMemoryPanel.menu_button_ui(ui, &self.command_sender);
 
                 #[cfg(debug_assertions)]
-                UICommand::ToggleStylePanel.menu_button_ui(ui, &self.command_sender);
+                UICommand::ToggleEguiDebugPanel.menu_button_ui(ui, &self.command_sender);
             }
 
             ui.add_space(SPACING);
@@ -405,22 +405,6 @@ fn experimental_feature_ui(
                 - Add a 'Content' list in the selection panel when a container is selected.\n\
                 - Add the 'Add space view/container' modal, accessible from the selection panel.",
         );
-
-    re_ui
-        .checkbox(
-            ui,
-            &mut app_options.experimental_primary_caching_latest_at,
-            "Primary caching: latest-at queries",
-        )
-        .on_hover_text("Toggle primary caching for latest-at queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
-
-    re_ui
-        .checkbox(
-            ui,
-            &mut app_options.experimental_primary_caching_range,
-            "Primary caching: range queries",
-        )
-        .on_hover_text("Toggle primary caching for range queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
 
     re_ui
         .checkbox(
