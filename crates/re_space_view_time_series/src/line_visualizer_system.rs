@@ -171,7 +171,7 @@ impl SeriesLineSystem {
                             if scalar.len() > 1 {
                                 re_log::warn_once!("found a scalar batch in {entity_path:?} -- those have no effect");
                             } else if scalar.is_empty() {
-                                points[i].attrs.kind  = PlotSeriesKind::Clear;
+                                points[i].attrs.kind = PlotSeriesKind::Clear;
                             } else {
                                 points[i].value = scalar.first().map_or(0.0, |s| s.0);
                             }
