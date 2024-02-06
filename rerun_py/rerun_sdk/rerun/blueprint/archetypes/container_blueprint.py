@@ -9,10 +9,9 @@ from typing import Any
 
 from attrs import define, field
 
-from ... import datatypes
+from ... import blueprint, components, datatypes
 from ..._baseclasses import Archetype
 from ...error_utils import catch_and_log_exceptions
-from .. import components
 
 __all__ = ["ContainerBlueprint"]
 
@@ -23,15 +22,15 @@ class ContainerBlueprint(Archetype):
 
     def __init__(
         self: Any,
-        container_kind: components.ContainerKindLike,
+        container_kind: blueprint.components.ContainerKindLike,
         *,
-        display_name: components.NameLike | None = None,
-        contents: components.IncludedContentsLike | None = None,
-        col_shares: components.ColumnSharesLike | None = None,
-        row_shares: components.RowSharesLike | None = None,
+        display_name: datatypes.Utf8Like | None = None,
+        contents: blueprint.components.IncludedContentsLike | None = None,
+        col_shares: blueprint.components.ColumnSharesLike | None = None,
+        row_shares: blueprint.components.RowSharesLike | None = None,
         active_tab: datatypes.EntityPathLike | None = None,
-        visible: components.VisibleLike | None = None,
-        grid_columns: components.GridColumnsLike | None = None,
+        visible: blueprint.components.VisibleLike | None = None,
+        grid_columns: blueprint.components.GridColumnsLike | None = None,
     ):
         """
         Create a new instance of the ContainerBlueprint archetype.
@@ -107,9 +106,9 @@ class ContainerBlueprint(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    container_kind: components.ContainerKindBatch = field(
+    container_kind: blueprint.components.ContainerKindBatch = field(
         metadata={"component": "required"},
-        converter=components.ContainerKindBatch._required,  # type: ignore[misc]
+        converter=blueprint.components.ContainerKindBatch._required,  # type: ignore[misc]
     )
     # The class of the view.
     #
@@ -124,19 +123,19 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    contents: components.IncludedContentsBatch | None = field(
+    contents: blueprint.components.IncludedContentsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.IncludedContentsBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.IncludedContentsBatch._optional,  # type: ignore[misc]
     )
     # `ContainerIds`s or `SpaceViewId`s that are children of this container.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    col_shares: components.ColumnSharesBatch | None = field(
+    col_shares: blueprint.components.ColumnSharesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ColumnSharesBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.ColumnSharesBatch._optional,  # type: ignore[misc]
     )
     # The layout shares of each column in the container.
     #
@@ -146,10 +145,10 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    row_shares: components.RowSharesBatch | None = field(
+    row_shares: blueprint.components.RowSharesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.RowSharesBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.RowSharesBatch._optional,  # type: ignore[misc]
     )
     # The layout shares of each row of the container.
     #
@@ -159,10 +158,10 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    active_tab: components.ActiveTabBatch | None = field(
+    active_tab: blueprint.components.ActiveTabBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ActiveTabBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.ActiveTabBatch._optional,  # type: ignore[misc]
     )
     # Which tab is active.
     #
@@ -170,10 +169,10 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    visible: components.VisibleBatch | None = field(
+    visible: blueprint.components.VisibleBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.VisibleBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.VisibleBatch._optional,  # type: ignore[misc]
     )
     # Whether this container is visible.
     #
@@ -181,10 +180,10 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    grid_columns: components.GridColumnsBatch | None = field(
+    grid_columns: blueprint.components.GridColumnsBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.GridColumnsBatch._optional,  # type: ignore[misc]
+        converter=blueprint.components.GridColumnsBatch._optional,  # type: ignore[misc]
     )
     # How many columns this grid should have.
     #

@@ -1,7 +1,7 @@
-use egui::util::hash;
+use egui::{ahash::HashMap, util::hash};
 use re_entity_db::{EditableAutoValue, EntityProperties, LegendCorner};
 use re_log_types::EntityPath;
-use re_space_view::controls;
+use re_space_view::{controls, suggest_space_view_for_each_entity};
 use re_types::datatypes::TensorBuffer;
 use re_viewer_context::{
     auto_color, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
@@ -57,6 +57,14 @@ impl SpaceViewClass for BarChartSpaceView {
 
     fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
         None
+    }
+
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
+        suggest_space_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self)
     }
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
@@ -124,11 +132,11 @@ impl SpaceViewClass for BarChartSpaceView {
 
     fn ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         root_entity_properties: &EntityProperties,
-        _query: &ViewQuery<'_>,
+        query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         use egui_plot::{Bar, BarChart, Legend, Plot};
@@ -156,7 +164,13 @@ impl SpaceViewClass for BarChartSpaceView {
                 );
             }
 
-            plot.show(ui, |plot_ui| {
+            let mut plot_item_id_to_entity_path = HashMap::default();
+
+            let egui_plot::PlotResponse {
+                response,
+                hovered_plot_item,
+                ..
+            } = plot.show(ui, |plot_ui| {
                 fn create_bar_chart<N: Into<f64>>(
                     ent_path: &EntityPath,
                     values: impl Iterator<Item = N>,
@@ -234,11 +248,35 @@ impl SpaceViewClass for BarChartSpaceView {
                             );
                             continue;
                         }
+                        TensorBuffer::Yuy2(_) => {
+                            re_log::warn_once!(
+                                "trying to display YUY2 data as a bar chart ({:?})",
+                                ent_path
+                            );
+                            continue;
+                        }
                     };
+
+                    let id = egui::Id::new(ent_path.hash());
+                    plot_item_id_to_entity_path.insert(id, ent_path.clone());
+                    let chart = chart.id(id);
 
                     plot_ui.bar_chart(chart);
                 }
             });
+
+            // Interact with the plot items.
+            if let Some(entity_path) = hovered_plot_item
+                .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
+            {
+                ctx.select_hovered_on_click(
+                    &response,
+                    re_viewer_context::Item::InstancePath(
+                        Some(query.space_view_id),
+                        entity_path.clone().into(),
+                    ),
+                );
+            }
         });
 
         Ok(())

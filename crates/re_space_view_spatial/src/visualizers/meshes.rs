@@ -3,12 +3,14 @@ use re_query::{ArchetypeView, QueryError};
 use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Mesh3D,
-    components::{Color, InstanceKey, Material, MeshProperties, Position3D, Vector3D},
-    Archetype, ComponentNameSet,
+    components::{
+        Color, InstanceKey, Material, MeshProperties, Position3D, TensorData, Texcoord2D, Vector3D,
+    },
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use super::{
@@ -81,8 +83,20 @@ impl Mesh3DVisualizer {
                 } else {
                     None
                 },
+                vertex_texcoords: if arch_view.has_component::<Texcoord2D>() {
+                    re_tracing::profile_scope!("vertex_texcoords");
+                    Some(
+                        arch_view
+                            .iter_optional_component::<Texcoord2D>()?
+                            .map(|comp| comp.unwrap_or(Texcoord2D::ZERO))
+                            .collect(),
+                    )
+                } else {
+                    None
+                },
                 mesh_properties: arch_view.raw_optional_mono_component::<MeshProperties>()?,
                 mesh_material: arch_view.raw_optional_mono_component::<Material>()?,
+                albedo_texture: arch_view.raw_optional_mono_component::<TensorData>()?,
                 class_ids: None,
                 instance_keys: None,
             }
@@ -93,13 +107,17 @@ impl Mesh3DVisualizer {
         let outline_mask_ids = ent_context.highlight.index_outline_mask(InstanceKey::SPLAT);
 
         let mesh = ctx.cache.entry(|c: &mut MeshCache| {
+            let key = MeshCacheKey {
+                versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
+                media_type: None,
+            };
             c.entry(
                 &ent_path.to_string(),
-                MeshCacheKey {
-                    versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
-                    media_type: None,
+                key.clone(),
+                AnyMesh::Mesh {
+                    mesh: &mesh,
+                    texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
                 },
-                AnyMesh::Mesh(&mesh),
                 ctx.render_ctx,
             )
         });
@@ -123,7 +141,7 @@ impl Mesh3DVisualizer {
             }));
 
             self.0
-                .extend_bounding_box(mesh.bbox(), ent_context.world_from_entity);
+                .add_bounding_box(ent_path.hash(), mesh.bbox(), ent_context.world_from_entity);
         };
 
         Ok(())
@@ -137,15 +155,8 @@ impl IdentifiedViewSystem for Mesh3DVisualizer {
 }
 
 impl VisualizerSystem for Mesh3DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Mesh3D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Mesh3D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Mesh3D>()
     }
 
     fn filter_visualizable_entities(
@@ -153,6 +164,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
         entities: ApplicableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
+        re_tracing::profile_function!();
         filter_visualizable_3d_entities(entities, context)
     }
 

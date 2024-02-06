@@ -34,9 +34,11 @@ from .instance_key import InstanceKey, InstanceKeyArrayLike, InstanceKeyBatch, I
 from .keypoint_id import KeypointId, KeypointIdBatch, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike, LineStrip3DType
+from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, MarkerShapeLike, MarkerShapeType
 from .material import Material, MaterialBatch, MaterialType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .mesh_properties import MeshProperties, MeshPropertiesBatch, MeshPropertiesType
+from .name import Name, NameBatch, NameType
 from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DBatch, OutOfTreeTransform3DType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
 from .position2d import Position2D, Position2DBatch, Position2DType
@@ -52,7 +54,9 @@ from .scalar_scattering import (
     ScalarScatteringLike,
     ScalarScatteringType,
 )
+from .stroke_width import StrokeWidth, StrokeWidthArrayLike, StrokeWidthBatch, StrokeWidthLike, StrokeWidthType
 from .tensor_data import TensorData, TensorDataBatch, TensorDataType
+from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
 from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
 from .transform3d import Transform3D, Transform3DBatch, Transform3DType
@@ -64,6 +68,13 @@ from .view_coordinates import (
     ViewCoordinatesBatch,
     ViewCoordinatesLike,
     ViewCoordinatesType,
+)
+from .visualizer_overrides import (
+    VisualizerOverrides,
+    VisualizerOverridesArrayLike,
+    VisualizerOverridesBatch,
+    VisualizerOverridesLike,
+    VisualizerOverridesType,
 )
 
 __all__ = [
@@ -127,6 +138,11 @@ __all__ = [
     "LineStrip3DBatch",
     "LineStrip3DLike",
     "LineStrip3DType",
+    "MarkerShape",
+    "MarkerShapeArrayLike",
+    "MarkerShapeBatch",
+    "MarkerShapeLike",
+    "MarkerShapeType",
     "Material",
     "MaterialBatch",
     "MaterialType",
@@ -136,6 +152,9 @@ __all__ = [
     "MeshProperties",
     "MeshPropertiesBatch",
     "MeshPropertiesType",
+    "Name",
+    "NameBatch",
+    "NameType",
     "OutOfTreeTransform3D",
     "OutOfTreeTransform3DBatch",
     "OutOfTreeTransform3DType",
@@ -169,9 +188,17 @@ __all__ = [
     "ScalarScatteringLike",
     "ScalarScatteringType",
     "ScalarType",
+    "StrokeWidth",
+    "StrokeWidthArrayLike",
+    "StrokeWidthBatch",
+    "StrokeWidthLike",
+    "StrokeWidthType",
     "TensorData",
     "TensorDataBatch",
     "TensorDataType",
+    "Texcoord2D",
+    "Texcoord2DBatch",
+    "Texcoord2DType",
     "Text",
     "TextBatch",
     "TextLogLevel",
@@ -192,4 +219,9 @@ __all__ = [
     "ViewCoordinatesBatch",
     "ViewCoordinatesLike",
     "ViewCoordinatesType",
+    "VisualizerOverrides",
+    "VisualizerOverridesArrayLike",
+    "VisualizerOverridesBatch",
+    "VisualizerOverridesLike",
+    "VisualizerOverridesType",
 ]

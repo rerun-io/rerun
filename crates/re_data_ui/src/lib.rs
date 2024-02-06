@@ -14,22 +14,26 @@ mod component;
 mod component_path;
 mod component_ui_registry;
 mod data;
+mod editors;
 mod entity_db;
 mod entity_path;
 mod image;
 mod image_meaning;
 mod instance_path;
-pub mod item_ui;
 mod log_msg;
+mod material;
 mod pinhole;
 mod rotation3d;
 mod store_id;
 mod transform3d;
 
+pub mod item_ui;
+
 pub use crate::image::{
     show_zoomed_image_region, show_zoomed_image_region_area_outline,
     tensor_summary_ui_grid_contents,
 };
+pub use component::EntityComponentWithInstances;
 pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
 pub use image_meaning::image_meaning_for_entity;
 
@@ -50,7 +54,7 @@ pub fn ui_visible_components<'a>(
 }
 
 /// Show this component in the UI.
-fn is_component_visible_in_ui(component_name: &ComponentName) -> bool {
+pub fn is_component_visible_in_ui(component_name: &ComponentName) -> bool {
     const HIDDEN_COMPONENTS: &[&str] = &["rerun.components.InstanceKey"];
     !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
 }
@@ -86,6 +90,7 @@ pub trait DataUi {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     );
 }
 
@@ -101,6 +106,7 @@ pub trait EntityDataUi {
         verbosity: UiVerbosity,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     );
 }
 
@@ -115,11 +121,12 @@ where
         verbosity: UiVerbosity,
         entity: &EntityPath,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         // This ensures that UI state is maintained per entity. For example, the collapsed state for
         // `AnnotationContext` component is not saved by all instances of the component.
         ui.push_id(entity.hash(), |ui| {
-            self.data_ui(ctx, ui, verbosity, query);
+            self.data_ui(ctx, ui, verbosity, query, store);
         });
     }
 }
@@ -133,6 +140,7 @@ impl DataUi for TimePoint {
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
     ) {
         ui.vertical(|ui| {
             egui::Grid::new("time_point").num_columns(2).show(ui, |ui| {
@@ -154,6 +162,7 @@ impl DataUi for [DataCell] {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
     ) {
         let mut sorted = self.to_vec();
         sorted.sort_by_key(|cb| cb.component_name());

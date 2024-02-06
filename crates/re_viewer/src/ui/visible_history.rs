@@ -4,10 +4,11 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response, Ui};
 
 use re_entity_db::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
-use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
+use re_log_types::{EntityPath, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
+use re_ui::{markdown_ui, ReUi};
 use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, TimeControl, ViewerContext};
 
 /// These space views support the Visible History feature.
@@ -91,7 +92,7 @@ pub fn visible_history_ui(
 
     let mut interacting_with_controls = false;
 
-    let collapsing_response = re_ui.collapsing_header(ui, "Visible Time Range", true, |ui| {
+    let collapsing_response = re_ui.collapsing_header(ui, "Visible Time Range", false, |ui| {
         ui.horizontal(|ui| {
             re_ui
                 .radio_value(ui, &mut visible_history_prop.enabled, false, "Default")
@@ -137,8 +138,12 @@ pub fn visible_history_ui(
         };
 
         if visible_history_prop.enabled {
-            let current_low_boundary = visible_history.from(current_time.into()).as_i64();
-            let current_high_boundary = visible_history.to(current_time.into()).as_i64();
+            let current_low_boundary = visible_history
+                .range_start_from_cursor(current_time.into())
+                .as_i64();
+            let current_high_boundary = visible_history
+                .range_end_from_cursor(current_time.into())
+                .as_i64();
 
             interacting_with_controls |= ui
                 .horizontal(|ui| {
@@ -169,6 +174,8 @@ pub fn visible_history_ui(
                     )
                 })
                 .inner;
+
+            current_range_ui(ctx, ui, current_time, is_sequence_timeline, visible_history);
         } else {
             resolved_visible_history_boundary_ui(
                 ctx,
@@ -177,6 +184,7 @@ pub fn visible_history_ui(
                 is_sequence_timeline,
                 true,
             );
+
             resolved_visible_history_boundary_ui(
                 ctx,
                 ui,
@@ -184,27 +192,26 @@ pub fn visible_history_ui(
                 is_sequence_timeline,
                 false,
             );
+
+            current_range_ui(
+                ctx,
+                ui,
+                current_time,
+                is_sequence_timeline,
+                resolved_visible_history,
+            );
         }
-
-        current_range_ui(ctx, ui, current_time, is_sequence_timeline, visible_history);
-
-        ui.add(
-            egui::Label::new(
-                egui::RichText::new(if is_sequence_timeline {
-                    "These settings apply to all sequence timelines."
-                } else {
-                    "These settings apply to all temporal timelines."
-                })
-                .italics()
-                .weak(),
-            )
-            .wrap(true),
-        )
-        .on_hover_text(
-            "Visible Time Range properties are stored separately for each types of timelines. \
-            They may differ depending on whether the current timeline is temporal or a sequence.",
-        );
     });
+
+    // Add spacer after the visible history section.
+    //TODO(ab): figure out why `item_spacing.y` is added _only_ in collapsed state.
+    if collapsing_response.body_response.is_some() {
+        ui.add_space(ui.spacing().item_spacing.y / 2.0);
+    } else {
+        ui.add_space(-ui.spacing().item_spacing.y / 2.0);
+    }
+    ReUi::full_span_separator(ui);
+    ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
     // Decide when to show the visible history highlight in the timeline. The trick is that when
     // interacting with the controls, the mouse might end up outside the collapsing header rect,
@@ -226,17 +233,30 @@ pub fn visible_history_ui(
                 (false, false) => resolved_visible_history_prop.nanos,
             };
 
-            ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(TimeRange::new(
-                visible_history.from(current_time),
-                visible_history.to(current_time),
-            ));
+            ctx.rec_cfg.time_ctrl.write().highlighted_range =
+                Some(visible_history.time_range(current_time));
         }
     }
 
-    collapsing_response.header_response.on_hover_text(
-        "Controls the time range used to display data in the Space View.\n\n\
-        Note that the data current as of the time range starting time is included.",
+    let markdown = format!("# Visible Time Range\n
+This feature controls the time range used to display data in the Space View.
+
+The settings are inherited from parent Group(s) or enclosing Space View if not overridden.
+
+Visible Time Range properties are stored separately for each _type_ of timelines. They may differ depending on \
+whether the current timeline is temporal or a sequence. The current settings apply to all _{}_ timelines.
+
+Notes that the data current as of the time range starting time is included.",
+        if is_sequence_timeline {
+            "sequence"
+        } else {
+            "temporal"
+        }
     );
+
+    collapsing_response.header_response.on_hover_ui(|ui| {
+        markdown_ui(ui, egui::Id::new(markdown.as_str()), &markdown);
+    });
 }
 
 fn current_range_ui(
@@ -246,36 +266,19 @@ fn current_range_ui(
     is_sequence_timeline: bool,
     visible_history: &VisibleHistory,
 ) {
-    let from = visible_history.from(current_time.into());
-    let to = visible_history.to(current_time.into());
-
     let (time_type, quantity_name) = if is_sequence_timeline {
         (TimeType::Sequence, "frame")
     } else {
         (TimeType::Time, "time")
     };
 
-    let from_formatted = time_type.format(
-        visible_history.from(current_time.into()),
-        ctx.app_options.time_zone_for_timestamps,
-    );
+    let time_range = visible_history.time_range(current_time.into());
+    let from_formatted = time_type.format(time_range.min, ctx.app_options.time_zone_for_timestamps);
 
-    if from == to {
-        ui.label(format!(
-            "Showing last data logged on or before {quantity_name} {from_formatted}"
-        ));
-    } else {
-        ui.label(format!(
-            "Showing data between {quantity_name}s {from_formatted} and {}.",
-            time_type.format(
-                visible_history.to(current_time.into()),
-                ctx.app_options.time_zone_for_timestamps
-            )
-        ))
-        .on_hover_text(format!(
-            "This includes the data current as of the starting {quantity_name}."
-        ));
-    };
+    ui.label(format!(
+        "Showing data between {quantity_name}s {from_formatted} and {} (included).",
+        time_type.format(time_range.max, ctx.app_options.time_zone_for_timestamps)
+    ));
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -53,17 +53,34 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
         mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))
         if mesh:
             vertex_colors = None
+            vertex_texcoords = None
             mesh_material = None
+            albedo_texture = None
+
             try:
-                colors = mesh.visual.to_color().vertex_colors
-                if len(colors) == 4:
-                    # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
-                    # as an albedo factor for the whole primitive.
-                    mesh_material = Material(albedo_factor=np.array(colors))
-                else:
-                    vertex_colors = colors
+                vertex_texcoords = mesh.visual.uv
+                # trimesh uses the OpenGL convention for UV coordinates, so we need to flip the V coordinate
+                # since Rerun uses the Vulkan/Metal/DX12/WebGPU convention.
+                vertex_texcoords[:, 1] = 1.0 - vertex_texcoords[:, 1]
             except Exception:
                 pass
+
+            try:
+                albedo_texture = mesh.visual.material.baseColorTexture
+                if mesh.visual.material.baseColorTexture is None:
+                    raise ValueError()
+            except Exception:
+                # Try vertex colors instead.
+                try:
+                    colors = mesh.visual.to_color().vertex_colors
+                    if len(colors) == 4:
+                        # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
+                        # as an albedo factor for the whole primitive.
+                        mesh_material = Material(albedo_factor=np.array(colors))
+                    else:
+                        vertex_colors = colors
+                except Exception:
+                    pass
 
             rr.log(
                 path,
@@ -71,6 +88,8 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
                     vertex_positions=mesh.vertices,
                     vertex_colors=vertex_colors,
                     vertex_normals=mesh.vertex_normals,
+                    vertex_texcoords=vertex_texcoords,
+                    albedo_texture=albedo_texture,
                     indices=mesh.faces,
                     mesh_material=mesh_material,
                 ),

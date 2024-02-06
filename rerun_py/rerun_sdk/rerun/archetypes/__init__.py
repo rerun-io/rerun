@@ -19,7 +19,10 @@ from .mesh3d import Mesh3D
 from .pinhole import Pinhole
 from .points2d import Points2D
 from .points3d import Points3D
+from .scalar import Scalar
 from .segmentation_image import SegmentationImage
+from .series_line import SeriesLine
+from .series_point import SeriesPoint
 from .tensor import Tensor
 from .text_document import TextDocument
 from .text_log import TextLog
@@ -45,7 +48,10 @@ __all__ = [
     "Pinhole",
     "Points2D",
     "Points3D",
+    "Scalar",
     "SegmentationImage",
+    "SeriesLine",
+    "SeriesPoint",
     "Tensor",
     "TextDocument",
     "TextLog",

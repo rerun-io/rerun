@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    sync::Arc,
+};
 
 use ahash::HashMap;
 use itertools::{izip, Itertools as _};
@@ -810,7 +813,7 @@ impl DataTable {
                 field
             };
 
-            let datatype = DataType::List(Box::new(field));
+            let datatype = DataType::List(Arc::new(field));
             let offsets = Offsets::try_from_lengths(column.iter().map(|cell| {
                 cell.as_ref()
                     .map_or(0, |cell| cell.num_instances() as usize)
@@ -1302,7 +1305,6 @@ impl DataTable {
 
 /// Crafts a simple but interesting [`DataTable`].
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "testing")]
 impl DataTable {
     pub fn example(timeless: bool) -> DataTable {
         use crate::{

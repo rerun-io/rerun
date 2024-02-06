@@ -54,16 +54,16 @@ web_viewer = ["rerun/web_viewer", "rerun/sdk"]
 [dependencies]
 re_build_info.workspace = true
 re_error.workspace = true
-re_log.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 re_memory.workspace = true
 rerun = { workspace = true, features = [
   "analytics",
   "glam",
   "image",
+  "run",
   "server",
 ] }
 
-anyhow.workspace = true
 document-features.workspace = true
 mimalloc.workspace = true
 rayon.workspace = true

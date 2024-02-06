@@ -39,35 +39,56 @@ namespace rerun::datatypes {
             F64,
             JPEG,
             NV12,
+            YUY2,
         };
 
         /// \private
         union TensorBufferData {
+            /// 8bit unsigned integer.
             rerun::Collection<uint8_t> u8;
 
+            /// 16bit unsigned integer.
             rerun::Collection<uint16_t> u16;
 
+            /// 32bit unsigned integer.
             rerun::Collection<uint32_t> u32;
 
+            /// 64bit unsigned integer.
             rerun::Collection<uint64_t> u64;
 
+            /// 8bit signed integer.
             rerun::Collection<int8_t> i8;
 
+            /// 16bit signed integer.
             rerun::Collection<int16_t> i16;
 
+            /// 32bit signed integer.
             rerun::Collection<int32_t> i32;
 
+            /// 64bit signed integer.
             rerun::Collection<int64_t> i64;
 
+            /// 16bit IEEE-754 floating point, also known as `half`.
             rerun::Collection<rerun::half> f16;
 
+            /// 32bit IEEE-754 floating point, also known as `float` or `single`.
             rerun::Collection<float> f32;
 
+            /// 64bit IEEE-754 floating point, also known as `double`.
             rerun::Collection<double> f64;
 
+            /// Raw bytes of a JPEG file.
             rerun::Collection<uint8_t> jpeg;
 
+            /// NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
+            ///
+            /// First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
             rerun::Collection<uint8_t> nv12;
+
+            /// YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
+            ///
+            /// The order of the channels is Y0, U0, Y1, V0.
+            rerun::Collection<uint8_t> yuy2;
 
             TensorBufferData() {
                 std::memset(reinterpret_cast<void*>(this), 0, sizeof(TensorBufferData));
@@ -148,6 +169,10 @@ namespace rerun::datatypes {
                     using TypeAlias = rerun::Collection<uint8_t>;
                     new (&_data.nv12) TypeAlias(other._data.nv12);
                 } break;
+                case detail::TensorBufferTag::YUY2: {
+                    using TypeAlias = rerun::Collection<uint8_t>;
+                    new (&_data.yuy2) TypeAlias(other._data.yuy2);
+                } break;
                 case detail::TensorBufferTag::None: {
                 } break;
             }
@@ -225,6 +250,10 @@ namespace rerun::datatypes {
                     using TypeAlias = rerun::Collection<uint8_t>;
                     _data.nv12.~TypeAlias();
                 } break;
+                case detail::TensorBufferTag::YUY2: {
+                    using TypeAlias = rerun::Collection<uint8_t>;
+                    _data.yuy2.~TypeAlias();
+                } break;
             }
         }
 
@@ -285,6 +314,7 @@ namespace rerun::datatypes {
             this->_data.swap(other._data);
         }
 
+        /// 8bit unsigned integer.
         static TensorBuffer u8(rerun::Collection<uint8_t> u8) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::U8;
@@ -292,6 +322,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// 16bit unsigned integer.
         static TensorBuffer u16(rerun::Collection<uint16_t> u16) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::U16;
@@ -299,6 +330,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// 32bit unsigned integer.
         static TensorBuffer u32(rerun::Collection<uint32_t> u32) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::U32;
@@ -306,6 +338,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// 64bit unsigned integer.
         static TensorBuffer u64(rerun::Collection<uint64_t> u64) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::U64;
@@ -313,6 +346,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// 8bit signed integer.
         static TensorBuffer i8(rerun::Collection<int8_t> i8) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::I8;
@@ -320,6 +354,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// 16bit signed integer.
         static TensorBuffer i16(rerun::Collection<int16_t> i16) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::I16;
@@ -327,6 +362,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// 32bit signed integer.
         static TensorBuffer i32(rerun::Collection<int32_t> i32) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::I32;
@@ -334,6 +370,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// 64bit signed integer.
         static TensorBuffer i64(rerun::Collection<int64_t> i64) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::I64;
@@ -341,6 +378,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// 16bit IEEE-754 floating point, also known as `half`.
         static TensorBuffer f16(rerun::Collection<rerun::half> f16) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::F16;
@@ -348,6 +386,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// 32bit IEEE-754 floating point, also known as `float` or `single`.
         static TensorBuffer f32(rerun::Collection<float> f32) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::F32;
@@ -355,6 +394,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// 64bit IEEE-754 floating point, also known as `double`.
         static TensorBuffer f64(rerun::Collection<double> f64) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::F64;
@@ -362,6 +402,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// Raw bytes of a JPEG file.
         static TensorBuffer jpeg(rerun::Collection<uint8_t> jpeg) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::JPEG;
@@ -369,10 +410,23 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
+        ///
+        /// First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
         static TensorBuffer nv12(rerun::Collection<uint8_t> nv12) {
             TensorBuffer self;
             self._tag = detail::TensorBufferTag::NV12;
             new (&self._data.nv12) rerun::Collection<uint8_t>(std::move(nv12));
+            return self;
+        }
+
+        /// YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
+        ///
+        /// The order of the channels is Y0, U0, Y1, V0.
+        static TensorBuffer yuy2(rerun::Collection<uint8_t> yuy2) {
+            TensorBuffer self;
+            self._tag = detail::TensorBufferTag::YUY2;
+            new (&self._data.yuy2) rerun::Collection<uint8_t>(std::move(yuy2));
             return self;
         }
 
@@ -488,6 +542,15 @@ namespace rerun::datatypes {
         const rerun::Collection<uint8_t>* get_nv12() const {
             if (_tag == detail::TensorBufferTag::NV12) {
                 return &_data.nv12;
+            } else {
+                return nullptr;
+            }
+        }
+
+        /// Return a pointer to yuy2 if the union is in that state, otherwise `nullptr`.
+        const rerun::Collection<uint8_t>* get_yuy2() const {
+            if (_tag == detail::TensorBufferTag::YUY2) {
+                return &_data.yuy2;
             } else {
                 return nullptr;
             }

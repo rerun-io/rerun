@@ -81,7 +81,7 @@ jobs:
 
   build-rerun_c-and-upload:
     name: "Build & Upload rerun_c (Linux x64)"
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && !contains(github.event.pull_request.labels.*.name, 'release')
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -90,7 +90,7 @@ jobs:
 
   build-rerun-cli-and-upload:
     name: "Build & Upload rerun-cli (Linux x64)"
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && !contains(github.event.pull_request.labels.*.name, 'release')
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -99,6 +99,7 @@ jobs:
 
   bundle-and-upload-rerun_cpp:
     name: "Bundle and upload rerun_cpp_sdk.zip"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && !contains(github.event.pull_request.labels.*.name, 'release')
     needs: [build-rerun_c-and-upload]
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
     with:

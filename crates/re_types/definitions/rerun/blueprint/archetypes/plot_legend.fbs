@@ -1,0 +1,30 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+
+// ---
+
+/// Configuration for the legend of a plot.
+table PlotLegend (
+    "attr.docs.unreleased",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    // --- Optional ---
+
+    /// To what corner the legend is aligned.
+    ///
+    /// Defaults to the right bottom corner.
+    corner: rerun.blueprint.components.Corner2D ("attr.rerun.component_optional", nullable, order: 2100);
+
+    /// Whether the legend is shown at all.
+    ///
+    /// True by default.
+    visible: rerun.blueprint.components.Visible ("attr.rerun.component_optional", nullable, order: 2200);
+}

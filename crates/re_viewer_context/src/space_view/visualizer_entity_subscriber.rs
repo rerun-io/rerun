@@ -8,7 +8,7 @@ use re_log_types::{EntityPathHash, StoreId};
 use re_types::{ComponentName, ComponentNameSet};
 
 use crate::{
-    ApplicableEntities, IdentifiedViewSystem, IndicatorMatchingEntities, ViewSystemIdentifier,
+    ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, ViewSystemIdentifier,
     VisualizerSystem,
 };
 
@@ -28,7 +28,7 @@ pub struct VisualizerEntitySubscriber {
     /// Visualizer type this subscriber is associated with.
     visualizer: ViewSystemIdentifier,
 
-    /// See [`VisualizerSystem::indicator_components`]
+    /// See [`crate::VisualizerQueryInfo::indicators`]
     indicator_components: ComponentNameSet,
 
     /// Assigns each required component an index.
@@ -79,16 +79,21 @@ struct VisualizerEntityMapping {
     applicable_entities: ApplicableEntities,
 
     /// List of all entities in this store that at some point in time had any of the indicator components.
-    indicator_matching_entities: IndicatorMatchingEntities,
+    ///
+    /// Special case:
+    /// If the visualizer has no indicator components, this list will contain all entities in the store.
+    indicated_entities: IndicatedEntities,
 }
 
 impl VisualizerEntitySubscriber {
     pub fn new<T: IdentifiedViewSystem + VisualizerSystem>(visualizer: &T) -> Self {
+        let visualizer_query_info = visualizer.visualizer_query_info();
+
         Self {
             visualizer: T::identifier(),
-            indicator_components: visualizer.indicator_components(),
-            required_components_indices: visualizer
-                .required_components()
+            indicator_components: visualizer_query_info.indicators,
+            required_components_indices: visualizer_query_info
+                .required
                 .into_iter()
                 .enumerate()
                 .map(|(i, name)| (name, i))
@@ -112,13 +117,12 @@ impl VisualizerEntitySubscriber {
     ///
     /// Useful for quickly evaluating basic "should this visualizer apply by default"-heuristic.
     /// Does *not* imply that any of the given entities is also in the applicable-set!
-    pub fn indicator_matching_entities(
-        &self,
-        store: &StoreId,
-    ) -> Option<&IndicatorMatchingEntities> {
+    ///
+    /// If the visualizer has no indicator components, this list will contain all entities in the store.
+    pub fn indicated_entities(&self, store: &StoreId) -> Option<&IndicatedEntities> {
         self.per_store_mapping
             .get(store)
-            .map(|mapping| &mapping.indicator_matching_entities)
+            .map(|mapping| &mapping.indicated_entities)
     }
 }
 
@@ -155,24 +159,24 @@ impl StoreSubscriber for VisualizerEntitySubscriber {
                 .or_default();
 
             let entity_path = &event.diff.entity_path;
-            let entity_path_hash = entity_path.hash();
 
             // Update indicator component tracking:
-            if self
-                .indicator_components
-                .iter()
-                .any(|component_name| event.diff.cells.keys().contains(component_name))
+            if self.indicator_components.is_empty()
+                || self
+                    .indicator_components
+                    .iter()
+                    .any(|component_name| event.diff.cells.keys().contains(component_name))
             {
                 store_mapping
-                    .indicator_matching_entities
+                    .indicated_entities
                     .0
-                    .insert(entity_path_hash);
+                    .insert(entity_path.clone());
             }
 
             // Update required component tracking:
             let required_components_bitmap = store_mapping
                 .required_component_and_filter_bitmap_per_entity
-                .entry(entity_path_hash)
+                .entry(entity_path.hash())
                 .or_insert_with(|| {
                     BitVec::from_elem(self.required_components_indices.len() + 1, false)
                 });

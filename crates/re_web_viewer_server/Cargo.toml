@@ -45,7 +45,7 @@ analytics = ["dep:re_analytics"]
 
 
 [dependencies]
-re_log.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 
 document-features.workspace = true
 futures-util.workspace = true

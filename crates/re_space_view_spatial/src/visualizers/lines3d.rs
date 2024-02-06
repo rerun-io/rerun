@@ -3,12 +3,11 @@ use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::LineStrips3D,
     components::{LineStrip3D, Text},
-    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -159,7 +158,7 @@ impl Lines3DVisualizer {
         }
 
         self.data
-            .extend_bounding_box(bounding_box, ent_context.world_from_entity);
+            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
 
         Ok(())
     }
@@ -172,15 +171,8 @@ impl IdentifiedViewSystem for Lines3DVisualizer {
 }
 
 impl VisualizerSystem for Lines3DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        LineStrips3D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(LineStrips3D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<LineStrips3D>()
     }
 
     fn filter_visualizable_entities(
@@ -188,6 +180,7 @@ impl VisualizerSystem for Lines3DVisualizer {
         entities: ApplicableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
+        re_tracing::profile_function!();
         filter_visualizable_3d_entities(entities, context)
     }
 

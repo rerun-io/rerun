@@ -28,6 +28,7 @@ pub use annotations::{
     AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos,
 };
 pub use app_options::AppOptions;
+pub use blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes};
 pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, DataQueryId, SpaceViewId};
 pub use caches::{Cache, Caches};
 pub use command_sender::{
@@ -42,20 +43,21 @@ pub use selection_state::{
     Selection, SelectionHighlight,
 };
 pub use space_view::{
-    AutoSpawnHeuristic, DataResult, DynSpaceViewClass, IdentifiedViewSystem, PerSystemDataResults,
-    PerSystemEntities, PropertyOverrides, SpaceViewClass, SpaceViewClassIdentifier,
-    SpaceViewClassLayoutPriority, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
-    ViewContextCollection, ViewContextSystem, ViewQuery, ViewSystemIdentifier,
-    VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
+    DataResult, DynSpaceViewClass, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
+    PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContextCollection, ViewContextSystem,
+    ViewQuery, ViewSystemIdentifier, VisualizableFilterContext,
+    VisualizerAdditionalApplicabilityFilter, VisualizerCollection, VisualizerQueryInfo,
     VisualizerSystem,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 pub use typed_entity_collections::{
-    ApplicableEntities, IndicatorMatchingEntities, PerVisualizer, VisualizableEntities,
+    ApplicableEntities, IndicatedEntities, PerVisualizer, VisualizableEntities,
 };
 pub use utils::{auto_color, level_to_rich_text, DefaultColor};
 pub use viewer_context::{RecordingConfig, ViewerContext};

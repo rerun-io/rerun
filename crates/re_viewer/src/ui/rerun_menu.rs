@@ -13,6 +13,7 @@ const SPACING: f32 = 12.0;
 impl App {
     pub fn rerun_menu_button_ui(
         &mut self,
+        frame: &eframe::Frame,
         _store_context: Option<&StoreContext<'_>>,
         ui: &mut egui::Ui,
     ) {
@@ -23,10 +24,11 @@ impl App {
         let image = re_ui::icons::RERUN_MENU
             .as_image()
             .max_height(desired_icon_height);
+
         ui.menu_image_button(image, |ui| {
             ui.set_min_width(220.0);
 
-            ui.menu_button("About", |ui| self.about_rerun_ui(ui));
+            ui.menu_button("About", |ui| self.about_rerun_ui(frame, ui));
 
             ui.add_space(SPACING);
 
@@ -70,7 +72,7 @@ impl App {
                 UICommand::ToggleMemoryPanel.menu_button_ui(ui, &self.command_sender);
 
                 #[cfg(debug_assertions)]
-                UICommand::ToggleStylePanel.menu_button_ui(ui, &self.command_sender);
+                UICommand::ToggleEguiDebugPanel.menu_button_ui(ui, &self.command_sender);
             }
 
             ui.add_space(SPACING);
@@ -81,6 +83,7 @@ impl App {
                     &self.command_sender,
                     &self.re_ui,
                     ui,
+                    frame,
                     &mut self.state.app_options,
                 );
             });
@@ -88,7 +91,12 @@ impl App {
             #[cfg(debug_assertions)]
             ui.menu_button("Debug", |ui| {
                 ui.style_mut().wrap = Some(false);
-                debug_menu_options_ui(&self.re_ui, ui, &mut self.state.app_options);
+                debug_menu_options_ui(
+                    &self.re_ui,
+                    ui,
+                    &mut self.state.app_options,
+                    &self.command_sender,
+                );
 
                 ui.label("egui debug options:");
                 egui_debug_options_ui(&self.re_ui, ui);
@@ -107,7 +115,7 @@ impl App {
         });
     }
 
-    fn about_rerun_ui(&self, ui: &mut egui::Ui) {
+    fn about_rerun_ui(&self, frame: &eframe::Frame, ui: &mut egui::Ui) {
         let re_build_info::BuildInfo {
             crate_name,
             version,
@@ -146,6 +154,10 @@ impl App {
         }
 
         ui.label(label);
+
+        if let Some(render_state) = frame.wgpu_render_state() {
+            render_state_ui(ui, render_state);
+        }
     }
 
     // TODO(emilk): support saving data on web
@@ -204,10 +216,96 @@ impl App {
     }
 }
 
+fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
+    let wgpu_adapter_details_ui = |ui: &mut egui::Ui, adapter: &eframe::wgpu::Adapter| {
+        let info = &adapter.get_info();
+
+        let wgpu::AdapterInfo {
+            name,
+            vendor,
+            device,
+            device_type,
+            driver,
+            driver_info,
+            backend,
+        } = &info;
+
+        // Example values:
+        // > name: "llvmpipe (LLVM 16.0.6, 256 bits)", device_type: Cpu, backend: Vulkan, driver: "llvmpipe", driver_info: "Mesa 23.1.6-arch1.4 (LLVM 16.0.6)"
+        // > name: "Apple M1 Pro", device_type: IntegratedGpu, backend: Metal, driver: "", driver_info: ""
+        // > name: "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)", device_type: IntegratedGpu, backend: Gl, driver: "", driver_info: ""
+
+        egui::Grid::new("adapter_info").show(ui, |ui| {
+            ui.label("Backend");
+            ui.label(backend.to_str()); // TODO(wgpu#5170): Use std::fmt::Display for backend.
+            ui.end_row();
+
+            ui.label("Device Type");
+            ui.label(format!("{device_type:?}"));
+            ui.end_row();
+
+            if !name.is_empty() {
+                ui.label("Name");
+                ui.label(format!("{name:?}"));
+                ui.end_row();
+            }
+            if !driver.is_empty() {
+                ui.label("Driver");
+                ui.label(format!("{driver:?}"));
+                ui.end_row();
+            }
+            if !driver_info.is_empty() {
+                ui.label("Driver info");
+                ui.label(format!("{driver_info:?}"));
+                ui.end_row();
+            }
+            if *vendor != 0 {
+                // TODO(emilk): decode using https://github.com/gfx-rs/wgpu/blob/767ac03245ee937d3dc552edc13fe7ab0a860eec/wgpu-hal/src/auxil/mod.rs#L7
+                ui.label("Vendor");
+                ui.label(format!("0x{vendor:04X}"));
+                ui.end_row();
+            }
+            if *device != 0 {
+                ui.label("Device");
+                ui.label(format!("0x{device:02X}"));
+                ui.end_row();
+            }
+        });
+    };
+
+    let wgpu_adapter_ui = |ui: &mut egui::Ui, adapter: &eframe::wgpu::Adapter| {
+        let info = &adapter.get_info();
+        // TODO(wgpu#5170): Use std::fmt::Display for backend.
+        ui.label(info.backend.to_str()).on_hover_ui(|ui| {
+            wgpu_adapter_details_ui(ui, adapter);
+        });
+    };
+
+    egui::Grid::new("wgpu_info").num_columns(2).show(ui, |ui| {
+        ui.label("Rendering backend:");
+        wgpu_adapter_ui(ui, &render_state.adapter);
+        ui.end_row();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if 1 < render_state.available_adapters.len() {
+            ui.label("Other rendering backends:");
+            ui.vertical(|ui| {
+                for adapter in &*render_state.available_adapters {
+                    if adapter.get_info() != render_state.adapter.get_info() {
+                        wgpu_adapter_ui(ui, adapter);
+                    }
+                }
+            });
+            ui.end_row();
+        }
+    });
+}
+
 fn options_menu_ui(
     command_sender: &re_viewer_context::CommandSender,
     re_ui: &ReUi,
     ui: &mut egui::Ui,
+    frame: &eframe::Frame,
     app_options: &mut re_viewer_context::AppOptions,
 ) {
     re_ui
@@ -242,6 +340,23 @@ fn options_menu_ui(
         ui.add_space(SPACING);
         ui.label("Experimental features:");
         experimental_feature_ui(command_sender, re_ui, ui, app_options);
+    }
+
+    if let Some(_backend) = frame
+        .wgpu_render_state()
+        .map(|state| state.adapter.get_info().backend)
+    {
+        // Adapter switching only implemented for web so far.
+        // For native it's less well defined since the application may be embedded in another application that reads arguments differently.
+        #[cfg(target_arch = "wasm32")]
+        {
+            ui.add_space(SPACING);
+            if _backend == wgpu::Backend::BrowserWebGpu {
+                UICommand::RestartWithWebGl.menu_button_ui(ui, command_sender);
+            } else {
+                UICommand::RestartWithWebGpu.menu_button_ui(ui, command_sender);
+            }
+        }
     }
 }
 
@@ -294,26 +409,26 @@ fn experimental_feature_ui(
     re_ui
         .checkbox(
             ui,
-            &mut app_options.experimental_primary_caching_point_clouds,
-            "Primary caching: 2D & 3D point clouds",
+            &mut app_options.experimental_primary_caching_latest_at,
+            "Primary caching: latest-at queries",
         )
-        .on_hover_text("Toggle primary caching for the 2D & 3D point cloud space views.");
+        .on_hover_text("Toggle primary caching for latest-at queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
 
     re_ui
         .checkbox(
             ui,
-            &mut app_options.experimental_primary_caching_series,
-            "Primary caching: TextLogs & TimeSeries",
+            &mut app_options.experimental_primary_caching_range,
+            "Primary caching: range queries",
         )
-        .on_hover_text("Toggle primary caching for the time series & text logs space views.");
+        .on_hover_text("Toggle primary caching for range queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
 
     re_ui
         .checkbox(
             ui,
-            &mut app_options.legacy_container_blueprint,
-            "Use the legacy container blueprint storage for the viewport",
+            &mut app_options.experimental_plot_query_clamping,
+            "Plots: query clamping",
         )
-        .on_hover_text("The legacy container blueprint storage is deprecated, but may be helpful if unexpected regressions are found in the new container blueprints.");
+        .on_hover_text("Toggle query clamping for the plot visualizers.");
 }
 
 #[cfg(debug_assertions)]
@@ -357,10 +472,14 @@ fn egui_debug_options_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
 }
 
 #[cfg(debug_assertions)]
+use re_viewer_context::CommandSender;
+
+#[cfg(debug_assertions)]
 fn debug_menu_options_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     app_options: &mut re_viewer_context::AppOptions,
+    command_sender: &CommandSender,
 ) {
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -379,15 +498,18 @@ fn debug_menu_options_ui(
         re_log::info!("Logging some info");
     }
 
+    UICommand::ToggleBlueprintInspectionPanel.menu_button_ui(ui, command_sender);
+
+    ui.horizontal(|ui| {
+        ui.label("Blueprint GC:");
+        re_ui.radio_value(ui, &mut app_options.blueprint_gc, true, "Enabled");
+        re_ui.radio_value(ui, &mut app_options.blueprint_gc, false, "Disabled");
+    });
+
     re_ui.checkbox(ui,
         &mut app_options.show_picking_debug_overlay,
         "Picking Debug Overlay",
     ).on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
-
-    re_ui.checkbox(ui,
-        &mut app_options.show_blueprint_in_timeline,
-        "Show Blueprint in the Time Panel",
-    ).on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
 
     ui.menu_button("Crash", |ui| {
         #[allow(clippy::manual_assert)]

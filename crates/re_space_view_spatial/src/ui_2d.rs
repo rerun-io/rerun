@@ -243,9 +243,10 @@ pub fn view_2d(
     let available_size = ui.available_size();
     let store = ctx.entity_db.store();
 
+    let scene_rect_accum = state.bounding_boxes.accumulated;
     let scene_rect_accum = egui::Rect::from_min_max(
-        state.scene_bbox_accum.min.truncate().to_array().into(),
-        state.scene_bbox_accum.max.truncate().to_array().into(),
+        scene_rect_accum.min.truncate().to_array().into(),
+        scene_rect_accum.max.truncate().to_array().into(),
     );
 
     // Determine the canvas which determines the extent of the explorable scene coordinates,
@@ -354,8 +355,7 @@ pub fn view_2d(
         // ------------------------------------------------------------------------
 
         // Screenshot context menu.
-        let (_, screenshot_mode) = screenshot_context_menu(ctx, response);
-        if let Some(mode) = screenshot_mode {
+        if let Some(mode) = screenshot_context_menu(ctx, &response) {
             view_builder
                 .schedule_screenshot(ctx.render_ctx, query.space_view_id.gpu_readback_id(), mode)
                 .ok();

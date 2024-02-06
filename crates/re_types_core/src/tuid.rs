@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{DeserializationError, Loggable, SizeBytes};
 use arrow2::{
     array::{StructArray, UInt64Array},
@@ -25,10 +27,10 @@ impl Loggable for Tuid {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        DataType::Struct(vec![
+        DataType::Struct(Arc::new(vec![
             Field::new("time_ns", DataType::UInt64, false),
             Field::new("inc", DataType::UInt64, false),
-        ])
+        ]))
     }
 
     fn to_arrow_opt<'a>(

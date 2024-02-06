@@ -21,7 +21,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Whether the container or space view is currently visible.
+/// **Component**: Whether the container, space view, entity or instance is currently visible.
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Visible(pub bool);

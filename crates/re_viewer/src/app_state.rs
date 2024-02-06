@@ -1,24 +1,23 @@
 use ahash::HashMap;
 
+use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
-use re_space_view::{DataQuery as _, PropertyResolver as _};
+use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyResolver as _};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, Caches, CommandSender, ComponentUiRegistry, PlayState,
-    RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, ViewerContext,
+    blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
+    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
+    SystemCommandSender as _, ViewerContext,
 };
-use re_viewport::{
-    determine_visualizable_entities, SpaceInfoCollection, Viewport, ViewportBlueprint,
-    ViewportState,
-};
+use re_viewport::{Viewport, ViewportBlueprint, ViewportState};
 
 use crate::ui::recordings_panel_ui;
 use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppState {
     /// Global options for the whole viewer.
@@ -30,9 +29,11 @@ pub struct AppState {
 
     /// Configuration for the current recording (found in [`EntityDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
+    blueprint_cfg: RecordingConfig,
 
     selection_panel: crate::selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
+    blueprint_panel: re_time_panel::TimePanel,
 
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
@@ -41,11 +42,35 @@ pub struct AppState {
     // sense than the blueprint
     #[serde(skip)]
     viewport_state: ViewportState,
+
+    /// Item that got focused on the last frame if any.
+    ///
+    /// The focused item is cleared every frame, but views may react with side-effects
+    /// that last several frames.
+    #[serde(skip)]
+    pub(crate) focused_item: Option<re_viewer_context::Item>,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            app_options: Default::default(),
+            cache: Default::default(),
+            recording_configs: Default::default(),
+            blueprint_cfg: Default::default(),
+            selection_panel: Default::default(),
+            time_panel: Default::default(),
+            blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
+            welcome_screen: Default::default(),
+            viewport_state: Default::default(),
+            focused_item: Default::default(),
+        }
+    }
 }
 
 impl AppState {
-    pub fn set_examples_manifest_url(&mut self, url: String) {
-        self.welcome_screen.set_examples_manifest_url(url);
+    pub fn set_examples_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
+        self.welcome_screen.set_examples_manifest_url(egui_ctx, url);
     }
 
     pub fn app_options(&self) -> &AppOptions {
@@ -95,14 +120,19 @@ impl AppState {
     ) {
         re_tracing::profile_function!();
 
+        let blueprint_query = self.blueprint_query_for_viewer();
+
         let Self {
             app_options,
             cache,
             recording_configs,
+            blueprint_cfg,
             selection_panel,
             time_panel,
+            blueprint_panel,
             welcome_screen,
             viewport_state,
+            focused_item,
         } = self;
 
         // Some of the mutations APIs of `ViewportBlueprints` are recorded as `Viewport::TreeAction`
@@ -110,13 +140,17 @@ impl AppState {
         // this, which gives us interior mutability (only a shared reference of `ViewportBlueprint`
         // is available to the UI code) and, if needed in the future, concurrency.
         let (sender, receiver) = std::sync::mpsc::channel();
-        let viewport_blueprint =
-            ViewportBlueprint::try_from_db(store_context.blueprint, app_options, sender);
+        let viewport_blueprint = ViewportBlueprint::try_from_db(
+            store_context.blueprint,
+            &blueprint_query,
+            sender.clone(),
+        );
         let mut viewport = Viewport::new(
             &viewport_blueprint,
             viewport_state,
             space_view_class_registry,
             receiver,
+            sender,
         );
 
         // If the blueprint is invalid, reset it.
@@ -141,8 +175,8 @@ impl AppState {
 
         let applicable_entities_per_visualizer = space_view_class_registry
             .applicable_entities_for_visualizer_systems(entity_db.store_id());
-        let indicator_matching_entities_per_visualizer = space_view_class_registry
-            .indicator_matching_entities_per_visualizer(entity_db.store_id());
+        let indicated_entities_per_visualizer =
+            space_view_class_registry.indicated_entities_per_visualizer(entity_db.store_id());
 
         // Execute the queries for every `SpaceView`
         let mut query_results = {
@@ -170,11 +204,7 @@ impl AppState {
                         .map(|query| {
                             (
                                 query.id,
-                                query.execute_query(
-                                    store_context,
-                                    &visualizable_entities,
-                                    &indicator_matching_entities_per_visualizer,
-                                ),
+                                query.execute_query(store_context, &visualizable_entities),
                             )
                         })
                         .collect::<Vec<_>>()
@@ -190,20 +220,21 @@ impl AppState {
             entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
-            indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
+            indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
+            blueprint_cfg,
+            blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
             command_sender,
+            focused_item,
         };
 
         // First update the viewport and thus all active space views.
         // This may update their heuristics, so that all panels that are shown in this frame,
         // have the latest information.
-        let spaces_info = SpaceInfoCollection::new(ctx.entity_db);
-
-        viewport.on_frame_start(&ctx, &spaces_info);
+        viewport.on_frame_start(&ctx);
 
         {
             re_tracing::profile_scope!("updated_query_results");
@@ -211,9 +242,27 @@ impl AppState {
             for space_view in viewport.blueprint.space_views.values() {
                 for query in &space_view.queries {
                     if let Some(query_result) = query_results.get_mut(&query.id) {
+                        // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
+                        // Note that right now we determine *all* visualizable entities, not just the queried ones.
+                        // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+                        let visualizable_entities = determine_visualizable_entities(
+                            &applicable_entities_per_visualizer,
+                            entity_db,
+                            &space_view_class_registry
+                                .new_visualizer_collection(*space_view.class_identifier()),
+                            space_view.class(space_view_class_registry),
+                            &space_view.space_origin,
+                        );
+
                         let props = viewport.state.space_view_props(space_view.id);
-                        let resolver = query.build_resolver(space_view.id, props);
-                        resolver.update_overrides(store_context, query_result);
+                        let resolver = query.build_resolver(
+                            space_view_class_registry,
+                            space_view,
+                            props,
+                            &visualizable_entities,
+                            &indicated_entities_per_visualizer,
+                        );
+                        resolver.update_overrides(store_context, &blueprint_query, query_result);
                     }
                 }
             }
@@ -229,15 +278,27 @@ impl AppState {
             entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
-            indicator_matching_entities_per_visualizer: &indicator_matching_entities_per_visualizer,
+            indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
+            blueprint_cfg,
+            blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
             command_sender,
+            focused_item,
         };
 
-        time_panel.show_panel(&ctx, ui, app_blueprint.time_panel_expanded);
+        if app_options.inspect_blueprint_timeline {
+            blueprint_panel.show_panel(&ctx, ctx.store_context.blueprint, blueprint_cfg, ui, true);
+        }
+        time_panel.show_panel(
+            &ctx,
+            ctx.entity_db,
+            ctx.rec_cfg,
+            ui,
+            app_blueprint.time_panel_expanded,
+        );
         selection_panel.show_panel(
             &ctx,
             ui,
@@ -263,6 +324,9 @@ impl AppState {
                     .min_width(120.0)
                     .default_width((0.35 * ui.ctx().screen_rect().width()).min(200.0).round());
 
+                let show_welcome =
+                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
+
                 left_panel.show_animated_inside(
                     ui,
                     app_blueprint.blueprint_panel_expanded,
@@ -282,7 +346,9 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(&mut viewport, &ctx, ui, &spaces_info);
+                        if !show_welcome {
+                            blueprint_panel_ui(&mut viewport, &ctx, ui);
+                        }
                     },
                 );
 
@@ -290,9 +356,6 @@ impl AppState {
                     fill: ui.style().visuals.panel_fill,
                     ..Default::default()
                 };
-
-                let show_welcome =
-                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
@@ -320,12 +383,25 @@ impl AppState {
                 false
             };
 
-            let needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
+            let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
                 entity_db.times_per_timeline(),
                 dt,
                 more_data_is_coming,
             );
-            if needs_repaint == re_viewer_context::NeedsRepaint::Yes {
+
+            let blueprint_needs_repaint = if ctx.app_options.inspect_blueprint_timeline {
+                ctx.blueprint_cfg.time_ctrl.write().update(
+                    ctx.store_context.blueprint.times_per_timeline(),
+                    dt,
+                    more_data_is_coming,
+                )
+            } else {
+                re_viewer_context::NeedsRepaint::No
+            };
+
+            if recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+                || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+            {
                 ui.ctx().request_repaint();
             }
         }
@@ -336,6 +412,9 @@ impl AppState {
 
         // This must run after any ui code, or other code that tells egui to open an url:
         check_for_clicked_hyperlinks(&re_ui.egui_ctx, &rec_cfg.selection_state);
+
+        // Reset the focused item.
+        *focused_item = None;
     }
 
     pub fn recording_config_mut(&mut self, rec_id: &StoreId) -> Option<&mut RecordingConfig> {
@@ -347,6 +426,19 @@ impl AppState {
 
         self.recording_configs
             .retain(|store_id, _| store_hub.contains_recording(store_id));
+    }
+
+    /// Returns the blueprint query that should be used for generating the current
+    /// layout of the viewer.
+    ///
+    /// If `inspect_blueprint_timeline` is enabled, we use the time selection from the
+    /// blueprint `time_ctrl`. Otherwise, we use a latest query from the blueprint timeline.
+    pub fn blueprint_query_for_viewer(&self) -> LatestAtQuery {
+        if self.app_options.inspect_blueprint_timeline {
+            self.blueprint_cfg.time_ctrl.read().current_query().clone()
+        } else {
+            LatestAtQuery::latest(blueprint_timeline())
+        }
     }
 }
 

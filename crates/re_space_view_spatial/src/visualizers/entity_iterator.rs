@@ -80,10 +80,10 @@ where
             &data_result.accumulated_properties().visible_history,
             &data_result.entity_path,
         )
-        .and_then(|entity_views| {
-            for ent_view in entity_views {
+        .and_then(|arch_views| {
+            for arch_view in arch_views {
                 counter.num_primitives.fetch_add(
-                    ent_view.num_instances(),
+                    arch_view.num_instances(),
                     std::sync::atomic::Ordering::Relaxed,
                 );
 
@@ -91,7 +91,7 @@ where
                     ctx,
                     &data_result.entity_path,
                     data_result.accumulated_properties(),
-                    ent_view,
+                    arch_view,
                     &entity_context,
                 )?;
             }
@@ -124,7 +124,6 @@ macro_rules! impl_process_archetype {
             query: &ViewQuery<'_>,
             view_ctx: &ViewContextCollection,
             default_depth_offset: DepthOffset,
-            cached: bool,
             mut f: F,
         ) -> Result<(), SpaceViewSystemExecutionError>
         where
@@ -137,16 +136,16 @@ macro_rules! impl_process_archetype {
                 &EntityPath,
                 &EntityProperties,
                 &SpatialSceneEntityContext<'_>,
-                (TimeInt, RowId),
+                (Option<TimeInt>, RowId),
                 &[InstanceKey],
                 $(&[$pov],)*
-                $(&[Option<$comp>],)*
+                $(Option<&[Option<$comp>]>,)*
             ) -> ::re_query::Result<()>,
         {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!(
                 "process_archetype",
-                format!("cached={cached} arch={} pov={} comp={}", A::name(), $N, $M)
+                format!("arch={} pov={} comp={}", A::name(), $N, $M)
             );
 
             let transforms = view_ctx.get::<TransformContext>()?;
@@ -184,8 +183,9 @@ macro_rules! impl_process_archetype {
                     space_view_class_identifier: view_ctx.space_view_class_identifier(),
                 };
 
-                ::re_query_cache::[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    cached,
+                match ctx.entity_db.query_caches().[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
+                    ctx.app_options.experimental_primary_caching_latest_at,
+                    ctx.app_options.experimental_primary_caching_range,
                     ctx.entity_db.store(),
                     &query.timeline,
                     &query.latest_at,
@@ -204,7 +204,7 @@ macro_rules! impl_process_archetype {
                             t,
                             keys.as_slice(),
                             $($pov.as_slice(),)+
-                            $($comp.as_slice(),)*
+                            $($comp.as_deref(),)*
                         ) {
                             re_log::error_once!(
                                 "Unexpected error querying {:?}: {err}",
@@ -212,7 +212,15 @@ macro_rules! impl_process_archetype {
                             );
                         }
                     }
-                )?;
+                ) {
+                    Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
+                    Err(err) => {
+                        re_log::error_once!(
+                            "Unexpected error querying {:?}: {err}",
+                            &data_result.entity_path
+                        );
+                    }
+                }
             }
 
             Ok(())

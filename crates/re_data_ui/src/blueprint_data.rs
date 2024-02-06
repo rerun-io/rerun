@@ -12,16 +12,17 @@ impl DataUi for IncludedQueries {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_data_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         match verbosity {
             UiVerbosity::Small => {
                 ui.label(format!("{} Queries", self.0.len()));
             }
             UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
-                for query in &self.0 {
-                    let query: DataQueryId = (*query).into();
-                    query.data_ui(_ctx, ui, verbosity, _query);
+                for data_query in &self.0 {
+                    let data_query: DataQueryId = (*data_query).into();
+                    data_query.data_ui(_ctx, ui, verbosity, query, store);
                     ui.end_row();
                 }
             }
@@ -36,8 +37,17 @@ impl<T: BlueprintIdRegistry> DataUi for BlueprintId<T> {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
-        _query: &re_data_store::LatestAtQuery,
+        query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
-        entity_path_button_to(ctx, ui, None, &self.as_entity_path(), self.to_string());
+        entity_path_button_to(
+            ctx,
+            query,
+            store,
+            ui,
+            None,
+            &self.as_entity_path(),
+            self.to_string(),
+        );
     }
 }

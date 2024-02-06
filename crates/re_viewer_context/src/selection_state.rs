@@ -25,9 +25,9 @@ pub enum SelectedSpaceContext {
         /// The point in 3D space that is hovered, if any.
         pos: Option<glam::Vec3>,
 
-        /// Path of a space camera, this 3D space is viewed through.
+        /// Path to an entity that is currently tracked by the eye-camera.
         /// (None for a free floating Eye)
-        tracked_space_camera: Option<EntityPath>,
+        tracked_entity: Option<EntityPath>,
 
         /// Corresponding 2D spaces and pixel coordinates (with Z=depth)
         point_in_space_cameras: Vec<(EntityPath, Option<glam::Vec3>)>,
@@ -129,6 +129,15 @@ impl Selection {
     /// The first selected object if any.
     pub fn first_item(&self) -> Option<&Item> {
         self.0.first().map(|(item, _)| item)
+    }
+
+    /// Check if the selection contains a single item and returns it if so.
+    pub fn single_item(&self) -> Option<&Item> {
+        if self.0.len() == 1 {
+            Some(&self.0[0].0)
+        } else {
+            None
+        }
     }
 
     pub fn iter_items(&self) -> impl Iterator<Item = &Item> {

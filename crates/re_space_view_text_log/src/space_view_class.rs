@@ -2,12 +2,12 @@ use re_entity_db::EntityProperties;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_log_types::{EntityPath, EntityPathFilter, TimePoint, Timeline};
 use re_types::components::TextLogLevel;
 use re_viewer_context::{
-    level_to_rich_text, AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    ViewQuery, ViewerContext,
+    level_to_rich_text, IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
 use super::visualizer_system::{Entry, TextLogSystem};
@@ -68,17 +68,27 @@ impl SpaceViewClass for TextSpaceView {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
     }
 
-    fn auto_spawn_heuristic(
+    fn spawn_heuristics(
         &self,
-        _ctx: &ViewerContext<'_>,
-        space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
-    ) -> re_viewer_context::AutoSpawnHeuristic {
-        // Always spawn a single text view for the root and nothing else.
-        if space_origin.is_root() && !ent_paths.is_empty() {
-            AutoSpawnHeuristic::AlwaysSpawn
+        ctx: &ViewerContext<'_>,
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        re_tracing::profile_function!();
+
+        // Spawn a single log view at the root if there's any text logs around anywhere.
+        // Checking indicators is enough, since we know that this is enough to infer visualizability here.
+        if ctx
+            .indicated_entities_per_visualizer
+            .get(&TextLogSystem::identifier())
+            .map_or(true, |entities| entities.is_empty())
+        {
+            SpaceViewSpawnHeuristics::default()
         } else {
-            AutoSpawnHeuristic::NeverSpawn
+            SpaceViewSpawnHeuristics {
+                recommended_space_views: vec![RecommendedSpaceView {
+                    root: EntityPath::root(),
+                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
+                }],
+            }
         }
     }
 
@@ -339,6 +349,9 @@ fn table_ui(
 
             body_clip_rect = Some(body.max_rect());
 
+            let query = ctx.current_query();
+            let store = ctx.entity_db.store();
+
             let row_heights = entries.iter().map(|te| calc_row_height(te));
             body.heterogeneous_rows(row_heights, |mut row| {
                 let entry = &entries[row.index()];
@@ -385,7 +398,14 @@ fn table_ui(
                 // path
                 if state.filters.col_entity_path {
                     row.col(|ui| {
-                        item_ui::entity_path_button(ctx, ui, None, &entry.entity_path);
+                        item_ui::entity_path_button(
+                            ctx,
+                            &query,
+                            store,
+                            ui,
+                            None,
+                            &entry.entity_path,
+                        );
                     });
                 }
 

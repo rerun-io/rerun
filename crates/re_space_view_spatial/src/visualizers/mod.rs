@@ -28,7 +28,7 @@ pub use points3d::{LoadedPoints, Points3DComponentData};
 use ahash::HashMap;
 
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_types::components::{Color, InstanceKey, Text};
+use re_types::components::{Color, InstanceKey};
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_types::Archetype;
 use re_viewer_context::{
@@ -87,29 +87,6 @@ pub fn register_3d_spatial_visualizers(
     Ok(())
 }
 
-pub fn calculate_bounding_box(
-    visualizers: &VisualizerCollection,
-    bounding_box_accum: &mut macaw::BoundingBox,
-) -> macaw::BoundingBox {
-    let mut bounding_box = macaw::BoundingBox::nothing();
-    for visualizer in visualizers.iter() {
-        if let Some(data) = visualizer
-            .data()
-            .and_then(|d| d.downcast_ref::<SpatialViewVisualizerData>())
-        {
-            bounding_box = bounding_box.union(data.bounding_box);
-        }
-    }
-
-    if bounding_box_accum.is_nothing() || !bounding_box_accum.size().is_finite() {
-        *bounding_box_accum = bounding_box;
-    } else {
-        *bounding_box_accum = bounding_box_accum.union(bounding_box);
-    }
-
-    bounding_box
-}
-
 pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
     let mut ui_labels = Vec::new();
     for visualizer in visualizers.iter() {
@@ -149,31 +126,68 @@ pub fn process_colors<'a, A: Archetype>(
 
 /// Process [`Color`] components using annotations and default colors.
 pub fn process_color_slice<'a>(
-    colors: &'a [Option<Color>],
+    colors: Option<&'a [Option<Color>]>,
     ent_path: &'a EntityPath,
     annotation_infos: &'a ResolvedAnnotationInfos,
-) -> impl Iterator<Item = egui::Color32> + 'a {
+) -> Vec<egui::Color32> {
+    // This can be rather slow for colors with transparency, since we need to pre-multiply the alpha.
     re_tracing::profile_function!();
+
     let default_color = DefaultColor::EntityPath(ent_path);
 
-    itertools::izip!(annotation_infos.iter(), colors).map(move |(annotation_info, color)| {
-        annotation_info.color(color.map(|c| c.to_array()), default_color)
-    })
+    match (colors, annotation_infos) {
+        (None, ResolvedAnnotationInfos::Same(count, annotation_info)) => {
+            re_tracing::profile_scope!("no colors, same annotation");
+            let color = annotation_info.color(None, default_color);
+            vec![color; *count]
+        }
+
+        (None, ResolvedAnnotationInfos::Many(annotation_infos)) => {
+            re_tracing::profile_scope!("no-colors, many annotations");
+            annotation_infos
+                .iter()
+                .map(|annotation_info| annotation_info.color(None, default_color))
+                .collect()
+        }
+
+        (Some(colors), ResolvedAnnotationInfos::Same(count, annotation_info)) => {
+            re_tracing::profile_scope!("many-colors, same annotation");
+            debug_assert_eq!(colors.len(), *count);
+            colors
+                .iter()
+                .map(|color| annotation_info.color(color.map(|c| c.to_array()), default_color))
+                .collect()
+        }
+
+        (Some(colors), ResolvedAnnotationInfos::Many(annotation_infos)) => {
+            re_tracing::profile_scope!("many-colors, many annotations");
+            colors
+                .iter()
+                .zip(annotation_infos.iter())
+                .map(move |(color, annotation_info)| {
+                    annotation_info.color(color.map(|c| c.to_array()), default_color)
+                })
+                .collect()
+        }
+    }
 }
 
-/// Process [`Text`] components using annotations.
-#[allow(dead_code)]
-pub fn process_labels<'a, A: Archetype>(
-    arch_view: &'a re_query::ArchetypeView<A>,
-    annotation_infos: &'a ResolvedAnnotationInfos,
-) -> Result<impl Iterator<Item = Option<String>> + 'a, re_query::QueryError> {
+/// Process `Text` components using annotations.
+pub fn process_label_slice(
+    labels: Option<&[Option<re_types::components::Text>]>,
+    default_len: usize,
+    annotation_infos: &ResolvedAnnotationInfos,
+) -> Vec<Option<String>> {
     re_tracing::profile_function!();
 
-    Ok(itertools::izip!(
-        annotation_infos.iter(),
-        arch_view.iter_optional_component::<Text>()?,
-    )
-    .map(move |(annotation_info, text)| annotation_info.label(text.as_ref().map(|t| t.as_str()))))
+    match labels {
+        None => vec![None; default_len],
+        Some(labels) => itertools::izip!(annotation_infos.iter(), labels)
+            .map(move |(annotation_info, text)| {
+                annotation_info.label(text.as_ref().map(|t| t.as_str()))
+            })
+            .collect(),
+    }
 }
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
@@ -191,15 +205,23 @@ pub fn process_radii<'a, A: Archetype>(
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
-pub fn process_radius_slice<'a>(
-    radii: &'a [Option<re_types::components::Radius>],
+pub fn process_radius_slice(
+    radii: Option<&[Option<re_types::components::Radius>]>,
+    default_len: usize,
     ent_path: &EntityPath,
-) -> impl Iterator<Item = re_renderer::Size> + 'a {
+) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
     let ent_path = ent_path.clone();
-    radii
-        .iter()
-        .map(move |radius| process_radius(&ent_path, radius))
+
+    match radii {
+        None => {
+            vec![re_renderer::Size::AUTO; default_len]
+        }
+        Some(radii) => radii
+            .iter()
+            .map(|radius| process_radius(&ent_path, radius))
+            .collect(),
+    }
 }
 
 fn process_radius(
@@ -424,61 +446,64 @@ pub fn image_view_coordinates() -> re_types::components::ViewCoordinates {
     re_types::components::ViewCoordinates::RDF
 }
 
-/// If 2d object is shown in a 3d space view, it is only then visualizable, if it is under a pinhole camera.
 fn filter_visualizable_2d_entities(
     entities: ApplicableEntities,
     context: &dyn VisualizableFilterContext,
 ) -> VisualizableEntities {
-    // `VisualizableFilterContext3D` will only be available if we're in a 3D space view.
     if let Some(context) = context
         .as_any()
-        .downcast_ref::<VisualizableFilterContext3D>()
+        .downcast_ref::<VisualizableFilterContext2D>()
     {
         VisualizableEntities(
-            entities
-                .0
-                .into_iter()
-                .filter(|ent_path| context.entities_under_pinhole.contains(&ent_path.hash()))
+            context
+                .entities_in_main_2d_space
+                .intersection(&entities.0)
+                .cloned()
                 .collect(),
         )
     } else if let Some(context) = context
         .as_any()
-        .downcast_ref::<VisualizableFilterContext2D>()
+        .downcast_ref::<VisualizableFilterContext3D>()
     {
-        if !context.invalid_subtrees.is_empty() {
-            VisualizableEntities(
-                entities
-                    .0
-                    .into_iter()
-                    .filter(|ent_path| {
-                        !context
-                            .invalid_subtrees
-                            .iter()
-                            .any(|invalid_subtree| ent_path.starts_with(invalid_subtree))
-                    })
-                    .collect(),
-            )
-        } else {
-            VisualizableEntities(entities.0)
-        }
+        VisualizableEntities(
+            context
+                .entities_under_pinholes
+                .intersection(&entities.0)
+                .cloned()
+                .collect(),
+        )
     } else {
         VisualizableEntities(entities.0)
     }
 }
 
-/// If 3d object is shown in a 2d space view, it is only visualizable, if the origin of the space view has a pinhole camera.
 fn filter_visualizable_3d_entities(
     entities: ApplicableEntities,
     context: &dyn VisualizableFilterContext,
 ) -> VisualizableEntities {
-    // `VisualizableFilterContext2D` will only be available if we're in a 2D space view.
-    if context
+    if let Some(context) = context
         .as_any()
         .downcast_ref::<VisualizableFilterContext2D>()
-        .map_or(true, |c| c.has_pinhole_at_origin)
     {
-        VisualizableEntities(entities.0)
+        VisualizableEntities(
+            context
+                .reprojectable_3d_entities
+                .intersection(&entities.0)
+                .cloned()
+                .collect(),
+        )
+    } else if let Some(context) = context
+        .as_any()
+        .downcast_ref::<VisualizableFilterContext3D>()
+    {
+        VisualizableEntities(
+            context
+                .entities_in_main_3d_space
+                .intersection(&entities.0)
+                .cloned()
+                .collect(),
+        )
     } else {
-        VisualizableEntities::default()
+        VisualizableEntities(entities.0)
     }
 }

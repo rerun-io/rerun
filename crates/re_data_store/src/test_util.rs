@@ -1,4 +1,6 @@
-use crate::{DataStore, DataStoreConfig};
+use re_log_types::DataTable;
+
+use crate::{DataStore, DataStoreConfig, WriteError};
 
 // ---
 
@@ -59,5 +61,21 @@ pub fn sanity_unwrap(store: &DataStore) {
         store.sort_indices_if_needed();
         eprintln!("{store}");
         err.unwrap();
+    }
+}
+
+// We very often re-use RowIds when generating test data.
+pub fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
+    for row in table.to_rows() {
+        let mut row = row.unwrap();
+        loop {
+            match store.insert_row(&row) {
+                Ok(_) => break,
+                Err(WriteError::ReusedRowId(_)) => {
+                    row.row_id = row.row_id.next();
+                }
+                err @ Err(_) => err.map(|_| ()).unwrap(),
+            }
+        }
     }
 }

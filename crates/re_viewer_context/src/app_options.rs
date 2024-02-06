@@ -17,25 +17,32 @@ pub struct AppOptions {
     /// Enable experimental dataframe space views.
     pub experimental_dataframe_space_view: bool,
 
-    /// Use the legacy container blueprint storage for the space view.
-    pub legacy_container_blueprint: bool,
-
     pub experimental_entity_filter_editor: bool,
 
     /// Enable the experimental support for the container addition workflow.
     pub experimental_additive_workflow: bool,
 
-    /// Toggle primary caching for the 2D & 3D point cloud space views.
-    pub experimental_primary_caching_point_clouds: bool,
+    /// Toggle primary caching for latest-at queries.
+    ///
+    /// Applies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.
+    pub experimental_primary_caching_latest_at: bool,
 
-    /// Toggle primary caching for the time series & text logs space views.
-    pub experimental_primary_caching_series: bool,
+    /// Toggle primary caching for range queries.
+    ///
+    /// Applies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.
+    pub experimental_primary_caching_range: bool,
+
+    /// Toggle query clamping for the plot visualizers.
+    pub experimental_plot_query_clamping: bool,
 
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
-    /// Includes the blueprint in the timeline view.
-    pub show_blueprint_in_timeline: bool,
+    /// Inspect the blueprint timeline.
+    pub inspect_blueprint_timeline: bool,
+
+    /// Disable garbage collection of the blueprint.
+    pub blueprint_gc: bool,
 
     /// What time zone to display timestamps in.
     pub time_zone_for_timestamps: TimeZone,
@@ -54,23 +61,20 @@ impl Default for AppOptions {
 
             experimental_dataframe_space_view: false,
 
-            legacy_container_blueprint: false,
-
             experimental_entity_filter_editor: false,
 
             experimental_additive_workflow: cfg!(debug_assertions),
 
-            // TODO(cmc): default to true for debug/rerun-workspace once minimal features have been
-            // merged in.
-            experimental_primary_caching_point_clouds: false,
+            experimental_primary_caching_latest_at: true,
+            experimental_primary_caching_range: true,
 
-            // TODO(cmc): default to true for debug/rerun-workspace once minimal features have been
-            // merged in.
-            experimental_primary_caching_series: false,
+            experimental_plot_query_clamping: false,
 
             show_picking_debug_overlay: false,
 
-            show_blueprint_in_timeline: false,
+            inspect_blueprint_timeline: false,
+
+            blueprint_gc: true,
 
             time_zone_for_timestamps: TimeZone::Utc,
         }

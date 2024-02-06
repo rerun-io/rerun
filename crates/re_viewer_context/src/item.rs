@@ -1,9 +1,7 @@
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, DataPath, EntityPath};
 
-use crate::DataQueryId;
-
-use super::SpaceViewId;
+use crate::{ContainerId, DataQueryId, SpaceViewId};
 
 /// One "thing" in the UI.
 ///
@@ -16,7 +14,18 @@ pub enum Item {
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
     DataBlueprintGroup(SpaceViewId, DataQueryId, EntityPath),
-    Container(egui_tiles::TileId),
+    Container(ContainerId),
+}
+
+impl Item {
+    pub fn entity_path(&self) -> Option<&EntityPath> {
+        match self {
+            Item::ComponentPath(component_path) => Some(&component_path.entity_path),
+            Item::SpaceView(_) | Item::Container(_) | Item::StoreId(_) => None,
+            Item::InstancePath(_, instance_path) => Some(&instance_path.entity_path),
+            Item::DataBlueprintGroup(_, _, entity_path) => Some(entity_path),
+        }
+    }
 }
 
 impl From<SpaceViewId> for Item {
@@ -155,7 +164,7 @@ pub fn resolve_mono_instance_path(
             return re_entity_db::InstancePath::entity_splat(instance.entity_path.clone());
         };
         for component in components {
-            if let Some((_row_id, instances)) = re_query::get_component_with_instances(
+            if let Some((_, _row_id, instances)) = re_query::get_component_with_instances(
                 store,
                 query,
                 &instance.entity_path,

@@ -22,7 +22,7 @@ use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewContextCollection,
     ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerSystem,
+    VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -285,7 +285,11 @@ impl ImageVisualizer {
                 if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
-                    self.extend_bbox(&textured_rect);
+                    self.data.add_bounding_box(
+                        ent_path.hash(),
+                        Self::compute_bounding_box(&textured_rect),
+                        ent_context.world_from_entity,
+                    );
                 }
 
                 self.images.push(ViewerImage {
@@ -380,8 +384,11 @@ impl ImageVisualizer {
                         parent_pinhole_path,
                     ) {
                         Ok(cloud) => {
-                            self.data
-                                .extend_bounding_box(cloud.bbox(), cloud.world_from_rdf);
+                            self.data.add_bounding_box(
+                                ent_path.hash(),
+                                cloud.bbox(),
+                                cloud.world_from_rdf,
+                            );
                             self.depth_cloud_entities.insert(ent_path.hash());
                             depth_clouds.push(cloud);
                             return Ok(());
@@ -416,7 +423,11 @@ impl ImageVisualizer {
                 if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
-                    self.extend_bbox(&textured_rect);
+                    self.data.add_bounding_box(
+                        ent_path.hash(),
+                        Self::compute_bounding_box(&textured_rect),
+                        ent_context.world_from_entity,
+                    );
                 }
 
                 self.images.push(ViewerImage {
@@ -515,7 +526,11 @@ impl ImageVisualizer {
                 if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
-                    self.extend_bbox(&textured_rect);
+                    self.data.add_bounding_box(
+                        ent_path.hash(),
+                        Self::compute_bounding_box(&textured_rect),
+                        ent_context.world_from_entity,
+                    );
                 }
 
                 self.images.push(ViewerImage {
@@ -624,16 +639,20 @@ impl ImageVisualizer {
         })
     }
 
-    fn extend_bbox(&mut self, textured_rect: &TexturedRect) {
+    fn compute_bounding_box(textured_rect: &TexturedRect) -> macaw::BoundingBox {
         let left_top = textured_rect.top_left_corner_position;
         let extent_u = textured_rect.extent_u;
         let extent_v = textured_rect.extent_v;
-        self.data.bounding_box.extend(left_top);
-        self.data.bounding_box.extend(left_top + extent_u);
-        self.data.bounding_box.extend(left_top + extent_v);
-        self.data
-            .bounding_box
-            .extend(left_top + extent_v + extent_u);
+
+        macaw::BoundingBox::from_points(
+            [
+                left_top,
+                left_top + extent_u,
+                left_top + extent_v,
+                left_top + extent_v + extent_u,
+            ]
+            .into_iter(),
+        )
     }
 }
 
@@ -654,7 +673,15 @@ impl VisualizerAdditionalApplicabilityFilter for ImageVisualizerEntityFilter {
 }
 
 impl VisualizerSystem for ImageVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        let indicators = [
+            Image::indicator().name(),
+            DepthImage::indicator().name(),
+            SegmentationImage::indicator().name(),
+        ]
+        .into_iter()
+        .collect();
+
         let image: ComponentNameSet = Image::required_components()
             .iter()
             .map(ToOwned::to_owned)
@@ -668,23 +695,26 @@ impl VisualizerSystem for ImageVisualizer {
             .map(ToOwned::to_owned)
             .collect();
 
-        image
+        let required = image
             .intersection(&depth_image)
             .map(ToOwned::to_owned)
             .collect::<ComponentNameSet>()
             .intersection(&segmentation_image)
             .map(ToOwned::to_owned)
-            .collect()
-    }
+            .collect();
 
-    fn indicator_components(&self) -> ComponentNameSet {
-        [
-            Image::indicator().name(),
-            DepthImage::indicator().name(),
-            SegmentationImage::indicator().name(),
-        ]
-        .into_iter()
-        .collect()
+        let queried = Image::all_components()
+            .iter()
+            .chain(DepthImage::all_components().iter())
+            .chain(SegmentationImage::all_components().iter())
+            .map(ToOwned::to_owned)
+            .collect();
+
+        VisualizerQueryInfo {
+            indicators,
+            required,
+            queried,
+        }
     }
 
     fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {

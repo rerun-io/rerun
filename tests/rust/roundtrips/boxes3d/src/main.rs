@@ -4,7 +4,6 @@ use rerun::{
     archetypes::Boxes3D,
     components::Rotation3D,
     datatypes::{Quaternion, RotationAxisAngle},
-    external::re_log,
     transform::Angle,
     RecordingStream,
 };
@@ -36,7 +35,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
 }
 
 fn main() -> anyhow::Result<()> {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     use clap::Parser as _;
     let args = Args::parse();

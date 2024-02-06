@@ -15,7 +15,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: Whether the container or space view is currently visible.
+    /// **Component**: Whether the container, space view, entity or instance is currently visible.
     struct Visible {
         bool visible;
 

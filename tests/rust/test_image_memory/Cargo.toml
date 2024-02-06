@@ -7,7 +7,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-rerun = { workspace = true, features = ["sdk", "image"] }
 re_format.workspace = true
+rerun = { workspace = true, features = ["sdk", "image"] }
 
 mimalloc.workspace = true

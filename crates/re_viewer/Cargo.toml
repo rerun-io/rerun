@@ -28,13 +28,10 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = ["analytics", "webgl"]
+default = ["analytics"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
-
-## Render using webgl instead of webgpu on wasm builds.
-webgl = ["re_renderer/webgl"]
 
 [dependencies]
 # Internal:
@@ -45,12 +42,18 @@ re_data_ui.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }
 re_error.workspace = true
 re_format.workspace = true
-re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
+re_log = { workspace = true, features = ["setup"] }
+re_log_encoding = { workspace = true, features = [
+  "decoder",
+  "encoder",
+  "stream_from_http",
+] }
 re_log_types.workspace = true
-re_log.workspace = true
 re_memory.workspace = true
+re_query_cache.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_smart_channel.workspace = true
+re_space_view.workspace = true
 re_space_view_bar_chart.workspace = true
 re_space_view_dataframe.workspace = true
 re_space_view_spatial.workspace = true
@@ -58,11 +61,10 @@ re_space_view_tensor.workspace = true
 re_space_view_text_document = { workspace = true, features = ["markdown"] }
 re_space_view_text_log.workspace = true
 re_space_view_time_series.workspace = true
-re_space_view.workspace = true
 re_time_panel.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
-re_types_core.workspace = true
 re_types.workspace = true
+re_types_core.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport.workspace = true
@@ -83,6 +85,7 @@ eframe = { workspace = true, default-features = false, features = [
   "puffin",
   "wgpu",
 ] }
+egui_extras.workspace = true
 egui_plot.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
@@ -103,7 +106,15 @@ wgpu.workspace = true
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen.workspace = true
 wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = [
+  'Location',
+  'Url',
+  'UrlSearchParams',
+  'Window',
+] }
+
 
 [build-dependencies]
 re_build_tools.workspace = true

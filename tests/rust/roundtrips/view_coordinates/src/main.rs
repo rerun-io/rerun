@@ -1,6 +1,6 @@
 //! Logs a `ViewCoordinate` archetype for roundtrip checks.
 
-use rerun::{archetypes::ViewCoordinates, external::re_log, RecordingStream};
+use rerun::{archetypes::ViewCoordinates, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -15,7 +15,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
 }
 
 fn main() -> anyhow::Result<()> {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     use clap::Parser as _;
     let args = Args::parse();

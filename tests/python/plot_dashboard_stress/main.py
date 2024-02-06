@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import math
-import random
 import time
 
 import numpy as np
@@ -39,8 +38,21 @@ order = [
     "random",
 ]
 parser.add_argument(
-    "--order", type=str, default="forwards", help="What order to log the data in (applies to all series)"
+    "--order", type=str, default=order[0], help="What order to log the data in (applies to all series)", choices=order
 )
+
+series_type = [
+    "gaussian-random-walk",
+    "sin-uniform",
+]
+parser.add_argument(
+    "--series-type",
+    type=str,
+    default=series_type[0],
+    choices=series_type,
+    help="The method used to generate time series",
+)
+
 
 # TODO(cmc): could have flags to add attributes (color, radius...) to put some more stress
 # on the line fragmenter.
@@ -57,11 +69,12 @@ def main() -> None:
     num_series = len(plot_paths) * len(series_paths)
     time_per_tick = 1.0 / args.freq
     expected_total_freq = args.freq * num_series
+    stop_time = args.num_points_per_series * time_per_tick
 
     if args.order == "forwards":
-        sim_times = np.arange(args.num_points_per_series)
+        sim_times = np.arange(0, stop_time, time_per_tick)
     elif args.order == "backwards":
-        sim_times = np.arange(args.num_points_per_series)[::-1]
+        sim_times = np.arange(0, stop_time, time_per_tick)[::-1]
     else:
         sim_times = np.random.randint(0, args.num_points_per_series)
 
@@ -71,15 +84,32 @@ def main() -> None:
     tick_start_time = time.time()
     max_load = 0.0
 
-    for sim_time in sim_times:
+    values_shape = (
+        len(sim_times),
+        len(plot_paths),
+        len(series_paths),
+    )
+    if args.series_type == "gaussian-random-walk":
+        values = np.cumsum(np.random.normal(size=values_shape), axis=0)
+    elif args.series_type == "sin-uniform":
+        values = np.sin(np.random.uniform(0, math.pi, size=values_shape))
+    else:
+        # Just generate random numbers rather than crash
+        values = np.random.normal(size=values_shape)
+
+    for plot_path in plot_paths:
+        for series_path in series_paths:
+            rr.log(f"{plot_path}/{series_path}", rr.SeriesLine())
+
+    for time_step, sim_time in enumerate(sim_times):
         rr.set_time_seconds("sim_time", sim_time)
 
         # Log
 
-        for plot_path in plot_paths:
-            for series_path in series_paths:
-                value = math.sin(random.uniform(0.0, math.pi))
-                rr.log(f"{plot_path}/{series_path}", rr.TimeSeriesScalar(value))
+        for plot_idx, plot_path in enumerate(plot_paths):
+            for series_idx, series_path in enumerate(series_paths):
+                value = values[time_step, plot_idx, series_idx]
+                rr.log(f"{plot_path}/{series_path}", rr.Scalar(value))
 
         # Progress report
 

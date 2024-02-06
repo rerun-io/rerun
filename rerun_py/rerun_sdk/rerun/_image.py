@@ -21,11 +21,47 @@ class ImageFormat:
     name: str
 
     BMP: ImageFormat
+    """
+    BMP file format.
+    """
+
     GIF: ImageFormat
+    """
+    JPEG/JPG file format.
+    """
+
     JPEG: ImageFormat
+    """
+    JPEG/JPG file format.
+    """
+
     PNG: ImageFormat
+    """
+    PNG file format.
+    """
+
     TIFF: ImageFormat
+    """
+    TIFF file format.
+    """
+
     NV12: type[NV12]
+    """
+    Raw NV12 encoded image.
+
+    The type comes with a `size_hint` attribute, a tuple of (height, width)
+    which has to be specified specifying in order to set the RGB size of the image.
+    """
+
+    YUY2: type[YUY2]
+    """
+    Raw YUY2 encoded image.
+
+    YUY2 is a YUV422 encoding with bytes ordered as `yuyv`.
+
+    The type comes with a `size_hint` attribute, a tuple of (height, width)
+    which has to be specified specifying in order to set the RGB size of the image.
+    """
 
     def __init__(self, name: str):
         self.name = name
@@ -52,6 +88,26 @@ class NV12(ImageFormat):
         self.size_hint = size_hint
 
 
+class YUY2(ImageFormat):
+    """YUY2 format."""
+
+    name = "YUY2"
+    size_hint: tuple[int, int]
+
+    def __init__(self, size_hint: tuple[int, int]) -> None:
+        """
+        An YUY2 encoded image.
+
+        YUY2 is a YUV422 encoding with bytes ordered as `yuyv`.
+
+        Parameters
+        ----------
+        size_hint:
+            A tuple of (height, width), specifying the RGB size of the image
+        """
+        self.size_hint = size_hint
+
+
 # Assign the variants
 # This allows for rust like enums, for example:
 # ImageFormat.NV12(width=1920, height=1080)
@@ -62,6 +118,7 @@ ImageFormat.JPEG = ImageFormat("JPEG")
 ImageFormat.PNG = ImageFormat("PNG")
 ImageFormat.TIFF = ImageFormat("TIFF")
 ImageFormat.NV12 = NV12
+ImageFormat.YUY2 = YUY2
 
 
 class ImageEncoded(AsComponents):
@@ -92,8 +149,9 @@ class ImageEncoded(AsComponents):
             The contents of the file. Can be a BufferedReader, BytesIO, or
             bytes. Mutually exclusive with `path`.
         format:
-            The format of the image file. If not provided, it will be inferred
-            from the file extension.
+            The format of the image file or image encoding.
+            If not provided, it will be inferred from the file extension if a path is specified.
+            Note that encodings like NV12 and YUY2 can not be inferred from the file extension.
         draw_order:
             An optional floating point value that specifies the 2D drawing
             order. Objects with higher values are drawn on top of those with
@@ -115,11 +173,19 @@ class ImageEncoded(AsComponents):
 
         formats = None
         if format is not None:
-            if isinstance(format, NV12):
+            if isinstance(format, NV12) or isinstance(format, YUY2):
                 np_buf = np.frombuffer(buffer.read(), dtype=np.uint8)
-                np_buf = np_buf.reshape(int(format.size_hint[0] * 1.5), format.size_hint[1])
+
+                if isinstance(format, NV12):
+                    np_buf = np_buf.reshape(int(format.size_hint[0] * 1.5), format.size_hint[1])
+                    kind = "nv12"
+                elif isinstance(format, YUY2):
+                    np_buf = np_buf.reshape(format.size_hint[0], int(format.size_hint[1] * 2))
+                    kind = "yuy2"
+
                 tensor_buffer = TensorBuffer(np_buf)
-                tensor_buffer.kind = "nv12"
+                tensor_buffer.kind = kind  # type: ignore[assignment]
+
                 self.data = TensorData(
                     buffer=tensor_buffer,
                     shape=[
@@ -141,10 +207,17 @@ class ImageEncoded(AsComponents):
             tensor_buffer = TensorBuffer(np.frombuffer(np_buffer, dtype=np.uint8))
             tensor_buffer.kind = "jpeg"
 
+            if img_data.mode == "L":
+                depth = 1
+            elif img_data.mode == "RGB":
+                depth = 3
+            else:
+                raise ValueError(f"Unsupported JPEG mode: {img_data.mode}")
+
             tensor_shape = (
                 TensorDimension(img_data.height, "height"),
                 TensorDimension(img_data.width, "width"),
-                TensorDimension(3, "depth"),
+                TensorDimension(depth, "depth"),
             )
             tensor_data = TensorData(buffer=tensor_buffer, shape=tensor_shape)
         else:

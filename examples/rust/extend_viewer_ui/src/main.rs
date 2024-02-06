@@ -15,7 +15,7 @@ static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Direct calls using the `log` crate to stderr. Control with `RUST_LOG=debug` etc.
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     // Install handlers for panics and crashes that prints to stderr and send
     // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_app_id("rerun_extend_viewer_ui_example"),
-        ..re_viewer::native::eframe_options()
+        ..re_viewer::native::eframe_options(None)
     };
 
     let startup_options = re_viewer::StartupOptions::default();
@@ -154,7 +154,7 @@ fn component_ui(
     // just show the last value logged for each component:
     let query = re_data_store::LatestAtQuery::latest(timeline);
 
-    if let Some((_, component)) = re_query::get_component_with_instances(
+    if let Some((_, _, component)) = re_query::get_component_with_instances(
         entity_db.store(),
         &query,
         entity_path,

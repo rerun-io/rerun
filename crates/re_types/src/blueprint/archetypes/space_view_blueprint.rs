@@ -28,7 +28,7 @@ pub struct SpaceViewBlueprint {
     pub class_identifier: crate::blueprint::components::SpaceViewClass,
 
     /// The name of the view.
-    pub display_name: Option<crate::blueprint::components::Name>,
+    pub display_name: Option<crate::components::Name>,
 
     /// The "anchor point" of this space view.
     ///
@@ -65,7 +65,7 @@ impl ::re_types_core::SizeBytes for SpaceViewBlueprint {
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::components::SpaceViewClass>::is_pod()
-            && <Option<crate::blueprint::components::Name>>::is_pod()
+            && <Option<crate::components::Name>>::is_pod()
             && <Option<crate::blueprint::components::SpaceViewOrigin>>::is_pod()
             && <Option<crate::blueprint::components::EntitiesDeterminedByUser>>::is_pod()
             && <Option<crate::blueprint::components::IncludedQueries>>::is_pod()
@@ -86,10 +86,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
         [
             "rerun.blueprint.components.EntitiesDeterminedByUser".into(),
             "rerun.blueprint.components.IncludedQueries".into(),
-            "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.SpaceViewOrigin".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
+            "rerun.components.Name".into(),
         ]
     });
 
@@ -100,10 +100,10 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.blueprint.components.SpaceViewBlueprintIndicator".into(),
             "rerun.blueprint.components.EntitiesDeterminedByUser".into(),
             "rerun.blueprint.components.IncludedQueries".into(),
-            "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.SpaceViewOrigin".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
+            "rerun.components.Name".into(),
         ]
     });
 
@@ -172,16 +172,15 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#class_identifier")?
         };
-        let display_name =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Name") {
-                <crate::blueprint::components::Name>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#display_name")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let display_name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
+            <crate::components::Name>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#display_name")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let space_origin =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.SpaceViewOrigin") {
                 <crate::blueprint::components::SpaceViewOrigin>::from_arrow_opt(&**array)
@@ -283,10 +282,7 @@ impl SpaceViewBlueprint {
     }
 
     #[inline]
-    pub fn with_display_name(
-        mut self,
-        display_name: impl Into<crate::blueprint::components::Name>,
-    ) -> Self {
+    pub fn with_display_name(mut self, display_name: impl Into<crate::components::Name>) -> Self {
         self.display_name = Some(display_name.into());
         self
     }

@@ -1,5 +1,3 @@
-use web_time::Instant;
-
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{FileSource, LogMsg, StoreKind};
@@ -58,6 +56,9 @@ pub struct StartupOptions {
     pub resolution_in_points: Option<[f32; 2]>,
 
     pub skip_welcome_screen: bool,
+
+    /// Forces wgpu backend to use the specified graphics API.
+    pub force_wgpu_backend: Option<String>,
 }
 
 impl Default for StartupOptions {
@@ -77,6 +78,7 @@ impl Default for StartupOptions {
             resolution_in_points: None,
 
             skip_welcome_screen: false,
+            force_wgpu_backend: None,
         }
     }
 }
@@ -124,7 +126,7 @@ pub struct App {
     memory_panel: crate::memory_panel::MemoryPanel,
     memory_panel_open: bool,
 
-    style_panel_open: bool,
+    egui_debug_panel_open: bool,
 
     pub(crate) latest_queue_interest: web_time::Instant,
 
@@ -236,7 +238,7 @@ impl App {
             memory_panel: Default::default(),
             memory_panel_open: false,
 
-            style_panel_open: false,
+            egui_debug_panel_open: false,
 
             latest_queue_interest: long_time_ago,
 
@@ -258,7 +260,8 @@ impl App {
     }
 
     pub fn set_examples_manifest_url(&mut self, url: String) {
-        self.state.set_examples_manifest_url(url);
+        self.state
+            .set_examples_manifest_url(&self.re_ui.egui_ctx, url);
     }
 
     pub fn build_info(&self) -> &re_build_info::BuildInfo {
@@ -374,15 +377,29 @@ impl App {
                 store_hub.clear_blueprint();
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
-                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-                for row in updates {
-                    match blueprint_db.add_data_row(row) {
-                        Ok(()) => {}
-                        Err(err) => {
-                            re_log::warn_once!("Failed to store blueprint delta: {err}");
+                // We only want to update the blueprint if the "inspect blueprint timeline" mode is
+                // disabled. This is because the blueprint inspector allows you to change the
+                // blueprint query time, which in turn updates the displayed state of the UI itself.
+                // This means any updates we receive while in this mode may be relative to a historical
+                // blueprint state and would conflict with the current true blueprint state.
+
+                // TODO(jleibs): When the blueprint is in "follow-mode" we should actually be able
+                // to apply updates here, but this needs more validation and testing to be safe.
+                if !self.state.app_options.inspect_blueprint_timeline {
+                    let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                    for row in updates {
+                        match blueprint_db.add_data_row(row) {
+                            Ok(()) => {}
+                            Err(err) => {
+                                re_log::warn_once!("Failed to store blueprint delta: {err}");
+                            }
                         }
                     }
                 }
+            }
+            #[cfg(debug_assertions)]
+            SystemCommand::EnableInspectBlueprintTimeline(show) => {
+                self.app_options_mut().inspect_blueprint_timeline = show;
             }
             SystemCommand::EnableExperimentalDataframeSpaceView(enabled) => {
                 let result = if enabled {
@@ -407,6 +424,10 @@ impl App {
                 } else {
                     re_log::debug!("Failed to select item {item:?}");
                 }
+            }
+
+            SystemCommand::SetFocus(item) => {
+                self.state.focused_item = Some(item);
             }
         }
     }
@@ -498,8 +519,13 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             #[cfg(debug_assertions)]
-            UICommand::ToggleStylePanel => {
-                self.style_panel_open ^= true;
+            UICommand::ToggleBlueprintInspectionPanel => {
+                self.app_options_mut().inspect_blueprint_timeline ^= true;
+            }
+
+            #[cfg(debug_assertions)]
+            UICommand::ToggleEguiDebugPanel => {
+                self.egui_debug_panel_open ^= true;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -573,13 +599,17 @@ impl App {
                 self.screenshotter.request_screenshot(egui_ctx);
             }
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::PrintDatastore => {
+            UICommand::PrintDataStore => {
                 if let Some(ctx) = store_context {
                     if let Some(recording) = ctx.recording {
                         let table = recording.store().to_data_table();
                         match table {
                             Ok(table) => {
-                                println!("{table}");
+                                let text = format!("{table}");
+                                self.re_ui
+                                    .egui_ctx
+                                    .output_mut(|o| o.copied_text = text.clone());
+                                println!("{text}");
                             }
                             Err(err) => {
                                 println!("{err}");
@@ -588,9 +618,62 @@ impl App {
                     }
                 }
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::PrintBlueprintStore => {
+                if let Some(ctx) = store_context {
+                    let table = ctx.blueprint.store().to_data_table();
+                    match table {
+                        Ok(table) => {
+                            let text = format!("{table}");
+                            self.re_ui
+                                .egui_ctx
+                                .output_mut(|o| o.copied_text = text.clone());
+                            println!("{text}");
+                        }
+                        Err(err) => {
+                            println!("{err}");
+                        }
+                    }
+                }
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::ClearPrimaryCache => {
+                if let Some(ctx) = store_context {
+                    if let Some(recording) = ctx.recording {
+                        recording.query_caches().clear();
+                    }
+                }
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::PrintPrimaryCache => {
+                if let Some(ctx) = store_context {
+                    if let Some(recording) = ctx.recording {
+                        let text = format!("{:?}", recording.query_caches());
+                        self.re_ui
+                            .egui_ctx
+                            .output_mut(|o| o.copied_text = text.clone());
+                        println!("{text}");
+                    }
+                }
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            UICommand::RestartWithWebGl => {
+                if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgl").is_err() {
+                    re_log::error!("Failed to set URL parameter `renderer=webgl` & refresh page.");
+                }
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            UICommand::RestartWithWebGpu => {
+                if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgpu").is_err() {
+                    re_log::error!("Failed to set URL parameter `renderer=webgpu` & refresh page.");
+                }
             }
         }
     }
@@ -688,14 +771,26 @@ impl App {
             });
     }
 
-    fn style_panel_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    fn egui_debug_panel_ui(&mut self, ui: &mut egui::Ui) {
+        let egui_ctx = ui.ctx().clone();
+
         egui::SidePanel::left("style_panel")
             .default_width(300.0)
             .resizable(true)
             .frame(self.re_ui.top_panel_frame())
-            .show_animated_inside(ui, self.style_panel_open, |ui| {
+            .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
-                    ctx.settings_ui(ui);
+                    egui::CollapsingHeader::new("egui settings")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            egui_ctx.settings_ui(ui);
+                        });
+
+                    egui::CollapsingHeader::new("egui inspection")
+                        .default_open(false)
+                        .show(ui, |ui| {
+                            egui_ctx.inspection_ui(ui);
+                        });
                 });
             });
     }
@@ -703,6 +798,7 @@ impl App {
     /// Top-level ui function.
     ///
     /// Shows the viewer ui.
+    #[allow(clippy::too_many_arguments)]
     fn ui(
         &mut self,
         egui_ctx: &egui::Context,
@@ -725,11 +821,18 @@ impl App {
 
                 crate::ui::mobile_warning_ui(&self.re_ui, ui);
 
-                crate::ui::top_panel(self, app_blueprint, store_context, gpu_resource_stats, ui);
+                crate::ui::top_panel(
+                    frame,
+                    self,
+                    app_blueprint,
+                    store_context,
+                    gpu_resource_stats,
+                    ui,
+                );
 
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
-                self.style_panel_ui(egui_ctx, ui);
+                self.egui_debug_panel_ui(ui);
 
                 if let Some(store_view) = store_context {
                     static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
@@ -1060,7 +1163,7 @@ impl eframe::App for App {
             // Save the blueprints
             // TODO(#2579): implement web-storage for blueprints as well
             if let Some(hub) = &mut self.store_hub {
-                match hub.gc_and_persist_app_blueprints() {
+                match hub.gc_and_persist_app_blueprints(&self.state.app_options) {
                     Ok(f) => f,
                     Err(err) => {
                         re_log::error!("Saving blueprints failed: {err}");
@@ -1071,7 +1174,10 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let frame_start = Instant::now();
+        if let Some(seconds) = frame.info().cpu_usage {
+            self.frame_time_history
+                .add(egui_ctx.input(|i| i.time), seconds);
+        }
 
         // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
         let mut store_hub = self.store_hub.take().unwrap();
@@ -1123,7 +1229,7 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        let store_stats = store_hub.stats();
+        let store_stats = store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled());
 
         // do early, before doing too many allocations
         self.memory_panel.update(&gpu_resource_stats, &store_stats);
@@ -1136,6 +1242,8 @@ impl eframe::App for App {
 
         self.show_text_logs_as_notifications();
         self.receive_messages(&mut store_hub, egui_ctx);
+
+        store_hub.gc_blueprints(self.app_options());
 
         store_hub.purge_empty();
         self.state.cleanup(&store_hub);
@@ -1150,7 +1258,11 @@ impl eframe::App for App {
 
         let store_context = store_hub.read_context();
 
-        let app_blueprint = AppBlueprint::new(store_context.as_ref(), egui_ctx);
+        let app_blueprint = AppBlueprint::new(
+            store_context.as_ref(),
+            &self.state.blueprint_query_for_viewer(),
+            egui_ctx,
+        );
 
         self.ui(
             egui_ctx,
@@ -1199,12 +1311,6 @@ impl eframe::App for App {
                 open_url.new_tab = true;
             }
         });
-
-        // Frame time measurer - must be last
-        self.frame_time_history.add(
-            egui_ctx.input(|i| i.time),
-            frame_start.elapsed().as_secs_f32(),
-        );
     }
 
     #[cfg(target_arch = "wasm32")]

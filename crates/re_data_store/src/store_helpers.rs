@@ -1,4 +1,4 @@
-use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimePoint, Timeline};
+use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimeInt, TimePoint, Timeline};
 
 use re_types_core::{Component, ComponentName};
 
@@ -6,7 +6,7 @@ use crate::{DataStore, LatestAtQuery};
 
 // --- Read ---
 
-/// A [`Component`] versioned with a specific [`RowId`].
+/// A [`Component`] at a specific _data_ time, versioned with a specific [`RowId`].
 ///
 /// This is not enough to globally, uniquely identify an instance of a component.
 /// For that you will need to combine the `InstancePath` that was used to query
@@ -14,14 +14,22 @@ use crate::{DataStore, LatestAtQuery};
 /// `VersionedInstancePath`.
 #[derive(Debug, Clone)]
 pub struct VersionedComponent<C: Component> {
+    /// `None` if timeless.
+    pub data_time: Option<TimeInt>,
+
     pub row_id: RowId,
+
     pub value: C,
 }
 
-impl<C: Component> From<(RowId, C)> for VersionedComponent<C> {
+impl<C: Component> VersionedComponent<C> {
     #[inline]
-    fn from((row_id, value): (RowId, C)) -> Self {
-        Self { row_id, value }
+    pub fn new(time: Option<TimeInt>, row_id: RowId, value: C) -> Self {
+        Self {
+            data_time: time,
+            row_id,
+            value,
+        }
     }
 }
 
@@ -35,7 +43,8 @@ impl<C: Component> std::ops::Deref for VersionedComponent<C> {
 }
 
 impl DataStore {
-    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`].
+    /// Get the latest value for a given [`re_types_core::Component`], as well as the associated
+    /// _data_ time and [`RowId`].
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will generate a log message of `level` otherwise.
@@ -51,7 +60,8 @@ impl DataStore {
     ) -> Option<VersionedComponent<C>> {
         re_tracing::profile_function!();
 
-        let (row_id, cells) = self.latest_at(query, entity_path, C::name(), &[C::name()])?;
+        let (data_time, row_id, cells) =
+            self.latest_at(query, entity_path, C::name(), &[C::name()])?;
         let cell = cells.first()?.as_ref()?;
 
         cell.try_to_native_mono::<C>()
@@ -93,10 +103,11 @@ impl DataStore {
                 err
             })
             .ok()?
-            .map(|c| (row_id, c).into())
+            .map(|c| VersionedComponent::new(data_time, row_id, c))
     }
 
-    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`].
+    /// Get the latest value for a given [`re_types_core::Component`], as well as the associated
+    /// _data_ time and [`RowId`].
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -113,7 +124,8 @@ impl DataStore {
         self.query_latest_component_with_log_level(entity_path, query, re_log::Level::Warn)
     }
 
-    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`].
+    /// Get the latest value for a given [`re_types_core::Component`], as well as the associated
+    /// _data_ time and [`RowId`].
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will return None and log a debug message otherwise.
@@ -140,15 +152,16 @@ impl DataStore {
 
         let mut cur_path = Some(entity_path.clone());
         while let Some(path) = cur_path {
-            if let Some(c) = self.query_latest_component::<C>(&path, query) {
-                return Some((path, c));
+            if let Some(vc) = self.query_latest_component::<C>(&path, query) {
+                return Some((path, vc));
             }
             cur_path = path.parent();
         }
         None
     }
 
-    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`], assuming it is timeless.
+    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`],
+    /// assuming it is timeless.
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -163,10 +176,14 @@ impl DataStore {
         re_tracing::profile_function!();
 
         let query = LatestAtQuery::latest(Timeline::default());
-        self.query_latest_component(entity_path, &query)
+        self.query_latest_component(entity_path, &query).map(|vc| {
+            debug_assert!(vc.data_time.is_none());
+            vc
+        })
     }
 
-    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`], assuming it is timeless.
+    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`],
+    /// assuming it is timeless.
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will return None and log a debug message otherwise.
@@ -182,6 +199,10 @@ impl DataStore {
 
         let query = LatestAtQuery::latest(Timeline::default());
         self.query_latest_component_quiet(entity_path, &query)
+            .map(|vc| {
+                debug_assert!(vc.data_time.is_none());
+                vc
+            })
     }
 }
 

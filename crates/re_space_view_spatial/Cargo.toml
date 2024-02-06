@@ -34,16 +34,19 @@ re_space_view.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
+bitflags.workspace = true
 bytemuck.workspace = true
 egui = { workspace = true, features = ["serde"] }
 glam.workspace = true
 itertools.workspace = true
 macaw = { workspace = true, features = ["with_serde"] }
 nohash-hasher.workspace = true
+once_cell.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
+web-time.workspace = true
 
 
 [dev-dependencies]

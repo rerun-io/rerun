@@ -12,9 +12,10 @@ use crate::{
         common::{collect_examples_for_api_docs, Example},
         StringExt as _,
     },
-    format_path, ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object,
-    ObjectField, ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES,
-    ATTR_PYTHON_ARRAY_ALIASES,
+    format_path,
+    objects::ObjectType,
+    ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
+    ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 use super::common::ExampleInfo;
@@ -425,11 +426,23 @@ impl PythonCodeGenerator {
                 code.push_unindented_text(format!("\n__all__ = [{manifest}]\n\n\n"), 0);
             }
 
-            let obj_code = if obj.is_struct() {
-                code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
-            } else {
-                code_for_union(arrow_registry, &ext_class, objects, obj)
+            let obj_code = match obj.typ() {
+                crate::objects::ObjectType::Struct => {
+                    code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                }
+                crate::objects::ObjectType::Union => {
+                    code_for_union(arrow_registry, &ext_class, objects, obj)
+                }
+                crate::objects::ObjectType::Enum => {
+                    reporter.error(
+                        &obj.virtpath,
+                        &obj.fqname,
+                        "Enums are not implemented in Python",
+                    );
+                    continue;
+                }
             };
+
             code.push_text(&obj_code, 1, 0);
 
             if ext_class.has_deferred_patch_class {
@@ -569,8 +582,13 @@ fn code_for_struct(
     // Delegating component inheritance comes after the `ExtensionClass`
     // This way if a component needs to override `__init__` it still can.
     if obj.is_delegating_component() {
+        let delegate = obj.delegate_datatype(objects).unwrap();
+        let scope = match delegate.scope() {
+            Some(scope) => format!("{scope}."),
+            None => String::new(),
+        };
         superclasses.push(format!(
-            "datatypes.{}",
+            "{scope}datatypes.{}",
             obj.delegate_datatype(objects).unwrap().name
         ));
     }
@@ -738,7 +756,7 @@ fn code_for_union(
     objects: &Objects,
     obj: &Object,
 ) -> String {
-    assert!(!obj.is_struct());
+    assert_eq!(obj.typ(), ObjectType::Union);
     assert_eq!(obj.kind, ObjectKind::Datatype);
 
     let Object {
@@ -861,6 +879,8 @@ fn code_for_union(
             1,
             4,
         );
+
+        code.push_text(quote_union_kind_from_fields(fields), 0, 4);
     }
 
     code.push_unindented_text(quote_union_aliases_from_object(obj, field_types.iter()), 1);
@@ -1008,7 +1028,7 @@ fn quote_doc_lines(lines: Vec<String>) -> String {
 }
 
 fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String {
-    let mut lines = vec![];
+    let mut lines = vec!["Must be one of:".to_owned(), String::new()];
 
     for field in fields {
         let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
@@ -1024,10 +1044,42 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
             quote_examples(examples, &mut lines);
         }
         lines.push(format!(
-            "{} ({}):",
+            "* {} ({}):",
             field.name,
             quote_field_type_from_field(objects, field, false).0
         ));
+        lines.extend(content.into_iter().map(|line| format!("    {line}")));
+        lines.push(String::new());
+    }
+
+    if lines.is_empty() {
+        return String::new();
+    } else {
+        // remove last empty line
+        lines.pop();
+    }
+
+    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
+    let doc = lines
+        .into_iter()
+        .filter(|line| !line.starts_with(r#"""""#))
+        .collect_vec()
+        .join("\n");
+
+    format!("\"\"\"\n{doc}\n\"\"\"\n\n")
+}
+
+fn quote_union_kind_from_fields(fields: &Vec<ObjectField>) -> String {
+    let mut lines = vec!["Possible values:".to_owned(), String::new()];
+
+    for field in fields {
+        let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        for line in &mut content {
+            if line.starts_with(char::is_whitespace) {
+                line.remove(0);
+            }
+        }
+        lines.push(format!("* {:?}:", field.name));
         lines.extend(content.into_iter().map(|line| format!("    {line}")));
         lines.push(String::new());
     }
@@ -1239,17 +1291,17 @@ fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) ->
         if from.starts_with("rerun.datatypes") {
             "from ... import datatypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.datatypes").as_str()) {
-            "from .. import datatypes".to_owned()
+            format!("from ... import {scope}")
         } else if from.starts_with("rerun.components") {
             "from ... import components".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.components").as_str()) {
-            "from .. import components".to_owned()
+            format!("from ... import {scope}")
         } else if from.starts_with("rerun.archetypes") {
             // NOTE: This is assuming importing other archetypes is legal… which whether it is or
             // isn't for this code generator to say.
             "from ... import archetypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.archetytpes").as_str()) {
-            "from .. import archetypes".to_owned()
+            "from .. import {scope}".to_owned()
         } else if from.is_empty() {
             format!("from . import {class}")
         } else {
@@ -1455,9 +1507,9 @@ fn fqname_to_type(fqname: &str) -> String {
         ["rerun", "datatypes", name] => format!("datatypes.{name}"),
         ["rerun", "components", name] => format!("components.{name}"),
         ["rerun", "archetypes", name] => format!("archetypes.{name}"),
-        ["rerun", _scope, "datatypes", name] => format!("datatypes.{name}"),
-        ["rerun", _scope, "components", name] => format!("components.{name}"),
-        ["rerun", _scope, "archetypes", name] => format!("archetypes.{name}"),
+        ["rerun", scope, "datatypes", name] => format!("{scope}.datatypes.{name}"),
+        ["rerun", scope, "components", name] => format!("{scope}.components.{name}"),
+        ["rerun", scope, "archetypes", name] => format!("{scope}.archetypes.{name}"),
         _ => {
             panic!("Unexpected fqname: {fqname}");
         }
@@ -1507,7 +1559,11 @@ fn quote_arrow_support_from_obj(
     let mut batch_superclasses: Vec<String> = vec![];
 
     let many_aliases = if let Some(data_type) = obj.delegate_datatype(objects) {
-        format!("datatypes.{}ArrayLike", data_type.name)
+        let scope = match data_type.scope() {
+            Some(scope) => format!("{scope}."),
+            None => String::new(),
+        };
+        format!("{scope}datatypes{}ArrayLike", data_type.name)
     } else {
         format!("{name}ArrayLike")
     };
@@ -1517,8 +1573,12 @@ fn quote_arrow_support_from_obj(
         batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
     } else if obj.kind == ObjectKind::Component {
         if let Some(data_type) = obj.delegate_datatype(objects) {
-            let data_extension_type = format!("datatypes.{}Type", data_type.name);
-            let data_extension_array = format!("datatypes.{}Batch", data_type.name);
+            let scope = match data_type.scope() {
+                Some(scope) => format!("{scope}."),
+                None => String::new(),
+            };
+            let data_extension_type = format!("{scope}datatypes.{}Type", data_type.name);
+            let data_extension_array = format!("{scope}datatypes.{}Batch", data_type.name);
             type_superclasses.push(data_extension_type);
             batch_superclasses.push(data_extension_array);
         } else {

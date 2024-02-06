@@ -10,11 +10,10 @@ E.g. to run the `multiview`` example run
 ```
 cargo run -p re_renderer_examples --bin multiview
 ```
-To run the same example on the web using WebGPU:
+
+
+To run the same example on the web:
 ```
 cargo run-wasm -p re_renderer_examples --bin multiview
 ```
-To run the same example on the web using WebGL:
-```
-cargo run-wasm -p re_renderer_examples --bin multiview --features "webgl"
-```
+Note that this will try to use WebGPU and fall back to WebGL if WebGPU is not supported by your browser.

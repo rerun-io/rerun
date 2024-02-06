@@ -20,7 +20,7 @@ use rerun::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<std::process::ExitCode> {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     let _handle = re_data_store::DataStore::register_subscriber(Box::<Orchestrator>::default());
     // Could use the returned handle to get a reference to the view if needed.

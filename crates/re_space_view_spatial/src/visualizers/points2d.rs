@@ -3,12 +3,11 @@ use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points2D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text},
-    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -41,7 +40,7 @@ impl Default for Points2DVisualizer {
 
 impl Points2DVisualizer {
     fn process_labels<'a>(
-        &Points2DComponentData { labels, .. }: &'a Points2DComponentData<'_>,
+        labels: &'a [Option<Text>],
         positions: &'a [glam::Vec3],
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
@@ -131,7 +130,8 @@ impl Points2DVisualizer {
             }
         };
 
-        self.data.extend_bounding_box_with_points(
+        self.data.add_bounding_box_from_points(
+            ent_path.hash(),
             positions.iter().copied(),
             ent_context.world_from_entity,
         );
@@ -142,8 +142,7 @@ impl Points2DVisualizer {
             re_tracing::profile_scope!("labels");
 
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_color_slice(data.colors, ent_path, &annotation_infos).collect::<Vec<_>>();
+            let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
@@ -154,13 +153,15 @@ impl Points2DVisualizer {
                     .collect::<Vec<_>>()
             };
 
-            self.data.ui_labels.extend(Self::process_labels(
-                data,
-                &positions,
-                &instance_path_hashes_for_picking,
-                &colors,
-                &annotation_infos,
-            ));
+            if let Some(labels) = data.labels {
+                self.data.ui_labels.extend(Self::process_labels(
+                    labels,
+                    &positions,
+                    &instance_path_hashes_for_picking,
+                    &colors,
+                    &annotation_infos,
+                ));
+            }
         }
     }
 
@@ -177,15 +178,12 @@ impl Points2DVisualizer {
 
     #[inline]
     pub fn load_radii(
-        &Points2DComponentData { radii, .. }: &Points2DComponentData<'_>,
+        &Points2DComponentData {
+            positions, radii, ..
+        }: &Points2DComponentData<'_>,
         ent_path: &EntityPath,
     ) -> Vec<re_renderer::Size> {
-        re_tracing::profile_function!();
-        let radii = crate::visualizers::process_radius_slice(radii, ent_path);
-        {
-            re_tracing::profile_scope!("collect");
-            radii.collect()
-        }
+        crate::visualizers::process_radius_slice(radii, positions.len(), ent_path)
     }
 
     #[inline]
@@ -194,12 +192,7 @@ impl Points2DVisualizer {
         ent_path: &EntityPath,
         annotation_infos: &ResolvedAnnotationInfos,
     ) -> Vec<re_renderer::Color32> {
-        re_tracing::profile_function!();
-        let colors = crate::visualizers::process_color_slice(colors, ent_path, annotation_infos);
-        {
-            re_tracing::profile_scope!("collect");
-            colors.collect()
-        }
+        crate::visualizers::process_color_slice(colors, ent_path, annotation_infos)
     }
 
     #[inline]
@@ -217,9 +210,9 @@ impl Points2DVisualizer {
 pub struct Points2DComponentData<'a> {
     pub instance_keys: &'a [InstanceKey],
     pub positions: &'a [Position2D],
-    pub colors: &'a [Option<Color>],
-    pub radii: &'a [Option<Radius>],
-    pub labels: &'a [Option<Text>],
+    pub colors: Option<&'a [Option<Color>]>,
+    pub radii: Option<&'a [Option<Radius>]>,
+    pub labels: Option<&'a [Option<Text>]>,
     pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
     pub class_ids: Option<&'a [Option<ClassId>]>,
 }
@@ -231,15 +224,8 @@ impl IdentifiedViewSystem for Points2DVisualizer {
 }
 
 impl VisualizerSystem for Points2DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Points2D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Points2D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Points2D>()
     }
 
     fn filter_visualizable_entities(
@@ -272,7 +258,6 @@ impl VisualizerSystem for Points2DVisualizer {
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            ctx.app_options.experimental_primary_caching_point_clouds,
             |_ctx,
              ent_path,
              _ent_props,
@@ -291,11 +276,8 @@ impl VisualizerSystem for Points2DVisualizer {
                     colors,
                     radii,
                     labels,
-                    keypoint_ids: keypoint_ids
-                        .iter()
-                        .any(Option::is_some)
-                        .then_some(keypoint_ids),
-                    class_ids: class_ids.iter().any(Option::is_some).then_some(class_ids),
+                    keypoint_ids,
+                    class_ids,
                 };
                 self.process_data(query, &data, ent_path, ent_context);
                 Ok(())

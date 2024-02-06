@@ -103,12 +103,13 @@
 
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
 
+#[cfg(feature = "run")]
 mod run;
 
 #[cfg(feature = "sdk")]
 mod sdk;
 
-#[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
+#[cfg(all(feature = "clap", not(target_arch = "wasm32")))]
 pub mod clap;
 
 /// Methods for spawning the native viewer and streaming the SDK log stream to it.
@@ -127,6 +128,7 @@ pub use re_log::default_log_filter;
 #[cfg(feature = "log")]
 pub use log_integration::Logger;
 
+#[cfg(feature = "run")]
 pub use run::{run, CallSource};
 
 #[cfg(feature = "sdk")]
@@ -137,23 +139,34 @@ pub use re_entity_db::external::re_data_store::{
     DataStore, StoreDiff, StoreDiffKind, StoreEvent, StoreGeneration, StoreSubscriber,
 };
 
-pub use re_data_source::{
-    EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE, EXTERNAL_DATA_LOADER_PREFIX,
-};
+/// To register a new external data loader, simply add an executable in your $PATH whose name
+/// starts with this prefix.
+// NOTE: this constant is duplicated in `re_data_source` to avoid an extra dependency here.
+pub const EXTERNAL_DATA_LOADER_PREFIX: &str = "rerun-loader-";
+
+/// When an external `DataLoader` is asked to load some data that it doesn't know
+/// how to load, it should exit with this exit code.
+// NOTE: Always keep in sync with other languages.
+// NOTE: this constant is duplicated in `re_data_source` to avoid an extra dependency here.
+pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 
 /// Re-exports of other crates.
 pub mod external {
     pub use anyhow;
 
     pub use re_build_info;
-    pub use re_data_source;
     pub use re_entity_db;
     pub use re_entity_db::external::*;
     pub use re_format;
 
-    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
+    #[cfg(feature = "run")]
+    pub use re_data_source;
+
+    #[cfg(feature = "clap")]
+    #[cfg(not(target_arch = "wasm32"))]
     pub use clap;
 
+    #[cfg(feature = "run")]
     #[cfg(not(target_arch = "wasm32"))]
     pub use tokio;
 

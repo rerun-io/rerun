@@ -33,6 +33,7 @@ impl DataUi for EntityComponentWithInstances {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         re_tracing::profile_function!(self.component_name().full_name());
 
@@ -84,6 +85,7 @@ impl DataUi for EntityComponentWithInstances {
                     ui,
                     verbosity,
                     query,
+                    store,
                     &self.entity_path,
                     &self.component_data,
                     instance_key,
@@ -120,6 +122,8 @@ impl DataUi for EntityComponentWithInstances {
                                     InstancePath::instance(self.entity_path.clone(), *instance_key);
                                 item_ui::instance_path_button_to(
                                     ctx,
+                                    query,
+                                    store,
                                     ui,
                                     None,
                                     &instance_path,
@@ -132,6 +136,7 @@ impl DataUi for EntityComponentWithInstances {
                                     ui,
                                     UiVerbosity::Small,
                                     query,
+                                    store,
                                     &self.entity_path,
                                     &self.component_data,
                                     instance_key,

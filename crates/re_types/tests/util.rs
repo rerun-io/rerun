@@ -14,7 +14,7 @@ pub fn extract_extensions(datatype: &::arrow2::datatypes::DataType, acc: &mut Ve
             extract_extensions(field.data_type(), acc);
         }
         arrow2::datatypes::DataType::Struct(fields) => {
-            for field in fields {
+            for field in fields.iter() {
                 extract_extensions(field.data_type(), acc);
             }
         }

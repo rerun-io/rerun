@@ -13,11 +13,15 @@
 //! logging of the exact same message.
 
 mod channel_logger;
-mod multi_logger;
 mod result_extensions;
+
+#[cfg(feature = "setup")]
+mod multi_logger;
+
+#[cfg(feature = "setup")]
 mod setup;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(feature = "setup", target_arch = "wasm32"))]
 mod web_logger;
 
 pub use log::{Level, LevelFilter};
@@ -32,11 +36,13 @@ pub use tracing::{debug, error, info, trace, warn};
 // similar to how the log console in a browser will automatically suppress duplicates.
 pub use log_once::{debug_once, error_once, info_once, log_once, trace_once, warn_once};
 
-pub use {
-    channel_logger::*,
-    multi_logger::{add_boxed_logger, add_logger, MultiLoggerNotSetupError},
-    setup::*,
-};
+pub use channel_logger::*;
+
+#[cfg(feature = "setup")]
+pub use multi_logger::{add_boxed_logger, add_logger, MultiLoggerNotSetupError};
+
+#[cfg(feature = "setup")]
+pub use setup::setup_logging;
 
 /// Re-exports of other crates.
 pub mod external {
@@ -71,6 +77,38 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     #[cfg(debug_assertions)]
     "rustls",
 ];
+
+/// Get `RUST_LOG` environment variable or `info`, if not set.
+///
+/// Also sets some other log levels on crates that are too loud.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn default_log_filter() -> String {
+    let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {
+        if cfg!(debug_assertions) {
+            "debug".to_owned()
+        } else {
+            "info".to_owned()
+        }
+    });
+
+    for crate_name in crate::CRATES_AT_ERROR_LEVEL {
+        if !rust_log.contains(&format!("{crate_name}=")) {
+            rust_log += &format!(",{crate_name}=error");
+        }
+    }
+    for crate_name in crate::CRATES_AT_WARN_LEVEL {
+        if !rust_log.contains(&format!("{crate_name}=")) {
+            rust_log += &format!(",{crate_name}=warn");
+        }
+    }
+    for crate_name in crate::CRATES_AT_INFO_LEVEL {
+        if !rust_log.contains(&format!("{crate_name}=")) {
+            rust_log += &format!(",{crate_name}=info");
+        }
+    }
+
+    rust_log
+}
 
 /// Should we log this message given the filter?
 fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> bool {

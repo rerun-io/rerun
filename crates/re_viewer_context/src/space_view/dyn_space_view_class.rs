@@ -3,8 +3,9 @@ use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
-    AutoSpawnHeuristic, PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    IndicatedEntities, PerSystemEntities, PerVisualizer, SmallVisualizerSet,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemRegistrator,
+    SystemExecutionOutput, ViewQuery, ViewerContext, VisualizableEntities,
 };
 
 re_string_interner::declare_new_type!(
@@ -114,13 +115,25 @@ pub trait DynSpaceViewClass: Send + Sync {
         entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext>;
 
-    /// Heuristic used to determine which space view is the best fit for a set of paths.
-    fn auto_spawn_heuristic(
+    /// Choose the default visualizers to enable for this entity.
+    ///
+    /// Helpful for customizing fallback behavior for types that are insufficient
+    /// to determine indicated on their own.
+    ///
+    /// Will only be called for entities where the selected visualizers have not
+    /// been overridden by the blueprint.
+    ///
+    /// This interface provides a default implementation which will return all visualizers
+    /// which are both visualizable and indicated for the given entity.
+    fn choose_default_visualizers(
         &self,
-        _ctx: &ViewerContext<'_>,
-        space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
-    ) -> AutoSpawnHeuristic;
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVisualizerSet;
+
+    /// Determines which space views should be spawned by default for this class.
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
     /// Executed for all active space views on frame start (before any ui is drawn),
     /// can be use for heuristic & state updates before populating the scene.

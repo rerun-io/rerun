@@ -19,6 +19,12 @@ enum Order {
     Random,
 }
 
+#[derive(Debug, clap::ValueEnum, Clone)]
+enum SeriesType {
+    SinUniform,
+    GaussianRandomWalk,
+}
+
 // TODO(cmc): could have flags to add attributes (color, radius...) to put some more stress
 // on the line fragmenter.
 #[derive(Debug, clap::Parser)]
@@ -43,13 +49,17 @@ struct Args {
     #[clap(long, default_value = "1000.0")]
     freq: f64,
 
-    /// What order to log the data in (applies to all series)
+    /// What order to log the data in (applies to all series).
     #[clap(long, value_enum, default_value = "forwards")]
     order: Order,
+
+    /// The method used to generate time series.
+    #[clap(long, value_enum, default_value = "gaussian-random-walk")]
+    series_type: SeriesType,
 }
 
 fn main() -> anyhow::Result<()> {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     use clap::Parser as _;
     let args = Args::parse();
@@ -70,18 +80,38 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
 
     use rand::Rng as _;
     let mut rng = rand::thread_rng();
-    let uniform_pi = rand::distributions::Uniform::new(0f64, std::f64::consts::PI);
+    let distr_uniform_pi = rand::distributions::Uniform::new(0f64, std::f64::consts::PI);
+    let distr_std_normal = rand_distr::StandardNormal;
 
-    let sim_times: Vec<i64> = match args.order {
-        Order::Forwards => (0..args.num_points_per_series as i64).collect(),
-        Order::Backwards => (0..args.num_points_per_series as i64).rev().collect(),
+    let mut sim_times: Vec<f64> = (0..args.num_points_per_series as i64)
+        .map(|i| time_per_tick * i as f64)
+        .collect();
+    match args.order {
+        Order::Forwards => {}
+        Order::Backwards => sim_times.reverse(),
         Order::Random => {
             use rand::seq::SliceRandom as _;
-            let mut sim_times: Vec<i64> = (0..args.num_points_per_series as i64).collect();
             sim_times.shuffle(&mut rng);
-            sim_times
         }
     };
+
+    let values_per_series: Vec<Vec<f64>> = std::iter::from_fn(|| {
+        let mut value = 0.0;
+        let values = (0..args.num_points_per_series)
+            .map(|_| {
+                match args.series_type {
+                    SeriesType::SinUniform => value = rng.sample(distr_uniform_pi).sin(),
+                    SeriesType::GaussianRandomWalk => {
+                        value += rng.sample::<f64, _>(distr_std_normal);
+                    }
+                }
+                value
+            })
+            .collect();
+        Some(values)
+    })
+    .take(num_series as _)
+    .collect();
 
     let mut total_num_scalars = 0;
     let mut total_start_time = std::time::Instant::now();
@@ -89,18 +119,28 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
 
     let mut tick_start_time = std::time::Instant::now();
 
+    for plot_path in &plot_paths {
+        for series_path in &series_paths {
+            rec.log_timeless(
+                format!("{plot_path}/{series_path}"),
+                &rerun::SeriesLine::new(),
+            )?;
+        }
+    }
+
     #[allow(clippy::unchecked_duration_subtraction)]
-    for sim_time in sim_times {
-        rec.set_time_sequence("sim_time", sim_time);
+    for (time_step, sim_time) in sim_times.into_iter().enumerate() {
+        rec.set_time_seconds("sim_time", sim_time);
 
         // Log
 
-        for plot_path in &plot_paths {
-            for series_path in &series_paths {
-                let value = rng.sample(uniform_pi).sin();
+        for (plot_idx, plot_path) in plot_paths.iter().enumerate() {
+            let plot_idx = plot_idx * args.num_series_per_plot as usize;
+            for (series_idx, series_path) in series_paths.iter().enumerate() {
+                let value = values_per_series[plot_idx + series_idx][time_step];
                 rec.log(
                     format!("{plot_path}/{series_path}"),
-                    &rerun::TimeSeriesScalar::new(value),
+                    &rerun::Scalar::new(value),
                 )?;
             }
         }

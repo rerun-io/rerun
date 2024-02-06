@@ -1,6 +1,6 @@
 use ahash::HashMap;
 
-use re_types::ComponentNameSet;
+use re_types::{Archetype, ComponentNameSet};
 
 use crate::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -8,23 +8,50 @@ use crate::{
     VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
 };
 
+pub struct VisualizerQueryInfo {
+    /// These are not required, but if _any_ of these are found, it is a strong indication that this
+    /// system should be active (if also the `required_components` are found).
+    pub indicators: ComponentNameSet,
+
+    /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
+    ///
+    /// This does not include indicator components.
+    pub required: ComponentNameSet,
+
+    /// Returns the set of components that the system _queries_.
+    /// Must include required, usually excludes indicators
+    pub queried: ComponentNameSet,
+}
+
+impl VisualizerQueryInfo {
+    pub fn from_archetype<T: Archetype>() -> Self {
+        Self {
+            indicators: std::iter::once(T::indicator().name()).collect(),
+            required: T::required_components()
+                .iter()
+                .map(ToOwned::to_owned)
+                .collect(),
+            queried: T::all_components().iter().map(ToOwned::to_owned).collect(),
+        }
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            indicators: ComponentNameSet::new(),
+            required: ComponentNameSet::new(),
+            queried: ComponentNameSet::new(),
+        }
+    }
+}
+
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
 pub trait VisualizerSystem: Send + Sync + 'static {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
-    /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
-    ///
-    /// This does not include indicator components.
-    fn required_components(&self) -> ComponentNameSet;
-
-    /// These are not required, but if _any_ of these are found, it is a strong indication that this
-    /// system should be active (if also the `required_components` are found).
-    #[inline]
-    fn indicator_components(&self) -> ComponentNameSet {
-        Default::default()
-    }
+    /// Information about which components are queried by the visualizer.
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo;
 
     /// Filters a set of applicable entities (entities that have all required components),
     /// into to a set of visualizable entities.
@@ -66,6 +93,19 @@ pub trait VisualizerSystem: Send + Sync + 'static {
     }
 
     fn as_any(&self) -> &dyn std::any::Any;
+
+    /// Returns an initial value to use when creating an override for a component for this
+    /// visualizer. This is used as a fallback if the component doesn't already have data.
+    fn initial_override_value(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
+        _entity_path: &re_log_types::EntityPath,
+        _component: &re_types::ComponentName,
+    ) -> Option<re_log_types::DataCell> {
+        None
+    }
 }
 
 pub struct VisualizerCollection {

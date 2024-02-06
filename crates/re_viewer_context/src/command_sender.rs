@@ -33,11 +33,29 @@ pub enum SystemCommand {
     /// is both modified and changed in the same frame.
     UpdateBlueprint(StoreId, Vec<DataRow>),
 
+    /// Show a timeline of the blueprint data.
+    #[cfg(debug_assertions)]
+    EnableInspectBlueprintTimeline(bool),
+
     /// Enable or disable the experimental dataframe space views.
     EnableExperimentalDataframeSpaceView(bool),
 
     /// Set the selection in the recording config of the given recording.
     SetSelection(StoreId, crate::Item),
+
+    /// Sets the focus to the given item.
+    ///
+    /// The focused item is cleared out every frame.
+    /// Focusing is triggered either explicitly by ui-elements saying so
+    /// or by double-clicking on a button representing an item.
+    ///
+    /// Unlike item selection, item focusing is not global state.
+    /// It may however have stateful effects in certain views,
+    /// e.g. the 3D view may follow the last focused item as it moves,
+    /// or a frame may be highlighted for a few frames.
+    ///
+    /// Just like selection highlighting, the exact behavior of focusing is up to the receiving views.
+    SetFocus(crate::Item),
 }
 
 /// Interface for sending [`SystemCommand`] messages.

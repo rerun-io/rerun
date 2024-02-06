@@ -4,12 +4,11 @@ use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Arrows2D,
     components::{Position2D, Text, Vector2D},
-    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{picking_id_from_instance_key, process_annotations, SpatialViewVisualizerData};
@@ -156,7 +155,7 @@ impl Arrows2DVisualizer {
         }
 
         self.data
-            .extend_bounding_box(bounding_box, ent_context.world_from_entity);
+            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
 
         Ok(())
     }
@@ -169,15 +168,8 @@ impl IdentifiedViewSystem for Arrows2DVisualizer {
 }
 
 impl VisualizerSystem for Arrows2DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Arrows2D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Arrows2D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Arrows2D>()
     }
 
     fn filter_visualizable_entities(

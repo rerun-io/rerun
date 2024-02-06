@@ -3,11 +3,13 @@
 mod command;
 mod command_palette;
 mod design_tokens;
+pub mod drag_and_drop;
 pub mod egui_helpers;
 pub mod icons;
 mod layout_job_builder;
 pub mod list_item;
 pub mod modal;
+mod syntax_highlighting;
 pub mod toasts;
 mod toggle_switch;
 
@@ -16,6 +18,7 @@ pub use command_palette::CommandPalette;
 pub use design_tokens::DesignTokens;
 pub use icons::Icon;
 pub use layout_job_builder::LayoutJobBuilder;
+pub use syntax_highlighting::SyntaxHighlighting;
 pub use toggle_switch::toggle_switch;
 
 // ---------------------------------------------------------------------------
@@ -42,6 +45,19 @@ pub struct TopBarStyle {
     /// Extra horizontal space in the top left corner to make room for
     /// close/minimize/maximize buttons (on Mac)
     pub indent: f32,
+}
+
+/// The style of a label.
+///
+/// This should be used for all UI widgets that support these styles.
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LabelStyle {
+    /// Regular style for a label.
+    #[default]
+    Normal,
+
+    /// Label displaying the placeholder text for a yet unnamed item (e.g. an unnamed space view).
+    Unnamed,
 }
 
 // ----------------------------------------------------------------------------
@@ -473,6 +489,85 @@ impl ReUi {
         response
     }
 
+    /// Create a separator similar to [`egui::Separator`] but with the full span behavior.
+    ///
+    /// The span is determined by the current clip rectangle. Contrary to [`egui::Separator`], this separator allocates
+    /// a single pixel in height, as spacing is typically handled by content when full span highlighting is used.
+    pub fn full_span_separator(ui: &mut egui::Ui) -> egui::Response {
+        let height = 1.0;
+
+        let available_space = ui.available_size_before_wrap();
+        let size = egui::vec2(available_space.x, height);
+
+        let (rect, response) = ui.allocate_at_least(size, egui::Sense::hover());
+        let clip_rect = ui.clip_rect();
+
+        if ui.is_rect_visible(response.rect) {
+            let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
+            let painter = ui.painter();
+
+            painter.hline(
+                clip_rect.left()..=clip_rect.right(),
+                painter.round_to_pixel(rect.center().y),
+                stroke,
+            );
+        }
+
+        response
+    }
+
+    /// Popup similar to [`egui::popup_below_widget`] but suitable for use with
+    /// [`crate::list_item::ListItem`].
+    pub fn list_item_popup<R>(
+        ui: &egui::Ui,
+        popup_id: egui::Id,
+        widget_response: &egui::Response,
+        vertical_offset: f32,
+        add_contents: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> Option<R> {
+        if !ui.memory(|mem| mem.is_popup_open(popup_id)) {
+            return None;
+        }
+
+        let pos = widget_response.rect.left_bottom() + egui::vec2(0.0, vertical_offset);
+        let pivot = Align2::LEFT_TOP;
+
+        let mut ret = None;
+        egui::Area::new(popup_id)
+            .order(egui::Order::Foreground)
+            .constrain(true)
+            .fixed_pos(pos)
+            .pivot(pivot)
+            .show(ui.ctx(), |ui| {
+                let frame = egui::Frame {
+                    fill: ui.visuals().panel_fill,
+                    ..Default::default()
+                };
+                let frame_margin = frame.total_margin();
+                frame.show(ui, |ui| {
+                    ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
+                        ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
+
+                        ui.set_clip_rect(ui.cursor());
+
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            egui::Frame {
+                                //TODO(ab): use design token
+                                inner_margin: egui::Margin::symmetric(8.0, 0.0),
+                                ..Default::default()
+                            }
+                            .show(ui, |ui| ret = Some(add_contents(ui)))
+                        })
+                    })
+                })
+            });
+
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) || widget_response.clicked_elsewhere() {
+            ui.memory_mut(|mem| mem.close_popup());
+        }
+        ret
+    }
+
     pub fn panel_content<R>(
         &self,
         ui: &mut egui::Ui,
@@ -874,14 +969,23 @@ impl ReUi {
         icon: &Icon,
         text: impl Into<egui::WidgetText>,
         selected: bool,
+        style: LabelStyle,
     ) -> egui::Response {
         let button_padding = ui.spacing().button_padding;
         let total_extra = button_padding + button_padding;
 
         let wrap_width = ui.available_width() - total_extra.x;
-        let galley = text
-            .into()
-            .into_galley(ui, None, wrap_width, egui::TextStyle::Button);
+
+        let mut text: egui::WidgetText = text.into();
+        match style {
+            LabelStyle::Normal => {}
+            LabelStyle::Unnamed => {
+                // TODO(ab): use design tokens
+                text = text.italics();
+            }
+        }
+
+        let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
         let icon_width_plus_padding = Self::small_icon_size().x + ReUi::text_to_icon_padding();
 
@@ -932,7 +1036,17 @@ impl ReUi {
                 .layout()
                 .align_size_within_rect(galley.size(), text_rect)
                 .min;
-            ui.painter().galley(text_pos, galley, visuals.text_color());
+
+            let mut text_color = visuals.text_color();
+            match style {
+                LabelStyle::Normal => {}
+                LabelStyle::Unnamed => {
+                    // TODO(ab): use design tokens
+                    text_color = text_color.gamma_multiply(0.5);
+                }
+            }
+            ui.painter()
+                .galley_with_override_text_color(text_pos, galley, text_color);
         }
 
         response
@@ -960,11 +1074,20 @@ impl ReUi {
     #[allow(clippy::unused_self)]
     pub fn paint_time_cursor(
         &self,
+        ui: &egui::Ui,
         painter: &egui::Painter,
+        response: &egui::Response,
         x: f32,
         y: Rangef,
-        stroke: egui::Stroke,
     ) {
+        let stroke = if response.dragged() {
+            ui.style().visuals.widgets.active.fg_stroke
+        } else if response.hovered() {
+            ui.style().visuals.widgets.hovered.fg_stroke
+        } else {
+            ui.visuals().widgets.inactive.fg_stroke
+        };
+
         let Rangef {
             min: y_min,
             max: y_max,
@@ -1043,7 +1166,7 @@ pub fn help_hover_button(ui: &mut egui::Ui) -> egui::Response {
 }
 
 /// Show some markdown
-pub fn markdownm_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
+pub fn markdown_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
     use parking_lot::Mutex;
     use std::sync::Arc;
 

@@ -36,7 +36,10 @@ pub enum UICommand {
     ToggleTimePanel,
 
     #[cfg(debug_assertions)]
-    ToggleStylePanel,
+    ToggleBlueprintInspectionPanel,
+
+    #[cfg(debug_assertions)]
+    ToggleEguiDebugPanel,
 
     #[cfg(not(target_arch = "wasm32"))]
     ToggleFullscreen,
@@ -63,10 +66,22 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     ScreenshotWholeApp,
     #[cfg(not(target_arch = "wasm32"))]
-    PrintDatastore,
+    PrintDataStore,
+    #[cfg(not(target_arch = "wasm32"))]
+    PrintBlueprintStore,
+    #[cfg(not(target_arch = "wasm32"))]
+    ClearPrimaryCache,
+    #[cfg(not(target_arch = "wasm32"))]
+    PrintPrimaryCache,
 
     #[cfg(target_arch = "wasm32")]
     CopyDirectLink,
+
+    // Graphics options:
+    #[cfg(target_arch = "wasm32")]
+    RestartWithWebGl,
+    #[cfg(target_arch = "wasm32")]
+    RestartWithWebGpu,
 }
 
 impl UICommand {
@@ -122,10 +137,17 @@ impl UICommand {
             Self::ToggleTimePanel => ("Toggle Time Panel", "Toggle the bottom panel"),
 
             #[cfg(debug_assertions)]
-            Self::ToggleStylePanel => (
-                "Toggle Style Panel",
+            Self::ToggleBlueprintInspectionPanel => (
+                "Toggle Blueprint Inspection Panel",
+                "Inspect the timeline of the internal blueprint data.",
+            ),
+
+            #[cfg(debug_assertions)]
+            Self::ToggleEguiDebugPanel => (
+                "Toggle Egui Options/Debug Panel",
                 "View and change global egui style settings",
             ),
+
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ToggleFullscreen => (
@@ -166,16 +188,43 @@ impl UICommand {
                 "Copy screenshot of the whole app to clipboard",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintDatastore => (
+            Self::PrintDataStore => (
                 "Print datastore",
-                "Prints the entire data store to the console. WARNING: this may be A LOT of text.",
+                "Prints the entire data store to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintBlueprintStore => (
+                "Print blueprint store",
+                "Prints the entire blueprint store to the console and clipboard. WARNING: this may be A LOT of text.",
+            ),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ClearPrimaryCache => (
+                "Clear primary cache",
+                "Clears the primary cache in its entirety.",
+            ),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintPrimaryCache => (
+                "Print primary cache",
+                "Prints the state of the entire primary cache to the console and clipboard. WARNING: this may be A LOT of text.",
+            ),
+
 
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => (
                 "Copy direct link",
                 "Copy a link to the viewer with the URL parameter set to the current .rrd data source."
-            )
+            ),
+
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGl => (
+                "Restart with WebGL",
+                "Reloads the webpage and force WebGL for rendering. All data will be lost."
+            ),
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGpu => (
+                "Restart with WebGPU",
+                "Reloads the webpage and force WebGPU for rendering. All data will be lost."
+            ),
         }
     }
 
@@ -224,7 +273,10 @@ impl UICommand {
             Self::ToggleTimePanel => Some(ctrl_shift(Key::T)),
 
             #[cfg(debug_assertions)]
-            Self::ToggleStylePanel => Some(ctrl_shift(Key::U)),
+            Self::ToggleBlueprintInspectionPanel => Some(ctrl_shift(Key::I)),
+
+            #[cfg(debug_assertions)]
+            Self::ToggleEguiDebugPanel => Some(ctrl_shift(Key::U)),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ToggleFullscreen => Some(key(Key::F11)),
@@ -248,10 +300,21 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => None,
             #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintDatastore => None,
+            Self::PrintDataStore => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintBlueprintStore => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::ClearPrimaryCache => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::PrintPrimaryCache => None,
 
             #[cfg(target_arch = "wasm32")]
             Self::CopyDirectLink => None,
+
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGl => None,
+            #[cfg(target_arch = "wasm32")]
+            Self::RestartWithWebGpu => None,
         }
     }
 

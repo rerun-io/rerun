@@ -10,32 +10,25 @@ impl DataUi for ComponentPath {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         let Self {
             entity_path,
             component_name,
         } = self;
 
-        let store = if ctx.app_options.show_blueprint_in_timeline
-            && ctx.store_context.blueprint.is_logged_entity(entity_path)
-        {
-            ctx.store_context.blueprint.store()
-        } else {
-            ctx.entity_db.store()
-        };
-
         if let Some(archetype_name) = component_name.indicator_component_archetype() {
             ui.label(format!(
                 "Indicator component for the {archetype_name} archetype"
             ));
-        } else if let Some((_, component_data)) =
+        } else if let Some((_, _, component_data)) =
             re_query::get_component_with_instances(store, query, entity_path, *component_name)
         {
             super::component::EntityComponentWithInstances {
                 entity_path: self.entity_path.clone(),
                 component_data,
             }
-            .data_ui(ctx, ui, verbosity, query);
+            .data_ui(ctx, ui, verbosity, query, store);
         } else if let Some(entity_tree) = ctx.entity_db.tree().subtree(entity_path) {
             if entity_tree.entity.components.contains_key(component_name) {
                 ui.label("<unset>");

@@ -24,7 +24,7 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     use clap::Parser as _;
     let args = Args::parse();

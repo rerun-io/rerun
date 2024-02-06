@@ -29,5 +29,7 @@ byte is `R` and the least significant byte is `A`.
 * [`Mesh3D`](../archetypes/mesh3d.md)
 * [`Points2D`](../archetypes/points2d.md)
 * [`Points3D`](../archetypes/points3d.md)
+* [`SeriesLine`](../archetypes/series_line.md?speculative-link)
+* [`SeriesPoint`](../archetypes/series_point.md?speculative-link)
 * [`TextLog`](../archetypes/text_log.md)
 * [`TimeSeriesScalar`](../archetypes/time_series_scalar.md)

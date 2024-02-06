@@ -274,9 +274,9 @@ impl PickingLayerProcessor {
         // Offset of the depth buffer in the readback buffer needs to be aligned to size of a depth pixel.
         // This is "trivially true" if the size of the depth format is a multiple of the size of the id format.
         debug_assert!(
-            Self::PICKING_LAYER_FORMAT.block_size(None).unwrap()
+            Self::PICKING_LAYER_FORMAT.block_copy_size(None).unwrap()
                 % Self::PICKING_LAYER_DEPTH_FORMAT
-                    .block_size(Some(wgpu::TextureAspect::DepthOnly))
+                    .block_copy_size(Some(wgpu::TextureAspect::DepthOnly))
                     .unwrap()
                 == 0
         );
@@ -409,12 +409,12 @@ impl PickingLayerProcessor {
                 // Assert that our texture data reinterpretation works out from a pixel size point of view.
                 debug_assert_eq!(
                     Self::PICKING_LAYER_DEPTH_FORMAT
-                        .block_size(Some(wgpu::TextureAspect::DepthOnly))
+                        .block_copy_size(Some(wgpu::TextureAspect::DepthOnly))
                         .unwrap(),
                     std::mem::size_of::<f32>() as u32
                 );
                 debug_assert_eq!(
-                    Self::PICKING_LAYER_FORMAT.block_size(None).unwrap() as usize,
+                    Self::PICKING_LAYER_FORMAT.block_copy_size(None).unwrap() as usize,
                     std::mem::size_of::<PickingLayerId>()
                 );
 
@@ -441,7 +441,7 @@ impl PickingLayerProcessor {
                     // See https://github.com/gfx-rs/wgpu/issues/3644
                     debug_assert_eq!(
                         DepthReadbackWorkaround::READBACK_FORMAT
-                            .block_size(None)
+                            .block_copy_size(None)
                             .unwrap() as usize,
                         std::mem::size_of::<f32>() * 4
                     );

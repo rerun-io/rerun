@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     ComponentBatch, ComponentName, DeserializationResult, MaybeOwnedComponentBatch,
     SerializationResult, _Backtrace,
@@ -160,6 +162,8 @@ impl ArchetypeName {
         let full_name = self.0.as_str();
         if let Some(short_name) = full_name.strip_prefix("rerun.archetypes.") {
             short_name
+        } else if let Some(short_name) = full_name.strip_prefix("rerun.blueprint.archetypes.") {
+            short_name
         } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
             short_name
         } else {
@@ -216,7 +220,7 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
             name.clone(),
             arrow2::datatypes::DataType::Extension(
                 name,
-                Box::new(arrow2::datatypes::DataType::Null),
+                Arc::new(arrow2::datatypes::DataType::Null),
                 None,
             ),
             false,
@@ -274,7 +278,7 @@ impl crate::LoggableBatch for NamedIndicatorComponent {
             name.clone(),
             arrow2::datatypes::DataType::Extension(
                 name,
-                Box::new(arrow2::datatypes::DataType::Null),
+                Arc::new(arrow2::datatypes::DataType::Null),
                 None,
             ),
             false,

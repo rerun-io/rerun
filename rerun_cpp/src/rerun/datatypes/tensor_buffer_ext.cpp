@@ -116,6 +116,10 @@ namespace rerun::datatypes {
                 assert(false && "Can't ask for the number of elements in an NV12 encoded image");
                 break;
             }
+            case detail::TensorBufferTag::YUY2: {
+                assert(false && "Can't ask for the number of elements in an YUY2 encoded image");
+                break;
+            }
             case detail::TensorBufferTag::JPEG: {
                 assert(false && "Can't ask for the number of elements in a JPEG");
                 break;

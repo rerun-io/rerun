@@ -1,7 +1,7 @@
-mod common;
+use smallvec::smallvec;
 
 use re_data_store::{DataStore, TimeInt, TimeRange};
-use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId};
+use re_log_types::{build_frame_nr, DataCell, DataCellRow, DataRow, EntityPath, RowId};
 use re_query::range_archetype;
 use re_types::{
     archetypes::Points2D,
@@ -70,8 +70,6 @@ fn simple_range() {
 
     // --- First test: `(timepoint1, timepoint3]` ---
 
-    // The exclusion of `timepoint1` means latest-at semantics will kick in!
-
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
@@ -84,15 +82,6 @@ fn simple_range() {
 
     // We expect this to generate the following `DataFrame`s:
     //
-    // Frame #123:
-    // ┌─────────────┬───────────┬──────────────┐
-    // │ InstanceKey ┆ Point2D   ┆ Color        │
-    // ╞═════════════╪═══════════╪══════════════╡
-    // │ 0           ┆ {1.0,2.0} ┆ null         │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1           ┆ {3.0,4.0} ┆ 4278190080   │
-    // └─────────────┴───────────┴──────────────┘
-    //
     // Frame #323:
     // ┌─────────────┬──────────────┬─────────────────┐
     // │ InstanceKey ┆ Point2D      ┆ Color           │
@@ -102,34 +91,11 @@ fn simple_range() {
     // │ 1           ┆ {30.0,40.0}  ┆ null            │
     // └─────────────┴──────────────┴─────────────────┘
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
-        // Frame #123
-
-        let (time, ent_view) = &results[0];
-        let time = time.unwrap();
-
-        // Build expected df manually
-        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let positions = vec![
-            Some(Position2D::new(1.0, 2.0)),
-            Some(Position2D::new(3.0, 4.0)),
-        ];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
-
-        //eprintln!("{df:?}");
-        //eprintln!("{expected:?}");
-
-        assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-
         // Frame #323
 
-        let (time, ent_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -138,23 +104,22 @@ fn simple_range() {
             Some(Position2D::new(30.0, 40.0)),
         ];
         let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        _ = results;
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
     }
 
     // --- Second test: `[timepoint1, timepoint3]` ---
-
-    // The inclusion of `timepoint1` means latest-at semantics will _not_ kick in!
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
@@ -186,14 +151,11 @@ fn simple_range() {
     // │ 1                  ┆ {30.0,40.0}   ┆ null            │
     // └────────────────────┴───────────────┴─────────────────┘
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
         // Frame #123
 
-        let (time, ent_view) = &results[0];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -202,18 +164,25 @@ fn simple_range() {
             Some(Position2D::new(3.0, 4.0)),
         ];
         let colors: Vec<Option<Color>> = vec![None, None];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
+    }
+    {
         // Frame #323
 
-        let (time, ent_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[1];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -222,18 +191,19 @@ fn simple_range() {
             Some(Position2D::new(30.0, 40.0)),
         ];
         let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        _ = results;
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
     }
 }
 
@@ -351,8 +321,6 @@ fn timeless_range() {
 
     // --- First test: `(timepoint1, timepoint3]` ---
 
-    // The exclusion of `timepoint1` means latest-at semantics will kick in!
-
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
@@ -365,15 +333,6 @@ fn timeless_range() {
 
     // We expect this to generate the following `DataFrame`s:
     //
-    // Frame #123:
-    // ┌────────────────────┬───────────────┬─────────────────┐
-    // │ InstanceKey ┆ Point2D ┆ Color │
-    // ╞════════════════════╪═══════════════╪═════════════════╡
-    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1                  ┆ {3.0,4.0}     ┆ 4278190080      │
-    // └────────────────────┴───────────────┴─────────────────┘
-    //
     // Frame #323:
     // ┌────────────────────┬───────────────┬─────────────────┐
     // │ InstanceKey ┆ Point2D ┆ Color │
@@ -383,34 +342,11 @@ fn timeless_range() {
     // │ 1                  ┆ {30.0,40.0}   ┆ null            │
     // └────────────────────┴───────────────┴─────────────────┘
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
-        // Frame #123
-
-        let (time, ent_view) = &results[0];
-        let time = time.unwrap();
-
-        // Build expected df manually
-        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let positions = vec![
-            Some(Position2D::new(1.0, 2.0)),
-            Some(Position2D::new(3.0, 4.0)),
-        ];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
-
-        //eprintln!("{df:?}");
-        //eprintln!("{expected:?}");
-
-        assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-
         // Frame #323
 
-        let (time, ent_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -419,23 +355,22 @@ fn timeless_range() {
             Some(Position2D::new(30.0, 40.0)),
         ];
         let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        _ = results;
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
     }
 
     // --- Second test: `[timepoint1, timepoint3]` ---
-
-    // The inclusion of `timepoint1` means latest-at semantics will fall back to timeless data!
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
@@ -448,15 +383,6 @@ fn timeless_range() {
     let results = arch_views.collect::<Vec<_>>();
 
     // We expect this to generate the following `DataFrame`s:
-    //
-    // Frame #122:
-    // ┌────────────────────┬───────────────┬─────────────────┐
-    // │ InstanceKey ┆ Point2D ┆ Color │
-    // ╞════════════════════╪═══════════════╪═════════════════╡
-    // │ 0                  ┆ {10.0,20.0}   ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1                  ┆ {30.0,40.0}   ┆ 4278190080      │
-    // └────────────────────┴───────────────┴─────────────────┘
     //
     // Frame #123:
     // ┌────────────────────┬───────────────┬─────────────────┐
@@ -476,34 +402,11 @@ fn timeless_range() {
     // │ 1                  ┆ {30.0,40.0}   ┆ null            │
     // └────────────────────┴───────────────┴─────────────────┘
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
-        // Frame #122 (all timeless)
-
-        let (time, ent_view) = &results[0];
-        let time = time.unwrap();
-
-        // Build expected df manually
-        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let positions = vec![
-            Some(Position2D::new(10.0, 20.0)),
-            Some(Position2D::new(30.0, 40.0)),
-        ];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
-
-        //eprintln!("{df:?}");
-        //eprintln!("{expected:?}");
-
-        assert_eq!(TimeInt::from(122), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-
         // Frame #123 (partially timeless)
 
-        let (time, ent_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -512,18 +415,25 @@ fn timeless_range() {
             Some(Position2D::new(3.0, 4.0)),
         ];
         let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
+    }
+    {
         // Frame #323
 
-        let (time, ent_view) = &results[2];
-        let time = time.unwrap();
+        let arch_view = &results[1];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -532,18 +442,19 @@ fn timeless_range() {
             Some(Position2D::new(30.0, 40.0)),
         ];
         let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        _ = results;
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
     }
 
     // --- Third test: `[-inf, +inf]` ---
@@ -594,13 +505,11 @@ fn timeless_range() {
     // │ 1                  ┆ {30.0,40.0}   ┆ null            │
     // └────────────────────┴───────────────┴─────────────────┘
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
         // Timeless #1
 
-        let (time, ent_view) = &results[0];
+        let arch_view = &results[0];
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -609,17 +518,24 @@ fn timeless_range() {
             Some(Position2D::new(3.0, 4.0)),
         ];
         let colors: Vec<Option<Color>> = vec![None, None];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        assert_eq!(&None, time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
+        assert_eq!(None, time);
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
 
         // Timeless #2
 
-        let (time, ent_view) = &results[1];
+        let arch_view = &results[1];
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -628,18 +544,24 @@ fn timeless_range() {
             Some(Position2D::new(30.0, 40.0)),
         ];
         let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
-        assert_eq!(&None, time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
+        assert_eq!(None, time);
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
 
         // Frame #123 (partially timeless)
 
-        let (time, ent_view) = &results[2];
-        let time = time.unwrap();
+        let arch_view = &results[2];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -648,18 +570,25 @@ fn timeless_range() {
             Some(Position2D::new(3.0, 4.0)),
         ];
         let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
+    }
+    {
         // Frame #323
 
-        let (time, ent_view) = &results[3];
-        let time = time.unwrap();
+        let arch_view = &results[3];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -668,18 +597,19 @@ fn timeless_range() {
             Some(Position2D::new(30.0, 40.0)),
         ];
         let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        _ = results;
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
     }
 }
 
@@ -744,8 +674,6 @@ fn simple_splatted_range() {
 
     // --- First test: `(timepoint1, timepoint3]` ---
 
-    // The exclusion of `timepoint1` means latest-at semantics will kick in!
-
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
         TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
@@ -758,15 +686,6 @@ fn simple_splatted_range() {
 
     // We expect this to generate the following `DataFrame`s:
     //
-    // Frame #123:
-    // ┌────────────────────┬───────────────┬─────────────────┐
-    // │ InstanceKey ┆ Point2D ┆ Color │
-    // ╞════════════════════╪═══════════════╪═════════════════╡
-    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1                  ┆ {3.0,4.0}     ┆ 4278190080      │
-    // └────────────────────┴───────────────┴─────────────────┘
-    //
     // Frame #323:
     // ┌────────────────────┬───────────────┬─────────────────┐
     // │ InstanceKey ┆ Point2D ┆ Color │
@@ -776,36 +695,13 @@ fn simple_splatted_range() {
     // │ 1                  ┆ {30.0,40.0}   ┆ 16711680        │
     // └────────────────────┴───────────────┴─────────────────┘
 
-    assert_eq!(results.len(), 2);
+    assert_eq!(results.len(), 1);
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
-        // Frame #123
-
-        let (time, ent_view) = &results[0];
-        let time = time.unwrap();
-
-        // Build expected df manually
-        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let positions = vec![
-            Some(Position2D::new(1.0, 2.0)),
-            Some(Position2D::new(3.0, 4.0)),
-        ];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
-
-        //eprintln!("{df:?}");
-        //eprintln!("{expected:?}");
-
-        assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-
         // Frame #323
 
-        let (time, ent_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -818,24 +714,20 @@ fn simple_splatted_range() {
             Some(Color::from_rgb(0, 255, 0)),
         ];
 
-        let df = ent_view.as_df2::<Position2D, Color>().unwrap();
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let df = arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &df);
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        _ = results;
+        assert_eq!(&expected, &df);
     }
 
     // --- Second test: `[timepoint1, timepoint3]` ---
-
-    // The inclusion of `timepoint1` means latest-at semantics will _not_ kick in!
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
@@ -867,14 +759,11 @@ fn simple_splatted_range() {
     // │ 1                  ┆ {30.0,40.0}   ┆ 16711680        │
     // └────────────────────┴───────────────┴─────────────────┘
 
-    #[cfg(feature = "polars")]
     {
-        use re_query::dataframe_util::df_builder3;
-
         // Frame #123
 
-        let (time, ent_view) = &results[0];
-        let time = time.unwrap();
+        let arch_view = &results[0];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -883,18 +772,25 @@ fn simple_splatted_range() {
             Some(Position2D::new(3.0, 4.0)),
         ];
         let colors: Vec<Option<Color>> = vec![None, None];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(123), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
+    }
+    {
         // Frame #323
 
-        let (time, ent_view) = &results[1];
-        let time = time.unwrap();
+        let arch_view = &results[1];
+        let time = arch_view.data_time().unwrap();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -906,17 +802,18 @@ fn simple_splatted_range() {
             Some(Color::from_rgb(0, 255, 0)),
             Some(Color::from_rgb(0, 255, 0)),
         ];
-        let expected = df_builder3(&instances, &positions, &colors).unwrap();
+        let expected = DataCellRow(smallvec![
+            DataCell::from_native_sparse(instances),
+            DataCell::from_native_sparse(positions),
+            DataCell::from_native_sparse(colors)
+        ]);
 
-        //eprintln!("{df:?}");
         //eprintln!("{expected:?}");
 
         assert_eq!(TimeInt::from(323), time);
-        common::compare_df(&expected, &ent_view.as_df2::<Position2D, Color>().unwrap());
-    }
-    #[cfg(not(feature = "polars"))]
-    {
-        //TODO(jleibs): non-polars test validation
-        _ = results;
+        assert_eq!(
+            &expected,
+            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
+        );
     }
 }

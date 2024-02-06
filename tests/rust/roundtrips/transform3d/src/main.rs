@@ -8,7 +8,6 @@ use rerun::{
     datatypes::{
         Angle, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
     },
-    external::re_log,
     RecordingStream,
 };
 
@@ -86,7 +85,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
 }
 
 fn main() -> anyhow::Result<()> {
-    re_log::setup_native_logging();
+    re_log::setup_logging();
 
     use clap::Parser as _;
     let args = Args::parse();

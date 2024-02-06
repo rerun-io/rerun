@@ -16,6 +16,18 @@ pub trait ErasedFlatVecDeque: std::any::Any {
 
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any>;
 
+    /// Dynamically dispatches to [`FlatVecDeque::num_entries`].
+    ///
+    /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
+    /// avoid even with explicit syntax and that silently lead to infinite recursions.
+    fn dyn_num_entries(&self) -> usize;
+
+    /// Dynamically dispatches to [`FlatVecDeque::num_values`].
+    ///
+    /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
+    /// avoid even with explicit syntax and that silently lead to infinite recursions.
+    fn dyn_num_values(&self) -> usize;
+
     /// Dynamically dispatches to [`FlatVecDeque::remove`].
     ///
     /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
@@ -33,9 +45,15 @@ pub trait ErasedFlatVecDeque: std::any::Any {
     /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
     /// avoid even with explicit syntax and that silently lead to infinite recursions.
     fn dyn_truncate(&mut self, at: usize);
+
+    /// Dynamically dispatches to [`<FlatVecDeque<T> as SizeBytes>::total_size_bytes(self)`].
+    ///
+    /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
+    /// avoid even with explicit syntax and that silently lead to infinite recursions.
+    fn dyn_total_size_bytes(&self) -> u64;
 }
 
-impl<T: 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
+impl<T: SizeBytes + 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
     #[inline]
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -52,6 +70,16 @@ impl<T: 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
     }
 
     #[inline]
+    fn dyn_num_entries(&self) -> usize {
+        self.num_entries()
+    }
+
+    #[inline]
+    fn dyn_num_values(&self) -> usize {
+        self.num_values()
+    }
+
+    #[inline]
     fn dyn_remove(&mut self, at: usize) {
         FlatVecDeque::<T>::remove(self, at);
     }
@@ -64,6 +92,11 @@ impl<T: 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
     #[inline]
     fn dyn_truncate(&mut self, at: usize) {
         FlatVecDeque::<T>::truncate(self, at);
+    }
+
+    #[inline]
+    fn dyn_total_size_bytes(&self) -> u64 {
+        <FlatVecDeque<T> as SizeBytes>::total_size_bytes(self)
     }
 }
 
@@ -119,6 +152,17 @@ impl<T: SizeBytes> SizeBytes for FlatVecDeque<T> {
         let offsets_size_bytes = self.num_entries() * std::mem::size_of::<usize>();
 
         values_size_bytes + offsets_size_bytes as u64
+    }
+}
+
+impl<T> From<VecDeque<T>> for FlatVecDeque<T> {
+    #[inline]
+    fn from(values: VecDeque<T>) -> Self {
+        let num_values = values.len();
+        Self {
+            values,
+            offsets: std::iter::once(num_values).collect(),
+        }
     }
 }
 
@@ -216,6 +260,10 @@ impl<T> FlatVecDeque<T> {
             .skip(entry_range.start)
             .take(entry_range.len())
             .map(|offsets| {
+                if offsets.is_empty() {
+                    return &[] as &'_ [T];
+                }
+
                 // NOTE: We do not need `make_contiguous` here because we always guarantee
                 // that a single entry's worth of values is fully contained in either the left or
                 // right buffer, but never straddling across both.
@@ -284,11 +332,7 @@ impl<T> FlatVecDeque<T> {
     #[inline]
     pub fn insert(&mut self, entry_index: usize, values: impl IntoIterator<Item = T>) {
         let values: VecDeque<T> = values.into_iter().collect();
-        let num_values = values.len();
-        let deque = Self {
-            values,
-            offsets: std::iter::once(num_values).collect(),
-        };
+        let deque = values.into();
         self.insert_deque(entry_index, deque);
     }
 
@@ -375,7 +419,7 @@ impl<T> FlatVecDeque<T> {
         self.push_back_deque(rhs);
         self.push_back_deque(right);
 
-        debug_assert!(self.iter_offset_ranges().all(|r| r.start < r.end));
+        debug_assert!(self.iter_offset_ranges().all(|r| r.start <= r.end));
     }
 }
 
@@ -436,6 +480,28 @@ fn insert_empty() {
     v.push_back([]);
 
     assert_deque_eq(&[&[], &[], &[]], &v);
+}
+
+// Simulate the bug that was making everything crash on the face tracking example (ultimately
+// caused by recursive clears).
+#[test]
+fn insert_some_and_empty() {
+    let mut v: FlatVecDeque<i64> = FlatVecDeque::new();
+
+    assert_eq!(0, v.num_entries());
+    assert_eq!(0, v.num_values());
+
+    v.push_back([0]);
+    v.push_back([]);
+
+    v.push_back([1]);
+    v.push_back([]);
+
+    v.push_back([2]);
+    v.push_back([]);
+
+    // That used to crash.
+    assert_deque_eq(&[&[0], &[], &[1], &[], &[2], &[]], &v);
 }
 
 #[test]
@@ -572,11 +638,13 @@ impl<T> FlatVecDeque<T> {
     /// Shortens the deque, keeping all entries up to `entry_index` (excluded), and
     /// dropping the rest.
     ///
-    /// Panics if `entry_index` is out of bounds.
+    /// If `entry_index` is greater or equal to [`Self::num_entries`], this has no effect.
     #[inline]
     pub fn truncate(&mut self, entry_index: usize) {
-        self.values.truncate(self.value_offset(entry_index));
-        self.offsets.truncate(entry_index);
+        if entry_index < self.num_entries() {
+            self.values.truncate(self.value_offset(entry_index));
+            self.offsets.truncate(entry_index);
+        }
     }
 
     /// Removes the entry at `entry_index` from the deque.

@@ -73,9 +73,9 @@ impl ::re_types_core::Loggable for MeshProperties {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![Field {
+        DataType::Struct(std::sync::Arc::new(vec![Field {
             name: "indices".to_owned(),
-            data_type: DataType::List(Box::new(Field {
+            data_type: DataType::List(std::sync::Arc::new(Field {
                 name: "item".to_owned(),
                 data_type: DataType::UInt32,
                 is_nullable: false,
@@ -83,7 +83,7 @@ impl ::re_types_core::Loggable for MeshProperties {
             })),
             is_nullable: true,
             metadata: [].into(),
-        }])
+        }]))
     }
 
     #[allow(clippy::wildcard_imports)]

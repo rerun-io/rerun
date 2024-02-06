@@ -1,8 +1,10 @@
-use re_data_store::LatestAtQuery;
+use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{external::arrow2, EntityPath};
 use re_query::ComponentWithInstances;
 use re_types::external::arrow2::array::Utf8Array;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
+
+use crate::editors::register_editors;
 
 use super::EntityDataUi;
 
@@ -29,6 +31,8 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 
     add_to_registry::<re_types::blueprint::components::IncludedQueries>(&mut registry);
 
+    register_editors(&mut registry);
+
     registry
 }
 
@@ -37,11 +41,11 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
     registry.add(
         C::name(),
         Box::new(
-            |ctx, ui, verbosity, query, entity_path, component, instance| match component
+            |ctx, ui, verbosity, query, store, entity_path, component, instance| match component
                 .lookup::<C>(instance)
             {
                 Ok(component) => {
-                    component.entity_data_ui(ctx, ui, verbosity, entity_path, query);
+                    component.entity_data_ui(ctx, ui, verbosity, entity_path, query, store);
                 }
                 Err(re_query::QueryError::ComponentNotFound(_)) => {
                     ui.weak("(not found)");
@@ -54,11 +58,13 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn fallback_component_ui(
     _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
     _query: &LatestAtQuery,
+    _store: &DataStore,
     _entity_path: &EntityPath,
     component: &ComponentWithInstances,
     instance_key: &re_types::components::InstanceKey,

@@ -371,6 +371,7 @@ pub fn data_density_graph_ui(
     data_dentity_graph_painter: &mut DataDensityGraphPainter,
     ctx: &ViewerContext<'_>,
     time_ctrl: &mut TimeControl,
+    store: &re_data_store::DataStore,
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &egui::Ui,
@@ -493,6 +494,7 @@ pub fn data_density_graph_ui(
             show_row_ids_tooltip(
                 ctx,
                 time_ctrl,
+                store,
                 ui.ctx(),
                 item,
                 hovered_time_range,
@@ -524,6 +526,7 @@ fn make_brighter(color: Color32) -> Color32 {
 fn show_row_ids_tooltip(
     ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
+    store: &re_data_store::DataStore,
     egui_ctx: &egui::Context,
     item: &TimePanelItem,
     time_range: TimeRange,
@@ -543,6 +546,7 @@ fn show_row_ids_tooltip(
         }
 
         let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max);
+
         let verbosity = UiVerbosity::Reduced;
 
         let TimePanelItem {
@@ -554,12 +558,12 @@ fn show_row_ids_tooltip(
             let component_path = ComponentPath::new(entity_path.clone(), *component_name);
             item_ui::component_path_button(ctx, ui, &component_path);
             ui.add_space(8.0);
-            component_path.data_ui(ctx, ui, verbosity, &query);
+            component_path.data_ui(ctx, ui, verbosity, &query, store);
         } else {
             let instance_path = re_entity_db::InstancePath::entity_splat(entity_path.clone());
-            item_ui::instance_path_button(ctx, ui, None, &instance_path);
+            item_ui::instance_path_button(ctx, &query, store, ui, None, &instance_path);
             ui.add_space(8.0);
-            instance_path.data_ui(ctx, ui, verbosity, &query);
+            instance_path.data_ui(ctx, ui, verbosity, &query, store);
         }
     });
 }

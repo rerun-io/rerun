@@ -1,5 +1,4 @@
 use egui::RichText;
-use egui_tiles::Tile;
 use re_ui::UICommand;
 use re_viewer_context::{Item, Selection, SelectionHistory};
 use re_viewport::ViewportBlueprint;
@@ -44,7 +43,7 @@ impl SelectionHistoryUi {
                 ));
 
             let mut return_current = false;
-            let response = response.context_menu(|ui| {
+            response.context_menu(|ui| {
                 // undo: newest on top, oldest on bottom
                 let cur = history.current;
                 for i in (0..history.current).rev() {
@@ -94,7 +93,7 @@ impl SelectionHistoryUi {
                 ));
 
             let mut return_current = false;
-            let response = response.context_menu(|ui| {
+            response.context_menu(|ui| {
                 // redo: oldest on top, most recent on bottom
                 let cur = history.current;
                 for i in (history.current + 1)..history.stack.len() {
@@ -184,8 +183,9 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
     match item {
         Item::StoreId(store_id) => store_id.to_string(),
         Item::SpaceView(sid) => {
+            // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
             if let Some(space_view) = blueprint.space_view(sid) {
-                space_view.display_name.clone()
+                space_view.display_name_or_default().as_ref().to_owned()
             } else {
                 "<removed Space View>".to_owned()
             }
@@ -195,19 +195,9 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
         Item::ComponentPath(path) => {
             format!("{}:{}", path.entity_path, path.component_name.short_name(),)
         }
-        Item::Container(tile_id) => {
-            if let Some(tile) = blueprint.tree.tiles.get(*tile_id) {
-                match tile {
-                    Tile::Pane(sid) => {
-                        // This case shouldn't happen really.
-                        if let Some(space_view) = blueprint.space_view(sid) {
-                            format!("Tile showing {}", space_view.display_name)
-                        } else {
-                            "Tile containing unknown Space View".to_owned()
-                        }
-                    }
-                    Tile::Container(container) => format!("{:?}", container.kind()),
-                }
+        Item::Container(container_id) => {
+            if let Some(container) = blueprint.container(container_id) {
+                format!("{:?}", container.container_kind)
             } else {
                 "<removed Container>".to_owned()
             }

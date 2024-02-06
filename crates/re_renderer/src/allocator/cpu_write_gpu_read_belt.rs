@@ -119,21 +119,30 @@ where
         elements: impl Iterator<Item = T>,
     ) -> Result<usize, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
-        let num_written_before = self.num_written();
 
-        for element in elements {
-            if self.unwritten_element_range.start >= self.unwritten_element_range.end {
-                return Err(CpuWriteGpuReadError::BufferFull {
-                    buffer_element_capacity: self.capacity(),
-                });
+        // TODO(emilk): optimize the extend function.
+        // Right now it is 3-4x faster to collect to a vec first, which is crazy.
+        if true {
+            let vec = elements.collect::<Vec<_>>();
+            self.extend_from_slice(&vec)?;
+            Ok(vec.len())
+        } else {
+            let num_written_before = self.num_written();
+
+            for element in elements {
+                if self.unwritten_element_range.start >= self.unwritten_element_range.end {
+                    return Err(CpuWriteGpuReadError::BufferFull {
+                        buffer_element_capacity: self.capacity(),
+                    });
+                }
+
+                self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
+                    .copy_from_slice(bytemuck::bytes_of(&element));
+                self.unwritten_element_range.start += 1;
             }
 
-            self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
-                .copy_from_slice(bytemuck::bytes_of(&element));
-            self.unwritten_element_range.start += 1;
+            Ok(self.num_written() - num_written_before)
         }
-
-        Ok(self.num_written() - num_written_before)
     }
 
     /// Fills the buffer with n instances of an element.
@@ -411,7 +420,9 @@ impl CpuWriteGpuReadBelt {
         );
         // Largest uncompressed texture format (btw. many compressed texture format have the same block size!)
         debug_assert!(
-            wgpu::TextureFormat::Rgba32Uint.block_size(None).unwrap() as u64
+            wgpu::TextureFormat::Rgba32Uint
+                .block_copy_size(None)
+                .unwrap() as u64
                 <= CpuWriteGpuReadBelt::MIN_OFFSET_ALIGNMENT
         );
 

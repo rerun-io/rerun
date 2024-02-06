@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use re_data_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
+use re_data_store::{DataStore, LatestAtQuery, RangeQuery};
 use re_log_types::EntityPath;
 use re_types_core::{Archetype, ComponentName};
 
@@ -9,9 +9,6 @@ use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances}
 
 /// Iterates over the rows of any number of components and their respective cluster keys, all from
 /// the point-of-view of the required components, returning an iterator of [`ArchetypeView`]s.
-///
-/// An initial entity-view is yielded with the latest-at state at the start of the time range, if
-/// there is any.
 ///
 /// The iterator only ever yields entity-views iff a required component has changed: a change
 /// affecting only optional components will not yield an entity-view.
@@ -26,13 +23,38 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     store: &'a DataStore,
     query: &RangeQuery,
     ent_path: &'a EntityPath,
-) -> impl Iterator<Item = (Option<TimeInt>, ArchetypeView<A>)> + 'a {
+) -> impl Iterator<Item = ArchetypeView<A>> + 'a {
     re_tracing::profile_function!();
 
     // TODO(jleibs) this shim is super gross
+    let povs: [ComponentName; 1] = A::required_components().into_owned().try_into().unwrap();
     let components: [ComponentName; N] = A::all_components().into_owned().try_into().unwrap();
 
-    let primary: ComponentName = A::required_components()[0];
+    range_component_set::<A, N>(store, query, ent_path, &povs, components)
+}
+
+/// Iterates over the rows of any number of components and their respective cluster keys, all from
+/// the point-of-view of the `povs` components, returning an iterator of [`ArchetypeView`]s.
+///
+/// The iterator only ever yields entity-views iff a point-of-view component has changed: a change
+/// affecting only optional components will not yield an entity-view.
+/// However, the changes in those secondary components will be accumulated into the next yielded
+/// entity-view.
+///
+/// This is a streaming-join: every yielded [`ArchetypeView`] will be the result of joining the latest
+/// known state of all components, from their respective point-of-views.
+///
+/// ⚠ The semantics are subtle! See `examples/range.rs` for an example of use.
+pub fn range_component_set<'a, A: Archetype + 'a, const N: usize>(
+    store: &'a DataStore,
+    query: &RangeQuery,
+    ent_path: &'a EntityPath,
+    povs: &[ComponentName],
+    components: [ComponentName; N],
+) -> impl Iterator<Item = ArchetypeView<A>> + 'a {
+    re_tracing::profile_function!();
+
+    let primary: ComponentName = povs[0];
     let cluster_key = store.cluster_key();
 
     // TODO(cmc): Ideally, we'd want to simply add the cluster and primary key to the `components`
@@ -43,8 +65,8 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
     // The alternative to these assertions (and thus putting the burden on the caller), for now,
     // would be to drop the constant sizes all the way down, which would be way more painful to
     // deal with.
-    assert!(components.contains(&cluster_key));
-    assert!(components.contains(&primary));
+    assert!(components.contains(&cluster_key), "{components:?}");
+    assert!(components.contains(&primary), "{components:?}");
 
     let cluster_col = components
         .iter()
@@ -63,10 +85,10 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
 
     // NOTE: This will return none for `TimeInt::Min`, i.e. range queries that start infinitely far
     // into the past don't have a latest-at state!
-    let latest_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
+    let query_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
 
     let mut cwis_latest = None;
-    if let Some(latest_time) = latest_time {
+    if let Some(query_time) = query_time {
         let mut cwis_latest_raw: Vec<_> = std::iter::repeat_with(|| None)
             .take(components.len())
             .collect();
@@ -77,47 +99,53 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
         for (i, primary) in components.iter().enumerate() {
             cwis_latest_raw[i] = get_component_with_instances(
                 store,
-                &LatestAtQuery::new(query.timeline, latest_time),
+                &LatestAtQuery::new(query.timeline, query_time),
                 ent_path,
                 *primary,
-            );
+            )
+            .map(|(_, row_id, cwi)| (row_id, cwi));
         }
 
-        if cwis_latest_raw[primary_col].is_some() {
-            cwis_latest = Some(cwis_latest_raw);
-        }
+        cwis_latest = Some(cwis_latest_raw);
     }
 
     // send the latest-at state before anything else
     cwis_latest
         .into_iter()
-        .map(move |cwis| (latest_time, true, cwis))
-        .chain(
-            store
-                .range(query, ent_path, components)
-                .map(move |(time, row_id, mut cells)| {
-                    // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
-                    // by the store.
-                    let instance_keys = cells[cluster_col].take().unwrap();
-                    let is_primary = cells[primary_col].is_some();
-                    let cwis = cells
-                        .into_iter()
-                        .map(|cell| {
-                            cell.map(|cell| {
-                                (
-                                    row_id,
-                                    ComponentWithInstances {
-                                        instance_keys: instance_keys.clone(), /* shallow */
-                                        values: cell,
-                                    },
-                                )
-                            })
+        // NOTE: `false` here means we will _not_ yield the latest-at state as an actual
+        // ArchetypeView!
+        // That is a very important detail: for overlapping range queries to be correct in a
+        // multi-tenant cache context, we need to make sure to inherit the latest-at state
+        // from T-1, while also making sure to _not_ yield the view that comes with that state.
+        //
+        // Consider e.g. what happens when one system queries for `range(10, 20)` while another
+        // queries for `range(9, 20)`: the data at timestamp `10` would differ because of the
+        // statefulness of range queries!
+        .map(move |cwis| (query_time, false, cwis))
+        .chain(store.range(query, ent_path, components).map(
+            move |(data_time, row_id, mut cells)| {
+                // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
+                // by the store.
+                let instance_keys = cells[cluster_col].take().unwrap();
+                let is_primary = cells[primary_col].is_some();
+                let cwis = cells
+                    .into_iter()
+                    .map(|cell| {
+                        cell.map(|cell| {
+                            (
+                                row_id,
+                                ComponentWithInstances {
+                                    instance_keys: instance_keys.clone(), /* shallow */
+                                    values: cell,
+                                },
+                            )
                         })
-                        .collect::<Vec<_>>();
-                    (time, is_primary, cwis)
-                }),
-        )
-        .filter_map(move |(time, is_primary, cwis)| {
+                    })
+                    .collect::<Vec<_>>();
+                (data_time, is_primary, cwis)
+            },
+        ))
+        .filter_map(move |(data_time, is_primary, cwis)| {
             for (i, cwi) in cwis
                 .into_iter()
                 .enumerate()
@@ -136,9 +164,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
                     .filter_map(|cwi| cwi.map(|(_, cwi)| cwi))
                     .collect();
 
-                let arch_view = ArchetypeView::from_components(row_id, components);
-
-                (time, arch_view)
+                ArchetypeView::from_components(data_time, row_id, components)
             })
         })
 }

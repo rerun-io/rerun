@@ -17,6 +17,7 @@ use re_viewer_context::{
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::heuristics::auto_size_world_heuristic;
+use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
     contexts::{AnnotationSceneContext, NonInteractiveEntities},
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
@@ -48,15 +49,9 @@ impl From<AutoSizeUnit> for WidgetText {
 }
 
 /// TODO(andreas): Should turn this "inside out" - [`SpatialSpaceViewState`] should be used by [`View2DState`]/[`View3DState`], not the other way round.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SpatialSpaceViewState {
-    /// Estimated bounding box of all data. Accumulated over every time data is displayed.
-    ///
-    /// Specify default explicitly, otherwise it will be a box at 0.0 after deserialization.
-    pub scene_bbox_accum: BoundingBox,
-
-    /// Estimated bounding box of all data for the last scene query.
-    pub scene_bbox: BoundingBox,
+    pub bounding_boxes: SceneBoundingBoxes,
 
     /// Estimated number of primitives last frame. Used to inform some heuristics.
     pub scene_num_primitives: usize,
@@ -69,23 +64,6 @@ pub struct SpatialSpaceViewState {
 
     /// Size of automatically sized objects. None if it wasn't configured.
     auto_size_config: re_renderer::AutoSizeConfig,
-}
-
-impl Default for SpatialSpaceViewState {
-    fn default() -> Self {
-        Self {
-            scene_bbox_accum: BoundingBox::nothing(),
-            scene_bbox: BoundingBox::nothing(),
-            scene_num_primitives: 0,
-            state_2d: Default::default(),
-            state_3d: Default::default(),
-            auto_size_config: re_renderer::AutoSizeConfig {
-                point_radius: re_renderer::Size::AUTO, // let re_renderer decide
-                line_radius: re_renderer::Size::AUTO,  // let re_renderer decide
-            },
-            previous_picking_result: None,
-        }
-    }
 }
 
 impl SpaceViewState for SpatialSpaceViewState {
@@ -127,7 +105,7 @@ impl SpatialSpaceViewState {
 
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
-            let auto_size_world = auto_size_world_heuristic(&self.scene_bbox_accum, self.scene_num_primitives);
+            let auto_size_world = auto_size_world_heuristic(&self.bounding_boxes.accumulated, self.scene_num_primitives);
 
             ctx.re_ui.grid_left_hand_label(ui, "Default size");
             ui.vertical(|ui| {
@@ -166,8 +144,8 @@ impl SpatialSpaceViewState {
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
                     {
-                        self.scene_bbox_accum = self.scene_bbox;
-                        self.state_3d.reset_camera(&self.scene_bbox_accum, &view_coordinates);
+                        self.bounding_boxes.accumulated = self.bounding_boxes.current;
+                        self.state_3d.reset_camera(&self.bounding_boxes.accumulated, &view_coordinates);
                     }
                     let mut spin = self.state_3d.spin();
                     if re_ui.checkbox(ui, &mut spin, "Spin")
@@ -206,7 +184,7 @@ impl SpatialSpaceViewState {
                 .on_hover_text("The bounding box encompassing all Entities in the view right now");
             ui.vertical(|ui| {
                 ui.style_mut().wrap = Some(false);
-                let BoundingBox { min, max } = self.scene_bbox;
+                let BoundingBox { min, max } = self.bounding_boxes.current;
                 ui.label(format!(
                     "x [{} - {}]",
                     format_f32(min.x),
@@ -415,13 +393,13 @@ pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
 
 pub fn screenshot_context_menu(
     _ctx: &ViewerContext<'_>,
-    response: egui::Response,
-) -> (egui::Response, Option<ScreenshotMode>) {
+    _response: &egui::Response,
+) -> Option<ScreenshotMode> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         if _ctx.app_options.experimental_space_view_screenshots {
             let mut take_screenshot = None;
-            let response = response.context_menu(|ui| {
+            _response.context_menu(|ui| {
                 ui.style_mut().wrap = Some(false);
                 if ui.button("Save screenshot to disk").clicked() {
                     take_screenshot = Some(ScreenshotMode::SaveAndCopyToClipboard);
@@ -431,14 +409,14 @@ pub fn screenshot_context_menu(
                     ui.close_menu();
                 }
             });
-            (response, take_screenshot)
+            take_screenshot
         } else {
-            (response, None)
+            None
         }
     }
     #[cfg(target_arch = "wasm32")]
     {
-        (response, None)
+        None
     }
 }
 
@@ -536,7 +514,11 @@ pub fn picking(
             .contains(&instance_path.entity_path.hash());
         let picked_image_with_coords =
             if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-                let meaning = image_meaning_for_entity(&instance_path.entity_path, ctx);
+                let meaning = image_meaning_for_entity(
+                    &instance_path.entity_path,
+                    &query.latest_at_query(),
+                    store,
+                );
 
                 store
                     .query_latest_component::<TensorData>(
@@ -623,10 +605,22 @@ pub fn picking(
             // Hover ui for everything else
             response.on_hover_ui_at_pointer(|ui| {
                 hit_ui(ui, hit);
-                item_ui::instance_path_button(ctx, ui, Some(query.space_view_id), &instance_path);
-                instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
+                item_ui::instance_path_button(
+                    ctx,
+                    &query.latest_at_query(),
+                    store,
+                    ui,
+                    Some(query.space_view_id),
+                    &instance_path,
+                );
+                instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query(), store);
             })
         };
+    }
+
+    if hovered_items.is_empty() {
+        // If we hover nothing, we are hovering the space-view itself.
+        hovered_items.push(Item::SpaceView(query.space_view_id));
     }
 
     // Associate the hovered space with the first item in the hovered item list.
@@ -650,7 +644,7 @@ pub fn picking(
                 SelectedSpaceContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
-                    tracked_space_camera: state.state_3d.tracked_camera.clone(),
+                    tracked_entity: state.state_3d.tracked_entity.clone(),
                     point_in_space_cameras: visualizers
                         .get::<CamerasVisualizer>()?
                         .space_cameras
@@ -667,7 +661,7 @@ pub fn picking(
         });
     };
 
-    item_ui::select_hovered_on_click(ctx, &response, re_viewer_context::Selection(hovered_items));
+    ctx.select_hovered_on_click(&response, re_viewer_context::Selection(hovered_items));
 
     Ok(response)
 }
@@ -695,10 +689,22 @@ fn image_hover_ui(
             instance_path.entity_path.clone(),
             re_types::components::TensorData::name(),
         );
-        component_path.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+        component_path.data_ui(
+            ctx,
+            ui,
+            UiVerbosity::Small,
+            &ctx.current_query(),
+            ctx.entity_db.store(),
+        );
     } else {
         // Show it all, like we do for any other thing we hover
-        instance_path.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+        instance_path.data_ui(
+            ctx,
+            ui,
+            UiVerbosity::Small,
+            &ctx.current_query(),
+            ctx.entity_db.store(),
+        );
     }
 
     if let Some([h, w, ..]) = tensor.image_height_width_channels() {

@@ -38,7 +38,7 @@ pub const ROLL_MOUSE_MODIFIER: egui::Modifiers = egui::Modifiers::ALT;
 pub const SPEED_UP_3D_MODIFIER: egui::Modifiers = egui::Modifiers::SHIFT;
 
 /// Key to restore the camera.
-pub const TRACKED_CAMERA_RESTORE_KEY: egui::Key = egui::Key::Escape;
+pub const TRACKED_OBJECT_RESTORE_KEY: egui::Key = egui::Key::Escape;
 
 /// Description text for which action resets a space view.
 pub const RESET_VIEW_BUTTON_TEXT: &str = "double click";

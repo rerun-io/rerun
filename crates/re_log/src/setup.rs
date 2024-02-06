@@ -1,91 +1,59 @@
 //! Function to setup logging in binaries and web apps.
 
-/// Get `RUST_LOG` environment variable or `info`, if not set.
+/// Automatically does the right thing dependending on target environment (native vs. web).
 ///
-/// Also sets some other log levels on crates that are too loud.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn default_log_filter() -> String {
-    let mut rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| {
-        if cfg!(debug_assertions) {
-            "debug".to_owned()
+/// Directs [`log`] calls to stderr on native.
+pub fn setup_logging() {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn setup() {
+        if cfg!(debug_assertions) && std::env::var("RUST_BACKTRACE").is_err() {
+            // In debug build, default `RUST_BACKTRACE` to `1` if it is not set.
+            // This ensures sure we produce backtraces if our examples (etc) panics.
+
+            // Our own crash handler (`re_crash_handler`) always prints a backtraces
+            // (currently ignoring `RUST_BACKTRACE`) but we only use that for `rerun-cli`, our main binary.
+
+            // `RUST_BACKTRACE` also turns on printing backtraces for `anyhow::Error`s that
+            // are returned from `main` (i.e. if `main` returns `anyhow::Result`).
+            std::env::set_var("RUST_BACKTRACE", "1");
+        }
+
+        crate::multi_logger::init().expect("Failed to set logger");
+
+        let log_filter = crate::default_log_filter();
+
+        if log_filter.contains("trace") {
+            log::set_max_level(log::LevelFilter::Trace);
+        } else if log_filter.contains("debug") {
+            log::set_max_level(log::LevelFilter::Debug);
         } else {
-            "info".to_owned()
+            log::set_max_level(log::LevelFilter::Info);
         }
-    });
 
-    for crate_name in crate::CRATES_AT_ERROR_LEVEL {
-        if !rust_log.contains(&format!("{crate_name}=")) {
-            rust_log += &format!(",{crate_name}=error");
-        }
-    }
-    for crate_name in crate::CRATES_AT_WARN_LEVEL {
-        if !rust_log.contains(&format!("{crate_name}=")) {
-            rust_log += &format!(",{crate_name}=warn");
-        }
-    }
-    for crate_name in crate::CRATES_AT_INFO_LEVEL {
-        if !rust_log.contains(&format!("{crate_name}=")) {
-            rust_log += &format!(",{crate_name}=info");
+        let mut stderr_logger = env_logger::Builder::new();
+        stderr_logger.parse_filters(&log_filter);
+        crate::add_boxed_logger(Box::new(stderr_logger.build())).expect("Failed to install logger");
+
+        if env_var_bool("RERUN_PANIC_ON_WARN") == Some(true) {
+            crate::add_boxed_logger(Box::new(PanicOnWarn {}))
+                .expect("Failed to enable RERUN_PANIC_ON_WARN");
+            crate::info!("RERUN_PANIC_ON_WARN: any warning or error will cause Rerun to panic.");
         }
     }
 
-    rust_log
-}
-
-/// Directs [`log`] calls to stderr.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn setup_native_logging() {
-    if cfg!(debug_assertions) && std::env::var("RUST_BACKTRACE").is_err() {
-        // In debug build, default `RUST_BACKTRACE` to `1` if it is not set.
-        // This ensures sure we produce backtraces if our examples (etc) panics.
-
-        // Our own crash handler (`re_crash_handler`) always prints a backtraces
-        // (currently ignoring `RUST_BACKTRACE`) but we only use that for `rerun-cli`, our main binary.
-
-        // `RUST_BACKTRACE` also turns on printing backtraces for `anyhow::Error`s that
-        // are returned from `main` (i.e. if `main` returns `anyhow::Result`).
-        std::env::set_var("RUST_BACKTRACE", "1");
-    }
-
-    crate::multi_logger::init().expect("Failed to set logger");
-
-    let log_filter = default_log_filter();
-
-    if log_filter.contains("trace") {
-        log::set_max_level(log::LevelFilter::Trace);
-    } else if log_filter.contains("debug") {
+    #[cfg(target_arch = "wasm32")]
+    fn setup() {
+        crate::multi_logger::init().expect("Failed to set logger");
         log::set_max_level(log::LevelFilter::Debug);
-    } else {
-        log::set_max_level(log::LevelFilter::Info);
+        crate::add_boxed_logger(Box::new(crate::web_logger::WebLogger::new(
+            log::LevelFilter::Debug,
+        )))
+        .expect("Failed to install logger");
     }
 
-    let mut stderr_logger = env_logger::Builder::new();
-    stderr_logger.parse_filters(&log_filter);
-    crate::add_boxed_logger(Box::new(stderr_logger.build())).expect("Failed to install logger");
-
-    if env_var_bool("RERUN_PANIC_ON_WARN") == Some(true) {
-        crate::add_boxed_logger(Box::new(PanicOnWarn {}))
-            .expect("Failed to enable RERUN_PANIC_ON_WARN");
-        crate::info!("RERUN_PANIC_ON_WARN: any warning or error will cause Rerun to panic.");
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn setup_web_logging() {
-    use std::sync::atomic::{AtomicBool, Ordering};
-
-    static LOG_INIT: AtomicBool = AtomicBool::new(false);
-    if LOG_INIT.load(Ordering::SeqCst) {
-        return;
-    }
-    LOG_INIT.store(true, Ordering::SeqCst);
-
-    crate::multi_logger::init().expect("Failed to set logger");
-    log::set_max_level(log::LevelFilter::Debug);
-    crate::add_boxed_logger(Box::new(crate::web_logger::WebLogger::new(
-        log::LevelFilter::Debug,
-    )))
-    .expect("Failed to install logger");
+    use std::sync::Once;
+    static START: Once = Once::new();
+    START.call_once(setup);
 }
 
 // ----------------------------------------------------------------------------

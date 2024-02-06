@@ -1,23 +1,25 @@
-use nohash_hasher::IntMap;
+use ahash::HashMap;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use re_entity_db::{
-    EntityDb, EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree,
+    external::re_data_store::LatestAtQuery, EntityDb, EntityProperties, EntityPropertiesComponent,
+    EntityPropertyMap, EntityTree,
 };
 use re_log_types::{
-    path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, TimePoint,
+    path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, StoreKind,
 };
-use re_types_core::archetypes::Clear;
+use re_types_core::{archetypes::Clear, components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatorMatchingEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier,
-    SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _, ViewSystemIdentifier,
-    ViewerContext, VisualizableEntities,
+    blueprint_timepoint_for_writes, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
+    DataResultNode, DataResultTree, IndicatedEntities, PerVisualizer, PropertyOverrides,
+    SpaceViewClassIdentifier, StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext,
+    VisualizableEntities,
 };
 
 use crate::{
     blueprint::components::QueryExpressions, DataQuery, EntityOverrideContext, PropertyResolver,
+    SpaceViewBlueprint,
 };
 
 /// An implementation of [`DataQuery`] that is built from a collection of [`QueryExpressions`]
@@ -66,11 +68,12 @@ impl DataQueryBlueprint {
     pub fn try_from_db(
         id: DataQueryId,
         blueprint_db: &EntityDb,
+        query: &LatestAtQuery,
         space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> Option<Self> {
         let expressions = blueprint_db
             .store()
-            .query_timeless_component::<QueryExpressions>(&id.as_entity_path())
+            .query_latest_component::<QueryExpressions>(&id.as_entity_path(), query)
             .map(|c| c.value)?;
 
         let entity_path_filter = EntityPathFilter::from(&expressions);
@@ -111,8 +114,11 @@ impl DataQueryBlueprint {
 
     pub fn build_resolver<'a>(
         &self,
-        container: SpaceViewId,
+        space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
+        space_view: &'a SpaceViewBlueprint,
         auto_properties: &'a EntityPropertyMap,
+        visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
     ) -> DataQueryPropertyResolver<'a> {
         let base_override_root = self.id.as_entity_path().clone();
         let individual_override_root =
@@ -120,15 +126,19 @@ impl DataQueryBlueprint {
         let recursive_override_root =
             base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
         DataQueryPropertyResolver {
+            space_view_class_registry,
+            space_view,
             auto_properties,
-            default_stack: vec![container.as_entity_path(), self.id.as_entity_path()],
+            default_stack: vec![space_view.entity_path(), self.id.as_entity_path()],
             individual_override_root,
             recursive_override_root,
+            visualizable_entities_per_visualizer,
+            indicated_entities_per_visualizer,
         }
     }
 
     fn save_expressions(&self, ctx: &ViewerContext<'_>, entity_path_filter: &EntityPathFilter) {
-        let timepoint = TimePoint::timeless();
+        let timepoint = blueprint_timepoint_for_writes();
 
         let expressions_component = QueryExpressions::from(entity_path_filter);
 
@@ -179,17 +189,13 @@ impl DataQuery for DataQueryBlueprint {
         &self,
         ctx: &re_viewer_context::StoreContext<'_>,
         visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
-        indicator_matching_entities_per_visualizer: &PerVisualizer<IndicatorMatchingEntities>,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
-        let executor = QueryExpressionEvaluator::new(
-            self,
-            visualizable_entities_for_visualizer_systems,
-            indicator_matching_entities_per_visualizer,
-        );
+        let executor =
+            QueryExpressionEvaluator::new(self, visualizable_entities_for_visualizer_systems);
 
         let root_handle = ctx.recording.and_then(|store| {
             re_tracing::profile_scope!("add_entity_tree_to_data_results_recursive");
@@ -210,8 +216,6 @@ impl DataQuery for DataQueryBlueprint {
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {
     visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
-    indicator_matching_entities_per_visualizer:
-        &'a IntMap<ViewSystemIdentifier, IndicatorMatchingEntities>,
     entity_path_filter: EntityPathFilter,
 }
 
@@ -219,16 +223,11 @@ impl<'a> QueryExpressionEvaluator<'a> {
     fn new(
         blueprint: &'a DataQueryBlueprint,
         visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
-        indicator_matching_entities_per_visualizer: &'a IntMap<
-            ViewSystemIdentifier,
-            IndicatorMatchingEntities,
-        >,
     ) -> Self {
         re_tracing::profile_function!();
 
         Self {
             visualizable_entities_for_visualizer_systems,
-            indicator_matching_entities_per_visualizer,
             entity_path_filter: blueprint.entity_path_filter.clone(),
         }
     }
@@ -253,57 +252,28 @@ impl<'a> QueryExpressionEvaluator<'a> {
         // Pre-compute our matches
         let any_match = self.entity_path_filter.is_included(entity_path);
 
-        // Only populate visualizers if this is a match
-        // Note that allowed prefixes that aren't matches can still create groups
-        let visualizers: SmallVec<_> = if any_match {
-            self.visualizable_entities_for_visualizer_systems
-                .iter()
-                .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
-                        // TODO(andreas):
-                        // * not all queries do just heuristic filtering of visualizers,
-                        //   some set the visualizer upfront, others should skip this check and visualize all
-                        // * Space view classes should be able to modify this check.
-                        //   As of writing this hasn't been done yet in order to simplify things
-                        // * querying the per-visualizer lists every time is silly
-                        //   -> at beginning of query squash all visualizers in `visualizable_entities_for_visualizer_systems`
-                        //      to a single `IntSet<EntityPathHash>`
-                        //   -> consider three steps of query: list entities, list their visualizers, list their properties
-                        if self
-                            .indicator_matching_entities_per_visualizer
-                            .get(visualizer)
-                            .map_or(false, |matching_list| {
-                                matching_list.contains(&entity_path.hash())
-                            })
-                        {
-                            Some(*visualizer)
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                })
-                .collect()
-        } else {
-            Default::default()
-        };
+        // Check for visualizers if this is a match.
+        // Note that allowed prefixes that aren't matches can still create groups.
+        let visualizable = any_match
+            && self
+                .visualizable_entities_for_visualizer_systems
+                .values()
+                .any(|ents| ents.contains(entity_path));
 
-        let self_leaf =
-            if !visualizers.is_empty() || self.entity_path_filter.is_exact_included(entity_path) {
-                Some(data_results.insert(DataResultNode {
-                    data_result: DataResult {
-                        entity_path: entity_path.clone(),
-                        visualizers,
-                        is_group: false,
-                        direct_included: any_match,
-                        property_overrides: None,
-                    },
-                    children: Default::default(),
-                }))
-            } else {
-                None
-            };
+        let self_leaf = if visualizable || self.entity_path_filter.is_exact_included(entity_path) {
+            Some(data_results.insert(DataResultNode {
+                data_result: DataResult {
+                    entity_path: entity_path.clone(),
+                    visualizers: Default::default(),
+                    is_group: false,
+                    direct_included: any_match,
+                    property_overrides: None,
+                },
+                children: Default::default(),
+            }))
+        } else {
+            None
+        };
 
         let maybe_self_iter = if let Some(self_leaf) = self_leaf {
             itertools::Either::Left(std::iter::once(self_leaf))
@@ -337,10 +307,14 @@ impl<'a> QueryExpressionEvaluator<'a> {
 }
 
 pub struct DataQueryPropertyResolver<'a> {
+    space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
+    space_view: &'a SpaceViewBlueprint,
     auto_properties: &'a EntityPropertyMap,
     default_stack: Vec<EntityPath>,
     individual_override_root: EntityPath,
     recursive_override_root: EntityPath,
+    visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
+    indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 }
 
 impl DataQueryPropertyResolver<'_> {
@@ -351,7 +325,11 @@ impl DataQueryPropertyResolver<'_> {
     ///  may include properties from the `SpaceView` or `DataQuery`.
     ///  - The individual overrides are found by walking an override subtree under the `data_query/<id>/individual_overrides`
     ///  - The group overrides are found by walking an override subtree under the `data_query/<id>/group_overrides`
-    fn build_override_context(&self, ctx: &StoreContext<'_>) -> EntityOverrideContext {
+    fn build_override_context(
+        &self,
+        ctx: &StoreContext<'_>,
+        query: &LatestAtQuery,
+    ) -> EntityOverrideContext {
         re_tracing::profile_function!();
 
         let mut root: EntityProperties = Default::default();
@@ -359,16 +337,27 @@ impl DataQueryPropertyResolver<'_> {
             if let Some(overrides) = ctx
                 .blueprint
                 .store()
-                .query_timeless_component::<EntityPropertiesComponent>(prefix)
+                .query_latest_component::<EntityPropertiesComponent>(prefix, query)
             {
                 root = root.with_child(&overrides.value.0);
             }
         }
 
+        // TODO(jleibs): Should pass through an initial `ComponentOverrides` here
+        // if we were to support incrementally inheriting overrides from parent
+        // contexts such as the `SpaceView` or `Container`.
         EntityOverrideContext {
             root,
-            individual: self.resolve_entity_overrides_for_path(ctx, &self.individual_override_root),
-            group: self.resolve_entity_overrides_for_path(ctx, &self.recursive_override_root),
+            individual: self.resolve_entity_overrides_for_path(
+                ctx,
+                query,
+                &self.individual_override_root,
+            ),
+            group: self.resolve_entity_overrides_for_path(
+                ctx,
+                query,
+                &self.recursive_override_root,
+            ),
         }
     }
 
@@ -381,6 +370,7 @@ impl DataQueryPropertyResolver<'_> {
     fn resolve_entity_overrides_for_path(
         &self,
         ctx: &StoreContext<'_>,
+        query: &LatestAtQuery,
         override_root: &EntityPath,
     ) -> EntityPropertyMap {
         re_tracing::profile_function!();
@@ -389,10 +379,10 @@ impl DataQueryPropertyResolver<'_> {
         let mut prop_map = self.auto_properties.clone();
 
         if let Some(tree) = blueprint.tree().subtree(override_root) {
-            tree.visit_children_recursively(&mut |path: &EntityPath| {
+            tree.visit_children_recursively(&mut |path: &EntityPath, _| {
                 if let Some(props) = blueprint
                     .store()
-                    .query_timeless_component_quiet::<EntityPropertiesComponent>(path)
+                    .query_latest_component_quiet::<EntityPropertiesComponent>(path, query)
                 {
                     let overridden_path =
                         EntityPath::from(&path.as_slice()[override_root.len()..path.len()]);
@@ -406,9 +396,11 @@ impl DataQueryPropertyResolver<'_> {
     /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
     ///
     /// This will accumulate the group properties at each step down the tree, and then finally merge
-    /// with individual overrides at the leafs.
+    /// with individual overrides at the leaves.
     fn update_overrides_recursive(
         &self,
+        ctx: &StoreContext<'_>,
+        query: &LatestAtQuery,
         query_result: &mut DataQueryResult,
         override_context: &EntityOverrideContext,
         accumulated: &EntityProperties,
@@ -430,6 +422,7 @@ impl DataQueryPropertyResolver<'_> {
                     node.data_result.property_overrides = Some(PropertyOverrides {
                         individual_properties: overridden_properties.cloned(),
                         accumulated_properties: accumulated_properties.clone(),
+                        component_overrides: Default::default(),
                         override_path: self
                             .recursive_override_root
                             .join(&node.data_result.entity_path),
@@ -447,12 +440,60 @@ impl DataQueryPropertyResolver<'_> {
                         accumulated.clone()
                     };
 
+                    let override_path = self
+                        .individual_override_root
+                        .join(&node.data_result.entity_path);
+
+                    {
+                        re_tracing::profile_scope!("Update visualizers from overrides");
+
+                        // If the user has overridden the visualizers, update which visualizers are used.
+                        if let Some(viz_override) = ctx
+                            .blueprint
+                            .store()
+                            .query_latest_component::<VisualizerOverrides>(&override_path, query)
+                            .map(|c| c.value)
+                        {
+                            node.data_result.visualizers =
+                                viz_override.0.iter().map(|v| v.as_str().into()).collect();
+                        } else {
+                            // Otherwise ask the `SpaceViewClass` to choose.
+                            node.data_result.visualizers = self
+                                .space_view
+                                .class(self.space_view_class_registry)
+                                .choose_default_visualizers(
+                                    &node.data_result.entity_path,
+                                    self.visualizable_entities_per_visualizer,
+                                    self.indicated_entities_per_visualizer,
+                                );
+                        }
+                    }
+                    let mut component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)> =
+                        Default::default();
+
+                    if let Some(override_subtree) = ctx.blueprint.tree().subtree(&override_path) {
+                        for component in override_subtree.entity.components.keys() {
+                            if let Some(component_data) = ctx
+                                .blueprint
+                                .store()
+                                .latest_at(query, &override_path, *component, &[*component])
+                                .and_then(|result| result.2[0].clone())
+                            {
+                                if !component_data.is_empty() {
+                                    component_overrides.insert(
+                                        *component,
+                                        (StoreKind::Blueprint, override_path.clone()),
+                                    );
+                                }
+                            }
+                        }
+                    }
+
                     node.data_result.property_overrides = Some(PropertyOverrides {
                         individual_properties: overridden_properties.cloned(),
                         accumulated_properties: accumulated_properties.clone(),
-                        override_path: self
-                            .individual_override_root
-                            .join(&node.data_result.entity_path),
+                        component_overrides,
+                        override_path,
                     });
 
                     None
@@ -461,6 +502,8 @@ impl DataQueryPropertyResolver<'_> {
         {
             for child in child_handles {
                 self.update_overrides_recursive(
+                    ctx,
+                    query,
                     query_result,
                     override_context,
                     &accumulated,
@@ -473,12 +516,19 @@ impl DataQueryPropertyResolver<'_> {
 
 impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
     /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
-    fn update_overrides(&self, ctx: &StoreContext<'_>, query_result: &mut DataQueryResult) {
+    fn update_overrides(
+        &self,
+        ctx: &StoreContext<'_>,
+        query: &LatestAtQuery,
+        query_result: &mut DataQueryResult,
+    ) {
         re_tracing::profile_function!();
-        let entity_overrides = self.build_override_context(ctx);
+        let entity_overrides = self.build_override_context(ctx, query);
 
         if let Some(root) = query_result.tree.root_handle() {
             self.update_overrides_recursive(
+                ctx,
+                query,
                 query_result,
                 &entity_overrides,
                 &entity_overrides.root,
@@ -640,24 +690,18 @@ mod tests {
                 entity_path_filter: EntityPathFilter::parse_forgiving(filter),
             };
 
-            let indicator_matching_entities_per_visualizer =
-                PerVisualizer::<IndicatorMatchingEntities>(
-                    visualizable_entities_for_visualizer_systems
-                        .iter()
-                        .map(|(id, entities)| {
-                            (
-                                *id,
-                                IndicatorMatchingEntities(
-                                    entities.0.iter().map(|path| path.hash()).collect(),
-                                ),
-                            )
-                        })
-                        .collect(),
-                );
+            let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>(
+                visualizable_entities_for_visualizer_systems
+                    .iter()
+                    .map(|(id, entities)| {
+                        (*id, IndicatedEntities(entities.0.iter().cloned().collect()))
+                    })
+                    .collect(),
+            );
             let query_result = query.execute_query(
                 &ctx,
                 &visualizable_entities_for_visualizer_systems,
-                &indicator_matching_entities_per_visualizer,
+                &indicated_entities_per_visualizer,
             );
 
             let mut visited = vec![];

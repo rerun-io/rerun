@@ -4,11 +4,11 @@ use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Asset3D,
     components::{Blob, InstanceKey, MediaType, OutOfTreeTransform3D},
-    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use super::{
@@ -91,7 +91,8 @@ impl Asset3DVisualizer {
                 }
             }));
 
-            self.0.extend_bounding_box(mesh.bbox(), world_from_pose);
+            self.0
+                .add_bounding_box(ent_path.hash(), mesh.bbox(), world_from_pose);
         };
 
         Ok(())
@@ -105,15 +106,8 @@ impl IdentifiedViewSystem for Asset3DVisualizer {
 }
 
 impl VisualizerSystem for Asset3DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Asset3D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Asset3D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Asset3D>()
     }
 
     fn filter_visualizable_entities(
@@ -121,6 +115,7 @@ impl VisualizerSystem for Asset3DVisualizer {
         entities: ApplicableEntities,
         context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
+        re_tracing::profile_function!();
         filter_visualizable_3d_entities(entities, context)
     }
 

@@ -138,7 +138,7 @@ impl PartialEq for DataCell {
 /// virtual calls.
 ///
 /// See #1746 for details.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct DataCellInner {
     /// Name of the component type used in this cell.
     //
@@ -161,6 +161,19 @@ pub struct DataCellInner {
     /// frequent boxing/unboxing down the line.
     /// Internally, this is most likely a slice of another, larger array (batching!).
     pub(crate) values: Box<dyn arrow2::array::Array>,
+}
+
+impl PartialEq for DataCellInner {
+    #[inline]
+    fn eq(&self, rhs: &Self) -> bool {
+        let Self {
+            name,
+            size_bytes: _, // we ignore the size (it may be 0 = uncomputed)
+            values,
+        } = self;
+
+        name == &rhs.name && values.eq(&rhs.values)
+    }
 }
 
 // TODO(#1696): We shouldn't have to specify the component name separately, this should be
@@ -599,9 +612,14 @@ impl DataCell {
             return true;
         }
 
-        re_log::error_once!("cell size could _not_ be computed");
+        if self.inner.size_bytes == 0 {
+            re_log::error_once!(
+                "cell size could _not_ be computed (the cell has already been shared)"
+            );
+            return false;
+        }
 
-        false
+        true
     }
 }
 
@@ -673,8 +691,8 @@ fn data_cell_sizes() {
             DataCell::from_arrow(InstanceKey::name(), UInt64Array::from_vec(vec![]).boxed());
         cell.compute_size_bytes();
 
-        assert_eq!(216, cell.heap_size_bytes());
-        assert_eq!(216, cell.heap_size_bytes());
+        assert_eq!(184, cell.heap_size_bytes());
+        assert_eq!(184, cell.heap_size_bytes());
     }
 
     // anything else
@@ -686,7 +704,7 @@ fn data_cell_sizes() {
         cell.compute_size_bytes();
 
         // zero-sized + 3x u64s
-        assert_eq!(240, cell.heap_size_bytes());
-        assert_eq!(240, cell.heap_size_bytes());
+        assert_eq!(208, cell.heap_size_bytes());
+        assert_eq!(208, cell.heap_size_bytes());
     }
 }

@@ -26,7 +26,10 @@ all-features = true
 default = []
 
 [dependencies]
-egui_commonmark.workspace = true
+re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
+re_log_types.workspace = true # syntax-highlighting for EntityPath
+
+egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
 egui.workspace = true
 parking_lot.workspace = true
@@ -37,6 +40,8 @@ strum.workspace = true
 sublime_fuzzy.workspace = true
 
 [dev-dependencies]
+re_log.workspace = true
+
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_tiles.workspace = true
-re_log.workspace = true
+rand.workspace = true

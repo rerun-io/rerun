@@ -2,11 +2,12 @@ use re_viewer::external::{
     egui,
     re_data_ui::{item_ui, DataUi},
     re_entity_db::{EntityProperties, InstancePath},
-    re_log_types::EntityPath,
+    re_log_types::{EntityPath, EntityPathFilter},
     re_ui,
     re_viewer_context::{
-        HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
-        SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+        HoverHighlight, IdentifiedViewSystem as _, Item, RecommendedSpaceView, SelectionHighlight,
+        SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
         SpaceViewSystemRegistrator, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
     },
 };
@@ -93,6 +94,24 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
 
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
         Default::default()
+    }
+
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+        // By default spawn a single view at the root if there's anything the visualizer is applicable to.
+        if ctx
+            .applicable_entities_per_visualizer
+            .get(&InstanceColorSystem::identifier())
+            .map_or(true, |entities| entities.is_empty())
+        {
+            SpaceViewSpawnHeuristics::default()
+        } else {
+            SpaceViewSpawnHeuristics {
+                recommended_space_views: vec![RecommendedSpaceView {
+                    root: EntityPath::root(),
+                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
+                }],
+            }
+        }
     }
 
     /// Additional UI displayed when the space view is selected.
@@ -242,11 +261,23 @@ fn color_space_ui(
             // Update the global selection state if the user interacts with a point and show hover ui for the entire keypoint.
             let instance = InstancePath::instance(ent_path.clone(), *instance_key);
             let interact = interact.on_hover_ui_at_pointer(|ui| {
-                item_ui::instance_path_button(ctx, ui, Some(query.space_view_id), &instance);
-                instance.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query());
+                item_ui::instance_path_button(
+                    ctx,
+                    &ctx.current_query(),
+                    ctx.entity_db.store(),
+                    ui,
+                    Some(query.space_view_id),
+                    &instance,
+                );
+                instance.data_ui(
+                    ctx,
+                    ui,
+                    UiVerbosity::Reduced,
+                    &ctx.current_query(),
+                    ctx.entity_db.store(),
+                );
             });
-            item_ui::select_hovered_on_click(
-                ctx,
+            ctx.select_hovered_on_click(
                 &interact,
                 Item::InstancePath(Some(query.space_view_id), instance),
             );

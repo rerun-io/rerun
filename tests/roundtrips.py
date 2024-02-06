@@ -28,6 +28,9 @@ opt_out = {
     "clear": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "mesh3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "time_series_scalar": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
+    "scalar": ["cpp", "py", "rust"],  # TODO(jleibs)
+    "series_line": ["cpp", "py", "rust"],  # TODO(jleibs)
+    "series_point": ["cpp", "py", "rust"],  # TODO(jleibs)
 }
 
 

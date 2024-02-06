@@ -1,4 +1,5 @@
 use std::fmt;
+use std::io::IsTerminal;
 use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
@@ -368,8 +369,8 @@ impl RecordingStreamBuilder {
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
     pub fn stdout(self) -> RecordingStreamResult<RecordingStream> {
-        let is_stdout_listening = !atty::is(atty::Stream::Stdout);
-        if !is_stdout_listening {
+        if std::io::stdout().is_terminal() {
+            re_log::debug!("Ignored call to stdout() because stdout is a terminal");
             return self.buffered();
         }
 
@@ -1157,7 +1158,7 @@ impl RecordingStream {
             // Get the current time on all timelines, for the current recording, on the current
             // thread…
             let mut now = self.now();
-            // ...and then also inject the current recording tick into it.
+            // …and then also inject the current recording tick into it.
             now.insert(Timeline::log_tick(), tick.into());
 
             // Inject all these times into the row, overriding conflicting times, if any.
@@ -1409,8 +1410,8 @@ impl RecordingStream {
             return Ok(());
         }
 
-        let is_stdout_listening = !atty::is(atty::Stream::Stdout);
-        if !is_stdout_listening {
+        if std::io::stdout().is_terminal() {
+            re_log::debug!("Ignored call to stdout() because stdout is a terminal");
             self.set_sink(Box::new(crate::log_sink::BufferedSink::new()));
             return Ok(());
         }

@@ -8,9 +8,8 @@ use re_entity_db::{EntityProperties, InstancePath};
 use re_log_types::{EntityPath, Timeline};
 use re_query::get_component_with_instances;
 use re_viewer_context::{
-    AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSystemExecutionError, SystemExecutionOutput, UiVerbosity, ViewQuery,
-    ViewerContext,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError,
+    SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
 };
 
 use crate::visualizer_system::EmptySystem;
@@ -53,13 +52,12 @@ impl SpaceViewClass for DataframeSpaceView {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
     }
 
-    fn auto_spawn_heuristic(
+    fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
-        _space_origin: &EntityPath,
-        _ent_paths: &PerSystemEntities,
-    ) -> re_viewer_context::AutoSpawnHeuristic {
-        AutoSpawnHeuristic::NeverSpawn
+    ) -> re_viewer_context::SpaceViewSpawnHeuristics {
+        // Doesn't spawn anything by default.
+        Default::default()
     }
 
     fn selection_ui(
@@ -154,7 +152,7 @@ impl SpaceViewClass for DataframeSpaceView {
             // of bounds" (aka cannot be joined to a primary component).
 
             row.col(|ui| {
-                instance_path_button(ctx, ui, None, instance);
+                instance_path_button(ctx, &latest_at_query, store, ui, None, instance);
             });
 
             for comp in &sorted_components {
@@ -162,7 +160,7 @@ impl SpaceViewClass for DataframeSpaceView {
                     // TODO(#4466): make it explicit if that value results
                     // from a splat joint.
 
-                    if let Some((_, comp_inst)) =
+                    if let Some((_, _, comp_inst)) =
                         // This is a duplicate of the one above, but this ok since this codes runs
                         // *only* for visible rows.
                         get_component_with_instances(
@@ -177,6 +175,7 @@ impl SpaceViewClass for DataframeSpaceView {
                             ui,
                             UiVerbosity::Small,
                             &latest_at_query,
+                            store,
                             &instance.entity_path,
                             &comp_inst,
                             &instance.instance_key,
@@ -243,7 +242,7 @@ fn sorted_instance_paths_for<'a>(
         .filter(|comp| !comp.is_indicator_component())
         .flat_map(|comp| {
             get_component_with_instances(store, latest_at_query, entity_path, comp)
-                .map(|(_, comp_inst)| comp_inst.instance_keys())
+                .map(|(_, _, comp_inst)| comp_inst.instance_keys())
                 .unwrap_or_default()
         })
         .filter(|instance_key| !instance_key.is_splat())

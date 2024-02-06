@@ -11,6 +11,13 @@ pub struct TimeInt(pub(crate) i64);
 
 impl nohash_hasher::IsEnabled for TimeInt {}
 
+impl re_types_core::SizeBytes for TimeInt {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl TimeInt {
     /// The beginning of time.
     ///
@@ -22,6 +29,7 @@ impl TimeInt {
     // a bit of leeway.
     pub const BEGINNING: Self = Self(i64::MIN / 2);
 
+    // TODO(#4832): `TimeInt::BEGINNING` vs. `TimeInt::MIN` vs. `Option<TimeInt>`…
     pub const MIN: Self = Self(i64::MIN);
     pub const MAX: Self = Self(i64::MAX);
 
@@ -67,11 +75,6 @@ impl TimeInt {
     #[inline]
     pub fn abs(&self) -> Self {
         Self(self.0.saturating_abs())
-    }
-
-    #[inline]
-    pub fn is_timeless(&self) -> bool {
-        self == &Self::BEGINNING
     }
 }
 

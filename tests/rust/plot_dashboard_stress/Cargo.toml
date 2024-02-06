@@ -1,14 +1,16 @@
 [package]
 name = "plot_dashboard_stress"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.3"
 edition = "2021"
 rust-version = "1.72"
 license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/rerun" }
+re_log = { workspace = true, features = ["setup"] }
+rerun = { path = "../../../crates/rerun", features = ["clap"] }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 rand = "0.8"
+rand_distr = "0.4"

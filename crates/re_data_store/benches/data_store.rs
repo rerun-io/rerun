@@ -1,7 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use arrow2::array::{Array as _, StructArray, UnionArray};
+use arrow2::array::{Array as _, StructArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_data_store::{
@@ -312,7 +312,7 @@ fn range(c: &mut Criterion) {
                             .unwrap()
                             .as_arrow_ref()
                             .as_any()
-                            .downcast_ref::<UnionArray>()
+                            .downcast_ref::<StructArray>()
                             .unwrap();
                         assert_eq!(NUM_INSTANCES as usize, large_structs.len());
                     }
@@ -458,7 +458,7 @@ fn latest_data_at<const N: usize>(
 
     store
         .latest_at(&timeline_query, &ent_path, primary, secondaries)
-        .map_or_else(|| [(); N].map(|_| None), |(_, cells)| cells)
+        .map_or_else(|| [(); N].map(|_| None), |(_, _, cells)| cells)
 }
 
 fn range_data<const N: usize>(

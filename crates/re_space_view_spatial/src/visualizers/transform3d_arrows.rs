@@ -1,13 +1,11 @@
 use egui::Color32;
 use re_log_types::EntityPath;
 use re_renderer::LineStripSeriesBuilder;
-use re_types::{
-    components::{InstanceKey, Transform3D},
-    Archetype, ComponentNameSet,
-};
+use re_types::components::{InstanceKey, Transform3D};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{
@@ -34,20 +32,8 @@ impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
 }
 
 impl VisualizerSystem for Transform3DArrowsVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        re_types::archetypes::Transform3D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(
-            re_types::archetypes::Transform3D::indicator()
-                .as_ref()
-                .name(),
-        )
-        .collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<re_types::archetypes::Transform3D>()
     }
 
     fn filter_visualizable_entities(
@@ -91,9 +77,11 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             };
 
             // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
-            self.0
-                .bounding_box
-                .extend(world_from_obj.translation.into());
+            self.0.add_bounding_box(
+                data_result.entity_path.hash(),
+                macaw::BoundingBox::ZERO,
+                world_from_obj,
+            );
 
             // Given how simple transform gizmos are it would be nice to put them all into a single line batch.
             // However, we can set object picking ids only per batch.

@@ -21,8 +21,10 @@ use crate::{
         },
         StringExt as _,
     },
-    format_path, ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind,
-    Objects, Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    format_path,
+    objects::ObjectType,
+    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
     ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
@@ -38,6 +40,8 @@ use super::{
 // once again at some point (`TokenStream` strips them)… nothing too urgent though.
 
 // ---
+
+type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 
 pub struct RustCodeGenerator {
     pub workspace_path: Utf8PathBuf,
@@ -106,7 +110,14 @@ impl RustCodeGenerator {
 
             let filepath = module_path.join(filename);
 
-            let mut code = generate_object_file(reporter, objects, arrow_registry, obj);
+            let mut code = match generate_object_file(reporter, objects, arrow_registry, obj) {
+                Ok(code) => code,
+                Err(err) => {
+                    reporter.error(&obj.virtpath, &obj.fqname, err);
+                    continue;
+                }
+            };
+
             if crate_name == "re_types_core" {
                 code = code.replace("::re_types_core", "crate");
             }
@@ -140,7 +151,7 @@ fn generate_object_file(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
     obj: &Object,
-) -> String {
+) -> Result<String> {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = obj.relative_filepath() {
@@ -175,10 +186,10 @@ fn generate_object_file(
     // inject some of our own when writing to file… while making sure that don't inject
     // random spacing into doc comments that look like code!
 
-    let quoted_obj = if obj.is_struct() {
-        quote_struct(reporter, arrow_registry, objects, obj)
-    } else {
-        quote_union(reporter, arrow_registry, objects, obj)
+    let quoted_obj = match obj.typ() {
+        crate::objects::ObjectType::Struct => quote_struct(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectType::Union => quote_union(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectType::Enum => anyhow::bail!("Enums are not implemented in Rust"),
     };
 
     let mut tokens = quoted_obj.into_iter();
@@ -201,7 +212,7 @@ fn generate_object_file(
 
     code.push_text(string_from_quoted(&acc), 1, 0);
 
-    replace_doc_attrb_with_doc_comment(&code)
+    Ok(replace_doc_attrb_with_doc_comment(&code))
 }
 
 fn generate_mod_file(
@@ -422,7 +433,7 @@ fn quote_union(
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
-    assert!(!obj.is_struct());
+    assert_eq!(obj.typ(), ObjectType::Union);
 
     let Object { name, fields, .. } = obj;
 

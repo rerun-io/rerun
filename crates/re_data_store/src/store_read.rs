@@ -65,7 +65,7 @@ impl std::fmt::Debug for RangeQuery {
             self.timeline.typ().format_utc(self.range.min),
             self.timeline.typ().format_utc(self.range.max),
             self.timeline.name(),
-            if self.range.min == TimeInt::MIN {
+            if self.range.min <= TimeInt::MIN {
                 "including"
             } else {
                 "excluding"
@@ -205,8 +205,9 @@ impl DataStore {
     /// Queries the datastore for the cells of the specified `components`, as seen from the point
     /// of view of the so-called `primary` component.
     ///
-    /// Returns an array of [`DataCell`]s on success, or `None` otherwise.
-    /// Success is defined by one thing and thing only: whether a cell could be found for the
+    /// Returns an array of [`DataCell`]s (as well as the associated _data_ time and `RowId`) on
+    /// success.
+    /// Success is defined by one thing and one thing only: whether a cell could be found for the
     /// `primary` component.
     /// The presence or absence of secondary components has no effect on the success criteria.
     ///
@@ -214,59 +215,13 @@ impl DataStore {
     ///
     /// Temporal indices take precedence, then timeless tables are queried to fill the holes left
     /// by missing temporal data.
-    ///
-    /// ## Example
-    ///
-    /// The following example demonstrate how to fetch the latest cells for a given component
-    /// and its associated cluster key, and wrap the result into a nice-to-work-with polars's
-    /// dataframe.
-    ///
-    /// ```rust
-    /// # use polars_core::{prelude::*, series::Series};
-    /// # use re_log_types::{EntityPath, RowId, TimeInt};
-    /// # use re_types_core::{ComponentName};
-    /// # use re_data_store::{DataStore, LatestAtQuery, RangeQuery};
-    /// #
-    /// pub fn latest_component(
-    ///     store: &DataStore,
-    ///     query: &LatestAtQuery,
-    ///     ent_path: &EntityPath,
-    ///     primary: ComponentName,
-    /// ) -> anyhow::Result<DataFrame> {
-    ///     let cluster_key = store.cluster_key();
-    ///
-    ///     let components = &[cluster_key, primary];
-    ///     let (_, cells) = store
-    ///         .latest_at(&query, ent_path, primary, components)
-    ///         .unwrap_or((RowId::ZERO, [(); 2].map(|_| None)));
-    ///
-    ///     let series: Result<Vec<_>, _> = cells
-    ///         .iter()
-    ///         .flatten()
-    ///         .map(|cell| {
-    ///             Series::try_from((
-    ///                 cell.component_name().as_str(),
-    ///                 cell.to_arrow(),
-    ///             ))
-    ///         })
-    ///         .collect();
-    ///
-    ///     DataFrame::new(series?).map_err(Into::into)
-    /// }
-    /// ```
-    ///
-    /// Thanks to the cluster key, one is free to repeat this process as many times as they wish,
-    /// then reduce the resulting dataframes down to one by joining them as they see fit.
-    /// This is what our `latest_components` polars helper does.
-    ///
-    /// For more information about working with dataframes, see the `polars` feature.
     pub fn latest_at<const N: usize>(
         &self,
         query: &LatestAtQuery,
         ent_path: &EntityPath,
         primary: ComponentName,
         components: &[ComponentName; N],
-    ) -> Option<(RowId, [Option<DataCell>; N])> {
+    ) -> Option<(Option<TimeInt>, RowId, [Option<DataCell>; N])> {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -282,7 +237,7 @@ impl DataStore {
             "query started…"
         );
 
-        let cells = self
+        let results = self
             .tables
             .get(&(ent_path_hash, query.timeline))
             .and_then(|table| {
@@ -301,11 +256,11 @@ impl DataStore {
 
         // If we've found everything we were looking for in the temporal table, then we can
         // return the results immediately.
-        if cells
+        if results
             .as_ref()
-            .map_or(false, |(_, cells)| cells.iter().all(Option::is_some))
+            .map_or(false, |(_, _, cells)| cells.iter().all(Option::is_some))
         {
-            return cells;
+            return results.map(|(data_time, row_id, cells)| (Some(data_time), row_id, cells));
         }
 
         let cells_timeless = self.timeless_tables.get(&ent_path_hash).and_then(|table| {
@@ -324,21 +279,28 @@ impl DataStore {
         });
 
         // Otherwise, let's see what's in the timeless table, and then..:
-        match (cells, cells_timeless) {
+        match (results, cells_timeless) {
             // nothing in the timeless table: return those partial cells we got.
-            (Some(cells), None) => return Some(cells),
+            (results @ Some(_), None) => {
+                return results.map(|(data_time, row_id, cells)| (Some(data_time), row_id, cells))
+            }
+
             // no temporal cells, but some timeless ones: return those as-is.
-            (None, Some(cells_timeless)) => return Some(cells_timeless),
+            (None, results @ Some(_)) => {
+                return results.map(|(row_id, cells)| (None, row_id, cells))
+            }
+
             // we have both temporal & timeless cells: let's merge the two when it makes sense
             // and return the end result.
-            (Some((row_id, mut cells)), Some((_, cells_timeless))) => {
+            (Some((data_time, row_id, mut cells)), Some((_, cells_timeless))) => {
                 for (i, row_idx) in cells_timeless.into_iter().enumerate() {
                     if cells[i].is_none() {
                         cells[i] = row_idx;
                     }
                 }
-                return Some((row_id, cells));
+                return Some((Some(data_time), row_id, cells));
             }
+
             // no cells at all.
             (None, None) => {}
         }
@@ -379,75 +341,6 @@ impl DataStore {
     /// timeless tables before anything else.
     ///
     /// When yielding timeless entries, the associated time will be `None`.
-    ///
-    /// ## Example
-    ///
-    /// The following example demonstrate how to range over the cells of a given
-    /// component and its associated cluster key, and turn the results into a nice-to-work-with
-    /// iterator of polars's dataframe.
-    /// Additionally, it yields the latest-at state of the component at the start of the time range,
-    /// if available.
-    ///
-    /// ```rust
-    /// # use arrow2::array::Array;
-    /// # use polars_core::{prelude::*, series::Series};
-    /// # use re_log_types::{DataCell, EntityPath, RowId, TimeInt};
-    /// # use re_data_store::{DataStore, LatestAtQuery, RangeQuery};
-    /// # use re_types_core::ComponentName;
-    /// #
-    /// # pub fn dataframe_from_cells<const N: usize>(
-    /// #     cells: [Option<DataCell>; N],
-    /// # ) -> anyhow::Result<DataFrame> {
-    /// #     let series: Result<Vec<_>, _> = cells
-    /// #         .iter()
-    /// #         .flatten()
-    /// #         .map(|cell| {
-    /// #             Series::try_from((
-    /// #                 cell.component_name().as_ref(),
-    /// #                 cell.to_arrow(),
-    /// #             ))
-    /// #         })
-    /// #         .collect();
-    /// #
-    /// #     DataFrame::new(series?).map_err(Into::into)
-    /// # }
-    /// #
-    /// pub fn range_component<'a>(
-    ///     store: &'a DataStore,
-    ///     query: &'a RangeQuery,
-    ///     ent_path: &'a EntityPath,
-    ///     primary: ComponentName,
-    /// ) -> impl Iterator<Item = anyhow::Result<(Option<TimeInt>, DataFrame)>> + 'a {
-    ///     let cluster_key = store.cluster_key();
-    ///
-    ///     let components = [cluster_key, primary];
-    ///
-    ///     // Fetch the latest-at data just before the start of the time range.
-    ///     let latest_time = query.range.min.as_i64().saturating_sub(1).into();
-    ///     let df_latest = {
-    ///         let query = LatestAtQuery::new(query.timeline, latest_time);
-    ///         let (_, cells) = store
-    ///             .latest_at(&query, ent_path, primary, &components)
-    ///             .unwrap_or((RowId::ZERO, [(); 2].map(|_| None)));
-    ///         dataframe_from_cells(cells)
-    ///     };
-    ///
-    ///     // Send the latest-at state before anything else..
-    ///     std::iter::once(df_latest.map(|df| (Some(latest_time), df)))
-    ///         // ..but only if it's not an empty dataframe.
-    ///         .filter(|df| df.as_ref().map_or(true, |(_, df)| !df.is_empty()))
-    ///         .chain(store.range(query, ent_path, components).map(
-    ///             move |(time, _, cells)| dataframe_from_cells(cells).map(|df| (time, df))
-    ///         ))
-    /// }
-    /// ```
-    ///
-    /// Thanks to the cluster key, one is free to repeat this process as many times as they wish,
-    /// then join the resulting streams to yield a full-fledged dataframe for every update of the
-    /// primary component.
-    /// This is what our `range_components` polars helper does.
-    ///
-    /// For more information about working with dataframes, see the `polars` feature.
     pub fn range<'a, const N: usize>(
         &'a self,
         query: &RangeQuery,
@@ -480,7 +373,7 @@ impl DataStore {
             .flatten()
             .map(|(time, row_id, cells)| (Some(time), row_id, cells));
 
-        if query.range.min == TimeInt::MIN {
+        if query.range.min <= TimeInt::MIN {
             let timeless = self
                 .timeless_tables
                 .get(&ent_path_hash)
@@ -519,14 +412,14 @@ impl IndexedTable {
     /// Queries the table for the cells of the specified `components`, as seen from the point
     /// of view of the so-called `primary` component.
     ///
-    /// Returns an array of [`DataCell`]s on success, or `None` iff no cell could be found for
-    /// the `primary` component.
+    /// Returns an array of [`DataCell`]s (as well as the associated _data_ time and `RowId`) on
+    /// success, or `None` iff no cell could be found for the `primary` component.
     pub fn latest_at<const N: usize>(
         &self,
-        time: TimeInt,
+        query_time: TimeInt,
         primary: ComponentName,
         components: &[ComponentName; N],
-    ) -> Option<(RowId, [Option<DataCell>; N])> {
+    ) -> Option<(TimeInt, RowId, [Option<DataCell>; N])> {
         // Early-exit if this entire table is unaware of this component.
         if !self.all_components.contains(&primary) {
             return None;
@@ -542,22 +435,22 @@ impl IndexedTable {
         // multiple indexed buckets within the same table!
 
         let buckets = self
-            .range_buckets_rev(..=time)
+            .range_buckets_rev(..=query_time)
             .map(|(_, bucket)| bucket)
             .enumerate();
         for (attempt, bucket) in buckets {
             trace!(
                 kind = "latest_at",
                 timeline = %timeline.name(),
-                time = timeline.typ().format_utc(time),
+                time = timeline.typ().format_utc(query_time),
                 %primary,
                 ?components,
                 attempt,
                 bucket_time_range = timeline.typ().format_range_utc(bucket.inner.read().time_range),
                 "found candidate bucket"
             );
-            if let cells @ Some(_) = bucket.latest_at(time, primary, components) {
-                return cells; // found at least the primary component!
+            if let ret @ Some(_) = bucket.latest_at(query_time, primary, components) {
+                return ret; // found at least the primary component!
             }
         }
 
@@ -717,14 +610,14 @@ impl IndexedBucket {
     /// Queries the bucket for the cells of the specified `components`, as seen from the point
     /// of view of the so-called `primary` component.
     ///
-    /// Returns an array of [`DataCell`]s on success, or `None` iff no cell could be found for
-    /// the `primary` component.
+    /// Returns an array of [`DataCell`]s (as well as the associated _data_ time and `RowId`) on
+    /// success, or `None` iff no cell could be found for the `primary` component.
     pub fn latest_at<const N: usize>(
         &self,
-        time: TimeInt,
+        query_time: TimeInt,
         primary: ComponentName,
         components: &[ComponentName; N],
-    ) -> Option<(RowId, [Option<DataCell>; N])> {
+    ) -> Option<(TimeInt, RowId, [Option<DataCell>; N])> {
         self.sort_indices_if_needed();
 
         let IndexedBucketInner {
@@ -748,11 +641,12 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format_utc(time),
+            query_time = self.timeline.typ().format_utc(query_time),
             "searching for primary & secondary cells…"
         );
 
-        let time_row_nr = col_time.partition_point(|t| *t <= time.as_i64()) as i64;
+        let time_row_nr =
+            col_time.partition_point(|data_time| *data_time <= query_time.as_i64()) as i64;
 
         // The partition point is always _beyond_ the index that we're looking for.
         // A partition point of 0 thus means that we're trying to query for data that lives
@@ -769,7 +663,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format_utc(time),
+            query_time = self.timeline.typ().format_utc(query_time),
             %primary_row_nr,
             "found primary row number",
         );
@@ -783,7 +677,7 @@ impl IndexedBucket {
                     %primary,
                     ?components,
                     timeline = %self.timeline.name(),
-                    time = self.timeline.typ().format_utc(time),
+                    query_time = self.timeline.typ().format_utc(query_time),
                     %primary_row_nr,
                     "no secondary row number found",
                 );
@@ -797,7 +691,7 @@ impl IndexedBucket {
             %primary,
             ?components,
             timeline = %self.timeline.name(),
-            time = self.timeline.typ().format_utc(time),
+            query_time = self.timeline.typ().format_utc(query_time),
             %primary_row_nr, %secondary_row_nr,
             "found secondary row number",
         );
@@ -812,7 +706,7 @@ impl IndexedBucket {
                         %primary,
                         %component,
                         timeline = %self.timeline.name(),
-                        time = self.timeline.typ().format_utc(time),
+                        query_time = self.timeline.typ().format_utc(query_time),
                         %primary_row_nr, %secondary_row_nr,
                         "found cell",
                     );
@@ -821,7 +715,11 @@ impl IndexedBucket {
             }
         }
 
-        Some((col_row_id[secondary_row_nr as usize], cells))
+        Some((
+            col_time[secondary_row_nr as usize].into(),
+            col_row_id[secondary_row_nr as usize],
+            cells,
+        ))
     }
 
     /// Iterates the bucket in order to return the cells of the specified `components`,

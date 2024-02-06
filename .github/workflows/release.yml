@@ -88,10 +88,9 @@ jobs:
         run: |
           python3 -m pip install -r ./scripts/ci/requirements-crates.txt
 
-      - name: Install taplo-cli
-        uses: taiki-e/install-action@v2
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          tool: taplo-cli
+          pixi-version: v0.6.0
 
       - name: Update crate versions
         id: versioning
@@ -147,7 +146,7 @@ jobs:
         run: |
           cmake -B build -S .
 
-      - run: taplo fmt
+      - run: pixi run toml-fmt
         shell: bash
 
       - name: Commit new version
@@ -210,10 +209,12 @@ jobs:
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
       CONCURRENCY: ${{ github.ref_name }}
-      PY_AND_CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
+      PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
+      CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
       RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
-      UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
       RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
+      RELEASE_VERSION: ${{ needs.version.outputs.final }}
+      UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
     secrets: inherit
 
   publish-crates:
@@ -296,6 +297,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ needs.version.outputs.release-commit }}
 
       - name: Update latest branch
@@ -303,11 +305,11 @@ jobs:
         run: |
           git fetch
           git checkout ${{ github.ref_name }}
-          git push --force origin ${{ github.ref_name }}:latest
+          git push --force origin refs/heads${{ github.ref_name }}:refs/heads/latest
 
-  post-release-version-bump:
-    name: "Post-Release Version Bump"
-    if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
+  github-release:
+    name: "GitHub Release"
+    if: inputs.release-type == 'final'
     needs:
       [
         version,
@@ -324,6 +326,54 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
+          ref: ${{ needs.version.outputs.release-commit }}
+          token: ${{ secrets.RERUN_BOT_TOKEN }}
+
+      - name: Release tag
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          version="${{ needs.version.outputs.final }}"
+          git tag $version
+          git push origin $version
+          gh release create $version --verify-tag --draft --title $version
+
+      - name: Create comment
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          pr_number=$(gh pr view --json number | jq '.number')
+          version="${{ needs.version.outputs.final }}"
+
+          cat <<EOF > comment-body.txt
+          GitHub release draft: [$version](https://github.com/rerun-io/rerun/releases/tag/$version)
+          EOF
+
+          gh pr comment $pr_number --body-file comment-body.txt
+
+  post-release-version-bump:
+    name: "Post-Release Version Bump"
+    if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
+    needs:
+      [
+        version,
+        update-docs,
+        publish-crates,
+        publish-wheels,
+        publish-web,
+        publish-rerun_c,
+        publish-rerun-cli,
+        publish-npm,
+        github-release,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.version.outputs.release-commit }}
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - uses: actions/setup-node@v4
@@ -340,11 +390,6 @@ jobs:
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
 
-      - name: Install taplo-cli
-        uses: taiki-e/install-action@v2
-        with:
-          tool: taplo-cli
-
       - name: Update version
         id: update-version
         shell: bash
@@ -352,7 +397,11 @@ jobs:
           python3 scripts/ci/crates.py version --bump auto
           echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
-      - run: taplo fmt
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.6.0
+
+      - run: pixi run toml-fmt
         shell: bash
 
       - name: Commit new version
@@ -361,7 +410,6 @@ jobs:
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
           git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
-          git pull --rebase
           git push
 
   comment-artifact-links:

@@ -144,7 +144,7 @@ impl EntityPath {
     }
 
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &EntityPathPart> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &EntityPathPart> + ExactSizeIterator {
         self.parts.iter()
     }
 

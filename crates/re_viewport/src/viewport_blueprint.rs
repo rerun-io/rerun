@@ -1,14 +1,12 @@
 use std::collections::BTreeMap;
 
-use ahash::{HashMap, HashSet};
+use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_log_types::Timeline;
 use re_query::query_archetype;
-use re_viewer_context::{
-    AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext,
-};
+use re_space_view::SpaceViewBlueprint;
+use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
 
 use crate::{
     blueprint::components::{
@@ -16,7 +14,6 @@ use crate::{
         ViewportLayout,
     },
     container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
-    space_view::SpaceViewBlueprint,
     viewport::TreeAction,
     VIEWPORT_PATH,
 };
@@ -58,16 +55,14 @@ impl ViewportBlueprint {
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
     pub fn try_from_db(
         blueprint_db: &re_entity_db::EntityDb,
-        app_options: &AppOptions,
+        query: &LatestAtQuery,
         tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
     ) -> Self {
         re_tracing::profile_function!();
 
-        let query = LatestAtQuery::latest(Timeline::default());
-
         let arch = match query_archetype::<crate::blueprint::archetypes::ViewportBlueprint>(
             blueprint_db.store(),
-            &query,
+            query,
             &VIEWPORT_PATH.into(),
         )
         .and_then(|arch| arch.to_archetype())
@@ -93,7 +88,7 @@ impl ViewportBlueprint {
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
             .into_iter()
             .filter_map(|space_view: SpaceViewId| {
-                SpaceViewBlueprint::try_from_db(space_view, blueprint_db)
+                SpaceViewBlueprint::try_from_db(space_view, blueprint_db, query)
             })
             .map(|sv| (sv.id, sv))
             .collect();
@@ -112,7 +107,7 @@ impl ViewportBlueprint {
 
         let containers: BTreeMap<ContainerId, ContainerBlueprint> = all_container_ids
             .into_iter()
-            .filter_map(|id| ContainerBlueprint::try_from_db(blueprint_db, id))
+            .filter_map(|id| ContainerBlueprint::try_from_db(blueprint_db, query, id))
             .map(|c| (c.id, c))
             .collect();
 
@@ -132,20 +127,11 @@ impl ViewportBlueprint {
 
         let maximized = arch.maximized.and_then(|id| id.0.map(|id| id.into()));
 
-        let tree = if app_options.legacy_container_blueprint {
-            blueprint_db
-                .store()
-                .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
-                .map(|space_view| space_view.value)
-                .unwrap_or_default()
-                .0
-        } else {
-            build_tree_from_space_views_and_containers(
-                space_views.values(),
-                containers.values(),
-                root_container,
-            )
-        };
+        let tree = build_tree_from_space_views_and_containers(
+            space_views.values(),
+            containers.values(),
+            root_container,
+        );
 
         ViewportBlueprint {
             space_views,
@@ -205,6 +191,10 @@ impl ViewportBlueprint {
         self.space_views.get(space_view)
     }
 
+    pub fn container(&self, container_id: &ContainerId) -> Option<&ContainerBlueprint> {
+        self.containers.get(container_id)
+    }
+
     pub fn space_view_mut(
         &mut self,
         space_view_id: &SpaceViewId,
@@ -236,6 +226,32 @@ impl ViewportBlueprint {
         ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
     }
 
+    /// Duplicates a space view and its entity property overrides.
+    ///
+    /// TODO(#4977): much more than just entity properties must be cloned: overrides, etc.
+    pub fn duplicate_space_view(
+        &self,
+        space_view_id: &SpaceViewId,
+        ctx: &ViewerContext<'_>,
+    ) -> Option<SpaceViewId> {
+        let Some(space_view) = self.space_view(space_view_id) else {
+            return None;
+        };
+
+        let new_space_view = space_view.duplicate();
+        let new_space_view_id = new_space_view.id;
+
+        // copy entity properties from the old space view
+        let data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
+        let new_data_result =
+            new_space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
+        new_data_result.save_override(data_result.individual_properties().cloned(), ctx);
+
+        self.add_space_views(std::iter::once(new_space_view), ctx, None);
+
+        Some(new_space_view_id)
+    }
+
     /// If `false`, the item is referring to data that is not present in this blueprint.
     pub fn is_item_valid(&self, item: &Item) -> bool {
         match item {
@@ -248,21 +264,7 @@ impl ViewportBlueprint {
                 .space_views
                 .get(space_view_id)
                 .map_or(false, |sv| sv.queries.iter().any(|q| q.id == *query_id)),
-            Item::Container(tile_id) => {
-                if Some(*tile_id) == self.tree.root {
-                    // the root tile is always visible
-                    true
-                } else if let Some(tile) = self.tree.tiles.get(*tile_id) {
-                    if let egui_tiles::Tile::Container(container) = tile {
-                        // single children containers are generally hidden
-                        container.num_children() > 1
-                    } else {
-                        true
-                    }
-                } else {
-                    false
-                }
-            }
+            Item::Container(container_id) => self.container(container_id).is_some(),
         }
     }
 
@@ -299,34 +301,12 @@ impl ViewportBlueprint {
         &self,
         space_views: impl Iterator<Item = SpaceViewBlueprint>,
         ctx: &ViewerContext<'_>,
-        parent_container: Option<egui_tiles::TileId>,
+        parent_container: Option<ContainerId>,
     ) -> Vec<SpaceViewId> {
         let mut new_ids: Vec<_> = vec![];
 
-        let mut known_names: HashSet<_> = self
-            .space_views
-            .values()
-            .map(|sv| sv.display_name.clone())
-            .collect();
-
-        for mut space_view in space_views {
+        for space_view in space_views {
             let space_view_id = space_view.id;
-
-            // Find a unique name for the space view
-            let mut candidate_name = space_view.display_name.clone();
-            let mut append_count = 1;
-            let unique_name = 'outer: loop {
-                if known_names.contains(&candidate_name) {
-                    append_count += 1;
-                    candidate_name = format!("{} ({})", space_view.display_name, append_count);
-
-                    continue 'outer;
-                }
-                break candidate_name;
-            };
-
-            known_names.insert(unique_name.clone());
-            space_view.display_name = unique_name;
 
             // Save the space view to the store
             space_view.save_to_blueprint_store(ctx);
@@ -351,22 +331,145 @@ impl ViewportBlueprint {
         new_ids
     }
 
+    /// Returns an iterator over all the contents (space views and containers) in the viewport.
+    pub fn contents_iter(&self) -> impl Iterator<Item = Contents> + '_ {
+        self.space_views
+            .keys()
+            .map(|space_view_id| Contents::SpaceView(*space_view_id))
+            .chain(
+                self.containers
+                    .keys()
+                    .map(|container_id| Contents::Container(*container_id)),
+            )
+    }
+
+    /// Given a predicate, finds the (first) matching contents by recursively walking from the root
+    /// container.
+    pub fn find_contents_by(&self, predicate: &impl Fn(&Contents) -> bool) -> Option<Contents> {
+        if let Some(root_container) = self.root_container {
+            self.find_contents_in_container_by(predicate, &root_container)
+        } else {
+            None
+        }
+    }
+
+    /// Given a predicate, finds the (first) matching contents by recursively walking from the given
+    /// container.
+    pub fn find_contents_in_container_by(
+        &self,
+        predicate: &impl Fn(&Contents) -> bool,
+        container_id: &ContainerId,
+    ) -> Option<Contents> {
+        if predicate(&Contents::Container(*container_id)) {
+            return Some(Contents::Container(*container_id));
+        }
+
+        let Some(container) = self.container(container_id) else {
+            return None;
+        };
+
+        for contents in &container.contents {
+            if predicate(contents) {
+                return Some(*contents);
+            }
+
+            match contents {
+                Contents::Container(container_id) => {
+                    let res = self.find_contents_in_container_by(predicate, container_id);
+                    if res.is_some() {
+                        return res;
+                    }
+                }
+                Contents::SpaceView(_) => {}
+            }
+        }
+
+        None
+    }
+
+    /// Checks if some content is (directly or indirectly) contained in the given container.
+    pub fn is_contents_in_container(
+        &self,
+        contents: &Contents,
+        container_id: &ContainerId,
+    ) -> bool {
+        self.find_contents_in_container_by(&|c| c == contents, container_id)
+            .is_some()
+    }
+
+    /// Given a container or a space view, find its enclosing container and its position within it.
+    pub fn find_parent_and_position_index(
+        &self,
+        contents: &Contents,
+    ) -> Option<(ContainerId, usize)> {
+        if let Some(container_id) = self.root_container {
+            if *contents == Contents::Container(container_id) {
+                // root doesn't have a parent
+                return None;
+            }
+            self.find_parent_and_position_index_impl(contents, &container_id)
+        } else {
+            None
+        }
+    }
+
+    fn find_parent_and_position_index_impl(
+        &self,
+        contents: &Contents,
+        container_id: &ContainerId,
+    ) -> Option<(ContainerId, usize)> {
+        let Some(container) = self.container(container_id) else {
+            return None;
+        };
+
+        for (pos, child_contents) in container.contents.iter().enumerate() {
+            if child_contents == contents {
+                return Some((*container_id, pos));
+            }
+
+            match child_contents {
+                Contents::Container(child_container_id) => {
+                    let res =
+                        self.find_parent_and_position_index_impl(contents, child_container_id);
+                    if res.is_some() {
+                        return res;
+                    }
+                }
+                Contents::SpaceView(_) => {}
+            }
+        }
+
+        None
+    }
+
     /// Add a container of the provided kind.
     ///
     /// The container is added to the root container or, if provided, to the given parent container.
     pub fn add_container(
         &self,
         kind: egui_tiles::ContainerKind,
-        parent_container: Option<egui_tiles::TileId>,
+        parent_container: Option<ContainerId>,
     ) {
         self.send_tree_action(TreeAction::AddContainer(kind, parent_container));
     }
 
-    /// Recursively remove a tile.
-    ///
-    /// All space views directly or indirectly contained by this tile are removed as well.
-    pub fn remove(&self, tile_id: egui_tiles::TileId) {
-        self.send_tree_action(TreeAction::Remove(tile_id));
+    /// Recursively remove a container or a space view.
+    pub fn remove_contents(&self, contents: Contents) {
+        self.send_tree_action(TreeAction::RemoveContents(contents));
+    }
+
+    /// Move the `contents` container or space view to the specified target container and position.
+    pub fn move_contents(
+        &self,
+        contents: Contents,
+        target_container: ContainerId,
+        target_position_in_container: usize,
+    ) {
+        self.send_tree_action(TreeAction::MoveContents {
+            contents_to_move: contents,
+            target_container,
+            target_position_in_container,
+        });
     }
 
     /// Make sure the tab corresponding to this space view is focused.
@@ -375,14 +478,10 @@ impl ViewportBlueprint {
     }
 
     /// Set the kind of the provided container.
-    pub fn set_container_kind(
-        &self,
-        container_id: egui_tiles::TileId,
-        kind: egui_tiles::ContainerKind,
-    ) {
+    pub fn set_container_kind(&self, container_id: ContainerId, kind: egui_tiles::ContainerKind) {
         // no-op check
-        if let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get(container_id) {
-            if container.kind() == kind {
+        if let Some(container) = self.container(&container_id) {
+            if container.container_kind == kind {
                 return;
             }
         }
@@ -393,13 +492,21 @@ impl ViewportBlueprint {
     /// Simplify the container tree with the provided options.
     pub fn simplify_container(
         &self,
-        tile_id: egui_tiles::TileId,
+        container_id: &ContainerId,
         simplification_options: SimplificationOptions,
     ) {
         self.send_tree_action(TreeAction::SimplifyContainer(
-            tile_id,
+            *container_id,
             simplification_options,
         ));
+    }
+
+    /// Set the container that is currently identified as the drop target of an ongoing drag.
+    ///
+    /// This is used for highlighting the drop target in the UI. Note that the drop target container is reset at every
+    /// frame, so this command must be re-sent every frame as long as a drop target is identified.
+    pub fn set_drop_target(&self, container_id: &ContainerId) {
+        self.send_tree_action(TreeAction::SetDropTarget(*container_id));
     }
 
     #[allow(clippy::unused_self)]

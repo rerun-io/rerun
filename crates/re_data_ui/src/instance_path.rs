@@ -13,19 +13,12 @@ impl DataUi for InstancePath {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
+        store: &re_data_store::DataStore,
     ) {
         let Self {
             entity_path,
             instance_key,
         } = self;
-
-        let store = if ctx.app_options.show_blueprint_in_timeline
-            && ctx.store_context.blueprint.is_logged_entity(entity_path)
-        {
-            ctx.store_context.blueprint.store()
-        } else {
-            ctx.entity_db.store()
-        };
 
         let Some(components) = store.all_components(&query.timeline, entity_path) else {
             if ctx.entity_db.is_known_entity(entity_path) {
@@ -60,7 +53,7 @@ impl DataUi for InstancePath {
                         UiVerbosity::LimitHeight | UiVerbosity::Full => {}
                     }
 
-                    let Some((_, component_data)) =
+                    let Some((_, _, component_data)) =
                         get_component_with_instances(store, query, entity_path, component_name)
                     else {
                         continue; // no need to show components that are unset at this point in time
@@ -83,13 +76,14 @@ impl DataUi for InstancePath {
                             entity_path: entity_path.clone(),
                             component_data,
                         }
-                        .data_ui(ctx, ui, UiVerbosity::Small, query);
+                        .data_ui(ctx, ui, UiVerbosity::Small, query, store);
                     } else {
                         ctx.component_ui_registry.ui(
                             ctx,
                             ui,
                             UiVerbosity::Small,
                             query,
+                            store,
                             entity_path,
                             &component_data,
                             instance_key,

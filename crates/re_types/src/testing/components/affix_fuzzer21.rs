@@ -72,7 +72,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "single_half".to_owned(),
                 data_type: DataType::Float16,
@@ -81,7 +81,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
             },
             Field {
                 name: "many_halves".to_owned(),
-                data_type: DataType::List(Box::new(Field {
+                data_type: DataType::List(std::sync::Arc::new(Field {
                     name: "item".to_owned(),
                     data_type: DataType::Float16,
                     is_nullable: false,
@@ -90,7 +90,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                 is_nullable: false,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]

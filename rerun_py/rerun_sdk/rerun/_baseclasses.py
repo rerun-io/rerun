@@ -101,11 +101,15 @@ class Archetype:
 
         Part of the `AsComponents` logging interface.
         """
+        num_instances = 0
         for fld in fields(type(self)):
-            # TODO(jleibs): What to do if multiple required components have different lengths?
-            if "component" in fld.metadata and fld.metadata["component"] == "required":
-                return len(getattr(self, fld.name))
-        raise ValueError("Archetype has no required components")
+            if "component" in fld.metadata:
+                try:
+                    num_instances = max(num_instances, len(getattr(self, fld.name)))
+                except TypeError:  # Happens for indicator batches.
+                    num_instances = max(num_instances, 1)
+
+        return num_instances
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         """

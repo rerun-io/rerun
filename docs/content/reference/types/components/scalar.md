@@ -15,4 +15,5 @@ Used for time series plots.
 
 ## Used by
 
+* [`Scalar`](../archetypes/scalar.md?speculative-link)
 * [`TimeSeriesScalar`](../archetypes/time_series_scalar.md)

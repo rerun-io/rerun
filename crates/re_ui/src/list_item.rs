@@ -1,4 +1,4 @@
-use crate::{Icon, ReUi};
+use crate::{Icon, LabelStyle, ReUi};
 use egui::epaint::text::TextWrapping;
 use egui::{Align, Align2, Response, Shape, Ui};
 use std::default::Default;
@@ -17,7 +17,7 @@ pub struct ShowCollapsingResponse<R> {
     pub item_response: Response,
 
     /// Response from the body, if it was displayed.
-    pub body_response: Option<R>,
+    pub body_response: Option<egui::InnerResponse<R>>,
 }
 
 /// Specification of how the width of the [`ListItem`] must be allocated.
@@ -113,15 +113,17 @@ pub struct ListItem<'a> {
     re_ui: &'a ReUi,
     active: bool,
     selected: bool,
+    draggable: bool,
+    drag_target: bool,
     subdued: bool,
     weak: bool,
     italics: bool,
+    label_style: crate::LabelStyle,
     force_hovered: bool,
     collapse_openness: Option<f32>,
     height: f32,
     width_allocation_mode: WidthAllocationMode,
-    icon_fn:
-        Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
+    icon_fn: Option<Box<dyn FnOnce(&ReUi, &egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
     buttons_fn: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
 }
 
@@ -133,9 +135,12 @@ impl<'a> ListItem<'a> {
             re_ui,
             active: true,
             selected: false,
+            draggable: false,
+            drag_target: false,
             subdued: false,
             weak: false,
             italics: false,
+            label_style: crate::LabelStyle::default(),
             force_hovered: false,
             collapse_openness: None,
             height: ReUi::list_item_height(),
@@ -159,7 +164,27 @@ impl<'a> ListItem<'a> {
         self
     }
 
+    /// Make the item draggable.
+    #[inline]
+    pub fn draggable(mut self, draggable: bool) -> Self {
+        self.draggable = draggable;
+        self
+    }
+
+    /// Highlight the item as the current drop target.
+    ///
+    /// Use this while dragging, to highlight which container will receive the drop at any given time.
+    /// **Note**: this flag has otherwise no behavioural effect. It's up to the caller to set it when the item is
+    /// being hovered (or otherwise selected as drop target) while a drag is in progress.
+    #[inline]
+    pub fn drop_target_style(mut self, drag_target: bool) -> Self {
+        self.drag_target = drag_target;
+        self
+    }
+
     /// Set the subdued state of the item.
+    ///
+    /// Note: takes precedence over [`Self::weak`] if set.
     // TODO(ab): this is a hack to implement the behavior of the blueprint tree UI, where active
     // widget are displayed in a subdued state (container, hidden space views/entities). One
     // slightly more correct way would be to override the color using a (color, index) pair
@@ -171,6 +196,8 @@ impl<'a> ListItem<'a> {
     }
 
     /// Set the weak state of the item.
+    ///
+    /// Note: [`Self::subdued`] takes precedence if set.
     // TODO(ab): should use design token instead
     #[inline]
     pub fn weak(mut self, weak: bool) -> Self {
@@ -183,6 +210,16 @@ impl<'a> ListItem<'a> {
     #[inline]
     pub fn italics(mut self, italics: bool) -> Self {
         self.italics = italics;
+        self
+    }
+
+    /// Style the label for an unnamed items.
+    ///
+    /// The styling is applied on top of to [`Self::weak`] and [`Self::subdued`]. It also implies [`Self::italics`].
+    // TODO(ab): should use design token instead
+    #[inline]
+    pub fn label_style(mut self, style: crate::LabelStyle) -> Self {
+        self.label_style = style;
         self
     }
 
@@ -227,7 +264,7 @@ impl<'a> ListItem<'a> {
     #[inline]
     pub fn with_icon_fn(
         mut self,
-        icon_fn: impl FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
+        icon_fn: impl FnOnce(&ReUi, &egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
     ) -> Self {
         self.icon_fn = Some(Box::new(icon_fn));
         self
@@ -288,7 +325,7 @@ impl<'a> ListItem<'a> {
 
         ShowCollapsingResponse {
             item_response: response.response,
-            body_response: body_response.map(|r| r.inner),
+            body_response,
         }
     }
 
@@ -303,6 +340,13 @@ impl<'a> ListItem<'a> {
         } else {
             0.0
         };
+
+        match self.label_style {
+            LabelStyle::Normal => {}
+            LabelStyle::Unnamed => {
+                self.italics = true;
+            }
+        }
 
         if self.italics {
             self.text = self.text.italics();
@@ -338,7 +382,14 @@ impl<'a> ListItem<'a> {
         };
 
         let desired_size = egui::vec2(desired_width, self.height);
-        let (rect, mut response) = ui.allocate_at_least(desired_size, egui::Sense::click());
+        let (rect, mut response) = ui.allocate_at_least(
+            desired_size,
+            if self.draggable {
+                egui::Sense::click_and_drag()
+            } else {
+                egui::Sense::click()
+            },
+        );
 
         // compute the full-span background rect
         let mut bg_rect = rect;
@@ -349,11 +400,13 @@ impl<'a> ListItem<'a> {
         // update the response accordingly.
         let full_span_response = ui.interact(bg_rect, response.id, egui::Sense::click());
         response.clicked = full_span_response.clicked;
+        response.contains_pointer = full_span_response.contains_pointer;
         response.hovered = full_span_response.hovered;
 
         // override_hover should not affect the returned response
         let mut style_response = response.clone();
         if self.force_hovered {
+            style_response.contains_pointer = true;
             style_response.hovered = true;
         }
 
@@ -404,15 +457,14 @@ impl<'a> ListItem<'a> {
             }
 
             // Handle buttons
-            let button_response = if self.active
-                && ui
-                    .interact(
-                        rect,
-                        id.unwrap_or(ui.id()).with("buttons"),
-                        egui::Sense::hover(),
-                    )
-                    .hovered()
-            {
+            // Note: We should be able to just use `response.hovered()` here, which only returns `true` if no drag is in
+            // progress. Due to the response merging we do above, this breaks though. This is why we do an explicit
+            // rectangle and drag payload check.
+            //TODO(ab): refactor responses to address that.
+            let should_show_buttons = self.active
+                && ui.rect_contains_pointer(rect)
+                && !egui::DragAndDrop::has_any_payload(ui.ctx());
+            let button_response = if should_show_buttons {
                 if let Some(buttons) = self.buttons_fn {
                     let mut ui =
                         ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::Center));
@@ -429,6 +481,13 @@ impl<'a> ListItem<'a> {
             text_rect.min.x += collapse_extra + icon_extra;
             if let Some(button_response) = &button_response {
                 text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
+            }
+
+            match self.label_style {
+                LabelStyle::Normal => {}
+                LabelStyle::Unnamed => {
+                    self.text = self.text.color(visuals.fg_stroke.color.gamma_multiply(0.5));
+                }
             }
 
             let mut layout_job =
@@ -454,21 +513,28 @@ impl<'a> ListItem<'a> {
             ui.painter().galley(text_pos, galley, visuals.text_color());
 
             // Draw background on interaction.
-            let bg_fill = if button_response.map_or(false, |r| r.hovered()) {
-                Some(visuals.bg_fill)
-            } else if self.selected
-                || style_response.hovered()
-                || style_response.highlighted()
-                || style_response.has_focus()
-            {
-                Some(visuals.weak_bg_fill)
+            if self.drag_target {
+                ui.painter().set(
+                    background_frame,
+                    Shape::rect_stroke(bg_rect, 0.0, (1.0, ui.visuals().selection.bg_fill)),
+                );
             } else {
-                None
-            };
+                let bg_fill = if button_response.map_or(false, |r| r.hovered()) {
+                    Some(visuals.bg_fill)
+                } else if self.selected
+                    || style_response.hovered()
+                    || style_response.highlighted()
+                    || style_response.has_focus()
+                {
+                    Some(visuals.weak_bg_fill)
+                } else {
+                    None
+                };
 
-            if let Some(bg_fill) = bg_fill {
-                ui.painter()
-                    .set(background_frame, Shape::rect_filled(bg_rect, 0.0, bg_fill));
+                if let Some(bg_fill) = bg_fill {
+                    ui.painter()
+                        .set(background_frame, Shape::rect_filled(bg_rect, 0.0, bg_fill));
+                }
             }
         }
 

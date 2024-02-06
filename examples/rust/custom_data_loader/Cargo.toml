@@ -1,13 +1,13 @@
 [package]
 name = "custom_data_loader"
-version = "0.13.0-alpha.1+dev"
+version = "0.13.0-alpha.3"
 edition = "2021"
 rust-version = "1.72"
 license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/rerun", features = ["native_viewer"] }
+rerun = { path = "../../../crates/rerun", features = ["native_viewer", "run"] }
 
 [build-dependencies]
 re_build_tools = { path = "../../../crates/re_build_tools" }

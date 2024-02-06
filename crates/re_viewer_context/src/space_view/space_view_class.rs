@@ -3,9 +3,10 @@ use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
-    AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    DynSpaceViewClass, IndicatedEntities, PerSystemEntities, PerVisualizer, SmallVisualizerSet,
+    SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
+    SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    SystemExecutionOutput, ViewQuery, ViewerContext, VisualizableEntities,
     VisualizableFilterContext,
 };
 
@@ -76,15 +77,49 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
         Box::new(())
     }
 
-    /// Heuristic used to determine which space view is the best fit for a set of paths.
-    fn auto_spawn_heuristic(
+    /// Choose the default visualizers to enable for this entity.
+    ///
+    /// Helpful for customizing fallback behavior for types that are insufficient
+    /// to determine indicated on their own.
+    ///
+    /// Will only be called for entities where the selected visualizers have not
+    /// been overridden by the blueprint.
+    ///
+    /// This interface provides a default implementation which will return all visualizers
+    /// which are both visualizable and indicated for the given entity.
+    fn choose_default_visualizers(
         &self,
-        _ctx: &ViewerContext<'_>,
-        _space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
-    ) -> AutoSpawnHeuristic {
-        AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(ent_paths.len() as f32)
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVisualizerSet {
+        let available_visualizers =
+            visualizable_entities_per_visualizer
+                .iter()
+                .filter_map(|(visualizer, ents)| {
+                    if ents.contains(entity_path) {
+                        Some(visualizer)
+                    } else {
+                        None
+                    }
+                });
+
+        available_visualizers
+            .filter_map(|visualizer| {
+                if indicated_entities_per_visualizer
+                    .get(visualizer)
+                    .map_or(false, |matching_list| matching_list.contains(entity_path))
+                {
+                    Some(*visualizer)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
+
+    /// Determines which space views should be spawned by default for this class.
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
     /// Optional archetype of the Space View's blueprint properties.
     ///
@@ -195,13 +230,22 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     }
 
     #[inline]
-    fn auto_spawn_heuristic(
+    fn choose_default_visualizers(
         &self,
-        ctx: &ViewerContext<'_>,
-        space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
-    ) -> AutoSpawnHeuristic {
-        self.auto_spawn_heuristic(ctx, space_origin, ent_paths)
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVisualizerSet {
+        self.choose_default_visualizers(
+            entity_path,
+            visualizable_entities_per_visualizer,
+            indicated_entities_per_visualizer,
+        )
+    }
+
+    #[inline]
+    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
+        self.spawn_heuristics(ctx)
     }
 
     #[inline]

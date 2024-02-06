@@ -21,7 +21,19 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: A multi-dimensional `Tensor` with optionally named arguments.
+/// **Component**: A multi-dimensional `Tensor` of data.
+///
+/// The number of dimensions and their respective lengths is specified by the `shape` field.
+/// The dimensions are ordered from outermost to innermost. For example, in the common case of
+/// a 2D RGB Image, the shape would be `[height, width, channel]`.
+///
+/// These dimensions are combined with an index to look up values from the `buffer` field,
+/// which stores a contiguous array of typed values.
+///
+/// Note that the buffer may be encoded in a compressed format such as `jpeg` or
+/// in a format with downsampled chroma, such as NV12 or YUY2.
+/// For file formats, the shape is used as a hint, for chroma downsampled format
+/// the shape has to be the shape of the decoded image.
 #[derive(Clone, Debug, PartialEq)]
 #[repr(transparent)]
 pub struct TensorData(pub crate::datatypes::TensorData);
@@ -74,10 +86,10 @@ impl ::re_types_core::Loggable for TensorData {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![
+        DataType::Struct(std::sync::Arc::new(vec![
             Field {
                 name: "shape".to_owned(),
-                data_type: DataType::List(Box::new(Field {
+                data_type: DataType::List(std::sync::Arc::new(Field {
                     name: "item".to_owned(),
                     data_type: <crate::datatypes::TensorDimension>::arrow_datatype(),
                     is_nullable: false,
@@ -92,7 +104,7 @@ impl ::re_types_core::Loggable for TensorData {
                 is_nullable: false,
                 metadata: [].into(),
             },
-        ])
+        ]))
     }
 
     #[allow(clippy::wildcard_imports)]

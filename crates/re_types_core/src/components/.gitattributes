@@ -4,3 +4,4 @@
 clear_is_recursive.rs linguist-generated=true
 instance_key.rs linguist-generated=true
 mod.rs linguist-generated=true
+visualizer_overrides.rs linguist-generated=true

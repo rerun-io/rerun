@@ -1,0 +1,33 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// TODO(#3384)
+/*
+enum LegendPosition: byte {
+    LeftTop = 1,
+    RightTop = 2,
+    LeftBottom = 3,
+    RightBottom = 4
+}
+*/
+
+/// One of four 2D corners, typically used to align objects.
+table Corner2D (
+    "attr.docs.unreleased",
+    "attr.arrow.transparent",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.tuple_struct"
+) {
+    /// Where should the legend be located.
+    ///
+    /// Allowed values:
+    ///  - LeftTop = 1,
+    ///  - RightTop = 2,
+    ///  - LeftBottom = 3,
+    ///  - RightBottom = 4
+    location: ubyte (order: 200);
+}

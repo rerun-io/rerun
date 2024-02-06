@@ -3,12 +3,11 @@ use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::LineStrips2D,
     components::{LineStrip2D, Text},
-    Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -152,7 +151,7 @@ impl Lines2DVisualizer {
         }
 
         self.data
-            .extend_bounding_box(bounding_box, ent_context.world_from_entity);
+            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
 
         Ok(())
     }
@@ -165,15 +164,8 @@ impl IdentifiedViewSystem for Lines2DVisualizer {
 }
 
 impl VisualizerSystem for Lines2DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        LineStrips2D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(LineStrips2D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<LineStrips2D>()
     }
 
     fn filter_visualizable_entities(

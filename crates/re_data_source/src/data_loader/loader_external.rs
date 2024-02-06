@@ -1,4 +1,7 @@
-use std::io::Read;
+use std::{
+    io::Read,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use ahash::HashMap;
 use once_cell::sync::Lazy;
@@ -7,11 +10,13 @@ use once_cell::sync::Lazy;
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name
 /// starts with this prefix.
+// NOTE: this constant is duplicated in `rerun` to avoid an extra dependency there.
 pub const EXTERNAL_DATA_LOADER_PREFIX: &str = "rerun-loader-";
 
 /// When an external [`crate::DataLoader`] is asked to load some data that it doesn't know
 /// how to load, it should exit with this exit code.
 // NOTE: Always keep in sync with other languages.
+// NOTE: this constant is duplicated in `rerun` to avoid an extra dependency there.
 pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 
 /// Keeps track of the paths all external executable [`crate::DataLoader`]s.
@@ -24,56 +29,62 @@ pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
     re_tracing::profile_function!();
 
-    use walkdir::WalkDir;
+    let dir_separator = if cfg!(target_os = "windows") {
+        ';'
+    } else {
+        ':'
+    };
 
     let dirpaths = std::env::var("PATH")
         .ok()
         .into_iter()
-        .flat_map(|paths| paths.split(':').map(ToOwned::to_owned).collect::<Vec<_>>())
+        .flat_map(|paths| {
+            paths
+                .split(dir_separator)
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>()
+        })
         .map(std::path::PathBuf::from);
 
-    let executables: ahash::HashSet<_> = dirpaths
-        .into_iter()
-        .flat_map(|dirpath| {
-            WalkDir::new(dirpath).into_iter().filter_map(|entry| {
-                let Ok(entry) = entry else {
-                    return None;
-                };
-                let filepath = entry.path();
-                let is_rerun_loader = filepath.file_name().map_or(false, |filename| {
-                    filename
-                        .to_string_lossy()
-                        .starts_with(EXTERNAL_DATA_LOADER_PREFIX)
-                });
-                (filepath.is_file() && is_rerun_loader).then(|| filepath.to_owned())
-            })
-        })
-        .collect();
+    let mut executables = HashMap::<String, Vec<std::path::PathBuf>>::default();
+    for dirpath in dirpaths {
+        let Ok(dir) = std::fs::read_dir(dirpath) else {
+            continue;
+        };
+        let paths = dir.into_iter().filter_map(|entry| {
+            let Ok(entry) = entry else {
+                return None;
+            };
+            let filepath = entry.path();
+            let is_rerun_loader = filepath.file_name().map_or(false, |filename| {
+                filename
+                    .to_string_lossy()
+                    .starts_with(EXTERNAL_DATA_LOADER_PREFIX)
+            });
+            (filepath.is_file() && is_rerun_loader).then_some(filepath)
+        });
 
-    // NOTE: We call all available loaders and do so in parallel: order is irrelevant here.
-    let executables = executables.into_iter().collect::<Vec<_>>();
-
-    // If the user has multiple data-loaders in their PATH with the same exact name, warn that
-    // something is very likely wrong.
-    // That can very easily happen with tools like `pip`/`pipx`.
-
-    let mut exe_names = HashMap::<String, Vec<std::path::PathBuf>>::default();
-    for path in &executables {
-        if let Some(filename) = path.file_name() {
-            let exe_paths = exe_names
-                .entry(filename.to_string_lossy().to_string())
-                .or_default();
-            exe_paths.push(path.clone());
-        }
-    }
-
-    for (name, paths) in exe_names {
-        if paths.len() > 1 {
-            re_log::warn!(name, ?paths, "Found duplicated data-loader in $PATH");
+        for path in paths {
+            if let Some(filename) = path.file_name() {
+                let exe_paths = executables
+                    .entry(filename.to_string_lossy().to_string())
+                    .or_default();
+                exe_paths.push(path.clone());
+            }
         }
     }
 
     executables
+        .into_iter()
+        .filter_map(|(name, paths)| {
+            if paths.len() > 1 {
+                re_log::debug!(name, ?paths, "Found duplicated data-loader in $PATH");
+            }
+
+            // Only keep the first entry according to PATH order.
+            paths.into_iter().next()
+        })
+        .collect()
 });
 
 /// Iterator over all registered external [`crate::DataLoader`]s.
@@ -121,7 +132,9 @@ impl crate::DataLoader for ExternalLoader {
             let tx = tx.clone();
             let tx_feedback = tx_feedback.clone();
 
-            rayon::spawn(move || {
+            // NOTE: This is completely IO bound (spawning and waiting for child process), it must run on a
+            // dedicated thread, not the shared rayon thread pool.
+            _ = std::thread::Builder::new().name(exe.to_string_lossy().to_string()).spawn(move || {
                 re_tracing::profile_function!(exe.to_string_lossy());
 
                 let child = Command::new(exe)
@@ -152,6 +165,10 @@ impl crate::DataLoader for ExternalLoader {
 
                 re_log::debug!(?filepath, loader = ?exe, "Loading data from filesystem using external loader…",);
 
+                // A single value will be sent on this channel as soon as the child process starts
+                // streaming data to stdout.
+                let is_sending_data = Arc::new(AtomicBool::new(false));
+
                 let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
                 let stdout = std::io::BufReader::new(stdout);
                 match re_log_encoding::decoder::Decoder::new(version_policy, stdout) {
@@ -164,9 +181,8 @@ impl crate::DataLoader for ExternalLoader {
                             .name(format!("decode_and_stream({filepath:?})"))
                             .spawn({
                                 let filepath = filepath.clone();
-                                move || {
-                                    decode_and_stream(&filepath, &tx, decoder);
-                                }
+                                let is_sending_data = Arc::clone(&is_sending_data);
+                                move || decode_and_stream(&filepath, &tx, is_sending_data, decoder)
                             })
                         {
                             re_log::error!(?filepath, loader = ?exe, %err, "Failed to open spawn IO thread");
@@ -185,6 +201,39 @@ impl crate::DataLoader for ExternalLoader {
                     }
                 };
 
+                // We have to wait in order to know whether the child process is a compatible loader.
+                //
+                // This can manifest itself in two distinct ways:
+                // 1. If it exits immediately with an INCOMPATIBLE exit code, then we have our
+                //   answer straight away.
+                // - If it starts streaming data, then we immediately assume it's compatible.
+                loop {
+                    re_tracing::profile_scope!("waiting for compatibility");
+
+                    match child.try_wait() {
+                        Ok(Some(_)) => break,
+                        Ok(None) => {
+                            if is_sending_data.load(std::sync::atomic::Ordering::Relaxed) {
+                                // The child process has started streaming data, it is therefore compatible.
+                                // Let's get out ASAP.
+                                re_log::debug!(loader = ?exe, ?filepath, "compatible external loader found");
+                                tx_feedback.send(CompatibleLoaderFound).ok();
+                                break; // we still want to check for errors once it finally exits!
+                            }
+
+                            // NOTE: This will busy loop if there's no work available in the native OS threadpool.
+                            std::thread::yield_now();
+
+                            continue;
+                        }
+                        Err(err) => {
+                            re_log::error!(?filepath, loader = ?exe, %err, "Failed to execute external loader");
+                            return;
+                        }
+                    };
+                }
+
+                // NOTE: `try_wait` and `wait` are idempotent.
                 let status = match child.wait() {
                     Ok(output) => output,
                     Err(err) => {
@@ -208,7 +257,7 @@ impl crate::DataLoader for ExternalLoader {
                     re_log::debug!(loader = ?exe, ?filepath, "compatible external loader found");
                     tx_feedback.send(CompatibleLoaderFound).ok();
                 }
-            });
+            })?;
         }
 
         re_tracing::profile_wait!("compatible_loader");
@@ -239,14 +288,18 @@ impl crate::DataLoader for ExternalLoader {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn decode_and_stream<R: std::io::Read>(
     filepath: &std::path::Path,
     tx: &std::sync::mpsc::Sender<crate::LoadedData>,
+    is_sending_data: Arc<AtomicBool>,
     decoder: re_log_encoding::decoder::Decoder<R>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
     for msg in decoder {
+        is_sending_data.store(true, std::sync::atomic::Ordering::Relaxed);
+
         let msg = match msg {
             Ok(msg) => msg,
             Err(err) => {

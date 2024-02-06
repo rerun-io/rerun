@@ -46,7 +46,7 @@ In rust, we use the [`arrow2` crate](https://crates.io/crates/arrow2).
 ### `wgpu`
 The Rerun Viewer uses the [`wgpu`](https://github.com/gfx-rs/wgpu) graphics API. It provides a high-performance abstraction over Vulkan, Metal, D3D12, D3D11, OpenGLES, WebGL and [WebGPU](https://en.wikipedia.org/wiki/WebGPU). This lets us write the same code graphics code for native as for web.
 
-We use the WebGL backend when compiling for web. Once WebGPU is available in most browsers, we can easily switch to it for a nice performance boost!
+On web builds, we use WebGPU when available on the Web, but automatically fall back to a WebGL based emulation layer (with a more limited feature set).
 
 We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/re_renderer/README.md).
 

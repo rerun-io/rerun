@@ -2,6 +2,7 @@
 
 use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataRow, EntityPath, RowId, TimeInt, TimePoint, Timeline};
+use re_query_cache::Caches;
 use re_space_view_spatial::{LoadedPoints, Points3DComponentData};
 use re_types::{
     archetypes::Points3D,
@@ -58,6 +59,7 @@ fn bench_points(c: &mut criterion::Criterion) {
         store.insert_row(&data_row).unwrap();
         store
     };
+    let caches = Caches::new(&store);
 
     let latest_at = LatestAtQuery::latest(timeline);
     let at = latest_at.at;
@@ -72,7 +74,7 @@ fn bench_points(c: &mut criterion::Criterion) {
         let mut group = c.benchmark_group("Points3D");
         group.bench_function(bench_name(*cached, "query_archetype"), |b| {
             b.iter(|| {
-                re_query_cache::query_archetype_pov1_comp5::<
+                caches.query_archetype_pov1_comp5::<
                     Points3D,
                     Position3D,
                     Color,
@@ -96,7 +98,7 @@ fn bench_points(c: &mut criterion::Criterion) {
     }
 
     for cached in CACHED {
-        re_query_cache::query_archetype_pov1_comp5::<
+        caches.query_archetype_pov1_comp5::<
             Points3D,
             Position3D,
             Color,
@@ -114,17 +116,11 @@ fn bench_points(c: &mut criterion::Criterion) {
                 let data = Points3DComponentData {
                     instance_keys: instance_keys.as_slice(),
                     positions: positions.as_slice(),
-                    colors: colors.as_slice(),
-                    radii: radii.as_slice(),
-                    labels: labels.as_slice(),
-                    keypoint_ids: keypoint_ids
-                        .iter()
-                        .any(Option::is_some)
-                        .then_some(keypoint_ids.as_slice()),
-                    class_ids: class_ids
-                        .iter()
-                        .any(Option::is_some)
-                        .then_some(class_ids.as_slice()),
+                    colors: colors.as_deref(),
+                    radii: radii.as_deref(),
+                    labels: labels.as_deref(),
+                    keypoint_ids: keypoint_ids.as_deref(),
+                    class_ids: class_ids.as_deref(),
                 };
                 assert_eq!(data.instance_keys.len(), NUM_POINTS);
 

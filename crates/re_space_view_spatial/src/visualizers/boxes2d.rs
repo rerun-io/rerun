@@ -1,14 +1,12 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query::{ArchetypeView, QueryError};
 use re_types::{
     archetypes::Boxes2D,
-    components::{HalfSizes2D, Position2D, Text},
-    Archetype, ComponentNameSet,
+    components::{ClassId, Color, HalfSizes2D, InstanceKey, KeypointId, Position2D, Radius, Text},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -18,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    entity_iterator::process_archetype_views, filter_visualizable_2d_entities,
-    picking_id_from_instance_key, process_annotations, process_colors, process_radii,
+    filter_visualizable_2d_entities, picking_id_from_instance_key,
+    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
     SpatialViewVisualizerData,
 };
 
@@ -40,23 +38,24 @@ impl Default for Boxes2DVisualizer {
 
 impl Boxes2DVisualizer {
     fn process_labels<'a>(
-        arch_view: &'a ArchetypeView<Boxes2D>,
+        labels: &'a [Option<Text>],
+        half_sizes: &'a [HalfSizes2D],
+        centers: impl Iterator<Item = Position2D> + 'a,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
-    ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
-        let labels = itertools::izip!(
+    ) -> impl Iterator<Item = UiLabel> + 'a {
+        itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<HalfSizes2D>()?,
-            arch_view.iter_optional_component::<Position2D>()?,
-            arch_view.iter_optional_component::<Text>()?,
+            half_sizes,
+            centers,
+            labels,
             colors,
             instance_path_hashes,
         )
         .filter_map(
             move |(annotation_info, half_size, center, label, color, labeled_instance)| {
                 let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
-                let center = center.unwrap_or(Position2D::ZERO);
                 let min = half_size.box_min(center);
                 let max = half_size.box_max(center);
                 label.map(|label| UiLabel {
@@ -69,50 +68,63 @@ impl Boxes2DVisualizer {
                     labeled_instance: *labeled_instance,
                 })
             },
-        );
-        Ok(labels)
+        )
     }
 
-    fn process_arch_view(
+    fn process_data(
         &mut self,
         query: &ViewQuery<'_>,
-        arch_view: &ArchetypeView<Boxes2D>,
+        data: &Boxes2DComponentData<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError> {
-        let annotation_infos = process_annotations::<HalfSizes2D, Boxes2D>(
-            query,
-            arch_view,
+    ) {
+        let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+            query.latest_at,
+            data.instance_keys,
+            data.keypoint_ids,
+            data.class_ids,
+            data.half_sizes.iter().map(|_| glam::Vec3::ZERO),
             &ent_context.annotations,
-        )?;
+        );
 
-        let instance_keys = arch_view.iter_instance_keys();
-        let half_sizes = arch_view.iter_required_component::<HalfSizes2D>()?;
-        let positions = arch_view
-            .iter_optional_component::<Position2D>()?
-            .map(|position| position.unwrap_or(Position2D::ZERO));
-        let radii = process_radii(arch_view, ent_path)?;
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
+        let centers = || {
+            data.centers
+                .as_ref()
+                .map_or(
+                    itertools::Either::Left(std::iter::repeat(&None).take(data.half_sizes.len())),
+                    |data| itertools::Either::Right(data.iter()),
+                )
+                .map(|center| center.unwrap_or(Position2D::ZERO))
+        };
 
-        if arch_view.num_instances() <= self.max_labels {
+        let radii = process_radius_slice(data.radii, data.half_sizes.len(), ent_path);
+        let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
+
+        if data.instance_keys.len() <= self.max_labels {
+            re_tracing::profile_scope!("labels");
+
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+            let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
-                arch_view
-                    .iter_instance_keys()
+                data.instance_keys
+                    .iter()
+                    .copied()
                     .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
                     .collect::<Vec<_>>()
             };
 
-            self.data.ui_labels.extend(Self::process_labels(
-                arch_view,
-                &instance_path_hashes_for_picking,
-                &colors,
-                &annotation_infos,
-            )?);
+            if let Some(labels) = data.labels {
+                self.data.ui_labels.extend(Self::process_labels(
+                    labels,
+                    data.half_sizes,
+                    centers(),
+                    &instance_path_hashes_for_picking,
+                    &colors,
+                    &annotation_infos,
+                ));
+            }
         }
 
         let mut line_builder = ent_context.shared_render_builders.lines();
@@ -123,21 +135,21 @@ impl Boxes2DVisualizer {
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-        for (instance_key, half_size, position, radius, color) in
-            itertools::izip!(instance_keys, half_sizes, positions, radii, colors)
-        {
-            let instance_hash = re_entity_db::InstancePathHash::instance(ent_path, instance_key);
+        let mut bounding_box = macaw::BoundingBox::nothing();
 
-            let min = half_size.box_min(position);
-            let max = half_size.box_max(position);
+        for (instance_key, half_size, center, radius, color) in itertools::izip!(
+            data.instance_keys,
+            data.half_sizes,
+            centers(),
+            radii,
+            colors
+        ) {
+            let instance_hash = re_entity_db::InstancePathHash::instance(ent_path, *instance_key);
 
-            self.data.extend_bounding_box(
-                macaw::BoundingBox {
-                    min: min.extend(0.),
-                    max: max.extend(0.),
-                },
-                ent_context.world_from_entity,
-            );
+            let min = half_size.box_min(center);
+            let max = half_size.box_max(center);
+            bounding_box.extend(min.extend(0.0));
+            bounding_box.extend(max.extend(0.0));
 
             let rectangle = line_batch
                 .add_rectangle_outline_2d(
@@ -147,7 +159,7 @@ impl Boxes2DVisualizer {
                 )
                 .color(color)
                 .radius(radius)
-                .picking_instance_id(picking_id_from_instance_key(instance_key));
+                .picking_instance_id(picking_id_from_instance_key(*instance_key));
             if let Some(outline_mask_ids) = ent_context
                 .highlight
                 .instances
@@ -157,8 +169,22 @@ impl Boxes2DVisualizer {
             }
         }
 
-        Ok(())
+        self.data
+            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
     }
+}
+
+// ---
+
+struct Boxes2DComponentData<'a> {
+    pub instance_keys: &'a [InstanceKey],
+    pub half_sizes: &'a [HalfSizes2D],
+    pub centers: Option<&'a [Option<Position2D>]>,
+    pub colors: Option<&'a [Option<Color>]>,
+    pub radii: Option<&'a [Option<Radius>]>,
+    pub labels: Option<&'a [Option<Text>]>,
+    pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
+    pub class_ids: Option<&'a [Option<ClassId>]>,
 }
 
 impl IdentifiedViewSystem for Boxes2DVisualizer {
@@ -168,15 +194,8 @@ impl IdentifiedViewSystem for Boxes2DVisualizer {
 }
 
 impl VisualizerSystem for Boxes2DVisualizer {
-    fn required_components(&self) -> ComponentNameSet {
-        Boxes2D::required_components()
-            .iter()
-            .map(ToOwned::to_owned)
-            .collect()
-    }
-
-    fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(Boxes2D::indicator().name()).collect()
+    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::from_archetype::<Boxes2D>()
     }
 
     fn filter_visualizable_entities(
@@ -194,13 +213,47 @@ impl VisualizerSystem for Boxes2DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Boxes2DVisualizer, Boxes2D, { Boxes2D::NUM_COMPONENTS }, _>(
+        super::entity_iterator::process_archetype_pov1_comp6::<
+            Boxes2DVisualizer,
+            Boxes2D,
+            HalfSizes2D,
+            Position2D,
+            Color,
+            Radius,
+            Text,
+            re_types::components::KeypointId,
+            re_types::components::ClassId,
+            _,
+        >(
             ctx,
             query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.box2d,
-            |_ctx, ent_path, _ent_props, arch_view, ent_context| {
-                self.process_arch_view(query, &arch_view, ent_path, ent_context)
+            view_ctx.get::<EntityDepthOffsets>()?.points,
+            |_ctx,
+             ent_path,
+             _ent_props,
+             ent_context,
+             (_time, _row_id),
+             instance_keys,
+             half_sizes,
+             centers,
+             colors,
+             radii,
+             labels,
+             keypoint_ids,
+             class_ids| {
+                let data = Boxes2DComponentData {
+                    instance_keys,
+                    half_sizes,
+                    centers,
+                    colors,
+                    radii,
+                    labels,
+                    keypoint_ids,
+                    class_ids,
+                };
+                self.process_data(query, &data, ent_path, ent_context);
+                Ok(())
             },
         )?;
 

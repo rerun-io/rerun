@@ -30,6 +30,9 @@ analytics = [
   "re_web_viewer_server?/analytics",
 ]
 
+## Integration with `clap`.
+clap = ["dep:clap", "dep:tokio"]
+
 ## Demo helpers for examples.
 demo = []
 
@@ -44,6 +47,9 @@ mint = ["re_types?/mint"]
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["re_types?/image"]
 
+## Integration with the [`ecolor`](https://crates.io/crates/ecolor/) crate.
+ecolor = ["re_types?/ecolor"]
+
 ## Integration with the [`log`](https://crates.io/crates/log/) crate.
 log = ["dep:env_logger", "dep:log"]
 
@@ -51,8 +57,20 @@ log = ["dep:env_logger", "dep:log"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["dep:re_viewer"]
 
+## Add support for the [`run()`] function, which acts like a main-function for a CLI,
+## acting the same as [the `rerun` binary](https://crates.io/crates/rerun-cli).
+run = [
+  "clap",
+  "sdk",
+  "dep:re_data_source",
+  "dep:re_log_encoding",
+  "dep:re_sdk_comms",
+  "dep:re_ws_comms",
+  "dep:tokio",
+]
+
 ## Support for running a TCP server that listens to incoming log messages from a Rerun SDK.
-server = ["re_sdk_comms/server"]
+server = ["re_sdk_comms?/server"]
 
 ## Embed the Rerun SDK & built-in types and re-export all of their public symbols.
 sdk = ["dep:re_sdk", "dep:re_types"]
@@ -68,21 +86,18 @@ sdk = ["dep:re_sdk", "dep:re_types"]
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
 ## You also need to install some additional tools, which you can do by running
 ## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
-web_viewer = ["dep:re_web_viewer_server", "re_sdk?/web_viewer"]
+web_viewer = ["server", "dep:re_web_viewer_server", "re_sdk?/web_viewer"]
 
 [dependencies]
 re_build_info.workspace = true
 re_crash_handler.workspace = true
-re_data_source.workspace = true
 re_entity_db.workspace = true
 re_format.workspace = true
-re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_memory.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
-re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
 document-features.workspace = true
@@ -90,21 +105,33 @@ itertools.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
+re_data_source = { workspace = true, optional = true }
+re_log_encoding = { workspace = true, optional = true, features = [
+  "decoder",
+  "encoder",
+] }
 re_sdk = { workspace = true, optional = true }
 re_sdk_comms = { workspace = true, optional = true }
 re_types = { workspace = true, optional = true }
 re_viewer = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
+re_ws_comms = { workspace = true, optional = true, features = ["server"] }
 
 env_logger = { workspace = true, optional = true }
 log = { workspace = true, optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-clap = { workspace = true, features = ["derive"] }
 puffin.workspace = true
 rayon.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
+# Native, optional:
+clap = { workspace = true, optional = true, features = ["derive"] }
+tokio = { workspace = true, optional = true, features = [
+  "macros",
+  "rt-multi-thread",
+  "time",
+] }
 
 
 [build-dependencies]

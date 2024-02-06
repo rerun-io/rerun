@@ -198,13 +198,15 @@ impl ObjectKind {
     pub const ALL: [Self; 3] = [Self::Datatype, Self::Component, Self::Archetype];
 
     // TODO(#2364): use an attr instead of the path
-    pub fn from_pkg_name(pkg_name: impl AsRef<str>, attrs: &Attributes) -> Self {
-        let scope = match attrs.try_get::<String>(pkg_name.as_ref(), crate::ATTR_RERUN_SCOPE) {
+    pub fn from_pkg_name(pkg_name: &str, attrs: &Attributes) -> Self {
+        assert!(!pkg_name.is_empty(), "Missing package name");
+
+        let scope = match attrs.try_get::<String>(pkg_name, crate::ATTR_RERUN_SCOPE) {
             Some(scope) => format!(".{scope}"),
             None => String::new(),
         };
 
-        let pkg_name = pkg_name.as_ref().replace(".testing", "");
+        let pkg_name = pkg_name.replace(".testing", "");
         if pkg_name.starts_with(format!("rerun{scope}.datatypes").as_str()) {
             ObjectKind::Datatype
         } else if pkg_name.starts_with(format!("rerun{scope}.components").as_str()) {
@@ -440,11 +442,10 @@ impl Object {
         let include_dir_path = include_dir_path.as_ref();
 
         let fqname = obj.name().to_owned();
-        let (pkg_name, name) = fqname
-            .rsplit_once('.')
-            .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
-                (pkg_name.to_owned(), name.to_owned())
-            });
+        let (pkg_name, name) = fqname.rsplit_once('.').map_or_else(
+            || panic!("Missing '.' separator in fqname: {fqname:?} - Did you forget to put it in a `namespace`?"),
+            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
+        );
 
         let virtpath = obj
             .declaration_file()
@@ -523,11 +524,10 @@ impl Object {
         let include_dir_path = include_dir_path.as_ref();
 
         let fqname = enm.name().to_owned();
-        let (pkg_name, name) = fqname
-            .rsplit_once('.')
-            .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
-                (pkg_name.to_owned(), name.to_owned())
-            });
+        let (pkg_name, name) = fqname.rsplit_once('.').map_or_else(
+            || panic!("Missing '.' separator in fqname: {fqname:?} - Did you forget to put it in a `namespace`?"),
+            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
+        );
 
         let virtpath = enm
             .declaration_file()
@@ -608,6 +608,10 @@ impl Object {
 
     pub fn is_attr_set(&self, name: impl AsRef<str>) -> bool {
         self.attrs.has(name)
+    }
+
+    pub fn typ(&self) -> ObjectType {
+        self.specifics.typ()
     }
 
     pub fn is_struct(&self) -> bool {
@@ -699,6 +703,27 @@ pub enum ObjectSpecifics {
         /// `None` if this is a union, some value if this is an enum.
         utype: Option<ElementType>,
     },
+}
+
+impl ObjectSpecifics {
+    pub fn typ(&self) -> ObjectType {
+        match self {
+            ObjectSpecifics::Struct => ObjectType::Struct,
+            ObjectSpecifics::Union { utype: None } => ObjectType::Union,
+            ObjectSpecifics::Union { utype: Some(_) } => ObjectType::Enum,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ObjectType {
+    Struct,
+
+    /// A proper union sum type
+    Union,
+
+    /// An enumeration of alternatives
+    Enum,
 }
 
 /// A high-level representation of a flatbuffers field, which can be either a struct member or a

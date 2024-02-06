@@ -1,16 +1,17 @@
 use std::collections::BTreeMap;
 
+use ahash::HashMap;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
-use re_log_types::{DataCell, DataRow, RowId, TimePoint};
-use re_types::Loggable;
+use re_log_types::{DataCell, DataRow, RowId, StoreKind};
+use re_types::{ComponentName, Loggable};
 use smallvec::SmallVec;
 
 use crate::{
-    SpaceViewHighlights, SpaceViewId, SystemCommand, SystemCommandSender as _,
-    ViewSystemIdentifier, ViewerContext,
+    blueprint_timepoint_for_writes, SpaceViewHighlights, SpaceViewId, SystemCommand,
+    SystemCommandSender as _, ViewSystemIdentifier, ViewerContext,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -23,9 +24,17 @@ pub struct PropertyOverrides {
     /// The individual property set in this `DataResult`, if any.
     pub individual_properties: Option<EntityProperties>,
 
+    /// An alternative store and entity path to use for the specified component.
+    // NOTE: StoreKind is easier to work with than a `StoreId`` or full `DataStore` but
+    // might still be ambiguous when we have multiple stores active at a time.
+    // TODO(jleibs): Consider something like `tinymap` for this.
+    pub component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
+
     /// `EntityPath` in the Blueprint store where updated overrides should be written back.
     pub override_path: EntityPath,
 }
+
+pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 
 /// This is the primary mechanism through which data is passed to a `SpaceView`.
 ///
@@ -42,7 +51,7 @@ pub struct DataResult {
     pub entity_path: EntityPath,
 
     /// Which `ViewSystems`s to pass the `DataResult` to.
-    pub visualizers: SmallVec<[ViewSystemIdentifier; 4]>,
+    pub visualizers: SmallVisualizerSet,
 
     /// This DataResult represents a group
     // TODO(jleibs): Maybe make this an enum instead?
@@ -119,14 +128,11 @@ impl DataResult {
             return;
         };
 
-        let row = DataRow::from_cells1_sized(
-            RowId::new(),
-            override_path.clone(),
-            TimePoint::timeless(),
-            1,
-            cell,
-        )
-        .unwrap();
+        let timepoint = blueprint_timepoint_for_writes();
+
+        let row =
+            DataRow::from_cells1_sized(RowId::new(), override_path.clone(), timepoint, 1, cell)
+                .unwrap();
 
         ctx.command_sender
             .send_system(SystemCommand::UpdateBlueprint(
