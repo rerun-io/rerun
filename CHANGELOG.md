@@ -14,23 +14,22 @@ This release focuses on scalar time series -- both from a performance and UI per
 <!-- TODO: improve this tenfold -->
 
 - 📈 Scalar time series are now roughly 20x faster:
-    - The new [query cache](https://github.com/rerun-io/rerun/pull/4856) optimizes data access.
-    - [Sub-pixel aggregation] prevents unnecessary overdraw when rendering plots
-- [Points](https://www.rerun.io/docs/reference/types/archetypes/points3d), [lines](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [arrows](https://www.rerun.io/docs/reference/types/archetypes/arrows3d) and [boxes](https://www.rerun.io/docs/reference/types/archetypes/boxes3d) all benefit from query caching too, to a lesser extent.
+    - The new [query cache](https://github.com/rerun-io/rerun/pull/4856) optimizes data access
+    - [Sub-pixel aggregation](https://github.com/rerun-io/rerun/pull/4865) prevents unnecessary overdraw when rendering plots
+    - [Points](https://www.rerun.io/docs/reference/types/archetypes/points3d), [lines](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [arrows](https://www.rerun.io/docs/reference/types/archetypes/arrows3d) and [boxes](https://www.rerun.io/docs/reference/types/archetypes/boxes3d) all benefit from query caching too, to a lesser extent
 - 🖼 UI overrides:
     - Scalar, SeriesLine, SeriesPoint
     - Marker shapes etc
     - Support modifying the plot style by introducing a generic framework for overriding components [#4914](https://github.com/rerun-io/rerun/pull/4914)
-- 📘 Improved layout editing
+- 📘 Improved layout editing:
     - Add support for drag-and-drop in blueprint tree [#4910](https://github.com/rerun-io/rerun/pull/4910)
-
-Important miscellaneous improvements:
-- 🚀 Viewer: control the number of compute threads with `--treads`/-j` [#5021](https://github.com/rerun-io/rerun/pull/5021)
-- 🌁 Viewer: support YUY2-encoded images [#4877](https://github.com/rerun-io/rerun/pull/4877) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
+- 🌁 Viewer:
+    - Control the number of compute threads with `--treads`/`-j` [#5021](https://github.com/rerun-io/rerun/pull/5021)
+    - Support YUY2-encoded images [#4877](https://github.com/rerun-io/rerun/pull/4877) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
 - 🦀 Rust: integration with the `mint` crate [#4753](https://github.com/rerun-io/rerun/pull/4753)
 - 🕸️ Web: support loading multiple `.rrd` URLs [#4740](https://github.com/rerun-io/rerun/pull/4740)
 
-As well as a lot of miscellaneous bug fixes and usability improvements, see details below.
+As well as a lot of miscellaneous bug fixes and usability improvements: see details below.
 
 ### Details
 
@@ -62,22 +61,23 @@ As well as a lot of miscellaneous bug fixes and usability improvements, see deta
 - Texture support for raw `Mesh3D` logging [#4894](https://github.com/rerun-io/rerun/pull/4894)
 
 #### 🚀 Performance Improvements
-- Primary caching 3: barebone latest-at caching [#4659](https://github.com/rerun-io/rerun/pull/4659)
-- Primary caching 4: runtime toggle support [#4680](https://github.com/rerun-io/rerun/pull/4680)
-- Primary caching 5: 2D & 3D point clouds [#4681](https://github.com/rerun-io/rerun/pull/4681)
-- Primary caching 6: TextLogs & TimeSeries [#4698](https://github.com/rerun-io/rerun/pull/4698)
-- Primary caching 7: Always expose the data time in query responses [#4711](https://github.com/rerun-io/rerun/pull/4711)
-- Primary caching 8: implement latest-at data-time cache entry deduplication [#4712](https://github.com/rerun-io/rerun/pull/4712)
-- Primary caching 9: timeless latest-at support [#4721](https://github.com/rerun-io/rerun/pull/4721)
-- Primary caching 10: latest-at cache invalidation [#4726](https://github.com/rerun-io/rerun/pull/4726)
-- Primary caching 11: cache stats and integration with memory panel [#4773](https://github.com/rerun-io/rerun/pull/4773)
-- Primary caching 12: barebone range support [#4784](https://github.com/rerun-io/rerun/pull/4784)
-- Primary caching 13: stats & memory panel integration for range queries [#4785](https://github.com/rerun-io/rerun/pull/4785)
-- Primary caching 15: range read performance optimization [#4800](https://github.com/rerun-io/rerun/pull/4800)
-- Primary caching 16: context-free range semantics [#4851](https://github.com/rerun-io/rerun/pull/4851)
-- Primary caching 17: timeless range [#4852](https://github.com/rerun-io/rerun/pull/4852)
-- Primary caching 18: range invalidation (ENABLED BY DEFAULT :confetti_ball:) [#4853](https://github.com/rerun-io/rerun/pull/4853)
-- Primary caching 19 (final): de-statification [#4856](https://github.com/rerun-io/rerun/pull/4856)
+- Introduce the query cache:
+    - Primary caching 3: barebone latest-at caching [#4659](https://github.com/rerun-io/rerun/pull/4659)
+    - Primary caching 4: runtime toggle support [#4680](https://github.com/rerun-io/rerun/pull/4680)
+    - Primary caching 5: 2D & 3D point clouds [#4681](https://github.com/rerun-io/rerun/pull/4681)
+    - Primary caching 6: TextLogs & TimeSeries [#4698](https://github.com/rerun-io/rerun/pull/4698)
+    - Primary caching 7: Always expose the data time in query responses [#4711](https://github.com/rerun-io/rerun/pull/4711)
+    - Primary caching 8: implement latest-at data-time cache entry deduplication [#4712](https://github.com/rerun-io/rerun/pull/4712)
+    - Primary caching 9: timeless latest-at support [#4721](https://github.com/rerun-io/rerun/pull/4721)
+    - Primary caching 10: latest-at cache invalidation [#4726](https://github.com/rerun-io/rerun/pull/4726)
+    - Primary caching 11: cache stats and integration with memory panel [#4773](https://github.com/rerun-io/rerun/pull/4773)
+    - Primary caching 12: barebone range support [#4784](https://github.com/rerun-io/rerun/pull/4784)
+    - Primary caching 13: stats & memory panel integration for range queries [#4785](https://github.com/rerun-io/rerun/pull/4785)
+    - Primary caching 15: range read performance optimization [#4800](https://github.com/rerun-io/rerun/pull/4800)
+    - Primary caching 16: context-free range semantics [#4851](https://github.com/rerun-io/rerun/pull/4851)
+    - Primary caching 17: timeless range [#4852](https://github.com/rerun-io/rerun/pull/4852)
+    - Primary caching 18: range invalidation (ENABLED BY DEFAULT :confetti_ball:) [#4853](https://github.com/rerun-io/rerun/pull/4853)
+    - Primary caching 19 (final): de-statification [#4856](https://github.com/rerun-io/rerun/pull/4856)
 - Configurable dynamic plot aggregation based on zoom-level [#4865](https://github.com/rerun-io/rerun/pull/4865)
 - Improved automatic view creation heuristic, major speedup for scenes with many entities [#4874](https://github.com/rerun-io/rerun/pull/4874)
 - Optimize point clouds [#4932](https://github.com/rerun-io/rerun/pull/4932)
@@ -215,7 +215,7 @@ As well as a lot of miscellaneous bug fixes and usability improvements, see deta
 
 #### 🌁 Viewer Improvements
 - Make viewer contexts's render context reference non-mutable [#4430](https://github.com/rerun-io/rerun/pull/4430)
-- The Rerun Viewer can now consume from stdin
+- The Rerun Viewer can now consume from stdin:
   - Standard input/output support 1: stream RRD data from stdin [#4511](https://github.com/rerun-io/rerun/pull/4511)
   - Standard input/output support 2: Rust SDK stdout impl/examples/docs [#4512](https://github.com/rerun-io/rerun/pull/4512)
   - Standard input/output support 3: Python SDK stdout impl/examples/docs [#4513](https://github.com/rerun-io/rerun/pull/4513)
