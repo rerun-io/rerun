@@ -2,7 +2,7 @@
 title: "MarkerSize"
 ---
 
-Ui size of a marker in points.
+Size of a marker in UI points.
 
 
 ## Links

@@ -33,7 +33,7 @@ namespace rerun::archetypes {
         std::optional<rerun::components::Name> name;
 
         /// Size of the markers.
-        std::optional<Collection<rerun::components::MarkerSize>> size;
+        std::optional<Collection<rerun::components::MarkerSize>> marker_sizes;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -70,8 +70,8 @@ namespace rerun::archetypes {
         }
 
         /// Size of the markers.
-        SeriesPoint with_size(Collection<rerun::components::MarkerSize> _size) && {
-            size = std::move(_size);
+        SeriesPoint with_marker_sizes(Collection<rerun::components::MarkerSize> _marker_sizes) && {
+            marker_sizes = std::move(_marker_sizes);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

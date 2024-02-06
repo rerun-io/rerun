@@ -28,5 +28,5 @@ table SeriesPoint (
     name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 3000);
 
     /// Size of the markers.
-    size: [rerun.components.MarkerSize] ("attr.rerun.component_optional", nullable, order: 4000);
+    marker_sizes: [rerun.components.MarkerSize] ("attr.rerun.component_optional", nullable, order: 4000);
 }

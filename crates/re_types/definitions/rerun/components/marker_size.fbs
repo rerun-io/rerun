@@ -9,7 +9,7 @@ namespace rerun.components;
 
 // ---
 
-/// Ui size of a marker in points.
+/// Size of a marker in UI points.
 struct MarkerSize (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.ArrayLike",

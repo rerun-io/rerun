@@ -19,7 +19,7 @@ __all__ = ["MarkerSize", "MarkerSizeArrayLike", "MarkerSizeBatch", "MarkerSizeLi
 
 @define(init=False)
 class MarkerSize:
-    """**Component**: Ui size of a marker in points."""
+    """**Component**: Size of a marker in UI points."""
 
     def __init__(self: Any, value: MarkerSizeLike):
         """Create a new instance of the MarkerSize component."""

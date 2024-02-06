@@ -26,7 +26,7 @@ class SeriesPoint(Archetype):
         color: datatypes.Rgba32Like | None = None,
         marker: components.MarkerShapeLike | None = None,
         name: datatypes.Utf8Like | None = None,
-        size: components.MarkerSizeArrayLike | None = None,
+        marker_sizes: components.MarkerSizeArrayLike | None = None,
     ):
         """
         Create a new instance of the SeriesPoint archetype.
@@ -41,13 +41,13 @@ class SeriesPoint(Archetype):
             Display name of the series.
 
             Used in the legend.
-        size:
+        marker_sizes:
             Size of the markers.
         """
 
         # You can define your own __init__ function as a member of SeriesPointExt in series_point_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(color=color, marker=marker, name=name, size=size)
+            self.__attrs_init__(color=color, marker=marker, name=name, marker_sizes=marker_sizes)
             return
         self.__attrs_clear__()
 
@@ -57,7 +57,7 @@ class SeriesPoint(Archetype):
             color=None,  # type: ignore[arg-type]
             marker=None,  # type: ignore[arg-type]
             name=None,  # type: ignore[arg-type]
-            size=None,  # type: ignore[arg-type]
+            marker_sizes=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -96,7 +96,7 @@ class SeriesPoint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    size: components.MarkerSizeBatch | None = field(
+    marker_sizes: components.MarkerSizeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.MarkerSizeBatch._optional,  # type: ignore[misc]
