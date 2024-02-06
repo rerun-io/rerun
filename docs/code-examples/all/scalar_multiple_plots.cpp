@@ -15,8 +15,14 @@ int main() {
     // Set up plot styling:
     // They are logged timeless as they don't change over time and apply to all timelines.
     // Log two lines series under a shared root so that they show in the same plot by default.
-    rec.log_timeless("trig/sin", rerun::SeriesLine().with_color({255, 0, 0}));
-    rec.log_timeless("trig/cos", rerun::SeriesLine().with_color({0, 255, 0}));
+    rec.log_timeless(
+        "trig/sin",
+        rerun::SeriesLine().with_color({255, 0, 0}).with_name("sin(0.01t)")
+    );
+    rec.log_timeless(
+        "trig/cos",
+        rerun::SeriesLine().with_color({0, 255, 0}).with_name("cos(0.01t)")
+    );
     // Log scattered points under a different root so that they shows in a different plot by default.
     rec.log_timeless("scatter/lcg", rerun::SeriesPoint());
 
@@ -24,11 +30,8 @@ int main() {
     for (int t = 0; t < static_cast<int>(TAU * 2.0 * 100.0); ++t) {
         rec.set_time_sequence("step", t);
 
-        rec.log("trig/sin", rerun::Scalar(sin(t / 100.0)).with_text("sin(0.01t)"));
-        rec.log(
-            "trig/cos",
-            rerun::Scalar(cos(static_cast<float>(t) / 100.0f)).with_text("cos(0.01t)")
-        );
+        rec.log("trig/sin", rerun::Scalar(sin(t / 100.0)));
+        rec.log("trig/cos", rerun::Scalar(cos(static_cast<float>(t) / 100.0f)));
 
         lcg_state =
             1140671485 * lcg_state + 128201163 % 16777216; // simple linear congruency generator

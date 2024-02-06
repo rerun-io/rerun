@@ -61,6 +61,9 @@ def log_bar_chart() -> None:
 
 
 def log_parabola() -> None:
+    # Name never changes, log it only once.
+    rr.log("curves/parabola", rr.SeriesLine(name="f(t) = (0.01t - 3)³ + 1"), timeless=True)
+
     # Log a parabola as a time series
     for t in range(0, 1000, 10):
         rr.set_time_sequence("frame_nr", t)
@@ -75,27 +78,24 @@ def log_parabola() -> None:
 
         rr.log(
             "curves/parabola",
-            rr.Scalar(
-                f_of_t,
-                text="f(t) = (0.01t - 3)³ + 1",
-            ),
+            rr.Scalar(f_of_t),
             rr.SeriesLine(width=width, color=color),
         )
 
 
 def log_trig() -> None:
     # Styling doesn't change over time, log it once with timeless=True.
-    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0]), timeless=True)
-    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0]), timeless=True)
+    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), timeless=True)
+    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), timeless=True)
 
     for t in range(0, int(tau * 2 * 1000.0)):
         rr.set_time_sequence("frame_nr", t)
 
         sin_of_t = sin(float(t) / 1000.0)
-        rr.log("trig/sin", rr.Scalar(sin_of_t, text="sin(0.01t)"))
+        rr.log("trig/sin", rr.Scalar(sin_of_t))
 
         cos_of_t = cos(float(t) / 1000.0)
-        rr.log("trig/cos", rr.Scalar(cos_of_t, text="cos(0.01t)"))
+        rr.log("trig/cos", rr.Scalar(cos_of_t))
 
 
 def log_classification() -> None:
