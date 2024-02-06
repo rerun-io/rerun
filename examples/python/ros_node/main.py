@@ -182,8 +182,8 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.set_time_nanos("ros_time", time.nanoseconds)
 
         # Capture time-series data for the linear and angular velocities
-        rr.log("odometry/vel", rr.TimeSeriesScalar(odom.twist.twist.linear.x))
-        rr.log("odometry/ang_vel", rr.TimeSeriesScalar(odom.twist.twist.angular.z))
+        rr.log("odometry/vel", rr.Scalar(odom.twist.twist.linear.x))
+        rr.log("odometry/ang_vel", rr.Scalar(odom.twist.twist.angular.z))
 
         # Update the robot pose itself via TF
         self.log_tf_as_transform3d("map/robot", time)
