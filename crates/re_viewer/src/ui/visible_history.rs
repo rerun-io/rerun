@@ -8,6 +8,7 @@ use re_log_types::{EntityPath, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
+use re_ui::{markdown_ui, ReUi};
 use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, TimeControl, ViewerContext};
 
 /// These space views support the Visible History feature.
@@ -91,7 +92,7 @@ pub fn visible_history_ui(
 
     let mut interacting_with_controls = false;
 
-    let collapsing_response = re_ui.collapsing_header(ui, "Visible Time Range", true, |ui| {
+    let collapsing_response = re_ui.collapsing_header(ui, "Visible Time Range", false, |ui| {
         ui.horizontal(|ui| {
             re_ui
                 .radio_value(ui, &mut visible_history_prop.enabled, false, "Default")
@@ -200,24 +201,17 @@ pub fn visible_history_ui(
                 resolved_visible_history,
             );
         }
-
-        ui.add(
-            egui::Label::new(
-                egui::RichText::new(if is_sequence_timeline {
-                    "These settings apply to all sequence timelines."
-                } else {
-                    "These settings apply to all temporal timelines."
-                })
-                .italics()
-                .weak(),
-            )
-            .wrap(true),
-        )
-        .on_hover_text(
-            "Visible Time Range properties are stored separately for each types of timelines. \
-            They may differ depending on whether the current timeline is temporal or a sequence.",
-        );
     });
+
+    // Add spacer after the visible history section.
+    //TODO(ab): figure out why `item_spacing.y` is added _only_ in collapsed state.
+    if collapsing_response.body_response.is_some() {
+        ui.add_space(ui.spacing().item_spacing.y / 2.0);
+    } else {
+        ui.add_space(-ui.spacing().item_spacing.y / 2.0);
+    }
+    ReUi::full_span_separator(ui);
+    ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
     // Decide when to show the visible history highlight in the timeline. The trick is that when
     // interacting with the controls, the mouse might end up outside the collapsing header rect,
@@ -244,10 +238,25 @@ pub fn visible_history_ui(
         }
     }
 
-    collapsing_response.header_response.on_hover_text(
-        "Controls the time range used to display data in the Space View.\n\n\
-        Note that the data current as of the time range starting time is included.",
+    let markdown = format!("# Visible Time Range\n
+This feature controls the time range used to display data in the Space View.
+
+The settings are inherited from parent Group(s) or enclosing Space View if not overridden.
+
+Visible Time Range properties are stored separately for each _type_ of timelines. They may differ depending on \
+whether the current timeline is temporal or a sequence. The current settings apply to all _{}_ timelines.
+
+Notes that the data current as of the time range starting time is included.",
+        if is_sequence_timeline {
+            "sequence"
+        } else {
+            "temporal"
+        }
     );
+
+    collapsing_response.header_response.on_hover_ui(|ui| {
+        markdown_ui(ui, egui::Id::new(markdown.as_str()), &markdown);
+    });
 }
 
 fn current_range_ui(
