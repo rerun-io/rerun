@@ -89,7 +89,7 @@ egui = { version = "0.26.0", features = [
   "puffin",
   "rayon",
 ] }
-egui_commonmark = { version = "0.11", default-features = false }
+egui_commonmark = { version = "0.12", default-features = false }
 egui_extras = { version = "0.26.0", features = ["http", "image", "puffin"] }
 egui_plot = "0.26.0"
 egui_tiles = "0.6"
