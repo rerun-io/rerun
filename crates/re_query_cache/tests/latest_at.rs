@@ -10,7 +10,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     DataRow, EntityPath, RowId, TimePoint,
 };
-use re_query_cache::{Caches, MaybeCachedComponentData};
+use re_query_cache::Caches;
 use re_types_core::{components::InstanceKey, Loggable as _};
 
 // ---
@@ -448,36 +448,15 @@ fn query_and_compare(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
 ) {
-    for _ in 0..3 {
-        let mut uncached_data_time = None;
-        let mut uncached_instance_keys = Vec::new();
-        let mut uncached_positions = Vec::new();
-        let mut uncached_colors = Vec::new();
-        caches
-            .query_archetype_pov1_comp1::<MyPoints, MyPoint, MyColor, _>(
-                false, // cached?
-                store,
-                &query.clone().into(),
-                ent_path,
-                |((data_time, _), instance_keys, positions, colors)| {
-                    uncached_data_time = data_time;
-                    uncached_instance_keys.extend(instance_keys.iter().copied());
-                    uncached_positions.extend(positions.iter().copied());
-                    uncached_colors.extend(MaybeCachedComponentData::iter_or_repeat_opt(
-                        &colors,
-                        positions.len(),
-                    ));
-                },
-            )
-            .unwrap();
+    re_log::setup_logging();
 
+    for _ in 0..3 {
         let mut cached_data_time = None;
         let mut cached_instance_keys = Vec::new();
         let mut cached_positions = Vec::new();
         let mut cached_colors = Vec::new();
         caches
             .query_archetype_pov1_comp1::<MyPoints, MyPoint, MyColor, _>(
-                true, // cached?
                 store,
                 &query.clone().into(),
                 ent_path,
@@ -485,10 +464,8 @@ fn query_and_compare(
                     cached_data_time = data_time;
                     cached_instance_keys.extend(instance_keys.iter().copied());
                     cached_positions.extend(positions.iter().copied());
-                    cached_colors.extend(MaybeCachedComponentData::iter_or_repeat_opt(
-                        &colors,
-                        positions.len(),
-                    ));
+                    cached_colors
+                        .extend(re_query_cache::iter_or_repeat_opt(colors, positions.len()));
                 },
             )
             .unwrap();
@@ -507,12 +484,7 @@ fn query_and_compare(
             .collect_vec();
 
         // Keep this around for the next unlucky chap.
-        // eprintln!("(expected={expected_data_time:?}, uncached={uncached_data_time:?}, cached={cached_data_time:?})");
-
-        similar_asserts::assert_eq!(expected_data_time, uncached_data_time);
-        similar_asserts::assert_eq!(expected_instance_keys, uncached_instance_keys);
-        similar_asserts::assert_eq!(expected_positions, uncached_positions);
-        similar_asserts::assert_eq!(expected_colors, uncached_colors);
+        // eprintln!("i={i} (expected={expected_data_time:?}, cached={cached_data_time:?})");
 
         similar_asserts::assert_eq!(expected_data_time, cached_data_time);
         similar_asserts::assert_eq!(expected_instance_keys, cached_instance_keys);

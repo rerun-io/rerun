@@ -10,54 +10,16 @@ use crate::{AnyQuery, Caches};
 
 // ---
 
-/// Either a reference to a slice of data residing in the cache, or some data being deserialized
-/// just-in-time from an [`re_query::ArchetypeView`].
-#[derive(Debug, Clone)]
-pub enum MaybeCachedComponentData<'a, C> {
-    Cached(&'a [C]),
-    // TODO(cmc): Ideally, this would be a reference to a `dyn Iterator` that is the result of
-    // calling `ArchetypeView::iter_{required|optional}_component`.
-    // In practice this enters lifetime invariance hell for, from what I can see, no particular gains
-    // (rustc is pretty good at optimizing out collections into obvious temporary variables).
-    Raw(Vec<C>),
-}
-
-impl<'a, C> MaybeCachedComponentData<'a, Option<C>> {
-    /// Iterates over the data of an optional component, or repeat `None` values if it's missing.
-    #[inline]
-    pub fn iter_or_repeat_opt(
-        this: &Option<Self>,
-        len: usize,
-    ) -> impl Iterator<Item = &Option<C>> + '_ {
-        this.as_ref().map_or(
-            itertools::Either::Left(std::iter::repeat(&None).take(len)),
-            |data| itertools::Either::Right(data.iter()),
-        )
-    }
-}
-
-impl<'a, C> std::ops::Deref for MaybeCachedComponentData<'a, C> {
-    type Target = [C];
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        self.as_slice()
-    }
-}
-
-impl<'a, C> MaybeCachedComponentData<'a, C> {
-    #[inline]
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = &C> + '_ {
-        self.as_slice().iter()
-    }
-
-    #[inline]
-    pub fn as_slice(&self) -> &[C] {
-        match self {
-            MaybeCachedComponentData::Cached(data) => data,
-            MaybeCachedComponentData::Raw(data) => data.as_slice(),
-        }
-    }
+/// Iterates over the data of an optional component, or repeat `None` values if it's missing.
+#[inline]
+pub fn iter_or_repeat_opt<C>(
+    this: Option<&[Option<C>]>,
+    len: usize,
+) -> impl Iterator<Item = &Option<C>> + '_ {
+    this.as_ref().map_or(
+        itertools::Either::Left(std::iter::repeat(&None).take(len)),
+        |data| itertools::Either::Right(data.iter()),
+    )
 }
 
 // ---
@@ -70,7 +32,6 @@ impl Caches {
     #[inline]
     pub fn query_archetype_pov1<'a, A, R1, F>(
         &self,
-        cached: bool,
         store: &'a DataStore,
         query: &AnyQuery,
         entity_path: &'a EntityPath,
@@ -79,15 +40,9 @@ impl Caches {
     where
         A: Archetype + 'a,
         R1: Component + Send + Sync + 'static,
-        F: FnMut(
-            (
-                (Option<TimeInt>, RowId),
-                MaybeCachedComponentData<'_, InstanceKey>,
-                MaybeCachedComponentData<'_, R1>,
-            ),
-        ),
+        F: FnMut(((Option<TimeInt>, RowId), &[InstanceKey], &[R1])),
     {
-        self.query_archetype_pov1_comp0::<A, R1, F>(cached, store, query, entity_path, f)
+        self.query_archetype_pov1_comp0::<A, R1, F>(store, query, entity_path, f)
     }
 }
 
@@ -98,7 +53,6 @@ macro_rules! impl_query_archetype {
         #[allow(non_snake_case)]
         pub fn [<query_archetype_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
             &self,
-            cached: bool,
             store: &'a DataStore,
             query: &AnyQuery,
             entity_path: &'a EntityPath,
@@ -111,36 +65,19 @@ macro_rules! impl_query_archetype {
             F: FnMut(
                 (
                     (Option<TimeInt>, RowId),
-                    MaybeCachedComponentData<'_, InstanceKey>,
-                    $(MaybeCachedComponentData<'_, $pov>,)+
-                    $(Option<MaybeCachedComponentData<'_, Option<$comp>>>,)*
+                    &[InstanceKey],
+                    $(&[$pov],)+
+                    $(Option<&[Option<$comp>]>,)*
                 ),
             ),
         {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!(
                 "query_archetype",
-                format!("cached={cached} arch={} pov={} comp={}", A::name(), $N, $M)
+                format!("cached=true arch={} pov={} comp={}", A::name(), $N, $M)
             );
 
             match &query {
-                AnyQuery::LatestAt(query) if !cached => {
-                    re_tracing::profile_scope!("latest_at", format!("{query:?}"));
-
-                    let arch_view = ::re_query::query_archetype::<A>(store, query, entity_path)?;
-
-                    let data = (
-                        (arch_view.data_time(), arch_view.primary_row_id()),
-                        MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
-                        $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
-                        $(Some(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect())),)*
-                    );
-
-                    f(data);
-
-                    Ok(())
-                }
-
                 AnyQuery::LatestAt(query) => {
                     re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
@@ -150,30 +87,6 @@ macro_rules! impl_query_archetype {
                         entity_path,
                         f,
                     )
-                }
-
-                AnyQuery::Range(query) if !cached => {
-                    re_tracing::profile_scope!("range", format!("{query:?}"));
-
-                    // NOTE: `+ 1` because we always grab the instance keys.
-                    let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
-                        store, query, entity_path,
-                        &[$(<$pov>::name(),)+],
-                        [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
-                    );
-
-                    for arch_view in arch_views {
-                        let data = (
-                            (arch_view.data_time(), arch_view.primary_row_id()),
-                            MaybeCachedComponentData::Raw(arch_view.iter_instance_keys().collect()),
-                            $(MaybeCachedComponentData::Raw(arch_view.iter_required_component::<$pov>()?.collect()),)+
-                            $(Some(MaybeCachedComponentData::Raw(arch_view.iter_optional_component::<$comp>()?.collect())),)*
-                        );
-
-                        f(data);
-                    }
-
-                    Ok(())
                 }
 
                 AnyQuery::Range(query) => {
@@ -195,9 +108,9 @@ macro_rules! impl_query_archetype {
                             ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
                                 (
                                     ((!timeless).then_some(*time), *row_id),
-                                    MaybeCachedComponentData::Cached(instance_keys),
-                                    $(MaybeCachedComponentData::Cached($pov),)+
-                                    $((!$comp.is_empty()).then_some(MaybeCachedComponentData::Cached($comp)),)*
+                                    instance_keys,
+                                    $($pov,)+
+                                    $((!$comp.is_empty()).then_some($comp),)*
                                 )
                             });
 
@@ -237,8 +150,6 @@ impl Caches {
     #[inline]
     pub fn query_archetype_with_history_pov1<'a, A, R1, F>(
         &self,
-        cached_latest_at: bool,
-        cached_range: bool,
         store: &'a DataStore,
         timeline: &'a Timeline,
         time: &'a TimeInt,
@@ -249,23 +160,10 @@ impl Caches {
     where
         A: Archetype + 'a,
         R1: Component + Send + Sync + 'static,
-        F: FnMut(
-            (
-                (Option<TimeInt>, RowId),
-                MaybeCachedComponentData<'_, InstanceKey>,
-                MaybeCachedComponentData<'_, R1>,
-            ),
-        ),
+        F: FnMut(((Option<TimeInt>, RowId), &[InstanceKey], &[R1])),
     {
         self.query_archetype_with_history_pov1_comp0::<A, R1, F>(
-            cached_latest_at,
-            cached_range,
-            store,
-            timeline,
-            time,
-            history,
-            ent_path,
-            f,
+            store, timeline, time, history, ent_path, f,
         )
     }
 }
@@ -279,8 +177,6 @@ macro_rules! impl_query_archetype_with_history {
         #[allow(clippy::too_many_arguments)]
         pub fn [<query_archetype_with_history_pov$N _comp$M>]<'a, A, $($pov,)+ $($comp,)* F>(
             &self,
-            cached_latest_at: bool,
-            cached_range: bool,
             store: &'a DataStore,
             timeline: &'a Timeline,
             time: &'a TimeInt,
@@ -295,9 +191,9 @@ macro_rules! impl_query_archetype_with_history {
             F: FnMut(
                 (
                     (Option<TimeInt>, RowId),
-                    MaybeCachedComponentData<'_, InstanceKey>,
-                    $(MaybeCachedComponentData<'_, $pov>,)+
-                    $(Option<MaybeCachedComponentData<'_, Option<$comp>>>,)*
+                    &[InstanceKey],
+                    $(&[$pov],)+
+                    $(Option<&[Option<$comp>]>,)*
                 ),
             ),
         {
@@ -311,12 +207,11 @@ macro_rules! impl_query_archetype_with_history {
                 // NOTE: not `profile_function!` because we want them merged together.
                 re_tracing::profile_scope!(
                     "query_archetype_with_history",
-                    format!("cached={cached_latest_at} arch={} pov={} comp={}", A::name(), $N, $M)
+                    format!("cached=true arch={} pov={} comp={}", A::name(), $N, $M)
                 );
 
                 let query = LatestAtQuery::new(*timeline, *time);
                 self.[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    cached_latest_at,
                     store,
                     &query.clone().into(),
                     ent_path,
@@ -326,12 +221,11 @@ macro_rules! impl_query_archetype_with_history {
                 // NOTE: not `profile_function!` because we want them merged together.
                 re_tracing::profile_scope!(
                     "query_archetype_with_history",
-                    format!("cached={cached_range} arch={} pov={} comp={}", A::name(), $N, $M)
+                    format!("cached=true arch={} pov={} comp={}", A::name(), $N, $M)
                 );
 
                 let query = RangeQuery::new(*timeline, visible_history.time_range(*time));
                 self.[<query_archetype_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    cached_range,
                     store,
                     &query.clone().into(),
                     ent_path,
