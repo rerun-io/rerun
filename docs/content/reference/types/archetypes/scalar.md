@@ -16,8 +16,6 @@ the plot-specific archetypes through the blueprint.
 
 **Required**: [`Scalar`](../components/scalar.md)
 
-**Optional**: [`Text`](../components/text.md)
-
 ## Links
  * 🌊 [C++ API docs for `Scalar`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Scalar.html?speculative-link)
  * 🐍 [Python API docs for `Scalar`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Scalar)

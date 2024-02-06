@@ -25,6 +25,7 @@ Archetypes are bundles of components
 * [`Material`](components/material.md)
 * [`MediaType`](components/media_type.md)
 * [`MeshProperties`](components/mesh_properties.md)
+* [`Name`](components/name.md)
 * [`OutOfTreeTransform3D`](components/out_of_tree_transform3d.md)
 * [`PinholeProjection`](components/pinhole_projection.md)
 * [`Position2D`](components/position2d.md)

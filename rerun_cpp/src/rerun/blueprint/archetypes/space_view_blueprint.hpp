@@ -5,12 +5,12 @@
 
 #include "../../blueprint/components/entities_determined_by_user.hpp"
 #include "../../blueprint/components/included_queries.hpp"
-#include "../../blueprint/components/name.hpp"
 #include "../../blueprint/components/space_view_class.hpp"
 #include "../../blueprint/components/space_view_origin.hpp"
 #include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
+#include "../../components/name.hpp"
 #include "../../data_cell.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
@@ -27,7 +27,7 @@ namespace rerun::blueprint::archetypes {
         rerun::blueprint::components::SpaceViewClass class_identifier;
 
         /// The name of the view.
-        std::optional<rerun::blueprint::components::Name> display_name;
+        std::optional<rerun::components::Name> display_name;
 
         /// The "anchor point" of this space view.
         ///
@@ -65,7 +65,7 @@ namespace rerun::blueprint::archetypes {
             : class_identifier(std::move(_class_identifier)) {}
 
         /// The name of the view.
-        SpaceViewBlueprint with_display_name(rerun::blueprint::components::Name _display_name) && {
+        SpaceViewBlueprint with_display_name(rerun::components::Name _display_name) && {
             display_name = std::move(_display_name);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
