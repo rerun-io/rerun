@@ -264,6 +264,8 @@ impl<'a> QueryExpressionEvaluator<'a> {
             // TODO(#5067): For now, we always start by setting visualizers to the full list of available visualizers.
             // This is currently important for evaluating auto-properties during the space-view `on_frame_start`, which
             // is called before the property-overrider has a chance to update this list.
+            // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
+            // on the space view.
             let available_visualizers = self
                 .visualizable_entities_for_visualizer_systems
                 .iter()
