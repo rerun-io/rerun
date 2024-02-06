@@ -315,7 +315,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 ctx.render_ctx,
                 space_view.id.gpu_readback_id(),
                 |data, extent, mode| {
-                    handle_pending_space_view_screenshots(space_view, data, extent, mode)
+                    handle_pending_space_view_screenshots(space_view, data, extent, mode);
                 },
             )
             .is_some()
