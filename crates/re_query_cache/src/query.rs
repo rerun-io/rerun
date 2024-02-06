@@ -179,11 +179,32 @@ macro_rules! impl_query_archetype {
                 AnyQuery::Range(query) => {
                     re_tracing::profile_scope!("range", format!("{query:?}"));
 
-                    self.[<query_archetype_range_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* F>(
+                    self.[<query_archetype_range_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
                         store,
                         query,
                         entity_path,
-                        f,
+                        |timeless, entry_range, (data_times, pov_instance_keys, $($pov,)+ $($comp,)*)| {
+                            let it = itertools::izip!(
+                                data_times.range(entry_range.clone()),
+                                pov_instance_keys.range(entry_range.clone()),
+                                $($pov.range(entry_range.clone()),)+
+                                $($comp.map_or_else(
+                                    || itertools::Either::Left(std::iter::repeat(&[] as &[Option<$comp>])),
+                                    |data| itertools::Either::Right(data.range(entry_range.clone())))
+                                ,)*
+                            ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
+                                (
+                                    ((!timeless).then_some(*time), *row_id),
+                                    MaybeCachedComponentData::Cached(instance_keys),
+                                    $(MaybeCachedComponentData::Cached($pov),)+
+                                    $((!$comp.is_empty()).then_some(MaybeCachedComponentData::Cached($comp)),)*
+                                )
+                            });
+
+                            for data in it {
+                                f(data);
+                            }
+                        },
                     )
                 }
             }

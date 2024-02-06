@@ -7,17 +7,14 @@ from uuid import uuid4
 import rerun as rr
 
 README = """
-# Plot overrides
+# Scalar clears
 
-This checks whether one can override all properties in a plot.
+This checks whether scalar time series correctly behave with `Clear`s.
 
 ### Actions
 
-* Select `plots/cos`.
-* Override all of its properties with arbitrary values.
-* Remove all these overrides.
-
-If nothing weird happens, you can close this recording.
+Look at the plot, you should see a big hole in the middle, where `Clear`s were logged.
+If so, you can close this recording.
 """
 
 
@@ -26,16 +23,22 @@ def log_readme() -> None:
 
 
 def log_plots() -> None:
-    from math import cos, sin, tau
+    from math import sin, tau
+
+    rr.log("plots/line", rr.SeriesLine(), timeless=True)
+    rr.log("plots/point", rr.SeriesPoint(), timeless=True)
 
     for t in range(0, int(tau * 2 * 10.0)):
         rr.set_time_sequence("frame_nr", t)
 
         sin_of_t = sin(float(t) / 10.0)
-        rr.log("plots/sin", rr.TimeSeriesScalar(sin_of_t, label="sin(0.01t)", color=[255, 0, 0]))
 
-        cos_of_t = cos(float(t) / 10.0)
-        rr.log("plots/cos", rr.TimeSeriesScalar(cos_of_t, label="cos(0.01t)", color=[0, 255, 0]))
+        if t > 30 and t < 90:
+            rr.log("plots", rr.Clear(recursive=True))
+        else:
+            rr.log("plots/legacy", rr.TimeSeriesScalar(sin_of_t))
+            rr.log("plots/line", rr.Scalar(sin_of_t))
+            rr.log("plots/point", rr.Scalar(sin_of_t))
 
 
 def run(args: Namespace) -> None:

@@ -2,10 +2,10 @@ use paste::paste;
 use seq_macro::seq;
 
 use re_data_store::{DataStore, RangeQuery, TimeInt};
-use re_log_types::{EntityPath, RowId, TimeRange, Timeline};
+use re_log_types::{EntityPath, TimeRange, Timeline};
 use re_types_core::{components::InstanceKey, Archetype, Component, SizeBytes};
 
-use crate::{CacheBucket, Caches, MaybeCachedComponentData};
+use crate::{CacheBucket, Caches};
 
 // --- Data structures ---
 
@@ -181,12 +181,14 @@ macro_rules! impl_query_archetype_range {
             $($pov: Component + Send + Sync + 'static,)+
             $($comp: Component + Send + Sync + 'static,)*
             F: FnMut(
+                bool,
+                std::ops::Range<usize>,
                 (
-                    (Option<TimeInt>, RowId),
-                    MaybeCachedComponentData<'_, InstanceKey>,
-                    $(MaybeCachedComponentData<'_, $pov>,)+
-                    $(Option<MaybeCachedComponentData<'_, Option<$comp>>>,)*
-                ),
+                    &'_ std::collections::VecDeque<(re_data_store::TimeInt, re_log_types::RowId)>,
+                    &'_ crate::FlatVecDeque<InstanceKey>,
+                    $(&'_ crate::FlatVecDeque<$pov>,)+
+                    $(Option<&'_ crate::FlatVecDeque<Option<$comp>>>,)*
+                )
             ),
         {
             let range_results = |
@@ -199,28 +201,17 @@ macro_rules! impl_query_archetype_range {
 
                 let entry_range = bucket.entry_range(time_range);
 
-                let it = itertools::izip!(
-                    bucket.range_data_times(entry_range.clone()),
-                    bucket.range_pov_instance_keys(entry_range.clone()),
-                    $(bucket.range_component::<$pov>(entry_range.clone())
-                        .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
-                    $(bucket.range_component_opt::<$comp>(entry_range.clone())
-                        .map_or_else(
-                            || itertools::Either::Left(std::iter::repeat(&[] as &[Option<$comp>])),
-                            |it| itertools::Either::Right(it)),
-                    )*
-                ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
+                f(
+                    timeless,
+                    entry_range,
                     (
-                        ((!timeless).then_some(*time), *row_id),
-                        MaybeCachedComponentData::Cached(instance_keys),
-                        $(MaybeCachedComponentData::Cached($pov),)+
-                        $((!$comp.is_empty()).then_some(MaybeCachedComponentData::Cached($comp)),)*
+                        &bucket.data_times,
+                        &bucket.pov_instance_keys,
+                        $(bucket.component::<$pov>()
+                            .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
+                        $(bucket.component_opt::<$comp>(),)*
                     )
-                });
-
-                for data in it {
-                    f(data);
-                }
+                );
 
                 Ok(())
             };

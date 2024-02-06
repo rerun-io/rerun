@@ -1,4 +1,5 @@
-use re_query_cache::{MaybeCachedComponentData, QueryError};
+use itertools::Itertools as _;
+use re_query_cache::QueryError;
 use re_types::archetypes;
 use re_types::{
     archetypes::SeriesLine,
@@ -137,54 +138,57 @@ impl SeriesLineSystem {
 
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
+
+                let entity_path = &data_result.entity_path;
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
-                query_caches
-                    .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerSize, MarkerShape, _>(
-                        ctx.app_options.experimental_primary_caching_range,
-                        store,
-                        &query.clone().into(),
-                        &data_result.entity_path,
-                        // The `Scalar` archetype queries for `MarkerShape` & `MarkerSize` in the point visualizer,
-                        // and so it must do so here also.
-                        // See https://github.com/rerun-io/rerun/pull/5029
-                        |((time, _row_id), _, scalars, colors, stroke_widths, _, _)| {
-                            let Some(time) = time else {
-                                return;
-                            }; // scalars cannot be timeless
+                // The `Scalar` archetype queries for `MarkerShape` & `MarkerSize` in the point visualizer,
+                // and so it must do so here also.
+                // See https://github.com/rerun-io/rerun/pull/5029
+                query_caches.query_archetype_range_pov1_comp4::<
+                    archetypes::Scalar,
+                    Scalar,
+                    Color,
+                    StrokeWidth,
+                    MarkerSize, // unused
+                    MarkerShape, // unused
+                    _,
+                >(
+                    store,
+                    &query,
+                    entity_path,
+                    |_timeless, entry_range, (times, _, scalars, colors, stroke_widths, _, _)| {
+                        let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
+                        // Allocate all points.
+                        points = times.map(|time| PlotPoint {
+                            time,
+                            ..default_point.clone()
+                        }).collect_vec();
 
-                            // This is a clear: we want to split the chart.
-                            if scalars.is_empty() {
-                                points.push(PlotPoint {
-                                    time: time.as_i64(),
-                                    value: 0.0,
-                                    attrs: PlotPointAttrs {
-                                        label: None,
-                                        color: egui::Color32::BLACK,
-                                        marker_size: 0.0,
-                                        kind: PlotSeriesKind::Clear,
-                                    },
-                                });
-                                return;
+                        // Fill in values.
+                        for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
+                            if scalar.len() > 1 {
+                                re_log::warn_once!("found a scalar batch in {entity_path:?} -- those have no effect");
+                            } else if scalar.is_empty() {
+                                points[i].attrs.kind = PlotSeriesKind::Clear;
+                            } else {
+                                points[i].value = scalar.first().map_or(0.0, |s| s.0);
                             }
+                        }
 
-                            for (scalar, color, stroke_width) in itertools::izip!(
-                                scalars.iter(),
-                                MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
-                                MaybeCachedComponentData::iter_or_repeat_opt(&stroke_widths, scalars.len()),
-                            ) {
-                                let mut point = PlotPoint {
-                                    time: time.as_i64(),
-                                    value: scalar.0,
-                                    ..default_point.clone()
-                                };
+                        // Make it as clear as possible to the optimizer that some parameters
+                        // go completely unused as soon as overrides have been defined.
 
-                                // Make it as clear as possible to the optimizer that some parameters
-                                // go completely unused as soon as overrides have been defined.
-
-                                if override_color.is_none() {
-                                    if let Some(color) = color.map(|c| {
+                        // Fill in colors -- if available _and_ not overridden.
+                        if override_color.is_none() {
+                            if let Some(colors) = colors {
+                                for (i, color) in colors.range(entry_range.clone()).enumerate() {
+                                    if i >= points.len() {
+                                        re_log::debug_once!("more color attributes than points in {entity_path:?} -- this points to a bug in the query cache");
+                                        break;
+                                    }
+                                    if let Some(color) = color.first().copied().flatten().map(|c| {
                                         let [r,g,b,a] = c.to_array();
                                         if a == 255 {
                                             // Common-case optimization
@@ -193,20 +197,28 @@ impl SeriesLineSystem {
                                             re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
                                         }
                                     }) {
-                                        point.attrs.color = color;
+                                        points[i].attrs.color = color;
                                     }
                                 }
-
-                                if override_stroke_width.is_none() {
-                                    if let Some(stroke_width) = stroke_width.map(|r| r.0) {
-                                        point.attrs.marker_size = stroke_width;
-                                    }
-                                }
-
-                                points.push(point);
                             }
-                        },
-                    )?;
+                        }
+
+                        // Fill in radii -- if available _and_ not overridden.
+                        if override_stroke_width.is_none() {
+                            if let Some(stroke_widths) = stroke_widths {
+                                for (i, stroke_width) in stroke_widths.range(entry_range.clone()).enumerate() {
+                                    if i >= stroke_widths.num_entries() {
+                                        re_log::debug_once!("more stroke width attributes than points in {entity_path:?} -- this points to a bug in the query cache");
+                                        break;
+                                    }
+                                    if let Some(stroke_width) = stroke_width.first().copied().flatten().map(|r| r.0) {
+                                        points[i].attrs.marker_size = stroke_width;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                )?;
             }
 
             // Check for an explicit label if any.

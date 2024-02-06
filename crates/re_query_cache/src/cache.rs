@@ -797,6 +797,14 @@ impl CacheBucket {
         self.pov_instance_keys.range(entry_range)
     }
 
+    /// Get the raw batches for the specified non-optional component.
+    #[inline]
+    pub fn component<C: Component + Send + Sync + 'static>(&self) -> Option<&FlatVecDeque<C>> {
+        self.components
+            .get(&C::name())
+            .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())
+    }
+
     /// Range over the batches of the specified non-optional component.
     #[inline]
     pub fn range_component<C: Component + Send + Sync + 'static>(
@@ -808,6 +816,16 @@ impl CacheBucket {
             .get(&C::name())
             .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())?;
         Some(data.range(entry_range))
+    }
+
+    /// Get the raw batches for the specified optional component.
+    #[inline]
+    pub fn component_opt<C: Component + Send + Sync + 'static>(
+        &self,
+    ) -> Option<&FlatVecDeque<Option<C>>> {
+        self.components
+            .get(&C::name())
+            .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<Option<C>>>())
     }
 
     /// Range over the batches of the specified optional component.
