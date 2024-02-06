@@ -92,7 +92,7 @@ egui = { version = "0.26.0", features = [
 egui_commonmark = { version = "0.12", default-features = false }
 egui_extras = { version = "0.26.0", features = ["http", "image", "puffin"] }
 egui_plot = "0.26.0"
-egui_tiles = "0.6"
+egui_tiles = "0.7"
 egui-wgpu = "0.26.0"
 emath = "0.26.0"
 
@@ -295,6 +295,6 @@ debug = true
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "50732cf58528b7060844915bdbcb47a3b0d4d07e" } # master 2024-02-06
+# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "50732cf58528b7060844915bdbcb47a3b0d4d07e" } # master 2024-02-06
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "3d83a92f995a1d18ab1172d0b129d496e0eedaae" } # Update to egui 0.25 https://github.com/lampsitter/egui_commonmark/pull/27
