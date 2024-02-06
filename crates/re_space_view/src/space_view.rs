@@ -458,7 +458,8 @@ mod tests {
     use re_log_types::{DataCell, DataRow, EntityPathFilter, RowId, StoreId, TimePoint};
     use re_types::archetypes::Points3D;
     use re_viewer_context::{
-        blueprint_timeline, IndicatedEntities, PerVisualizer, StoreContext, VisualizableEntities,
+        blueprint_timeline, IndicatedEntities, PerVisualizer, SpaceViewClassRegistry, StoreContext,
+        VisualizableEntities,
     };
 
     use super::*;
@@ -479,6 +480,7 @@ mod tests {
 
     #[test]
     fn test_overrides() {
+        let space_view_class_registry = SpaceViewClassRegistry::default();
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
 
@@ -536,7 +538,13 @@ mod tests {
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
         let query = space_view.queries.first().unwrap();
 
-        let resolver = query.build_resolver(space_view.id, &auto_properties);
+        let resolver = query.build_resolver(
+            &space_view_class_registry,
+            &space_view,
+            &auto_properties,
+            &visualizable_entities,
+            &indicated_entities_per_visualizer,
+        );
 
         // No overrides set. Everybody has default values.
         {
@@ -546,11 +554,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
+            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
@@ -588,11 +592,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
+            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent_group = query_result
@@ -640,11 +640,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
+            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
@@ -689,11 +685,7 @@ mod tests {
                 recording: Some(&recording),
                 all_recordings: vec![],
             };
-            let mut query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
+            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
@@ -731,11 +723,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities,
-                &indicated_entities_per_visualizer,
-            );
+            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result

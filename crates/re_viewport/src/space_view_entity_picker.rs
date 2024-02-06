@@ -4,10 +4,10 @@ use nohash_hasher::IntMap;
 use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{EntityPathFilter, EntityPathRule};
-use re_space_view::SpaceViewBlueprint;
+use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
 use re_viewer_context::{DataQueryResult, SpaceViewId, ViewerContext};
 
-use crate::{determine_visualizable_entities, ViewportBlueprint};
+use crate::ViewportBlueprint;
 
 /// Window for adding/removing entities from a space view.
 ///

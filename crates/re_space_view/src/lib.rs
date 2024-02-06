@@ -9,12 +9,14 @@ mod data_query_blueprint;
 mod heuristics;
 mod screenshot;
 mod space_view;
+mod visualizable;
 
 pub use data_query::{DataQuery, EntityOverrideContext, PropertyResolver};
 pub use data_query_blueprint::DataQueryBlueprint;
 pub use heuristics::suggest_space_view_for_each_entity;
 pub use screenshot::ScreenshotMode;
 pub use space_view::{SpaceViewBlueprint, SpaceViewName};
+pub use visualizable::determine_visualizable_entities;
 
 // -----------
 
