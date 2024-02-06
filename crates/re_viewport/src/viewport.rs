@@ -9,6 +9,8 @@ use egui_tiles::{Behavior as _, EditAction};
 use once_cell::sync::Lazy;
 
 use re_entity_db::EntityPropertyMap;
+use re_renderer::ScreenshotProcessor;
+use re_space_view::SpaceViewBlueprint;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
     AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
@@ -16,11 +18,12 @@ use re_viewer_context::{
 };
 
 use crate::container::blueprint_id_to_tile_id;
+use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
     add_space_view_or_container_modal::AddSpaceViewOrContainerModal, container::Contents,
     icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
-    system_execution::execute_systems_for_space_views, SpaceViewBlueprint, ViewportBlueprint,
+    system_execution::execute_systems_for_all_space_views, ViewportBlueprint,
 };
 
 // State for each `SpaceView` including both the auto properties and
@@ -258,7 +261,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         };
 
         let executed_systems_per_space_view =
-            execute_systems_for_space_views(ctx, tree, &blueprint.space_views);
+            execute_systems_for_all_space_views(ctx, tree, &blueprint.space_views);
 
         let contents_per_tile_id = blueprint
             .contents_iter()
@@ -316,6 +319,17 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 space_view.id,
                 space_view.class_identifier(),
             );
+
+            #[allow(clippy::blocks_in_if_conditions)]
+            while ScreenshotProcessor::next_readback_result(
+                ctx.render_ctx,
+                space_view.id.gpu_readback_id(),
+                |data, extent, mode| {
+                    handle_pending_space_view_screenshots(space_view, data, extent, mode);
+                },
+            )
+            .is_some()
+            {}
 
             space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
         }
