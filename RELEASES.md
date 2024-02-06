@@ -89,3 +89,7 @@ Note: you do not need to create a PR for this branch -- the release workflow wil
 6. ### Wait for the workflow to finish
 
    The PR description will contain next steps.
+
+   Note: there are two separate workflows running -- the one building the release artifacts, and the one running the PR checks.
+   You will have to wait for the [former](https://github.com/rerun-io/rerun/actions/workflows/release.yml) in order to get a link
+   to the artifacts.
