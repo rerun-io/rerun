@@ -26,4 +26,9 @@ table SeriesPoint (
     ///
     /// Used in the legend.
     name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 3000);
+
+    /// Size of the markers.
+    ///
+    /// Can set a single one for all markers or a batch of sizes.
+    size: rerun.components.MarkerSize ("attr.rerun.component_optional", nullable, order: 4000);
 }

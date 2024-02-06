@@ -7,6 +7,7 @@
 #include "../compiler_utils.hpp"
 #include "../components/color.hpp"
 #include "../components/marker_shape.hpp"
+#include "../components/marker_size.hpp"
 #include "../components/name.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
@@ -30,6 +31,11 @@ namespace rerun::archetypes {
         ///
         /// Used in the legend.
         std::optional<rerun::components::Name> name;
+
+        /// Size of the markers.
+        ///
+        /// Can set a single one for all markers or a batch of sizes.
+        std::optional<rerun::components::MarkerSize> size;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -61,6 +67,15 @@ namespace rerun::archetypes {
         /// Used in the legend.
         SeriesPoint with_name(rerun::components::Name _name) && {
             name = std::move(_name);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Size of the markers.
+        ///
+        /// Can set a single one for all markers or a batch of sizes.
+        SeriesPoint with_size(rerun::components::MarkerSize _size) && {
+            size = std::move(_size);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

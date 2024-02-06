@@ -35,6 +35,7 @@ from .keypoint_id import KeypointId, KeypointIdBatch, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike, LineStrip3DType
 from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, MarkerShapeLike, MarkerShapeType
+from .marker_size import MarkerSize, MarkerSizeArrayLike, MarkerSizeBatch, MarkerSizeLike, MarkerSizeType
 from .material import Material, MaterialBatch, MaterialType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .mesh_properties import MeshProperties, MeshPropertiesBatch, MeshPropertiesType
@@ -143,6 +144,11 @@ __all__ = [
     "MarkerShapeBatch",
     "MarkerShapeLike",
     "MarkerShapeType",
+    "MarkerSize",
+    "MarkerSizeArrayLike",
+    "MarkerSizeBatch",
+    "MarkerSizeLike",
+    "MarkerSizeType",
     "Material",
     "MaterialBatch",
     "MaterialType",

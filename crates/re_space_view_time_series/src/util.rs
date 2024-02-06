@@ -111,7 +111,7 @@ pub fn points_to_series(
         all_series.push(PlotSeries {
             label: series_label,
             color: points[0].attrs.color,
-            width: 2.0 * points[0].attrs.stroke_width,
+            width: 2.0 * points[0].attrs.marker_size,
             kind,
             points: vec![(points[0].time, points[0].value)],
             entity_path: data_result.entity_path.clone(),
@@ -208,7 +208,7 @@ fn add_series_runs(
     let mut series: PlotSeries = PlotSeries {
         label: series_label.clone(),
         color: attrs.color,
-        width: 2.0 * attrs.stroke_width,
+        width: 2.0 * attrs.marker_size,
         points: Vec::with_capacity(num_points),
         kind: attrs.kind,
         entity_path: entity_path.clone(),
@@ -232,7 +232,7 @@ fn add_series_runs(
                 PlotSeries {
                     label: series_label.clone(),
                     color: attrs.color,
-                    width: 2.0 * attrs.stroke_width,
+                    width: 2.0 * attrs.marker_size,
                     kind: attrs.kind,
                     points: Vec::with_capacity(num_points - i),
                     entity_path: entity_path.clone(),

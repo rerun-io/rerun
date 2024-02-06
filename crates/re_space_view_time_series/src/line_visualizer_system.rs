@@ -1,9 +1,8 @@
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::archetypes;
-use re_types::components::{MarkerShape, Name, StrokeWidth};
 use re_types::{
     archetypes::SeriesLine,
-    components::{Color, Scalar},
+    components::{Color, MarkerShape, MarkerSize, Name, Scalar, StrokeWidth},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
@@ -122,7 +121,7 @@ impl SeriesLineSystem {
                 attrs: PlotPointAttrs {
                     label: None,
                     color: annotation_info.color(override_color, default_color),
-                    stroke_width: override_stroke_width.unwrap_or(DEFAULT_STROKE_WIDTH),
+                    marker_size: override_stroke_width.unwrap_or(DEFAULT_STROKE_WIDTH),
                     kind: PlotSeriesKind::Continuous,
                 },
             };
@@ -141,8 +140,11 @@ impl SeriesLineSystem {
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
+                // The `Scalar` archetype queries for `MarkerSize` in the point visualizer,
+                // and so it must do so here also.
+                // See https://github.com/rerun-io/rerun/pull/5029
                 query_caches
-                    .query_archetype_pov1_comp3::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, _>(
+                    .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerSize, MarkerShape, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
@@ -150,7 +152,7 @@ impl SeriesLineSystem {
                         // The `Scalar` archetype queries for `MarkerShape` in the point visualizer,
                         // and so it must do so here also.
                         // See https://github.com/rerun-io/rerun/pull/5029
-                        |((time, _row_id), _, scalars, colors, stroke_widths, _)| {
+                        |((time, _row_id), _, scalars, colors, stroke_widths, _, _)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
@@ -163,7 +165,7 @@ impl SeriesLineSystem {
                                     attrs: PlotPointAttrs {
                                         label: None,
                                         color: egui::Color32::BLACK,
-                                        stroke_width: 0.0,
+                                        marker_size: 0.0,
                                         kind: PlotSeriesKind::Clear,
                                     },
                                 });
@@ -200,7 +202,7 @@ impl SeriesLineSystem {
 
                                 if override_stroke_width.is_none() {
                                     if let Some(stroke_width) = stroke_width.map(|r| r.0) {
-                                        point.attrs.stroke_width = stroke_width;
+                                        point.attrs.marker_size = stroke_width;
                                     }
                                 }
 
