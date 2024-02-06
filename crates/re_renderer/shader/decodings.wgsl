@@ -8,6 +8,10 @@ fn decode_nv12_or_yuy2(sample_type: u32, texture: texture_2d<u32>, coords: vec2i
     var u: f32;
     var v: f32;
 
+    // WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!
+    // NO MORE SAMPLE TYPES CAN BE ADDED TO THIS SHADER!
+    // The shader is already too large and adding more sample types will push us over the size limit.
+    // See: https://github.com/rerun-io/rerun/issues/3931, https://github.com/rerun-io/rerun/issues/5073
     if sample_type == SAMPLE_TYPE_NV12 {
         let uv_offset = u32(floor(texture_dim.y / 1.5));
         let uv_row = u32(coords.y / 2);
@@ -29,6 +33,7 @@ fn decode_nv12_or_yuy2(sample_type: u32, texture: texture_2d<u32>, coords: vec2i
         u = f32(textureLoad(texture, vec2u(uv_col + 1u, uv_row), 0).r);
         v = f32(textureLoad(texture, vec2u(uv_col + 3u, uv_row), 0).r);
     }
+    // WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!
 
     let rgb = set_color_standard(vec3f(y, u, v));
 

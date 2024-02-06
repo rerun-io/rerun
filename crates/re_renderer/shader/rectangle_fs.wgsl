@@ -103,6 +103,10 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
         v11_coord = clamp_to_edge_nearest_neighbor(coord + vec2f(0.5, 0.5), texture_dimensions);
     }
 
+    // WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!
+    // NO MORE SAMPLE TYPES CAN BE ADDED TO THIS SHADER!
+    // The shader is already too large and adding more sample types will push us over the size limit.
+    // See: https://github.com/rerun-io/rerun/issues/3931, https://github.com/rerun-io/rerun/issues/5073
     if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
         normalized_value = decode_color_and_filter_nearest_or_bilinear(
             filter_nearest,
@@ -138,6 +142,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     } else {
         return ERROR_RGBA; // unknown sample type
     }
+    // WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!
 
     // Apply gamma:
     normalized_value = vec4f(pow(normalized_value.rgb, vec3f(rect_info.gamma)), normalized_value.a);
