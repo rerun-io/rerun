@@ -36,9 +36,7 @@ pub struct SeriesPoint {
     pub name: Option<crate::components::Name>,
 
     /// Size of the markers.
-    ///
-    /// Can set a single one for all markers or a batch of sizes.
-    pub size: Option<crate::components::MarkerSize>,
+    pub size: Option<Vec<crate::components::MarkerSize>>,
 }
 
 impl ::re_types_core::SizeBytes for SeriesPoint {
@@ -55,7 +53,7 @@ impl ::re_types_core::SizeBytes for SeriesPoint {
         <Option<crate::components::Color>>::is_pod()
             && <Option<crate::components::MarkerShape>>::is_pod()
             && <Option<crate::components::Name>>::is_pod()
-            && <Option<crate::components::MarkerSize>>::is_pod()
+            && <Option<Vec<crate::components::MarkerSize>>>::is_pod()
     }
 }
 
@@ -167,11 +165,14 @@ impl ::re_types_core::Archetype for SeriesPoint {
             None
         };
         let size = if let Some(array) = arrays_by_name.get("rerun.components.MarkerSize") {
-            <crate::components::MarkerSize>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.SeriesPoint#size")?
-                .into_iter()
-                .next()
-                .flatten()
+            Some({
+                <crate::components::MarkerSize>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.SeriesPoint#size")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.SeriesPoint#size")?
+            })
         } else {
             None
         };
@@ -201,7 +202,7 @@ impl ::re_types_core::AsComponents for SeriesPoint {
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.size
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -243,8 +244,11 @@ impl SeriesPoint {
     }
 
     #[inline]
-    pub fn with_size(mut self, size: impl Into<crate::components::MarkerSize>) -> Self {
-        self.size = Some(size.into());
+    pub fn with_size(
+        mut self,
+        size: impl IntoIterator<Item = impl Into<crate::components::MarkerSize>>,
+    ) -> Self {
+        self.size = Some(size.into_iter().map(Into::into).collect());
         self
     }
 }

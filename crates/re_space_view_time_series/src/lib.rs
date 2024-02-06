@@ -47,12 +47,12 @@ impl PartialEq for PlotPointAttrs {
         let Self {
             label,
             color,
-            marker_size: radius,
+            marker_size,
             kind,
         } = self;
         label.eq(&rhs.label)
             && color.eq(&rhs.color)
-            && radius.total_cmp(&rhs.marker_size).is_eq()
+            && marker_size.total_cmp(&rhs.marker_size).is_eq()
             && kind.eq(&rhs.kind)
     }
 }

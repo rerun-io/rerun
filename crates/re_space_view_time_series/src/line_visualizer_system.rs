@@ -140,16 +140,13 @@ impl SeriesLineSystem {
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
-                // The `Scalar` archetype queries for `MarkerSize` in the point visualizer,
-                // and so it must do so here also.
-                // See https://github.com/rerun-io/rerun/pull/5029
                 query_caches
                     .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerSize, MarkerShape, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
                         &data_result.entity_path,
-                        // The `Scalar` archetype queries for `MarkerShape` in the point visualizer,
+                        // The `Scalar` archetype queries for `MarkerShape` & `MarkerSize` in the point visualizer,
                         // and so it must do so here also.
                         // See https://github.com/rerun-io/rerun/pull/5029
                         |((time, _row_id), _, scalars, colors, stroke_widths, _, _)| {

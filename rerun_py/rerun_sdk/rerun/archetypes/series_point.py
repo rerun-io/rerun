@@ -26,7 +26,7 @@ class SeriesPoint(Archetype):
         color: datatypes.Rgba32Like | None = None,
         marker: components.MarkerShapeLike | None = None,
         name: datatypes.Utf8Like | None = None,
-        size: components.MarkerSizeLike | None = None,
+        size: components.MarkerSizeArrayLike | None = None,
     ):
         """
         Create a new instance of the SeriesPoint archetype.
@@ -43,8 +43,6 @@ class SeriesPoint(Archetype):
             Used in the legend.
         size:
             Size of the markers.
-
-            Can set a single one for all markers or a batch of sizes.
         """
 
         # You can define your own __init__ function as a member of SeriesPointExt in series_point_ext.py
@@ -104,8 +102,6 @@ class SeriesPoint(Archetype):
         converter=components.MarkerSizeBatch._optional,  # type: ignore[misc]
     )
     # Size of the markers.
-    #
-    # Can set a single one for all markers or a batch of sizes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
