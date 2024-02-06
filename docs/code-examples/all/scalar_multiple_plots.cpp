@@ -23,7 +23,7 @@ int main() {
         "trig/cos",
         rerun::SeriesLine().with_color({0, 255, 0}).with_name("cos(0.01t)")
     );
-    // Log scattered points under a different root so that they shows in a different plot by default.
+    // Log scattered points under a different root so that they show in a different plot by default.
     rec.log_timeless("scatter/lcg", rerun::SeriesPoint());
 
     // Log the data on a timeline called "step".

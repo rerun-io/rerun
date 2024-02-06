@@ -13,7 +13,7 @@ lcg_state = np.int64(0)
 # Log two lines series under a shared root so that they show in the same plot by default.
 rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), timeless=True)
 rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), timeless=True)
-# Log scattered points under a different root so that they shows in a different plot by default.
+# Log scattered points under a different root so that they show in a different plot by default.
 rr.log("scatter/lcg", rr.SeriesPoint(), timeless=True)
 
 # Log the data on a timeline called "step".

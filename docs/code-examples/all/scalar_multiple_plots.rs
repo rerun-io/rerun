@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_color([0, 255, 0])
             .with_name("cos(0.01t)"),
     )?;
-    // Log scattered points under a different root so that they shows in a different plot by default.
+    // Log scattered points under a different root so that they show in a different plot by default.
     rec.log_timeless("scatter/lcg", &rerun::SeriesPoint::new())?;
 
     for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {
