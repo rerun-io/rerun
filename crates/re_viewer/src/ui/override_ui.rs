@@ -377,11 +377,7 @@ pub fn override_visualizer_ui(
                                     active_visualizers
                                         .iter()
                                         .filter(|v| *v != vis_name)
-                                        .map(|v| {
-                                            let arrow_str: re_types_core::ArrowString =
-                                                v.as_str().into();
-                                            arrow_str
-                                        })
+                                        .map(|v| re_types_core::ArrowString::from(v.as_str()))
                                         .collect::<Vec<_>>(),
                                 );
 
