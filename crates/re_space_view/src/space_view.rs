@@ -17,8 +17,6 @@ use re_viewer_context::{
     SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
-//use crate::system_execution::create_and_run_space_view_systems;
-
 // ----------------------------------------------------------------------------
 
 /// The name of a space view.

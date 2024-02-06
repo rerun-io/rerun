@@ -7,6 +7,7 @@ pub const VIEWPORT_PATH: &str = "viewport";
 mod add_space_view_or_container_modal;
 mod auto_layout;
 mod container;
+mod screenshot;
 mod space_view_entity_picker;
 pub mod space_view_heuristics;
 mod space_view_highlights;
