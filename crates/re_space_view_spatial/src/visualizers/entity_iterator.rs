@@ -184,8 +184,6 @@ macro_rules! impl_process_archetype {
                 };
 
                 match ctx.entity_db.query_caches().[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    ctx.app_options.experimental_primary_caching_latest_at,
-                    ctx.app_options.experimental_primary_caching_range,
                     ctx.entity_db.store(),
                     &query.timeline,
                     &query.latest_at,
@@ -194,7 +192,7 @@ macro_rules! impl_process_archetype {
                     |(t, keys, $($pov,)+ $($comp,)*)| {
                         counter
                             .num_primitives
-                            .fetch_add(keys.as_slice().len(), std::sync::atomic::Ordering::Relaxed);
+                            .fetch_add(keys.len(), std::sync::atomic::Ordering::Relaxed);
 
                         if let Err(err) = f(
                             ctx,
@@ -202,8 +200,8 @@ macro_rules! impl_process_archetype {
                             data_result.accumulated_properties(),
                             &entity_context,
                             t,
-                            keys.as_slice(),
-                            $($pov.as_slice(),)+
+                            keys,
+                            $($pov,)+
                             $($comp.as_deref(),)*
                         ) {
                             re_log::error_once!(
