@@ -261,10 +261,27 @@ impl<'a> QueryExpressionEvaluator<'a> {
                 .any(|ents| ents.contains(entity_path));
 
         let self_leaf = if visualizable || self.entity_path_filter.is_exact_included(entity_path) {
+            // TODO(#5067): For now, we always start by setting visualizers to the full list of available visualizers.
+            // This is currently important for evaluating auto-properties during the space-view `on_frame_start`, which
+            // is called before the property-overrider has a chance to update this list.
+            // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
+            // on the space view.
+            let available_visualizers = self
+                .visualizable_entities_for_visualizer_systems
+                .iter()
+                .filter_map(|(visualizer, ents)| {
+                    if ents.contains(entity_path) {
+                        Some(*visualizer)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
-                    visualizers: Default::default(),
+                    visualizers: available_visualizers,
                     is_group: false,
                     direct_included: any_match,
                     property_overrides: None,
