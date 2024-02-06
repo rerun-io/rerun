@@ -22,16 +22,6 @@ pub struct AppOptions {
     /// Enable the experimental support for the container addition workflow.
     pub experimental_additive_workflow: bool,
 
-    /// Toggle primary caching for latest-at queries.
-    ///
-    /// Applies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.
-    pub experimental_primary_caching_latest_at: bool,
-
-    /// Toggle primary caching for range queries.
-    ///
-    /// Applies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.
-    pub experimental_primary_caching_range: bool,
-
     /// Toggle query clamping for the plot visualizers.
     pub experimental_plot_query_clamping: bool,
 
@@ -64,9 +54,6 @@ impl Default for AppOptions {
             experimental_entity_filter_editor: false,
 
             experimental_additive_workflow: cfg!(debug_assertions),
-
-            experimental_primary_caching_latest_at: true,
-            experimental_primary_caching_range: true,
 
             experimental_plot_query_clamping: false,
 

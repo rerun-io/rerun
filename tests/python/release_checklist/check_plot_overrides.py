@@ -57,3 +57,12 @@ def run(args: Namespace) -> None:
 
     log_readme()
     log_plots()
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Interactive release checklist")
+    rr.script_add_args(parser)
+    args = parser.parse_args()
+    run(args)
