@@ -116,8 +116,8 @@ def log_classification() -> None:
             color = [0, 255, 0]
         else:
             color = [255, 255, 255]
-        # radius = abs(g_of_t - f_of_t)
-        rr.log("classification/samples", rr.Scalar(g_of_t), rr.SeriesPoint(color=color))  # , radius=radius)) # TODO:
+        marker_size = abs(g_of_t - f_of_t)
+        rr.log("classification/samples", rr.Scalar(g_of_t), rr.SeriesPoint(color=color, marker_size=marker_size))
 
 
 def main() -> None:
