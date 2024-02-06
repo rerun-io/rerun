@@ -311,6 +311,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 space_view.class_identifier(),
             );
 
+            #[allow(clippy::blocks_in_if_conditions)]
             while ScreenshotProcessor::next_readback_result(
                 ctx.render_ctx,
                 space_view.id.gpu_readback_id(),
