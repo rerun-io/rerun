@@ -140,13 +140,17 @@ impl AppState {
         // this, which gives us interior mutability (only a shared reference of `ViewportBlueprint`
         // is available to the UI code) and, if needed in the future, concurrency.
         let (sender, receiver) = std::sync::mpsc::channel();
-        let viewport_blueprint =
-            ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query, sender);
+        let viewport_blueprint = ViewportBlueprint::try_from_db(
+            store_context.blueprint,
+            &blueprint_query,
+            sender.clone(),
+        );
         let mut viewport = Viewport::new(
             &viewport_blueprint,
             viewport_state,
             space_view_class_registry,
             receiver,
+            sender,
         );
 
         // If the blueprint is invalid, reset it.
@@ -306,6 +310,9 @@ impl AppState {
                     .min_width(120.0)
                     .default_width((0.35 * ui.ctx().screen_rect().width()).min(200.0).round());
 
+                let show_welcome =
+                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
+
                 left_panel.show_animated_inside(
                     ui,
                     app_blueprint.blueprint_panel_expanded,
@@ -325,7 +332,9 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(&mut viewport, &ctx, ui);
+                        if !show_welcome {
+                            blueprint_panel_ui(&mut viewport, &ctx, ui);
+                        }
                     },
                 );
 
@@ -333,9 +342,6 @@ impl AppState {
                     fill: ui.style().visuals.panel_fill,
                     ..Default::default()
                 };
-
-                let show_welcome =
-                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)

@@ -5,7 +5,7 @@ use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::EntityPath;
 use re_query::ComponentWithInstances;
 use re_types::{
-    components::{Color, MarkerShape, Radius, ScalarScattering, StrokeWidth, Text},
+    components::{Color, MarkerShape, Name, Radius, ScalarScattering, StrokeWidth, Text},
     Component, Loggable,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -96,6 +96,46 @@ fn default_text(
     entity_path: &EntityPath,
 ) -> Text {
     Text::from(entity_path.to_string())
+}
+
+// ----
+#[allow(clippy::too_many_arguments)]
+fn edit_name_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _verbosity: UiVerbosity,
+    query: &LatestAtQuery,
+    store: &DataStore,
+    entity_path: &EntityPath,
+    override_path: &EntityPath,
+    component: &ComponentWithInstances,
+    instance_key: &re_types::components::InstanceKey,
+) {
+    let current_text = component
+        .lookup::<Name>(instance_key)
+        .ok()
+        .unwrap_or_else(|| default_name(ctx, query, store, entity_path));
+
+    let current_text = current_text.to_string();
+    let mut edit_text = current_text.clone();
+
+    egui::TextEdit::singleline(&mut edit_text).show(ui);
+
+    if edit_text != current_text {
+        let new_text = Name::from(edit_text);
+
+        ctx.save_blueprint_component(override_path, new_text);
+    }
+}
+
+#[inline]
+fn default_name(
+    _ctx: &ViewerContext<'_>,
+    _query: &LatestAtQuery,
+    _store: &DataStore,
+    entity_path: &EntityPath,
+) -> Name {
+    Name::from(entity_path.to_string())
 }
 
 // ----
@@ -356,6 +396,7 @@ fn register_editor<'a, C: Component + Loggable + 'static>(
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<Color>(registry, default_color, edit_color_ui);
     register_editor::<MarkerShape>(registry, default_marker_shape, edit_marker_shape_ui);
+    register_editor::<Name>(registry, default_name, edit_name_ui);
     register_editor::<Radius>(registry, default_radius, edit_radius_ui);
     register_editor::<ScalarScattering>(registry, default_scatter, edit_scatter_ui);
     register_editor::<StrokeWidth>(registry, default_stroke_width, edit_stroke_width_ui);

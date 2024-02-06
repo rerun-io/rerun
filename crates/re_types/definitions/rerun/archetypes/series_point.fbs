@@ -21,4 +21,9 @@ table SeriesPoint (
 
     /// What shape to use to represent the point
     marker: rerun.components.MarkerShape ("attr.rerun.component_optional", nullable, order: 2000);
+
+    /// Display name of the series.
+    ///
+    /// Used in the legend.
+    name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 3000);
 }

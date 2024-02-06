@@ -119,6 +119,15 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
 
     let mut tick_start_time = std::time::Instant::now();
 
+    for plot_path in &plot_paths {
+        for series_path in &series_paths {
+            rec.log_timeless(
+                format!("{plot_path}/{series_path}"),
+                &rerun::SeriesLine::new(),
+            )?;
+        }
+    }
+
     #[allow(clippy::unchecked_duration_subtraction)]
     for (time_step, sim_time) in sim_times.into_iter().enumerate() {
         rec.set_time_seconds("sim_time", sim_time);
@@ -131,7 +140,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
                 let value = values_per_series[plot_idx + series_idx][time_step];
                 rec.log(
                     format!("{plot_path}/{series_path}"),
-                    &rerun::TimeSeriesScalar::new(value),
+                    &rerun::Scalar::new(value),
                 )?;
             }
         }

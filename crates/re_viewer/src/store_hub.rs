@@ -334,7 +334,7 @@ impl StoreHub {
                     #[cfg(not(target_arch = "wasm32"))]
                     {
                         let blueprint_path = default_blueprint_path(app_id)?;
-                        re_log::debug!("Saving blueprint for {app_id} to {blueprint_path:?}");
+                        re_log::debug_once!("Saving blueprint for {app_id} to {blueprint_path:?}");
                         // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
                         // be small & fast to save, but maybe not once we start adding big pieces of user data?
                         let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;

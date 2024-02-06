@@ -20,7 +20,7 @@ table SpaceViewBlueprint (
     // --- Optional ---
 
     /// The name of the view.
-    display_name: rerun.blueprint.components.Name ("attr.rerun.component_optional", nullable, order: 200);
+    display_name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 200);
 
     /// The "anchor point" of this space view.
     ///

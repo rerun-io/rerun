@@ -98,6 +98,37 @@ impl LegacyTimeSeriesSystem {
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
+            let annotations = self.annotation_map.find(&data_result.entity_path);
+            let annotation_info = annotations
+                .resolved_class_description(None)
+                .annotation_info();
+            let default_color = DefaultColor::EntityPath(&data_result.entity_path);
+
+            const DEFAULT_RADIUS: f32 = 0.75;
+
+            let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
+            let override_label = lookup_override::<Text>(data_result, ctx).map(|t| t.0);
+            let override_scattered =
+                lookup_override::<ScalarScattering>(data_result, ctx).map(|s| s.0);
+            let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
+
+            // All the default values for a `PlotPoint`, accounting for both overrides and default
+            // values.
+            let default_point = PlotPoint {
+                time: 0,
+                value: 0.0,
+                attrs: PlotPointAttrs {
+                    label: override_label.clone(), // default value is simply None
+                    color: annotation_info.color(override_color, default_color),
+                    stroke_width: override_radius.unwrap_or(DEFAULT_RADIUS),
+                    kind: if override_scattered.unwrap_or(false) {
+                        PlotSeriesKind::Scatter(ScatterAttrs::default())
+                    } else {
+                        PlotSeriesKind::Continuous
+                    },
+                },
+            };
+
             let mut points = Vec::new();
 
             let time_range = determine_time_range(
@@ -109,25 +140,6 @@ impl LegacyTimeSeriesSystem {
 
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
-
-                let annotations = self.annotation_map.find(&data_result.entity_path);
-                let annotation_info = annotations
-                    .resolved_class_description(None)
-                    .annotation_info();
-                let default_color = DefaultColor::EntityPath(&data_result.entity_path);
-
-                let override_color = lookup_override::<Color>(data_result, ctx).map(|c| {
-                    let arr = c.to_array();
-                    egui::Color32::from_rgba_unmultiplied(arr[0], arr[1], arr[2], arr[3])
-                });
-
-                let override_label =
-                    lookup_override::<Text>(data_result, ctx).map(|t| t.to_string());
-
-                let override_scattered =
-                    lookup_override::<ScalarScattering>(data_result, ctx).map(|s| s.0);
-
-                let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
 
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
@@ -171,35 +183,49 @@ impl LegacyTimeSeriesSystem {
                             MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
                             MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
                         ) {
-                            let color = override_color.unwrap_or_else(|| {
-                                annotation_info.color(color.map(|c| c.to_array()), default_color)
-                            });
-                            let label = override_label.clone().or_else(|| {
-                                annotation_info.label(label.as_ref().map(|l| l.as_str()))
-                            });
-                            let scattered = override_scattered
-                                .unwrap_or_else(|| scattered.map_or(false, |s| s.0));
-                            let radius = override_radius
-                                .unwrap_or_else(|| radius.map_or(DEFAULT_RADIUS, |r| r.0));
-
-                            let kind= if scattered {
-                                PlotSeriesKind::Scatter(ScatterAttrs::default())
-                            } else {
-                                PlotSeriesKind::Continuous
-                            };
-
-                            const DEFAULT_RADIUS: f32 = 0.75;
-
-                            points.push(PlotPoint {
+                            let mut point = PlotPoint {
                                 time: time.as_i64(),
                                 value: scalar.0,
-                                attrs: PlotPointAttrs {
-                                    label,
-                                    color,
-                                    stroke_width: radius,
-                                    kind,
-                                },
-                            });
+                                ..default_point.clone()
+                            };
+
+                            // Make it as clear as possible to the optimizer that some parameters
+                            // go completely unused as soon as overrides have been defined.
+
+                            if override_color.is_none() {
+                                if let Some(color) = color.map(|c| {
+                                    let [r,g,b,a] = c.to_array();
+                                    if a == 255 {
+                                        // Common-case optimization
+                                        re_renderer::Color32::from_rgb(r, g, b)
+                                    } else {
+                                        re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                                    }
+                                }) {
+                                    point.attrs.color = color;
+                                }
+                            }
+
+                            if override_label.is_none() {
+                                if let Some(label) = label.as_ref().map(|l| l.0.clone()) {
+                                    point.attrs.label = Some(label);
+                                }
+                            }
+
+                            #[allow(clippy::collapsible_if)] // readability
+                            if override_scattered.is_none() {
+                                if scattered.map_or(false, |s| s.0) {
+                                    point.attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
+                                };
+                            }
+
+                            if override_radius.is_none() {
+                                if let Some(radius) = radius.map(|r| r.0) {
+                                    point.attrs.stroke_width = radius;
+                                }
+                            }
+
+                            points.push(point);
                         }
                     },
                 )?;
@@ -212,6 +238,7 @@ impl LegacyTimeSeriesSystem {
                 points,
                 store,
                 query,
+                None, // Legacy visualizer labels its scalars, not the series.
                 &mut self.all_series,
             );
         }

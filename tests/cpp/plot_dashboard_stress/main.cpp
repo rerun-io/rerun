@@ -139,6 +139,12 @@ int main(int argc, char** argv) {
 
     auto tick_start_time = std::chrono::high_resolution_clock::now();
 
+    for (auto plot_path : plot_paths) {
+        for (auto series_path : series_paths) {
+            rec.log_timeless(plot_path + "/" + series_path, rerun::SeriesLine());
+        }
+    }
+
     size_t time_step = 0;
     for (auto sim_time : sim_times) {
         rec.set_time_seconds("sim_time", sim_time);
@@ -151,7 +157,7 @@ int main(int argc, char** argv) {
             size_t series_idx = 0;
             for (auto series_path : series_paths) {
                 double value = values_per_series[global_plot_idx + series_idx][time_step];
-                rec.log(plot_path + "/" + series_path, rerun::TimeSeriesScalar(value));
+                rec.log(plot_path + "/" + series_path, rerun::Scalar(value));
                 ++series_idx;
             }
             ++plot_idx;

@@ -22,4 +22,9 @@ table SeriesLine (
     /// Stroke width for the corresponding series.
     // TODO(jleibs): This should be batch if we make a batch Scalars loggable.
     width: rerun.components.StrokeWidth ("attr.rerun.component_optional", nullable, order: 2000);
+
+    /// Display name of the series.
+    ///
+    /// Used in the legend.
+    name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 3000);
 }

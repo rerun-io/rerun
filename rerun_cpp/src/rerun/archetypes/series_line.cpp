@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(3);
+        cells.reserve(4);
 
         if (archetype.color.has_value()) {
             auto result = DataCell::from_loggable(archetype.color.value());
@@ -23,6 +23,11 @@ namespace rerun {
         }
         if (archetype.width.has_value()) {
             auto result = DataCell::from_loggable(archetype.width.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.name.has_value()) {
+            auto result = DataCell::from_loggable(archetype.name.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

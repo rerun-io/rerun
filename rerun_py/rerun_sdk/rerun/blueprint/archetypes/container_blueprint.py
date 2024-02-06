@@ -9,7 +9,7 @@ from typing import Any
 
 from attrs import define, field
 
-from ... import blueprint, datatypes
+from ... import blueprint, components, datatypes
 from ..._baseclasses import Archetype
 from ...error_utils import catch_and_log_exceptions
 
@@ -24,7 +24,7 @@ class ContainerBlueprint(Archetype):
         self: Any,
         container_kind: blueprint.components.ContainerKindLike,
         *,
-        display_name: blueprint.components.NameLike | None = None,
+        display_name: datatypes.Utf8Like | None = None,
         contents: blueprint.components.IncludedContentsLike | None = None,
         col_shares: blueprint.components.ColumnSharesLike | None = None,
         row_shares: blueprint.components.RowSharesLike | None = None,
@@ -114,10 +114,10 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    display_name: blueprint.components.NameBatch | None = field(
+    display_name: components.NameBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint.components.NameBatch._optional,  # type: ignore[misc]
+        converter=components.NameBatch._optional,  # type: ignore[misc]
     )
     # The name of the container.
     #

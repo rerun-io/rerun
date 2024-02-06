@@ -38,6 +38,7 @@ from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, M
 from .material import Material, MaterialBatch, MaterialType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .mesh_properties import MeshProperties, MeshPropertiesBatch, MeshPropertiesType
+from .name import Name, NameBatch, NameType
 from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DBatch, OutOfTreeTransform3DType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
 from .position2d import Position2D, Position2DBatch, Position2DType
@@ -151,6 +152,9 @@ __all__ = [
     "MeshProperties",
     "MeshPropertiesBatch",
     "MeshPropertiesType",
+    "Name",
+    "NameBatch",
+    "NameType",
     "OutOfTreeTransform3D",
     "OutOfTreeTransform3DBatch",
     "OutOfTreeTransform3DType",
