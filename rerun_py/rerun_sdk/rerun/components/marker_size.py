@@ -13,12 +13,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .marker_size_ext import MarkerSizeExt
 
 __all__ = ["MarkerSize", "MarkerSizeArrayLike", "MarkerSizeBatch", "MarkerSizeLike", "MarkerSizeType"]
 
 
 @define(init=False)
-class MarkerSize:
+class MarkerSize(MarkerSizeExt):
     """**Component**: Size of a marker in UI points."""
 
     def __init__(self: Any, value: MarkerSizeLike):
@@ -57,4 +58,4 @@ class MarkerSizeBatch(BaseBatch[MarkerSizeArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: MarkerSizeArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in marker_size_ext.py
+        return MarkerSizeExt.native_to_pa_array_override(data, data_type)
