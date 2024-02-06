@@ -17,7 +17,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Configuration for for the scalar axis of a plot.
+    /// **Archetype**: Configuration for the scalar axis of a plot.
     struct ScalarAxis {
         /// The range of the axis.
         ///

@@ -18,7 +18,7 @@ __all__ = ["ScalarAxis"]
 
 @define(str=False, repr=False, init=False)
 class ScalarAxis(Archetype):
-    """**Archetype**: Configuration for for the scalar axis of a plot."""
+    """**Archetype**: Configuration for the scalar axis of a plot."""
 
     def __init__(
         self: Any,

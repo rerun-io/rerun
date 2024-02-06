@@ -21,7 +21,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Configuration for for the scalar axis of a plot.
+/// **Archetype**: Configuration for the scalar axis of a plot.
 #[derive(Clone, Debug, Default)]
 pub struct ScalarAxis {
     /// The range of the axis.
