@@ -835,7 +835,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 self.edited = true;
             }
             EditAction::TileDragged => {
-                // no synchronisation needed
+                // No synchronization needed, because TileDragged happens when a drag starts, so no tiles are actually
+                // modified. When the drag completes, then we get `TileDropped` and run the synchronization.
             }
         }
     }
