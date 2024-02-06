@@ -8,7 +8,7 @@ use re_entity_db::EntityPath;
 use re_log_types::RowId;
 use re_query::{query_archetype, ArchetypeView};
 use re_types::archetypes::AnnotationContext;
-use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId};
+use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
 use super::{auto_color, ViewerContext};
 use crate::DefaultColor;
@@ -197,6 +197,17 @@ impl ResolvedAnnotationInfo {
             self.annotation_info
                 .as_ref()
                 .and_then(|info| info.label.as_ref().map(|label| label.to_string()))
+        }
+    }
+
+    #[inline]
+    pub fn label_utf8(&self, label: Option<Utf8>) -> Option<Utf8> {
+        if let Some(label) = label {
+            Some(label)
+        } else {
+            self.annotation_info
+                .as_ref()
+                .and_then(|info| info.label.as_ref().cloned())
         }
     }
 }

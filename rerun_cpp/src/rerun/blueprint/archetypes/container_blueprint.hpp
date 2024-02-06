@@ -8,11 +8,11 @@
 #include "../../blueprint/components/container_kind.hpp"
 #include "../../blueprint/components/grid_columns.hpp"
 #include "../../blueprint/components/included_contents.hpp"
-#include "../../blueprint/components/name.hpp"
 #include "../../blueprint/components/row_shares.hpp"
 #include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
+#include "../../components/name.hpp"
 #include "../../data_cell.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
@@ -29,7 +29,7 @@ namespace rerun::blueprint::archetypes {
         rerun::blueprint::components::ContainerKind container_kind;
 
         /// The name of the container.
-        std::optional<rerun::blueprint::components::Name> display_name;
+        std::optional<rerun::components::Name> display_name;
 
         /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
         std::optional<rerun::blueprint::components::IncludedContents> contents;
@@ -80,7 +80,7 @@ namespace rerun::blueprint::archetypes {
             : container_kind(std::move(_container_kind)) {}
 
         /// The name of the container.
-        ContainerBlueprint with_display_name(rerun::blueprint::components::Name _display_name) && {
+        ContainerBlueprint with_display_name(rerun::components::Name _display_name) && {
             display_name = std::move(_display_name);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

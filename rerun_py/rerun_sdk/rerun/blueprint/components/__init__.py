@@ -63,7 +63,6 @@ from .lock_range_during_zoom import (
     LockRangeDuringZoomLike,
     LockRangeDuringZoomType,
 )
-from .name import Name, NameArrayLike, NameBatch, NameLike, NameType
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
 from .query_expressions import (
     QueryExpressions,
@@ -156,11 +155,6 @@ __all__ = [
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomLike",
     "LockRangeDuringZoomType",
-    "Name",
-    "NameArrayLike",
-    "NameBatch",
-    "NameLike",
-    "NameType",
     "PanelView",
     "PanelViewArrayLike",
     "PanelViewBatch",

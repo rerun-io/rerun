@@ -19,6 +19,7 @@ marker_shape.md linguist-generated=true
 material.md linguist-generated=true
 media_type.md linguist-generated=true
 mesh_properties.md linguist-generated=true
+name.md linguist-generated=true
 out_of_tree_transform3d.md linguist-generated=true
 pinhole_projection.md linguist-generated=true
 position2d.md linguist-generated=true

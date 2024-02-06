@@ -21,7 +21,11 @@ class SeriesPoint(Archetype):
     """**Archetype**: Define the style properties for a point series in a chart."""
 
     def __init__(
-        self: Any, *, color: datatypes.Rgba32Like | None = None, marker: components.MarkerShapeLike | None = None
+        self: Any,
+        *,
+        color: datatypes.Rgba32Like | None = None,
+        marker: components.MarkerShapeLike | None = None,
+        name: datatypes.Utf8Like | None = None,
     ):
         """
         Create a new instance of the SeriesPoint archetype.
@@ -32,11 +36,15 @@ class SeriesPoint(Archetype):
             Color for the corresponding series.
         marker:
             What shape to use to represent the point
+        name:
+            Display name of the series.
+
+            Used in the legend.
         """
 
         # You can define your own __init__ function as a member of SeriesPointExt in series_point_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(color=color, marker=marker)
+            self.__attrs_init__(color=color, marker=marker, name=name)
             return
         self.__attrs_clear__()
 
@@ -45,6 +53,7 @@ class SeriesPoint(Archetype):
         self.__attrs_init__(
             color=None,  # type: ignore[arg-type]
             marker=None,  # type: ignore[arg-type]
+            name=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -69,6 +78,17 @@ class SeriesPoint(Archetype):
         converter=components.MarkerShapeBatch._optional,  # type: ignore[misc]
     )
     # What shape to use to represent the point
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    name: components.NameBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.NameBatch._optional,  # type: ignore[misc]
+    )
+    # Display name of the series.
+    #
+    # Used in the legend.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -226,7 +226,7 @@ pub fn add_new_override(
                         continue;
                     }
 
-                    if ui.button(component.as_str()).clicked() {
+                    if ui.button(component.short_name()).clicked() {
                         // We are creating a new override. We need to decide what initial value to give it.
                         // - First see if there's an existing splat in the recording.
                         // - Next see if visualizer system wants to provide a value.

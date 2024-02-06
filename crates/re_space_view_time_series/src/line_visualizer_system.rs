@@ -1,9 +1,9 @@
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::archetypes;
-use re_types::components::{MarkerShape, StrokeWidth};
+use re_types::components::{MarkerShape, Name, StrokeWidth};
 use re_types::{
     archetypes::SeriesLine,
-    components::{Color, Scalar, Text},
+    components::{Color, Scalar},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
@@ -40,6 +40,7 @@ impl VisualizerSystem for SeriesLineSystem {
             .map(ToOwned::to_owned)
             .collect::<ComponentNameSet>();
         query_info.queried.append(&mut series_line_queried);
+        query_info.indicators = std::iter::once(SeriesLine::indicator().name()).collect();
         query_info
     }
 
@@ -102,6 +103,30 @@ impl SeriesLineSystem {
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
+            let annotations = self.annotation_map.find(&data_result.entity_path);
+            let annotation_info = annotations
+                .resolved_class_description(None)
+                .annotation_info();
+            let default_color = DefaultColor::EntityPath(&data_result.entity_path);
+
+            let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
+            let override_series_name = lookup_override::<Name>(data_result, ctx).map(|t| t.0);
+            let override_stroke_width =
+                lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
+
+            // All the default values for a `PlotPoint`, accounting for both overrides and default
+            // values.
+            let default_point = PlotPoint {
+                time: 0,
+                value: 0.0,
+                attrs: PlotPointAttrs {
+                    label: None,
+                    color: annotation_info.color(override_color, default_color),
+                    stroke_width: override_stroke_width.unwrap_or(DEFAULT_STROKE_WIDTH),
+                    kind: PlotSeriesKind::Continuous,
+                },
+            };
+
             let mut points = Vec::new();
 
             let time_range = determine_time_range(
@@ -113,29 +138,11 @@ impl SeriesLineSystem {
 
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
-
-                let annotations = self.annotation_map.find(&data_result.entity_path);
-                let annotation_info = annotations
-                    .resolved_class_description(None)
-                    .annotation_info();
-                let default_color = DefaultColor::EntityPath(&data_result.entity_path);
-
-                let override_color = lookup_override::<Color>(data_result, ctx).map(|c| {
-                    let arr = c.to_array();
-                    egui::Color32::from_rgba_unmultiplied(arr[0], arr[1], arr[2], arr[3])
-                });
-
-                let override_label =
-                    lookup_override::<Text>(data_result, ctx).map(|t| t.to_string());
-
-                let override_stroke_width =
-                    lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
-
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
                 query_caches
-                    .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, Text, _>(
+                    .query_archetype_pov1_comp3::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
@@ -143,7 +150,7 @@ impl SeriesLineSystem {
                         // The `Scalar` archetype queries for `MarkerShape` in the point visualizer,
                         // and so it must do so here also.
                         // See https://github.com/rerun-io/rerun/pull/5029
-                        |((time, _row_id), _, scalars, colors, stroke_width, _, labels)| {
+                        |((time, _row_id), _, scalars, colors, stroke_widths, _)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
@@ -163,47 +170,58 @@ impl SeriesLineSystem {
                                 return;
                             }
 
-                            for (scalar, color, stoke_width, label) in itertools::izip!(
+                            for (scalar, color, stroke_width) in itertools::izip!(
                                 scalars.iter(),
-                                MaybeCachedComponentData::iter_or_repeat_opt(
-                                    &colors,
-                                    scalars.len()
-                                ),
-                                MaybeCachedComponentData::iter_or_repeat_opt(
-                                    &stroke_width,
-                                    scalars.len()
-                                ),
-                                //MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
-                                MaybeCachedComponentData::iter_or_repeat_opt(
-                                    &labels,
-                                    scalars.len()
-                                ),
+                                MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
+                                MaybeCachedComponentData::iter_or_repeat_opt(&stroke_widths, scalars.len()),
                             ) {
-                                let color = override_color.unwrap_or_else(|| {
-                                    annotation_info
-                                        .color(color.map(|c| c.to_array()), default_color)
-                                });
-                                let label = override_label.clone().or_else(|| {
-                                    annotation_info.label(label.as_ref().map(|l| l.as_str()))
-                                });
-                                let stroke_width = override_stroke_width.unwrap_or_else(|| {
-                                    stoke_width.map_or(DEFAULT_STROKE_WIDTH, |r| r.0)
-                                });
-
-                                points.push(PlotPoint {
+                                let mut point = PlotPoint {
                                     time: time.as_i64(),
                                     value: scalar.0,
-                                    attrs: PlotPointAttrs {
-                                        label,
-                                        color,
-                                        stroke_width,
-                                        kind: PlotSeriesKind::Continuous,
-                                    },
-                                });
+                                    ..default_point.clone()
+                                };
+
+                                // Make it as clear as possible to the optimizer that some parameters
+                                // go completely unused as soon as overrides have been defined.
+
+                                if override_color.is_none() {
+                                    if let Some(color) = color.map(|c| {
+                                        let [r,g,b,a] = c.to_array();
+                                        if a == 255 {
+                                            // Common-case optimization
+                                            re_renderer::Color32::from_rgb(r, g, b)
+                                        } else {
+                                            re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                                        }
+                                    }) {
+                                        point.attrs.color = color;
+                                    }
+                                }
+
+                                if override_stroke_width.is_none() {
+                                    if let Some(stroke_width) = stroke_width.map(|r| r.0) {
+                                        point.attrs.stroke_width = stroke_width;
+                                    }
+                                }
+
+                                points.push(point);
                             }
                         },
                     )?;
             }
+
+            // Check for an explicit label if any.
+            // We're using a separate latest-at query for this since the semantics for labels changing over time are a
+            // a bit unclear.
+            // Sidestepping the cache here shouldn't be a problem since we do so only once per entity.
+            let series_name = if let Some(override_name) = override_series_name {
+                Some(override_name)
+            } else {
+                ctx.entity_db
+                    .store()
+                    .query_latest_component::<Name>(&data_result.entity_path, &ctx.current_query())
+                    .map(|name| name.value.0)
+            };
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             points_to_series(
@@ -212,6 +230,7 @@ impl SeriesLineSystem {
                 points,
                 store,
                 query,
+                series_name,
                 &mut self.all_series,
             );
         }

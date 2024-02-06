@@ -6,13 +6,18 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      PY_AND_CPP_DOCS_VERSION_NAME:
+      PY_DOCS_VERSION_NAME:
+        required: true
+        type: string
+      CPP_DOCS_VERSION_NAME:
         required: true
         type: string
       RS_DOCS_VERSION_NAME:
+        required: true
+        type: string
+      RELEASE_VERSION:
         required: false
         type: string
-        default: "head"
       RELEASE_COMMIT:
         required: false
         type: string
@@ -84,7 +89,7 @@ jobs:
         shell: bash
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.PY_AND_CPP_DOCS_VERSION_NAME}} stable
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.PY_DOCS_VERSION_NAME}} stable
           git checkout gh-pages
           git checkout --orphan gh-pages-orphan
           git commit -m "Update docs for ${GITHUB_SHA}"
@@ -98,7 +103,7 @@ jobs:
         shell: bash
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python ${{inputs.PY_AND_CPP_DOCS_VERSION_NAME}}
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python ${{inputs.PY_DOCS_VERSION_NAME}}
           git checkout gh-pages
           git checkout --orphan gh-pages-orphan
           git commit -m "Update docs for ${GITHUB_SHA}"
@@ -228,11 +233,18 @@ jobs:
       #     REDIRECT_CRATE: rerun
 
       # See: https://github.com/c-w/ghp-import
-      - name: Deploy the docs
+      - name: Deploy the docs (versioned)
+        if: ${{ inputs.RELEASE_VERSION }}
         shell: bash
         run: |
           git fetch
-          python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.PY_AND_CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
+          python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.RELEASE_VERSION }} rerun_cpp/docs/html/ -m "Update the C++ docs (versioned)"
+
+      - name: Deploy the docs (named)
+        shell: bash
+        run: |
+          git fetch
+          python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
 
   redeploy-rerun-io:
     runs-on: ubuntu-latest

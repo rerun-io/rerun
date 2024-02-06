@@ -9,7 +9,6 @@ included_contents.rs linguist-generated=true
 included_queries.rs linguist-generated=true
 lock_range_during_zoom.rs linguist-generated=true
 mod.rs linguist-generated=true
-name.rs linguist-generated=true
 row_shares.rs linguist-generated=true
 space_view_class.rs linguist-generated=true
 space_view_origin.rs linguist-generated=true

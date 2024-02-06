@@ -435,14 +435,14 @@ It can greatly improve performance (and readability) in such situations as it pr
                 match series.kind {
                     PlotSeriesKind::Continuous => plot_ui.line(
                         Line::new(points)
-                            .name(&series.label)
+                            .name(series.label.as_str())
                             .color(color)
                             .width(series.width)
                             .id(id),
                     ),
                     PlotSeriesKind::Scatter(scatter_attrs) => plot_ui.points(
                         Points::new(points)
-                            .name(&series.label)
+                            .name(series.label.as_str())
                             .color(color)
                             .radius(series.width)
                             .shape(scatter_attrs.marker.into())

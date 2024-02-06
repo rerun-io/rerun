@@ -11,7 +11,6 @@ pub use re_types::blueprint::components::EntitiesDeterminedByUser;
 pub use re_types::blueprint::components::IncludedContents;
 pub use re_types::blueprint::components::IncludedQueries;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
-pub use re_types::blueprint::components::Name;
 pub use re_types::blueprint::components::RowShares;
 pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
@@ -42,7 +41,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<IncludedQueries>(blueprint)
         && validate_component::<IncludedSpaceViews>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
-        && validate_component::<Name>(blueprint)
         && validate_component::<PanelView>(blueprint)
         && validate_component::<QueryExpressions>(blueprint)
         && validate_component::<RootContainer>(blueprint)
