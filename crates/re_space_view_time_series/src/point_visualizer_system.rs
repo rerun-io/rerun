@@ -177,8 +177,11 @@ impl SeriesPointSystem {
                         for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
                             if scalar.len() > 1 {
                                 re_log::warn_once!("found a scalar batch in {entity_path:?} -- those have no effect");
+                            } else if scalar.is_empty() {
+                                points[i].attrs.kind  = PlotSeriesKind::Clear;
+                            } else {
+                                points[i].value = scalar.first().map_or(0.0, |s| s.0);
                             }
-                            points[i].value = scalar.first().map_or(0.0, |s| s.0);
                         }
 
                         // Make it as clear as possible to the optimizer that some parameters

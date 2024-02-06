@@ -138,6 +138,8 @@ impl SeriesLineSystem {
 
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
+
+                let entity_path = &data_result.entity_path;
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
@@ -155,7 +157,7 @@ impl SeriesLineSystem {
                 >(
                     store,
                     &query,
-                    &data_result.entity_path,
+                    entity_path,
                     |_timeless, entry_range, (times, _, scalars, colors, stroke_widths, _, _)| {
                         let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
                         // Allocate all points.
@@ -167,9 +169,12 @@ impl SeriesLineSystem {
                         // Fill in values.
                         for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
                             if scalar.len() > 1 {
-                                re_log::warn_once!("found a scalar batch -- those have no effect");
+                                re_log::warn_once!("found a scalar batch in {entity_path:?} -- those have no effect");
+                            } else if scalar.is_empty() {
+                                points[i].attrs.kind  = PlotSeriesKind::Clear;
+                            } else {
+                                points[i].value = scalar.first().map_or(0.0, |s| s.0);
                             }
-                            points[i].value = scalar.first().map_or(0.0, |s| s.0);
                         }
 
                         // Make it as clear as possible to the optimizer that some parameters
@@ -180,7 +185,7 @@ impl SeriesLineSystem {
                             if let Some(colors) = colors {
                                 for (i, color) in colors.range(entry_range.clone()).enumerate() {
                                     if i >= points.len() {
-                                        re_log::debug_once!("more color attributes than points -- that's a bug");
+                                        re_log::debug_once!("more color attributes than points in {entity_path:?} -- this points to a bug in the query cache");
                                         break;
                                     }
                                     if let Some(color) = color.first().copied().flatten().map(|c| {
@@ -203,7 +208,7 @@ impl SeriesLineSystem {
                             if let Some(stroke_widths) = stroke_widths {
                                 for (i, stroke_width) in stroke_widths.range(entry_range.clone()).enumerate() {
                                     if i >= stroke_widths.num_entries() {
-                                        re_log::debug_once!("more stroke_width attributes than points -- that's a bug");
+                                        re_log::debug_once!("more stroke width attributes than points in {entity_path:?} -- this points to a bug in the query cache");
                                         break;
                                     }
                                     if let Some(stroke_width) = stroke_width.first().copied().flatten().map(|r| r.0) {

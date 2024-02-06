@@ -142,6 +142,7 @@ impl LegacyTimeSeriesSystem {
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
+                let entity_path = &data_result.entity_path;
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 query_caches.query_archetype_range_pov1_comp4::<
@@ -155,7 +156,7 @@ impl LegacyTimeSeriesSystem {
                 >(
                     store,
                     &query,
-                    &data_result.entity_path,
+                    entity_path,
                     |_timeless, entry_range, (times, _, scalars, scatterings, colors, radii, labels)| {
                         let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
 
@@ -168,9 +169,12 @@ impl LegacyTimeSeriesSystem {
                         // Fill in values.
                         for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
                             if scalar.len() > 1 {
-                                re_log::warn_once!("found a scalar batch -- those have no effect");
+                                re_log::warn_once!("found a scalar batch in {entity_path:?} -- those have no effect");
+                            } else if scalar.is_empty() {
+                                points[i].attrs.kind  = PlotSeriesKind::Clear;
+                            } else {
+                                points[i].value = scalar.first().map_or(0.0, |s| s.0);
                             }
-                            points[i].value = scalar.first().map_or(0.0, |s| s.0);
                         }
 
                         // Make it as clear as possible to the optimizer that some parameters
@@ -181,7 +185,7 @@ impl LegacyTimeSeriesSystem {
                             if let Some(scatterings) = scatterings {
                                 for (i, scattered) in scatterings.range(entry_range.clone()).enumerate() {
                                     if i >= points.len() {
-                                        re_log::debug_once!("more scatterings attributes than points -- that's a bug");
+                                        re_log::debug_once!("more scattered attributes than points in {entity_path:?} -- this points to a bug in the query cache");
                                         break;
                                     }
                                     if scattered.first().copied().flatten().map_or(false, |s| s.0) {
@@ -196,7 +200,7 @@ impl LegacyTimeSeriesSystem {
                             if let Some(colors) = colors {
                                 for (i, color) in colors.range(entry_range.clone()).enumerate() {
                                     if i >= points.len() {
-                                        re_log::debug_once!("more color attributes than points -- that's a bug");
+                                        re_log::debug_once!("more color attributes than points in {entity_path:?} -- this points to a bug in the query cache");
                                         break;
                                     }
                                     if let Some(color) = color.first().copied().flatten().map(|c| {
@@ -219,7 +223,7 @@ impl LegacyTimeSeriesSystem {
                             if let Some(radii) = radii {
                                 for (i, radius) in radii.range(entry_range.clone()).enumerate() {
                                     if i >= radii.num_entries() {
-                                        re_log::debug_once!("more radius attributes than points -- that's a bug");
+                                        re_log::debug_once!("more radius attributes than points in {entity_path:?} -- this points to a bug in the query cache");
                                         break;
                                     }
                                     if let Some(radius) = radius.first().copied().flatten().map(|r| r.0) {
@@ -234,7 +238,7 @@ impl LegacyTimeSeriesSystem {
                             if let Some(labels) = labels {
                                 for (i, label) in labels.range(entry_range.clone()).enumerate() {
                                     if i >= labels.num_entries() {
-                                        re_log::debug_once!("more label attributes than points -- that's a bug");
+                                        re_log::debug_once!("more label attributes than points in {entity_path:?} -- this points to a bug in the query cache");
                                         break;
                                     }
                                     if let Some(label) = label.first().cloned().flatten().map(|l| l.0) {
