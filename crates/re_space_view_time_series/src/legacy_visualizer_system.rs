@@ -120,7 +120,7 @@ impl LegacyTimeSeriesSystem {
                 attrs: PlotPointAttrs {
                     label: override_label.clone(), // default value is simply None
                     color: annotation_info.color(override_color, default_color),
-                    stroke_width: override_radius.unwrap_or(DEFAULT_RADIUS),
+                    marker_size: override_radius.unwrap_or(DEFAULT_RADIUS),
                     kind: if override_scattered.unwrap_or(false) {
                         PlotSeriesKind::Scatter(ScatterAttrs::default())
                     } else {
@@ -169,7 +169,7 @@ impl LegacyTimeSeriesSystem {
                                 attrs: PlotPointAttrs {
                                     label: None,
                                     color: egui::Color32::BLACK,
-                                    stroke_width: 0.0,
+                                    marker_size: 0.0,
                                     kind: PlotSeriesKind::Clear,
                                 },
                             });
@@ -221,7 +221,7 @@ impl LegacyTimeSeriesSystem {
 
                             if override_radius.is_none() {
                                 if let Some(radius) = radius.map(|r| r.0) {
-                                    point.attrs.stroke_width = radius;
+                                    point.attrs.marker_size = radius;
                                 }
                             }
 

@@ -1,9 +1,7 @@
 use re_query_cache::{MaybeCachedComponentData, QueryError};
-use re_types::archetypes;
-use re_types::components::{MarkerShape, Name, StrokeWidth};
 use re_types::{
-    archetypes::SeriesPoint,
-    components::{Color, Scalar},
+    archetypes::{self, SeriesPoint},
+    components::{Color, MarkerShape, MarkerSize, Name, Scalar, StrokeWidth},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
@@ -33,7 +31,7 @@ impl IdentifiedViewSystem for SeriesPointSystem {
 
 // We use a larger default stroke width for scatter plots so the marker is
 // visible.
-const DEFAULT_STROKE_WIDTH: f32 = 3.0;
+const DEFAULT_MARKER_SIZE: f32 = 3.0;
 
 impl VisualizerSystem for SeriesPointSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
@@ -84,8 +82,8 @@ impl VisualizerSystem for SeriesPointSystem {
     ) -> Option<re_log_types::DataCell> {
         if *component == Color::name() {
             Some([initial_override_color(entity_path)].into())
-        } else if *component == StrokeWidth::name() {
-            Some([StrokeWidth(DEFAULT_STROKE_WIDTH)].into())
+        } else if *component == MarkerSize::name() {
+            Some([MarkerSize(DEFAULT_MARKER_SIZE)].into())
         } else {
             None
         }
@@ -115,8 +113,7 @@ impl SeriesPointSystem {
 
             let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
             let override_series_name = lookup_override::<Name>(data_result, ctx).map(|t| t.0);
-            let override_stroke_width =
-                lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
+            let override_marker_size = lookup_override::<MarkerSize>(data_result, ctx).map(|r| r.0);
             let override_marker = lookup_override::<MarkerShape>(data_result, ctx);
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default
@@ -127,7 +124,7 @@ impl SeriesPointSystem {
                 attrs: PlotPointAttrs {
                     label: None,
                     color: annotation_info.color(override_color, default_color),
-                    stroke_width: override_stroke_width.unwrap_or(DEFAULT_STROKE_WIDTH),
+                    marker_size: override_marker_size.unwrap_or(DEFAULT_MARKER_SIZE),
                     kind: PlotSeriesKind::Scatter(ScatterAttrs {
                         marker: override_marker.unwrap_or_default(),
                     }),
@@ -153,12 +150,12 @@ impl SeriesPointSystem {
                 // and so it must do so here also.
                 // See https://github.com/rerun-io/rerun/pull/5029
                 query_caches
-                    .query_archetype_pov1_comp3::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, _>(
+                    .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerSize, MarkerShape, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
                         &data_result.entity_path,
-                        |((time, _row_id), _, scalars, colors, stroke_widths, markers)| {
+                        |((time, _row_id), _, scalars, colors, _, marker_sizes, markers)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
@@ -171,17 +168,17 @@ impl SeriesPointSystem {
                                     attrs: PlotPointAttrs {
                                         label: None,
                                         color: egui::Color32::BLACK,
-                                        stroke_width: 0.0,
+                                        marker_size: 0.0,
                                         kind: PlotSeriesKind::Clear,
                                     },
                                 });
                                 return;
                             }
 
-                            for (scalar, color, stroke_width, marker) in itertools::izip!(
+                            for (scalar, color, marker_size, marker) in itertools::izip!(
                                 scalars.iter(),
                                 MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
-                                MaybeCachedComponentData::iter_or_repeat_opt(&stroke_widths, scalars.len()),
+                                MaybeCachedComponentData::iter_or_repeat_opt(&marker_sizes, scalars.len()),
                                 MaybeCachedComponentData::iter_or_repeat_opt(&markers, scalars.len()),
                             ) {
                                 let mut point = PlotPoint {
@@ -207,9 +204,9 @@ impl SeriesPointSystem {
                                     }
                                 }
 
-                                if override_stroke_width.is_none() {
-                                    if let Some(stroke_width) = stroke_width.map(|r| r.0) {
-                                        point.attrs.stroke_width = stroke_width;
+                                if override_marker_size.is_none() {
+                                    if let Some(marker_size) = marker_size.map(|r| r.0) {
+                                        point.attrs.marker_size = marker_size;
                                     }
                                 }
 

@@ -5,7 +5,9 @@ use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::EntityPath;
 use re_query::ComponentWithInstances;
 use re_types::{
-    components::{Color, MarkerShape, Name, Radius, ScalarScattering, StrokeWidth, Text},
+    components::{
+        Color, MarkerShape, MarkerSize, Name, Radius, ScalarScattering, StrokeWidth, Text,
+    },
     Component, Loggable,
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -366,6 +368,53 @@ fn default_stroke_width(
 
 // ----
 
+#[allow(clippy::too_many_arguments)]
+fn edit_marker_size_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _verbosity: UiVerbosity,
+    query: &LatestAtQuery,
+    store: &DataStore,
+    entity_path: &EntityPath,
+    override_path: &EntityPath,
+    component: &ComponentWithInstances,
+    instance_key: &re_types::components::InstanceKey,
+) {
+    let current_marker_size = component
+        .lookup::<MarkerSize>(instance_key)
+        .ok()
+        .unwrap_or_else(|| default_marker_size(ctx, query, store, entity_path));
+
+    let current_marker_size = current_marker_size.0;
+    let mut edit_marker_size = current_marker_size;
+
+    let speed = (current_marker_size * 0.01).at_least(0.001);
+
+    ui.add(
+        egui::DragValue::new(&mut edit_marker_size)
+            .clamp_range(0.0..=f64::INFINITY)
+            .speed(speed),
+    );
+
+    if edit_marker_size != current_marker_size {
+        let new_marker_size = MarkerSize::from(edit_marker_size);
+
+        ctx.save_blueprint_component(override_path, new_marker_size);
+    }
+}
+
+#[inline]
+fn default_marker_size(
+    _ctx: &ViewerContext<'_>,
+    _query: &LatestAtQuery,
+    _store: &DataStore,
+    _entity_path: &EntityPath,
+) -> MarkerSize {
+    MarkerSize::from(1.0)
+}
+
+// ----
+
 fn register_editor<'a, C: Component + Loggable + 'static>(
     registry: &mut re_viewer_context::ComponentUiRegistry,
     default: fn(&ViewerContext<'_>, &LatestAtQuery, &DataStore, &EntityPath) -> C,
@@ -396,6 +445,7 @@ fn register_editor<'a, C: Component + Loggable + 'static>(
 pub fn register_editors(registry: &mut re_viewer_context::ComponentUiRegistry) {
     register_editor::<Color>(registry, default_color, edit_color_ui);
     register_editor::<MarkerShape>(registry, default_marker_shape, edit_marker_shape_ui);
+    register_editor::<MarkerSize>(registry, default_marker_size, edit_marker_size_ui);
     register_editor::<Name>(registry, default_name, edit_name_ui);
     register_editor::<Radius>(registry, default_radius, edit_radius_ui);
     register_editor::<ScalarScattering>(registry, default_scatter, edit_scatter_ui);

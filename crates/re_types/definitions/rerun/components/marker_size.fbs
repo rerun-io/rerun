@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// Size of a marker in UI points.
+struct MarkerSize (
+  "attr.docs.unreleased",
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "float, npt.ArrayLike",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  value: float (order: 100);
+}
