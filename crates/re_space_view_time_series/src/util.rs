@@ -289,10 +289,10 @@ fn add_series_runs(
 /// assert_eq!(9007199254740992f64.next_up(), 9007199254740994.0);
 /// ```
 ///
-/// [`NEG_INFINITY`]: Self::NEG_INFINITY
-/// [`INFINITY`]: Self::INFINITY
-/// [`MIN`]: Self::MIN
-/// [`MAX`]: Self::MAX
+/// [`NEG_INFINITY`]: f64::NEG_INFINITY
+/// [`INFINITY`]: f64::INFINITY
+/// [`MIN`]: f64::MIN
+/// [`MAX`]: f64::MAX
 pub fn next_up_f64(this: f64) -> f64 {
     // We must use strictly integer arithmetic to prevent denormals from
     // flushing to zero after an arithmetic operation on some platforms.
