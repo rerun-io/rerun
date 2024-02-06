@@ -1,303 +1,283 @@
 [
-    {
-        "class_list": null,
-        "default_filters": true,
-        "func_list": [
-            "init",
-            "connect",
-            "disconnect",
-            "save",
-            "serve",
-            "spawn",
-            "memory_recording"
-        ],
-        "gen_page": true,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Initialization functions"
-    },
-    {
-        "class_list": null,
-        "default_filters": true,
-        "func_list": [
-            "log",
-            "set_time_sequence",
-            "set_time_seconds",
-            "set_time_nanos"
-        ],
-        "gen_page": true,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Logging functions"
-    },
-    {
-        "class_list": null,
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": true,
-        "mod_path": "rerun.archetypes",
-        "show_submodules": false,
-        "show_tables": false,
-        "title": "Archetypes"
-    },
-    {
-        "class_list": null,
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": true,
-        "mod_path": "rerun.components",
-        "show_submodules": false,
-        "show_tables": false,
-        "title": "Components"
-    },
-    {
-        "class_list": null,
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": true,
-        "mod_path": "rerun.datatypes",
-        "show_submodules": false,
-        "show_tables": false,
-        "title": "Datatypes"
-    },
-    {
-        "class_list": [
-            "AnyValues"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": true,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Custom Data"
-    },
-    {
-        "class_list": [
-            "archetypes.Clear"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": false,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Clearing Entities"
-    },
-    {
-        "class_list": [
-            "archetypes.AnnotationContext",
-            "datatypes.AnnotationInfo",
-            "datatypes.ClassDescription"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": false,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Annotations"
-    },
-    {
-        "class_list": [
-            "archetypes.DepthImage",
-            "archetypes.Image",
-            "ImageEncoded",
-            "archetypes.SegmentationImage"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": false,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Images"
-    },
-    {
-        "class_list": [
-            "ImageEncoded"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": true,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": false,
-        "title": "Image Helpers"
-    },
-    {
-        "class_list": [
-            "archetypes.BarChart",
-            "archetypes.TimeSeriesScalar"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": false,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Plotting"
-    },
-    {
-        "class_list": [
-            "archetypes.Arrows3D",
-            "archetypes.Arrows2D",
-            "archetypes.Asset3D",
-            "archetypes.Boxes2D",
-            "archetypes.Boxes3D",
-            "archetypes.LineStrips2D",
-            "archetypes.LineStrips3D",
-            "archetypes.Mesh3D",
-            "archetypes.Points2D",
-            "archetypes.Points3D"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": false,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Spatial Archetypes"
-    },
-    {
-        "class_list": [
-            "archetypes.Tensor"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": false,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Tensors"
-    },
-    {
-        "class_list": [
-            "LoggingHandler",
-            "archetypes.TextDocument",
-            "archetypes.TextLog"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": false,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Text"
-    },
-    {
-        "class_list": [
-            "archetypes.DisconnectedSpace",
-            "archetypes.Pinhole",
-            "archetypes.Transform3D",
-            "archetypes.ViewCoordinates",
-            "datatypes.Quaternion",
-            "datatypes.RotationAxisAngle",
-            "datatypes.Scale3D",
-            "datatypes.TranslationAndMat3x3",
-            "datatypes.TranslationRotationScale3D"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": false,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Transforms and Coordinate Systems"
-    },
-    {
-        "class_list": [
-            "Box2DFormat",
-            "ImageFormat",
-            "MeshFormat"
-        ],
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": true,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": false,
-        "title": "Enums"
-    },
-    {
-        "class_list": [
-            "AsComponents",
-            "ComponentBatchLike"
-        ],
-        "default_filters": false,
-        "func_list": null,
-        "gen_page": true,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Interfaces"
-    },
-    {
-        "class_list": null,
-        "default_filters": true,
-        "func_list": [
-            "script_add_args",
-            "script_setup",
-            "script_teardown"
-        ],
-        "gen_page": true,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": true,
-        "title": "Script Helpers"
-    },
-    {
-        "class_list": [
-            "RecordingStream",
-            "LoggingHandler",
-            "MemoryRecording"
-        ],
-        "default_filters": true,
-        "func_list": [
-            "get_data_recording",
-            "get_global_data_recording",
-            "get_recording_id",
-            "get_thread_local_data_recording",
-            "is_enabled",
-            "log_components",
-            "new_recording",
-            "set_global_data_recording",
-            "set_thread_local_data_recording",
-            "start_web_viewer_server",
-            "escape_entity_path_part",
-            "new_entity_path"
-        ],
-        "gen_page": true,
-        "mod_path": "rerun",
-        "show_submodules": false,
-        "show_tables": false,
-        "title": "Other classes and functions"
-    },
-    {
-        "class_list": null,
-        "default_filters": true,
-        "func_list": null,
-        "gen_page": true,
-        "mod_path": "rerun.utilities",
-        "show_submodules": true,
-        "show_tables": false,
-        "title": "Utilities"
-    },
-    {
-        "class_list": null,
-        "default_filters": true,
-        "func_list": [
-            "add_space_view",
-            "new_blueprint",
-            "set_auto_space_views",
-            "set_panels"
-        ],
-        "gen_page": true,
-        "mod_path": "rerun.experimental",
-        "show_submodules": false,
-        "show_tables": false,
-        "title": "Experimental"
-    }
+  {
+    "class_list": null,
+    "default_filters": true,
+    "func_list": [
+      "init",
+      "connect",
+      "disconnect",
+      "save",
+      "serve",
+      "spawn",
+      "memory_recording"
+    ],
+    "gen_page": true,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Initialization functions"
+  },
+  {
+    "class_list": null,
+    "default_filters": true,
+    "func_list": [
+      "log",
+      "set_time_sequence",
+      "set_time_seconds",
+      "set_time_nanos"
+    ],
+    "gen_page": true,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Logging functions"
+  },
+  {
+    "class_list": null,
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": true,
+    "mod_path": "rerun.archetypes",
+    "show_submodules": false,
+    "show_tables": false,
+    "title": "Archetypes"
+  },
+  {
+    "class_list": null,
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": true,
+    "mod_path": "rerun.components",
+    "show_submodules": false,
+    "show_tables": false,
+    "title": "Components"
+  },
+  {
+    "class_list": null,
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": true,
+    "mod_path": "rerun.datatypes",
+    "show_submodules": false,
+    "show_tables": false,
+    "title": "Datatypes"
+  },
+  {
+    "class_list": ["AnyValues"],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": true,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Custom Data"
+  },
+  {
+    "class_list": ["archetypes.Clear"],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": false,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Clearing Entities"
+  },
+  {
+    "class_list": [
+      "archetypes.AnnotationContext",
+      "datatypes.AnnotationInfo",
+      "datatypes.ClassDescription"
+    ],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": false,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Annotations"
+  },
+  {
+    "class_list": [
+      "archetypes.DepthImage",
+      "archetypes.Image",
+      "ImageEncoded",
+      "archetypes.SegmentationImage"
+    ],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": false,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Images"
+  },
+  {
+    "class_list": ["ImageEncoded"],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": true,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": false,
+    "title": "Image Helpers"
+  },
+  {
+    "class_list": [
+      "archetypes.BarChart",
+      "archetypes.Scalar",
+      "archetypes.SeriesLine",
+      "archetypes.SeriesPoint",
+      "archetypes.TimeSeriesScalar"
+    ],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": false,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Plotting"
+  },
+  {
+    "class_list": [
+      "archetypes.Arrows3D",
+      "archetypes.Arrows2D",
+      "archetypes.Asset3D",
+      "archetypes.Boxes2D",
+      "archetypes.Boxes3D",
+      "archetypes.LineStrips2D",
+      "archetypes.LineStrips3D",
+      "archetypes.Mesh3D",
+      "archetypes.Points2D",
+      "archetypes.Points3D"
+    ],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": false,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Spatial Archetypes"
+  },
+  {
+    "class_list": ["archetypes.Tensor"],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": false,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Tensors"
+  },
+  {
+    "class_list": [
+      "LoggingHandler",
+      "archetypes.TextDocument",
+      "archetypes.TextLog"
+    ],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": false,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Text"
+  },
+  {
+    "class_list": [
+      "archetypes.DisconnectedSpace",
+      "archetypes.Pinhole",
+      "archetypes.Transform3D",
+      "archetypes.ViewCoordinates",
+      "datatypes.Quaternion",
+      "datatypes.RotationAxisAngle",
+      "datatypes.Scale3D",
+      "datatypes.TranslationAndMat3x3",
+      "datatypes.TranslationRotationScale3D"
+    ],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": false,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Transforms and Coordinate Systems"
+  },
+  {
+    "class_list": ["Box2DFormat", "ImageFormat", "MeshFormat"],
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": true,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": false,
+    "title": "Enums"
+  },
+  {
+    "class_list": ["AsComponents", "ComponentBatchLike"],
+    "default_filters": false,
+    "func_list": null,
+    "gen_page": true,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Interfaces"
+  },
+  {
+    "class_list": null,
+    "default_filters": true,
+    "func_list": ["script_add_args", "script_setup", "script_teardown"],
+    "gen_page": true,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": true,
+    "title": "Script Helpers"
+  },
+  {
+    "class_list": ["RecordingStream", "LoggingHandler", "MemoryRecording"],
+    "default_filters": true,
+    "func_list": [
+      "get_data_recording",
+      "get_global_data_recording",
+      "get_recording_id",
+      "get_thread_local_data_recording",
+      "is_enabled",
+      "log_components",
+      "new_recording",
+      "set_global_data_recording",
+      "set_thread_local_data_recording",
+      "start_web_viewer_server",
+      "escape_entity_path_part",
+      "new_entity_path"
+    ],
+    "gen_page": true,
+    "mod_path": "rerun",
+    "show_submodules": false,
+    "show_tables": false,
+    "title": "Other classes and functions"
+  },
+  {
+    "class_list": null,
+    "default_filters": true,
+    "func_list": null,
+    "gen_page": true,
+    "mod_path": "rerun.utilities",
+    "show_submodules": true,
+    "show_tables": false,
+    "title": "Utilities"
+  },
+  {
+    "class_list": null,
+    "default_filters": true,
+    "func_list": [
+      "add_space_view",
+      "new_blueprint",
+      "set_auto_space_views",
+      "set_panels"
+    ],
+    "gen_page": true,
+    "mod_path": "rerun.experimental",
+    "show_submodules": false,
+    "show_tables": false,
+    "title": "Experimental"
+  }
 ]
