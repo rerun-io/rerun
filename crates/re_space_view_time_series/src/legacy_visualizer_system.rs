@@ -173,6 +173,9 @@ impl LegacyTimeSeriesSystem {
                             points[i].value = scalar.first().map_or(0.0, |s| s.0);
                         }
 
+                        // Make it as clear as possible to the optimizer that some parameters
+                        // go completely unused as soon as overrides have been defined.
+
                         // Fill in series kind -- if available _and_ not overridden.
                         if override_scattered.is_none() {
                             if let Some(scatterings) = scatterings {

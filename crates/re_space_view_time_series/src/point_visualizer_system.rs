@@ -145,6 +145,7 @@ impl SeriesPointSystem {
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
+                let entity_path = &data_result.entity_path;
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
                 // TODO(jleibs): need to do a "joined" archetype query
@@ -162,7 +163,7 @@ impl SeriesPointSystem {
                 >(
                     store,
                     &query,
-                    &data_result.entity_path,
+                    entity_path,
                     |_timeless, entry_range, (times, _, scalars, colors, _, marker_sizes, markers)| {
                         let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
 
@@ -175,17 +176,20 @@ impl SeriesPointSystem {
                         // Fill in values.
                         for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
                             if scalar.len() > 1 {
-                                re_log::warn_once!("found a scalar batch -- those have no effect");
+                                re_log::warn_once!("found a scalar batch in {entity_path:?} -- those have no effect");
                             }
                             points[i].value = scalar.first().map_or(0.0, |s| s.0);
                         }
+
+                        // Make it as clear as possible to the optimizer that some parameters
+                        // go completely unused as soon as overrides have been defined.
 
                         // Fill in marker sizes -- if available _and_ not overridden.
                         if override_marker_size.is_none() {
                             if let Some(marker_sizes) = marker_sizes {
                                 for (i, marker_size) in marker_sizes.range(entry_range.clone()).enumerate() {
                                     if i >= points.len() {
-                                        re_log::debug_once!("more marker size attributes than points -- that's a bug");
+                                        re_log::debug_once!("more marker size attributes than points in {entity_path:?} -- this points to a bug in the query cache");
                                         break;
                                     }
                                     if let Some(marker_size) = marker_size.first().copied().flatten() {
@@ -200,7 +204,7 @@ impl SeriesPointSystem {
                             if let Some(markers) = markers {
                                 for (i, marker) in markers.range(entry_range.clone()).enumerate() {
                                     if i >= points.len() {
-                                        re_log::debug_once!("more marker attributes than points -- that's a bug");
+                                        re_log::debug_once!("more marker attributes than points in {entity_path:?} -- this points to a bug in the query cache");
                                         break;
                                     }
                                     if let Some(marker) = marker.first().copied().flatten() {
@@ -215,7 +219,7 @@ impl SeriesPointSystem {
                             if let Some(colors) = colors {
                                 for (i, color) in colors.range(entry_range.clone()).enumerate() {
                                     if i >= points.len() {
-                                        re_log::debug_once!("more color attributes than points -- that's a bug");
+                                        re_log::debug_once!("more color attributes than points in {entity_path:?} -- this points to a bug in the query cache");
                                         break;
                                     }
                                     if let Some(color) = color.first().copied().flatten().map(|c| {
