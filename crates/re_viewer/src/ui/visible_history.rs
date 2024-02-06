@@ -173,6 +173,8 @@ pub fn visible_history_ui(
                     )
                 })
                 .inner;
+
+            current_range_ui(ctx, ui, current_time, is_sequence_timeline, visible_history);
         } else {
             resolved_visible_history_boundary_ui(
                 ctx,
@@ -181,6 +183,7 @@ pub fn visible_history_ui(
                 is_sequence_timeline,
                 true,
             );
+
             resolved_visible_history_boundary_ui(
                 ctx,
                 ui,
@@ -188,9 +191,15 @@ pub fn visible_history_ui(
                 is_sequence_timeline,
                 false,
             );
-        }
 
-        current_range_ui(ctx, ui, current_time, is_sequence_timeline, visible_history);
+            current_range_ui(
+                ctx,
+                ui,
+                current_time,
+                is_sequence_timeline,
+                resolved_visible_history,
+            );
+        }
 
         ui.add(
             egui::Label::new(
