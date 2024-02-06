@@ -99,7 +99,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         layout.add("Drag ");
         layout.add(controls::SELECTION_RECT_ZOOM_BUTTON);
         layout.add(" to zoom in/out using a selection.\n");
-        layout.add(" Not available when zoom-behavior has a locked range.\n");
+        layout.add("  - Not available when zoom-behavior has a locked range.\n");
 
         layout.add("Click ");
         layout.add(controls::MOVE_TIME_CURSOR_BUTTON);
@@ -597,82 +597,83 @@ fn axis_ui(
         blueprint_path,
     ) = query_space_view_sub_archetype(ctx, space_view_id);
 
-    ctx.re_ui
-        .selection_grid(ui, "time_series_selection_ui_y_axis_range")
-        .show(ui, |ui| {
-            ctx.re_ui.grid_left_hand_label(ui, "Y Axis Range");
+    ctx.re_ui.collapsing_header(ui, "Y Axis", true, |ui| {
+        ctx.re_ui
+            .selection_grid(ui, "time_series_selection_ui_y_axis_range")
+            .show(ui, |ui| {
+                ctx.re_ui.grid_left_hand_label(ui, "Range");
 
-            ui.vertical(|ui| {
-                let mut auto_range = y_range.is_none();
-
-                ui.horizontal(|ui| {
-                    ctx.re_ui
-                        .radio_value(ui, &mut auto_range, true, "Auto")
-                        .on_hover_text("Automatically adjust the Y axis to fit the data.");
-                    ctx.re_ui
-                        .radio_value(ui, &mut auto_range, false, "Override")
-                        .on_hover_text("Manually specify a min and max Y value. This will define the range when resetting or locking the view range.");
-                });
-
-                if !auto_range {
-                    // TODO(jleibs): Initial range needs to come from the real data.
-                    let mut range_edit = y_range
-                        .unwrap_or_else(|| y_range.unwrap_or(Range1D(state.saved_y_axis_range)));
+                ui.vertical(|ui| {
+                    let mut auto_range = y_range.is_none();
 
                     ui.horizontal(|ui| {
-                        // Max < Min is not supported.
-                        // Also, egui_plot doesn't handle min==max (it ends up picking a default range instead then)
-                        let prev_min = crate::util::next_up_f64(range_edit.0[0]);
-                        let prev_max = range_edit.0[1];
-                        // Scale the speed to the size of the range
-                        let speed = ((prev_max - prev_min) * 0.01).at_least(0.001);
-                        ui.label("Min");
-                        ui.add(
-                            egui::DragValue::new(&mut range_edit.0[0])
-                                .speed(speed)
-                                .clamp_range(std::f64::MIN..=prev_max),
-                        );
-                        ui.label("Max");
-                        ui.add(
-                            egui::DragValue::new(&mut range_edit.0[1])
-                                .speed(speed)
-                                .clamp_range(prev_min..=std::f64::MAX),
-                        );
+                        ctx.re_ui
+                            .radio_value(ui, &mut auto_range, true, "Auto")
+                            .on_hover_text("Automatically adjust the Y axis to fit the data.");
+                        ctx.re_ui
+                            .radio_value(ui, &mut auto_range, false, "Manual")
+                            .on_hover_text("Manually specify a min and max Y value. This will define the range when resetting or locking the view range.");
                     });
 
-                    if y_range != Some(range_edit) {
-                        ctx.save_blueprint_component(&blueprint_path, range_edit);
+                    if !auto_range {
+                        let mut range_edit = y_range
+                            .unwrap_or_else(|| y_range.unwrap_or(Range1D(state.saved_y_axis_range)));
+
+                        ui.horizontal(|ui| {
+                            // Max < Min is not supported.
+                            // Also, egui_plot doesn't handle min==max (it ends up picking a default range instead then)
+                            let prev_min = crate::util::next_up_f64(range_edit.0[0]);
+                            let prev_max = range_edit.0[1];
+                            // Scale the speed to the size of the range
+                            let speed = ((prev_max - prev_min) * 0.01).at_least(0.001);
+                            ui.label("Min");
+                            ui.add(
+                                egui::DragValue::new(&mut range_edit.0[0])
+                                    .speed(speed)
+                                    .clamp_range(std::f64::MIN..=prev_max),
+                            );
+                            ui.label("Max");
+                            ui.add(
+                                egui::DragValue::new(&mut range_edit.0[1])
+                                    .speed(speed)
+                                    .clamp_range(prev_min..=std::f64::MAX),
+                            );
+                        });
+
+                        if y_range != Some(range_edit) {
+                            ctx.save_blueprint_component(&blueprint_path, range_edit);
+                        }
+                    } else if y_range.is_some() {
+                        ctx.save_empty_blueprint_component::<Range1D>(&blueprint_path);
                     }
-                } else if y_range.is_some() {
-                    ctx.save_empty_blueprint_component::<Range1D>(&blueprint_path);
-                }
+                });
+
+                ui.end_row();
             });
 
-            ui.end_row();
-        });
+        ctx.re_ui
+            .selection_grid(ui, "time_series_selection_ui_y_axis_zoom")
+            .show(ui, |ui| {
+                ctx.re_ui.grid_left_hand_label(ui, "Zoom Behavior");
 
-    ctx.re_ui
-        .selection_grid(ui, "time_series_selection_ui_y_axis_zoom")
-        .show(ui, |ui| {
-            ctx.re_ui.grid_left_hand_label(ui, "Y Axis Zoom Behavior");
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        let y_lock_zoom = y_lock_range_during_zoom.unwrap_or(false.into());
+                        let mut edit_locked = y_lock_zoom;
+                        ctx.re_ui
+                            .checkbox(ui, &mut edit_locked.0, "Lock Range")
+                            .on_hover_text(
+                            "If set, when zooming, the Y axis range will remain locked to the specified range.",
+                        );
+                        if y_lock_zoom != edit_locked {
+                            ctx.save_blueprint_component(&blueprint_path, edit_locked);
+                        }
+                    })
+                });
 
-            ui.vertical(|ui| {
-                ui.horizontal(|ui| {
-                    let y_lock_zoom = y_lock_range_during_zoom.unwrap_or(false.into());
-                    let mut edit_locked = y_lock_zoom;
-                    ctx.re_ui
-                        .checkbox(ui, &mut edit_locked.0, "Lock Range")
-                        .on_hover_text(
-                        "If set, when zooming, the Y axis range will remain locked to the specified range.",
-                    );
-                    if y_lock_zoom != edit_locked {
-                        ctx.save_blueprint_component(&blueprint_path, edit_locked);
-                    }
-                })
+                ui.end_row();
             });
-
-            ui.end_row();
-        });
+    });
 }
 
 fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: TimeZone) -> String {
