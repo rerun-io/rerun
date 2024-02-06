@@ -244,7 +244,7 @@ This feature controls the time range used to display data in the Space View.
 The settings are inherited from parent Group(s) or enclosing Space View if not overridden.
 
 Visible Time Range properties are stored separately for each _type_ of timelines. They may differ depending on \
-whether the current timeline is temporal or a sequence. The current settings apply to all {} timelines.
+whether the current timeline is temporal or a sequence. The current settings apply to all _{}_ timelines.
 
 Notes that the data current as of the time range starting time is included.",
         if is_sequence_timeline {
