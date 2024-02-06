@@ -195,17 +195,19 @@ fn default_manifest_url() -> String {
             version = build_info.version,
         )
     } else if build_info.is_in_rerun_workspace {
-        // Otherwise, always point to `version/main` for rerun devs,
+        // Otherwise, always point to `version/nightly` for rerun devs,
         // because the current commit's manifest is unlikely to be uploaded to GCS.
-        "https://app.rerun.io/version/main/examples_manifest.json".into()
+        // We could point to the main branch, but it's not always finished building, and so doesn't always work.
+        "https://app.rerun.io/version/nightly/examples_manifest.json".into()
     } else if !short_sha.is_empty() {
         // If we have a sha, try to point at it.
         format!("https://app.rerun.io/commit/{short_sha}/examples_manifest.json")
     } else {
-        // If all else fails, point to the main branch
+        // If all else fails, point to the nightly branch
+        // We could point to the main branch, but it's not always finished building, and so doesn't always work.
         // TODO(#4729): this is better than nothing but still likely to have version
         // compatibility issues.
-        "https://app.rerun.io/version/main/examples_manifest.json".into()
+        "https://app.rerun.io/version/nightly/examples_manifest.json".into()
     }
 }
 
