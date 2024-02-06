@@ -389,22 +389,32 @@ impl SpaceViewBlueprint {
     pub fn root_data_result(&self, ctx: &StoreContext<'_>, query: &LatestAtQuery) -> DataResult {
         let entity_path = self.entity_path();
 
-        let individual_properties = ctx
+        let is_time_series = self.class_identifier == "Time Series";
+
+        let mut individual_properties = ctx
             .blueprint
             .store()
             .query_latest_component_quiet::<EntityPropertiesComponent>(&self.entity_path(), query)
             .map(|result| result.value.0);
 
-        let accumulated_properties = individual_properties.clone().unwrap_or_else(|| {
-            let mut props = EntityProperties::default();
-            // better defaults for the time series space view
-            // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
-            if self.class_identifier == "Time Series" {
-                props.visible_history.nanos = VisibleHistory::ALL;
-                props.visible_history.sequences = VisibleHistory::ALL;
+        // TODO(#4194): this should come from delegation to the space-view-class
+        if individual_properties.is_none() && is_time_series {
+            let mut time_series_defaults = EntityProperties::default();
+            time_series_defaults.visible_history.nanos = VisibleHistory::ALL;
+            time_series_defaults.visible_history.sequences = VisibleHistory::ALL;
+            individual_properties = Some(time_series_defaults);
+        }
+
+        let mut accumulated_properties = individual_properties.clone().unwrap_or_default();
+
+        if is_time_series {
+            // TODO(#4194): enabled == false means use defaults
+            if !accumulated_properties.visible_history.enabled {
+                accumulated_properties.visible_history.enabled = true;
+                accumulated_properties.visible_history.nanos = VisibleHistory::ALL;
+                accumulated_properties.visible_history.sequences = VisibleHistory::ALL;
             }
-            props
-        });
+        }
 
         DataResult {
             entity_path: entity_path.clone(),

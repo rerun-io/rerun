@@ -332,7 +332,15 @@ impl DataQueryPropertyResolver<'_> {
     ) -> EntityOverrideContext {
         re_tracing::profile_function!();
 
-        let mut root: EntityProperties = Default::default();
+        // TODO(#4194): We always start the override context with the root_data_result from
+        // the space-view. This isn't totally generic once we add container overrides, but it's a start.
+        let mut root: EntityProperties = self
+            .space_view
+            .root_data_result(ctx, query)
+            .property_overrides
+            .map(|p| p.accumulated_properties.clone())
+            .unwrap_or_default();
+
         for prefix in &self.default_stack {
             if let Some(overrides) = ctx
                 .blueprint
