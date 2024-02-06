@@ -147,10 +147,6 @@ impl View3DState {
             let t = t.clamp(0.0, 1.0);
             let t = ease_out(t);
 
-            if t < 1.0 {
-                response.ctx.request_repaint();
-            }
-
             if let Some(target_orbit) = &cam_interpolation.target_orbit {
                 *orbit_eye = cam_interpolation.start.lerp(target_orbit, t);
             } else if let Some(target_eye) = &cam_interpolation.target_eye {
@@ -160,12 +156,12 @@ impl View3DState {
                 self.eye_interpolation = None;
             }
 
-            if 1.0 <= t {
-                // We have arrived at our target
-                self.eye_interpolation = None;
-            } else {
+            if t < 1.0 {
                 // There's more frames to render to finish interpolation.
                 response.ctx.request_repaint();
+            } else {
+                // We have arrived at our target
+                self.eye_interpolation = None;
             }
         }
 
@@ -256,6 +252,10 @@ impl View3DState {
         // the user wants to move the camera somewhere, so stop spinning
         self.spin = false;
 
+        if self.orbit_eye == Some(target) {
+            return; // We're already there.
+        }
+
         // Don't restart interpolation if we're already on it.
         if let Some(eye_interpolation) = &self.eye_interpolation {
             if eye_interpolation.target_orbit == Some(target) {
@@ -329,7 +329,8 @@ impl EyeInterpolation {
             .angle_between(stop.world_from_rub_view.rotation());
 
         // Threshold to avoid doing pointless interpolations that trigger frame requests.
-        if angle_difference < 0.01 && start.pos_in_world().distance(stop.pos_in_world()) < 0.0001 {
+        let distance = start.pos_in_world().distance(stop.pos_in_world());
+        if angle_difference < 0.01 && distance < 0.0001 {
             None
         } else {
             Some(egui::remap_clamp(
