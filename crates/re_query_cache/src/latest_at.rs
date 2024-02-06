@@ -302,7 +302,9 @@ macro_rules! impl_query_archetype_latest_at {
                     let bucket = create_and_fill_bucket(TimeInt::MIN, &arch_view)?;
                     *total_size_bytes += bucket.total_size_bytes;
 
-                    *timeless = Some(Arc::new(bucket));
+                    let bucket = Arc::new(bucket);
+                    *timeless = Some(Arc::clone(&bucket));
+                    query_time_bucket_at_query_time.insert(Arc::clone(&bucket));
 
                     Ok(())
                 }

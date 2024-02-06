@@ -448,6 +448,8 @@ fn query_and_compare(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
 ) {
+    re_log::setup_logging();
+
     for _ in 0..3 {
         let mut cached_data_time = None;
         let mut cached_instance_keys = Vec::new();
@@ -482,7 +484,7 @@ fn query_and_compare(
             .collect_vec();
 
         // Keep this around for the next unlucky chap.
-        // eprintln!("(expected={expected_data_time:?}, cached={cached_data_time:?})");
+        // eprintln!("i={i} (expected={expected_data_time:?}, cached={cached_data_time:?})");
 
         similar_asserts::assert_eq!(expected_data_time, cached_data_time);
         similar_asserts::assert_eq!(expected_instance_keys, cached_instance_keys);
