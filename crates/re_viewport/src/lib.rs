@@ -39,6 +39,11 @@ use re_viewer_context::{
     ApplicableEntities, DynSpaceViewClass, PerVisualizer, VisualizableEntities,
 };
 
+// TODO(andreas): Workaround for referencing non-blueprint components from blueprint archetypes.
+pub(crate) mod components {
+    pub use re_types::components::Name;
+}
+
 /// Determines the set of visible entities for a given space view.
 // TODO(andreas): This should be part of the SpaceView's (non-blueprint) state.
 // Updated whenever `applicable_entities_per_visualizer` or the space view blueprint changes.

@@ -20,6 +20,7 @@ marker_shape.py linguist-generated=true
 material.py linguist-generated=true
 media_type.py linguist-generated=true
 mesh_properties.py linguist-generated=true
+name.py linguist-generated=true
 out_of_tree_transform3d.py linguist-generated=true
 pinhole_projection.py linguist-generated=true
 position2d.py linguist-generated=true

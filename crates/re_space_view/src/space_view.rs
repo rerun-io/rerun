@@ -6,7 +6,10 @@ use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 use crate::DataQueryBlueprint;
 use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId};
 use re_query::query_archetype;
-use re_types::blueprint::components::{EntitiesDeterminedByUser, Name, SpaceViewOrigin, Visible};
+use re_types::{
+    blueprint::components::{EntitiesDeterminedByUser, SpaceViewOrigin, Visible},
+    components::Name,
+};
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataQueryId, DataResult, DynSpaceViewClass, PerSystemEntities,

@@ -28,7 +28,7 @@ pub struct ContainerBlueprint {
     pub container_kind: crate::blueprint::components::ContainerKind,
 
     /// The name of the container.
-    pub display_name: Option<crate::blueprint::components::Name>,
+    pub display_name: Option<crate::components::Name>,
 
     /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
     pub contents: Option<crate::blueprint::components::IncludedContents>,
@@ -81,7 +81,7 @@ impl ::re_types_core::SizeBytes for ContainerBlueprint {
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::components::ContainerKind>::is_pod()
-            && <Option<crate::blueprint::components::Name>>::is_pod()
+            && <Option<crate::components::Name>>::is_pod()
             && <Option<crate::blueprint::components::IncludedContents>>::is_pod()
             && <Option<crate::blueprint::components::ColumnShares>>::is_pod()
             && <Option<crate::blueprint::components::RowShares>>::is_pod()
@@ -106,10 +106,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.blueprint.components.ColumnShares".into(),
             "rerun.blueprint.components.GridColumns".into(),
             "rerun.blueprint.components.IncludedContents".into(),
-            "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.RowShares".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
+            "rerun.components.Name".into(),
         ]
     });
 
@@ -122,10 +122,10 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
             "rerun.blueprint.components.ColumnShares".into(),
             "rerun.blueprint.components.GridColumns".into(),
             "rerun.blueprint.components.IncludedContents".into(),
-            "rerun.blueprint.components.Name".into(),
             "rerun.blueprint.components.RowShares".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
+            "rerun.components.Name".into(),
         ]
     });
 
@@ -194,16 +194,15 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.ContainerBlueprint#container_kind")?
         };
-        let display_name =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Name") {
-                <crate::blueprint::components::Name>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ContainerBlueprint#display_name")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let display_name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
+            <crate::components::Name>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#display_name")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let contents = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.IncludedContents")
         {
@@ -333,10 +332,7 @@ impl ContainerBlueprint {
     }
 
     #[inline]
-    pub fn with_display_name(
-        mut self,
-        display_name: impl Into<crate::blueprint::components::Name>,
-    ) -> Self {
+    pub fn with_display_name(mut self, display_name: impl Into<crate::components::Name>) -> Self {
         self.display_name = Some(display_name.into());
         self
     }

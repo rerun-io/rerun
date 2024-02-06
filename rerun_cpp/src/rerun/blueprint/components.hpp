@@ -14,7 +14,6 @@
 #include "blueprint/components/included_contents.hpp"
 #include "blueprint/components/included_queries.hpp"
 #include "blueprint/components/included_space_views.hpp"
-#include "blueprint/components/name.hpp"
 #include "blueprint/components/panel_view.hpp"
 #include "blueprint/components/query_expressions.hpp"
 #include "blueprint/components/root_container.hpp"

@@ -1,9 +1,9 @@
 use re_query_cache::{MaybeCachedComponentData, QueryError};
 use re_types::archetypes;
-use re_types::components::{MarkerShape, StrokeWidth};
+use re_types::components::{MarkerShape, Name, StrokeWidth};
 use re_types::{
     archetypes::SeriesLine,
-    components::{Color, Scalar, Text},
+    components::{Color, Scalar},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
@@ -110,7 +110,7 @@ impl SeriesLineSystem {
             let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
             let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
-            let override_label = lookup_override::<Text>(data_result, ctx).map(|t| t.0);
+            let override_series_name = lookup_override::<Name>(data_result, ctx).map(|t| t.0);
             let override_stroke_width =
                 lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
 
@@ -120,7 +120,7 @@ impl SeriesLineSystem {
                 time: 0,
                 value: 0.0,
                 attrs: PlotPointAttrs {
-                    label: override_label.clone(), // default value is simply None
+                    label: None,
                     color: annotation_info.color(override_color, default_color),
                     stroke_width: override_stroke_width.unwrap_or(DEFAULT_STROKE_WIDTH),
                     kind: PlotSeriesKind::Continuous,
@@ -142,7 +142,7 @@ impl SeriesLineSystem {
 
                 // TODO(jleibs): need to do a "joined" archetype query
                 query_caches
-                    .query_archetype_pov1_comp4::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, Text, _>(
+                    .query_archetype_pov1_comp3::<archetypes::Scalar, Scalar, Color, StrokeWidth, MarkerShape, _>(
                         ctx.app_options.experimental_primary_caching_range,
                         store,
                         &query.clone().into(),
@@ -150,7 +150,7 @@ impl SeriesLineSystem {
                         // The `Scalar` archetype queries for `MarkerShape` in the point visualizer,
                         // and so it must do so here also.
                         // See https://github.com/rerun-io/rerun/pull/5029
-                        |((time, _row_id), _, scalars, colors, stroke_widths, _, labels)| {
+                        |((time, _row_id), _, scalars, colors, stroke_widths, _)| {
                             let Some(time) = time else {
                                 return;
                             }; // scalars cannot be timeless
@@ -170,11 +170,10 @@ impl SeriesLineSystem {
                                 return;
                             }
 
-                            for (scalar, color, stroke_width, label) in itertools::izip!(
+                            for (scalar, color, stroke_width) in itertools::izip!(
                                 scalars.iter(),
                                 MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
                                 MaybeCachedComponentData::iter_or_repeat_opt(&stroke_widths, scalars.len()),
-                                MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
                             ) {
                                 let mut point = PlotPoint {
                                     time: time.as_i64(),
@@ -199,12 +198,6 @@ impl SeriesLineSystem {
                                     }
                                 }
 
-                                if override_label.is_none() {
-                                    if let Some(label) = label.as_ref().map(|l| l.0.clone()) {
-                                        point.attrs.label = Some(label);
-                                    }
-                                }
-
                                 if override_stroke_width.is_none() {
                                     if let Some(stroke_width) = stroke_width.map(|r| r.0) {
                                         point.attrs.stroke_width = stroke_width;
@@ -217,6 +210,19 @@ impl SeriesLineSystem {
                     )?;
             }
 
+            // Check for an explicit label if any.
+            // We're using a separate latest-at query for this since the semantics for labels changing over time are a
+            // a bit unclear.
+            // Sidestepping the cache here shouldn't be a problem since we do so only once per entity.
+            let series_name = if let Some(override_name) = override_series_name {
+                Some(override_name)
+            } else {
+                ctx.entity_db
+                    .store()
+                    .query_latest_component::<Name>(&data_result.entity_path, &ctx.current_query())
+                    .map(|name| name.value.0)
+            };
+
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             points_to_series(
                 data_result,
@@ -224,6 +230,7 @@ impl SeriesLineSystem {
                 points,
                 store,
                 query,
+                series_name,
                 &mut self.all_series,
             );
         }

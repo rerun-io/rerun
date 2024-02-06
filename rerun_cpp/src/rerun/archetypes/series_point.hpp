@@ -7,6 +7,7 @@
 #include "../compiler_utils.hpp"
 #include "../components/color.hpp"
 #include "../components/marker_shape.hpp"
+#include "../components/name.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -24,6 +25,11 @@ namespace rerun::archetypes {
 
         /// What shape to use to represent the point
         std::optional<rerun::components::MarkerShape> marker;
+
+        /// Display name of the series.
+        ///
+        /// Used in the legend.
+        std::optional<rerun::components::Name> name;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -46,6 +52,15 @@ namespace rerun::archetypes {
         /// What shape to use to represent the point
         SeriesPoint with_marker(rerun::components::MarkerShape _marker) && {
             marker = std::move(_marker);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Display name of the series.
+        ///
+        /// Used in the legend.
+        SeriesPoint with_name(rerun::components::Name _name) && {
+            name = std::move(_name);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
