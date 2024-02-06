@@ -100,14 +100,13 @@ def log_trig() -> None:
 
 def log_classification() -> None:
     # Log components that don't change only once:
-    rr.log("classification/line", rr.SeriesLine(width=3.0))
+    rr.log("classification/line", rr.SeriesLine(color=[255, 255, 0], width=3.0), timeless=True)
 
     for t in range(0, 1000, 2):
         rr.set_time_sequence("frame_nr", t)
 
         f_of_t = (2 * 0.01 * t) + 2
-        color = [255, 255, 0]
-        rr.log("classification/line", rr.Scalar(f_of_t), rr.SeriesLine(color=color, width=3.0))
+        rr.log("classification/line", rr.Scalar(f_of_t))
 
         g_of_t = f_of_t + random.uniform(-5.0, 5.0)
         if g_of_t < f_of_t - 1.5:
