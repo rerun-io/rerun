@@ -29,7 +29,7 @@ default = []
 re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
 re_log_types.workspace = true # syntax-highlighting for EntityPath
 
-egui_commonmark.workspace = true
+egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
 egui.workspace = true
 parking_lot.workspace = true
