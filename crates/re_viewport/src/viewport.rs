@@ -797,7 +797,6 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
     fn on_edit(&mut self, edit_action: egui_tiles::EditAction) {
         match edit_action {
-            EditAction::TileResized | EditAction::TileDragged => {}
             EditAction::TileDropped => {
                 // TODO(ab): when we finally stop using egui_tiles as application-level data
                 //                  structure, this work-around should be unnecessary.
@@ -832,8 +831,11 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 
                 self.edited = true;
             }
-            EditAction::TabSelected => {
+            EditAction::TabSelected | EditAction::TileResized => {
                 self.edited = true;
+            }
+            EditAction::TileDragged => {
+                // no synchronisation needed
             }
         }
     }
