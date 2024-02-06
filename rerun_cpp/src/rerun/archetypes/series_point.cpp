@@ -31,8 +31,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.marker_sizes.has_value()) {
-            auto result = DataCell::from_loggable(archetype.marker_sizes.value());
+        if (archetype.marker_size.has_value()) {
+            auto result = DataCell::from_loggable(archetype.marker_size.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

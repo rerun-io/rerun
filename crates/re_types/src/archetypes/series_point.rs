@@ -35,8 +35,8 @@ pub struct SeriesPoint {
     /// Used in the legend.
     pub name: Option<crate::components::Name>,
 
-    /// Size of the markers.
-    pub marker_sizes: Option<Vec<crate::components::MarkerSize>>,
+    /// Size of the marker.
+    pub marker_size: Option<crate::components::MarkerSize>,
 }
 
 impl ::re_types_core::SizeBytes for SeriesPoint {
@@ -45,7 +45,7 @@ impl ::re_types_core::SizeBytes for SeriesPoint {
         self.color.heap_size_bytes()
             + self.marker.heap_size_bytes()
             + self.name.heap_size_bytes()
-            + self.marker_sizes.heap_size_bytes()
+            + self.marker_size.heap_size_bytes()
     }
 
     #[inline]
@@ -53,7 +53,7 @@ impl ::re_types_core::SizeBytes for SeriesPoint {
         <Option<crate::components::Color>>::is_pod()
             && <Option<crate::components::MarkerShape>>::is_pod()
             && <Option<crate::components::Name>>::is_pod()
-            && <Option<Vec<crate::components::MarkerSize>>>::is_pod()
+            && <Option<crate::components::MarkerSize>>::is_pod()
     }
 }
 
@@ -164,15 +164,12 @@ impl ::re_types_core::Archetype for SeriesPoint {
         } else {
             None
         };
-        let marker_sizes = if let Some(array) = arrays_by_name.get("rerun.components.MarkerSize") {
-            Some({
-                <crate::components::MarkerSize>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.SeriesPoint#marker_sizes")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.SeriesPoint#marker_sizes")?
-            })
+        let marker_size = if let Some(array) = arrays_by_name.get("rerun.components.MarkerSize") {
+            <crate::components::MarkerSize>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.SeriesPoint#marker_size")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
@@ -180,7 +177,7 @@ impl ::re_types_core::Archetype for SeriesPoint {
             color,
             marker,
             name,
-            marker_sizes,
+            marker_size,
         })
     }
 }
@@ -200,9 +197,9 @@ impl ::re_types_core::AsComponents for SeriesPoint {
             self.name
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.marker_sizes
+            self.marker_size
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -221,7 +218,7 @@ impl SeriesPoint {
             color: None,
             marker: None,
             name: None,
-            marker_sizes: None,
+            marker_size: None,
         }
     }
 
@@ -244,11 +241,11 @@ impl SeriesPoint {
     }
 
     #[inline]
-    pub fn with_marker_sizes(
+    pub fn with_marker_size(
         mut self,
-        marker_sizes: impl IntoIterator<Item = impl Into<crate::components::MarkerSize>>,
+        marker_size: impl Into<crate::components::MarkerSize>,
     ) -> Self {
-        self.marker_sizes = Some(marker_sizes.into_iter().map(Into::into).collect());
+        self.marker_size = Some(marker_size.into());
         self
     }
 }
