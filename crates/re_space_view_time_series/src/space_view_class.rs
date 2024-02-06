@@ -315,13 +315,20 @@ It can greatly improve performance (and readability) in such situations as it pr
 
         let auto_y = y_range.is_none();
 
+        // We don't want to allow scrolling when y is locked unless using the hoizontal scroll modifier.
+        // Otherwise the view "bounces" when we scroll and then reset to the locked range.
+        let allow_scroll = ui.input(|i| i.modifiers.contains(controls::HORIZONTAL_SCROLL_MODIFIER))
+            || !lock_y_during_zoom;
+
+        // TODO(jleibs): Would be nice to disable vertical drag instead of just resetting.
+
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.space_view_id))
             .auto_bounds([true, auto_y].into())
             .allow_zoom([true, !lock_y_during_zoom])
             .allow_boxed_zoom(!lock_y_during_zoom)
-            .allow_scroll(!lock_y_during_zoom)
+            .allow_scroll(allow_scroll)
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
