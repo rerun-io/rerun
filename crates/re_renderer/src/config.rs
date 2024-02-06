@@ -74,7 +74,7 @@ pub struct DeviceCaps {
 
     /// Maximum buffer size in bytes.
     ///
-    /// Since this has a direct effect much data a user can wrangle on the gpu, we always pick the highest possible.
+    /// Since this has a direct effect on how much data a user can wrangle on the gpu, we always pick the highest possible.
     pub max_buffer_size: u64,
 
     /// Wgpu backend type.
