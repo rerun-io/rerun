@@ -4,6 +4,7 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, EntityPathFilter};
+use re_tracing::profile_scope;
 use re_types::components::TensorData;
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem as _, PerSystemEntities, RecommendedSpaceView,
@@ -176,7 +177,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // Spawn a space view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
+        let mut heuristics = SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
             let split_root_spaces =
                 root_space_split_heuristic(topo, &indicated_entities, SubSpaceDimensionality::TwoD);
 
@@ -232,7 +233,34 @@ impl SpaceViewClass for SpatialSpaceView2D {
                     .collect(),
             }
         })
-        .unwrap_or_default()
+        .unwrap_or_default();
+
+        // Find all entities that are not yet covered by the recommended space views and create a recommended
+        // space-view for each one at that specific entity path.
+        // TODO(jleibs): This is expensive. Would be great to track this as we build up the covering instead.
+        {
+            profile_scope!("space_view_2d: find uncovered entities");
+            let remaining_entities = indicated_entities
+                .iter()
+                .filter(|entity| {
+                    heuristics
+                        .recommended_space_views
+                        .iter()
+                        .all(|r| !r.query_filter.is_included(entity))
+                })
+                .collect::<Vec<_>>();
+
+            for entity in remaining_entities {
+                heuristics
+                    .recommended_space_views
+                    .push(RecommendedSpaceView {
+                        root: entity.clone(),
+                        query_filter: EntityPathFilter::single_entity_filter(entity),
+                    });
+            }
+        }
+
+        heuristics
     }
 
     fn selection_ui(
