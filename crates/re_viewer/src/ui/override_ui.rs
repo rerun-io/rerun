@@ -1,14 +1,17 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
+
 use re_data_store::{DataStore, LatestAtQuery};
-use re_data_ui::{is_component_visible_in_ui, item_ui, temporary_style_ui_for_component};
+use re_data_ui::{is_component_visible_in_ui, temporary_style_ui_for_component};
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{ComponentPath, DataCell, DataRow, RowId, StoreKind};
+use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_query_cache::external::re_query::get_component_with_instances;
 use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
-use re_types_core::components::VisualizerOverrides;
-use re_types_core::{components::InstanceKey, ComponentName};
+use re_types_core::{
+    components::{InstanceKey, VisualizerOverrides},
+    ComponentName,
+};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataResult, SystemCommand, SystemCommandSender as _,
     UiVerbosity, ViewSystemIdentifier, ViewerContext,
@@ -130,11 +133,10 @@ pub fn override_ui(
                     // Component label
                     row.col(|ui| {
                         temporary_style_ui_for_component(ui, component_name, |ui| {
-                            item_ui::component_path_button(
-                                ctx,
-                                ui,
-                                &ComponentPath::new(entity_path.clone(), *component_name),
-                            );
+                            //  NOTE: this is not a component button because it is not a component that exists in the recording, just in the blueprint.
+                            // So we don't allow users to select it.
+                            ui.label(component_name.short_name())
+                                .on_hover_text(component_name.full_name());
                         });
                     });
                     // Editor last to take up remainder of space
