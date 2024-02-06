@@ -24,12 +24,14 @@ pub struct AppOptions {
 
     /// Toggle primary caching for latest-at queries.
     ///
-    /// Applies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.
+    /// Applies to the 2D/3D point cloud and 2D/3D box space views.
     pub experimental_primary_caching_latest_at: bool,
 
     /// Toggle primary caching for range queries.
     ///
-    /// Applies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.
+    /// Applies to the 2D/3D point cloud, 2D/3D box and text log space views.
+    ///
+    /// Range caching is always enabled for time series, independent of this setting.
     pub experimental_primary_caching_range: bool,
 
     /// Toggle query clamping for the plot visualizers.
