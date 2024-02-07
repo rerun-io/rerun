@@ -470,10 +470,10 @@ fn visible_history_boundary_ui(
     let response = match visible_history_boundary {
         VisibleHistoryBoundary::RelativeToTimeCursor(value) => {
             // see note above
-            let low_bound_override = if !low_bound {
-                Some(other_boundary_absolute.saturating_sub(current_time))
-            } else {
+            let low_bound_override = if low_bound {
                 None
+            } else {
+                Some(other_boundary_absolute.saturating_sub(current_time))
             };
 
             match time_type {
@@ -504,10 +504,10 @@ fn visible_history_boundary_ui(
         }
         VisibleHistoryBoundary::Absolute(value) => {
             // see note above
-            let low_bound_override = if !low_bound {
-                Some(other_boundary_absolute)
-            } else {
+            let low_bound_override = if low_bound {
                 None
+            } else {
+                Some(other_boundary_absolute)
             };
 
             match time_type {

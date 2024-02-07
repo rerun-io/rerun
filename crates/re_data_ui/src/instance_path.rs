@@ -57,13 +57,11 @@ impl DataUi for InstancePath {
         // First show indicator components, outside the grid:
         if show_indicator_comps {
             for component_name in indicator_components {
-                crate::temporary_style_ui_for_component(ui, &component_name, |ui| {
-                    item_ui::component_path_button(
-                        ctx,
-                        ui,
-                        &ComponentPath::new(entity_path.clone(), component_name),
-                    );
-                });
+                item_ui::component_path_button(
+                    ctx,
+                    ui,
+                    &ComponentPath::new(entity_path.clone(), component_name),
+                );
             }
         }
 
@@ -76,13 +74,11 @@ impl DataUi for InstancePath {
                     continue; // no need to show components that are unset at this point in time
                 };
 
-                crate::temporary_style_ui_for_component(ui, &component_name, |ui| {
-                    item_ui::component_path_button(
-                        ctx,
-                        ui,
-                        &ComponentPath::new(entity_path.clone(), component_name),
-                    );
-                });
+                item_ui::component_path_button(
+                    ctx,
+                    ui,
+                    &ComponentPath::new(entity_path.clone(), component_name),
+                );
 
                 if instance_key.is_splat() {
                     super::component::EntityComponentWithInstances {

@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use itertools::Itertools;
 
 use re_data_store::{DataStore, LatestAtQuery};
-use re_data_ui::{is_component_visible_in_ui, temporary_style_ui_for_component};
+use re_data_ui::is_component_visible_in_ui;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
 use re_query_cache::external::re_query::get_component_with_instances;
@@ -132,12 +132,10 @@ pub fn override_ui(
                     });
                     // Component label
                     row.col(|ui| {
-                        temporary_style_ui_for_component(ui, component_name, |ui| {
-                            //  NOTE: this is not a component button because it is not a component that exists in the recording, just in the blueprint.
-                            // So we don't allow users to select it.
-                            ui.label(component_name.short_name())
-                                .on_hover_text(component_name.full_name());
-                        });
+                        //  NOTE: this is not a component button because it is not a component that exists in the recording, just in the blueprint.
+                        // So we don't allow users to select it.
+                        ui.label(component_name.short_name())
+                            .on_hover_text(component_name.full_name());
                     });
                     // Editor last to take up remainder of space
                     row.col(|ui| {

@@ -60,28 +60,6 @@ pub fn is_component_visible_in_ui(component_name: &ComponentName) -> bool {
     !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
 }
 
-pub fn temporary_style_ui_for_component<R>(
-    ui: &mut egui::Ui,
-    component_name: &ComponentName,
-    add_contents: impl FnOnce(&mut egui::Ui) -> R,
-) -> R {
-    let old_style: egui::Style = (**ui.style()).clone();
-
-    if component_name.is_indicator_component() {
-        // Make indicator components stand out by making them slightly fainter:
-
-        let inactive = &mut ui.style_mut().visuals.widgets.inactive;
-        // TODO(emilk): get a color from the design-tokens
-        inactive.fg_stroke.color = inactive.fg_stroke.color.linear_multiply(0.45);
-    }
-
-    let ret = add_contents(ui);
-
-    ui.set_style(old_style);
-
-    ret
-}
-
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
 pub trait DataUi {
     /// If you need to lookup something in the data store, use the given query to do so.
