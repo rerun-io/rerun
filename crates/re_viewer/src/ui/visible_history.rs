@@ -144,9 +144,8 @@ pub fn visible_history_ui(
                 .range_end_from_cursor(current_time.into())
                 .as_i64();
 
-            egui::Grid::new("from_to").show(ui, |ui| {
+            egui::Grid::new("from_to_ediable").show(ui, |ui| {
                 re_ui.grid_left_hand_label(ui, "From");
-
                 interacting_with_controls |= ui
                     .horizontal(|ui| {
                         visible_history_boundary_ui(
@@ -190,21 +189,27 @@ pub fn visible_history_ui(
             {
                 ui.label("Entire timeline.");
             } else {
-                resolved_visible_history_boundary_ui(
-                    ctx,
-                    ui,
-                    &resolved_visible_history.from,
-                    time_type,
-                    true,
-                );
+                egui::Grid::new("from_to_labels").show(ui, |ui| {
+                    re_ui.grid_left_hand_label(ui, "From");
+                    resolved_visible_history_boundary_ui(
+                        ctx,
+                        ui,
+                        &resolved_visible_history.from,
+                        time_type,
+                        true,
+                    );
+                    ui.end_row();
 
-                resolved_visible_history_boundary_ui(
-                    ctx,
-                    ui,
-                    &resolved_visible_history.to,
-                    time_type,
-                    false,
-                );
+                    re_ui.grid_left_hand_label(ui, "To");
+                    resolved_visible_history_boundary_ui(
+                        ctx,
+                        ui,
+                        &resolved_visible_history.to,
+                        time_type,
+                        false,
+                    );
+                    ui.end_row();
+                });
 
                 current_range_ui(ctx, ui, current_time, time_type, resolved_visible_history);
             }
@@ -289,7 +294,6 @@ fn resolved_visible_history_boundary_ui(
     time_type: TimeType,
     low_bound: bool,
 ) {
-    let from_to = if low_bound { "From" } else { "To" };
     let boundary_type = match visible_history_boundary {
         VisibleHistoryBoundary::RelativeToTimeCursor(_) => match time_type {
             TimeType::Time => "current time",
@@ -308,7 +312,7 @@ fn resolved_visible_history_boundary_ui(
         }
     };
 
-    let mut label = format!("{from_to} {boundary_type}");
+    let mut label = boundary_type.to_owned();
 
     match visible_history_boundary {
         VisibleHistoryBoundary::RelativeToTimeCursor(offset) => {
