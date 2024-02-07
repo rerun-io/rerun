@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::SeriesPoint::new()
             .with_color([255, 0, 0])
             .with_name("sin(0.01t)")
-            .with_marker(1)
+            .with_marker(rerun::components::MarkerShape::CIRCLE)
             .with_marker_size(4.0),
     )?;
     rec.log_timeless(
@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::SeriesPoint::new()
             .with_color([0, 255, 0])
             .with_name("cos(0.01t)")
-            .with_marker(4)
+            .with_marker(rerun::components::MarkerShape::CROSS)
             .with_marker_size(2.0),
     )?;
 

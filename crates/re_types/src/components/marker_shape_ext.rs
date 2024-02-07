@@ -1,5 +1,18 @@
 use super::MarkerShape;
 
+impl MarkerShape {
+    pub const CIRCLE: u8 = 1;
+    pub const DIAMOND: u8 = 2;
+    pub const SQUARE: u8 = 3;
+    pub const CROSS: u8 = 4;
+    pub const PLUS: u8 = 5;
+    pub const UP: u8 = 6;
+    pub const DOWN: u8 = 7;
+    pub const LEFT: u8 = 8;
+    pub const RIGHT: u8 = 9;
+    pub const ASTERISK: u8 = 10;
+}
+
 #[cfg(feature = "egui_plot")]
 fn egui_to_u8(marker: egui_plot::MarkerShape) -> u8 {
     match marker {
