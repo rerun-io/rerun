@@ -191,10 +191,7 @@ pub fn visible_history_ui(
             } else if resolved_visible_history.from == VisibleHistoryBoundary::AT_CURSOR
                 && resolved_visible_history.to == VisibleHistoryBoundary::AT_CURSOR
             {
-                let current_time = time_type.format(
-                    current_time.into(),
-                    ctx.app_options.time_zone_for_timestamps,
-                );
+                let current_time = time_type.format(current_time.into(), ctx.app_options.time_zone);
                 match time_type {
                     TimeType::Time => {
                         ui.label(format!("At current time: {current_time}"));
@@ -294,8 +291,8 @@ fn current_range_ui(
     visible_history: &VisibleHistory,
 ) {
     let time_range = visible_history.time_range(current_time.into());
-    let from_formatted = time_type.format(time_range.min, ctx.app_options.time_zone_for_timestamps);
-    let to_formatted = time_type.format(time_range.max, ctx.app_options.time_zone_for_timestamps);
+    let from_formatted = time_type.format(time_range.min, ctx.app_options.time_zone);
+    let to_formatted = time_type.format(time_range.max, ctx.app_options.time_zone);
 
     ui.label(format!("{from_formatted} to {to_formatted}"))
         .on_hover_text("Showing data in this range (inclusive).");
@@ -362,7 +359,7 @@ fn resolved_visible_history_boundary_ui(
         VisibleHistoryBoundary::Absolute(time) => {
             label += &format!(
                 " {}",
-                time_type.format((*time).into(), ctx.app_options.time_zone_for_timestamps)
+                time_type.format((*time).into(), ctx.app_options.time_zone)
             );
         }
         VisibleHistoryBoundary::Infinite => {}
@@ -487,7 +484,7 @@ fn visible_history_boundary_ui(
                             value,
                             false,
                             low_bound_override,
-                            ctx.app_options.time_zone_for_timestamps,
+                            ctx.app_options.time_zone,
                         )
                         .0
                         .on_hover_text(
@@ -520,7 +517,7 @@ fn visible_history_boundary_ui(
                         value,
                         true,
                         low_bound_override,
-                        ctx.app_options.time_zone_for_timestamps,
+                        ctx.app_options.time_zone,
                     );
 
                     if let Some(base_time_resp) = base_time_resp {
