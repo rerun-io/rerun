@@ -187,7 +187,7 @@ pub fn visible_history_ui(
             if resolved_visible_history.from == VisibleHistoryBoundary::Infinite
                 && resolved_visible_history.to == VisibleHistoryBoundary::Infinite
             {
-                ui.label("Entire timeline.");
+                ui.label("Entire timeline");
             } else if resolved_visible_history.from == VisibleHistoryBoundary::AT_CURSOR
                 && resolved_visible_history.to == VisibleHistoryBoundary::AT_CURSOR
             {
