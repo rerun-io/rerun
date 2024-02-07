@@ -45,7 +45,7 @@ namespace rerun::archetypes {
     ///
     ///     // Set up plot styling:
     ///     // They are logged timeless as they don't change over time and apply to all timelines.
-    ///     // Log two lines series under a shared root so that they show in the same plot by default.
+    ///     // Log two point series under a shared root so that they show in the same plot by default.
     ///     rec.log_timeless(
     ///         "trig/sin",
     ///         rerun::SeriesPoint()
