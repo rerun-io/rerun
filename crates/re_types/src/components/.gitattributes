@@ -25,6 +25,7 @@ pinhole_projection.rs linguist-generated=true
 position2d.rs linguist-generated=true
 position3d.rs linguist-generated=true
 radius.rs linguist-generated=true
+range1d.rs linguist-generated=true
 resolution.rs linguist-generated=true
 rotation3d.rs linguist-generated=true
 scalar.rs linguist-generated=true

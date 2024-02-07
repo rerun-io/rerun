@@ -4,5 +4,6 @@
 
 #include "blueprint/archetypes/container_blueprint.hpp"
 #include "blueprint/archetypes/plot_legend.hpp"
+#include "blueprint/archetypes/scalar_axis.hpp"
 #include "blueprint/archetypes/space_view_blueprint.hpp"
 #include "blueprint/archetypes/viewport_blueprint.hpp"

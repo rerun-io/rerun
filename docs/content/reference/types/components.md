@@ -32,6 +32,7 @@ Archetypes are bundles of components
 * [`Position2D`](components/position2d.md)
 * [`Position3D`](components/position3d.md)
 * [`Radius`](components/radius.md)
+* [`Range1D`](components/range1d.md)
 * [`Resolution`](components/resolution.md)
 * [`Rotation3D`](components/rotation3d.md)
 * [`Scalar`](components/scalar.md)
