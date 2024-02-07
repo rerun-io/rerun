@@ -22,6 +22,12 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Define the style properties for a point series in a chart.
+///
+/// This archetype only provides styling information and should be logged as timeless
+/// when possible. The underlying data needs to be logged to the same entity-path using
+/// the `Scalar` archetype.
+///
+/// See [`Scalar`][crate::archetypes.Scalar]
 #[derive(Clone, Debug)]
 pub struct SeriesPoint {
     /// Color for the corresponding series.

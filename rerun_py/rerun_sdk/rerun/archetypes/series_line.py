@@ -29,7 +29,7 @@ class SeriesLine(Archetype):
 
     Example
     -------
-    ### Series Line Style:
+    ### Series Line:
     ```python
     from math import cos, sin, tau
 
@@ -52,11 +52,11 @@ class SeriesLine(Archetype):
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_line_style/3b8ab5b4ab4a5096559ab0c64d6501469ae66738/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/series_line_style/3b8ab5b4ab4a5096559ab0c64d6501469ae66738/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/series_line_style/3b8ab5b4ab4a5096559ab0c64d6501469ae66738/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/series_line_style/3b8ab5b4ab4a5096559ab0c64d6501469ae66738/1200w.png">
-      <img src="https://static.rerun.io/series_line_style/3b8ab5b4ab4a5096559ab0c64d6501469ae66738/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1200w.png">
+      <img src="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/full.png" width="640">
     </picture>
     </center>
     """
