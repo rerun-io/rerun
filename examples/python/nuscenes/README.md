@@ -23,3 +23,5 @@ contains lidar data, radar data, color images, and labeled bounding boxes.
 pip install -r examples/python/nuscenes/requirements.txt
 python examples/python/nuscenes/main.py
 ```
+
+Requires at least Python 3.9 to run.

@@ -626,20 +626,18 @@ impl DataCell {
 impl SizeBytes for DataCell {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        (self.inner.size_bytes > 0)
-            .then_some(self.inner.size_bytes)
-            .unwrap_or_else(|| {
-                // NOTE: Relying on unsized cells is always a mistake, but it isn't worth crashing
-                // the viewer when in release mode.
-                debug_assert!(
-                    false,
-                    "called `DataCell::heap_size_bytes() without computing it first"
-                );
-                re_log::warn_once!(
-                    "called `DataCell::heap_size_bytes() without computing it first"
-                );
-                0
-            })
+        if 0 < self.inner.size_bytes {
+            self.inner.size_bytes
+        } else {
+            // NOTE: Relying on unsized cells is always a mistake, but it isn't worth crashing
+            // the viewer when in release mode.
+            debug_assert!(
+                false,
+                "called `DataCell::heap_size_bytes() without computing it first"
+            );
+            re_log::warn_once!("called `DataCell::heap_size_bytes() without computing it first");
+            0
+        }
     }
 }
 

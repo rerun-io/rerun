@@ -238,14 +238,8 @@ impl ViewportBlueprint {
             return None;
         };
 
-        let new_space_view = space_view.duplicate();
+        let new_space_view = space_view.duplicate(ctx.store_context.blueprint, ctx.blueprint_query);
         let new_space_view_id = new_space_view.id;
-
-        // copy entity properties from the old space view
-        let data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
-        let new_data_result =
-            new_space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
-        new_data_result.save_override(data_result.individual_properties().cloned(), ctx);
 
         self.add_space_views(std::iter::once(new_space_view), ctx, None);
 

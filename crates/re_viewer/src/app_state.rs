@@ -173,6 +173,10 @@ impl AppState {
         let rec_cfg =
             recording_config_entry(recording_configs, entity_db.store_id().clone(), entity_db);
 
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+            rec_cfg.selection_state.clear_current();
+        }
+
         let applicable_entities_per_visualizer = space_view_class_registry
             .applicable_entities_for_visualizer_systems(entity_db.store_id());
         let indicated_entities_per_visualizer =

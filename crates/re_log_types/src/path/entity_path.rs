@@ -319,6 +319,17 @@ impl From<&EntityPath> for re_types_core::datatypes::EntityPath {
     }
 }
 
+impl<Idx> std::ops::Index<Idx> for EntityPath
+where
+    Idx: std::slice::SliceIndex<[EntityPathPart]>,
+{
+    type Output = Idx::Output;
+
+    #[inline]
+    fn index(&self, index: Idx) -> &Self::Output {
+        &self.parts[index]
+    }
+}
 // ----------------------------------------------------------------------------
 
 use re_types_core::Loggable;

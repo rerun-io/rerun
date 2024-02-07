@@ -97,7 +97,11 @@ impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
 impl<T: SizeBytes, const N: usize> SizeBytes for [T; N] {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        0 // it's a const-sized array
+        if T::is_pod() {
+            0 // it's a const-sized array
+        } else {
+            self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
+        }
     }
 }
 
@@ -131,10 +135,15 @@ impl<T: SizeBytes, const N: usize> SizeBytes for SmallVec<[T; N]> {
     /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        if self.len() < N {
+        if self.len() <= N {
             // The `SmallVec` is still smaller than the threshold so no heap data has been
-            // allocated yet.
-            0
+            // allocated yet, beyond the heap data each element might have.
+
+            if T::is_pod() {
+                0 // early-out
+            } else {
+                self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
+            }
         } else {
             // NOTE: It's all on the heap at this point.
             if T::is_pod() {
