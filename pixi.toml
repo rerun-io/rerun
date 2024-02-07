@@ -101,7 +101,7 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 [dependencies]
 attrs = ">=23.1.0"
 blackdoc = "0.3.8"
-clang-tools = "=16"          # clang-format
+clang-tools = "16.0.6"       # clang-format
 cmake = "3.27.6"
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
@@ -131,19 +131,19 @@ tomlkit = "0.12.3.*"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
-clang = "=16"
+clang = "16.0.6"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
 ninja = "1.11.1"
 
 [target.osx-64.dependencies]
-clang = "=16"
+clang = "16.0.6"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
 ninja = "1.11.1"
 
 [target.osx-arm64.dependencies]
-clang = "=16"
+clang = "16.0.6"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
 ninja = "1.11.1"
