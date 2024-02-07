@@ -334,10 +334,7 @@ fn what_is_selected_ui(
                 if let Some(info) = entity_db.store_info() {
                     let time = info
                         .started
-                        .format_time_custom(
-                            "[hour]:[minute]:[second]",
-                            ctx.app_options.time_zone_for_timestamps,
-                        )
+                        .format_time_custom("[hour]:[minute]:[second]", ctx.app_options.time_zone)
                         .unwrap_or("<unknown time>".to_owned());
 
                     format!("{} - {}", info.application_id, time)

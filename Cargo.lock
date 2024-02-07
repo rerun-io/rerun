@@ -1714,9 +1714,9 @@ dependencies = [
 
 [[package]]
 name = "egui_tiles"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f55cf6a469bfbcb0013899ca8e73cd7a882d57abc1938f2df9845f388bc8edf1"
+checksum = "1bb10cef7bdbd1adb158aec9cca20f34779fd40ea126e02662ab558189f1c435"
 dependencies = [
  "ahash",
  "egui",
@@ -4338,7 +4338,6 @@ dependencies = [
  "anyhow",
  "criterion",
  "document-features",
- "egui_plot",
  "emath",
  "getrandom",
  "itertools 0.12.0",

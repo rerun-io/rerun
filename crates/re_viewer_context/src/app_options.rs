@@ -35,7 +35,8 @@ pub struct AppOptions {
     pub blueprint_gc: bool,
 
     /// What time zone to display timestamps in.
-    pub time_zone_for_timestamps: TimeZone,
+    #[serde(rename = "time_zone_for_timestamps")]
+    pub time_zone: TimeZone,
 }
 
 impl Default for AppOptions {
@@ -44,7 +45,7 @@ impl Default for AppOptions {
             low_latency: 0.100,
             warn_latency: 0.200,
 
-            show_metrics: false,
+            show_metrics: cfg!(debug_assertions),
 
             #[cfg(not(target_arch = "wasm32"))]
             experimental_space_view_screenshots: false,
@@ -63,7 +64,7 @@ impl Default for AppOptions {
 
             blueprint_gc: true,
 
-            time_zone_for_timestamps: TimeZone::Utc,
+            time_zone: TimeZone::Utc,
         }
     }
 }

@@ -29,6 +29,9 @@ This checks whether one can override all properties in a plot.
 * Override the `plots/cos` entity Visible time range
   * Verify all 3 offset modes operate as expected
 
+### Overrides are cloned
+* After overriding things on both the space-view and the entity, clone the space-view.
+
 If nothing weird happens, you can close this recording.
 """
 

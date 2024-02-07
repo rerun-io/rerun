@@ -47,7 +47,7 @@ impl crate::DataUi for re_entity_db::EntityDb {
                 ui.end_row();
 
                 re_ui.grid_left_hand_label(ui, "Recording started");
-                ui.label(started.format(ctx.app_options.time_zone_for_timestamps));
+                ui.label(started.format(ctx.app_options.time_zone));
                 ui.end_row();
 
                 re_ui.grid_left_hand_label(ui, "Source");

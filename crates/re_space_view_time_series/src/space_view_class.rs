@@ -375,7 +375,7 @@ It can greatly improve performance (and readability) in such situations as it pr
         // TODO(jleibs): Would be nice to disable vertical drag instead of just resetting.
 
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
-        let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
+        let time_zone_for_timestamps = ctx.app_options.time_zone;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.space_view_id))
             .auto_bounds([true, auto_y].into())
@@ -426,6 +426,8 @@ It can greatly improve performance (and readability) in such situations as it pr
 
         let mut plot_item_id_to_entity_path = HashMap::default();
 
+        let mut is_resetting = false;
+
         let egui_plot::PlotResponse {
             inner: _,
             response,
@@ -444,7 +446,7 @@ It can greatly improve performance (and readability) in such situations as it pr
 
             let range_was_edited = state.last_range != y_range;
             state.last_range = y_range;
-            let is_resetting = plot_ui.response().double_clicked();
+            is_resetting = plot_ui.response().double_clicked();
             let current_auto = plot_ui.auto_bounds();
 
             if let Some(y_range) = y_range {
@@ -529,17 +531,26 @@ It can greatly improve performance (and readability) in such situations as it pr
             })
             .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
-        // Interact with the plot items (lines, scatters, etc.)
-        if let Some(entity_path) = hovered_plot_item
-            .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
-        {
-            ctx.select_hovered_on_click(
-                &response,
-                re_viewer_context::Item::InstancePath(
-                    Some(query.space_view_id),
-                    entity_path.clone().into(),
-                ),
-            );
+        // If we are not resetting on this frame, interact with the plot items (lines, scatters, etc.)
+        if !is_resetting {
+            if let Some(hovered) = hovered_plot_item
+                .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
+                .map(|entity_path| {
+                    re_viewer_context::Item::InstancePath(
+                        Some(query.space_view_id),
+                        entity_path.clone().into(),
+                    )
+                })
+                .or_else(|| {
+                    if response.hovered() {
+                        Some(re_viewer_context::Item::SpaceView(query.space_view_id))
+                    } else {
+                        None
+                    }
+                })
+            {
+                ctx.select_hovered_on_click(&response, hovered);
+            }
         }
 
         if let Some(mut time_x) = time_x {
