@@ -96,13 +96,17 @@ impl DataQueryBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        // Note: pending_writes already contains the whole subtree, including query expressions.
-        // so this is all we need to save.
+        // Save any pending writes from a duplication.
         ctx.command_sender
             .send_system(SystemCommand::UpdateBlueprint(
                 ctx.store_context.blueprint.store_id().clone(),
                 self.pending_writes.clone(),
             ));
+
+        ctx.save_blueprint_component(
+            &self.id.as_entity_path(),
+            QueryExpressions::from(&self.entity_path_filter),
+        );
     }
 
     /// Creates a new [`DataQueryBlueprint`] with a the same contents, but a different [`DataQueryId`]
