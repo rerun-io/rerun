@@ -144,7 +144,7 @@ pub fn visible_history_ui(
                 .range_end_from_cursor(current_time.into())
                 .as_i64();
 
-            egui::Grid::new("from_to_ediable").show(ui, |ui| {
+            egui::Grid::new("from_to_editable").show(ui, |ui| {
                 re_ui.grid_left_hand_label(ui, "From");
                 interacting_with_controls |= ui
                     .horizontal(|ui| {
