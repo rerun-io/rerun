@@ -233,7 +233,7 @@ typedef struct rr_error {
 ///
 /// This should match the string returned by `rr_version_string`.
 /// If not, the SDK's binary and the C header are out of sync.
-#define RERUN_SDK_HEADER_VERSION "0.13.0-rc.1"
+#define RERUN_SDK_HEADER_VERSION "0.13.0-rc.2"
 
 /// Returns a human-readable version string of the Rerun C SDK.
 ///
