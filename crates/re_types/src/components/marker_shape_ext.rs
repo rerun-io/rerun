@@ -1,16 +1,18 @@
 use super::MarkerShape;
 
+// TODO(#3384): This should be generated
+#[allow(non_upper_case_globals)]
 impl MarkerShape {
-    pub const CIRCLE: u8 = 1;
-    pub const DIAMOND: u8 = 2;
-    pub const SQUARE: u8 = 3;
-    pub const CROSS: u8 = 4;
-    pub const PLUS: u8 = 5;
-    pub const UP: u8 = 6;
-    pub const DOWN: u8 = 7;
-    pub const LEFT: u8 = 8;
-    pub const RIGHT: u8 = 9;
-    pub const ASTERISK: u8 = 10;
+    pub const Circle: u8 = 1;
+    pub const Diamond: u8 = 2;
+    pub const Square: u8 = 3;
+    pub const Cross: u8 = 4;
+    pub const Plus: u8 = 5;
+    pub const Up: u8 = 6;
+    pub const Down: u8 = 7;
+    pub const Left: u8 = 8;
+    pub const Right: u8 = 9;
+    pub const Asterisk: u8 = 10;
 }
 
 #[cfg(feature = "egui_plot")]
