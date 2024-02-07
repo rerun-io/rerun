@@ -107,6 +107,11 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     // NO MORE SAMPLE TYPES CAN BE ADDED TO THIS SHADER!
     // The shader is already too large and adding more sample types will push us over the size limit.
     // See: https://github.com/rerun-io/rerun/issues/3931, https://github.com/rerun-io/rerun/issues/5073
+    //
+    // Note, in all the below branches we load the texture for all coords, even if we aren't doing to
+    // use them. This avoids a branch to avoid running afoul of the size constraints in the above
+    // bug. However, all coords were set to the same value above and so we should generally be hitting
+    // the texture cache making this not quite as awful as it may appear.
     if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
         normalized_value = decode_color_and_filter_nearest_or_bilinear(
             filter_nearest,
