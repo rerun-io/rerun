@@ -681,11 +681,11 @@ impl TimePanel {
             let clip_rect_save = ui.clip_rect();
 
             for component_name in re_data_ui::ui_visible_components(tree.entity.components.keys()) {
-                let data = &tree.entity.components[component_name];
+                let data = &tree.entity.components[&component_name];
 
                 let component_has_data_in_current_timeline =
                     time_ctrl.component_has_data_in_current_timeline(data);
-                let component_path = ComponentPath::new(tree.path.clone(), *component_name);
+                let component_path = ComponentPath::new(tree.path.clone(), component_name);
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path);
 
@@ -694,7 +694,7 @@ impl TimePanel {
                 ui.set_clip_rect(clip_rect);
 
                 let response =
-                    re_data_ui::temporary_style_ui_for_component(ui, component_name, |ui| {
+                    re_data_ui::temporary_style_ui_for_component(ui, &component_name, |ui| {
                         ListItem::new(ctx.re_ui, short_component_name)
                             .selected(ctx.selection().contains_item(&item.to_item()))
                             .width_allocation_mode(WidthAllocationMode::Compact)

@@ -41,16 +41,17 @@ pub use image_meaning::image_meaning_for_entity;
 /// and order the other components in a cosnsiten way.
 pub fn ui_visible_components<'a>(
     iter: impl IntoIterator<Item = &'a ComponentName> + 'a,
-) -> impl Iterator<Item = &'a ComponentName> {
-    let mut components: Vec<&ComponentName> = iter
+) -> Vec<ComponentName> {
+    let mut components: Vec<ComponentName> = iter
         .into_iter()
-        .filter(|c| is_component_visible_in_ui(c))
+        .cloned()
+        .filter(is_component_visible_in_ui)
         .collect();
 
     // Put indicator components first:
     components.sort_by_key(|c| (!c.is_indicator_component(), c.full_name()));
 
-    components.into_iter()
+    components
 }
 
 /// Show this component in the UI.
