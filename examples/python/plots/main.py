@@ -88,13 +88,13 @@ def log_trig() -> None:
     rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), timeless=True)
     rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), timeless=True)
 
-    for t in range(0, int(tau * 2 * 1000.0)):
+    for t in range(0, int(tau * 2 * 100.0)):
         rr.set_time_sequence("frame_nr", t)
 
-        sin_of_t = sin(float(t) / 1000.0)
+        sin_of_t = sin(float(t) / 100.0)
         rr.log("trig/sin", rr.Scalar(sin_of_t))
 
-        cos_of_t = cos(float(t) / 1000.0)
+        cos_of_t = cos(float(t) / 100.0)
         rr.log("trig/cos", rr.Scalar(cos_of_t))
 
 
