@@ -1,4 +1,4 @@
-use std::{ops::Index, slice::SliceIndex, sync::Arc};
+use std::sync::Arc;
 
 use re_string_interner::InternedString;
 use re_types_core::SizeBytes;
