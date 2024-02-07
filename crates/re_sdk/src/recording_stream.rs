@@ -544,8 +544,14 @@ impl RecordingStreamBuilder {
             store_kind,
         };
 
-        let batcher_config = batcher_config
-            .unwrap_or_else(|| DataTableBatcherConfig::from_env().unwrap_or_default());
+        let batcher_config =
+            batcher_config.unwrap_or_else(|| match DataTableBatcherConfig::from_env() {
+                Ok(config) => config,
+                Err(err) => {
+                    re_log::error!("Failed to parse DataTableBatcherConfig from env: {}", err);
+                    DataTableBatcherConfig::default()
+                }
+            });
 
         (enabled, store_info, batcher_config)
     }

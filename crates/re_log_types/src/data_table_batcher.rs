@@ -199,13 +199,19 @@ impl DataTableBatcherConfig {
         }
 
         if let Ok(s) = std::env::var(Self::ENV_FLUSH_NUM_BYTES) {
-            new.flush_num_bytes = s
-                .parse()
-                .map_err(|err| DataTableBatcherError::ParseConfig {
-                    name: Self::ENV_FLUSH_NUM_BYTES,
-                    value: s.clone(),
-                    err: Box::new(err),
-                })?;
+            if let Some(num_bytes) = re_format::parse_bytes(&s) {
+                // e.g. "10MB"
+                new.flush_num_bytes = num_bytes.unsigned_abs();
+            } else {
+                // Assume it's just an integer
+                new.flush_num_bytes =
+                    s.parse()
+                        .map_err(|err| DataTableBatcherError::ParseConfig {
+                            name: Self::ENV_FLUSH_NUM_BYTES,
+                            value: s.clone(),
+                            err: Box::new(err),
+                        })?;
+            }
         }
 
         if let Ok(s) = std::env::var(Self::ENV_FLUSH_NUM_ROWS) {
@@ -437,7 +443,6 @@ fn batching_thread(
     struct Accumulator {
         latest: Instant,
         pending_rows: Vec<DataRow>,
-        pending_num_rows: u64,
         pending_num_bytes: u64,
     }
 
@@ -445,7 +450,6 @@ fn batching_thread(
         fn reset(&mut self) {
             self.latest = Instant::now();
             self.pending_rows.clear();
-            self.pending_num_rows = 0;
             self.pending_num_bytes = 0;
         }
     }
@@ -453,7 +457,6 @@ fn batching_thread(
     let mut acc = Accumulator {
         latest: Instant::now(),
         pending_rows: Default::default(),
-        pending_num_rows: Default::default(),
         pending_num_bytes: Default::default(),
     };
 
@@ -462,7 +465,6 @@ fn batching_thread(
         // it over the wire…
         row.compute_all_size_bytes();
 
-        acc.pending_num_rows += 1;
         acc.pending_num_bytes += row.total_size_bytes();
         acc.pending_rows.push(row);
     }
@@ -474,7 +476,11 @@ fn batching_thread(
             return;
         }
 
-        re_log::trace!(reason, "flushing tables");
+        re_log::trace!(
+            "Flushing {} rows and {} bytes. Reason: {reason}",
+            rows.len(),
+            re_format::format_bytes(acc.pending_num_bytes as _)
+        );
 
         let table = DataTable::from_rows(TableId::new(), rows.drain(..));
         // TODO(#1981): efficient table sorting here, following the same rules as the store's.
@@ -486,6 +492,13 @@ fn batching_thread(
 
         acc.reset();
     }
+
+    re_log::trace!(
+        "Flushing every: {:.2}s, {} rows, {}",
+        config.flush_tick.as_secs_f64(),
+        config.flush_num_rows,
+        re_format::format_bytes(config.flush_num_bytes as _),
+    );
 
     use crossbeam::select;
     loop {
@@ -505,7 +518,7 @@ fn batching_thread(
                         config(&acc.pending_rows);
                     }
 
-                    if acc.pending_num_rows >= config.flush_num_rows {
+                    if acc.pending_rows.len() as u64 >= config.flush_num_rows {
                         do_flush_all(&mut acc, &tx_table, "rows");
                     } else if acc.pending_num_bytes >= config.flush_num_bytes {
                         do_flush_all(&mut acc, &tx_table, "bytes");
@@ -519,7 +532,7 @@ fn batching_thread(
             };
             },
             recv(rx_tick) -> _ => {
-                do_flush_all(&mut acc, &tx_table, "duration");
+                do_flush_all(&mut acc, &tx_table, "tick");
             },
         };
     }
