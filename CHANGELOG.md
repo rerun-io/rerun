@@ -21,6 +21,7 @@ This release focuses on scalar time series -- both from a performance and UI per
     - Scalar, SeriesLine, SeriesPoint
     - Marker shapes etc
     - Support modifying the plot style by introducing a generic framework for overriding components [#4914](https://github.com/rerun-io/rerun/pull/4914)
+    - Introduce a new blueprint archetype for AxisY configuration in a plot [#5028](https://github.com/rerun-io/rerun/pull/5028)
 - 📘 Improved layout editing:
     - Add support for drag-and-drop in blueprint tree [#4910](https://github.com/rerun-io/rerun/pull/4910)
 - 🌁 Viewer:
@@ -30,6 +31,7 @@ This release focuses on scalar time series -- both from a performance and UI per
 - 🕸️ Web: support loading multiple `.rrd` URLs [#4740](https://github.com/rerun-io/rerun/pull/4740)
 
 As well as a lot of miscellaneous bug fixes and usability improvements: see details below.
+
 
 ### Details
 
@@ -49,6 +51,7 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 - Fix a Visible Time Range UI issue where the summary string would display the wrong data range [#5034](https://github.com/rerun-io/rerun/pull/5034)
 - Clear empty containers after tile drag-and-drop [#5044](https://github.com/rerun-io/rerun/pull/5044)
 - Allow for very large meshes & plots by always picking the largest available GPU buffer size [#5053](https://github.com/rerun-io/rerun/pull/5053)
+- Fix forever repaint of big scenes [#5071](https://github.com/rerun-io/rerun/pull/5071)
 
 #### 🌁 Viewer Improvements
 - Update to egui 0.25 and winit 0.29 [#4732](https://github.com/rerun-io/rerun/pull/4732)
@@ -59,6 +62,7 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 - Include tessellation and rendering in CPU time shown in top bar [#4951](https://github.com/rerun-io/rerun/pull/4951)
 - Allow selection of entitites directly in the plot space view [#4959](https://github.com/rerun-io/rerun/pull/4959)
 - Texture support for raw `Mesh3D` logging [#4894](https://github.com/rerun-io/rerun/pull/4894)
+- Introduce a new blueprint archetype for AxisY configuration in a plot [#5028](https://github.com/rerun-io/rerun/pull/5028)
 
 #### 🚀 Performance Improvements
 - Introduce the query cache:
@@ -146,10 +150,6 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 - Add `rerun --serve` and improve `--help` [#4834](https://github.com/rerun-io/rerun/pull/4834)
 - Support modifying the plot style by introducing a generic framework for overriding components [#4914](https://github.com/rerun-io/rerun/pull/4914)
 - Introduce Scalar, SeriesLine, and SeriesPoint archetypes with their own visualizers [#4875](https://github.com/rerun-io/rerun/pull/4875)
-- Cache aware time series #5048 [68ce6319f656d21fbd92bcbcce0c16971cdf6dcb](https://github.com/rerun-io/rerun/commit/68ce6319f656d21fbd92bcbcce0c16971cdf6dcb)
-- Mandatory primary caching #5049 [b9e424542d527c7f8f8041487b1292932d3cf2c5](https://github.com/rerun-io/rerun/commit/b9e424542d527c7f8f8041487b1292932d3cf2c5)
-- Bump versions to 0.13.0-rc.1 [202cea401da40f137e57bfb75db31775380ce764](https://github.com/rerun-io/rerun/commit/202cea401da40f137e57bfb75db31775380ce764)
-- add notes regarding the two workflows [d91e3bdb31f320293ccd409fabf1144317206ef7](https://github.com/rerun-io/rerun/commit/d91e3bdb31f320293ccd409fabf1144317206ef7)
 
 ## [0.12.1](https://github.com/rerun-io/rerun/compare/0.12.0...0.12.1) - 2024-01-17 - Data loader bug fixes
 
