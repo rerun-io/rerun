@@ -13,7 +13,11 @@ on [Entities and Components](../concepts/entity-component.md).
 
 ## Spatial **Archetypes**
 The spatial archetypes represent 2d and 3d spatial data. These types have some notion of a coordinate system and
-generally support spatial transformations. All of these types can be visualized by the `Spatial` space view.
+generally support spatial transformations. These types can be visualized by 2D and 3D space views.
+
+To visualize a 2D entity in a 3D space view it must be under a pinhole transformation.
+To visualize a 3D entity in a 2D space view, the 2D's origin must be at a pinhole transform and all 3D objects are above it.
+
 * [Arrow3D](types/archetypes/arrows3d.md)
 * [Asset](types/archetypes/asset3d.md)
 * [Box2D](types/archetypes/boxes2d.md)
@@ -23,8 +27,13 @@ generally support spatial transformations. All of these types can be visualized 
 * [Mesh](types/archetypes/mesh3d.md)
 * [Point2D](types/archetypes/points2d.md)
 * [Point3D](types/archetypes/points3d.md)
+
+### Spatial transformations
+
 * [Transform3D](types/archetypes/transform3d.md)
 * [Pinhole](types/archetypes/pinhole.md)
+* [DisconnectedSpace](types/archetypes/disconnected_space.md): disconnect an entity path from its parent.
+
 
 ## Image & Tensor **Archetypes**
 Image and tensor archetypes all build on top of a common tensor component. The tensor component is a multi-dimensional
@@ -45,7 +54,6 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 * [AnnotationContext](types/archetypes/annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.
 * [BarChart](types/archetypes/bar_chart.md): data displayed in a `BarChart` space view.
 * [Clear](types/archetypes/clear.md): clear all components of an entity.
-* [DisconnectedSpace](types/archetypes/disconnected_space.md): disconnect an entity path from its parent.
 * [TextDocument](types/archetypes/text_document.md): text displayed in a `TextDocument` space view.
 * [TextLog](types/archetypes/text_log.md): a log entry in a `TextLog` space view.
 * [ViewCoordinates](types/archetypes/view_coordinates.md): determines how we interpret the coordinate system of an entity/space.
