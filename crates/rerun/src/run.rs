@@ -525,17 +525,19 @@ impl PrintCommand {
                     } else {
                         table.compute_all_size_bytes();
 
-                        let column_names = table
-                            .columns
-                            .keys()
-                            .map(|name| name.short_name())
-                            .collect_vec();
+                        let column_names =
+                            table.columns.keys().map(|name| name.short_name()).join(" ");
+
+                        let entity_paths = if table.col_entity_path.len() == 1 {
+                            format!("{:?}", table.col_entity_path[0])
+                        } else {
+                            format!("{} different entity paths", table.col_entity_path.len())
+                        };
 
                         println!(
-                            "Table with {} rows ({}). Columns: {:?}",
+                            "Table with {} rows ({}) - {entity_paths} - columns: [{column_names}]",
                             table.num_rows(),
                             re_format::format_bytes(table.heap_size_bytes() as _),
-                            column_names
                         );
                     }
                 }
