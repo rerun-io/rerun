@@ -290,13 +290,7 @@ pub struct PythonVersion {
 
 impl std::fmt::Debug for PythonVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            major,
-            minor,
-            patch,
-            suffix,
-        } = self;
-        write!(f, "{major}.{minor}.{patch}{suffix}")
+        std::fmt::Display::fmt(self, f)
     }
 }
 
