@@ -296,7 +296,9 @@ impl SpaceViewBlueprint {
                                 .and_then(|result| result.2[0].clone())
                         }),
                 ) {
-                    pending_writes.push(row);
+                    if row.num_cells() > 0 {
+                        pending_writes.push(row);
+                    }
                 }
             });
         }
