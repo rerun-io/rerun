@@ -295,9 +295,9 @@ fn resolved_visible_history_boundary_ui(
         },
         VisibleHistoryBoundary::Infinite => {
             if low_bound {
-                "the beginning of the timeline"
+                "beginning of timeline"
             } else {
-                "the end of the timeline"
+                "end of timeline"
             }
         }
     };
