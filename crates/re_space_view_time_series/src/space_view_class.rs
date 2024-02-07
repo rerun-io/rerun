@@ -375,7 +375,7 @@ It can greatly improve performance (and readability) in such situations as it pr
         // TODO(jleibs): Would be nice to disable vertical drag instead of just resetting.
 
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
-        let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
+        let time_zone_for_timestamps = ctx.app_options.time_zone;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.space_view_id))
             .auto_bounds([true, auto_y].into())

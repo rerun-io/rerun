@@ -280,9 +280,7 @@ pub fn time_button(
 
     let response = ui.selectable_label(
         is_selected,
-        timeline
-            .typ()
-            .format(value, ctx.app_options.time_zone_for_timestamps),
+        timeline.typ().format(value, ctx.app_options.time_zone),
     );
     if response.clicked() {
         ctx.rec_cfg

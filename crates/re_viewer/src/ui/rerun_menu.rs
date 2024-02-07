@@ -319,20 +319,10 @@ fn options_menu_ui(
     ui.horizontal(|ui| {
         ui.label("Timezone:");
         re_ui
-            .radio_value(
-                ui,
-                &mut app_options.time_zone_for_timestamps,
-                TimeZone::Utc,
-                "UTC",
-            )
+            .radio_value(ui, &mut app_options.time_zone, TimeZone::Utc, "UTC")
             .on_hover_text("Display timestamps in UTC");
         re_ui
-            .radio_value(
-                ui,
-                &mut app_options.time_zone_for_timestamps,
-                TimeZone::Local,
-                "Local",
-            )
+            .radio_value(ui, &mut app_options.time_zone, TimeZone::Local, "Local")
             .on_hover_text("Display timestamps in the local timezone");
     });
 

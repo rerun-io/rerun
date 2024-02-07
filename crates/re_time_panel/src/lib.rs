@@ -387,7 +387,7 @@ impl TimePanel {
             &time_area_painter,
             timeline_rect.top()..=timeline_rect.bottom(),
             time_ctrl.time_type(),
-            ctx.app_options.time_zone_for_timestamps,
+            ctx.app_options.time_zone,
         );
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
@@ -995,7 +995,7 @@ fn current_time_ui(
         let timeline = time_ctrl.timeline();
         if is_time_safe_to_show(entity_db, timeline, time_int.into()) {
             let time_type = time_ctrl.time_type();
-            ui.monospace(time_type.format(time_int, ctx.app_options.time_zone_for_timestamps));
+            ui.monospace(time_type.format(time_int, ctx.app_options.time_zone));
         }
     }
 }

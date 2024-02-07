@@ -161,10 +161,8 @@ fn recording_ui(
     let time = entity_db
         .store_info()
         .and_then(|info| {
-            info.started.format_time_custom(
-                "[hour]:[minute]:[second]",
-                ctx.app_options.time_zone_for_timestamps,
-            )
+            info.started
+                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options.time_zone)
         })
         .unwrap_or("<unknown time>".to_owned());
 
