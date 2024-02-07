@@ -1,9 +1,8 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query::{ArchetypeView, QueryError};
-use re_renderer::renderer::LineStripFlags;
+use re_renderer::{renderer::LineStripFlags, PickingLayerInstanceId};
 use re_types::{
     archetypes::Arrows2D,
-    components::{Position2D, Text, Vector2D},
+    components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text, Vector2D},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -11,14 +10,14 @@ use re_viewer_context::{
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{picking_id_from_instance_key, process_annotations, SpatialViewVisualizerData};
+use super::{
+    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
+    SpatialViewVisualizerData,
+};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     view_kind::SpatialSpaceViewKind,
-    visualizers::{
-        entity_iterator::process_archetype_views, filter_visualizable_2d_entities, process_colors,
-        process_radii, UiLabel, UiLabelTarget,
-    },
+    visualizers::{filter_visualizable_2d_entities, UiLabel, UiLabelTarget},
 };
 
 pub struct Arrows2DVisualizer {
@@ -38,17 +37,19 @@ impl Default for Arrows2DVisualizer {
 
 impl Arrows2DVisualizer {
     fn process_labels<'a>(
-        arch_view: &'a ArchetypeView<Arrows2D>,
+        vectors: &'a [Vector2D],
+        positions: impl Iterator<Item = Option<Position2D>> + 'a,
+        labels: &'a [Option<Text>],
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
         world_from_obj: glam::Affine3A,
-    ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
-        let labels = itertools::izip!(
+    ) -> impl Iterator<Item = UiLabel> + 'a {
+        itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<Vector2D>()?,
-            arch_view.iter_optional_component::<Position2D>()?,
-            arch_view.iter_optional_component::<Text>()?,
+            vectors,
+            positions,
+            labels,
             colors,
             instance_path_hashes,
         )
@@ -73,43 +74,60 @@ impl Arrows2DVisualizer {
                     _ => None,
                 }
             },
-        );
-        Ok(labels)
+        )
     }
 
-    fn process_arch_view(
+    fn process_data(
         &mut self,
         query: &ViewQuery<'_>,
-        arch_view: &ArchetypeView<Arrows2D>,
+        data: &Arrows2DComponentData<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError> {
-        let annotation_infos =
-            process_annotations::<Vector2D, Arrows2D>(query, arch_view, &ent_context.annotations)?;
+    ) {
+        let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+            query.latest_at,
+            data.instance_keys,
+            data.keypoint_ids,
+            data.class_ids,
+            data.vectors.iter().map(|_| glam::Vec3::ZERO),
+            &ent_context.annotations,
+        );
 
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
+        let radii = process_radius_slice(data.radii, data.vectors.len(), ent_path);
+        let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
+        let origins = || {
+            data.origins.map_or_else(
+                || itertools::Either::Left(std::iter::repeat(Some(Position2D::ZERO))),
+                |origins| itertools::Either::Right(origins.iter().copied()),
+            )
+        };
 
-        if arch_view.num_instances() <= self.max_labels {
+        if data.instance_keys.len() <= self.max_labels {
+            re_tracing::profile_scope!("labels");
+
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+            let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
-                arch_view
-                    .iter_instance_keys()
+                data.instance_keys
+                    .iter()
+                    .copied()
                     .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
                     .collect::<Vec<_>>()
             };
 
-            self.data.ui_labels.extend(Self::process_labels(
-                arch_view,
-                &instance_path_hashes_for_picking,
-                &colors,
-                &annotation_infos,
-                ent_context.world_from_entity,
-            )?);
+            if let Some(labels) = data.labels {
+                self.data.ui_labels.extend(Self::process_labels(
+                    data.vectors,
+                    origins(),
+                    labels,
+                    &instance_path_hashes_for_picking,
+                    &colors,
+                    &annotation_infos,
+                    ent_context.world_from_entity,
+                ));
+            }
         }
 
         let mut line_builder = ent_context.shared_render_builders.lines();
@@ -119,17 +137,10 @@ impl Arrows2DVisualizer {
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-        let instance_keys = arch_view.iter_instance_keys();
-        let pick_ids = arch_view
-            .iter_instance_keys()
-            .map(picking_id_from_instance_key);
-        let vectors = arch_view.iter_required_component::<Vector2D>()?;
-        let origins = arch_view.iter_optional_component::<Position2D>()?;
-
         let mut bounding_box = macaw::BoundingBox::nothing();
 
-        for (instance_key, vector, origin, radius, color, pick_id) in
-            itertools::izip!(instance_keys, vectors, origins, radii, colors, pick_ids)
+        for (instance_key, vector, origin, radius, color) in
+            itertools::izip!(data.instance_keys, data.vectors, origins(), radii, colors,)
         {
             let vector: glam::Vec2 = vector.0.into();
             let origin: glam::Vec2 = origin.unwrap_or(Position2D::ZERO).0.into();
@@ -144,9 +155,9 @@ impl Arrows2DVisualizer {
                         | LineStripFlags::FLAG_CAP_START_ROUND
                         | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
                 )
-                .picking_instance_id(pick_id);
+                .picking_instance_id(PickingLayerInstanceId(instance_key.0));
 
-            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
+            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(instance_key) {
                 segment.outline_mask_ids(*outline_mask_ids);
             }
 
@@ -156,9 +167,20 @@ impl Arrows2DVisualizer {
 
         self.data
             .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
-
-        Ok(())
     }
+}
+
+// ---
+
+struct Arrows2DComponentData<'a> {
+    pub instance_keys: &'a [InstanceKey],
+    pub vectors: &'a [Vector2D],
+    pub origins: Option<&'a [Option<Position2D>]>,
+    pub colors: Option<&'a [Option<Color>]>,
+    pub radii: Option<&'a [Option<Radius>]>,
+    pub labels: Option<&'a [Option<Text>]>,
+    pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
+    pub class_ids: Option<&'a [Option<ClassId>]>,
 }
 
 impl IdentifiedViewSystem for Arrows2DVisualizer {
@@ -187,13 +209,47 @@ impl VisualizerSystem for Arrows2DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Arrows2DVisualizer, Arrows2D, { Arrows2D::NUM_COMPONENTS }, _>(
+        super::entity_iterator::process_archetype_pov1_comp6::<
+            Arrows2DVisualizer,
+            Arrows2D,
+            Vector2D,
+            Position2D,
+            Color,
+            Radius,
+            Text,
+            KeypointId,
+            ClassId,
+            _,
+        >(
             ctx,
             query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.lines2d,
-            |_ctx, ent_path, _ent_props, arch_view, ent_context| {
-                self.process_arch_view(query, &arch_view, ent_path, ent_context)
+            view_ctx.get::<EntityDepthOffsets>()?.points,
+            |_ctx,
+             ent_path,
+             _ent_props,
+             ent_context,
+             (_time, _row_id),
+             instance_keys,
+             vectors,
+             origins,
+             colors,
+             radii,
+             labels,
+             keypoint_ids,
+             class_ids| {
+                let data = Arrows2DComponentData {
+                    instance_keys,
+                    vectors,
+                    origins,
+                    colors,
+                    radii,
+                    labels,
+                    keypoint_ids,
+                    class_ids,
+                };
+                self.process_data(query, &data, ent_path, ent_context);
+                Ok(())
             },
         )?;
 
