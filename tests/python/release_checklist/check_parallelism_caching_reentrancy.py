@@ -20,14 +20,14 @@ TODO(cmc): simplify these instructions once we can log blueprint stuff!
 
 * Clone the `plots` view a handful of times.
 * Clone the `text_logs` view a handful of times.
-* 2D Point clouds:
-    * Clone the `clouds/2d` view a handful of times.
-    * Edit one of the `clouds/2d` views so that it requests a visible time range of `-inf:current` instead.
-    * Clone that edited `clouds/2d` view a bunch of times.
-* 3D Point clouds:
-    * Clone the `clouds/3d` view a handful of times.
-    * Edit one of the `clouds/3d` views so that it requests a visible time range of `-inf:+int` instead.
-    * Clone that edited `clouds/3d` view a bunch of times.
+* 2D spatial:
+    * Clone the `2d` view a handful of times.
+    * Edit one of the `2d` views so that it requests a visible time range of `-inf:current` instead.
+    * Clone that edited `2d` view a bunch of times.
+* 3D spatial:
+    * Clone the `3d` view a handful of times.
+    * Edit one of the `3d` views so that it requests a visible time range of `-inf:+int` instead.
+    * Clone that edited `3d` view a bunch of times.
 * Now scrub the time cursor like crazy: do your worst!
 
 If nothing weird happens, you can close this recording.
@@ -58,28 +58,79 @@ def log_plots() -> None:
         rr.log("plots/cos", rr.TimeSeriesScalar(cos_of_t, label="cos(0.01t)", color=[0, 255, 0]))
 
 
-def log_point_clouds() -> None:
+def log_spatial() -> None:
     for t in range(0, 100):
         rr.set_time_sequence("frame_nr", t)
+
+        positions3d = [
+            [math.sin((i + t) * 0.2) * 5, math.cos((i + t) * 0.2) * 5 - 10.0, i * 0.4 - 5.0] for i in range(0, 100)
+        ]
+
         rr.log(
-            "clouds/3d",
+            "3d/points",
             rr.Points3D(
-                np.array(
-                    [
-                        [math.sin((i + t) * 0.2) * 5, math.cos((i + t) * 0.2) * 5 - 10.0, i * 0.4 - 5.0]
-                        for i in range(0, 100)
-                    ]
-                ),
+                np.array(positions3d),
                 labels=[str(i) for i in range(t, t + 100)],
                 colors=np.array([[random.randrange(255) for _ in range(3)] for _ in range(t, t + 100)]),
             ),
         )
         rr.log(
-            "clouds/2d",
+            "3d/lines",
+            rr.LineStrips3D(
+                np.array(positions3d),
+                labels=[str(i) for i in range(t, t + 100)],
+                colors=np.array([[random.randrange(255) for _ in range(3)] for _ in range(t, t + 100)]),
+            ),
+        )
+        rr.log(
+            "3d/arrows",
+            rr.Arrows3D(
+                vectors=np.array(positions3d),
+                radii=0.1,
+                labels=[str(i) for i in range(t, t + 100)],
+                colors=np.array([[random.randrange(255) for _ in range(3)] for _ in range(t, t + 100)]),
+            ),
+        )
+        rr.log(
+            "3d/boxes",
+            rr.Boxes3D(
+                half_sizes=np.array(positions3d),
+                labels=[str(i) for i in range(t, t + 100)],
+                colors=np.array([[random.randrange(255) for _ in range(3)] for _ in range(t, t + 100)]),
+            ),
+        )
+
+        positions2d = [[math.sin(i * math.tau / 100.0) * t, math.cos(i * math.tau / 100.0) * t] for i in range(0, 100)]
+
+        rr.log(
+            "2d/points",
             rr.Points2D(
-                np.array(
-                    [[math.sin(i * math.tau / 100.0) * t, math.cos(i * math.tau / 100.0) * t] for i in range(0, 100)]
-                ),
+                np.array(positions2d),
+                labels=[str(i) for i in range(t, t + 100)],
+                colors=np.array([[random.randrange(255) for _ in range(3)] for _ in range(t, t + 100)]),
+            ),
+        )
+        rr.log(
+            "2d/lines",
+            rr.LineStrips2D(
+                np.array(positions2d),
+                labels=[str(i) for i in range(t, t + 100)],
+                colors=np.array([[random.randrange(255) for _ in range(3)] for _ in range(t, t + 100)]),
+            ),
+        )
+        rr.log(
+            "2d/arrows",
+            rr.Arrows2D(
+                vectors=np.array(positions2d),
+                radii=0.1,
+                labels=[str(i) for i in range(t, t + 100)],
+                colors=np.array([[random.randrange(255) for _ in range(3)] for _ in range(t, t + 100)]),
+            ),
+        )
+        rr.log(
+            "2d/boxes",
+            rr.Boxes2D(
+                half_sizes=np.array(positions2d),
                 labels=[str(i) for i in range(t, t + 100)],
                 colors=np.array([[random.randrange(255) for _ in range(3)] for _ in range(t, t + 100)]),
             ),
@@ -94,7 +145,7 @@ def run(args: Namespace) -> None:
     log_readme()
     log_text_logs()
     log_plots()
-    log_point_clouds()
+    log_spatial()
 
 
 if __name__ == "__main__":
