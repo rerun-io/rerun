@@ -83,8 +83,10 @@ fn modal_ui(
         // We disallow creating "linear" containers (horizontal/vertical) inside containers of the same kind, because
         // it's not useful and is automatically simplified away.
         let disabled = Some(kind) == target_container_kind
-            && (target_container_kind == Some(egui_tiles::ContainerKind::Horizontal)
-                || target_container_kind == Some(egui_tiles::ContainerKind::Vertical));
+            && matches!(
+                kind,
+                egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical
+            );
 
         let resp = ui
             .add_enabled_ui(!disabled, |ui| {
