@@ -237,6 +237,21 @@ impl EntityPath {
             itertools::Either::Right(std::iter::empty())
         }
     }
+
+    /// Returns the first common ancestor of two paths.
+    ///
+    /// If both paths are the same, the common ancestor is the path itself.
+    pub fn common_ancestor(&self, other: &EntityPath) -> EntityPath {
+        let mut common = Vec::new();
+        for (a, b) in self.iter().zip(other.iter()) {
+            if a == b {
+                common.push(a.clone());
+            } else {
+                break;
+            }
+        }
+        EntityPath::new(common)
+    }
 }
 
 impl SizeBytes for EntityPath {
@@ -479,6 +494,30 @@ mod tests {
             )
             .collect::<Vec<_>>(),
             vec![EntityPath::from("foo/bar"), EntityPath::from("foo/bar/baz")]
+        );
+    }
+
+    #[test]
+    fn test_common_ancestor() {
+        assert_eq!(
+            EntityPath::from("foo/bar").common_ancestor(&EntityPath::from("foo/bar")),
+            EntityPath::from("foo/bar")
+        );
+        assert_eq!(
+            EntityPath::from("foo/bar").common_ancestor(&EntityPath::from("foo/bar/baz")),
+            EntityPath::from("foo/bar")
+        );
+        assert_eq!(
+            EntityPath::from("foo/bar/baz").common_ancestor(&EntityPath::from("foo/bar")),
+            EntityPath::from("foo/bar")
+        );
+        assert_eq!(
+            EntityPath::from("foo/bar/mario").common_ancestor(&EntityPath::from("foo/bar/luigi")),
+            EntityPath::from("foo/bar")
+        );
+        assert_eq!(
+            EntityPath::from("mario/bowser").common_ancestor(&EntityPath::from("luigi/bowser")),
+            EntityPath::root()
         );
     }
 }
