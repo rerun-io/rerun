@@ -42,7 +42,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.6.0
+          pixi-version: v0.13.0
 
       # These should already be in the docker container, but run for good measure. A no-op install
       # should be fast, and this way things don't break if we add new packages without rebuilding
