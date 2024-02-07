@@ -155,7 +155,7 @@ impl SpaceViewClass for BarChartSpaceView {
 
             if *root_entity_properties.show_legend {
                 plot = plot.legend(
-                    Legend::default().position(to_egui_lot_corner(
+                    Legend::default().position(to_egui_plot_corner(
                         root_entity_properties
                             .legend_location
                             .unwrap_or(LegendCorner::RightTop),
@@ -282,7 +282,7 @@ impl SpaceViewClass for BarChartSpaceView {
     }
 }
 
-fn to_egui_lot_corner(value: LegendCorner) -> egui_plot::Corner {
+fn to_egui_plot_corner(value: LegendCorner) -> egui_plot::Corner {
     match value {
         LegendCorner::LeftTop => egui_plot::Corner::LeftTop,
         LegendCorner::RightTop => egui_plot::Corner::RightTop,
