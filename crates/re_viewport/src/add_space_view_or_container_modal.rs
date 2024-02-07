@@ -2,6 +2,7 @@
 
 use itertools::Itertools;
 
+use crate::container::blueprint_id_to_tile_id;
 use crate::{icon_for_container_kind, ViewportBlueprint};
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_space_view::{DataQueryBlueprint, SpaceViewBlueprint};
@@ -70,7 +71,32 @@ fn modal_ui(
     ];
 
     for (title, subtitle, kind) in container_data {
-        if row_ui(ui, icon_for_container_kind(&kind), title, subtitle).clicked() {
+        let target_container_kind = target_container
+            .and_then(|container_id| {
+                viewport
+                    .tree
+                    .tiles
+                    .get(blueprint_id_to_tile_id(&container_id))
+            })
+            .and_then(|tile| tile.container_kind());
+
+        // We disallow creating "linear" containers (horizontal/vertical) inside containers of the same kind, because
+        // it's not useful and is automatically simplified away.
+        let disabled = Some(kind) == target_container_kind
+            && (target_container_kind == Some(egui_tiles::ContainerKind::Horizontal)
+                || target_container_kind == Some(egui_tiles::ContainerKind::Vertical));
+
+        let resp = ui
+            .add_enabled_ui(!disabled, |ui| {
+                row_ui(ui, icon_for_container_kind(&kind), title, subtitle)
+            })
+            .inner
+            .on_disabled_hover_text(format!(
+                "Nested {title} containers in containers of the same type are disallowed and automatically simplified \
+                away as they are not useful."
+            ));
+
+        if resp.clicked() {
             viewport.add_container(kind, target_container);
             viewport.mark_user_interaction(ctx);
             *keep_open = false;
