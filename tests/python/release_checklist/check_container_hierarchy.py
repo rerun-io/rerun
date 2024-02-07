@@ -29,7 +29,7 @@ TODO(ab): setup the container hierarchy with the blueprint API when available.
 * Check that a container refuses to be dropped into itself.
 * Check that a container refuses to be dropped before/after the "Viewport" root container.
 * Check that the destination container properly highlights when dragging something into it.
-* Check that an Horizontal/Vertical container may not be nested to a container of the same kind.
+* Check that a Horizontal/Vertical container may not be nested to a container of the same kind.
 
 
 ### Edit containers
