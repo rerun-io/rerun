@@ -73,19 +73,19 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod + Send + Sync>(
         .cpu_write_gpu_read_belt
         .lock()
         .allocate::<T>(&ctx.device, &ctx.gpu_resources.buffers, num_buffers as _)
-        .unwrap_debug_or_log_error()
+        .ok_or_log_error()
     else {
         // This should only fail for zero sized T, which we assert statically on.
         return Vec::new();
     };
-    staging_buffer.extend(content).unwrap_debug_or_log_error();
+    staging_buffer.extend(content).ok_or_log_error();
     staging_buffer
         .copy_to_buffer(
             ctx.active_frame.before_view_builder_encoder.lock().get(),
             &buffer,
             0,
         )
-        .unwrap_debug_or_log_error();
+        .ok_or_log_error();
 
     (0..num_buffers)
         .map(|i| BindGroupEntry::Buffer {
