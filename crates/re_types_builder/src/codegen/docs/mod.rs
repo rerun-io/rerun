@@ -144,8 +144,24 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
 
     let mut page = String::new();
 
-    write_frontmatter(&mut page, &object.name, None);
+    let title = if object.deprecation_notice().is_some() {
+        format!("{} (deprecated)", object.name)
+    } else {
+        object.name.clone()
+    };
+
+    write_frontmatter(&mut page, &title, None);
     putln!(page);
+
+    if let Some(deprecation_notice) = object.deprecation_notice() {
+        putln!(
+            page,
+            "**⚠️ This type is deprecated and may be removed in future versions**"
+        );
+        putln!(page, "{deprecation_notice}");
+        putln!(page);
+    }
+
     for line in top_level_docs {
         putln!(page, "{line}");
     }

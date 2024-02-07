@@ -1,6 +1,9 @@
 ---
-title: "TimeSeriesScalar"
+title: "TimeSeriesScalar (deprecated)"
 ---
+
+**⚠️ This type is deprecated and may be removed in future versions**
+Use the `Scalar` + (optional) `SeriesLine`/`SeriesPoint` archetypes instead, logged on the same entity.
 
 Log a double-precision scalar that will be visualized as a time-series plot.
 
