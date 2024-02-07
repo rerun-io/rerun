@@ -244,10 +244,25 @@ fn generate_mod_file(
 
     code += "\n\n";
 
-    for obj in objects {
+    // Non-deprecated first.
+    for obj in objects
+        .iter()
+        .filter(|obj| obj.deprecation_notice().is_none())
+    {
         let module_name = obj.snake_case_name();
         let type_name = &obj.name;
-
+        code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
+    }
+    // And then deprecated.
+    if objects.iter().any(|obj| obj.deprecation_notice().is_some()) {
+        code.push_str("\n\n");
+    }
+    for obj in objects
+        .iter()
+        .filter(|obj| obj.deprecation_notice().is_some())
+    {
+        let module_name = obj.snake_case_name();
+        let type_name = &obj.name;
         if obj.deprecation_notice().is_some() {
             code.push_str("#[allow(deprecated)]\n");
         }

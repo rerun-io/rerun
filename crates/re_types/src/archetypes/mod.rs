@@ -65,7 +65,8 @@ pub use self::series_point::SeriesPoint;
 pub use self::tensor::Tensor;
 pub use self::text_document::TextDocument;
 pub use self::text_log::TextLog;
-#[allow(deprecated)]
-pub use self::time_series_scalar::TimeSeriesScalar;
 pub use self::transform3d::Transform3D;
 pub use self::view_coordinates::ViewCoordinates;
+
+#[allow(deprecated)]
+pub use self::time_series_scalar::TimeSeriesScalar;
