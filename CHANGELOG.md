@@ -6,28 +6,21 @@
 
 ### Overview & Highlights
 
-<!-- TODO: video 1 -- plot performance -->
-<!-- TODO: video 2 -- plot UI & overrides -->
-
 This release focuses on scalar time series -- both from a performance and UI perspectives.
+Check out our [associated blog post](TODO) for more information.
 
-
-
-- 📈 Scalar time series are now roughly 20x faster:
-    - The new [query cache](https://github.com/rerun-io/rerun/pull/4856) optimizes data access
-    - [Sub-pixel aggregation](https://github.com/rerun-io/rerun/pull/4865) prevents unnecessary overdraw when rendering plots
-    - [Points](https://www.rerun.io/docs/reference/types/archetypes/points3d), [lines](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [arrows](https://www.rerun.io/docs/reference/types/archetypes/arrows3d) and [boxes](https://www.rerun.io/docs/reference/types/archetypes/boxes3d) all benefit from query caching too, to a lesser extent
+- 📈 Rerun can now visualize many time series in the kHz range in real-time:
+    - The new [query cache](https://github.com/rerun-io/rerun/pull/4856) optimizes data access, improving query performance by 20-50x
+    - [Sub-pixel aggregation](https://github.com/rerun-io/rerun/pull/4865) prevents unnecessary overdraw when rendering plots, improving rendering time by 30-120x
+    - [Points](https://www.rerun.io/docs/reference/types/archetypes/points3d), [lines](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [arrows](https://www.rerun.io/docs/reference/types/archetypes/arrows3d) and [boxes](https://www.rerun.io/docs/reference/types/archetypes/boxes3d) all benefit from query caching too to a lesser extent, yielding 2-5x performance improvements
 - 🖼 UI overrides:
-    - Scalar, SeriesLine, SeriesPoint
-    - Marker shapes etc
-    - Introduce Scalar, SeriesLine, and SeriesPoint archetypes with their own visualizers [#4875](https://github.com/rerun-io/rerun/pull/4875)
-    - Support modifying the plot style by introducing a generic framework for overriding components [#4914](https://github.com/rerun-io/rerun/pull/4914)
-    - Introduce a new blueprint archetype for AxisY configuration in a plot [#5028](https://github.com/rerun-io/rerun/pull/5028)
-- 📘 Improved layout editing:
-    - Add support for drag-and-drop in blueprint tree [#4910](https://github.com/rerun-io/rerun/pull/4910)
+    - The new `Scalar`, `SeriesLine` & `SeriesPoint` archetypes allow for customizing plots both at logging and visualization time
+    - Customize marker shapes, marker sizes, etc from code or directly through the UI
+    - Specify axis labels, lock axes, etc from code or directly through the UI
 - 🌁 Viewer:
     - Control the number of compute threads with `--treads`/`-j` [#5021](https://github.com/rerun-io/rerun/pull/5021)
     - Support YUY2-encoded images [#4877](https://github.com/rerun-io/rerun/pull/4877) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
+    - Drag-n-drop space views directly from the blueprint tree [#4910](https://github.com/rerun-io/rerun/pull/4910)
 - 🦀 Rust: integration with the `mint` crate [#4753](https://github.com/rerun-io/rerun/pull/4753)
 - 🕸️ Web: support loading multiple `.rrd` URLs [#4740](https://github.com/rerun-io/rerun/pull/4740)
 
