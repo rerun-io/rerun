@@ -15,7 +15,7 @@ This checks that the container hierarchy behaves as expected.
 
 TODO(ab): setup the container hierarchy with the blueprint API when available.
 
-* Organise the space views in a non-trivial hierarchy of containers.
+* Organize the space views in a non-trivial hierarchy of containers.
 * As a starting point, ensure that the hierarchy is "sane" (i.e. no leaf/single-child containers, etc.).
 
 
@@ -28,7 +28,7 @@ TODO(ab): setup the container hierarchy with the blueprint API when available.
 * Create a bloated hierarchy with these (mostly empty) containers using drag-and-drop in the Blueprint tree.
 * Check that a container refuses to be dropped into itself.
 * Check that a container refuses to be dropped before/after the "Viewport" root container.
-* Check that the destination container properly hightlights when dragging something into it.
+* Check that the destination container properly highlights when dragging something into it.
 
 
 ### Edit containers
