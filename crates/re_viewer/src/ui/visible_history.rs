@@ -144,35 +144,42 @@ pub fn visible_history_ui(
                 .range_end_from_cursor(current_time.into())
                 .as_i64();
 
-            interacting_with_controls |= ui
-                .horizontal(|ui| {
-                    visible_history_boundary_ui(
-                        ctx,
-                        ui,
-                        &mut visible_history.from,
-                        time_type,
-                        current_time,
-                        &timeline_spec,
-                        true,
-                        current_high_boundary,
-                    )
-                })
-                .inner;
+            egui::Grid::new("from_to").show(ui, |ui| {
+                re_ui.grid_left_hand_label(ui, "From");
 
-            interacting_with_controls |= ui
-                .horizontal(|ui| {
-                    visible_history_boundary_ui(
-                        ctx,
-                        ui,
-                        &mut visible_history.to,
-                        time_type,
-                        current_time,
-                        &timeline_spec,
-                        false,
-                        current_low_boundary,
-                    )
-                })
-                .inner;
+                interacting_with_controls |= ui
+                    .horizontal(|ui| {
+                        visible_history_boundary_ui(
+                            ctx,
+                            ui,
+                            &mut visible_history.from,
+                            time_type,
+                            current_time,
+                            &timeline_spec,
+                            true,
+                            current_high_boundary,
+                        )
+                    })
+                    .inner;
+                ui.end_row();
+
+                re_ui.grid_left_hand_label(ui, "To");
+                interacting_with_controls |= ui
+                    .horizontal(|ui| {
+                        visible_history_boundary_ui(
+                            ctx,
+                            ui,
+                            &mut visible_history.to,
+                            time_type,
+                            current_time,
+                            &timeline_spec,
+                            false,
+                            current_low_boundary,
+                        )
+                    })
+                    .inner;
+                ui.end_row();
+            });
 
             current_range_ui(ctx, ui, current_time, time_type, visible_history);
         } else {
@@ -380,8 +387,6 @@ fn visible_history_boundary_ui(
     low_bound: bool,
     other_boundary_absolute: i64,
 ) -> bool {
-    ui.label(if low_bound { "From" } else { "To" });
-
     let (abs_time, rel_time) = match visible_history_boundary {
         VisibleHistoryBoundary::RelativeToTimeCursor(value) => (*value + current_time, *value),
         VisibleHistoryBoundary::Absolute(value) => (*value, *value - current_time),
