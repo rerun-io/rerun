@@ -25,6 +25,7 @@ fn main() {
 
     let mut examples = Vec::new();
 
+    re_build_tools::rerun_if_changed(&all_path);
     for entry in fs::read_dir(&all_path).unwrap().flatten() {
         let path = entry.path();
         if let Some(extension) = path.extension() {
