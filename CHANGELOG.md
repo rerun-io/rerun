@@ -6,7 +6,7 @@
 
 ### Overview & Highlights
 
-This release focuses on scalar time series -- both from a performance and UI perspectives.
+This release focuses on scalar time series -- both from a performance and UI perspectives.  
 Check out our [associated blog post](TODO) for more information.
 
 - 📈 Rerun can now visualize many time series in the kHz range in real-time:
