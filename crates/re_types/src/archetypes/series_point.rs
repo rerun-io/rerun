@@ -28,6 +28,54 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// the `Scalar` archetype.
 ///
 /// See [`Scalar`][crate::archetypes.Scalar]
+///
+/// ## Example
+///
+/// ### Series Point
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_series_line_style").spawn()?;
+///
+///     // Set up plot styling:
+///     // They are logged timeless as they don't change over time and apply to all timelines.
+///     // Log two lines series under a shared root so that they show in the same plot by default.
+///     rec.log_timeless(
+///         "trig/sin",
+///         &rerun::SeriesPoint::new()
+///             .with_color([255, 0, 0])
+///             .with_name("sin(0.01t)")
+///             .with_marker(1)
+///             .with_marker_size(4.0),
+///     )?;
+///     rec.log_timeless(
+///         "trig/cos",
+///         &rerun::SeriesPoint::new()
+///             .with_color([0, 255, 0])
+///             .with_name("cos(0.01t)")
+///             .with_marker(4)
+///             .with_marker_size(2.0),
+///     )?;
+///
+///     for t in 0..((std::f32::consts::TAU * 2.0 * 10.0) as i64) {
+///         rec.set_time_sequence("step", t);
+///
+///         // Log two time series under a shared root so that they show in the same plot by default.
+///         rec.log("trig/sin", &rerun::Scalar::new((t as f64 / 10.0).sin()))?;
+///         rec.log("trig/cos", &rerun::Scalar::new((t as f64 / 10.0).cos()))?;
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1200w.png">
+///   <img src="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug)]
 pub struct SeriesPoint {
     /// Color for the corresponding series.

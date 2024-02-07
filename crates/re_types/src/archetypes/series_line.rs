@@ -44,14 +44,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &rerun::SeriesLine::new()
 ///             .with_color([255, 0, 0])
 ///             .with_name("sin(0.01t)")
-///             .with_width(2),
+///             .with_width(2.0),
 ///     )?;
 ///     rec.log_timeless(
 ///         "trig/cos",
 ///         &rerun::SeriesLine::new()
 ///             .with_color([0, 255, 0])
 ///             .with_name("cos(0.01t)")
-///             .with_width(4),
+///             .with_width(4.0),
 ///     )?;
 ///
 ///     for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {
