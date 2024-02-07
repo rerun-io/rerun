@@ -29,3 +29,13 @@ attribute "attr.rerun.override_type";
 ///
 /// This is used for example to scope blueprint types.
 attribute "attr.rerun.scope";
+
+/// Markes something as deprecated followed by a (non-optional!) migration note.
+///
+/// If specified on an object (struct/enum/union), it becomes deprecated such
+/// that using the object should emit a warning in all target languages.
+/// Furthermore, documentation will mention that the object is deprecated and display
+/// the specified migration note.
+///
+/// TODO(andreas): This is not yet supported on fields.
+attribute "attr.rerun.deprecated";

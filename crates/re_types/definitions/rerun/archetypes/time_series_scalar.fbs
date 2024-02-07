@@ -1,5 +1,6 @@
 include "fbs/attributes.fbs";
 
+include "rerun/attributes.fbs";
 include "rerun/datatypes.fbs";
 include "rerun/components.fbs";
 
@@ -22,6 +23,7 @@ namespace rerun.archetypes;
 /// \example scalar_simple title="Simple line plot" image="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1200w.png"
 /// \example scalar_multiple_plots !api title="Multiple time series plots" image="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/1200w.png"
 table TimeSeriesScalar (
+  "attr.rerun.deprecated": "Use the `Scalar` + (optional) `SeriesLine`/`SeriesPoint` archetypes instead, logged on the same entity.",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
