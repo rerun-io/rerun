@@ -199,13 +199,19 @@ impl DataTableBatcherConfig {
         }
 
         if let Ok(s) = std::env::var(Self::ENV_FLUSH_NUM_BYTES) {
-            new.flush_num_bytes = s
-                .parse()
-                .map_err(|err| DataTableBatcherError::ParseConfig {
-                    name: Self::ENV_FLUSH_NUM_BYTES,
-                    value: s.clone(),
-                    err: Box::new(err),
-                })?;
+            if let Some(num_bytes) = re_format::parse_bytes(&s) {
+                // e.g. "10MB"
+                new.flush_num_bytes = num_bytes.unsigned_abs();
+            } else {
+                // Assume it's just an integer
+                new.flush_num_bytes =
+                    s.parse()
+                        .map_err(|err| DataTableBatcherError::ParseConfig {
+                            name: Self::ENV_FLUSH_NUM_BYTES,
+                            value: s.clone(),
+                            err: Box::new(err),
+                        })?;
+            }
         }
 
         if let Ok(s) = std::env::var(Self::ENV_FLUSH_NUM_ROWS) {
