@@ -33,11 +33,13 @@ use crate::{
 ///
 /// If you want a new space view otherwise identical to an existing one, use
 /// [`DataQueryBlueprint::duplicate`].
-#[derive(PartialEq, Eq)]
 pub struct DataQueryBlueprint {
     pub id: DataQueryId,
     pub space_view_class_identifier: SpaceViewClassIdentifier,
     pub entity_path_filter: EntityPathFilter,
+
+    /// Pending blueprint writes for nested components from duplicate.
+    pending_writes: Vec<DataRow>,
 }
 
 impl DataQueryBlueprint {
@@ -61,6 +63,7 @@ impl DataQueryBlueprint {
             id: DataQueryId::random(),
             space_view_class_identifier,
             entity_path_filter,
+            pending_writes: Default::default(),
         }
     }
 
@@ -82,6 +85,7 @@ impl DataQueryBlueprint {
             id,
             space_view_class_identifier,
             entity_path_filter,
+            pending_writes: Default::default(),
         })
     }
 
@@ -92,18 +96,59 @@ impl DataQueryBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        ctx.save_blueprint_component(
-            &self.id.as_entity_path(),
-            QueryExpressions::from(&self.entity_path_filter),
-        );
+        // Note: pending_writes already contains the whole subtree, including query expressions.
+        // so this is all we need to save.
+        ctx.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                ctx.store_context.blueprint.store_id().clone(),
+                self.pending_writes.clone(),
+            ));
     }
 
     /// Creates a new [`DataQueryBlueprint`] with a the same contents, but a different [`DataQueryId`]
-    pub fn duplicate(&self) -> Self {
+    pub fn duplicate(&self, blueprint: &EntityDb, query: &LatestAtQuery) -> Self {
+        let mut pending_writes = Vec::new();
+
+        let current_path = self.id.as_entity_path();
+        let new_id = DataQueryId::random();
+        let new_path = new_id.as_entity_path();
+
+        // Create pending write operations to duplicate the entire subtree
+        // TODO(jleibs): This should be a helper somewhere.
+        if let Some(tree) = blueprint.tree().subtree(&current_path) {
+            tree.visit_children_recursively(&mut |path, info| {
+                let sub_path: EntityPath = new_path
+                    .iter()
+                    .cloned()
+                    .chain(
+                        path.as_slice()[current_path.len()..path.len()]
+                            .iter()
+                            .cloned(),
+                    )
+                    .collect();
+
+                if let Ok(row) = DataRow::from_cells(
+                    RowId::new(),
+                    blueprint_timepoint_for_writes(),
+                    sub_path,
+                    1,
+                    info.components.keys().filter_map(|component| {
+                        blueprint
+                            .store()
+                            .latest_at(query, path, *component, &[*component])
+                            .and_then(|result| result.2[0].clone())
+                    }),
+                ) {
+                    pending_writes.push(row);
+                }
+            });
+        }
+
         Self {
-            id: DataQueryId::random(),
+            id: new_id,
             space_view_class_identifier: self.space_view_class_identifier,
             entity_path_filter: self.entity_path_filter.clone(),
+            pending_writes,
         }
     }
 
