@@ -272,7 +272,7 @@ impl StoreInfo {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct PythonVersion {
     /// e.g. 3
@@ -286,6 +286,12 @@ pub struct PythonVersion {
 
     /// e.g. `a0` for alpha releases.
     pub suffix: String,
+}
+
+impl std::fmt::Debug for PythonVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
 }
 
 impl std::fmt::Display for PythonVersion {
