@@ -100,7 +100,6 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         layout.add("Drag ");
         layout.add(controls::SELECTION_RECT_ZOOM_BUTTON);
         layout.add(" to zoom in/out using a selection.\n");
-        layout.add("  - Not available when zoom-behavior has a locked range.\n");
 
         layout.add("Click ");
         layout.add(controls::MOVE_TIME_CURSOR_BUTTON);
