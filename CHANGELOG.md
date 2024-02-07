@@ -18,11 +18,11 @@ Check out our [associated blog post](TODO) for more information.
     - Customize marker shapes, marker sizes, etc from code or directly through the UI
     - Specify axis labels, lock axes, etc from code or directly through the UI
 - 🌁 Viewer:
-    - Control the number of compute threads with `--treads`/`-j` [#5021](https://github.com/rerun-io/rerun/pull/5021)
-    - Support YUY2-encoded images [#4877](https://github.com/rerun-io/rerun/pull/4877) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
-    - Drag-n-drop space views directly from the blueprint tree [#4910](https://github.com/rerun-io/rerun/pull/4910)
-- 🦀 Rust: integration with the `mint` crate [#4753](https://github.com/rerun-io/rerun/pull/4753)
-- 🕸️ Web: support loading multiple `.rrd` URLs [#4740](https://github.com/rerun-io/rerun/pull/4740)
+    - The number of compute threads can now be controlled using the `--treads`/`-j` flag
+    - Added support YUY2-encoded images (thanks [@oxkitsune](https://github.com/oxkitsune)!)
+    - Space views can now be drag-and-dropped directly from the blueprint tree
+- 🦀 The rust SDK now exposes an optional integration with the `mint` crate
+- 🕸️ The web UI SDK now supports loading multiple `.rrd` URLs
 
 As well as a lot of miscellaneous bug fixes and usability improvements: see details below.
 
