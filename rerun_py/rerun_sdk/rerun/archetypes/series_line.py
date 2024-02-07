@@ -18,7 +18,48 @@ __all__ = ["SeriesLine"]
 
 @define(str=False, repr=False, init=False)
 class SeriesLine(Archetype):
-    """**Archetype**: Define the style properties for a line series in a chart."""
+    """
+    **Archetype**: Define the style properties for a line series in a chart.
+
+    This archetype only provides styling information and should be logged as timeless
+    when possible. The underlying data needs to be logged to the same entity-path using
+    the `Scalar` archetype.
+
+    See [`Scalar`][rerun.archetypes.Scalar]
+
+    Example
+    -------
+    ### Series Line Style:
+    ```python
+    from math import cos, sin, tau
+
+    import rerun as rr
+
+    rr.init("rerun_example_series_line_styling", spawn=True)
+
+    # Set up plot styling:
+    # They are logged timeless as they don't change over time and apply to all timelines.
+    # Log two lines series under a shared root so that they show in the same plot by default.
+    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)", width=2), timeless=True)
+    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)", width=4), timeless=True)
+
+    # Log the data on a timeline called "step".
+    for t in range(0, int(tau * 2 * 100.0)):
+        rr.set_time_sequence("step", t)
+
+        rr.log("trig/sin", rr.Scalar(sin(float(t) / 100.0)))
+        rr.log("trig/cos", rr.Scalar(cos(float(t) / 100.0)))
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_line_style/3b8ab5b4ab4a5096559ab0c64d6501469ae66738/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/series_line_style/3b8ab5b4ab4a5096559ab0c64d6501469ae66738/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/series_line_style/3b8ab5b4ab4a5096559ab0c64d6501469ae66738/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/series_line_style/3b8ab5b4ab4a5096559ab0c64d6501469ae66738/1200w.png">
+      <img src="https://static.rerun.io/series_line_style/3b8ab5b4ab4a5096559ab0c64d6501469ae66738/full.png" width="640">
+    </picture>
+    </center>
+    """
 
     def __init__(
         self: Any,
