@@ -108,9 +108,10 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
     putln!(page, "{prelude}");
     putln!(page);
     if !objects.is_empty() {
+        // First all non deprecated ones:
         putln!(page, "## Available {}", kind.plural_name().to_lowercase());
         putln!(page);
-        for object in objects {
+        for object in objects.iter().filter(|o| o.deprecation_notice().is_none()) {
             putln!(
                 page,
                 "* [`{}`]({}/{}.md)",
@@ -118,6 +119,23 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
                 object.kind.plural_snake_case(),
                 object.snake_case_name()
             );
+        }
+
+        // Then all deprecated ones:
+        if objects.iter().any(|o| o.deprecation_notice().is_some()) {
+            putln!(page);
+            putln!(page);
+            putln!(page, "## Deprecated {}", kind.plural_name().to_lowercase());
+            putln!(page);
+            for object in objects.iter().filter(|o| o.deprecation_notice().is_some()) {
+                putln!(
+                    page,
+                    "* [`{}`]({}/{}.md)",
+                    object.name,
+                    object.kind.plural_snake_case(),
+                    object.snake_case_name()
+                );
+            }
         }
     }
 
