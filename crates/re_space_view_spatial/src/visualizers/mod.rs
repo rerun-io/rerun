@@ -30,10 +30,9 @@ use ahash::HashMap;
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_types::components::{Color, InstanceKey};
 use re_types::datatypes::{KeypointId, KeypointPair};
-use re_types::Archetype;
 use re_viewer_context::{
     auto_color, Annotations, ApplicableEntities, DefaultColor, ResolvedAnnotationInfos,
-    SpaceViewClassRegistryError, SpaceViewSystemRegistrator, ViewQuery, VisualizableEntities,
+    SpaceViewClassRegistryError, SpaceViewSystemRegistrator, VisualizableEntities,
     VisualizableFilterContext, VisualizerCollection,
 };
 
@@ -107,24 +106,6 @@ pub fn picking_id_from_instance_key(
 }
 
 /// Process [`Color`] components using annotations and default colors.
-pub fn process_colors<'a, A: Archetype>(
-    arch_view: &'a re_query::ArchetypeView<A>,
-    ent_path: &'a EntityPath,
-    annotation_infos: &'a ResolvedAnnotationInfos,
-) -> Result<impl Iterator<Item = egui::Color32> + 'a, re_query::QueryError> {
-    re_tracing::profile_function!();
-    let default_color = DefaultColor::EntityPath(ent_path);
-
-    Ok(itertools::izip!(
-        annotation_infos.iter(),
-        arch_view.iter_optional_component::<Color>()?,
-    )
-    .map(move |(annotation_info, color)| {
-        annotation_info.color(color.map(|c| c.to_array()), default_color)
-    }))
-}
-
-/// Process [`Color`] components using annotations and default colors.
 pub fn process_color_slice<'a>(
     colors: Option<&'a [Option<Color>]>,
     ent_path: &'a EntityPath,
@@ -192,19 +173,6 @@ pub fn process_label_slice(
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
-pub fn process_radii<'a, A: Archetype>(
-    arch_view: &'a re_query::ArchetypeView<A>,
-    ent_path: &EntityPath,
-) -> Result<impl Iterator<Item = re_renderer::Size> + 'a, re_query::QueryError> {
-    re_tracing::profile_function!();
-    let ent_path = ent_path.clone();
-    Ok(arch_view
-        .iter_optional_component::<re_types::components::Radius>()?
-        .map(move |radius| process_radius(&ent_path, &radius)))
-}
-
-/// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
-/// where no radius is specified.
 pub fn process_radius_slice(
     radii: Option<&[Option<re_types::components::Radius>]>,
     default_len: usize,
@@ -242,72 +210,6 @@ fn process_radius(
             re_renderer::Size::AUTO
         }
     })
-}
-
-/// Resolves all annotations for the given entity view.
-fn process_annotations<Primary, A: Archetype>(
-    query: &ViewQuery<'_>,
-    arch_view: &re_query::ArchetypeView<A>,
-    annotations: &Annotations,
-) -> Result<ResolvedAnnotationInfos, re_query::QueryError>
-where
-    Primary: re_types::Component + Clone,
-{
-    process_annotations_and_keypoints(query.latest_at, arch_view, annotations, |_: &Primary| {
-        glam::Vec3::ZERO
-    })
-    .map(|(a, _)| a)
-}
-
-/// Resolves all annotations and keypoints for the given entity view.
-fn process_annotations_and_keypoints<Primary, A: Archetype>(
-    latest_at: re_log_types::TimeInt,
-    arch_view: &re_query::ArchetypeView<A>,
-    annotations: &Annotations,
-    mut primary_into_position: impl FnMut(&Primary) -> glam::Vec3,
-) -> Result<(ResolvedAnnotationInfos, Keypoints), re_query::QueryError>
-where
-    Primary: re_types::Component + Clone,
-{
-    re_tracing::profile_function!();
-
-    let mut keypoints: Keypoints = HashMap::default();
-
-    // No need to process annotations if we don't have keypoints or class-ids
-    if !arch_view.has_component::<re_types::components::KeypointId>()
-        && !arch_view.has_component::<re_types::components::ClassId>()
-    {
-        let resolved_annotation = annotations
-            .resolved_class_description(None)
-            .annotation_info();
-
-        return Ok((
-            ResolvedAnnotationInfos::Same(arch_view.num_instances(), resolved_annotation),
-            keypoints,
-        ));
-    }
-
-    let annotation_info = itertools::izip!(
-        arch_view.iter_required_component::<Primary>()?,
-        arch_view.iter_optional_component::<re_types::components::KeypointId>()?,
-        arch_view.iter_optional_component::<re_types::components::ClassId>()?,
-    )
-    .map(|(primary, keypoint_id, class_id)| {
-        let class_description = annotations.resolved_class_description(class_id);
-
-        if let (Some(keypoint_id), Some(class_id), primary) = (keypoint_id, class_id, primary) {
-            keypoints
-                .entry((class_id, latest_at.as_i64()))
-                .or_default()
-                .insert(keypoint_id.0, primary_into_position(&primary));
-            class_description.annotation_info_with_keypoint(keypoint_id.0)
-        } else {
-            class_description.annotation_info()
-        }
-    })
-    .collect();
-
-    Ok((ResolvedAnnotationInfos::Many(annotation_info), keypoints))
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
