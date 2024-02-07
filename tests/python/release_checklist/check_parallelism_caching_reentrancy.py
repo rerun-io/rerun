@@ -26,7 +26,7 @@ TODO(cmc): simplify these instructions once we can log blueprint stuff!
     * Clone that edited `2d` view a bunch of times.
 * 3D spatial:
     * Clone the `3d` view a handful of times.
-    * Edit one of the `3d` views so that it requests a visible time range of `-inf:+int` instead.
+    * Edit one of the `3d` views so that it requests a visible time range of `-inf:+inf` instead.
     * Clone that edited `3d` view a bunch of times.
 * Now scrub the time cursor like crazy: do your worst!
 
