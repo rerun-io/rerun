@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use re_query_cache::QueryError;
 use re_types::{
-    archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
     Archetype, Loggable,
 };
@@ -15,6 +14,9 @@ use crate::{
     util::{determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series},
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
+
+#[allow(deprecated)]
+use re_types::archetypes::TimeSeriesScalar;
 
 /// The legacy system for rendering [`TimeSeriesScalar`] archetypes.
 #[derive(Default, Debug)]
@@ -30,6 +32,7 @@ impl IdentifiedViewSystem for LegacyTimeSeriesSystem {
 }
 
 impl VisualizerSystem for LegacyTimeSeriesSystem {
+    #[allow(deprecated)]
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<TimeSeriesScalar>();
         // Although we don't normally include indicator components in required components,
@@ -85,6 +88,7 @@ impl VisualizerSystem for LegacyTimeSeriesSystem {
 }
 
 impl LegacyTimeSeriesSystem {
+    #[allow(deprecated)]
     fn load_scalars(
         &mut self,
         ctx: &ViewerContext<'_>,

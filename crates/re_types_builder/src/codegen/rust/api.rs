@@ -171,6 +171,9 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::too_many_arguments)]\n");
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     code.push_str("#![allow(clippy::unnecessary_cast)]\n");
+    if obj.deprecation_notice().is_some() {
+        code.push_str("#![allow(deprecated)]\n");
+    }
 
     code.push_str("\n\n");
 
@@ -244,6 +247,10 @@ fn generate_mod_file(
     for obj in objects {
         let module_name = obj.snake_case_name();
         let type_name = &obj.name;
+
+        if obj.deprecation_notice().is_some() {
+            code.push_str("#[allow(deprecated)]\n");
+        }
         code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
     }
 
@@ -353,6 +360,12 @@ fn quote_struct(
         .iter()
         .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field));
 
+    let quoted_deprecation_notice = if let Some(deprecation_notice) = obj.deprecation_notice() {
+        quote!(#[deprecated(note = #deprecation_notice)])
+    } else {
+        quote!()
+    };
+
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
     let quoted_struct = if is_tuple_struct {
         quote! { pub struct #name(#(#quoted_fields,)*); }
@@ -413,6 +426,7 @@ fn quote_struct(
         #quoted_derive_clause
         #quoted_repr_clause
         #quoted_custom_clause
+        #quoted_deprecation_notice
         #quoted_struct
 
         #quoted_heap_size_bytes

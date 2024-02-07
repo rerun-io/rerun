@@ -14,6 +14,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
+#![allow(deprecated)]
 
 use ::re_types_core::external::arrow2;
 use ::re_types_core::ComponentName;
@@ -57,6 +58,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
+#[deprecated(
+    note = "Use the `Scalar` + (optional) `SeriesLine`/`SeriesPoint` archetypes instead, logged on the same entity."
+)]
 pub struct TimeSeriesScalar {
     /// The scalar value to log.
     pub scalar: crate::components::Scalar,
