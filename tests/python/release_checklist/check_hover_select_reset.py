@@ -7,7 +7,7 @@ from uuid import uuid4
 import rerun as rr
 
 README = """
-# Hover, Select, and Reset
+# Hover, Select, Deselect, and Reset
 
 This checks whether different UIs behave correctly with hover and selection.
 
@@ -30,6 +30,9 @@ For each of the views:
 For each of the views:
 * Zoom and/or pan the view
 * Double-click the background of the view and verify it resets the view to its default state.
+
+### Deselect
+Finally, try hitting escape and check whether that deselects whatever was currently selected.
 """
 
 

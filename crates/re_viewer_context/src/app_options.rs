@@ -45,7 +45,7 @@ impl Default for AppOptions {
             low_latency: 0.100,
             warn_latency: 0.200,
 
-            show_metrics: false,
+            show_metrics: cfg!(debug_assertions),
 
             #[cfg(not(target_arch = "wasm32"))]
             experimental_space_view_screenshots: false,

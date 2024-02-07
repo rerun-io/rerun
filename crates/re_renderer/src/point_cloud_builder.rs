@@ -218,13 +218,13 @@ impl<'a> PointCloudBatchBuilder<'a> {
             self.0
                 .color_buffer
                 .extend_from_slice(colors)
-                .unwrap_debug_or_log_error();
+                .ok_or_log_error();
 
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .color_buffer
                 .fill_n(Color32::WHITE, num_points.saturating_sub(colors.len()))
-                .unwrap_debug_or_log_error();
+                .ok_or_log_error();
         }
         {
             re_tracing::profile_scope!("picking_ids");
@@ -232,7 +232,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
             self.0
                 .picking_instance_ids_buffer
                 .extend_from_slice(picking_ids)
-                .unwrap_debug_or_log_error();
+                .ok_or_log_error();
 
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
@@ -241,7 +241,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
                     PickingLayerInstanceId::default(),
                     num_points.saturating_sub(picking_ids.len()),
                 )
-                .unwrap_debug_or_log_error();
+                .ok_or_log_error();
         }
 
         self

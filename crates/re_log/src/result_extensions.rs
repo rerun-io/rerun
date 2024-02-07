@@ -2,6 +2,9 @@ pub trait ResultExt<T, E> {
     /// Logs an error if the result is an error and returns the result.
     fn ok_or_log_error(self) -> Option<T>;
 
+    /// Logs an error if the result is an error and returns the result, but only once.
+    fn ok_or_log_error_once(self) -> Option<T>;
+
     /// Log a warning if there is an `Err`, but only log the exact same message once.
     fn warn_on_err_once(self, msg: impl std::fmt::Display) -> Option<T>;
 
@@ -21,6 +24,19 @@ where
                 let loc = std::panic::Location::caller();
                 let (file, line) = (loc.file(), loc.line());
                 log::error!("{file}:{line} {err}");
+                None
+            }
+        }
+    }
+
+    #[track_caller]
+    fn ok_or_log_error_once(self) -> Option<T> {
+        match self {
+            Ok(t) => Some(t),
+            Err(err) => {
+                let loc = std::panic::Location::caller();
+                let (file, line) = (loc.file(), loc.line());
+                crate::error_once!("{file}:{line} {err}");
                 None
             }
         }

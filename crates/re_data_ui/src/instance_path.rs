@@ -36,63 +36,72 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let all_are_indicators = components.iter().all(|c| c.is_indicator_component());
+        let mut components = crate::ui_visible_components(&components);
 
-        egui::Grid::new("entity_instance")
-            .num_columns(2)
-            .show(ui, |ui| {
-                for &component_name in crate::ui_visible_components(&components) {
-                    match verbosity {
-                        UiVerbosity::Small | UiVerbosity::Reduced => {
-                            // Skip indicator components in hover ui (unless there are no other
-                            // types of components).
-                            if component_name.is_indicator_component() && !all_are_indicators {
-                                continue;
-                            }
-                        }
-                        UiVerbosity::LimitHeight | UiVerbosity::Full => {}
+        // Put indicator components first:
+        components.sort_by_key(|c| !c.is_indicator_component());
+
+        let split = components.partition_point(|c| c.is_indicator_component());
+        let normal_components = components.split_off(split);
+        let indicator_components = components;
+
+        let show_indicator_comps = match verbosity {
+            UiVerbosity::Small | UiVerbosity::Reduced => {
+                // Skip indicator components in hover ui (unless there are no other
+                // types of components).
+                !normal_components.is_empty()
+            }
+            UiVerbosity::LimitHeight | UiVerbosity::Full => true,
+        };
+
+        // First show indicator components, outside the grid:
+        if show_indicator_comps {
+            for component_name in indicator_components {
+                item_ui::component_path_button(
+                    ctx,
+                    ui,
+                    &ComponentPath::new(entity_path.clone(), component_name),
+                );
+            }
+        }
+
+        // Now show the rest of the components:
+        egui::Grid::new("components").num_columns(2).show(ui, |ui| {
+            for component_name in normal_components {
+                let Some((_, _, component_data)) =
+                    get_component_with_instances(store, query, entity_path, component_name)
+                else {
+                    continue; // no need to show components that are unset at this point in time
+                };
+
+                item_ui::component_path_button(
+                    ctx,
+                    ui,
+                    &ComponentPath::new(entity_path.clone(), component_name),
+                );
+
+                if instance_key.is_splat() {
+                    super::component::EntityComponentWithInstances {
+                        entity_path: entity_path.clone(),
+                        component_data,
                     }
-
-                    let Some((_, _, component_data)) =
-                        get_component_with_instances(store, query, entity_path, component_name)
-                    else {
-                        continue; // no need to show components that are unset at this point in time
-                    };
-
-                    crate::temporary_style_ui_for_component(ui, &component_name, |ui| {
-                        item_ui::component_path_button(
-                            ctx,
-                            ui,
-                            &ComponentPath::new(entity_path.clone(), component_name),
-                        );
-                    });
-
-                    if let Some(archetype_name) = component_name.indicator_component_archetype() {
-                        ui.weak(format!(
-                            "Indicator component for the {archetype_name} archetype"
-                        ));
-                    } else if instance_key.is_splat() {
-                        super::component::EntityComponentWithInstances {
-                            entity_path: entity_path.clone(),
-                            component_data,
-                        }
-                        .data_ui(ctx, ui, UiVerbosity::Small, query, store);
-                    } else {
-                        ctx.component_ui_registry.ui(
-                            ctx,
-                            ui,
-                            UiVerbosity::Small,
-                            query,
-                            store,
-                            entity_path,
-                            &component_data,
-                            instance_key,
-                        );
-                    }
-
-                    ui.end_row();
+                    .data_ui(ctx, ui, UiVerbosity::Small, query, store);
+                } else {
+                    ctx.component_ui_registry.ui(
+                        ctx,
+                        ui,
+                        UiVerbosity::Small,
+                        query,
+                        store,
+                        entity_path,
+                        &component_data,
+                        instance_key,
+                    );
                 }
-                Some(())
-            });
+
+                ui.end_row();
+            }
+            Some(())
+        });
     }
 }
