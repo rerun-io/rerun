@@ -252,6 +252,12 @@ impl EntityPath {
         }
         EntityPath::new(common)
     }
+
+    /// Returns the first common ancestor of a list of entity paths.
+    pub fn common_ancestor_of<'a>(mut entities: impl Iterator<Item = &'a Self>) -> Self {
+        let first = entities.next().cloned().unwrap_or(EntityPath::root());
+        entities.fold(first, |acc, e| acc.common_ancestor(e))
+    }
 }
 
 impl SizeBytes for EntityPath {

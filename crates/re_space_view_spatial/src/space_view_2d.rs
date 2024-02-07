@@ -204,15 +204,8 @@ impl SpaceViewClass for SpatialSpaceView2D {
                             images_by_bucket
                                 .into_iter()
                                 .map(|(_, entity_bucket)| {
-                                    // Pick a shared parent as origin.
-                                    // Mostly because it looks nicer in the ui.
-                                    let root = entity_bucket.iter().skip(1).fold(
-                                        entity_bucket
-                                            .first()
-                                            .unwrap_or(&EntityPath::root())
-                                            .clone(),
-                                        |acc, e| acc.common_ancestor(e),
-                                    );
+                                    // Pick a shared parent as origin, mostly because it looks nicer in the ui.
+                                    let root = EntityPath::common_ancestor_of(entity_bucket.iter());
 
                                     let mut query_filter = EntityPathFilter::default();
                                     for image in &entity_bucket {
