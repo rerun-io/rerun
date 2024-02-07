@@ -367,10 +367,11 @@ It can greatly improve performance (and readability) in such situations as it pr
 
         let auto_y = y_range.is_none();
 
-        // We don't want to allow scrolling when y is locked unless using the hoizontal scroll modifier.
-        // Otherwise the view "bounces" when we scroll and then reset to the locked range.
-        let allow_scroll = ui.input(|i| i.modifiers.contains(controls::HORIZONTAL_SCROLL_MODIFIER))
-            || !lock_y_during_zoom;
+        // We don't want to allow vertical when y is locked or else the view "bounces" when we scroll and
+        // then reset to the locked range.
+        if lock_y_during_zoom {
+            ui.input_mut(|i| i.smooth_scroll_delta.y = 0.0);
+        }
 
         // TODO(jleibs): Would be nice to disable vertical drag instead of just resetting.
 
@@ -379,8 +380,6 @@ It can greatly improve performance (and readability) in such situations as it pr
             .id(crate::plot_id(query.space_view_id))
             .auto_bounds([true, auto_y].into())
             .allow_zoom([true, !lock_y_during_zoom])
-            .allow_boxed_zoom(!lock_y_during_zoom)
-            .allow_scroll(allow_scroll)
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
