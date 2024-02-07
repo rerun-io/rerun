@@ -188,6 +188,21 @@ pub fn visible_history_ui(
                 && resolved_visible_history.to == VisibleHistoryBoundary::Infinite
             {
                 ui.label("Entire timeline.");
+            } else if resolved_visible_history.from == VisibleHistoryBoundary::AT_CURSOR
+                && resolved_visible_history.to == VisibleHistoryBoundary::AT_CURSOR
+            {
+                let current_time = time_type.format(
+                    current_time.into(),
+                    ctx.app_options.time_zone_for_timestamps,
+                );
+                match time_type {
+                    TimeType::Time => {
+                        ui.label(format!("At current time: {current_time}"));
+                    }
+                    TimeType::Sequence => {
+                        ui.label(format!("At current frame: {current_time}"));
+                    }
+                }
             } else {
                 egui::Grid::new("from_to_labels").show(ui, |ui| {
                     re_ui.grid_left_hand_label(ui, "From");
