@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -13,12 +13,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .marker_shape_ext import MarkerShapeExt
 
 __all__ = ["MarkerShape", "MarkerShapeArrayLike", "MarkerShapeBatch", "MarkerShapeLike", "MarkerShapeType"]
 
 
 @define(init=False)
-class MarkerShape:
+class MarkerShape(MarkerShapeExt):
     """**Component**: Shape of a marker."""
 
     def __init__(self: Any, shape: MarkerShapeLike):
@@ -27,7 +28,9 @@ class MarkerShape:
         # You can define your own __init__ function as a member of MarkerShapeExt in marker_shape_ext.py
         self.__attrs_init__(shape=shape)
 
-    shape: int = field(converter=int)
+    shape: int = field(
+        converter=MarkerShapeExt.shape__field_converter_override,  # type: ignore[misc]
+    )
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of MarkerShapeExt in marker_shape_ext.py
@@ -37,11 +40,12 @@ class MarkerShape:
         return int(self.shape)
 
 
-MarkerShapeLike = MarkerShape
-MarkerShapeArrayLike = Union[
-    MarkerShape,
-    Sequence[MarkerShapeLike],
-]
+if TYPE_CHECKING:
+    MarkerShapeLike = Union[MarkerShape, int, str]
+else:
+    MarkerShapeLike = Any
+
+MarkerShapeArrayLike = Union[MarkerShape, Sequence[MarkerShapeLike], int, str]
 
 
 class MarkerShapeType(BaseExtensionType):
@@ -56,4 +60,7 @@ class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: MarkerShapeArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in marker_shape_ext.py
+        return MarkerShapeExt.native_to_pa_array_override(data, data_type)
+
+
+MarkerShapeExt.deferred_patch_class(MarkerShape)
