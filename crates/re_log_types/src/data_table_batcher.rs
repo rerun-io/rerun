@@ -476,7 +476,11 @@ fn batching_thread(
             return;
         }
 
-        re_log::trace!(reason, "flushing tables");
+        re_log::trace!(
+            "Flushing {} rows and {} bytes. Reason: {reason}",
+            rows.len(),
+            re_format::format_bytes(acc.pending_num_bytes as _)
+        );
 
         let table = DataTable::from_rows(TableId::new(), rows.drain(..));
         // TODO(#1981): efficient table sorting here, following the same rules as the store's.
@@ -488,6 +492,13 @@ fn batching_thread(
 
         acc.reset();
     }
+
+    re_log::trace!(
+        "Flushing every: {:.2}s, {} rows, {}",
+        config.flush_tick.as_secs_f64(),
+        config.flush_num_rows,
+        re_format::format_bytes(config.flush_num_bytes as _),
+    );
 
     use crossbeam::select;
     loop {
@@ -521,7 +532,7 @@ fn batching_thread(
             };
             },
             recv(rx_tick) -> _ => {
-                do_flush_all(&mut acc, &tx_table, "duration");
+                do_flush_all(&mut acc, &tx_table, "tick");
             },
         };
     }
