@@ -193,6 +193,7 @@ fn test_format_bytes() {
 }
 
 pub fn parse_bytes_base10(bytes: &str) -> Option<i64> {
+    // Note: intentionally case sensitive so that we don't parse `Mb` (Megabit) as `MB` (Megabyte).
     if let Some(kb) = bytes.strip_suffix("kB") {
         Some(kb.parse::<i64>().ok()? * 1_000)
     } else if let Some(mb) = bytes.strip_suffix("MB") {
@@ -231,6 +232,7 @@ fn test_parse_bytes_base10() {
 }
 
 pub fn parse_bytes_base2(bytes: &str) -> Option<i64> {
+    // Note: intentionally case sensitive so that we don't parse `Mib` (Mebibit) as `MiB` (Mebibyte).
     if let Some(kb) = bytes.strip_suffix("KiB") {
         Some(kb.parse::<i64>().ok()? * 1024)
     } else if let Some(mb) = bytes.strip_suffix("MiB") {
