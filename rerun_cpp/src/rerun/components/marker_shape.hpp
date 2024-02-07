@@ -25,6 +25,20 @@ namespace rerun::components {
         uint8_t shape;
 
       public:
+        // Extensions to generated type defined in 'marker_shape_ext.cpp'
+
+        static const rerun::components::MarkerShape CIRCLE;
+        static const rerun::components::MarkerShape DIAMOND;
+        static const rerun::components::MarkerShape SQUARE;
+        static const rerun::components::MarkerShape CROSS;
+        static const rerun::components::MarkerShape PLUS;
+        static const rerun::components::MarkerShape UP;
+        static const rerun::components::MarkerShape DOWN;
+        static const rerun::components::MarkerShape LEFT;
+        static const rerun::components::MarkerShape RIGHT;
+        static const rerun::components::MarkerShape ASTERISK;
+
+      public:
         MarkerShape() = default;
 
         MarkerShape(uint8_t shape_) : shape(shape_) {}
