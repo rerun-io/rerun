@@ -51,7 +51,9 @@ namespace rerun::archetypes {
     ///     }
     /// }
     /// ```
-    struct TimeSeriesScalar {
+    struct [[deprecated(
+        "Use the `Scalar` + (optional) `SeriesLine`/`SeriesPoint` archetypes instead, logged on the same entity."
+    )]] TimeSeriesScalar {
         /// The scalar value to log.
         rerun::components::Scalar scalar;
 
@@ -106,7 +108,7 @@ namespace rerun::archetypes {
 
       public:
         TimeSeriesScalar() = default;
-        TimeSeriesScalar(TimeSeriesScalar&& other) = default;
+        TimeSeriesScalar(TimeSeriesScalar && other) = default;
 
         explicit TimeSeriesScalar(rerun::components::Scalar _scalar) : scalar(std::move(_scalar)) {}
 
@@ -118,7 +120,7 @@ namespace rerun::archetypes {
         /// If all points within a single entity path (i.e. a line) share the same
         /// radius, then this radius will be used as the line width too. Otherwise, the
         /// line will use the default width of `1.0`.
-        TimeSeriesScalar with_radius(rerun::components::Radius _radius) && {
+        TimeSeriesScalar with_radius(rerun::components::Radius _radius)&& {
             radius = std::move(_radius);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -135,7 +137,7 @@ namespace rerun::archetypes {
         /// If all points within a single entity path (i.e. a line) share the same
         /// color, then this color will be used as the line color in the plot legend.
         /// Otherwise, the line will appear gray in the legend.
-        TimeSeriesScalar with_color(rerun::components::Color _color) && {
+        TimeSeriesScalar with_color(rerun::components::Color _color)&& {
             color = std::move(_color);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -149,7 +151,7 @@ namespace rerun::archetypes {
         /// this label will be used as the label for the line itself. Otherwise, the
         /// line will be named after the entity path. The plot itself is named after
         /// the space it's in.
-        TimeSeriesScalar with_label(rerun::components::Text _label) && {
+        TimeSeriesScalar with_label(rerun::components::Text _label)&& {
             label = std::move(_label);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -162,7 +164,7 @@ namespace rerun::archetypes {
         /// Points within a single line do not have to all share the same scatteredness:
         /// the line will switch between a scattered and a continuous representation as
         /// required.
-        TimeSeriesScalar with_scattered(rerun::components::ScalarScattering _scattered) && {
+        TimeSeriesScalar with_scattered(rerun::components::ScalarScattering _scattered)&& {
             scattered = std::move(_scattered);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -180,6 +182,7 @@ namespace rerun {
     /// \private
     template <typename T>
     struct AsComponents;
+    RR_PUSH_WARNINGS RR_DISABLE_DEPRECATION_WARNING;
 
     /// \private
     template <>
@@ -188,4 +191,6 @@ namespace rerun {
         static Result<std::vector<DataCell>> serialize(const archetypes::TimeSeriesScalar& archetype
         );
     };
+
+    RR_POP_WARNINGS
 } // namespace rerun
