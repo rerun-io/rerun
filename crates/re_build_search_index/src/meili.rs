@@ -37,14 +37,14 @@ impl SearchClient {
         &self,
         index: &str,
         q: &str,
-    ) -> anyhow::Result<impl Iterator<Item = Document>> {
-        let results = self
-            .client
-            .index(index)
-            .search()
-            .with_query(q)
-            .execute()
-            .await?;
+        limit: Option<usize>,
+    ) -> anyhow::Result<impl Iterator<Item = Document> + DoubleEndedIterator + ExactSizeIterator>
+    {
+        let index = self.client.index(index);
+        let mut request = index.search();
+        let request = request.with_query(q);
+        request.limit = limit;
+        let results = request.execute().await?;
         Ok(results.hits.into_iter().map(|hit| hit.result))
     }
 

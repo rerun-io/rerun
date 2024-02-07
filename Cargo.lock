@@ -4386,7 +4386,6 @@ dependencies = [
  "cargo_metadata 0.18.1",
  "glob",
  "indicatif",
- "itertools 0.12.0",
  "meilisearch-sdk",
  "rayon",
  "re_build_examples",

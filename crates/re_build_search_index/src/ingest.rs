@@ -96,6 +96,10 @@ impl Document {
     pub fn url(&self) -> &String {
         &self.data.url
     }
+
+    pub fn content(&self) -> &String {
+        &self.data.content
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

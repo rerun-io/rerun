@@ -27,7 +27,6 @@ camino.workspace = true
 cargo_metadata.workspace = true
 glob.workspace = true
 indicatif.workspace = true
-itertools.workspace = true
 rayon.workspace = true
 rustdoc-json = "0.8.8"
 rustdoc-types = "0.24.0"
