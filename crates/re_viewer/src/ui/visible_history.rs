@@ -268,11 +268,10 @@ fn current_range_ui(
 ) {
     let time_range = visible_history.time_range(current_time.into());
     let from_formatted = time_type.format(time_range.min, ctx.app_options.time_zone_for_timestamps);
+    let to_formatted = time_type.format(time_range.max, ctx.app_options.time_zone_for_timestamps);
 
-    ui.label(format!(
-        "Showing data between {from_formatted} and {} (included).",
-        time_type.format(time_range.max, ctx.app_options.time_zone_for_timestamps)
-    ));
+    ui.label(format!("{from_formatted} to {to_formatted}"))
+        .on_hover_text("Showing data in this range (inclusive).");
 }
 
 #[allow(clippy::too_many_arguments)]
