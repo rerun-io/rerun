@@ -13,7 +13,7 @@ This checks that the container hierarchy behaves as expected.
 
 ### Prepare a hierarchy
 
-TODO(ab): setup the container hierarchy with the blueprint API when available. 
+TODO(ab): setup the container hierarchy with the blueprint API when available.
 
 * Organise the space views in a non-trivial hierarchy of containers.
 * As a starting point, ensure that the hierarchy is "sane" (i.e. no leaf/single-child containers, etc.).
@@ -37,7 +37,7 @@ TODO(ab): setup the container hierarchy with the blueprint API when available.
 
 
 ### Simplify the hierarchy
- 
+
 * Select on mid-tree container, and click "Simplify hierarchy" in the Selection Panel.
     * Its content should be clean of any empty containers.
     * The rest of the tree should be unaffected.
@@ -88,8 +88,6 @@ def run(args: Namespace) -> None:
 
     log_readme()
     log_some_space_views()
-
-    hello = input("ldasdf")
 
 
 if __name__ == "__main__":
