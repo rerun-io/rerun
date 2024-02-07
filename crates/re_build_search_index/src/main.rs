@@ -5,6 +5,7 @@ mod index;
 mod ingest;
 mod meili;
 mod repl;
+mod util;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
