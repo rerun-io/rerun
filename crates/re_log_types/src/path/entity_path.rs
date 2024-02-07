@@ -310,6 +310,7 @@ where
 {
     type Output = Idx::Output;
 
+    #[inline]
     fn index(&self, index: Idx) -> &Self::Output {
         &self.parts[index]
     }
