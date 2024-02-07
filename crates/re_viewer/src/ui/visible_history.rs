@@ -176,23 +176,31 @@ pub fn visible_history_ui(
 
             current_range_ui(ctx, ui, current_time, time_type, visible_history);
         } else {
-            resolved_visible_history_boundary_ui(
-                ctx,
-                ui,
-                &resolved_visible_history.from,
-                time_type,
-                true,
-            );
+            // Show the resolved visible range as labels (user can't edit them):
 
-            resolved_visible_history_boundary_ui(
-                ctx,
-                ui,
-                &resolved_visible_history.to,
-                time_type,
-                false,
-            );
+            if resolved_visible_history.from == VisibleHistoryBoundary::Infinite
+                && resolved_visible_history.to == VisibleHistoryBoundary::Infinite
+            {
+                ui.label("Entire timeline.");
+            } else {
+                resolved_visible_history_boundary_ui(
+                    ctx,
+                    ui,
+                    &resolved_visible_history.from,
+                    time_type,
+                    true,
+                );
 
-            current_range_ui(ctx, ui, current_time, time_type, resolved_visible_history);
+                resolved_visible_history_boundary_ui(
+                    ctx,
+                    ui,
+                    &resolved_visible_history.to,
+                    time_type,
+                    false,
+                );
+
+                current_range_ui(ctx, ui, current_time, time_type, resolved_visible_history);
+            }
         }
     });
 
