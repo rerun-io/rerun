@@ -50,15 +50,15 @@ The full source code for this example is available
 ### Input Video
 The input video is logged as a sequence of
 [rr.Image objects](https://www.rerun.io/docs/reference/types/archetypes/image) to the
-[image/rgb entity](recording://image/rgb). Since the detection and segmentation model operates on smaller images the
-resized images are logged to the separate [image_scaled/rgb entity](recording://image_scaled/rgb). This allows us to
+[image entity](recording://image). Since the detection and segmentation model operates on smaller images the
+resized images are logged to the separate [segmentation/rgb_scaled entity](recording://segmentation/rgb_scaled). This allows us to
 subsequently visualize the segmentation mask on top of the video.
 
 ### Segmentations
-The [segmentation result](recording://image_scaled/segmentation) is logged through a combination of two archetypes.
+The [segmentation result](recording://image_segmentation/segmentation) is logged through a combination of two archetypes.
 The segmentation image itself is logged as an
 [rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image) and
-contains the id for each pixel. It is logged to the [image_scaled/segmentation entity](recording://image_scaled/segmentation).
+contains the id for each pixel. It is logged to the [segmentation entity](recording://segmentation).
 
 The color and label for each class is determined by the
 [rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
@@ -134,7 +134,7 @@ class Detector:
         _, _, scaled_height, scaled_width = inputs["pixel_values"].shape
         scaled_size = (scaled_width, scaled_height)
         rgb_scaled = cv2.resize(rgb, scaled_size)
-        rr.log("image_scaled/rgb", rr.Image(rgb_scaled).compress(jpeg_quality=85))
+        rr.log("segmentation/rgb_scaled", rr.Image(rgb_scaled).compress(jpeg_quality=85))
 
         logging.debug("Pass image to detection network")
         outputs = self.model(**inputs)
@@ -147,7 +147,7 @@ class Detector:
         )[0]
 
         mask = segmentation_mask.detach().cpu().numpy().astype(np.uint8)
-        rr.log("image_scaled/segmentation", rr.SegmentationImage(mask))
+        rr.log("segmentation", rr.SegmentationImage(mask))
 
         boxes = detections["boxes"].detach().cpu().numpy()
         class_ids = detections["labels"].detach().cpu().numpy()
@@ -178,7 +178,7 @@ class Detector:
         thing_boxes = boxes[things_np, :]
         thing_class_ids = class_ids_np[things_np]
         rr.log(
-            "image_scaled/detections/things",
+            "segmentation/detections/things",
             rr.Boxes2D(
                 array=thing_boxes,
                 array_format=rr.Box2DFormat.XYXY,
@@ -189,7 +189,7 @@ class Detector:
         background_boxes = boxes[~things_np, :]
         background_class_ids = class_ids[~things_np]
         rr.log(
-            "image_scaled/detections/background",
+            "segmentation/detections/background",
             rr.Boxes2D(
                 array=background_boxes,
                 array_format=rr.Box2DFormat.XYXY,
@@ -391,7 +391,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
             break
 
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        rr.log("image/rgb", rr.Image(rgb).compress(jpeg_quality=85))
+        rr.log("image", rr.Image(rgb).compress(jpeg_quality=85))
 
         if not trackers or frame_idx % 40 == 0:
             detections = detector.detect_objects_to_track(rgb=rgb, frame_idx=frame_idx)
