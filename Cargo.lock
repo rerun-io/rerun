@@ -4338,7 +4338,6 @@ dependencies = [
  "anyhow",
  "criterion",
  "document-features",
- "egui_plot",
  "emath",
  "getrandom",
  "itertools 0.12.0",
