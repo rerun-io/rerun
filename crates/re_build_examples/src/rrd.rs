@@ -21,13 +21,24 @@ pub struct Rrd {
 
     #[argh(option, description = "include only examples in this channel")]
     channel: Channel,
+
+    #[argh(option, description = "run only these examples")]
+    examples: Vec<String>,
 }
 
 impl Rrd {
     pub fn run(self) -> anyhow::Result<()> {
         create_dir_all(&self.output_dir)?;
 
-        let examples = self.channel.examples()?;
+        let examples = if self.examples.is_empty() {
+            self.channel.examples()?
+        } else {
+            Channel::Nightly
+                .examples()?
+                .into_iter()
+                .filter(|example| self.examples.contains(&example.name))
+                .collect()
+        };
         let progress = MultiProgress::new();
         let results: Vec<anyhow::Result<PathBuf>> = examples
             .into_par_iter()
