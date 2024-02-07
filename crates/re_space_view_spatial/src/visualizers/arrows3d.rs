@@ -38,7 +38,7 @@ impl Default for Arrows3DVisualizer {
 impl Arrows3DVisualizer {
     fn process_labels<'a>(
         vectors: &'a [Vector3D],
-        positions: impl Iterator<Item = Option<Position3D>> + 'a,
+        origins: impl Iterator<Item = Option<Position3D>> + 'a,
         labels: &'a [Option<Text>],
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
@@ -48,7 +48,7 @@ impl Arrows3DVisualizer {
         itertools::izip!(
             annotation_infos.iter(),
             vectors,
-            positions,
+            origins,
             labels,
             colors,
             instance_path_hashes,
@@ -132,7 +132,7 @@ impl Arrows3DVisualizer {
 
         let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
-            .batch("arrows2d")
+            .batch("arrows3d")
             .world_from_obj(ent_context.world_from_entity)
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
@@ -173,8 +173,7 @@ impl Arrows3DVisualizer {
 
 // ---
 
-#[doc(hidden)] // Public for benchmarks
-pub struct Arrows3DComponentData<'a> {
+struct Arrows3DComponentData<'a> {
     pub instance_keys: &'a [InstanceKey],
     pub vectors: &'a [Vector3D],
     pub origins: Option<&'a [Option<Position3D>]>,

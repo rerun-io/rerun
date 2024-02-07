@@ -38,7 +38,7 @@ impl Default for Arrows2DVisualizer {
 impl Arrows2DVisualizer {
     fn process_labels<'a>(
         vectors: &'a [Vector2D],
-        positions: impl Iterator<Item = Option<Position2D>> + 'a,
+        origins: impl Iterator<Item = Option<Position2D>> + 'a,
         labels: &'a [Option<Text>],
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
@@ -48,7 +48,7 @@ impl Arrows2DVisualizer {
         itertools::izip!(
             annotation_infos.iter(),
             vectors,
-            positions,
+            origins,
             labels,
             colors,
             instance_path_hashes,
