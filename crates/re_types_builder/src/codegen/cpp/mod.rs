@@ -564,8 +564,10 @@ impl QuotedObject {
             if obj.deprecation_notice().is_some() {
                 hpp_includes.insert_rerun("compiler_utils.hpp");
                 (
-                    // Semicolon is just there to trick the formatter in not messing up indentation.
-                    quote! { RR_PUSH_WARNINGS RR_DISABLE_DEPRECATION_WARNING; #NEWLINE_TOKEN },
+                    quote! {
+                        RR_PUSH_WARNINGS #NEWLINE_TOKEN
+                        RR_DISABLE_DEPRECATION_WARNING #NEWLINE_TOKEN
+                    },
                     quote! { RR_POP_WARNINGS },
                 )
             } else {

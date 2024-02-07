@@ -5,7 +5,8 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-RR_PUSH_WARNINGS RR_DISABLE_DEPRECATION_WARNING;
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING
 
 namespace rerun::archetypes {}
 
