@@ -528,6 +528,6 @@ impl<'a> Drop for LineStripBuilder<'a> {
         self.builder
             .picking_instance_ids_buffer
             .fill_n(self.picking_instance_id, self.strip_range.len())
-            .unwrap_debug_or_log_error(); // May run out of space, but we should have already handled that earlier.
+            .ok_or_log_error(); // May run out of space, but we should have already handled that earlier.
     }
 }
