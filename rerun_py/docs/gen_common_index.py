@@ -75,6 +75,196 @@ class Section:
     show_submodules: bool = False
 
 
+# This is the list of sections and functions that will be included in the index
+# for each of them.
+SECTION_TABLE: Final[list[Section]] = [
+    ################################################################################
+    Section(
+        title="Initialization functions",
+        func_list=[
+            "init",
+            "connect",
+            "disconnect",
+            "save",
+            "serve",
+            "spawn",
+            "memory_recording",
+        ],
+    ),
+    Section(
+        title="Logging functions",
+        func_list=["log", "set_time_sequence", "set_time_seconds", "set_time_nanos"],
+    ),
+    ################################################################################
+    # These sections don't have tables, but generate pages containing all the archetypes, components, datatypes
+    Section(
+        title="Archetypes",
+        mod_path="rerun.archetypes",
+        show_tables=False,
+    ),
+    Section(
+        title="Components",
+        mod_path="rerun.components",
+        show_tables=False,
+    ),
+    Section(
+        title="Datatypes",
+        mod_path="rerun.datatypes",
+        show_tables=False,
+    ),
+    Section(
+        title="Custom Data",
+        class_list=["AnyValues"],
+    ),
+    ################################################################################
+    # These are tables but don't need their own pages since they refer to types that
+    # were added in the pages up above
+    Section(
+        title="Clearing Entities",
+        class_list=["archetypes.Clear"],
+        gen_page=False,
+    ),
+    Section(
+        title="Annotations",
+        class_list=[
+            "archetypes.AnnotationContext",
+            "datatypes.AnnotationInfo",
+            "datatypes.ClassDescription",
+        ],
+        gen_page=False,
+    ),
+    Section(
+        title="Images",
+        class_list=[
+            "archetypes.DepthImage",
+            "archetypes.Image",
+            "ImageEncoded",
+            "archetypes.SegmentationImage",
+        ],
+        gen_page=False,
+    ),
+    Section(
+        title="Image Helpers",
+        class_list=["ImageEncoded"],
+        show_tables=False,
+    ),
+    Section(
+        title="Plotting",
+        class_list=[
+            "archetypes.BarChart",
+            "archetypes.Scalar",
+            "archetypes.SeriesLine",
+            "archetypes.SeriesPoint",
+            "archetypes.TimeSeriesScalar",
+        ],
+        gen_page=False,
+    ),
+    Section(
+        title="Spatial Archetypes",
+        class_list=[
+            "archetypes.Arrows3D",
+            "archetypes.Arrows2D",
+            "archetypes.Asset3D",
+            "archetypes.Boxes2D",
+            "archetypes.Boxes3D",
+            "archetypes.LineStrips2D",
+            "archetypes.LineStrips3D",
+            "archetypes.Mesh3D",
+            "archetypes.Points2D",
+            "archetypes.Points3D",
+        ],
+        gen_page=False,
+    ),
+    Section(
+        title="Tensors",
+        class_list=["archetypes.Tensor"],
+        gen_page=False,
+    ),
+    Section(
+        title="Text",
+        class_list=["LoggingHandler", "archetypes.TextDocument", "archetypes.TextLog"],
+        gen_page=False,
+    ),
+    Section(
+        title="Transforms and Coordinate Systems",
+        class_list=[
+            "archetypes.DisconnectedSpace",
+            "archetypes.Pinhole",
+            "archetypes.Transform3D",
+            "archetypes.ViewCoordinates",
+            "datatypes.Quaternion",
+            "datatypes.RotationAxisAngle",
+            "datatypes.Scale3D",
+            "datatypes.TranslationAndMat3x3",
+            "datatypes.TranslationRotationScale3D",
+        ],
+        gen_page=False,
+    ),
+    ################################################################################
+    # Remaining sections of other referenced things
+    Section(
+        title="Enums",
+        mod_path="rerun",
+        class_list=[
+            "Box2DFormat",
+            "ImageFormat",
+            "MeshFormat",
+        ],
+        show_tables=False,
+    ),
+    Section(
+        title="Interfaces",
+        mod_path="rerun",
+        class_list=["AsComponents", "ComponentBatchLike"],
+        default_filters=False,
+    ),
+    Section(
+        title="Script Helpers",
+        func_list=[
+            "script_add_args",
+            "script_setup",
+            "script_teardown",
+        ],
+    ),
+    Section(
+        title="Other classes and functions",
+        show_tables=False,
+        func_list=[
+            "get_data_recording",
+            "get_global_data_recording",
+            "get_recording_id",
+            "get_thread_local_data_recording",
+            "is_enabled",
+            "log_components",
+            "new_recording",
+            "set_global_data_recording",
+            "set_thread_local_data_recording",
+            "start_web_viewer_server",
+            "escape_entity_path_part",
+            "new_entity_path",
+        ],
+        class_list=["RecordingStream", "LoggingHandler", "MemoryRecording"],
+    ),
+    Section(
+        title="Utilities",
+        show_tables=False,
+        mod_path="rerun.utilities",
+        show_submodules=True,
+    ),
+    Section(
+        title="Experimental",
+        func_list=[
+            "add_space_view",
+            "new_blueprint",
+            "set_auto_space_views",
+            "set_panels",
+        ],
+        show_tables=False,
+        mod_path="rerun.experimental",
+    ),
+]
+
+
 def is_mentioned(thing: str) -> bool:
     for section in SECTION_TABLE:
         if section.class_list is not None:
@@ -82,10 +272,6 @@ def is_mentioned(thing: str) -> bool:
                 return True
     return False
 
-
-SECTION_TABLE = json.loads(
-    Path(__file__).parent.joinpath("section_table.json").read_text(), object_hook=lambda d: Section(**d)
-)
 
 # Virtual folder where we will generate the md files
 root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
