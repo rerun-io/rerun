@@ -123,12 +123,8 @@ impl DataQueryBlueprint {
             tree.visit_children_recursively(&mut |path, info| {
                 let sub_path: EntityPath = new_path
                     .iter()
+                    .chain(&path[current_path.len()..])
                     .cloned()
-                    .chain(
-                        path.as_slice()[current_path.len()..path.len()]
-                            .iter()
-                            .cloned(),
-                    )
                     .collect();
 
                 if let Ok(row) = DataRow::from_cells(
@@ -553,7 +549,7 @@ impl DataQueryPropertyResolver<'_> {
                                 .blueprint
                                 .store()
                                 .latest_at(query, &override_path, *component, &[*component])
-                                .and_then(|result| result.2[0].clone())
+                                .and_then(|(_, _, cells)| cells[0].clone())
                             {
                                 if !component_data.is_empty() {
                                     component_overrides.insert(
