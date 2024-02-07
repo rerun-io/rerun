@@ -1,8 +1,8 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query::{ArchetypeView, QueryError};
+use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::LineStrips2D,
-    components::{LineStrip2D, Text},
+    components::{ClassId, Color, InstanceKey, KeypointId, LineStrip2D, Radius, Text},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -13,15 +13,12 @@ use re_viewer_context::{
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     view_kind::SpatialSpaceViewKind,
-    visualizers::{
-        entity_iterator::process_archetype_views, process_colors, process_radii, UiLabel,
-        UiLabelTarget,
-    },
+    visualizers::{UiLabel, UiLabelTarget},
 };
 
 use super::{
-    filter_visualizable_2d_entities, picking_id_from_instance_key, process_annotations,
-    SpatialViewVisualizerData,
+    filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
+    process_radius_slice, SpatialViewVisualizerData,
 };
 
 pub struct Lines2DVisualizer {
@@ -41,15 +38,16 @@ impl Default for Lines2DVisualizer {
 
 impl Lines2DVisualizer {
     fn process_labels<'a>(
-        arch_view: &'a ArchetypeView<LineStrips2D>,
+        strips: &'a [LineStrip2D],
+        labels: &'a [Option<Text>],
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
-    ) -> Result<impl Iterator<Item = UiLabel> + 'a, QueryError> {
-        let labels = itertools::izip!(
+    ) -> impl Iterator<Item = UiLabel> + 'a {
+        itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<LineStrip2D>()?,
-            arch_view.iter_optional_component::<Text>()?,
+            strips,
+            labels,
             colors,
             instance_path_hashes,
         )
@@ -65,6 +63,7 @@ impl Lines2DVisualizer {
                             .map(glam::Vec2::from)
                             .sum::<glam::Vec2>()
                             / (strip.0.len() as f32);
+
                         Some(UiLabel {
                             text: label,
                             color: *color,
@@ -75,45 +74,52 @@ impl Lines2DVisualizer {
                     _ => None,
                 }
             },
-        );
-        Ok(labels)
+        )
     }
 
-    fn process_arch_view(
+    fn process_data(
         &mut self,
         query: &ViewQuery<'_>,
-        arch_view: &ArchetypeView<LineStrips2D>,
+        data: &Lines2DComponentData<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError> {
-        let annotation_infos = process_annotations::<LineStrip2D, LineStrips2D>(
-            query,
-            arch_view,
+    ) {
+        let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+            query.latest_at,
+            data.instance_keys,
+            data.keypoint_ids,
+            data.class_ids,
+            data.strips.iter().map(|_| glam::Vec3::ZERO),
             &ent_context.annotations,
-        )?;
+        );
 
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
+        let radii = process_radius_slice(data.radii, data.strips.len(), ent_path);
+        let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
 
-        if arch_view.num_instances() <= self.max_labels {
+        if data.instance_keys.len() <= self.max_labels {
+            re_tracing::profile_scope!("labels");
+
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+            let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
-                arch_view
-                    .iter_instance_keys()
+                data.instance_keys
+                    .iter()
+                    .copied()
                     .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
                     .collect::<Vec<_>>()
             };
 
-            self.data.ui_labels.extend(Self::process_labels(
-                arch_view,
-                &instance_path_hashes_for_picking,
-                &colors,
-                &annotation_infos,
-            )?);
+            if let Some(labels) = data.labels {
+                self.data.ui_labels.extend(Self::process_labels(
+                    data.strips,
+                    labels,
+                    &instance_path_hashes_for_picking,
+                    &colors,
+                    &annotation_infos,
+                ));
+            }
         }
 
         let mut line_builder = ent_context.shared_render_builders.lines();
@@ -124,37 +130,41 @@ impl Lines2DVisualizer {
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-        let instance_keys = arch_view.iter_instance_keys();
-        let pick_ids = arch_view
-            .iter_instance_keys()
-            .map(picking_id_from_instance_key);
-        let strips = arch_view.iter_required_component::<LineStrip2D>()?;
-
         let mut bounding_box = macaw::BoundingBox::nothing();
 
-        for (instance_key, strip, radius, color, pick_id) in
-            itertools::izip!(instance_keys, strips, radii, colors, pick_ids)
+        for (instance_key, strip, radius, color) in
+            itertools::izip!(data.instance_keys, data.strips, radii, colors)
         {
             let lines = line_batch
                 .add_strip_2d(strip.0.iter().copied().map(Into::into))
                 .color(color)
                 .radius(radius)
-                .picking_instance_id(pick_id);
+                .picking_instance_id(PickingLayerInstanceId(instance_key.0));
 
-            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(&instance_key) {
+            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(instance_key) {
                 lines.outline_mask_ids(*outline_mask_ids);
             }
 
-            for p in strip.0 {
+            for p in &strip.0 {
                 bounding_box.extend(glam::vec3(p.x(), p.y(), 0.0));
             }
         }
 
         self.data
             .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
-
-        Ok(())
     }
+}
+
+// ---
+
+struct Lines2DComponentData<'a> {
+    pub instance_keys: &'a [InstanceKey],
+    pub strips: &'a [LineStrip2D],
+    pub colors: Option<&'a [Option<Color>]>,
+    pub radii: Option<&'a [Option<Radius>]>,
+    pub labels: Option<&'a [Option<Text>]>,
+    pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
+    pub class_ids: Option<&'a [Option<ClassId>]>,
 }
 
 impl IdentifiedViewSystem for Lines2DVisualizer {
@@ -183,18 +193,44 @@ impl VisualizerSystem for Lines2DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<
+        super::entity_iterator::process_archetype_pov1_comp5::<
             Lines2DVisualizer,
             LineStrips2D,
-            { LineStrips2D::NUM_COMPONENTS },
+            LineStrip2D,
+            Color,
+            Radius,
+            Text,
+            KeypointId,
+            ClassId,
             _,
         >(
             ctx,
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |_ctx, ent_path, _ent_props, arch_view, ent_context| {
-                self.process_arch_view(query, &arch_view, ent_path, ent_context)
+            |_ctx,
+             ent_path,
+             _ent_props,
+             ent_context,
+             (_time, _row_id),
+             instance_keys,
+             strips,
+             colors,
+             radii,
+             labels,
+             keypoint_ids,
+             class_ids| {
+                let data = Lines2DComponentData {
+                    instance_keys,
+                    strips,
+                    colors,
+                    radii,
+                    labels,
+                    keypoint_ids,
+                    class_ids,
+                };
+                self.process_data(query, &data, ent_path, ent_context);
+                Ok(())
             },
         )?;
 
