@@ -134,7 +134,7 @@ fn test_format_large_number() {
 /// ```
 /// # use re_format::format_bytes;
 /// assert_eq!(format_bytes(123.0), "123 B");
-/// assert_eq!(format_bytes(12_345.0), "12.1 kiB");
+/// assert_eq!(format_bytes(12_345.0), "12.1 KiB");
 /// assert_eq!(format_bytes(1_234_567.0), "1.2 MiB");
 /// assert_eq!(format_bytes(123_456_789.0), "118 MiB");
 /// ```
@@ -147,7 +147,7 @@ pub fn format_bytes(number_of_bytes: f64) -> String {
         format!("{number_of_bytes:.0} B")
     } else if number_of_bytes < 20.0_f64.exp2() {
         let decimals = (10.0 * number_of_bytes < 20.0_f64.exp2()) as usize;
-        format!("{:.*} kiB", decimals, number_of_bytes / 10.0_f64.exp2())
+        format!("{:.*} KiB", decimals, number_of_bytes / 10.0_f64.exp2())
     } else if number_of_bytes < 30.0_f64.exp2() {
         let decimals = (10.0 * number_of_bytes < 30.0_f64.exp2()) as usize;
         format!("{:.*} MiB", decimals, number_of_bytes / 20.0_f64.exp2())
@@ -164,12 +164,12 @@ fn test_format_bytes() {
         (1000.0, "1000 B"),
         (1001.0, "1001 B"),
         (1023.0, "1023 B"),
-        (1024.0, "1.0 kiB"),
-        (1025.0, "1.0 kiB"),
-        (1024.0 * 1.2345, "1.2 kiB"),
-        (1024.0 * 12.345, "12.3 kiB"),
-        (1024.0 * 123.45, "123 kiB"),
-        (1024f64.powi(2) - 1.0, "1024 kiB"),
+        (1024.0, "1.0 KiB"),
+        (1025.0, "1.0 KiB"),
+        (1024.0 * 1.2345, "1.2 KiB"),
+        (1024.0 * 12.345, "12.3 KiB"),
+        (1024.0 * 123.45, "123 KiB"),
+        (1024f64.powi(2) - 1.0, "1024 KiB"),
         (1024f64.powi(2) + 0.0, "1.0 MiB"),
         (1024f64.powi(2) + 1.0, "1.0 MiB"),
         (1024f64.powi(3) - 1.0, "1024 MiB"),
@@ -182,7 +182,7 @@ fn test_format_bytes() {
         (1024f64.powi(4) + 0.0, "1024 GiB"),
         (1024f64.powi(4) + 1.0, "1024 GiB"),
         (123.0, "123 B"),
-        (12_345.0, "12.1 kiB"),
+        (12_345.0, "12.1 KiB"),
         (1_234_567.0, "1.2 MiB"),
         (123_456_789.0, "118 MiB"),
     ];
@@ -231,7 +231,7 @@ fn test_parse_bytes_base10() {
 }
 
 pub fn parse_bytes_base2(bytes: &str) -> Option<i64> {
-    if let Some(kb) = bytes.strip_suffix("kiB") {
+    if let Some(kb) = bytes.strip_suffix("KiB") {
         Some(kb.parse::<i64>().ok()? * 1024)
     } else if let Some(mb) = bytes.strip_suffix("MiB") {
         Some(mb.parse::<i64>().ok()? * 1024 * 1024)
@@ -252,8 +252,8 @@ fn test_parse_bytes_base2() {
         ("999B", 999),
         ("1023B", 1_023),
         ("1024B", 1_024),
-        ("1kiB", 1_024),
-        ("1000kiB", 1_000 * 1024),
+        ("1KiB", 1_024),
+        ("1000KiB", 1_000 * 1024),
         ("1MiB", 1024 * 1024),
         ("1000MiB", 1_000 * 1024 * 1024),
         ("1GiB", 1024 * 1024 * 1024),
@@ -261,7 +261,7 @@ fn test_parse_bytes_base2() {
         ("1TiB", 1024 * 1024 * 1024 * 1024),
         ("1000TiB", 1_000 * 1024 * 1024 * 1024 * 1024),
         ("123B", 123),
-        ("12kiB", 12 * 1024),
+        ("12KiB", 12 * 1024),
         ("123MiB", 123 * 1024 * 1024),
     ];
     for (value, expected) in test_cases {
@@ -294,8 +294,8 @@ fn test_parse_bytes() {
         ("999B", 999),
         ("1023B", 1_023),
         ("1024B", 1_024),
-        ("1kiB", 1_024),
-        ("1000kiB", 1_000 * 1024),
+        ("1KiB", 1_024),
+        ("1000KiB", 1_000 * 1024),
         ("1MiB", 1024 * 1024),
         ("1000MiB", 1_000 * 1024 * 1024),
         ("1GiB", 1024 * 1024 * 1024),
@@ -303,7 +303,7 @@ fn test_parse_bytes() {
         ("1TiB", 1024 * 1024 * 1024 * 1024),
         ("1000TiB", 1_000 * 1024 * 1024 * 1024 * 1024),
         ("123B", 123),
-        ("12kiB", 12 * 1024),
+        ("12KiB", 12 * 1024),
         ("123MiB", 123 * 1024 * 1024),
     ];
     for (value, expected) in test_cases {
