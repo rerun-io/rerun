@@ -11,7 +11,7 @@
 
 This release focuses on scalar time series -- both from a performance and UI perspectives.
 
-<!-- TODO: improve this tenfold -->
+
 
 - 📈 Scalar time series are now roughly 20x faster:
     - The new [query cache](https://github.com/rerun-io/rerun/pull/4856) optimizes data access
@@ -20,6 +20,7 @@ This release focuses on scalar time series -- both from a performance and UI per
 - 🖼 UI overrides:
     - Scalar, SeriesLine, SeriesPoint
     - Marker shapes etc
+    - Introduce Scalar, SeriesLine, and SeriesPoint archetypes with their own visualizers [#4875](https://github.com/rerun-io/rerun/pull/4875)
     - Support modifying the plot style by introducing a generic framework for overriding components [#4914](https://github.com/rerun-io/rerun/pull/4914)
     - Introduce a new blueprint archetype for AxisY configuration in a plot [#5028](https://github.com/rerun-io/rerun/pull/5028)
 - 📘 Improved layout editing:
@@ -43,30 +44,29 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 #### 🐍 Python API
 - Fix support for compressing mono images by respecting mode to determine depth [#4847](https://github.com/rerun-io/rerun/pull/4847)
 
-#### 🦀 Rust API
-- Add integration with the `mint` crate [#4753](https://github.com/rerun-io/rerun/pull/4753)
-
 #### 🪳 Bug Fixes
 - External loader: don't do process IO on compute threadpool [#4942](https://github.com/rerun-io/rerun/pull/4942)
 - Fix a Visible Time Range UI issue where the summary string would display the wrong data range [#5034](https://github.com/rerun-io/rerun/pull/5034)
 - Clear empty containers after tile drag-and-drop [#5044](https://github.com/rerun-io/rerun/pull/5044)
 - Allow for very large meshes & plots by always picking the largest available GPU buffer size [#5053](https://github.com/rerun-io/rerun/pull/5053)
 - Fix forever repaint of big scenes [#5071](https://github.com/rerun-io/rerun/pull/5071)
+- Fix `RERUN_FLUSH_NUM_BYTES` and data size estimations [#5086](https://github.com/rerun-io/rerun/pull/5086)
+- Make `rectangle_fs.wgsl` compile on chrome despite angle/mesa bug (#3931) [#5074](https://github.com/rerun-io/rerun/pull/5074)
 
 #### 🌁 Viewer Improvements
-- Update to egui 0.25 and winit 0.29 [#4732](https://github.com/rerun-io/rerun/pull/4732)
 - Click a spatial space view background to select the space view itself [#4796](https://github.com/rerun-io/rerun/pull/4796)
 - Double-clicking an entity in the blueprint & time panels focuses the 3D camera on it [#4799](https://github.com/rerun-io/rerun/pull/4799)
 - When loading a .ply file, warn about ignored properties [#4934](https://github.com/rerun-io/rerun/pull/4934)
 - Make it easier to position 3D eye-camera center [#4943](https://github.com/rerun-io/rerun/pull/4943)
 - Include tessellation and rendering in CPU time shown in top bar [#4951](https://github.com/rerun-io/rerun/pull/4951)
-- Allow selection of entitites directly in the plot space view [#4959](https://github.com/rerun-io/rerun/pull/4959)
+- Allow selection of entities directly in the plot space view [#4959](https://github.com/rerun-io/rerun/pull/4959)
+- Introduce Scalar, SeriesLine, and SeriesPoint archetypes with their own visualizers [#4875](https://github.com/rerun-io/rerun/pull/4875)
 - Texture support for raw `Mesh3D` logging [#4894](https://github.com/rerun-io/rerun/pull/4894)
-- Introduce a new blueprint archetype for AxisY configuration in a plot [#5028](https://github.com/rerun-io/rerun/pull/5028)
+- Improve the selection/hover behavior for plots [#5096](https://github.com/rerun-io/rerun/pull/5096)
 
 #### 🚀 Performance Improvements
 - Introduce the query cache:
-    - Primary caching 3: barebone latest-at caching [#4659](https://github.com/rerun-io/rerun/pull/4659)
+    - Primary caching 3: bare-bone latest-at caching [#4659](https://github.com/rerun-io/rerun/pull/4659)
     - Primary caching 4: runtime toggle support [#4680](https://github.com/rerun-io/rerun/pull/4680)
     - Primary caching 5: 2D & 3D point clouds [#4681](https://github.com/rerun-io/rerun/pull/4681)
     - Primary caching 6: TextLogs & TimeSeries [#4698](https://github.com/rerun-io/rerun/pull/4698)
@@ -75,18 +75,21 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
     - Primary caching 9: timeless latest-at support [#4721](https://github.com/rerun-io/rerun/pull/4721)
     - Primary caching 10: latest-at cache invalidation [#4726](https://github.com/rerun-io/rerun/pull/4726)
     - Primary caching 11: cache stats and integration with memory panel [#4773](https://github.com/rerun-io/rerun/pull/4773)
-    - Primary caching 12: barebone range support [#4784](https://github.com/rerun-io/rerun/pull/4784)
+    - Primary caching 12: bare-bone range support [#4784](https://github.com/rerun-io/rerun/pull/4784)
     - Primary caching 13: stats & memory panel integration for range queries [#4785](https://github.com/rerun-io/rerun/pull/4785)
+    - Primary caching 14: don't bake `LatestAt(T-1)` results into low-level range queries [#4793](https://github.com/rerun-io/rerun/pull/4793)
     - Primary caching 15: range read performance optimization [#4800](https://github.com/rerun-io/rerun/pull/4800)
     - Primary caching 16: context-free range semantics [#4851](https://github.com/rerun-io/rerun/pull/4851)
     - Primary caching 17: timeless range [#4852](https://github.com/rerun-io/rerun/pull/4852)
     - Primary caching 18: range invalidation (ENABLED BY DEFAULT :confetti_ball:) [#4853](https://github.com/rerun-io/rerun/pull/4853)
-    - Primary caching 19 (final): de-statification [#4856](https://github.com/rerun-io/rerun/pull/4856)
+    - Primary caching 19 (final): de-staticify cache globals [#4856](https://github.com/rerun-io/rerun/pull/4856)
+- Integrate query caching with more primitives:
+    - Cached 2D & 3D box clouds [#5000](https://github.com/rerun-io/rerun/pull/5000)
+    - Cached 2D & 3D line clouds [#5083](https://github.com/rerun-io/rerun/pull/5083)
+    - Cached 2D & 3D arrow clouds [#5088](https://github.com/rerun-io/rerun/pull/5088)
 - Configurable dynamic plot aggregation based on zoom-level [#4865](https://github.com/rerun-io/rerun/pull/4865)
 - Improved automatic view creation heuristic, major speedup for scenes with many entities [#4874](https://github.com/rerun-io/rerun/pull/4874)
 - Optimize point clouds [#4932](https://github.com/rerun-io/rerun/pull/4932)
-- Integrate caching in 2D and 3D box visualizers [#5000](https://github.com/rerun-io/rerun/pull/5000)
-- Add `--threads` / `-j` to control number of compute threads [#5021](https://github.com/rerun-io/rerun/pull/5021)
 
 #### 🧑‍🏫 Examples
 - Update all examples that use `TimeSeriesScalar` to use `Scalar` instead [#5042](https://github.com/rerun-io/rerun/pull/5042)
@@ -111,7 +114,6 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 - Remove the "+" icon from the "Add SV/Container" modal and close on click [#4927](https://github.com/rerun-io/rerun/pull/4927)
 - Break up plot charts when there's a `Clear` [#4957](https://github.com/rerun-io/rerun/pull/4957)
 - Fix lagging time cursor when panning a time series plot [#4972](https://github.com/rerun-io/rerun/pull/4972)
-- Add support for drag-and-drop in blueprint tree [#4910](https://github.com/rerun-io/rerun/pull/4910)
 - Style container's label as unnamed [#4975](https://github.com/rerun-io/rerun/pull/4975)
 - New empty space view defaults to uncollapsed in blueprint tree [#4982](https://github.com/rerun-io/rerun/pull/4982)
 - Fix space view cloning to also copy entity properties (visible time range, etc.) [#4978](https://github.com/rerun-io/rerun/pull/4978)
@@ -123,15 +125,17 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 - Introduce a new StrokeWidth component and use it for SeriesLine [#5025](https://github.com/rerun-io/rerun/pull/5025)
 - Don't show the Blueprint header when on the welcome screen [#5046](https://github.com/rerun-io/rerun/pull/5046)
 - Move Visible Time Range higher in the Selection Panel [#5036](https://github.com/rerun-io/rerun/pull/5036)
+- Clean up time range ui [#5089](https://github.com/rerun-io/rerun/pull/5089)
+- Do not allow adding Horizontal/Vertical containers inside of containers with the same type [#5091](https://github.com/rerun-io/rerun/pull/5091)
+- Press the escape key to clear the current selection [#5103](https://github.com/rerun-io/rerun/pull/5103)
+- Improve preview UI for Component data [#5093](https://github.com/rerun-io/rerun/pull/5093)
 
 #### 🕸️ Web
 - Unify `web_viewer/index.html` and `index_bundled.html` [#4720](https://github.com/rerun-io/rerun/pull/4720)
-- Web: Support multiple `.rrd` URLs [#4740](https://github.com/rerun-io/rerun/pull/4740)
 - Allow forcing WebGPU/WebGL on the web player, new command line argument to force graphics backend [#4981](https://github.com/rerun-io/rerun/pull/4981)
 
 #### 🎨 Renderer Improvements
 - Update to wgpu 0.19 and latest `egui` trunk [#4885](https://github.com/rerun-io/rerun/pull/4885)
-- Support YUY2-encoded images [#4877](https://github.com/rerun-io/rerun/pull/4877) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
 
 #### 🧑‍💻 Dev-experience
 - Default to DEBUG log level in debug builds [#4749](https://github.com/rerun-io/rerun/pull/4749)
@@ -142,14 +146,16 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 - Migrate from `egui_Tile::TileId` to proper blueprint IDs in `ViewportBlueprint` API [#4900](https://github.com/rerun-io/rerun/pull/4900)
 
 #### 📦 Dependencies
+- Remove `egui_plot` as dependency from `re_sdk` [#5099](https://github.com/rerun-io/rerun/pull/5099)
+- Update to egui 0.25 and winit 0.29 [#4732](https://github.com/rerun-io/rerun/pull/4732)
 - Prune dependencies from `rerun` and `re_sdk` [#4824](https://github.com/rerun-io/rerun/pull/4824)
 - Relax pyarrow dependency to `>=14.0.2` [#5054](https://github.com/rerun-io/rerun/pull/5054)
+- Update egui_tiles to 0.7.2 [#5107](https://github.com/rerun-io/rerun/pull/5107)
 
 #### 🤷‍♂️ Other
-- Primary caching 14: don't bake `LatestAt(T-1)` results into low-level range queries [#4793](https://github.com/rerun-io/rerun/pull/4793)
 - Add `rerun --serve` and improve `--help` [#4834](https://github.com/rerun-io/rerun/pull/4834)
-- Support modifying the plot style by introducing a generic framework for overriding components [#4914](https://github.com/rerun-io/rerun/pull/4914)
-- Introduce Scalar, SeriesLine, and SeriesPoint archetypes with their own visualizers [#4875](https://github.com/rerun-io/rerun/pull/4875)
+- `rerun print`: print just summary, unless given `--verbose` [#5079](https://github.com/rerun-io/rerun/pull/5079)
+
 
 ## [0.12.1](https://github.com/rerun-io/rerun/compare/0.12.0...0.12.1) - 2024-01-17 - Data loader bug fixes
 
