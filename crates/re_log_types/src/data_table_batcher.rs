@@ -437,7 +437,6 @@ fn batching_thread(
     struct Accumulator {
         latest: Instant,
         pending_rows: Vec<DataRow>,
-        pending_num_rows: u64,
         pending_num_bytes: u64,
     }
 
@@ -445,7 +444,6 @@ fn batching_thread(
         fn reset(&mut self) {
             self.latest = Instant::now();
             self.pending_rows.clear();
-            self.pending_num_rows = 0;
             self.pending_num_bytes = 0;
         }
     }
@@ -453,7 +451,6 @@ fn batching_thread(
     let mut acc = Accumulator {
         latest: Instant::now(),
         pending_rows: Default::default(),
-        pending_num_rows: Default::default(),
         pending_num_bytes: Default::default(),
     };
 
@@ -462,7 +459,6 @@ fn batching_thread(
         // it over the wire…
         row.compute_all_size_bytes();
 
-        acc.pending_num_rows += 1;
         acc.pending_num_bytes += row.total_size_bytes();
         acc.pending_rows.push(row);
     }
@@ -505,7 +501,7 @@ fn batching_thread(
                         config(&acc.pending_rows);
                     }
 
-                    if acc.pending_num_rows >= config.flush_num_rows {
+                    if acc.pending_rows.len() as u64 >= config.flush_num_rows {
                         do_flush_all(&mut acc, &tx_table, "rows");
                     } else if acc.pending_num_bytes >= config.flush_num_bytes {
                         do_flush_all(&mut acc, &tx_table, "bytes");
