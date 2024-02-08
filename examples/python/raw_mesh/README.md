@@ -3,7 +3,7 @@ title = "Raw Mesh"
 tags = ["mesh"]
 description = "Demonstrates logging of raw 3D mesh data with simple material properties."
 thumbnail = "https://static.rerun.io/raw_mesh/b110a8d274e13dd46e8acf0831dcbab9bfb1f420/480w.png"
-thumbnail_dimensions = [480, 271]
+thumbnail_dimensions = [480, 267]
 channel = "release"
 -->
 
