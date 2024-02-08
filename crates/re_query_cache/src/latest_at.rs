@@ -330,11 +330,11 @@ macro_rules! impl_query_archetype_latest_at {
                     return iter_results(is_timeless, query_time_bucket_at_query_time, f);
                 }
 
-                re_log::debug!(
+                re_log::trace!(
                     store_id = %store.id(),
                     %entity_path,
                     ?query,
-                    "coudn't upsert cache -- write lock was busy"
+                    "either no data exist at this time or we couldn't upsert the cache (write lock was busy)"
                 );
 
                 Ok(())
