@@ -18,7 +18,7 @@ __all__ = ["TimeSeriesScalar"]
 
 
 @deprecated(
-    """Use the `Scalar` + (optional) `SeriesLine`/`SeriesPoint` archetypes instead, logged on the same entity. See [0.13 migration guide](https://www.rerun.io/docs/reference/migration/migration-0-13?speculative-link)."""
+    """Use the `Scalar` + (optional) `SeriesLine`/`SeriesPoint` archetypes instead, logged on the same entity. See [0.13 migration guide](https://www.rerun.io/docs/reference/migration/migration-0-13)."""
 )
 @define(str=False, repr=False, init=False)
 class TimeSeriesScalar(Archetype):

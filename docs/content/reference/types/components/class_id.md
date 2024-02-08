@@ -16,7 +16,7 @@ A 16-bit ID representing a type of semantic class.
 
 ## Used by
 
-* [`Arrows2D`](../archetypes/arrows2d.md?speculative-link)
+* [`Arrows2D`](../archetypes/arrows2d.md)
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)
