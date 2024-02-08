@@ -124,7 +124,7 @@ convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
 directories-next = "2"
-document-features = " 0.2.8"
+document-features = "0.2.8"
 ehttp = "0.4.0"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
