@@ -10,19 +10,32 @@ This release focuses on scalar time series -- both from a performance and UI per
 Check out our [associated blog post](TODO) for more information.
 
 - 📈 Rerun can now visualize many time series in the kHz range in real-time:
-    - The new [query cache](https://github.com/rerun-io/rerun/pull/4856) optimizes data access, improving query performance by 20-50x
-    - [Sub-pixel aggregation](https://github.com/rerun-io/rerun/pull/4865) prevents unnecessary overdraw when rendering plots, improving rendering time by 30-120x
+    - The new query cache optimizes data access, improving query performance by 20-50x
+    - Sub-pixel aggregation prevents unnecessary overdraw when rendering plots, improving rendering time by 30-120x
     - [Points](https://www.rerun.io/docs/reference/types/archetypes/points3d), [lines](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [arrows](https://www.rerun.io/docs/reference/types/archetypes/arrows3d) and [boxes](https://www.rerun.io/docs/reference/types/archetypes/boxes3d) all benefit from query caching too to a lesser extent, yielding 2-5x performance improvements
+
 - 🖼 UI overrides:
     - The new `Scalar`, `SeriesLine` & `SeriesPoint` archetypes allow for customizing plots both at logging and visualization time
     - Customize marker shapes, marker sizes, etc from code or directly through the UI
     - Specify axis labels, lock axes, etc from code or directly through the UI
+
 - 🌁 Viewer:
     - The number of compute threads can now be controlled using the `--threads`/`-j` flag
     - Added support YUY2-encoded images (thanks [@oxkitsune](https://github.com/oxkitsune)!)
     - Space views can now be drag-and-dropped directly from the blueprint tree
+    - Scenes with 100+ entities are now up to 5x faster.
+
+- 🚚 The "container addition workflow" feature is now enabled by default:
+    - When selected, containers have a children list in the Selection Panel, where new Space Views and Containers may be added.
+    - New modal dialog to add Space Views and Containers.
+    - The same dialog is also available from the `+` button of the Blueprint tree UI.
+    - The Space View's origin can now be edited in the Selection Panel.
+    - The container hierarchy can now be cleaned up with the new `Simplify Hierarchy` button in the Selection Panel for containers.
+
 - 🦀 The rust SDK now exposes an optional integration with the `mint` crate
 - 🕸️ The web UI SDK now supports loading multiple `.rrd` URLs
+- 🔺 The web viewer noew renders using WebGPU by default (when available), leading to lower memory usage on Chrome.
+  You can override this behavior using `?renderer=webgl`/`?renderer=webgpu` url parameter, or restart with WebGL/WebGPU respectively from the options menu.
 
 As well as a lot of miscellaneous bug fixes and usability improvements: see details below.
 
@@ -131,6 +144,7 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 - Press the escape key to clear the current selection [#5103](https://github.com/rerun-io/rerun/pull/5103)
 - Improve preview UI for Component data [#5093](https://github.com/rerun-io/rerun/pull/5093)
 - Add support for drag-and-drop in blueprint tree [#4910](https://github.com/rerun-io/rerun/pull/4910)
+- Paint closest labels on top of labels further away [#5124](https://github.com/rerun-io/rerun/pull/5124)
 
 #### 🕸️ Web
 - Web: Support multiple `.rrd` URLs [#4740](https://github.com/rerun-io/rerun/pull/4740)
