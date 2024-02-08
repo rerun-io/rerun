@@ -28,7 +28,6 @@ The Summary should look like:
 ```
 """
 from __future__ import annotations
-import json
 
 import re
 import sys
