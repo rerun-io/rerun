@@ -19,7 +19,7 @@ class Timing:
 
 
 def run_cargo(command: str, args: str) -> Timing:
-    cwd = f"cargo {command} --quiet {args}"
+    cwd = f"cargo {command} {args}"
     print(f"Running '{cwd}'")
     start = time.time()
     result = subprocess.call(cwd, shell=True)

@@ -20,7 +20,7 @@ To get an auto-generated PR description you can put "copilot:summary" or "copilo
   * Using examples from latest `main` build: [app.rerun.io](https://app.rerun.io/pr/{{pr.number}}/index.html?manifest_url=https://app.rerun.io/version/main/examples_manifest.json)
   * Using full set of examples from `nightly` build: [app.rerun.io](https://app.rerun.io/pr/{{pr.number}}/index.html?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json)
 * [ ] The PR title and labels are set such as to maximize their usefulness for the next release's CHANGELOG
-* [ ] If applicable, add a new check to the [release checklist](tests/python/release_checklist)!
+* [ ] If applicable, add a new check to the [release checklist](https://github.com/rerun-io/rerun/blob/main/tests/python/release_checklist)!
 
 - [PR Build Summary](https://build.rerun.io/pr/{{ pr.number }})
 - [Docs preview](https://rerun.io/preview/{{ pr.commit }}/docs) <!--DOCS-PREVIEW-->

@@ -68,7 +68,7 @@ fn top_bar_ui(
     ui.add_space(12.0);
     website_link_ui(ui);
 
-    if app.app_options().show_metrics {
+    if app.app_options().show_metrics && !app.is_screenshotting() {
         ui.separator();
         frame_time_label_ui(ui, app);
         memory_use_label_ui(ui, gpu_resource_stats);
@@ -91,9 +91,12 @@ fn top_bar_ui(
 
         panel_buttons_r2l(app, app_blueprint, ui);
 
-        connection_status_ui(ui, app.msg_receive_set());
+        if !app.is_screenshotting() {
+            connection_status_ui(ui, app.msg_receive_set());
+        }
 
-        if cfg!(debug_assertions) {
+        // Warn if in debug build
+        if cfg!(debug_assertions) && !app.is_screenshotting() {
             ui.vertical_centered(|ui| {
                 ui.style_mut().wrap = Some(false);
                 ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
