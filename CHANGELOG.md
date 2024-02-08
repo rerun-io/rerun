@@ -26,13 +26,18 @@ Check out our [associated blog post](TODO) for more information.
 
 As well as a lot of miscellaneous bug fixes and usability improvements: see details below.
 
-
 ### Details
+
+#### 🪵 Log API
+- Mark TimeSeriesScalar as deprecated in all SDKs and documentation [#5102](https://github.com/rerun-io/rerun/pull/5102)
 
 #### 🌊 C++ API
 - Document that in C++ PinholeProjection::from_mat3x3 is column major [#4843](https://github.com/rerun-io/rerun/pull/4843)
 - Include LICENSE files into C++ SDK Assets [#4870](https://github.com/rerun-io/rerun/pull/4870) (thanks [@rgolovanov](https://github.com/rgolovanov)!)
 - Fix C++ arrow build flag forwarding [#4921](https://github.com/rerun-io/rerun/pull/4921) (thanks [@rgolovanov](https://github.com/rgolovanov)!)
+
+#### 🦀 Rust API
+- Add integration with the `mint` crate [#4753](https://github.com/rerun-io/rerun/pull/4753)
 
 #### 🐍 Python API
 - Fix support for compressing mono images by respecting mode to determine depth [#4847](https://github.com/rerun-io/rerun/pull/4847)
@@ -47,17 +52,20 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 - Make `rectangle_fs.wgsl` compile on chrome despite angle/mesa bug (#3931) [#5074](https://github.com/rerun-io/rerun/pull/5074)
 
 #### 🌁 Viewer Improvements
+- Introduce Scalar, SeriesLine, and SeriesPoint archetypes with their own visualizers [#4875](https://github.com/rerun-io/rerun/pull/4875)
+- Support modifying the plot style by introducing a generic framework for overriding components [#4914](https://github.com/rerun-io/rerun/pull/4914)
+- Introduce a new blueprint archetype for AxisY configuration in a plot [#5028](https://github.com/rerun-io/rerun/pull/5028)
+- Improve the selection/hover behavior for plots [#5096](https://github.com/rerun-io/rerun/pull/5096)
 - Click a spatial space view background to select the space view itself [#4796](https://github.com/rerun-io/rerun/pull/4796)
 - Double-clicking an entity in the blueprint & time panels focuses the 3D camera on it [#4799](https://github.com/rerun-io/rerun/pull/4799)
 - When loading a .ply file, warn about ignored properties [#4934](https://github.com/rerun-io/rerun/pull/4934)
 - Make it easier to position 3D eye-camera center [#4943](https://github.com/rerun-io/rerun/pull/4943)
 - Include tessellation and rendering in CPU time shown in top bar [#4951](https://github.com/rerun-io/rerun/pull/4951)
 - Allow selection of entities directly in the plot space view [#4959](https://github.com/rerun-io/rerun/pull/4959)
-- Introduce Scalar, SeriesLine, and SeriesPoint archetypes with their own visualizers [#4875](https://github.com/rerun-io/rerun/pull/4875)
 - Texture support for raw `Mesh3D` logging [#4894](https://github.com/rerun-io/rerun/pull/4894)
-- Improve the selection/hover behavior for plots [#5096](https://github.com/rerun-io/rerun/pull/5096)
 
 #### 🚀 Performance Improvements
+- Add `--threads` / `-j` to control number of compute threads [#5021](https://github.com/rerun-io/rerun/pull/5021)
 - Introduce the query cache:
     - Primary caching 3: bare-bone latest-at caching [#4659](https://github.com/rerun-io/rerun/pull/4659)
     - Primary caching 4: runtime toggle support [#4680](https://github.com/rerun-io/rerun/pull/4680)
@@ -122,13 +130,16 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 - Do not allow adding Horizontal/Vertical containers inside of containers with the same type [#5091](https://github.com/rerun-io/rerun/pull/5091)
 - Press the escape key to clear the current selection [#5103](https://github.com/rerun-io/rerun/pull/5103)
 - Improve preview UI for Component data [#5093](https://github.com/rerun-io/rerun/pull/5093)
+- Add support for drag-and-drop in blueprint tree [#4910](https://github.com/rerun-io/rerun/pull/4910)
 
 #### 🕸️ Web
+- Web: Support multiple `.rrd` URLs [#4740](https://github.com/rerun-io/rerun/pull/4740)
 - Unify `web_viewer/index.html` and `index_bundled.html` [#4720](https://github.com/rerun-io/rerun/pull/4720)
 - Allow forcing WebGPU/WebGL on the web player, new command line argument to force graphics backend [#4981](https://github.com/rerun-io/rerun/pull/4981)
 
 #### 🎨 Renderer Improvements
 - Update to wgpu 0.19 and latest `egui` trunk [#4885](https://github.com/rerun-io/rerun/pull/4885)
+- Support YUY2-encoded images [#4877](https://github.com/rerun-io/rerun/pull/4877) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
 
 #### 🧑‍💻 Dev-experience
 - Default to DEBUG log level in debug builds [#4749](https://github.com/rerun-io/rerun/pull/4749)
