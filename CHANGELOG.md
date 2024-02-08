@@ -18,7 +18,7 @@ Check out our [associated blog post](TODO) for more information.
     - Customize marker shapes, marker sizes, etc from code or directly through the UI
     - Specify axis labels, lock axes, etc from code or directly through the UI
 - 🌁 Viewer:
-    - The number of compute threads can now be controlled using the `--treads`/`-j` flag
+    - The number of compute threads can now be controlled using the `--threads`/`-j` flag
     - Added support YUY2-encoded images (thanks [@oxkitsune](https://github.com/oxkitsune)!)
     - Space views can now be drag-and-dropped directly from the blueprint tree
 - 🦀 The rust SDK now exposes an optional integration with the `mint` crate
