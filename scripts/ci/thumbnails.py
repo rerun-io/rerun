@@ -49,13 +49,13 @@ def update() -> None:
             assert end != -1
             start = end + 1
         else:
-            start = example.readme.find("thumbnail_dimensions: ")
+            start = example.readme.find("thumbnail_dimensions = ")
             assert start != -1
             end = example.readme.find("\n", start)
             assert end != -1
 
         (example.path / "README.md").write_text(
-            example.readme[:start] + f"thumbnail_dimensions: [{width}, {height}]" + example.readme[end:]
+            example.readme[:start] + f"thumbnail_dimensions = [{width}, {height}]" + example.readme[end:]
         )
 
         print(f"✔ {example.path}")
