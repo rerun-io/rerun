@@ -317,7 +317,7 @@ pub fn view_2d(
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            &collect_ui_labels(&parts),
+            collect_ui_labels(&parts),
             ui_from_canvas,
             &eye,
             ui,

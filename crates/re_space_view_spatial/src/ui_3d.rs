@@ -497,7 +497,7 @@ pub fn view_3d(
 
     // Create labels now since their shapes participate are added to scene.ui for picking.
     let (label_shapes, ui_rects) = create_labels(
-        &collect_ui_labels(&parts),
+        collect_ui_labels(&parts),
         RectTransform::from_to(rect, rect),
         &eye,
         ui,
