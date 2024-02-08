@@ -153,13 +153,8 @@ impl SelectionPanel {
                 match item {
                     Item::Container(container_id) => {
                         container_top_level_properties(ui, ctx, viewport, container_id);
-
-                        // the container children and related additive workflow is only available with the new container
-                        // blueprints feature
-                        if ctx.app_options.experimental_additive_workflow {
-                            ui.add_space(12.0);
-                            container_children(ui, ctx, viewport, container_id);
-                        }
+                        ui.add_space(12.0);
+                        container_children(ui, ctx, viewport, container_id);
                     }
 
                     Item::SpaceView(space_view_id) => {
@@ -662,26 +657,22 @@ fn container_top_level_properties(
                 ui.end_row();
             }
 
-            // this feature is only available with the new container blueprints feature
-            #[allow(clippy::collapsible_if)]
-            if ctx.app_options.experimental_additive_workflow {
-                if ui
-                    .button("Simplify hierarchy")
-                    .on_hover_text("Simplify this container and its children")
-                    .clicked()
-                {
-                    viewport.blueprint.simplify_container(
-                        container_id,
-                        egui_tiles::SimplificationOptions {
-                            prune_empty_tabs: true,
-                            prune_empty_containers: true,
-                            prune_single_child_tabs: false,
-                            prune_single_child_containers: false,
-                            all_panes_must_have_tabs: true,
-                            join_nested_linear_containers: true,
-                        },
-                    );
-                }
+            if ui
+                .button("Simplify hierarchy")
+                .on_hover_text("Simplify this container and its children")
+                .clicked()
+            {
+                viewport.blueprint.simplify_container(
+                    container_id,
+                    egui_tiles::SimplificationOptions {
+                        prune_empty_tabs: true,
+                        prune_empty_containers: true,
+                        prune_single_child_tabs: false,
+                        prune_single_child_containers: false,
+                        all_panes_must_have_tabs: true,
+                        join_nested_linear_containers: true,
+                    },
+                );
             }
         });
 }

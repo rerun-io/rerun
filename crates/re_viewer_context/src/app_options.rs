@@ -19,9 +19,6 @@ pub struct AppOptions {
 
     pub experimental_entity_filter_editor: bool,
 
-    /// Enable the experimental support for the container addition workflow.
-    pub experimental_additive_workflow: bool,
-
     /// Toggle query clamping for the plot visualizers.
     pub experimental_plot_query_clamping: bool,
 
@@ -53,8 +50,6 @@ impl Default for AppOptions {
             experimental_dataframe_space_view: false,
 
             experimental_entity_filter_editor: false,
-
-            experimental_additive_workflow: cfg!(debug_assertions),
 
             experimental_plot_query_clamping: false,
 

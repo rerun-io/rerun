@@ -13,7 +13,7 @@ use re_renderer::ScreenshotProcessor;
 use re_space_view::SpaceViewBlueprint;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    AppOptions, ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
+    ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
     SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
@@ -122,24 +122,14 @@ pub enum TreeAction {
     SetDropTarget(ContainerId),
 }
 
-fn tree_simplification_option_for_app_options(
-    app_options: &AppOptions,
-) -> egui_tiles::SimplificationOptions {
-    if app_options.experimental_additive_workflow {
-        // If the user is using the additive workflow, we don't want to aggressively simplify the tree.
-        egui_tiles::SimplificationOptions {
-            prune_empty_tabs: false,
-            all_panes_must_have_tabs: true,
-            prune_empty_containers: false,
-            prune_single_child_tabs: false,
-            prune_single_child_containers: false,
-            join_nested_linear_containers: true,
-        }
-    } else {
-        egui_tiles::SimplificationOptions {
-            all_panes_must_have_tabs: true,
-            ..Default::default()
-        }
+fn tree_simplification_options() -> egui_tiles::SimplificationOptions {
+    egui_tiles::SimplificationOptions {
+        prune_empty_tabs: false,
+        all_panes_must_have_tabs: true,
+        prune_empty_containers: false,
+        prune_single_child_tabs: false,
+        prune_single_child_containers: false,
+        join_nested_linear_containers: true,
     }
 }
 
@@ -535,7 +525,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             // Simplify before we save the tree. Normally additional simplification will
             // happen on the next render loop, but that's too late -- unsimplified
             // changes will be baked into the tree.
-            let options = tree_simplification_option_for_app_options(ctx.app_options);
+            let options = tree_simplification_options();
             self.tree.simplify(&options);
 
             self.blueprint.save_tree_as_containers(&self.tree, ctx);
@@ -803,7 +793,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     ///
     /// These options are applied on every frame by `egui_tiles`.
     fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
-        tree_simplification_option_for_app_options(self.ctx.app_options)
+        tree_simplification_options()
     }
 
     // Callbacks:
@@ -818,27 +808,26 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 // workflow is enabled. Due to the egui_tiles -> blueprint synchronisation process,
                 // drag and drop operation often lead to many spurious empty containers. To work
                 // around this, we run a simplification pass when a drop occurs.
-                if self.ctx.app_options.experimental_additive_workflow {
-                    if let Some(root_container_id) = self.root_container_id {
-                        if self
-                            .tree_action_sender
-                            .send(TreeAction::SimplifyContainer(
-                                root_container_id,
-                                egui_tiles::SimplificationOptions {
-                                    prune_empty_tabs: true,
-                                    prune_empty_containers: false,
-                                    prune_single_child_tabs: true,
-                                    prune_single_child_containers: false,
-                                    all_panes_must_have_tabs: true,
-                                    join_nested_linear_containers: false,
-                                },
-                            ))
-                            .is_err()
-                        {
-                            re_log::warn_once!(
-                                "Channel between ViewportBlueprint and Viewport is broken"
-                            );
-                        }
+
+                if let Some(root_container_id) = self.root_container_id {
+                    if self
+                        .tree_action_sender
+                        .send(TreeAction::SimplifyContainer(
+                            root_container_id,
+                            egui_tiles::SimplificationOptions {
+                                prune_empty_tabs: true,
+                                prune_empty_containers: false,
+                                prune_single_child_tabs: true,
+                                prune_single_child_containers: false,
+                                all_panes_must_have_tabs: true,
+                                join_nested_linear_containers: false,
+                            },
+                        ))
+                        .is_err()
+                    {
+                        re_log::warn_once!(
+                            "Channel between ViewportBlueprint and Viewport is broken"
+                        );
                     }
                 }
 
