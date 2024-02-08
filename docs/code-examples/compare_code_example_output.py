@@ -48,6 +48,8 @@ opt_out_compare = {
     "scalar_multiple_plots": ["cpp"], # trigonometric functions have slightly different outcomes
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "text_log_integration": ["cpp", "py", "rust"], # The entity path will differ because the Rust code is part of a library
+    "series_point_style": ["cpp", "py", "rust"], # TODO(#5116): trigonometric functions have slightly different outcomes
+    "series_line_style": ["cpp", "py", "rust"], # TODO(#5116):trigonometric functions have slightly different outcomes
 }
 
 extra_args = {
