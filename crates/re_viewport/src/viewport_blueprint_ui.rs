@@ -485,108 +485,25 @@ impl Viewport<'_, '_> {
     }
 
     pub fn add_new_spaceview_button_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-        if ctx.app_options.experimental_additive_workflow {
-            if ctx
-                .re_ui
-                .small_icon_button(ui, &re_ui::icons::ADD)
-                .on_hover_text("Add a new Space View or Container")
-                .clicked()
-            {
-                // If a single container is selected, we use it as target. Otherwise, we target the
-                // root container.
-                let target_container_id =
-                    if let Some(Item::Container(container_id)) = ctx.selection().single_item() {
-                        Some(*container_id)
-                    } else {
-                        self.blueprint.root_container
-                    };
+        if ctx
+            .re_ui
+            .small_icon_button(ui, &re_ui::icons::ADD)
+            .on_hover_text("Add a new Space View or Container")
+            .clicked()
+        {
+            // If a single container is selected, we use it as target. Otherwise, we target the
+            // root container.
+            let target_container_id =
+                if let Some(Item::Container(container_id)) = ctx.selection().single_item() {
+                    Some(*container_id)
+                } else {
+                    self.blueprint.root_container
+                };
 
-                if let Some(target_container_id) = target_container_id {
-                    self.show_add_space_view_or_container_modal(target_container_id);
-                }
+            if let Some(target_container_id) = target_container_id {
+                self.show_add_space_view_or_container_modal(target_container_id);
             }
-        } else {
-            self.legacy_add_new_spaceview_popup_menu(ctx, ui);
         }
-    }
-
-    fn legacy_add_new_spaceview_popup_menu(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-        ui.menu_image_button(
-            re_ui::icons::ADD
-                .as_image()
-                .fit_to_exact_size(re_ui::ReUi::small_icon_size()),
-            |ui| {
-                ui.style_mut().wrap = Some(false);
-
-                let add_space_view_item =
-                    |ui: &mut egui::Ui, space_view: SpaceViewBlueprint, empty: bool| {
-                        let display_name = space_view
-                            .class(ctx.space_view_class_registry)
-                            .display_name();
-                        let label = if empty {
-                            format!("Empty {display_name} view",)
-                        } else {
-                            format!("{display_name} view of {}", space_view.space_origin)
-                        };
-
-                        if ctx
-                            .re_ui
-                            .selectable_label_with_icon(
-                                ui,
-                                space_view.class(ctx.space_view_class_registry).icon(),
-                                label,
-                                false,
-                                re_ui::LabelStyle::Normal,
-                            )
-                            .clicked()
-                        {
-                            ui.close_menu();
-                            ctx.selection_state()
-                                .set_selection(Item::SpaceView(space_view.id));
-
-                            let new_ids = self.blueprint.add_space_views(
-                                std::iter::once(space_view),
-                                ctx,
-                                None, //TODO(ab): maybe add to the currently selected container instead?
-                            );
-                            if let Some(new_id) = new_ids.first() {
-                                self.blueprint.focus_tab(*new_id);
-                            }
-                        }
-                    };
-
-                // Space view options proposed by heuristics
-                let mut possible_space_views = default_created_space_views(ctx);
-                possible_space_views.sort_by_key(|space_view| space_view.space_origin.to_string());
-
-                let has_possible_space_views = !possible_space_views.is_empty();
-                for space_view in possible_space_views {
-                    add_space_view_item(ui, space_view, false);
-                }
-
-                if has_possible_space_views {
-                    ui.separator();
-                }
-
-                // Empty space views of every available types
-                for space_view in ctx
-                    .space_view_class_registry
-                    .iter_registry()
-                    .sorted_by_key(|entry| entry.class.display_name())
-                    .map(|entry| {
-                        SpaceViewBlueprint::new(
-                            entry.class.identifier(),
-                            &EntityPath::root(),
-                            DataQueryBlueprint::new(entry.class.identifier(), Default::default()),
-                        )
-                    })
-                {
-                    add_space_view_item(ui, space_view, true);
-                }
-            },
-        )
-        .response
-        .on_hover_text("Add new Space View");
     }
 
     // ----------------------------------------------------------------------------
