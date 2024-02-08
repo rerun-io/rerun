@@ -8,7 +8,7 @@ fn main() -> anyhow::Result<()> {
         anyhow::bail!("Usage: {} <path_to_asset.[gltf|glb|obj]>", args[0]);
     };
 
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_asset3d_simple").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_asset3d").spawn()?;
 
     rec.log_timeless("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
     rec.log("world/asset", &rerun::Asset3D::from_file(path)?)?;

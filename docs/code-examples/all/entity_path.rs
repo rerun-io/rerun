@@ -1,7 +1,7 @@
 //! Example of different ways of constructing an entity path.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_text_document").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_entity_path").spawn()?;
 
     rec.log(
         r"world/42/escaped\ string\!",
