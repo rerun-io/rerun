@@ -25,7 +25,7 @@ Check out our [associated blog post](TODO) for more information.
     - Space views can now be drag-and-dropped directly from the blueprint tree
     - Scenes with 100+ entities are now up to 5x faster.
 
-- 🚚 The "container addition workflow" feature is now enabled by default:
+- 🚚 New Space View and Container creation workflow:
     - When selected, containers have a children list in the Selection Panel, where new Space Views and Containers may be added.
     - New modal dialog to add Space Views and Containers.
     - The same dialog is also available from the `+` button of the Blueprint tree UI.
