@@ -2,10 +2,14 @@ use ahash::HashMap;
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 
-use re_entity_db::EntityProperties;
+use re_entity_db::{EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_tracing::profile_scope;
-use re_types::components::TensorData;
+use re_types::{
+    archetypes::{DepthImage, Image},
+    components::TensorData,
+    Archetype, ComponentName,
+};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem as _, PerSystemEntities, RecommendedSpaceView,
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
@@ -176,8 +180,8 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // Spawn a space view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        let mut heuristics = SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
-            SpaceViewSpawnHeuristics {
+        let mut heuristics =
+            SpatialTopology::access(ctx.entity_db.store_id(), |topo| SpaceViewSpawnHeuristics {
                 recommended_space_views: topo
                     .iter_subspaces()
                     .flat_map(|subspace| {
@@ -188,41 +192,48 @@ impl SpaceViewClass for SpatialSpaceView2D {
                             return Vec::new();
                         }
 
-                        let images_by_bucket =
-                            bucket_images_in_subspace(ctx, subspace, image_entities);
+                        let mut recommended_space_views = Vec::<RecommendedSpaceView>::new();
 
-                        if images_by_bucket.len() <= 1 {
-                            // If there's no or only a single image bucket, use the whole subspace to capture all the non-image entities!
-                            vec![RecommendedSpaceView {
+                        for bucket_entities in
+                            bucket_images_in_subspace(ctx, subspace, image_entities).values()
+                        {
+                            // Collect the bucket as a set
+                            // TODO(jleibs): might as well do this when bucketing in the first place
+                            let bucket_entities: IntSet<EntityPath> =
+                                bucket_entities.iter().cloned().collect();
+
+                            add_recommended_space_views_for_bucket(
+                                ctx,
+                                &bucket_entities,
+                                &mut recommended_space_views,
+                            );
+                        }
+
+                        // If we only recommended 1 space view from the bucketing, we're better off using the
+                        // root of the subspace, below. If there were multiple subspaces, keep them, even if
+                        // they may be redundant with the root space.
+                        if recommended_space_views.len() == 1 {
+                            recommended_space_views.clear();
+                        }
+
+                        // If this is explicitly a 2D subspace (such as from a pinhole), or there were no
+                        // other image-bucketed recommendations, create a space at the root of the subspace.
+                        if subspace.dimensionality == SubSpaceDimensionality::TwoD
+                            || recommended_space_views.is_empty()
+                        {
+                            recommended_space_views.push(RecommendedSpaceView {
                                 root: subspace.origin.clone(),
                                 query_filter: EntityPathFilter::subtree_entity_filter(
                                     &subspace.origin,
                                 ),
-                            }]
-                        } else {
-                            #[allow(clippy::iter_kv_map)] // Not doing `values()` saves a path copy!
-                            images_by_bucket
-                                .into_iter()
-                                .map(|(_, entity_bucket)| {
-                                    // Pick a shared parent as origin, mostly because it looks nicer in the ui.
-                                    let root = EntityPath::common_ancestor_of(entity_bucket.iter());
-
-                                    let mut query_filter = EntityPathFilter::default();
-                                    for image in &entity_bucket {
-                                        // This might lead to overlapping subtrees and break the same image size bucketing again.
-                                        // We just take that risk, the heuristic doesn't need to be perfect.
-                                        query_filter.add_subtree(image.clone());
-                                    }
-
-                                    RecommendedSpaceView { root, query_filter }
-                                })
-                                .collect()
+                            });
                         }
+
+                        recommended_space_views
                     })
                     .collect(),
-            }
-        })
-        .unwrap_or_default();
+            })
+            .unwrap_or_default();
 
         // Find all entities that are not yet covered by the recommended space views and create a recommended
         // space-view for each one at that specific entity path.
@@ -283,6 +294,100 @@ impl SpaceViewClass for SpatialSpaceView2D {
             .load(std::sync::atomic::Ordering::Relaxed);
 
         crate::ui_2d::view_2d(ctx, ui, state, query, system_output)
+    }
+}
+
+fn count_non_nested_entities_with_component(
+    entity_bucket: &IntSet<EntityPath>,
+    subtree: &EntityTree,
+    component_name: &ComponentName,
+) -> usize {
+    if entity_bucket.contains(&subtree.path) {
+        if subtree.entity.components.contains_key(component_name) {
+            1
+        } else {
+            0
+        }
+    } else if !entity_bucket
+        .iter()
+        .any(|e| e.is_descendant_of(&subtree.path))
+    {
+        0
+    } else {
+        subtree
+            .children
+            .values()
+            .map(|child| {
+                // TODO(jleibs): Early terminate if know the subtree has nothing from the bucket
+                count_non_nested_entities_with_component(entity_bucket, child, component_name)
+            })
+            .sum()
+    }
+}
+
+fn add_recommended_space_views_for_bucket(
+    ctx: &ViewerContext<'_>,
+    entity_bucket: &IntSet<EntityPath>,
+    recommended: &mut Vec<RecommendedSpaceView>,
+) {
+    // TODO(jleibs): Converting entity_bucket to a Trie would probably make some of this easier.
+    let tree = ctx.entity_db.tree();
+
+    // Find the common ancestor of the bucket
+    let root = EntityPath::common_ancestor_of(entity_bucket.iter());
+
+    // If the root of this bucket contains an image itself, this means the rest of the content
+    // is nested under some kind of 2d-visualizable thing. We expect the user meant to create
+    // a layered 2d space.
+    if entity_bucket.contains(&root) {
+        recommended.push(RecommendedSpaceView {
+            root: root.clone(),
+            query_filter: EntityPathFilter::subtree_entity_filter(&root),
+        });
+        return;
+    }
+
+    // Alternatively we want to split this bucket into a group for each child-space.
+    let Some(subtree) = tree.subtree(&root) else {
+        if cfg!(debug_assertions) {
+            re_log::warn_once!("Ancestor of entity not found in entity tree.")
+        }
+        return;
+    };
+
+    let image_count = count_non_nested_entities_with_component(
+        entity_bucket,
+        subtree,
+        &Image::indicator().name(),
+    );
+
+    let depth_count = count_non_nested_entities_with_component(
+        entity_bucket,
+        subtree,
+        &DepthImage::indicator().name(),
+    );
+
+    // If there's no more than 1 image and 1 depth image at any of the top-level of the sub-buckets, we can still
+    // recommend the root.
+    if image_count <= 1 && depth_count <= 1 {
+        recommended.push(RecommendedSpaceView {
+            root: root.clone(),
+            query_filter: EntityPathFilter::subtree_entity_filter(&root),
+        });
+        return;
+    }
+
+    // Otherwise, split the space and recurse
+    for child in subtree.children.values() {
+        let sub_bucket: IntSet<_> = entity_bucket
+            .iter()
+            .filter(|e| e.starts_with(&child.path))
+            .cloned()
+            .collect();
+
+        if !sub_bucket.is_empty() {
+            add_recommended_space_views_for_bucket(ctx, &sub_bucket, recommended);
+        }
     }
 }
 
