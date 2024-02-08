@@ -105,12 +105,12 @@ class DAG(Generic[_T]):
                     except Empty:
                         time.sleep(0)  # yield to prevent busy-looping
                         continue
-                    except Exception as e:
+                    except Exception:
                         shutdown.set()
-                        print(e)
+                        raise
 
-            for n in range(0, num_workers):  # start all workers
-                p.submit(worker, n)
+            # start all workers
+            futures = [p.submit(worker, n) for n in range(0, num_workers)]
 
             while not shutdown.is_set():
                 if state._is_done():
@@ -129,6 +129,9 @@ class DAG(Generic[_T]):
                         state._finish(done_queue.get_nowait())
                 except Empty:
                     time.sleep(0)  # yield here to prevent busy-looping
+
+            for future in futures:
+                future.result()  # propagate exceptions
 
 
 class _NodeState(Generic[_T]):
