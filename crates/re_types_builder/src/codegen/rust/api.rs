@@ -552,14 +552,7 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
 }
 
 fn quote_field_docs(reporter: &Reporter, field: &ObjectField) -> TokenStream {
-    let require_example = false;
-    let lines = doc_as_lines(
-        reporter,
-        &field.virtpath,
-        &field.fqname,
-        &field.docs,
-        require_example,
-    );
+    let lines = doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs);
 
     let require_field_docs = false;
     if require_field_docs && lines.is_empty() && !field.is_testing() {
@@ -570,14 +563,7 @@ fn quote_field_docs(reporter: &Reporter, field: &ObjectField) -> TokenStream {
 }
 
 fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
-    let require_example = obj.kind == ObjectKind::Archetype;
-    let mut lines = doc_as_lines(
-        reporter,
-        &obj.virtpath,
-        &obj.fqname,
-        &obj.docs,
-        require_example,
-    );
+    let mut lines = doc_as_lines(reporter, &obj.virtpath, &obj.fqname, &obj.docs);
 
     // Prefix first line with `**Datatype**: ` etc:
     if let Some(first) = lines.first_mut() {
@@ -589,24 +575,14 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
     quote_doc_lines(&lines)
 }
 
-fn doc_as_lines(
-    reporter: &Reporter,
-    virtpath: &str,
-    fqname: &str,
-    docs: &Docs,
-    require_example: bool,
-) -> Vec<String> {
+fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
 
     let examples = collect_examples_for_api_docs(docs, "rs", true)
         .map_err(|err| reporter.error(virtpath, fqname, err))
         .unwrap_or_default();
 
-    if examples.is_empty() {
-        if require_example {
-            reporter.warn(virtpath, fqname, "Missing example");
-        }
-    } else {
+    if !examples.is_empty() {
         lines.push(Default::default());
         let section_title = if examples.len() == 1 {
             "Example"

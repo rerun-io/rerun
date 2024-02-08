@@ -207,7 +207,15 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         }
         ObjectKind::Archetype => {
             if examples.is_empty() {
-                reporter.warn(&object.virtpath, &object.fqname, "No examples");
+                if object.virtpath.starts_with("//testing") {
+                    // do nothing
+                } else if object.virtpath.starts_with("//archetypes") {
+                    // actual public archetypes: hard error
+                    reporter.error(&object.virtpath, &object.fqname, "No examples");
+                } else {
+                    // everything else (including experimental blueprint stuff): simple warning
+                    reporter.warn(&object.virtpath, &object.fqname, "No examples");
+                }
             }
         }
     }
