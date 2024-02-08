@@ -3,7 +3,6 @@ use std::fmt::Display;
 use std::fs::read_to_string;
 use std::process::Command;
 
-use anyhow::anyhow;
 use camino::Utf8PathBuf;
 use roxmltree::Children;
 use roxmltree::Descendants;

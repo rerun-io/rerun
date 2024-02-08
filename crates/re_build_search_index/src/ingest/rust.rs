@@ -368,7 +368,7 @@ impl<'a> Visitor<'a> {
     }
 }
 
-fn base_url(version: &Version, krate: &Crate) -> String {
+fn base_url(_version: &Version, krate: &Crate) -> String {
     // format!("https://docs.rs/{krate_name}/{version}")
     format!("https://docs.rs/{}/latest", krate.name())
 }

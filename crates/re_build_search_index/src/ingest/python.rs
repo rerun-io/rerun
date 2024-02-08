@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::process::Command;
 
 use anyhow::Context as _;
@@ -47,9 +46,9 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
     let docs = collect_docstrings(&dump[RERUN_SDK]);
 
-    let version = &ctx.rerun_pkg().version;
+    let _version = &ctx.rerun_pkg().version;
     // let base_url = format!("https://ref.rerun.io/docs/python/{version}");
-    let base_url = format!("https://ref.rerun.io/docs/python/main");
+    let base_url = "https://ref.rerun.io/docs/python/main";
     for (path, obj) in inv {
         ctx.push(DocumentData {
             kind: DocumentKind::Python,
@@ -230,7 +229,7 @@ enum Item {
 #[derive(Debug, Deserialize)]
 struct Module {
     name: String,
-    labels: Vec<String>,
+    // labels: Vec<String>,
     members: Vec<Item>,
     docstring: Option<Docstring>,
 }
@@ -244,7 +243,7 @@ struct Alias {
 #[derive(Debug, Deserialize)]
 struct Attribute {
     name: String,
-    labels: HashSet<Label>,
+    // labels: HashSet<Label>,
     docstring: Option<Docstring>,
 }
 
