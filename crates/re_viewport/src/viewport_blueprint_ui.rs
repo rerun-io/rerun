@@ -1,9 +1,7 @@
 use egui::{Response, Ui};
-use itertools::Itertools;
 
 use re_entity_db::InstancePath;
-use re_log_types::{EntityPath, EntityPathRule};
-use re_space_view::DataQueryBlueprint;
+use re_log_types::EntityPathRule;
 use re_space_view::SpaceViewBlueprint;
 use re_space_view::SpaceViewName;
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
@@ -11,7 +9,7 @@ use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::{container::Contents, space_view_heuristics::default_created_space_views, Viewport};
+use crate::{container::Contents, Viewport};
 
 /// The style to use for displaying this space view name in the UI.
 pub fn space_view_name_style(name: &SpaceViewName) -> re_ui::LabelStyle {
