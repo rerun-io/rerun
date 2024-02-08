@@ -20,8 +20,6 @@ The image should contain a red region and a green region.
 There should be 1 red rectangle and 1 green rectangle.
 
 Hover over each of the elements and confirm it shows the label as "red" or "green" as expected.
-
-
 """
 
 
