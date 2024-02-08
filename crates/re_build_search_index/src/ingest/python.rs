@@ -69,6 +69,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 struct Docstrings {
     /// `item_path -> docstring`
     docstrings: HashMap<String, String>,
+
     /// `alias_path -> item_path`
     ///
     /// Also includes the `item_path` itself
@@ -96,6 +97,7 @@ fn collect_docstrings(root: &Item) -> Docstrings {
     struct CollectDocstrings {
         /// `item_path -> docstring`
         docstrings: HashMap<String, String>,
+
         /// `alias_path -> item_path`
         ///
         /// Also includes `item_path -> item_path`

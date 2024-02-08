@@ -44,13 +44,13 @@ fn parse_docs_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<(DocsFrontm
     let content = std::fs::read_to_string(path)?;
 
     let Some(start) = content.find(START) else {
-        anyhow::bail!("\"{}\" is missing frontmatter", path.display())
+        anyhow::bail!("{:?} is missing frontmatter", path.display())
     };
     let start = start + START.len();
 
     let Some(end) = content[start..].find(END) else {
         anyhow::bail!(
-            "\"{}\" has invalid frontmatter: missing {END:?} terminator",
+            "{:?} has invalid frontmatter: missing {END:?} terminator",
             path.display()
         );
     };

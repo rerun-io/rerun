@@ -47,6 +47,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 struct Visitor<'a> {
     ctx: &'a Context,
     base_path: Utf8PathBuf,
+
     /// Set of visited `refid`
     visited: HashSet<String>,
 }

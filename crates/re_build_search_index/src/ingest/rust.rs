@@ -217,8 +217,8 @@ impl<'a> Visitor<'a> {
             }
             I::Import(import) => self.visit_import(import),
             I::Impl(impl_) => {
-                // we only care about inherent impls:
-                //   impl Thing { ... }
+                // we only care about inherent impls of the form:
+                //   impl Thing {}
                 let Some(type_id) = impl_.inherent_impl_type_id() else {
                     return;
                 };

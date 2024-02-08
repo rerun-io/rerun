@@ -35,6 +35,7 @@ pub trait CommandExt {
 }
 
 impl CommandExt for Command {
+    #[inline]
     fn with_cwd<P>(mut self, cwd: P) -> Self
     where
         P: AsRef<Path>,
@@ -43,6 +44,7 @@ impl CommandExt for Command {
         self
     }
 
+    #[inline]
     fn with_arg<S>(mut self, arg: S) -> Self
     where
         S: AsRef<OsStr>,
@@ -51,6 +53,7 @@ impl CommandExt for Command {
         self
     }
 
+    #[inline]
     fn with_args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -60,6 +63,7 @@ impl CommandExt for Command {
         self
     }
 
+    #[inline]
     fn with_env<K, V>(mut self, key: K, val: V) -> Self
     where
         K: AsRef<OsStr>,
@@ -100,6 +104,7 @@ impl CommandExt for Command {
 pub struct ExitCode(pub i32);
 
 impl std::error::Error for ExitCode {}
+
 impl std::fmt::Display for ExitCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "process exited with code {}", self.0)

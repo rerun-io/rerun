@@ -181,6 +181,7 @@ Update instructions:
 | re_build_tools             | build.rs helpers for generating build info                    |
 | re_types_builder           | Generates code for Rerun's SDKs from flatbuffers definitions. |
 | re_build_examples          | Build rerun example RRD files and manifest                    |
+| re_build_search_index      | Build a Meilisearch index from all our documentation          |
 | re_build_web_viewer        | Build the rerun web-viewer Wasm from source                   |
 
 

@@ -103,7 +103,7 @@ impl Lines {
                 if let Some(line) = stdin.next().transpose()? {
                     data_tx
                         .blocking_send(line)
-                        .map_err(|e| anyhow::anyhow!("failed to send line: {e:?}"))?;
+                        .map_err(|err| anyhow::anyhow!("failed to send line: {err}"))?;
                 }
             }
         })?;
