@@ -346,7 +346,7 @@ fn add_recommended_space_views_for_bucket(
     // Alternatively we want to split this bucket into a group for each child-space.
     let Some(subtree) = tree.subtree(&root) else {
         if cfg!(debug_assertions) {
-            re_log::warn_once!("Ancestor of entity not found in entity tree.")
+            re_log::warn_once!("Ancestor of entity not found in entity tree.");
         }
         return;
     };
