@@ -8,6 +8,6 @@ image = np.zeros((200, 300, 3), dtype=np.uint8)
 image[:, :, 0] = 255
 image[50:150, 50:150] = (0, 255, 0)
 
-rr.init("rerun_example_image_simple", spawn=True)
+rr.init("rerun_example_image", spawn=True)
 
 rr.log("image", rr.Image(image))

@@ -5,7 +5,7 @@
 #include <vector>
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_image_simple");
+    const auto rec = rerun::RecordingStream("rerun_example_image");
     rec.spawn().exit_on_failure();
 
     // Create a synthetic image.

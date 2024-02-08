@@ -7,7 +7,7 @@
 #include <vector>
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
+    const auto rec = rerun::RecordingStream("rerun_example_pinhole");
     rec.spawn().exit_on_failure();
 
     rec.log("world/image", rerun::Pinhole::from_focal_length_and_resolution(3.0f, {3.0f, 3.0f}));
@@ -17,5 +17,5 @@ int main() {
         return static_cast<uint8_t>(std::rand());
     });
 
-    rec.log("world/image", rerun::Image({3, 3}, random_data));
+    rec.log("world/image", rerun::Image({3, 3, 3}, random_data));
 }

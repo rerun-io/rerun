@@ -44,7 +44,7 @@ class Image(ImageExt, Archetype):
     image[:, :, 0] = 255
     image[50:150, 50:150] = (0, 255, 0)
 
-    rr.init("rerun_example_image_simple", spawn=True)
+    rr.init("rerun_example_image", spawn=True)
 
     rr.log("image", rr.Image(image))
     ```

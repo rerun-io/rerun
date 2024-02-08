@@ -34,7 +34,7 @@ namespace rerun::archetypes {
     /// #include <vector>
     ///
     /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_annotation_context_segmentation");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // create an annotation context to describe the classes

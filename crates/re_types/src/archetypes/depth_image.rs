@@ -33,7 +33,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use ndarray::{s, Array, ShapeBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_depth_image").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_depth_image_3d").spawn()?;
 ///
 ///     let mut image = Array::<u16, _>::from_elem((200, 300).f(), 65535);
 ///     image.slice_mut(s![50..150, 50..150]).fill(20000);

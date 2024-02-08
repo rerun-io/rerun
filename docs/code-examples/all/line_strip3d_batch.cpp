@@ -5,7 +5,7 @@
 #include <vector>
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
+    const auto rec = rerun::RecordingStream("rerun_example_line_strip3d_batch");
     rec.spawn().exit_on_failure();
 
     rerun::Collection<rerun::Vec3D> strip1 = {

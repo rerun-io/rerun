@@ -1,7 +1,7 @@
 """Disconnect two spaces."""
 import rerun as rr
 
-rr.init("rerun_example_disconnect_space", spawn=True)
+rr.init("rerun_example_disconnected_space", spawn=True)
 
 # These two points can be projected into the same space..
 rr.log("world/room1/point", rr.Points3D([[0, 0, 0]]))

@@ -34,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Series Point
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_series_line_style").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_series_point_style").spawn()?;
 ///
 ///     // Set up plot styling:
 ///     // They are logged timeless as they don't change over time and apply to all timelines.
