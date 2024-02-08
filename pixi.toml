@@ -134,9 +134,10 @@ nox = "2021.10.1.*"
 prettier = "2.8.8.*"
 tomlkit = "0.12.3.*"
 
+[target.linux-64.dependencies]
+patchelf = ">=0.17"
 
 [feature.cpp.target.linux-64.dependencies]
-patchelf = ">=0.17"
 clang = "16.0.6"
 ninja = "1.11.1"
 c-compiler = "1.6.0.*"
