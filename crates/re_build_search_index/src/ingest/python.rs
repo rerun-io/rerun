@@ -41,8 +41,6 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
     let docs = collect_docstrings(&dump[RERUN_SDK]);
 
-    println!("{docs:?}");
-
     let version = &ctx.rerun_pkg().version;
     // let base_url = format!("https://ref.rerun.io/docs/python/{version}");
     let base_url = format!("https://ref.rerun.io/docs/python/main");
@@ -55,6 +53,8 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             title: path,
         });
     }
+
+    ctx.finish_progress_bar(progress);
 
     Ok(())
 }

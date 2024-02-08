@@ -66,7 +66,7 @@ impl Repl {
                 search.index(&self.index_name, &documents).await?;
             }
             _ => {
-                for result in search.query(&self.index_name, line, Some(4)).await?.rev() {
+                for result in search.query(&self.index_name, line, Some(4)).await? {
                     let content = result.content();
                     println!("### {} [{}]", result.title(), result.url(),);
                     if content.len() > 200 {

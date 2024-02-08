@@ -4390,6 +4390,7 @@ dependencies = [
  "rayon",
  "re_build_examples",
  "re_build_tools",
+ "roxmltree",
  "rustdoc-json",
  "rustdoc-types",
  "serde",
@@ -5852,6 +5853,12 @@ dependencies = [
  "re_log",
  "rerun",
 ]
+
+[[package]]
+name = "roxmltree"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cd14fd5e3b777a7422cca79358c57a8f6e3a703d9ac187448d0daf220c2407f"
 
 [[package]]
 name = "run_wasm"

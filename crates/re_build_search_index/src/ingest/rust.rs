@@ -34,7 +34,7 @@ use std::sync::mpsc;
 /// - associated `type`
 /// - associated `fn`
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
-    let progress = ctx.progress_bar("rustdoc (generating json)");
+    let progress = ctx.progress_bar("rustdoc");
 
     let mut crates = Vec::new();
 

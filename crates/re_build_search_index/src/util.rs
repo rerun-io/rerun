@@ -1,9 +1,14 @@
 use std::ffi::OsStr;
 use std::io;
+use std::path::Path;
 use std::process::Command;
 use std::process::Stdio;
 
 pub trait CommandExt {
+    fn with_cwd<P>(self, cwd: P) -> Self
+    where
+        P: AsRef<Path>;
+
     fn with_arg<S>(self, arg: S) -> Self
     where
         S: AsRef<OsStr>;
@@ -30,6 +35,14 @@ pub trait CommandExt {
 }
 
 impl CommandExt for Command {
+    fn with_cwd<P>(mut self, cwd: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        self.current_dir(cwd);
+        self
+    }
+
     fn with_arg<S>(mut self, arg: S) -> Self
     where
         S: AsRef<OsStr>,
