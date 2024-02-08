@@ -59,12 +59,13 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             continue;
         }
 
-        let path = rustdoc_json::Builder::default()
-            .toolchain("nightly")
-            .all_features(true)
-            .manifest_path(&pkg.manifest_path)
-            .silent(true)
-            .build()?;
+        let path = progress.suspend(|| {
+            rustdoc_json::Builder::default()
+                .toolchain("nightly")
+                .all_features(true)
+                .manifest_path(&pkg.manifest_path)
+                .build()
+        })?;
 
         let file = File::open(&path)
             .with_context(|| format!("reading {}", path.display()))

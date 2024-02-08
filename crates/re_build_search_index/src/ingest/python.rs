@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::process::Command;
 
+use anyhow::Context as _;
 use serde::Deserialize;
 
 use crate::ingest::DocumentData;
@@ -17,18 +18,22 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("python");
 
     progress.set_message("mkdocs build");
-    Command::new("mkdocs")
-        .with_arg("build")
-        .with_arg("-f")
-        .with_arg(ctx.workspace_root().join("rerun_py/mkdocs.yml"))
-        .run_with_output()?;
+    progress.suspend(|| {
+        Command::new("mkdocs")
+            .with_arg("build")
+            .with_arg("-f")
+            .with_arg(ctx.workspace_root().join("rerun_py/mkdocs.yml"))
+            .run_async()
+    })?;
 
     progress.set_message("sphobjinv convert");
     let inv: Inventory = Command::new("sphobjinv")
         .with_args(["convert", "json", "--expand"])
-        .with_arg(ctx.workspace_root().join("rerun_py/site/objects.inv"))
+        .with_cwd(ctx.workspace_root())
+        .with_arg("rerun_py/site/objects.inv")
         .with_arg("-")
-        .run_serde::<SphinxObjectInv>()?
+        .run_serde::<SphinxObjectInv>()
+        .context("sphobjinv may not be installed, install rerun_py/requirements-doc.txt")?
         .objects
         .into_values()
         .map(|o| (o.name.clone(), o))
@@ -37,7 +42,8 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     progress.set_message("griffe dump");
     let dump: Dump = Command::new("griffe")
         .with_args(["dump", "rerun_sdk"])
-        .run_serde()?;
+        .run_serde()
+        .context("either griffe or rerun_sdk is not installed")?;
 
     let docs = collect_docstrings(&dump[RERUN_SDK]);
 

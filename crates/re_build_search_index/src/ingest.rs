@@ -24,10 +24,10 @@ use std::time::Duration;
 
 pub fn run() -> anyhow::Result<Vec<Document>> {
     let ctx = Context::new()?;
-    // docs::ingest(&ctx)?;
-    // examples::ingest(&ctx)?;
-    // rust::ingest(&ctx)?;
-    // python::ingest(&ctx)?;
+    docs::ingest(&ctx)?;
+    examples::ingest(&ctx)?;
+    rust::ingest(&ctx)?;
+    python::ingest(&ctx)?;
     cpp::ingest(&ctx)?;
     Ok(ctx.finish())
 }
