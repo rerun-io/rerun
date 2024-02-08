@@ -303,11 +303,8 @@ fn count_non_nested_entities_with_component(
     component_name: &ComponentName,
 ) -> usize {
     if entity_bucket.contains(&subtree.path) {
-        if subtree.entity.components.contains_key(component_name) {
-            1
-        } else {
-            0
-        }
+        // bool true -> 1
+        subtree.entity.components.contains_key(component_name) as usize
     } else if !entity_bucket
         .iter()
         .any(|e| e.is_descendant_of(&subtree.path))
@@ -318,7 +315,6 @@ fn count_non_nested_entities_with_component(
             .children
             .values()
             .map(|child| {
-                // TODO(jleibs): Early terminate if know the subtree has nothing from the bucket
                 count_non_nested_entities_with_component(entity_bucket, child, component_name)
             })
             .sum()
