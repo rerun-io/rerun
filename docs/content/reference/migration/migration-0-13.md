@@ -19,14 +19,19 @@ line series via [SeriesLine](../types/archetypes/series_line.md).
 The overhaul of automatic Space View creation makes the viewer faster and
 more predictable but comes with a few changes on how paths are expected to be structured:
 
-* when expecting several 2D views, log annotations **below** image paths
+* When working with images of different resolutions, the image entities will end up defining the root of the created spaces.
+  * This means shapes like annotated rects that are in image coordinates are best logged **below** rather than next-to
+    the image path.
   * Example:
     * Before: image at `image/rgb`, rects at `image/annotation`
     * After: image at `image`, rects at `image/annotation`
-  * This happens because children of roots are no longer treated special for 2D views, but the viewer still
-    tries to bucket by image, putting images of the same size in the same view
-    * meaning the viewer no longer breaks up the root unless image-based bucketing implies it
-    * note that children of root are still special for 3D & time series views but this may change in the future
+  * Previously Rerun treated children of the root-space as special. This behavior has been removed for 2D views to
+    give more predictable results regardless of prefix.
+    * The primary 2D partitioning is now driven by putting images of the same size in the same view, with each space
+      being created as the common ancestor of all the images of the size.
+    * As such, it is important to put any non-image 2D content in a location that will be included in the space of
+      the appropriate dimensions.
+    * Note that children of root are still special for 3D & time series views but this may change in the future
       see [#4926](https://github.com/rerun-io/rerun/issues/4926)
 * [DisconnectedSpace](../types/archetypes/disconnected_space.md) now strictly applies only to 2D and 3D Space Views
   * Internally, the heuristic now reasons about a 2D/3D topology which does not affect other types of views.
