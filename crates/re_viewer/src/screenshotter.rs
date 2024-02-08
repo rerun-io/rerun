@@ -38,8 +38,14 @@ impl Screenshotter {
         self.countdown = Some(10);
 
         self.pre_screenshot_zoom_factor = Some(egui_ctx.zoom_factor());
+
         // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
-        egui_ctx.set_pixels_per_point(2.0);
+        let temporary_pixels_per_points = 2.0;
+
+        let scale_factor = temporary_pixels_per_points / egui_ctx.pixels_per_point();
+        let temporary_viewport_size = scale_factor * egui_ctx.screen_rect().size();
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(temporary_viewport_size));
+        egui_ctx.set_pixels_per_point(temporary_pixels_per_points);
     }
 
     /// Call once per frame
@@ -57,7 +63,11 @@ impl Screenshotter {
 
             egui_ctx.request_repaint(); // Make sure we keep counting down
         } else if let Some(pre_screenshot_zoom_factor) = self.pre_screenshot_zoom_factor.take() {
-            // Restore zoom_factor
+            // Restore zoom_factor and viewport size.
+
+            let scale_factor = pre_screenshot_zoom_factor / egui_ctx.zoom_factor();
+            let old_viewport_size = scale_factor * egui_ctx.screen_rect().size();
+            egui_ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(old_viewport_size));
             egui_ctx.set_zoom_factor(pre_screenshot_zoom_factor);
         }
 
