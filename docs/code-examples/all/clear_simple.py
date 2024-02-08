@@ -2,7 +2,7 @@
 
 import rerun as rr
 
-rr.init("rerun_example_clear_simple", spawn=True)
+rr.init("rerun_example_clear", spawn=True)
 
 vectors = [(1.0, 0.0, 0.0), (0.0, -1.0, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)]
 origins = [(-0.5, 0.5, 0.0), (0.5, 0.5, 0.0), (0.5, -0.5, 0.0), (-0.5, -0.5, 0.0)]

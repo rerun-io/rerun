@@ -1,7 +1,7 @@
 //! Log a simple colored triangle.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_simple").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_mesh3d").spawn()?;
 
     rec.log(
         "triangle",

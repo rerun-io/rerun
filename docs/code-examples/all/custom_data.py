@@ -66,7 +66,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_car")
+    rr.script_setup(args, "rerun_example_custom_data")
     log_custom_data()
     rr.script_teardown(args)
 

@@ -3,7 +3,7 @@
 #include <rerun.hpp>
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_text_document");
+    const auto rec = rerun::RecordingStream("rerun_example_entity_path");
     rec.spawn().exit_on_failure();
 
     rec.log(

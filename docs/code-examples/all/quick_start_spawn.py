@@ -4,7 +4,7 @@ import numpy as np
 import rerun as rr
 
 # Initialize the SDK, give our recording a unique name, and spawn a viewer
-rr.init("rerun_example_demo", spawn=True)
+rr.init("rerun_example_quick_start_spawn", spawn=True)
 
 # Create some data
 SIZE = 10

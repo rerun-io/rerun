@@ -445,7 +445,9 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
     /// `DataTable`.
     ///
     /// Fails if there are more than one data recordings present in the rrd file.
-    fn compute_uber_table(path_to_rrd: &Path) -> anyhow::Result<re_log_types::DataTable> {
+    fn compute_uber_table(
+        path_to_rrd: &Path,
+    ) -> anyhow::Result<(re_log_types::ApplicationId, re_log_types::DataTable)> {
         use re_entity_db::EntityDb;
         use re_log_types::StoreId;
 
@@ -477,18 +479,32 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
 
         let store = stores.pop().unwrap(); // safe, ensured above
 
-        Ok(store.store().to_data_table()?)
+        Ok((
+            store
+                .app_id()
+                .cloned()
+                .unwrap_or_else(re_log_types::ApplicationId::unknown),
+            store.store().to_data_table()?,
+        ))
     }
 
-    let table1 =
+    let (app_id1, table1) =
         compute_uber_table(path_to_rrd1).with_context(|| format!("path: {path_to_rrd1:?}"))?;
-    let table2 =
+    let (app_id2, table2) =
         compute_uber_table(path_to_rrd2).with_context(|| format!("path: {path_to_rrd2:?}"))?;
 
     if full_dump {
+        println!("{app_id1}");
         println!("{table1}");
+
+        println!("{app_id2}");
         println!("{table2}");
     }
+
+    anyhow::ensure!(
+        app_id1 == app_id2,
+        "Application IDs do not match: '{app_id1}' vs. '{app_id2}'"
+    );
 
     re_log_types::DataTable::similar(&table1, &table2)
 }
