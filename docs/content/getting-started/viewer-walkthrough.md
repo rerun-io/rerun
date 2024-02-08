@@ -268,20 +268,12 @@ grayed out. For example, you cannot add a scalar to a spatial scene.
 
 
 ## Creating new views
-New views can be created using the "+" button at the top of the Blueprint panel. When you click this button you will
-need to choose a root for your new space. This is the space that will act as your origin within the
-[transform system](../concepts/spaces-and-transforms.md).
+New views & view containers (grid, vertical, etc.) can be created using the "+" button at the top of the Blueprint panel or
+from the selection panel when selecting a container.
 
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough10_create/d89060f824af6b3f188e9187b8b5b9b1d7f75646/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough10_create/d89060f824af6b3f188e9187b8b5b9b1d7f75646/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough10_create/d89060f824af6b3f188e9187b8b5b9b1d7f75646/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough10_create/d89060f824af6b3f188e9187b8b5b9b1d7f75646/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough10_create/d89060f824af6b3f188e9187b8b5b9b1d7f75646/full.png" alt="viewer walkthrough creating new view screenshot">
-</picture>
+After creating a view you usually want to proceed to editing its origin and query (which entities are shown) in the selection panel.
 
-
-After creating this new view, your view layout might be feeling a little cluttered. You can quickly hide views you're
+Your view layout might be feeling a little cluttered now. You can quickly hide views you're
 not using from the blueprint panel by hovering over the view and then clicking the icon that looks like an eye. Go ahead
 and hide the `image` and `avg_reproj_err` views, and collapse the expanded timeline panel using the button in the upper
 right corner. Note that even with the timeline collapsed you still have access to timeline controls, including a slider.
