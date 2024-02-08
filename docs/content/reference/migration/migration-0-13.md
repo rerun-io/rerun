@@ -21,8 +21,8 @@ more predictable but comes with a few changes on how paths are expected to be st
 
 * when expecting several 2D views, log annotations **below** image paths
   * Example:
-    * Before: image @ `image/rgb`, rects at `image/annotation`
-    * After: image `image`, rects at `image/annotation`
+    * Before: image at `image/rgb`, rects at `image/annotation`
+    * After: image at `image`, rects at `image/annotation`
   * This happens because children of roots are no longer treated special for 2D views, but the viewer still
     tries to bucket by image, putting images of the same size in the same view
     * meaning the viewer no longer breaks up the root unless image-based bucketing implies it
