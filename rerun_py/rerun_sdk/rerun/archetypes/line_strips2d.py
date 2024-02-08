@@ -27,7 +27,7 @@ class LineStrips2D(Archetype):
     ```python
     import rerun as rr
 
-    rr.init("rerun_example_line_strip2d", spawn=True)
+    rr.init("rerun_example_line_strip2d_batch", spawn=True)
 
     rr.log(
         "strips",

@@ -39,7 +39,7 @@ namespace rerun::archetypes {
     /// #include <vector>
     ///
     /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_depth_image");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_depth_image_3d");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // Create a synthetic depth image.

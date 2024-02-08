@@ -35,7 +35,7 @@ class SeriesPoint(Archetype):
 
     import rerun as rr
 
-    rr.init("rerun_example_series_point_styling", spawn=True)
+    rr.init("rerun_example_series_point_style", spawn=True)
 
     # Set up plot styling:
     # They are logged timeless as they don't change over time and apply to all timelines.

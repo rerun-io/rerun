@@ -41,7 +41,7 @@ namespace rerun::archetypes {
     ///
     ///     const auto path = argv[1];
     ///
-    ///     const auto rec = rerun::RecordingStream("rerun_example_asset3d_simple");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_asset3d");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
