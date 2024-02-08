@@ -39,6 +39,8 @@ Check out our [associated blog post](TODO) for more information.
 
 As well as a lot of miscellaneous bug fixes and usability improvements: see details below.
 
+Check out our [migration guide](https://www.rerun.io/docs/reference/migration/migration-0-13).
+
 ### Details
 
 #### 🪵 Log API
