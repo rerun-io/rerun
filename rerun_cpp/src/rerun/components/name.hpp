@@ -23,6 +23,16 @@ namespace rerun::components {
         rerun::datatypes::Utf8 value;
 
       public:
+        // Extensions to generated type defined in 'name_ext.cpp'
+
+        /// Construct `Name` from a null-terminated UTF8 string.
+        Name(const char* str) : value(str) {}
+
+        const char* c_str() const {
+            return value.c_str();
+        }
+
+      public:
         Name() = default;
 
         Name(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}

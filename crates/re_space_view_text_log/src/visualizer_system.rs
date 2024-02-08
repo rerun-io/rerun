@@ -1,7 +1,6 @@
 use re_data_store::TimeRange;
 use re_entity_db::EntityPath;
 use re_log_types::RowId;
-use re_query_cache::MaybeCachedComponentData;
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -61,16 +60,16 @@ impl VisualizerSystem for TextLogSystem {
             let timeline_query =
                 re_data_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
 
+            // TODO(cmc): use raw API.
             query_caches.query_archetype_pov1_comp2::<TextLog, Text, TextLogLevel, Color, _>(
-                ctx.app_options.experimental_primary_caching_range,
                 store,
                 &timeline_query.clone().into(),
                 &data_result.entity_path,
                 |((time, row_id), _, bodies, levels, colors)| {
                     for (body, level, color) in itertools::izip!(
                         bodies.iter(),
-                        MaybeCachedComponentData::iter_or_repeat_opt(&levels, bodies.len()),
-                        MaybeCachedComponentData::iter_or_repeat_opt(&colors, bodies.len()),
+                        re_query_cache::iter_or_repeat_opt(levels, bodies.len()),
+                        re_query_cache::iter_or_repeat_opt(colors, bodies.len()),
                     ) {
                         self.entries.push(Entry {
                             row_id,

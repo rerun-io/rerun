@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from attrs import define, field
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
@@ -16,6 +17,9 @@ from ..error_utils import catch_and_log_exceptions
 __all__ = ["TimeSeriesScalar"]
 
 
+@deprecated(
+    """Use the `Scalar` + (optional) `SeriesLine`/`SeriesPoint` archetypes instead, logged on the same entity."""
+)
 @define(str=False, repr=False, init=False)
 class TimeSeriesScalar(Archetype):
     """
@@ -39,9 +43,10 @@ class TimeSeriesScalar(Archetype):
 
     rr.init("rerun_example_scalar", spawn=True)
 
+    # Log the data on a timeline called "step".
     for step in range(0, 64):
         rr.set_time_sequence("step", step)
-        rr.log("scalar", rr.TimeSeriesScalar(math.sin(step / 10.0)))
+        rr.log("scalar", rr.Scalar(math.sin(step / 10.0)))
     ```
     <center>
     <picture>

@@ -10,6 +10,7 @@ use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::host_web_viewer;
+use re_types::SizeBytes;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "server")]
@@ -241,7 +242,7 @@ enum Command {
     },
 
     /// Print the contents of an .rrd file.
-    Print { rrd_path: String },
+    Print(PrintCommand),
 
     /// Reset the memory of the Rerun Viewer.
     ///
@@ -251,6 +252,15 @@ enum Command {
     /// Rerun will forget all blueprints, as well as the native window's size, position and scale factor.
     #[cfg(feature = "native_viewer")]
     Reset,
+}
+
+#[derive(Debug, Clone, clap::Parser)]
+struct PrintCommand {
+    rrd_path: String,
+
+    /// If specified, print out table contents.
+    #[clap(long, short, default_value_t = false)]
+    verbose: bool,
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -368,10 +378,7 @@ where
                 run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
             }
 
-            Command::Print { rrd_path } => {
-                let rrd_path = PathBuf::from(&rrd_path);
-                print_rrd(&rrd_path).with_context(|| format!("path: {rrd_path:?}"))
-            }
+            Command::Print(print_command) => print_command.run(),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => reset_viewer(),
@@ -438,7 +445,9 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
     /// `DataTable`.
     ///
     /// Fails if there are more than one data recordings present in the rrd file.
-    fn compute_uber_table(path_to_rrd: &Path) -> anyhow::Result<re_log_types::DataTable> {
+    fn compute_uber_table(
+        path_to_rrd: &Path,
+    ) -> anyhow::Result<(re_log_types::ApplicationId, re_log_types::DataTable)> {
         use re_entity_db::EntityDb;
         use re_log_types::StoreId;
 
@@ -470,41 +479,88 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
 
         let store = stores.pop().unwrap(); // safe, ensured above
 
-        Ok(store.store().to_data_table()?)
+        Ok((
+            store
+                .app_id()
+                .cloned()
+                .unwrap_or_else(re_log_types::ApplicationId::unknown),
+            store.store().to_data_table()?,
+        ))
     }
 
-    let table1 =
+    let (app_id1, table1) =
         compute_uber_table(path_to_rrd1).with_context(|| format!("path: {path_to_rrd1:?}"))?;
-    let table2 =
+    let (app_id2, table2) =
         compute_uber_table(path_to_rrd2).with_context(|| format!("path: {path_to_rrd2:?}"))?;
 
     if full_dump {
+        println!("{app_id1}");
         println!("{table1}");
+
+        println!("{app_id2}");
         println!("{table2}");
     }
+
+    anyhow::ensure!(
+        app_id1 == app_id2,
+        "Application IDs do not match: '{app_id1}' vs. '{app_id2}'"
+    );
 
     re_log_types::DataTable::similar(&table1, &table2)
 }
 
-fn print_rrd(rrd_path: &Path) -> anyhow::Result<()> {
-    let rrd_file = std::fs::File::open(rrd_path)?;
-    let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
-    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
-    for msg in decoder {
-        let msg = msg.context("decode rrd message")?;
-        match msg {
-            LogMsg::SetStoreInfo(msg) => {
-                let SetStoreInfo { row_id: _, info } = msg;
-                println!("{info:#?}");
-            }
-            LogMsg::ArrowMsg(_row_id, arrow_msg) => {
-                let table =
-                    DataTable::from_arrow_msg(&arrow_msg).context("Decode arrow message")?;
-                println!("{table}");
+impl PrintCommand {
+    fn run(&self) -> anyhow::Result<()> {
+        let rrd_path = PathBuf::from(&self.rrd_path);
+        self.print_rrd(&rrd_path)
+            .with_context(|| format!("path: {rrd_path:?}"))
+    }
+
+    fn print_rrd(&self, rrd_path: &Path) -> anyhow::Result<()> {
+        let Self {
+            rrd_path: _,
+            verbose,
+        } = self;
+
+        let rrd_file = std::fs::File::open(rrd_path)?;
+        let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
+        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
+        for msg in decoder {
+            let msg = msg.context("decode rrd message")?;
+            match msg {
+                LogMsg::SetStoreInfo(msg) => {
+                    let SetStoreInfo { row_id: _, info } = msg;
+                    println!("{info:#?}");
+                }
+                LogMsg::ArrowMsg(_row_id, arrow_msg) => {
+                    let mut table =
+                        DataTable::from_arrow_msg(&arrow_msg).context("Decode arrow message")?;
+
+                    if *verbose {
+                        println!("{table}");
+                    } else {
+                        table.compute_all_size_bytes();
+
+                        let column_names =
+                            table.columns.keys().map(|name| name.short_name()).join(" ");
+
+                        let entity_paths = if table.col_entity_path.len() == 1 {
+                            format!("{:?}", table.col_entity_path[0])
+                        } else {
+                            format!("{} different entity paths", table.col_entity_path.len())
+                        };
+
+                        println!(
+                            "Table with {} rows ({}) - {entity_paths} - columns: [{column_names}]",
+                            table.num_rows(),
+                            re_format::format_bytes(table.heap_size_bytes() as _),
+                        );
+                    }
+                }
             }
         }
+        Ok(())
     }
-    Ok(())
 }
 
 #[cfg(feature = "analytics")]

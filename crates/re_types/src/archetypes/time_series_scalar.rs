@@ -14,6 +14,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
+#![allow(deprecated)]
 
 use ::re_types_core::external::arrow2;
 use ::re_types_core::ComponentName;
@@ -38,12 +39,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_scalar").spawn()?;
 ///
+///     // Log the data on a timeline called "step".
 ///     for step in 0..64 {
 ///         rec.set_time_sequence("step", step);
-///         rec.log(
-///             "scalar",
-///             &rerun::TimeSeriesScalar::new((step as f64 / 10.0).sin()),
-///         )?;
+///         rec.log("scalar", &rerun::Scalar::new((step as f64 / 10.0).sin()))?;
 ///     }
 ///
 ///     Ok(())
@@ -59,6 +58,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
+#[deprecated(
+    note = "Use the `Scalar` + (optional) `SeriesLine`/`SeriesPoint` archetypes instead, logged on the same entity."
+)]
 pub struct TimeSeriesScalar {
     /// The scalar value to log.
     pub scalar: crate::components::Scalar,

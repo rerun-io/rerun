@@ -268,7 +268,8 @@ impl Caches {
         //
         // It's fine, though:
         // - Best case scenario, the data we need is already cached.
-        // - Worst case scenario, the data is missing and we'll simply return the raw data instead.
+        // - Worst case scenario, the data is missing and we'll be missing some data for the current
+        //   frame.
         //   It'll get cached at some point in an upcoming frame (statistically, we're bound to win
         //   the race at some point).
         //
@@ -277,7 +278,8 @@ impl Caches {
         //
         // There is a lot of complexity we could add to make this whole process more efficient:
         // keep track of failed queries in a queue so we don't rely on probabilities, keep track
-        // of the thread-local reentrancy state to skip this logic when it's not needed, etc.
+        // of the thread-local reentrancy state to skip this logic when it's not needed, return raw
+        // data when the lock is busy and the data isn't already cached, etc.
         //
         // In the end, this is a edge-case inherent to our current "immediate query" model that we
         // already know we want -- and have to -- move away from; the extra complexity isn't worth it.
@@ -797,6 +799,14 @@ impl CacheBucket {
         self.pov_instance_keys.range(entry_range)
     }
 
+    /// Get the raw batches for the specified non-optional component.
+    #[inline]
+    pub fn component<C: Component + Send + Sync + 'static>(&self) -> Option<&FlatVecDeque<C>> {
+        self.components
+            .get(&C::name())
+            .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())
+    }
+
     /// Range over the batches of the specified non-optional component.
     #[inline]
     pub fn range_component<C: Component + Send + Sync + 'static>(
@@ -808,6 +818,16 @@ impl CacheBucket {
             .get(&C::name())
             .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())?;
         Some(data.range(entry_range))
+    }
+
+    /// Get the raw batches for the specified optional component.
+    #[inline]
+    pub fn component_opt<C: Component + Send + Sync + 'static>(
+        &self,
+    ) -> Option<&FlatVecDeque<Option<C>>> {
+        self.components
+            .get(&C::name())
+            .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<Option<C>>>())
     }
 
     /// Range over the batches of the specified optional component.

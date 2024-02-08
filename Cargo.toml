@@ -93,7 +93,7 @@ egui = { version = "0.26.0", features = [
 egui_commonmark = { version = "0.12", default-features = false }
 egui_extras = { version = "0.26.0", features = ["http", "image", "puffin"] }
 egui_plot = "0.26.0"
-egui_tiles = "0.7"
+egui_tiles = "0.7.2"
 egui-wgpu = "0.26.0"
 emath = "0.26.0"
 
@@ -125,7 +125,7 @@ convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
 directories-next = "2"
-document-features = "0.2"
+document-features = "0.2.8"
 ehttp = "0.4.0"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }

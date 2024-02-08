@@ -94,7 +94,7 @@ pub fn execute_systems_for_all_space_views<'a>(
         .collect::<HashMap<_, _>>()
 }
 
-fn execute_systems_for_space_view<'a>(
+pub fn execute_systems_for_space_view<'a>(
     ctx: &'a ViewerContext<'_>,
     space_view: &'a SpaceViewBlueprint,
     latest_at: TimeInt,

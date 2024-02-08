@@ -209,13 +209,19 @@ impl OrbitEye {
     }
 
     pub fn lerp(&self, other: &Self, t: f32) -> Self {
-        Self {
-            orbit_center: self.orbit_center.lerp(other.orbit_center, t),
-            orbit_radius: lerp(self.orbit_radius..=other.orbit_radius, t),
-            world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
-            fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
-            up: self.up.lerp(other.up, t).normalize_or_zero(),
-            velocity: self.velocity.lerp(other.velocity, t),
+        if t == 0.0 {
+            *self // avoid rounding errors
+        } else if t == 1.0 {
+            *other // avoid rounding errors
+        } else {
+            Self {
+                orbit_center: self.orbit_center.lerp(other.orbit_center, t),
+                orbit_radius: lerp(self.orbit_radius..=other.orbit_radius, t),
+                world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
+                fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
+                up: self.up.lerp(other.up, t).normalize_or_zero(),
+                velocity: self.velocity.lerp(other.velocity, t),
+            }
         }
     }
 

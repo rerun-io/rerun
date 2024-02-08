@@ -359,17 +359,6 @@ impl std::fmt::Display for LegendCorner {
     }
 }
 
-impl From<LegendCorner> for egui_plot::Corner {
-    fn from(value: LegendCorner) -> Self {
-        match value {
-            LegendCorner::LeftTop => egui_plot::Corner::LeftTop,
-            LegendCorner::RightTop => egui_plot::Corner::RightTop,
-            LegendCorner::LeftBottom => egui_plot::Corner::LeftBottom,
-            LegendCorner::RightBottom => egui_plot::Corner::RightBottom,
-        }
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// What kind of aggregation should be performed when the zoom-level on the X axis goes below 1.0?

@@ -22,6 +22,60 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Define the style properties for a point series in a chart.
+///
+/// This archetype only provides styling information and should be logged as timeless
+/// when possible. The underlying data needs to be logged to the same entity-path using
+/// the `Scalar` archetype.
+///
+/// See [`Scalar`][crate::archetypes.Scalar]
+///
+/// ## Example
+///
+/// ### Series Point
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_series_point_style").spawn()?;
+///
+///     // Set up plot styling:
+///     // They are logged timeless as they don't change over time and apply to all timelines.
+///     // Log two point series under a shared root so that they show in the same plot by default.
+///     rec.log_timeless(
+///         "trig/sin",
+///         &rerun::SeriesPoint::new()
+///             .with_color([255, 0, 0])
+///             .with_name("sin(0.01t)")
+///             .with_marker(rerun::components::MarkerShape::Circle)
+///             .with_marker_size(4.0),
+///     )?;
+///     rec.log_timeless(
+///         "trig/cos",
+///         &rerun::SeriesPoint::new()
+///             .with_color([0, 255, 0])
+///             .with_name("cos(0.01t)")
+///             .with_marker(rerun::components::MarkerShape::Cross)
+///             .with_marker_size(2.0),
+///     )?;
+///
+///     for t in 0..((std::f32::consts::TAU * 2.0 * 10.0) as i64) {
+///         rec.set_time_sequence("step", t);
+///
+///         // Log two time series under a shared root so that they show in the same plot by default.
+///         rec.log("trig/sin", &rerun::Scalar::new((t as f64 / 10.0).sin()))?;
+///         rec.log("trig/cos", &rerun::Scalar::new((t as f64 / 10.0).cos()))?;
+///     }
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1200w.png">
+///   <img src="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug)]
 pub struct SeriesPoint {
     /// Color for the corresponding series.
@@ -34,12 +88,18 @@ pub struct SeriesPoint {
     ///
     /// Used in the legend.
     pub name: Option<crate::components::Name>,
+
+    /// Size of the marker.
+    pub marker_size: Option<crate::components::MarkerSize>,
 }
 
 impl ::re_types_core::SizeBytes for SeriesPoint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.color.heap_size_bytes() + self.marker.heap_size_bytes() + self.name.heap_size_bytes()
+        self.color.heap_size_bytes()
+            + self.marker.heap_size_bytes()
+            + self.name.heap_size_bytes()
+            + self.marker_size.heap_size_bytes()
     }
 
     #[inline]
@@ -47,6 +107,7 @@ impl ::re_types_core::SizeBytes for SeriesPoint {
         <Option<crate::components::Color>>::is_pod()
             && <Option<crate::components::MarkerShape>>::is_pod()
             && <Option<crate::components::Name>>::is_pod()
+            && <Option<crate::components::MarkerSize>>::is_pod()
     }
 }
 
@@ -56,29 +117,31 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SeriesPointIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.MarkerShape".into(),
+            "rerun.components.MarkerSize".into(),
             "rerun.components.Name".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.SeriesPointIndicator".into(),
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
             "rerun.components.MarkerShape".into(),
+            "rerun.components.MarkerSize".into(),
             "rerun.components.Name".into(),
         ]
     });
 
 impl SeriesPoint {
-    pub const NUM_COMPONENTS: usize = 5usize;
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 /// Indicator component for the [`SeriesPoint`] [`::re_types_core::Archetype`]
@@ -155,10 +218,20 @@ impl ::re_types_core::Archetype for SeriesPoint {
         } else {
             None
         };
+        let marker_size = if let Some(array) = arrays_by_name.get("rerun.components.MarkerSize") {
+            <crate::components::MarkerSize>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.SeriesPoint#marker_size")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self {
             color,
             marker,
             name,
+            marker_size,
         })
     }
 }
@@ -176,6 +249,9 @@ impl ::re_types_core::AsComponents for SeriesPoint {
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.name
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.marker_size
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -196,6 +272,7 @@ impl SeriesPoint {
             color: None,
             marker: None,
             name: None,
+            marker_size: None,
         }
     }
 
@@ -214,6 +291,15 @@ impl SeriesPoint {
     #[inline]
     pub fn with_name(mut self, name: impl Into<crate::components::Name>) -> Self {
         self.name = Some(name.into());
+        self
+    }
+
+    #[inline]
+    pub fn with_marker_size(
+        mut self,
+        marker_size: impl Into<crate::components::MarkerSize>,
+    ) -> Self {
+        self.marker_size = Some(marker_size.into());
         self
     }
 }

@@ -4,6 +4,7 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, EntityPathFilter};
+use re_tracing::profile_scope;
 use re_types::components::TensorData;
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem as _, PerSystemEntities, RecommendedSpaceView,
@@ -14,8 +15,7 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{
-        default_visualized_entities_for_visualizer_kind, root_space_split_heuristic,
-        update_object_property_heuristics,
+        default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
     },
     spatial_topology::{SpatialTopology, SubSpace, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
@@ -176,20 +176,10 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // Spawn a space view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
-            let split_root_spaces =
-                root_space_split_heuristic(topo, &indicated_entities, SubSpaceDimensionality::TwoD);
-
+        let mut heuristics = SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
             SpaceViewSpawnHeuristics {
                 recommended_space_views: topo
                     .iter_subspaces()
-                    .flat_map(|subspace| {
-                        if subspace.origin.is_root() && !split_root_spaces.is_empty() {
-                            itertools::Either::Left(split_root_spaces.values())
-                        } else {
-                            itertools::Either::Right(std::iter::once(subspace))
-                        }
-                    })
                     .flat_map(|subspace| {
                         if subspace.dimensionality == SubSpaceDimensionality::ThreeD
                             || subspace.entities.is_empty()
@@ -214,17 +204,17 @@ impl SpaceViewClass for SpatialSpaceView2D {
                             images_by_bucket
                                 .into_iter()
                                 .map(|(_, entity_bucket)| {
+                                    // Pick a shared parent as origin, mostly because it looks nicer in the ui.
+                                    let root = EntityPath::common_ancestor_of(entity_bucket.iter());
+
                                     let mut query_filter = EntityPathFilter::default();
-                                    for image in entity_bucket {
+                                    for image in &entity_bucket {
                                         // This might lead to overlapping subtrees and break the same image size bucketing again.
                                         // We just take that risk, the heuristic doesn't need to be perfect.
-                                        query_filter.add_subtree(image);
+                                        query_filter.add_subtree(image.clone());
                                     }
 
-                                    RecommendedSpaceView {
-                                        root: subspace.origin.clone(),
-                                        query_filter,
-                                    }
+                                    RecommendedSpaceView { root, query_filter }
                                 })
                                 .collect()
                         }
@@ -232,7 +222,34 @@ impl SpaceViewClass for SpatialSpaceView2D {
                     .collect(),
             }
         })
-        .unwrap_or_default()
+        .unwrap_or_default();
+
+        // Find all entities that are not yet covered by the recommended space views and create a recommended
+        // space-view for each one at that specific entity path.
+        // TODO(jleibs): This is expensive. Would be great to track this as we build up the covering instead.
+        {
+            profile_scope!("space_view_2d: find uncovered entities");
+            let remaining_entities = indicated_entities
+                .iter()
+                .filter(|entity| {
+                    heuristics
+                        .recommended_space_views
+                        .iter()
+                        .all(|r| !r.query_filter.is_included(entity))
+                })
+                .collect::<Vec<_>>();
+
+            for entity in remaining_entities {
+                heuristics
+                    .recommended_space_views
+                    .push(RecommendedSpaceView {
+                        root: entity.clone(),
+                        query_filter: EntityPathFilter::single_entity_filter(entity),
+                    });
+            }
+        }
+
+        heuristics
     }
 
     fn selection_ui(
@@ -301,10 +318,13 @@ fn bucket_images_in_subspace(
             store.query_latest_component::<TensorData>(image_entity, &ctx.current_query())
         {
             if let Some([height, width, _]) = tensor.image_height_width_channels() {
-                images_by_bucket
-                    .entry((height, width))
-                    .or_default()
-                    .push(image_entity.clone());
+                // 1D tensors are typically handled by tensor or bar chart views and make generally for poor image buckets!
+                if height > 1 && width > 1 {
+                    images_by_bucket
+                        .entry((height, width))
+                        .or_default()
+                        .push(image_entity.clone());
+                }
             }
         }
     }

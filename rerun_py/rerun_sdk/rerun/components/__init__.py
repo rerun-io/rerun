@@ -35,6 +35,7 @@ from .keypoint_id import KeypointId, KeypointIdBatch, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike, LineStrip3DType
 from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, MarkerShapeLike, MarkerShapeType
+from .marker_size import MarkerSize, MarkerSizeArrayLike, MarkerSizeBatch, MarkerSizeLike, MarkerSizeType
 from .material import Material, MaterialBatch, MaterialType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .mesh_properties import MeshProperties, MeshPropertiesBatch, MeshPropertiesType
@@ -44,6 +45,7 @@ from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, Pinho
 from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
 from .radius import Radius, RadiusArrayLike, RadiusBatch, RadiusLike, RadiusType
+from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
 from .scalar import Scalar, ScalarArrayLike, ScalarBatch, ScalarLike, ScalarType
@@ -143,6 +145,11 @@ __all__ = [
     "MarkerShapeBatch",
     "MarkerShapeLike",
     "MarkerShapeType",
+    "MarkerSize",
+    "MarkerSizeArrayLike",
+    "MarkerSizeBatch",
+    "MarkerSizeLike",
+    "MarkerSizeType",
     "Material",
     "MaterialBatch",
     "MaterialType",
@@ -172,6 +179,11 @@ __all__ = [
     "RadiusBatch",
     "RadiusLike",
     "RadiusType",
+    "Range1D",
+    "Range1DArrayLike",
+    "Range1DBatch",
+    "Range1DLike",
+    "Range1DType",
     "Resolution",
     "ResolutionBatch",
     "ResolutionType",

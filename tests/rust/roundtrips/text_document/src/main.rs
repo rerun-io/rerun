@@ -36,6 +36,6 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let (rec, _serve_guard) = args.rerun.init("rerun_example_roundtrip_tensor")?;
+    let (rec, _serve_guard) = args.rerun.init("rerun_example_roundtrip_text_document")?;
     run(&rec, &args)
 }

@@ -7,7 +7,7 @@
 #include <vector>
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_tensor_simple");
+    const auto rec = rerun::RecordingStream("rerun_example_tensor");
     rec.spawn().exit_on_failure();
 
     std::default_random_engine gen;

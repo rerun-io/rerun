@@ -108,9 +108,10 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
     putln!(page, "{prelude}");
     putln!(page);
     if !objects.is_empty() {
+        // First all non deprecated ones:
         putln!(page, "## Available {}", kind.plural_name().to_lowercase());
         putln!(page);
-        for object in objects {
+        for object in objects.iter().filter(|o| o.deprecation_notice().is_none()) {
             putln!(
                 page,
                 "* [`{}`]({}/{}.md)",
@@ -118,6 +119,23 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
                 object.kind.plural_snake_case(),
                 object.snake_case_name()
             );
+        }
+
+        // Then all deprecated ones:
+        if objects.iter().any(|o| o.deprecation_notice().is_some()) {
+            putln!(page);
+            putln!(page);
+            putln!(page, "## Deprecated {}", kind.plural_name().to_lowercase());
+            putln!(page);
+            for object in objects.iter().filter(|o| o.deprecation_notice().is_some()) {
+                putln!(
+                    page,
+                    "* [`{}`]({}/{}.md)",
+                    object.name,
+                    object.kind.plural_snake_case(),
+                    object.snake_case_name()
+                );
+            }
         }
     }
 
@@ -144,8 +162,24 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
 
     let mut page = String::new();
 
-    write_frontmatter(&mut page, &object.name, None);
+    let title = if object.deprecation_notice().is_some() {
+        format!("{} (deprecated)", object.name)
+    } else {
+        object.name.clone()
+    };
+
+    write_frontmatter(&mut page, &title, None);
     putln!(page);
+
+    if let Some(deprecation_notice) = object.deprecation_notice() {
+        putln!(
+            page,
+            "**⚠️ This type is deprecated and may be removed in future versions**"
+        );
+        putln!(page, "{deprecation_notice}");
+        putln!(page);
+    }
+
     for line in top_level_docs {
         putln!(page, "{line}");
     }
@@ -207,7 +241,15 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         }
         ObjectKind::Archetype => {
             if examples.is_empty() {
-                reporter.warn(&object.virtpath, &object.fqname, "No examples");
+                if object.virtpath.starts_with("//testing") {
+                    // do nothing
+                } else if object.virtpath.starts_with("//archetypes") {
+                    // actual public archetypes: hard error
+                    reporter.error(&object.virtpath, &object.fqname, "No examples");
+                } else {
+                    // everything else (including experimental blueprint stuff): simple warning
+                    reporter.warn(&object.virtpath, &object.fqname, "No examples");
+                }
             }
         }
     }

@@ -3,7 +3,6 @@ use egui::{NumExt as _, Ui};
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
-    VisibleHistory,
 };
 use re_log_types::{DataRow, EntityPathFilter, RowId};
 use re_space_view_time_series::TimeSeriesSpaceView;
@@ -335,10 +334,7 @@ fn what_is_selected_ui(
                 if let Some(info) = entity_db.store_info() {
                     let time = info
                         .started
-                        .format_time_custom(
-                            "[hour]:[minute]:[second]",
-                            ctx.app_options.time_zone_for_timestamps,
-                        )
+                        .format_time_custom("[hour]:[minute]:[second]", ctx.app_options.time_zone)
                         .unwrap_or("<unknown time>".to_owned());
 
                     format!("{} - {}", info.application_id, time)
@@ -885,19 +881,12 @@ fn blueprint_ui_for_space_view(
         );
 
         // Space View don't inherit properties.
-        let mut resolved_entity_props = EntityProperties::default();
-
-        // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
-        if space_view_class == TimeSeriesSpaceView::IDENTIFIER {
-            resolved_entity_props.visible_history.sequences = VisibleHistory::ALL;
-            resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
-        }
-
         let root_data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
+
         let mut props = root_data_result
             .individual_properties()
             .cloned()
-            .unwrap_or(resolved_entity_props.clone());
+            .unwrap_or_default();
 
         visible_history_ui(
             ctx,
@@ -906,7 +895,7 @@ fn blueprint_ui_for_space_view(
             true,
             None,
             &mut props.visible_history,
-            &resolved_entity_props.visible_history,
+            &root_data_result.accumulated_properties().visible_history,
         );
 
         space_view

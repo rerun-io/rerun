@@ -33,11 +33,13 @@ use crate::{
 ///
 /// If you want a new space view otherwise identical to an existing one, use
 /// [`DataQueryBlueprint::duplicate`].
-#[derive(PartialEq, Eq)]
 pub struct DataQueryBlueprint {
     pub id: DataQueryId,
     pub space_view_class_identifier: SpaceViewClassIdentifier,
     pub entity_path_filter: EntityPathFilter,
+
+    /// Pending blueprint writes for nested components from duplicate.
+    pending_writes: Vec<DataRow>,
 }
 
 impl DataQueryBlueprint {
@@ -61,6 +63,7 @@ impl DataQueryBlueprint {
             id: DataQueryId::random(),
             space_view_class_identifier,
             entity_path_filter,
+            pending_writes: Default::default(),
         }
     }
 
@@ -82,6 +85,7 @@ impl DataQueryBlueprint {
             id,
             space_view_class_identifier,
             entity_path_filter,
+            pending_writes: Default::default(),
         })
     }
 
@@ -92,6 +96,13 @@ impl DataQueryBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
+        // Save any pending writes from a duplication.
+        ctx.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                ctx.store_context.blueprint.store_id().clone(),
+                self.pending_writes.clone(),
+            ));
+
         ctx.save_blueprint_component(
             &self.id.as_entity_path(),
             QueryExpressions::from(&self.entity_path_filter),
@@ -99,11 +110,47 @@ impl DataQueryBlueprint {
     }
 
     /// Creates a new [`DataQueryBlueprint`] with a the same contents, but a different [`DataQueryId`]
-    pub fn duplicate(&self) -> Self {
+    pub fn duplicate(&self, blueprint: &EntityDb, query: &LatestAtQuery) -> Self {
+        let mut pending_writes = Vec::new();
+
+        let current_path = self.id.as_entity_path();
+        let new_id = DataQueryId::random();
+        let new_path = new_id.as_entity_path();
+
+        // Create pending write operations to duplicate the entire subtree
+        // TODO(jleibs): This should be a helper somewhere.
+        if let Some(tree) = blueprint.tree().subtree(&current_path) {
+            tree.visit_children_recursively(&mut |path, info| {
+                let sub_path: EntityPath = new_path
+                    .iter()
+                    .chain(&path[current_path.len()..])
+                    .cloned()
+                    .collect();
+
+                if let Ok(row) = DataRow::from_cells(
+                    RowId::new(),
+                    blueprint_timepoint_for_writes(),
+                    sub_path,
+                    1,
+                    info.components.keys().filter_map(|component| {
+                        blueprint
+                            .store()
+                            .latest_at(query, path, *component, &[*component])
+                            .and_then(|result| result.2[0].clone())
+                    }),
+                ) {
+                    if row.num_cells() > 0 {
+                        pending_writes.push(row);
+                    }
+                }
+            });
+        }
+
         Self {
-            id: DataQueryId::random(),
+            id: new_id,
             space_view_class_identifier: self.space_view_class_identifier,
             entity_path_filter: self.entity_path_filter.clone(),
+            pending_writes,
         }
     }
 
@@ -261,10 +308,27 @@ impl<'a> QueryExpressionEvaluator<'a> {
                 .any(|ents| ents.contains(entity_path));
 
         let self_leaf = if visualizable || self.entity_path_filter.is_exact_included(entity_path) {
+            // TODO(#5067): For now, we always start by setting visualizers to the full list of available visualizers.
+            // This is currently important for evaluating auto-properties during the space-view `on_frame_start`, which
+            // is called before the property-overrider has a chance to update this list.
+            // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
+            // on the space view.
+            let available_visualizers = self
+                .visualizable_entities_for_visualizer_systems
+                .iter()
+                .filter_map(|(visualizer, ents)| {
+                    if ents.contains(entity_path) {
+                        Some(*visualizer)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
-                    visualizers: Default::default(),
+                    visualizers: available_visualizers,
                     is_group: false,
                     direct_included: any_match,
                     property_overrides: None,
@@ -332,7 +396,15 @@ impl DataQueryPropertyResolver<'_> {
     ) -> EntityOverrideContext {
         re_tracing::profile_function!();
 
-        let mut root: EntityProperties = Default::default();
+        // TODO(#4194): We always start the override context with the root_data_result from
+        // the space-view. This isn't totally generic once we add container overrides, but it's a start.
+        let mut root: EntityProperties = self
+            .space_view
+            .root_data_result(ctx, query)
+            .property_overrides
+            .map(|p| p.accumulated_properties.clone())
+            .unwrap_or_default();
+
         for prefix in &self.default_stack {
             if let Some(overrides) = ctx
                 .blueprint
@@ -477,7 +549,7 @@ impl DataQueryPropertyResolver<'_> {
                                 .blueprint
                                 .store()
                                 .latest_at(query, &override_path, *component, &[*component])
-                                .and_then(|result| result.2[0].clone())
+                                .and_then(|(_, _, cells)| cells[0].clone())
                             {
                                 if !component_data.is_empty() {
                                     component_overrides.insert(

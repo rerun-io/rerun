@@ -319,20 +319,10 @@ fn options_menu_ui(
     ui.horizontal(|ui| {
         ui.label("Timezone:");
         re_ui
-            .radio_value(
-                ui,
-                &mut app_options.time_zone_for_timestamps,
-                TimeZone::Utc,
-                "UTC",
-            )
+            .radio_value(ui, &mut app_options.time_zone, TimeZone::Utc, "UTC")
             .on_hover_text("Display timestamps in UTC");
         re_ui
-            .radio_value(
-                ui,
-                &mut app_options.time_zone_for_timestamps,
-                TimeZone::Local,
-                "Local",
-            )
+            .radio_value(ui, &mut app_options.time_zone, TimeZone::Local, "Local")
             .on_hover_text("Display timestamps in the local timezone");
     });
 
@@ -405,22 +395,6 @@ fn experimental_feature_ui(
                 - Add a 'Content' list in the selection panel when a container is selected.\n\
                 - Add the 'Add space view/container' modal, accessible from the selection panel.",
         );
-
-    re_ui
-        .checkbox(
-            ui,
-            &mut app_options.experimental_primary_caching_latest_at,
-            "Primary caching: latest-at queries",
-        )
-        .on_hover_text("Toggle primary caching for latest-at queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
-
-    re_ui
-        .checkbox(
-            ui,
-            &mut app_options.experimental_primary_caching_range,
-            "Primary caching: range queries",
-        )
-        .on_hover_text("Toggle primary caching for range queries.\nApplies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.");
 
     re_ui
         .checkbox(

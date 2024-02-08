@@ -237,6 +237,27 @@ impl EntityPath {
             itertools::Either::Right(std::iter::empty())
         }
     }
+
+    /// Returns the first common ancestor of two paths.
+    ///
+    /// If both paths are the same, the common ancestor is the path itself.
+    pub fn common_ancestor(&self, other: &EntityPath) -> EntityPath {
+        let mut common = Vec::new();
+        for (a, b) in self.iter().zip(other.iter()) {
+            if a == b {
+                common.push(a.clone());
+            } else {
+                break;
+            }
+        }
+        EntityPath::new(common)
+    }
+
+    /// Returns the first common ancestor of a list of entity paths.
+    pub fn common_ancestor_of<'a>(mut entities: impl Iterator<Item = &'a Self>) -> Self {
+        let first = entities.next().cloned().unwrap_or(EntityPath::root());
+        entities.fold(first, |acc, e| acc.common_ancestor(e))
+    }
 }
 
 impl SizeBytes for EntityPath {
@@ -304,6 +325,17 @@ impl From<&EntityPath> for re_types_core::datatypes::EntityPath {
     }
 }
 
+impl<Idx> std::ops::Index<Idx> for EntityPath
+where
+    Idx: std::slice::SliceIndex<[EntityPathPart]>,
+{
+    type Output = Idx::Output;
+
+    #[inline]
+    fn index(&self, index: Idx) -> &Self::Output {
+        &self.parts[index]
+    }
+}
 // ----------------------------------------------------------------------------
 
 use re_types_core::Loggable;
@@ -479,6 +511,30 @@ mod tests {
             )
             .collect::<Vec<_>>(),
             vec![EntityPath::from("foo/bar"), EntityPath::from("foo/bar/baz")]
+        );
+    }
+
+    #[test]
+    fn test_common_ancestor() {
+        assert_eq!(
+            EntityPath::from("foo/bar").common_ancestor(&EntityPath::from("foo/bar")),
+            EntityPath::from("foo/bar")
+        );
+        assert_eq!(
+            EntityPath::from("foo/bar").common_ancestor(&EntityPath::from("foo/bar/baz")),
+            EntityPath::from("foo/bar")
+        );
+        assert_eq!(
+            EntityPath::from("foo/bar/baz").common_ancestor(&EntityPath::from("foo/bar")),
+            EntityPath::from("foo/bar")
+        );
+        assert_eq!(
+            EntityPath::from("foo/bar/mario").common_ancestor(&EntityPath::from("foo/bar/luigi")),
+            EntityPath::from("foo/bar")
+        );
+        assert_eq!(
+            EntityPath::from("mario/bowser").common_ancestor(&EntityPath::from("luigi/bowser")),
+            EntityPath::root()
         );
     }
 }

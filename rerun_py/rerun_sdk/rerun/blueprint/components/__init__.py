@@ -56,6 +56,13 @@ from .included_space_views import (
     IncludedSpaceViewsLike,
     IncludedSpaceViewsType,
 )
+from .lock_range_during_zoom import (
+    LockRangeDuringZoom,
+    LockRangeDuringZoomArrayLike,
+    LockRangeDuringZoomBatch,
+    LockRangeDuringZoomLike,
+    LockRangeDuringZoomType,
+)
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
 from .query_expressions import (
     QueryExpressions,
@@ -143,6 +150,11 @@ __all__ = [
     "IncludedSpaceViewsBatch",
     "IncludedSpaceViewsLike",
     "IncludedSpaceViewsType",
+    "LockRangeDuringZoom",
+    "LockRangeDuringZoomArrayLike",
+    "LockRangeDuringZoomBatch",
+    "LockRangeDuringZoomLike",
+    "LockRangeDuringZoomType",
     "PanelView",
     "PanelViewArrayLike",
     "PanelViewBatch",

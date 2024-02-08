@@ -1,6 +1,6 @@
-use re_query_cache::{MaybeCachedComponentData, QueryError};
+use itertools::Itertools;
+use re_query_cache::QueryError;
 use re_types::{
-    archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
     Archetype, Loggable,
 };
@@ -14,6 +14,9 @@ use crate::{
     util::{determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series},
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
+
+#[allow(deprecated)]
+use re_types::archetypes::TimeSeriesScalar;
 
 /// The legacy system for rendering [`TimeSeriesScalar`] archetypes.
 #[derive(Default, Debug)]
@@ -29,6 +32,7 @@ impl IdentifiedViewSystem for LegacyTimeSeriesSystem {
 }
 
 impl VisualizerSystem for LegacyTimeSeriesSystem {
+    #[allow(deprecated)]
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<TimeSeriesScalar>();
         // Although we don't normally include indicator components in required components,
@@ -84,6 +88,7 @@ impl VisualizerSystem for LegacyTimeSeriesSystem {
 }
 
 impl LegacyTimeSeriesSystem {
+    #[allow(deprecated)]
     fn load_scalars(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -120,7 +125,7 @@ impl LegacyTimeSeriesSystem {
                 attrs: PlotPointAttrs {
                     label: override_label.clone(), // default value is simply None
                     color: annotation_info.color(override_color, default_color),
-                    stroke_width: override_radius.unwrap_or(DEFAULT_RADIUS),
+                    marker_size: override_radius.unwrap_or(DEFAULT_RADIUS),
                     kind: if override_scattered.unwrap_or(false) {
                         PlotSeriesKind::Scatter(ScatterAttrs::default())
                     } else {
@@ -141,9 +146,10 @@ impl LegacyTimeSeriesSystem {
             {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
+                let entity_path = &data_result.entity_path;
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-                query_caches.query_archetype_pov1_comp4::<
+                query_caches.query_archetype_range_pov1_comp4::<
                     TimeSeriesScalar,
                     Scalar,
                     ScalarScattering,
@@ -152,80 +158,98 @@ impl LegacyTimeSeriesSystem {
                     Text,
                     _,
                 >(
-                    ctx.app_options.experimental_primary_caching_range,
                     store,
-                    &query.clone().into(),
-                    &data_result.entity_path,
-                    |((time, _row_id), _, scalars, scatterings, colors, radii, labels)| {
-                        let Some(time) = time else {
-                            return;
-                        }; // scalars cannot be timeless
+                    &query,
+                    entity_path,
+                    |_timeless, entry_range, (times, _, scalars, scatterings, colors, radii, labels)| {
+                        let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
 
-                        // This is a clear: we want to split the chart.
-                        if scalars.is_empty() {
-                            points.push(PlotPoint {
-                                time: time.as_i64(),
-                                value: 0.0,
-                                attrs: PlotPointAttrs {
-                                    label: None,
-                                    color: egui::Color32::BLACK,
-                                    stroke_width: 0.0,
-                                    kind: PlotSeriesKind::Clear,
-                                },
-                            });
-                            return;
+                        // Allocate all points.
+                        points = times.map(|time| PlotPoint {
+                            time,
+                            ..default_point.clone()
+                        }).collect_vec();
+
+                        // Fill in values.
+                        for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
+                            if scalar.len() > 1 {
+                                re_log::warn_once!("found a scalar batch in {entity_path:?} -- those have no effect");
+                            } else if scalar.is_empty() {
+                                points[i].attrs.kind = PlotSeriesKind::Clear;
+                            } else {
+                                points[i].value = scalar.first().map_or(0.0, |s| s.0);
+                            }
                         }
 
-                        for (scalar, scattered, color, radius, label) in itertools::izip!(
-                            scalars.iter(),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&scatterings, scalars.len()),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&colors, scalars.len()),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&radii, scalars.len()),
-                            MaybeCachedComponentData::iter_or_repeat_opt(&labels, scalars.len()),
-                        ) {
-                            let mut point = PlotPoint {
-                                time: time.as_i64(),
-                                value: scalar.0,
-                                ..default_point.clone()
-                            };
+                        // Make it as clear as possible to the optimizer that some parameters
+                        // go completely unused as soon as overrides have been defined.
 
-                            // Make it as clear as possible to the optimizer that some parameters
-                            // go completely unused as soon as overrides have been defined.
-
-                            if override_color.is_none() {
-                                if let Some(color) = color.map(|c| {
-                                    let [r,g,b,a] = c.to_array();
-                                    if a == 255 {
-                                        // Common-case optimization
-                                        re_renderer::Color32::from_rgb(r, g, b)
-                                    } else {
-                                        re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                        // Fill in series kind -- if available _and_ not overridden.
+                        if override_scattered.is_none() {
+                            if let Some(scatterings) = scatterings {
+                                for (i, scattered) in scatterings.range(entry_range.clone()).enumerate() {
+                                    if i >= points.len() {
+                                        re_log::debug_once!("more scattered attributes than points in {entity_path:?} -- this points to a bug in the query cache");
+                                        break;
                                     }
-                                }) {
-                                    point.attrs.color = color;
+                                    if scattered.first().copied().flatten().map_or(false, |s| s.0) {
+                                        points[i].attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
+                                    };
                                 }
                             }
+                        }
 
-                            if override_label.is_none() {
-                                if let Some(label) = label.as_ref().map(|l| l.0.clone()) {
-                                    point.attrs.label = Some(label);
+                        // Fill in colors -- if available _and_ not overridden.
+                        if override_color.is_none() {
+                            if let Some(colors) = colors {
+                                for (i, color) in colors.range(entry_range.clone()).enumerate() {
+                                    if i >= points.len() {
+                                        re_log::debug_once!("more color attributes than points in {entity_path:?} -- this points to a bug in the query cache");
+                                        break;
+                                    }
+                                    if let Some(color) = color.first().copied().flatten().map(|c| {
+                                        let [r,g,b,a] = c.to_array();
+                                        if a == 255 {
+                                            // Common-case optimization
+                                            re_renderer::Color32::from_rgb(r, g, b)
+                                        } else {
+                                            re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+                                        }
+                                    }) {
+                                        points[i].attrs.color = color;
+                                    }
                                 }
                             }
+                        }
 
-                            #[allow(clippy::collapsible_if)] // readability
-                            if override_scattered.is_none() {
-                                if scattered.map_or(false, |s| s.0) {
-                                    point.attrs.kind  = PlotSeriesKind::Scatter(ScatterAttrs::default());
-                                };
-                            }
-
-                            if override_radius.is_none() {
-                                if let Some(radius) = radius.map(|r| r.0) {
-                                    point.attrs.stroke_width = radius;
+                        // Fill in radii -- if available _and_ not overridden.
+                        if override_radius.is_none() {
+                            if let Some(radii) = radii {
+                                for (i, radius) in radii.range(entry_range.clone()).enumerate() {
+                                    if i >= radii.num_entries() {
+                                        re_log::debug_once!("more radius attributes than points in {entity_path:?} -- this points to a bug in the query cache");
+                                        break;
+                                    }
+                                    if let Some(radius) = radius.first().copied().flatten().map(|r| r.0) {
+                                        points[i].attrs.marker_size = radius;
+                                    }
                                 }
                             }
+                        }
 
-                            points.push(point);
+                        // Fill in labels -- if available _and_ not overridden.
+                        if override_label.is_none() {
+                            if let Some(labels) = labels {
+                                for (i, label) in labels.range(entry_range.clone()).enumerate() {
+                                    if i >= labels.num_entries() {
+                                        re_log::debug_once!("more label attributes than points in {entity_path:?} -- this points to a bug in the query cache");
+                                        break;
+                                    }
+                                    if let Some(label) = label.first().cloned().flatten().map(|l| l.0) {
+                                        points[i].attrs.label = Some(label);
+                                    }
+                                }
+                            }
                         }
                     },
                 )?;

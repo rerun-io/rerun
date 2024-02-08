@@ -1,4 +1,5 @@
 use egui::ahash::{HashMap, HashSet};
+use egui::NumExt as _;
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
 use re_data_store::TimeType;
@@ -7,6 +8,7 @@ use re_log_types::{EntityPath, EntityPathFilter, TimeZone};
 use re_query::query_archetype;
 use re_space_view::controls;
 use re_types::blueprint::components::Corner2D;
+use re_types::components::Range1D;
 use re_types::Archetype;
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, EntityTree, TimeSeriesAggregator,
@@ -25,7 +27,7 @@ use crate::PlotSeriesKind;
 
 // ---
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct TimeSeriesSpaceViewState {
     /// Is the user dragging the cursor this frame?
     is_dragging_time_cursor: bool,
@@ -35,6 +37,24 @@ pub struct TimeSeriesSpaceViewState {
 
     /// State of egui_plot's auto bounds before the user started dragging the time cursor.
     saved_auto_bounds: egui::Vec2b,
+
+    /// State of egui_plot's bounds
+    saved_y_axis_range: [f64; 2],
+
+    /// To track when the range has been edited
+    last_range: Option<Range1D>,
+}
+
+impl Default for TimeSeriesSpaceViewState {
+    fn default() -> Self {
+        Self {
+            is_dragging_time_cursor: false,
+            was_dragging_time_cursor: false,
+            saved_auto_bounds: Default::default(),
+            saved_y_axis_range: [0.0, 1.0],
+            last_range: None,
+        }
+    }
 }
 
 impl SpaceViewState for TimeSeriesSpaceViewState {
@@ -75,7 +95,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         layout.add("Scroll + ");
         layout.add(controls::ASPECT_SCROLL_MODIFIER);
-        layout.add(" to change the aspect ratio.\n");
+        layout.add(" to zoom only the temporal axis while holding the y-range fixed.\n");
 
         layout.add("Drag ");
         layout.add(controls::SELECTION_RECT_ZOOM_BUTTON);
@@ -113,7 +133,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut Self::State,
+        state: &mut Self::State,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
         root_entity_properties: &mut EntityProperties,
@@ -146,6 +166,7 @@ It can greatly improve performance (and readability) in such situations as it pr
         });
 
         legend_ui(ctx, space_view_id, ui);
+        axis_ui(ctx, space_view_id, ui, state);
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
@@ -280,6 +301,14 @@ It can greatly improve performance (and readability) in such situations as it pr
             _,
         ) = query_space_view_sub_archetype(ctx, query.space_view_id);
 
+        let (
+            re_types::blueprint::archetypes::ScalarAxis {
+                range: y_range,
+                lock_range_during_zoom: y_lock_range_during_zoom,
+            },
+            _,
+        ) = query_space_view_sub_archetype(ctx, query.space_view_id);
+
         let (current_time, time_type, timeline) = {
             // Avoid holding the lock for long
             let time_ctrl = ctx.rec_cfg.time_ctrl.read();
@@ -332,12 +361,25 @@ It can greatly improve performance (and readability) in such situations as it pr
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
+        let lock_y_during_zoom = y_lock_range_during_zoom.map_or(false, |v| v.0)
+            || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
-        let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
+        let auto_y = y_range.is_none();
+
+        // We don't want to allow vertical when y is locked or else the view "bounces" when we scroll and
+        // then reset to the locked range.
+        if lock_y_during_zoom {
+            ui.input_mut(|i| i.smooth_scroll_delta.y = 0.0);
+        }
+
+        // TODO(jleibs): Would be nice to disable vertical drag instead of just resetting.
+
+        // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
+        let time_zone_for_timestamps = ctx.app_options.time_zone;
         let mut plot = Plot::new(plot_id_src)
             .id(crate::plot_id(query.space_view_id))
-            .allow_zoom([true, zoom_both_axis])
+            .auto_bounds([true, auto_y].into())
+            .allow_zoom([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
@@ -384,6 +426,8 @@ It can greatly improve performance (and readability) in such situations as it pr
 
         let mut plot_item_id_to_entity_path = HashMap::default();
 
+        let mut is_resetting = false;
+
         let egui_plot::PlotResponse {
             inner: _,
             response,
@@ -398,6 +442,36 @@ It can greatly improve performance (and readability) in such situations as it pr
                     plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
                 );
                 time_ctrl_write.pause();
+            }
+
+            let range_was_edited = state.last_range != y_range;
+            state.last_range = y_range;
+            is_resetting = plot_ui.response().double_clicked();
+            let current_auto = plot_ui.auto_bounds();
+
+            if let Some(y_range) = y_range {
+                // If we have a y_range, there are a few cases where we want to adjust the bounds.
+                // - The range was just edited
+                // - The zoom behavior is in LockToRange
+                // - The user double-clicked
+                if range_was_edited || lock_y_during_zoom || is_resetting {
+                    let current_bounds = plot_ui.plot_bounds();
+                    let mut min = current_bounds.min();
+                    let mut max = current_bounds.max();
+
+                    // Pad the range by 5% on each side.
+                    min[1] = y_range.0[0];
+                    max[1] = y_range.0[1];
+                    let new_bounds = egui_plot::PlotBounds::from_min_max(min, max);
+                    plot_ui.set_plot_bounds(new_bounds);
+                    // If we are resetting, we still want the X value to be auto for
+                    // this frame.
+                    plot_ui.set_auto_bounds([current_auto[0] || is_resetting, false].into());
+                }
+            } else if lock_y_during_zoom || range_was_edited {
+                // If we are using auto range, but the range is locked, always
+                // force the y-bounds to be auto to prevent scrolling / zooming in y.
+                plot_ui.set_auto_bounds([current_auto[0] || is_resetting, true].into());
             }
 
             for series in all_plot_series {
@@ -444,6 +518,8 @@ It can greatly improve performance (and readability) in such situations as it pr
             }
 
             state.was_dragging_time_cursor = state.is_dragging_time_cursor;
+            let bounds = plot_ui.plot_bounds().range_y();
+            state.saved_y_axis_range = [*bounds.start(), *bounds.end()];
         });
 
         // Decide if the time cursor should be displayed, and if so where:
@@ -455,17 +531,26 @@ It can greatly improve performance (and readability) in such situations as it pr
             })
             .map(|x| transform.position_from_point(&PlotPoint::new(x, 0.0)).x);
 
-        // Interact with the plot items (lines, scatters, etc.)
-        if let Some(entity_path) = hovered_plot_item
-            .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
-        {
-            ctx.select_hovered_on_click(
-                &response,
-                re_viewer_context::Item::InstancePath(
-                    Some(query.space_view_id),
-                    entity_path.clone().into(),
-                ),
-            );
+        // If we are not resetting on this frame, interact with the plot items (lines, scatters, etc.)
+        if !is_resetting {
+            if let Some(hovered) = hovered_plot_item
+                .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
+                .map(|entity_path| {
+                    re_viewer_context::Item::InstancePath(
+                        Some(query.space_view_id),
+                        entity_path.clone().into(),
+                    )
+                })
+                .or_else(|| {
+                    if response.hovered() {
+                        Some(re_viewer_context::Item::SpaceView(query.space_view_id))
+                    } else {
+                        None
+                    }
+                })
+            {
+                ctx.select_hovered_on_click(&response, hovered);
+            }
         }
 
         if let Some(mut time_x) = time_x {
@@ -563,6 +648,101 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
 
             ui.end_row();
         });
+}
+
+fn axis_ui(
+    ctx: &ViewerContext<'_>,
+    space_view_id: SpaceViewId,
+    ui: &mut egui::Ui,
+    state: &TimeSeriesSpaceViewState,
+) {
+    // TODO(jleibs): use editors
+
+    let (
+        re_types::blueprint::archetypes::ScalarAxis {
+            range: y_range,
+            lock_range_during_zoom: y_lock_range_during_zoom,
+        },
+        blueprint_path,
+    ) = query_space_view_sub_archetype(ctx, space_view_id);
+
+    ctx.re_ui.collapsing_header(ui, "Y Axis", true, |ui| {
+        ctx.re_ui
+            .selection_grid(ui, "time_series_selection_ui_y_axis_range")
+            .show(ui, |ui| {
+                ctx.re_ui.grid_left_hand_label(ui, "Range");
+
+                ui.vertical(|ui| {
+                    let mut auto_range = y_range.is_none();
+
+                    ui.horizontal(|ui| {
+                        ctx.re_ui
+                            .radio_value(ui, &mut auto_range, true, "Auto")
+                            .on_hover_text("Automatically adjust the Y axis to fit the data.");
+                        ctx.re_ui
+                            .radio_value(ui, &mut auto_range, false, "Manual")
+                            .on_hover_text("Manually specify a min and max Y value. This will define the range when resetting or locking the view range.");
+                    });
+
+                    if !auto_range {
+                        let mut range_edit = y_range
+                            .unwrap_or_else(|| y_range.unwrap_or(Range1D(state.saved_y_axis_range)));
+
+                        ui.horizontal(|ui| {
+                            // Max < Min is not supported.
+                            // Also, egui_plot doesn't handle min==max (it ends up picking a default range instead then)
+                            let prev_min = crate::util::next_up_f64(range_edit.0[0]);
+                            let prev_max = range_edit.0[1];
+                            // Scale the speed to the size of the range
+                            let speed = ((prev_max - prev_min) * 0.01).at_least(0.001);
+                            ui.label("Min");
+                            ui.add(
+                                egui::DragValue::new(&mut range_edit.0[0])
+                                    .speed(speed)
+                                    .clamp_range(std::f64::MIN..=prev_max),
+                            );
+                            ui.label("Max");
+                            ui.add(
+                                egui::DragValue::new(&mut range_edit.0[1])
+                                    .speed(speed)
+                                    .clamp_range(prev_min..=std::f64::MAX),
+                            );
+                        });
+
+                        if y_range != Some(range_edit) {
+                            ctx.save_blueprint_component(&blueprint_path, range_edit);
+                        }
+                    } else if y_range.is_some() {
+                        ctx.save_empty_blueprint_component::<Range1D>(&blueprint_path);
+                    }
+                });
+
+                ui.end_row();
+            });
+
+        ctx.re_ui
+            .selection_grid(ui, "time_series_selection_ui_y_axis_zoom")
+            .show(ui, |ui| {
+                ctx.re_ui.grid_left_hand_label(ui, "Zoom Behavior");
+
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        let y_lock_zoom = y_lock_range_during_zoom.unwrap_or(false.into());
+                        let mut edit_locked = y_lock_zoom;
+                        ctx.re_ui
+                            .checkbox(ui, &mut edit_locked.0, "Lock Range")
+                            .on_hover_text(
+                            "If set, when zooming, the Y axis range will remain locked to the specified range.",
+                        );
+                        if y_lock_zoom != edit_locked {
+                            ctx.save_blueprint_component(&blueprint_path, edit_locked);
+                        }
+                    })
+                });
+
+                ui.end_row();
+            });
+    });
 }
 
 fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: TimeZone) -> String {

@@ -28,7 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Many strips
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip3d").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip3d_batch").spawn()?;
 ///
 ///     let strip1 = [[0., 0., 2.], [1., 0., 2.], [1., 1., 2.], [0., 1., 2.]];
 ///     let strip2 = [

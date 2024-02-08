@@ -22,16 +22,6 @@ pub struct AppOptions {
     /// Enable the experimental support for the container addition workflow.
     pub experimental_additive_workflow: bool,
 
-    /// Toggle primary caching for latest-at queries.
-    ///
-    /// Applies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.
-    pub experimental_primary_caching_latest_at: bool,
-
-    /// Toggle primary caching for range queries.
-    ///
-    /// Applies to the 2D/3D point cloud, 2D/3D box, text log and time series space views.
-    pub experimental_primary_caching_range: bool,
-
     /// Toggle query clamping for the plot visualizers.
     pub experimental_plot_query_clamping: bool,
 
@@ -45,7 +35,8 @@ pub struct AppOptions {
     pub blueprint_gc: bool,
 
     /// What time zone to display timestamps in.
-    pub time_zone_for_timestamps: TimeZone,
+    #[serde(rename = "time_zone_for_timestamps")]
+    pub time_zone: TimeZone,
 }
 
 impl Default for AppOptions {
@@ -54,7 +45,7 @@ impl Default for AppOptions {
             low_latency: 0.100,
             warn_latency: 0.200,
 
-            show_metrics: false,
+            show_metrics: cfg!(debug_assertions),
 
             #[cfg(not(target_arch = "wasm32"))]
             experimental_space_view_screenshots: false,
@@ -65,9 +56,6 @@ impl Default for AppOptions {
 
             experimental_additive_workflow: cfg!(debug_assertions),
 
-            experimental_primary_caching_latest_at: true,
-            experimental_primary_caching_range: true,
-
             experimental_plot_query_clamping: false,
 
             show_picking_debug_overlay: false,
@@ -76,7 +64,7 @@ impl Default for AppOptions {
 
             blueprint_gc: true,
 
-            time_zone_for_timestamps: TimeZone::Utc,
+            time_zone: TimeZone::Utc,
         }
     }
 }

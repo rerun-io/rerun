@@ -1,4 +1,4 @@
-use egui::{text::TextWrapping, NumExt, WidgetText};
+use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
@@ -272,7 +272,7 @@ fn size_ui(
 }
 
 pub fn create_labels(
-    labels: &[UiLabel],
+    mut labels: Vec<UiLabel>,
     ui_from_canvas: egui::emath::RectTransform,
     eye3d: &Eye,
     parent_ui: &egui::Ui,
@@ -281,10 +281,19 @@ pub fn create_labels(
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
+    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_canvas.to());
+
+    // Closest last (painters algorithm)
+    labels.sort_by_key(|label| {
+        if let UiLabelTarget::Position3D(pos) = label.target {
+            OrderedFloat::try_from(-ui_from_world_3d.transform_point3(pos).z).ok()
+        } else {
+            Default::default()
+        }
+    });
+
     let mut label_shapes = Vec::with_capacity(labels.len() * 2);
     let mut ui_rects = Vec::with_capacity(labels.len());
-
-    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_canvas.to());
 
     for label in labels {
         let (wrap_width, text_anchor_pos) = match label.target {

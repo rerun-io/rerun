@@ -202,8 +202,8 @@ Note that because we previously called `set_time_nanos` in this callback, this t
 be logged to the same point on the timeline as the data, using a timestamp looked up from TF at the
 matching timepoint.
 
-### Odometry to rr.TimeSeriesScalar and rr.Transform3D
-When receiving odometry messages, we log the linear and angular velocities using `rr.TimeSeriesScalar`.
+### Odometry to rr.Scalar and rr.Transform3D
+When receiving odometry messages, we log the linear and angular velocities using `rr.Scalar`.
 Additionally, since we know that odometry will also update the `map/robot` transform, we use
 this as a cue to look up the corresponding transform and log it.
 ```python
@@ -213,8 +213,8 @@ def odom_callback(self, odom: Odometry) -> None:
     rr.set_time_nanos("ros_time", time.nanoseconds)
 
     # Capture time-series data for the linear and angular velocities
-    rr.log("odometry/vel", rr.TimeSeriesScalar(odom.twist.twist.linear.x))
-    rr.log("odometry/ang_vel", rr.TimeSeriesScalar(odom.twist.twist.angular.z))
+    rr.log("odometry/vel", rr.Scalar(odom.twist.twist.linear.x))
+    rr.log("odometry/ang_vel", rr.Scalar(odom.twist.twist.angular.z))
 
     # Update the robot pose itself via TF
     self.log_tf_as_transform3d("map/robot", time)

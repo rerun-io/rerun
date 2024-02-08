@@ -26,6 +26,8 @@ enum MarkerShape: byte {
 /// Shape of a marker.
 struct MarkerShape (
     "attr.docs.unreleased",
+    "attr.python.aliases": "int, str",
+    "attr.python.array_aliases": "int, str",
     "attr.rust.derive": "PartialEq, Eq, PartialOrd, Copy",
     "attr.rust.repr": "transparent"
 ) {

@@ -23,13 +23,11 @@ criterion::criterion_group!(benches, bench_points);
 #[cfg(debug_assertions)]
 mod constants {
     pub const NUM_POINTS: usize = 10;
-    pub const CACHED: &[bool] = &[true];
 }
 
 #[cfg(not(debug_assertions))]
 mod constants {
     pub const NUM_POINTS: usize = 1_000_000;
-    pub const CACHED: &[bool] = &[false, true];
 }
 
 #[allow(clippy::wildcard_imports)]
@@ -70,9 +68,9 @@ fn bench_points(c: &mut criterion::Criterion) {
         format!("{name}/cached={cached}")
     }
 
-    for cached in CACHED {
+    {
         let mut group = c.benchmark_group("Points3D");
-        group.bench_function(bench_name(*cached, "query_archetype"), |b| {
+        group.bench_function(bench_name(true, "query_archetype"), |b| {
             b.iter(|| {
                 caches.query_archetype_pov1_comp5::<
                     Points3D,
@@ -84,12 +82,11 @@ fn bench_points(c: &mut criterion::Criterion) {
                     ClassId,
                     _,
                 >(
-                    *cached,
                     &store,
                     &latest_at,
                     &ent_path,
                     |(_, keys, _, _, _, _, _, _)| {
-                        assert_eq!(keys.as_slice().len(), NUM_POINTS);
+                        assert_eq!(keys.len(), NUM_POINTS);
                     },
                 )
                 .unwrap();
@@ -97,103 +94,100 @@ fn bench_points(c: &mut criterion::Criterion) {
         });
     }
 
-    for cached in CACHED {
-        caches.query_archetype_pov1_comp5::<
-            Points3D,
-            Position3D,
-            Color,
-            Radius,
-            Text,
-            KeypointId,
-            ClassId,
-            _,
-        >(
-            *cached,
-            &store,
-            &latest_at,
-            &ent_path,
-            |(_, instance_keys, positions, colors, radii, labels, keypoint_ids, class_ids)| {
-                let data = Points3DComponentData {
-                    instance_keys: instance_keys.as_slice(),
-                    positions: positions.as_slice(),
-                    colors: colors.as_deref(),
-                    radii: radii.as_deref(),
-                    labels: labels.as_deref(),
-                    keypoint_ids: keypoint_ids.as_deref(),
-                    class_ids: class_ids.as_deref(),
-                };
-                assert_eq!(data.instance_keys.len(), NUM_POINTS);
+    caches.query_archetype_pov1_comp5::<
+        Points3D,
+        Position3D,
+        Color,
+        Radius,
+        Text,
+        KeypointId,
+        ClassId,
+        _,
+    >(
+        &store,
+        &latest_at,
+        &ent_path,
+        |(_, instance_keys, positions, colors, radii, labels, keypoint_ids, class_ids)| {
+            let data = Points3DComponentData {
+                instance_keys,
+                positions,
+                colors,
+                radii,
+                labels,
+                keypoint_ids,
+                class_ids,
+            };
+            assert_eq!(data.instance_keys.len(), NUM_POINTS);
 
-                {
-                    let mut group = c.benchmark_group("Points3D");
-                    group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-                    group.bench_function(bench_name(*cached, "load_all"), |b| {
-                        b.iter(|| {
-                            let points = LoadedPoints::load(&data, &ent_path, at, &annotations);
-                            assert_eq!(points.positions.len(), NUM_POINTS);
-                            assert_eq!(points.colors.len(), NUM_POINTS);
-                            assert_eq!(points.radii.len(), NUM_POINTS); // NOTE: we don't log radii, but we should get a list of defaults!
-                            points
-                        });
+            {
+                let mut group = c.benchmark_group("Points3D");
+                group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+                group.bench_function(bench_name(true, "load_all"), |b| {
+                    b.iter(|| {
+                        let points = LoadedPoints::load(&data, &ent_path, at, &annotations);
+                        assert_eq!(points.positions.len(), NUM_POINTS);
+                        assert_eq!(points.colors.len(), NUM_POINTS);
+                        assert_eq!(points.radii.len(), NUM_POINTS); // NOTE: we don't log radii, but we should get a list of defaults!
+                        points
                     });
-                }
+                });
+            }
 
-                {
-                    let mut group = c.benchmark_group("Points3D");
-                    group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-                    group.bench_function(bench_name(*cached, "load_positions"), |b| {
-                        b.iter(|| {
-                            let positions = LoadedPoints::load_positions(&data);
-                            assert_eq!(positions.len(), NUM_POINTS);
-                            positions
-                        });
+            {
+                let mut group = c.benchmark_group("Points3D");
+                group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+                group.bench_function(bench_name(true, "load_positions"), |b| {
+                    b.iter(|| {
+                        let positions = LoadedPoints::load_positions(&data);
+                        assert_eq!(positions.len(), NUM_POINTS);
+                        positions
                     });
-                }
+                });
+            }
 
-                {
-                    let points = LoadedPoints::load(&data, &ent_path, at, &annotations);
+            {
+                let points = LoadedPoints::load(&data, &ent_path, at, &annotations);
 
-                    let mut group = c.benchmark_group("Points3D");
-                    group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-                    group.bench_function(bench_name(*cached, "load_colors"), |b| {
-                        b.iter(|| {
-                            let colors = LoadedPoints::load_colors(
-                                &data,
-                                &ent_path,
-                                &points.annotation_infos,
-                            );
-                            assert_eq!(colors.len(), NUM_POINTS);
-                            colors
-                        });
+                let mut group = c.benchmark_group("Points3D");
+                group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+                group.bench_function(bench_name(true, "load_colors"), |b| {
+                    b.iter(|| {
+                        let colors = LoadedPoints::load_colors(
+                            &data,
+                            &ent_path,
+                            &points.annotation_infos,
+                        );
+                        assert_eq!(colors.len(), NUM_POINTS);
+                        colors
                     });
-                }
+                });
+            }
 
-                // NOTE: we don't log radii!
-                {
-                    let mut group = c.benchmark_group("Points3D");
-                    group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-                    group.bench_function(bench_name(*cached, "load_radii"), |b| {
-                        b.iter(|| {
-                            let radii = LoadedPoints::load_radii(&data, &ent_path);
-                            assert_eq!(radii.len(), NUM_POINTS);
-                            radii
-                        });
+            // NOTE: we don't log radii!
+            {
+                let mut group = c.benchmark_group("Points3D");
+                group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+                group.bench_function(bench_name(true, "load_radii"), |b| {
+                    b.iter(|| {
+                        let radii = LoadedPoints::load_radii(&data, &ent_path);
+                        assert_eq!(radii.len(), NUM_POINTS);
+                        radii
                     });
-                }
+                });
+            }
 
-                {
-                    let mut group = c.benchmark_group("Points3D");
-                    group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-                    group.bench_function(bench_name(*cached, "load_picking_ids"), |b| {
-                        b.iter(|| {
-                            let picking_ids = LoadedPoints::load_picking_ids(&data);
-                            assert_eq!(picking_ids.len(), NUM_POINTS);
-                            picking_ids
-                        });
+            {
+                let mut group = c.benchmark_group("Points3D");
+                group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
+                group.bench_function(bench_name(true, "load_picking_ids"), |b| {
+                    b.iter(|| {
+                        let picking_ids = LoadedPoints::load_picking_ids(&data);
+                        assert_eq!(picking_ids.len(), NUM_POINTS);
+                        picking_ids
                     });
-                }
-            },
-        )
-        .unwrap();
-    }
+                });
+            }
+        },
+    )
+    .unwrap();
 }

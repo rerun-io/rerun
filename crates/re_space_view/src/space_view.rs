@@ -6,11 +6,13 @@ use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 use crate::DataQueryBlueprint;
 use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId};
 use re_query::query_archetype;
+use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::{
     blueprint::components::{EntitiesDeterminedByUser, SpaceViewOrigin, Visible},
     components::Name,
 };
 use re_types_core::archetypes::Clear;
+use re_types_core::Archetype as _;
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataQueryId, DataResult, DynSpaceViewClass, PerSystemEntities,
     PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
@@ -69,6 +71,9 @@ pub struct SpaceViewBlueprint {
 
     /// True if this space view is visible in the UI.
     pub visible: bool,
+
+    /// Pending blueprint writes for nested components from duplicate.
+    pending_writes: Vec<DataRow>,
 }
 
 impl SpaceViewBlueprint {
@@ -91,6 +96,7 @@ impl SpaceViewBlueprint {
             queries: vec![query],
             entities_determined_by_user: false,
             visible: true,
+            pending_writes: Default::default(),
         }
     }
 
@@ -141,7 +147,7 @@ impl SpaceViewBlueprint {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let re_types::blueprint::archetypes::SpaceViewBlueprint {
+        let blueprint_archetypes::SpaceViewBlueprint {
             display_name,
             class_identifier,
             space_origin,
@@ -189,6 +195,7 @@ impl SpaceViewBlueprint {
             queries,
             entities_determined_by_user,
             visible,
+            pending_writes: Default::default(),
         })
     }
 
@@ -209,21 +216,24 @@ impl SpaceViewBlueprint {
             queries,
             entities_determined_by_user,
             visible,
+            pending_writes,
         } = self;
 
-        let mut arch =
-            re_types::blueprint::archetypes::SpaceViewBlueprint::new(class_identifier.as_str())
-                .with_space_origin(space_origin)
-                .with_entities_determined_by_user(*entities_determined_by_user)
-                .with_contents(queries.iter().map(|q| q.id))
-                .with_visible(*visible);
+        let mut arch = blueprint_archetypes::SpaceViewBlueprint::new(class_identifier.as_str())
+            .with_space_origin(space_origin)
+            .with_entities_determined_by_user(*entities_determined_by_user)
+            .with_contents(queries.iter().map(|q| q.id))
+            .with_visible(*visible);
 
         if let Some(display_name) = display_name {
             arch = arch.with_display_name(display_name.clone());
         }
 
-        let mut deltas = vec![];
+        // Start with the pending writes, which explicitly filtered out the `SpaceViewBlueprint`
+        // components from the top level.
+        let mut deltas = pending_writes.clone();
 
+        // Add all the additional components from the archetype
         if let Ok(row) =
             DataRow::from_archetype(RowId::new(), timepoint.clone(), id.as_entity_path(), &arch)
         {
@@ -244,18 +254,64 @@ impl SpaceViewBlueprint {
     /// Creates a new [`SpaceViewBlueprint`] with the same contents, but a different [`SpaceViewId`]
     ///
     /// Also duplicates all the queries in the space view.
-    ///
-    /// Note that this function is a very partial implementation of proper space view cloning. See
-    /// `re_viewport::ViewportBlueprint::duplicate_space_view`.
-    pub fn duplicate(&self) -> Self {
+    pub fn duplicate(&self, blueprint: &EntityDb, query: &LatestAtQuery) -> Self {
+        let mut pending_writes = Vec::new();
+
+        let current_path = self.entity_path();
+        let new_id = SpaceViewId::random();
+        let new_path = new_id.as_entity_path();
+
+        // Create pending write operations to duplicate the entire subtree
+        // TODO(jleibs): This should be a helper somewhere.
+        if let Some(tree) = blueprint.tree().subtree(&current_path) {
+            tree.visit_children_recursively(&mut |path, info| {
+                let sub_path: EntityPath = new_path
+                    .iter()
+                    .chain(&path[current_path.len()..])
+                    .cloned()
+                    .collect();
+
+                if let Ok(row) = DataRow::from_cells(
+                    RowId::new(),
+                    blueprint_timepoint_for_writes(),
+                    sub_path,
+                    1,
+                    info.components
+                        .keys()
+                        // It's important that we don't include the SpaceViewBlueprint's components
+                        // since those will be updated separately and may contain different data.
+                        .filter(|component| {
+                            *path != current_path
+                                || !blueprint_archetypes::SpaceViewBlueprint::all_components()
+                                    .contains(component)
+                        })
+                        .filter_map(|component| {
+                            blueprint
+                                .store()
+                                .latest_at(query, path, *component, &[*component])
+                                .and_then(|(_, _, cells)| cells[0].clone())
+                        }),
+                ) {
+                    if row.num_cells() > 0 {
+                        pending_writes.push(row);
+                    }
+                }
+            });
+        }
+
         Self {
-            id: SpaceViewId::random(),
+            id: new_id,
             display_name: self.display_name.clone(),
             class_identifier: self.class_identifier,
             space_origin: self.space_origin.clone(),
-            queries: self.queries.iter().map(|q| q.duplicate()).collect(),
+            queries: self
+                .queries
+                .iter()
+                .map(|q| q.duplicate(blueprint, query))
+                .collect(),
             entities_determined_by_user: self.entities_determined_by_user,
             visible: self.visible,
+            pending_writes,
         }
     }
 
@@ -389,22 +445,32 @@ impl SpaceViewBlueprint {
     pub fn root_data_result(&self, ctx: &StoreContext<'_>, query: &LatestAtQuery) -> DataResult {
         let entity_path = self.entity_path();
 
-        let individual_properties = ctx
+        let is_time_series = self.class_identifier == "Time Series";
+
+        let mut individual_properties = ctx
             .blueprint
             .store()
             .query_latest_component_quiet::<EntityPropertiesComponent>(&self.entity_path(), query)
             .map(|result| result.value.0);
 
-        let accumulated_properties = individual_properties.clone().unwrap_or_else(|| {
-            let mut props = EntityProperties::default();
-            // better defaults for the time series space view
-            // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
-            if self.class_identifier == "Time Series" {
-                props.visible_history.nanos = VisibleHistory::ALL;
-                props.visible_history.sequences = VisibleHistory::ALL;
+        // TODO(#4194): this should come from delegation to the space-view-class
+        if individual_properties.is_none() && is_time_series {
+            let mut time_series_defaults = EntityProperties::default();
+            time_series_defaults.visible_history.nanos = VisibleHistory::ALL;
+            time_series_defaults.visible_history.sequences = VisibleHistory::ALL;
+            individual_properties = Some(time_series_defaults);
+        }
+
+        let mut accumulated_properties = individual_properties.clone().unwrap_or_default();
+
+        if is_time_series {
+            // TODO(#4194): enabled == false means use defaults
+            if !accumulated_properties.visible_history.enabled {
+                accumulated_properties.visible_history.enabled = true;
+                accumulated_properties.visible_history.nanos = VisibleHistory::ALL;
+                accumulated_properties.visible_history.sequences = VisibleHistory::ALL;
             }
-            props
-        });
+        }
 
         DataResult {
             entity_path: entity_path.clone(),

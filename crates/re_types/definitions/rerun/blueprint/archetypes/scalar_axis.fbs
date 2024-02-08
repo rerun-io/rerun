@@ -1,0 +1,28 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+
+// ---
+
+/// Configuration for the scalar axis of a plot.
+table ScalarAxis (
+    "attr.docs.unreleased",
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    // --- Optional ---
+
+    /// The range of the axis.
+    ///
+    /// If unset, the range well be automatically determined based on the queried data.
+    range: rerun.components.Range1D ("attr.rerun.component_optional", nullable, order: 2100);
+
+    /// Whether to lock the range of the axis during zoom.
+    lock_range_during_zoom: rerun.blueprint.components.LockRangeDuringZoom ("attr.rerun.component_optional", nullable, order: 2200);
+}

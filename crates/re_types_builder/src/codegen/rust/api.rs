@@ -171,6 +171,9 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::too_many_arguments)]\n");
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     code.push_str("#![allow(clippy::unnecessary_cast)]\n");
+    if obj.deprecation_notice().is_some() {
+        code.push_str("#![allow(deprecated)]\n");
+    }
 
     code.push_str("\n\n");
 
@@ -241,9 +244,28 @@ fn generate_mod_file(
 
     code += "\n\n";
 
-    for obj in objects {
+    // Non-deprecated first.
+    for obj in objects
+        .iter()
+        .filter(|obj| obj.deprecation_notice().is_none())
+    {
         let module_name = obj.snake_case_name();
         let type_name = &obj.name;
+        code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
+    }
+    // And then deprecated.
+    if objects.iter().any(|obj| obj.deprecation_notice().is_some()) {
+        code.push_str("\n\n");
+    }
+    for obj in objects
+        .iter()
+        .filter(|obj| obj.deprecation_notice().is_some())
+    {
+        let module_name = obj.snake_case_name();
+        let type_name = &obj.name;
+        if obj.deprecation_notice().is_some() {
+            code.push_str("#[allow(deprecated)]\n");
+        }
         code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
     }
 
@@ -353,6 +375,12 @@ fn quote_struct(
         .iter()
         .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field));
 
+    let quoted_deprecation_notice = if let Some(deprecation_notice) = obj.deprecation_notice() {
+        quote!(#[deprecated(note = #deprecation_notice)])
+    } else {
+        quote!()
+    };
+
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
     let quoted_struct = if is_tuple_struct {
         quote! { pub struct #name(#(#quoted_fields,)*); }
@@ -413,6 +441,7 @@ fn quote_struct(
         #quoted_derive_clause
         #quoted_repr_clause
         #quoted_custom_clause
+        #quoted_deprecation_notice
         #quoted_struct
 
         #quoted_heap_size_bytes
@@ -552,14 +581,7 @@ impl quote::ToTokens for ObjectFieldTokenizer<'_> {
 }
 
 fn quote_field_docs(reporter: &Reporter, field: &ObjectField) -> TokenStream {
-    let require_example = false;
-    let lines = doc_as_lines(
-        reporter,
-        &field.virtpath,
-        &field.fqname,
-        &field.docs,
-        require_example,
-    );
+    let lines = doc_as_lines(reporter, &field.virtpath, &field.fqname, &field.docs);
 
     let require_field_docs = false;
     if require_field_docs && lines.is_empty() && !field.is_testing() {
@@ -570,14 +592,7 @@ fn quote_field_docs(reporter: &Reporter, field: &ObjectField) -> TokenStream {
 }
 
 fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
-    let require_example = obj.kind == ObjectKind::Archetype;
-    let mut lines = doc_as_lines(
-        reporter,
-        &obj.virtpath,
-        &obj.fqname,
-        &obj.docs,
-        require_example,
-    );
+    let mut lines = doc_as_lines(reporter, &obj.virtpath, &obj.fqname, &obj.docs);
 
     // Prefix first line with `**Datatype**: ` etc:
     if let Some(first) = lines.first_mut() {
@@ -589,24 +604,14 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
     quote_doc_lines(&lines)
 }
 
-fn doc_as_lines(
-    reporter: &Reporter,
-    virtpath: &str,
-    fqname: &str,
-    docs: &Docs,
-    require_example: bool,
-) -> Vec<String> {
+fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
 
     let examples = collect_examples_for_api_docs(docs, "rs", true)
         .map_err(|err| reporter.error(virtpath, fqname, err))
         .unwrap_or_default();
 
-    if examples.is_empty() {
-        if require_example {
-            reporter.warn(virtpath, fqname, "Missing example");
-        }
-    } else {
+    if !examples.is_empty() {
         lines.push(Default::default());
         let section_title = if examples.len() == 1 {
             "Example"

@@ -53,7 +53,7 @@ from the 3D camera frame to the 2D image plane. The extrinsics are logged as an
 [camera entity](recording://camera).
 
 ### Reprojection error
-For each image a [rr.TimeSeriesScalar archetype](https://www.rerun.io/docs/reference/types/archetypes/bar_chart)
+For each image a [rr.Scalar archetype](https://www.rerun.io/docs/reference/types/archetypes/scalar?speculative-link)
 containing the average reprojection error of the keypoints is logged to the
 [plot/avg_reproj_err entity](recording://plot/avg_reproj_err).
 
@@ -134,6 +134,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
 
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
     rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
+    rr.log("plot/avg_reproj_err", rr.SeriesLine(color=[240, 45, 58]), timeless=True)
 
     # Iterate through images (video frames) logging data related to each frame.
     for image in sorted(images.values(), key=lambda im: im.name):  # type: ignore[no-any-return]
@@ -171,7 +172,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         point_colors = [point.rgb for point in visible_xyzs]
         point_errors = [point.error for point in visible_xyzs]
 
-        rr.log("plot/avg_reproj_err", rr.TimeSeriesScalar(np.mean(point_errors), color=[240, 45, 58]))
+        rr.log("plot/avg_reproj_err", rr.Scalar(np.mean(point_errors)))
 
         rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=point_errors))
 

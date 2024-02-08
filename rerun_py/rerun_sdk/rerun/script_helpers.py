@@ -21,6 +21,7 @@ rr.script_teardown(args)
 from __future__ import annotations
 
 from argparse import ArgumentParser, Namespace
+from uuid import UUID
 
 import rerun as rr
 from rerun.recording_stream import RecordingStream
@@ -63,6 +64,7 @@ def script_add_args(parser: ArgumentParser) -> None:
 def script_setup(
     args: Namespace,
     application_id: str,
+    recording_id: str | UUID | None = None,
 ) -> RecordingStream:
     """
     Run common Rerun script setup actions. Connect to the viewer if necessary.
@@ -73,10 +75,22 @@ def script_setup(
         The parsed arguments from `parser.parse_args()`.
     application_id : str
         The application ID to use for the viewer.
+    recording_id : Optional[str]
+        Set the recording ID that this process is logging to, as a UUIDv4.
+
+        The default recording_id is based on `multiprocessing.current_process().authkey`
+        which means that all processes spawned with `multiprocessing`
+        will have the same default recording_id.
+
+        If you are not using `multiprocessing` and still want several different Python
+        processes to log to the same Rerun instance (and be part of the same recording),
+        you will need to manually assign them all the same recording_id.
+        Any random UUIDv4 will work, or copy the recording id for the parent process.
 
     """
     rr.init(
         application_id=application_id,
+        recording_id=recording_id,
         default_enabled=True,
         strict=True,
     )

@@ -1,0 +1,19 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A 1D range, specifying a lower and upper bound.
+struct Range1D (
+    "attr.docs.unreleased",
+    "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+    "attr.rust.repr": "transparent"
+) {
+    range: [double: 2] (order: 100);
+}

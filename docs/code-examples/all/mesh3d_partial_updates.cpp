@@ -14,7 +14,7 @@ int main() {
     rec.spawn().exit_on_failure();
 
     rerun::Position3D vertex_positions[3] = {
-        {0.0f, 0.0f, 0.0f},
+        {-1.0f, 0.0f, 0.0f},
         {1.0f, 0.0f, 0.0f},
         {0.0f, 1.0f, 0.0f},
     };

@@ -278,7 +278,7 @@ class FaceLandmarkerLogger:
 
             for blendshape in blendshapes:
                 if blendshape.category_name in BLENDSHAPES_CATEGORIES:
-                    rr.log(f"blendshapes/{i}/{blendshape.category_name}", rr.TimeSeriesScalar(blendshape.score))
+                    rr.log(f"blendshapes/{i}/{blendshape.category_name}", rr.Scalar(blendshape.score))
 
 
 # ========================================================================================
