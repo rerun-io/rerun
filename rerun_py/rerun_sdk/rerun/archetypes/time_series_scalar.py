@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from attrs import define, field
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .. import components, datatypes
 from .._baseclasses import Archetype
@@ -16,6 +17,9 @@ from ..error_utils import catch_and_log_exceptions
 __all__ = ["TimeSeriesScalar"]
 
 
+@deprecated(
+    """Use the `Scalar` + (optional) `SeriesLine`/`SeriesPoint` archetypes instead, logged on the same entity."""
+)
 @define(str=False, repr=False, init=False)
 class TimeSeriesScalar(Archetype):
     """

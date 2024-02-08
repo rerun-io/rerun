@@ -21,7 +21,6 @@ if(DEFINED ENV{RERUN_SET_CXX_VERSION})
 endif()
 
 # ------------------------------------------------------------------------------
-
 function(rerun_strict_warning_settings target)
     if(MSVC)
         # TODO(andreas): Try to enable /Wall
@@ -85,6 +84,7 @@ function(rerun_strict_warning_settings target)
                 -Wno-unreachable-code-break # TODO(emilk): remove this exception - we only need this because of codegen
                 -Wno-unreachable-code-return # TODO(emilk): remove this exception - we only need this because of codegen
                 -Wno-unused-macros
+                -Wno-unsafe-buffer-usage # There's a few helper ctors that run into this.
             )
         endif()
 

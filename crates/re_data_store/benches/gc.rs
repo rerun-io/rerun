@@ -81,9 +81,8 @@ fn plotting_dashboard(c: &mut Criterion) {
         .into()
     };
 
-    let mut datagen = |i| {
-        Box::new(re_types::archetypes::TimeSeriesScalar::new(i as f64)) as Box<dyn AsComponents>
-    };
+    let mut datagen =
+        |i| Box::new(re_types::archetypes::Scalar::new(i as f64)) as Box<dyn AsComponents>;
 
     // Default config
     group.bench_function("default", |b| {

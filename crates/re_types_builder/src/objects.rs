@@ -671,6 +671,10 @@ impl Object {
         self.try_get_attr::<String>(crate::ATTR_RERUN_SCOPE)
     }
 
+    pub fn deprecation_notice(&self) -> Option<String> {
+        self.try_get_attr::<String>(crate::ATTR_RERUN_DEPRECATED)
+    }
+
     /// Returns the crate name of an object, accounting for overrides.
     pub fn crate_name(&self) -> String {
         self.try_get_attr::<String>(crate::ATTR_RUST_OVERRIDE_CRATE)

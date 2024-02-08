@@ -139,7 +139,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.6.0
+          pixi-version: v0.13.0
 
       - name: Build web-viewer
         shell: bash

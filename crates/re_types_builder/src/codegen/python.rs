@@ -362,6 +362,7 @@ impl PythonCodeGenerator {
 
             from typing import (Any, Dict, Iterable, Optional, Sequence, Set, Tuple, Union,
                 TYPE_CHECKING, SupportsFloat, Literal)
+            from typing_extensions import deprecated # type: ignore[misc, unused-ignore]
 
             from attrs import define, field
             import numpy as np
@@ -593,6 +594,10 @@ fn code_for_struct(
         ));
     }
 
+    if let Some(deprecation_notice) = obj.deprecation_notice() {
+        code.push_unindented_text(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+    }
+
     if !obj.is_delegating_component() {
         let define_args = if *kind == ObjectKind::Archetype {
             "str=False, repr=False, init=False"
@@ -788,6 +793,10 @@ fn code_for_union(
     } else {
         format!("({})", superclasses.join(","))
     };
+
+    if let Some(deprecation_notice) = obj.deprecation_notice() {
+        code.push_unindented_text(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+    }
 
     code.push_unindented_text(
         format!(

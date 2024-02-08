@@ -35,6 +35,12 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 * [SegmentationImage](types/archetypes/segmentation_image.md)
 * [Tensor](types/archetypes/tensor.md)
 
+## Time Series **Archetypes**
+* [Scalar](types/archetypes/time_series_scalar.md): a single scalar / metric value.
+* [SeriesPoint](types/archetypes/series_point.md): define the style properties for a point series in a chart.
+* [SeriesLine](types/archetypes/series_line.md): define the style properties for a line series in a chart.
+* [TimeSeriesScalar (deprecated)](types/archetypes/time_series_scalar.md): a single scalar / metric value as well as styling options. Can be viewed in the `TimeSeries` space view.
+
 ## Other **Archetypes**
 * [AnnotationContext](types/archetypes/annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.
 * [BarChart](types/archetypes/bar_chart.md): data displayed in a `BarChart` space view.
@@ -42,6 +48,5 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 * [DisconnectedSpace](types/archetypes/disconnected_space.md): disconnect an entity path from its parent.
 * [TextDocument](types/archetypes/text_document.md): text displayed in a `TextDocument` space view.
 * [TextLog](types/archetypes/text_log.md): a log entry in a `TextLog` space view.
-* [TimeSeriesScalar](types/archetypes/time_series_scalar.md): a single scalar / metric value. Can be viewed in the `TimeSeries` space view.
 * [ViewCoordinates](types/archetypes/view_coordinates.md): determines how we interpret the coordinate system of an entity/space.
 
