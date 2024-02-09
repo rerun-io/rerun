@@ -62,7 +62,7 @@ cpp-plot-dashboard *ARGS:
 
 py_folders := "."
 
-# Set up a Pythonvirtual environment for development
+# Set up a Python virtual environment for development
 py-dev-env:
     #!/usr/bin/env bash
     echo "Setting up Python virtual environment in venv"
@@ -71,6 +71,16 @@ py-dev-env:
     venv/bin/pip install --upgrade pip
     venv/bin/pip install -r scripts/requirements-dev.txt
     echo "Do 'source venv/bin/activate' to use the virtual environment!"
+
+# Set up a Python 3.10 virtual environment for development
+py-dev-env-3-10:
+    #!/usr/bin/env bash
+    echo "Setting up Python 3.10 virtual environment in venv3.10"
+    set -euxo pipefail
+    python3.10 -m venv venv3.10
+    venv3.10/bin/pip install --upgrade pip
+    venv3.10/bin/pip install -r scripts/requirements-dev.txt
+    echo "Do 'source venv3.10/bin/activate' to use the virtual environment!"
 
 # Run all examples with the specified args
 py-run-all *ARGS:
