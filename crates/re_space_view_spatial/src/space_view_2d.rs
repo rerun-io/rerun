@@ -4,6 +4,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathFilter};
+use re_renderer::external::wgpu::naga::ImageDimension;
 use re_types::{
     archetypes::{DepthImage, Image},
     components::TensorData,
@@ -20,6 +21,7 @@ use crate::{
     heuristics::{
         default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
     },
+    max_image_dimension_subscriber::{ImageDimensions, MaxImageDimensions},
     spatial_topology::{SpatialTopology, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
@@ -170,30 +172,11 @@ impl SpaceViewClass for SpatialSpaceView2D {
             SpatialSpaceViewKind::TwoD,
         );
 
-        let image_entities_fallback = ApplicableEntities::default();
-        let image_entities = ctx
-            .applicable_entities_per_visualizer
-            .get(&ImageVisualizer::identifier())
-            .unwrap_or(&image_entities_fallback);
-
-        // TODO(jleibs): this doesn't work with clears. This whole thing is better off as a
-        // a store-subscriber.
-        let latest_query = LatestAtQuery::latest(ctx.current_query().timeline);
-        let image_dimensions: IntMap<EntityPath, Option<(u64, u64)>> = image_entities
-            .iter()
-            .map(|image_entity| {
-                (
-                    image_entity.clone(),
-                    ctx.entity_db
-                        .store()
-                        .query_latest_component::<TensorData>(image_entity, &latest_query)
-                        .and_then(|tensor| tensor.image_height_width_channels())
-                        .map(|[height, width, _]| (height, width)),
-                )
+        let image_dimensions =
+            MaxImageDimensions::access(ctx.entity_db.store_id(), |image_dimensions| {
+                image_dimensions.clone()
             })
-            .collect();
-
-        re_log::debug!("All found image dimensions: {image_dimensions:?}");
+            .unwrap_or_default();
 
         // Spawn a space view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
@@ -223,7 +206,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                         if subspace.dimensionality == SubSpaceDimensionality::TwoD {
                             subspace.origin.clone()
                         } else {
-                            EntityPath::common_ancestor_of(subspace.entities.iter())
+                            EntityPath::common_ancestor_of(relevant_entities.iter())
                         };
 
                     let mut recommended_space_views = Vec::<RecommendedSpaceView>::new();
@@ -280,7 +263,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
 // Count the number of entities with the given component exist that aren't
 // children of other entities in the bucket.
 fn count_non_nested_entities_with_component(
-    image_dimensions: &IntMap<EntityPath, Option<(u64, u64)>>,
+    image_dimensions: &IntMap<EntityPath, ImageDimensions>,
     entity_bucket: &IntSet<EntityPath>,
     subtree: &EntityTree,
     component_name: &ComponentName,
@@ -312,16 +295,14 @@ fn count_non_nested_entities_with_component(
 // Find the image dimensions of every image-entity in the bucket that is not
 // not nested under another image.
 fn find_non_nested_image_dimensions(
-    image_dimensions: &IntMap<EntityPath, Option<(u64, u64)>>,
+    image_dimensions: &IntMap<EntityPath, ImageDimensions>,
     entity_bucket: &IntSet<EntityPath>,
     subtree: &EntityTree,
-    found_image_dimensions: &mut HashSet<Option<(u64, u64)>>,
+    found_image_dimensions: &mut HashSet<ImageDimensions>,
 ) {
-    re_log::debug!("Descending into {:?}", subtree.path);
     if let Some(dimensions) = image_dimensions.get(&subtree.path) {
         // If we found an image entity, add its dimensions to the set.
-        re_log::debug!("With dimensions: {dimensions:?}");
-        found_image_dimensions.insert(*dimensions);
+        found_image_dimensions.insert(dimensions.clone());
     } else if entity_bucket
         .iter()
         .any(|e| e.is_descendant_of(&subtree.path))
@@ -340,7 +321,7 @@ fn find_non_nested_image_dimensions(
 
 fn recommended_space_views_with_image_splits(
     ctx: &ViewerContext<'_>,
-    image_dimensions: &IntMap<EntityPath, Option<(u64, u64)>>,
+    image_dimensions: &IntMap<EntityPath, ImageDimensions>,
     recommended_root: &EntityPath,
     entities: &IntSet<EntityPath>,
     recommended: &mut Vec<RecommendedSpaceView>,
@@ -354,8 +335,6 @@ fn recommended_space_views_with_image_splits(
         return;
     };
 
-    re_log::debug!("Considering {recommended_root:?} and entities {entities:?}");
-
     let mut found_image_dimensions = Default::default();
 
     find_non_nested_image_dimensions(
@@ -364,8 +343,6 @@ fn recommended_space_views_with_image_splits(
         subtree,
         &mut found_image_dimensions,
     );
-
-    re_log::debug!("Found image dimensions: {found_image_dimensions:?}");
 
     let image_count = count_non_nested_entities_with_component(
         image_dimensions,
