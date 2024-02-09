@@ -2,6 +2,8 @@
 
 //! Build the Rerun web-viewer .wasm and generate the .js bindings for it.
 
+use std::process::Stdio;
+
 use anyhow::Context as _;
 use cargo_metadata::camino::{Utf8Path, Utf8PathBuf};
 
@@ -164,6 +166,17 @@ pub fn build(profile: Profile, target: Target, build_dir: &Utf8Path) -> anyhow::
 
     if profile == Profile::Release {
         eprintln!("Optimizing wasm with wasm-opt…");
+
+        if !std::process::Command::new("wasm-opt")
+            .arg("--version")
+            .stderr(Stdio::null())
+            .stdout(Stdio::null())
+            .spawn()
+            .and_then(|mut p| p.wait())
+            .is_ok_and(|v| v.success())
+        {
+            anyhow::bail!("`wasm-opt` is not installed");
+        }
 
         // to get wasm-opt:  apt/brew/dnf install binaryen
         let mut cmd = std::process::Command::new("wasm-opt");
