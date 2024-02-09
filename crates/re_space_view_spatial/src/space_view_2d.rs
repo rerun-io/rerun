@@ -195,13 +195,8 @@ impl SpaceViewClass for SpatialSpaceView2D {
                         let mut recommended_space_views = Vec::<RecommendedSpaceView>::new();
 
                         for bucket_entities in
-                            bucket_images_in_subspace(ctx, subspace, image_entities).values()
+                            bucket_images_in_subspace(ctx, subspace, image_entities)
                         {
-                            // Collect the bucket as a set
-                            // TODO(jleibs): might as well do this when bucketing in the first place
-                            let bucket_entities: IntSet<EntityPath> =
-                                bucket_entities.iter().cloned().collect();
-
                             add_recommended_space_views_for_bucket(
                                 ctx,
                                 &bucket_entities,
@@ -392,7 +387,7 @@ fn bucket_images_in_subspace(
     ctx: &ViewerContext<'_>,
     subspace: &SubSpace,
     image_entities: &ApplicableEntities,
-) -> HashMap<(u64, u64), Vec<EntityPath>> {
+) -> Vec<IntSet<EntityPath>> {
     re_tracing::profile_function!();
 
     let store = ctx.entity_db.store();
@@ -407,11 +402,11 @@ fn bucket_images_in_subspace(
         // Very common case, early out before we get into the more expensive query code.
         return image_entities
             .into_iter()
-            .map(|e| ((0, 0), vec![e.clone()]))
+            .map(|e| std::iter::once(e.clone()).collect())
             .collect();
     }
 
-    let mut images_by_bucket = HashMap::<(u64, u64), Vec<EntityPath>>::default();
+    let mut images_by_bucket = HashMap::<(u64, u64), IntSet<EntityPath>>::default();
     for image_entity in image_entities {
         // TODO(andreas): We really don't want to do a latest at query here since this means the heuristic can have different results depending on the
         //                current query, but for this we'd have to store the max-size over time somewhere using another store subscriber (?).
@@ -424,11 +419,11 @@ fn bucket_images_in_subspace(
                     images_by_bucket
                         .entry((height, width))
                         .or_default()
-                        .push(image_entity.clone());
+                        .insert(image_entity.clone());
                 }
             }
         }
     }
 
-    images_by_bucket
+    images_by_bucket.drain().map(|(_, v)| v).collect()
 }
