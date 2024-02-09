@@ -260,13 +260,14 @@ impl EntityPathFilter {
         false // no matching rule and we are exclude-by-default.
     }
 
-    /// Returns true if this query will return a `DataQueryResult` that is guaranteed
-    /// to contain any `EntityPath` that would be returned by the other query.
+    /// Checks whether this results of this filter "fully contain" the results of another filter.
     ///
-    /// This is a conservative estimate, and may return false negatives in some cases
-    /// related to mixed inclusion/exclusion rules.
+    /// If this returns `true` there should not exist any [`EntityPath`] for which [`Self::is_included`]
+    /// would return `true` and the other filter would return `false` for this filter.
     ///
-    /// It should never return false positives.
+    /// This is a conservative estimate, and may return `false` in situations where the
+    /// query does in fact cover the other query. However, it should never return `true`
+    /// in a case where the other query would not be fully covered.
     pub fn fully_contains(&self, other: &Self) -> bool {
         // First check that we include everything included by other
         for (other_rule, other_effect) in &other.rules {

@@ -49,13 +49,14 @@ impl DataQueryBlueprint {
             && self.entity_path_filter.eq(&other.entity_path_filter)
     }
 
-    /// Returns true if this query will return a `DataQueryResult` that is guaranteed
-    /// to contain any `EntityPath` that would be returned by the other query.
+    /// Checks whether the results of this query "fully contains" the results of another query.
     ///
-    /// This is a conservative estimate, and may return false negatives in some cases
-    /// related to mixed inclusion/exclusion rules.
+    /// If this returns `true` then the [`DataQueryResult`] returned by this query should always
+    /// contain any [`EntityPath`] that would be included in the results of the other query.
     ///
-    /// It should never return false positives.
+    /// This is a conservative estimate, and may return `false` in situations where the
+    /// query does in fact cover the other query. However, it should never return `true`
+    /// in a case where the other query would not be fully covered.
     pub fn fully_contains(&self, other: &DataQueryBlueprint) -> bool {
         // A query can't fully contain another if their space-view classes don't match
         if self.space_view_class_identifier != other.space_view_class_identifier {
