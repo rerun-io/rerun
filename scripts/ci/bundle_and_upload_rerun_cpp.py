@@ -26,6 +26,9 @@ def run(
 def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None) -> None:
     logging.info("Downloading rerun_c…")
 
+    gcs = storage.Client("rerun-open")
+    bucket = gcs.bucket("rerun-builds")
+
     os.mkdir(target_dir)
 
     # See reusable_build_and_upload_rerun_c.yml for available libraries.
@@ -39,8 +42,10 @@ def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None
         if platform_filter is not None and src.startswith(platform_filter) is False:
             continue
 
-        url = f"https://build.rerun.io/commit/{git_hash}/rerun_c/{src}"
-        run(["curl", "-L", "-o", f"{target_dir}/{dst}", url])
+        blob = bucket.get_blob(f"commit/{git_hash}/rerun_c/{src}")
+        with open(f"{target_dir}/{dst}", 'wb') as f:
+            logging.info(f"Copying {blob.path} to {target_dir}/{dst}")
+            blob.download_to_file(f)
 
 
 def upload_rerun_cpp_sdk(rerun_zip: str, git_hash: str) -> None:
