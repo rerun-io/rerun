@@ -6,7 +6,7 @@
 
 ### Overview & Highlights
 
-This release focuses on scalar time series -- both from a performance and UI perspectives.  
+This release focuses on scalar time series -- both from a performance and UI perspectives.
 Check out our [associated blog post](TODO) for more information.
 
 - 📈 Rerun can now visualize many time series in the kHz range in real-time:
@@ -127,7 +127,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
   - Add support for removing container children from the selection panel [#4930](https://github.com/rerun-io/rerun/pull/4930)
   - Add support for full span highlighting to modal and use it in the "Add Space View or Container" modal [#4822](https://github.com/rerun-io/rerun/pull/4822)
   - Remove the "+" icon from the "Add SV/Container" modal and close on click [#4927](https://github.com/rerun-io/rerun/pull/4927)
-  - New empty space view defaults to uncollapsed in blueprint tree [#4982](https://github.com/rerun-io/rerun/pull/4982) 
+  - New empty space view defaults to uncollapsed in blueprint tree [#4982](https://github.com/rerun-io/rerun/pull/4982)
   - Do not allow adding Horizontal/Vertical containers inside of containers with the same type [#5091](https://github.com/rerun-io/rerun/pull/5091)
 - Selection improvements:
   - Click a recording to select it [#4761](https://github.com/rerun-io/rerun/pull/4761)
