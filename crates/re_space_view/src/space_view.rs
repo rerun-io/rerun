@@ -529,12 +529,8 @@ impl SpaceViewBlueprint {
             return false;
         };
 
-        // If the queries are equivalent, we contain all entities from it.
-        if q_self.fully_contains(q_other) {
-            return true;
-        }
-
-        return false;
+        // If this query fully contains the other, then we have all its entities
+        q_self.fully_contains(q_other)
     }
 }
 
