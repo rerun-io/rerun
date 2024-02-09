@@ -16,7 +16,7 @@ pub struct ImageDimensions {
 pub struct MaxImageDimensions(IntMap<EntityPath, ImageDimensions>);
 
 impl MaxImageDimensions {
-    /// Accesses the the image dimension information for a given store
+    /// Accesses the image dimension information for a given store
     pub fn access<T>(
         store_id: &StoreId,
         f: impl FnOnce(&IntMap<EntityPath, ImageDimensions>) -> T,
