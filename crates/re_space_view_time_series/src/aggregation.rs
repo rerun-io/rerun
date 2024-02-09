@@ -26,9 +26,7 @@ impl AverageAggregator {
             let mut acc = points[i + j].clone();
             j += 1;
 
-            while j < window_size
-                && i + j < points.len()
-                && are_aggregatable(&points[i], &points[i + j], window_size)
+            while i + j < points.len() && are_aggregatable(&points[i], &points[i + j], window_size)
             {
                 let point = &points[i + j];
 
