@@ -4,7 +4,7 @@ tags = ["2D", "3D", "object-detection", "pinhole-camera"]
 description = "Example of using the Rerun SDK to log the Google Research Objectron dataset."
 thumbnail = "https://static.rerun.io/objectron/8ea3a37e6b4af2e06f8e2ea5e70c1951af67fea8/480w.png"
 thumbnail_dimensions = [480, 268]
-channel = "release"
+# channel = "release"  - Disabled because it sometimes have bad first-frame heuristics
 build_args = ["--frames=150"]
 -->
 
