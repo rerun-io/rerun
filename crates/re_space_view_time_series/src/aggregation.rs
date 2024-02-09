@@ -23,6 +23,7 @@ impl AverageAggregator {
 
         let mut i = 0;
         while i < points.len() {
+            // How many points to combine together this time.
             let mut j = 0;
 
             let mut ratio = 1.0;
@@ -112,6 +113,7 @@ impl MinMaxAggregator {
 
         let mut i = 0;
         while i < points.len() {
+            // How many points to combine together this time.
             let mut j = 0;
 
             let mut acc_min = points[i + j].clone();
@@ -148,11 +150,9 @@ impl MinMaxAggregator {
 
             match self {
                 MinMaxAggregator::MinMax => {
-                    if acc_min == acc_max {
-                        // Don't push the same point twice.
-                        aggregated.push(acc_min);
-                    } else {
-                        aggregated.push(acc_min);
+                    aggregated.push(acc_min);
+                    // Avoid pushing the same point twice.
+                    if j > 1 {
                         aggregated.push(acc_max);
                     }
                 }
