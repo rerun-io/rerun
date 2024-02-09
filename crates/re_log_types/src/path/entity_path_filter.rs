@@ -259,6 +259,46 @@ impl EntityPathFilter {
 
         false // no matching rule and we are exclude-by-default.
     }
+
+    /// Returns true if this query will return a `DataQueryResult` that is guaranteed
+    /// to contain any `EntityPath` that would be returned by the other query.
+    ///
+    /// This is a conservative estimate, and may return false negatives in some cases
+    /// related to mixed inclusion/exclusion rules.
+    ///
+    /// It should never return false positives.
+    pub fn fully_contains(&self, other: &Self) -> bool {
+        for (other_rule, other_effect) in &other.rules {
+            match other_effect {
+                RuleEffect::Include => {
+                    if let Some((rule, effect)) = self
+                        .rules
+                        .iter()
+                        .rev()
+                        .find(|(r, _)| r.matches(&other_rule.path))
+                    {
+                        match effect {
+                            RuleEffect::Include => {
+                                // If the other rule includes the subtree, but the matching
+                                // rule doesn't, then we don't fully contain the other rule.
+                                if other_rule.include_subtree && !rule.include_subtree {
+                                    return false;
+                                }
+                            }
+                            RuleEffect::Exclude => return false,
+                        }
+                    } else {
+                        // No matching rule means this path isn't included
+                        return false;
+                    }
+                }
+                RuleEffect::Exclude => {}
+            }
+        }
+        // If we got here, we checked every inclusion rule in `other` and they all had a more-inclusive
+        // inclusion rule and didn't hit an exclusion rule.
+        true
+    }
 }
 
 impl EntityPathRule {
@@ -430,5 +470,74 @@ fn test_entity_path_filter_subtree() {
             expected,
             "path: {path:?}",
         );
+    }
+}
+
+#[test]
+fn test_fully_contains() {
+    struct TestCase {
+        filter: &'static str,
+        contains: Vec<&'static str>,
+        not_contains: Vec<&'static str>,
+    }
+
+    let cases = [
+        TestCase {
+            filter: "+ /**",
+            contains: [
+                "+ /**",
+                "+ /a/**",
+                r#"+ /a/**
+                + /b/c
+                + /b/d
+                "#,
+            ]
+            .into(),
+            not_contains: [].into(),
+        },
+        TestCase {
+            filter: "+ /a/**",
+            contains: ["+ /a/**", "+ /a", "+ /a/b/**"].into(),
+            not_contains: [
+                "+ /**",
+                "+ /b/**",
+                "+ /b",
+                r#"
+                + /a/b
+                + /b
+                "#,
+            ]
+            .into(),
+        },
+        TestCase {
+            filter: r#"
+                + /a
+                + /b/c
+                "#,
+            contains: ["+ /a", "+ /b/c"].into(),
+            not_contains: ["+ /a/**", "+ /b/**"].into(),
+        },
+    ];
+
+    for case in &cases {
+        let filter = EntityPathFilter::parse_forgiving(case.filter);
+        for contains in &case.contains {
+            let contains_filter = EntityPathFilter::parse_forgiving(contains);
+            assert!(
+                filter.fully_contains(&contains_filter),
+                "filter: {:?}, contains: {:?}",
+                case.filter,
+                contains
+            );
+        }
+        for not_contains in &case.not_contains {
+            let not_contains_filter = EntityPathFilter::parse_forgiving(not_contains);
+            assert!(
+                !filter.fully_contains(&not_contains_filter),
+                "filter: {:?}, not_contains: {:?}",
+                case.filter,
+                not_contains
+            );
+        }
     }
 }
