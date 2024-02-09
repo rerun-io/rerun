@@ -1,12 +1,18 @@
+// @ts-check
+
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import fs from "node:fs";
 
-/** @type {typeof execSync} */
-export const $ = (cmd, opts) => execSync(cmd, { stdio: "inherit", ...opts });
+export const $ = /** @type {typeof execSync} */ (
+  (cmd, opts) => {
+    console.log(`${opts.cwd ?? ""}> ${cmd}`);
+    return execSync(cmd, { stdio: "inherit", ...opts });
+  }
+);
 export const argv = process.argv.slice(2);
 export const script_dir = path.dirname(fileURLToPath(import.meta.url));
-export const packages = [{ path: "." }, { path: "react" }];
 
 /**
  * Logs `message` and exits with code `1`.
@@ -21,7 +27,7 @@ export function fail(message) {
 /**
  * Checks that `version` is valid according to semver.
  *
- * @type {(version: string) => bool}
+ * @type {(version: string) => boolean}
  */
 export function isSemver(version) {
   // https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
@@ -51,9 +57,10 @@ export function stripSemverBuildMetadata(version) {
  * @type {(packageName: string, version: string) => Promise<boolean>}
  */
 export async function isPublished(packageName, version) {
-  const response = await fetch(`https://registry.npmjs.org/${packageName}/${version}`);
+  const response = await fetch(
+    `https://registry.npmjs.org/${packageName}/${version}`,
+  );
   return response.status === 200;
 }
 
-export { path };
-
+export { fs, path };

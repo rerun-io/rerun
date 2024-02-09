@@ -1,0 +1,18 @@
+{
+  "licenses": [
+    {
+      "type": "MIT"
+    },
+    {
+      "type": "Apache-2.0"
+    }
+  ],
+  "private": true,
+  "workspaces": [
+    "web-viewer",
+    "web-viewer-react"
+  ],
+  "scripts": {
+    "bump": "node scripts/version.mjs"
+  }
+}

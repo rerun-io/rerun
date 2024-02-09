@@ -1,8 +1,16 @@
 {
   "name": "@rerun-io/web-viewer",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Embed the Rerun web viewer in your app",
   "private": false,
+  "licenses": [
+    {
+      "type": "MIT"
+    },
+    {
+      "type": "Apache-2.0"
+    }
+  ],
   "scripts": {
     "build:wasm": "cargo run -p re_build_web_viewer -- --release --module -o rerun_js/web-viewer",
     "build:wasm:debug": "cargo run -p re_build_web_viewer -- --debug --module -o rerun_js/web-viewer",
@@ -20,10 +28,15 @@
     "url": "https://github.com/rerun-io/rerun/issues"
   },
   "homepage": "https://rerun.io",
+  "type": "module",
   "exports": {
     ".": {
       "types": "./index.d.ts",
       "import": "./index.js"
+    },
+    "./re_viewer.js": {
+      "types": "./re_viewer.d.ts",
+      "import": "./re_viewer.js"
     }
   },
   "files": [

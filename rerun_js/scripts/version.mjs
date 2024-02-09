@@ -1,12 +1,11 @@
 #!/usr/bin/env node
+// @ts-check
 
-import fs from "node:fs";
 import {
-  $,
+  fs,
   script_dir,
   path,
   argv,
-  packages,
   fail,
   isSemver,
   stripSemverBuildMetadata,
@@ -23,9 +22,12 @@ if (!isSemver(version)) {
   fail(`${version} is not valid according to semver`);
 }
 
-for (const pkg of packages) {
-  const package_json_path = path.join(root_dir, pkg.path, "package.json");
-  const readme_path = path.join(root_dir, pkg.path, "README.md");
+const root_package_json = JSON.parse(
+  fs.readFileSync(path.join(root_dir, "package.json"), "utf-8"),
+);
+for (const pkg_path of root_package_json.workspaces) {
+  const package_json_path = path.join(root_dir, pkg_path, "package.json");
+  const readme_path = path.join(root_dir, pkg_path, "README.md");
 
   let package_json = JSON.parse(fs.readFileSync(package_json_path, "utf-8"));
   let readme = fs.readFileSync(readme_path, "utf-8");
@@ -36,8 +38,9 @@ for (const pkg of packages) {
   // update dependency versions
   if ("dependencies" in package_json) {
     for (const dependency of Object.keys(package_json.dependencies)) {
-      if (dependency.startsWith("@rerun-io/web-viewer")) {
-        package_json.dependencies[dependency] = stripSemverBuildMetadata(version);
+      if (dependency.startsWith("@rerun-io/")) {
+        package_json.dependencies[dependency] =
+          stripSemverBuildMetadata(version);
       }
     }
   }
@@ -45,10 +48,9 @@ for (const pkg of packages) {
   // update link to example rrd file in README
   readme = readme.replace(
     /<https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd>/,
-    `<https://app.rerun.io/version/${version}/examples/dna.rrd>`
+    `<https://app.rerun.io/version/${version}/examples/dna.rrd>`,
   );
 
   fs.writeFileSync(package_json_path, JSON.stringify(package_json, null, 2));
   fs.writeFileSync(readme_path, readme);
 }
-
