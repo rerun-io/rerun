@@ -225,8 +225,8 @@ fn process_annotation_and_keypoint_slices(
 
     let mut keypoints: Keypoints = HashMap::default();
 
-    // No need to process annotations if we don't have keypoints or class-ids
-    let (Some(keypoint_ids), Some(class_ids)) = (keypoint_ids, class_ids) else {
+    // No need to process annotations if we don't have class-ids
+    let Some(class_ids) = class_ids else {
         let resolved_annotation = annotations
             .resolved_class_description(None)
             .annotation_info();
@@ -237,25 +237,40 @@ fn process_annotation_and_keypoint_slices(
         );
     };
 
-    let annotation_info = itertools::izip!(positions, keypoint_ids, class_ids)
-        .map(|(positions, &keypoint_id, &class_id)| {
-            let class_description = annotations.resolved_class_description(class_id);
+    if let Some(keypoint_ids) = keypoint_ids {
+        let annotation_info = itertools::izip!(positions, keypoint_ids, class_ids)
+            .map(|(positions, &keypoint_id, &class_id)| {
+                let class_description = annotations.resolved_class_description(class_id);
 
-            if let (Some(keypoint_id), Some(class_id), position) =
-                (keypoint_id, class_id, positions)
-            {
-                keypoints
-                    .entry((class_id, latest_at.as_i64()))
-                    .or_default()
-                    .insert(keypoint_id.0, position);
-                class_description.annotation_info_with_keypoint(keypoint_id.0)
-            } else {
+                if let (Some(keypoint_id), Some(class_id), position) =
+                    (keypoint_id, class_id, positions)
+                {
+                    keypoints
+                        .entry((class_id, latest_at.as_i64()))
+                        .or_default()
+                        .insert(keypoint_id.0, position);
+                    class_description.annotation_info_with_keypoint(keypoint_id.0)
+                } else {
+                    class_description.annotation_info()
+                }
+            })
+            .collect();
+
+        (ResolvedAnnotationInfos::Many(annotation_info), keypoints)
+    } else {
+        let annotation_info = class_ids
+            .iter()
+            .map(|&class_id| {
+                let class_description = annotations.resolved_class_description(class_id);
                 class_description.annotation_info()
-            }
-        })
-        .collect();
+            })
+            .collect();
 
-    (ResolvedAnnotationInfos::Many(annotation_info), keypoints)
+        (
+            ResolvedAnnotationInfos::Many(annotation_info),
+            Default::default(),
+        )
+    }
 }
 
 #[derive(Clone)]
