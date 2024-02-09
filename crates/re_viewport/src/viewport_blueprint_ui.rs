@@ -9,7 +9,7 @@ use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::{container::Contents, Viewport};
+use crate::{container::Contents, context_menu_ui_for_item, Viewport};
 
 /// The style to use for displaying this space view name in the UI.
 pub fn space_view_name_style(name: &SpaceViewName) -> re_ui::LabelStyle {
@@ -105,6 +105,7 @@ impl Viewport<'_, '_> {
             self.contents_ui(ctx, ui, child, true);
         }
 
+        context_menu_ui_for_item(ctx, self.blueprint, &item, &item_response);
         ctx.select_hovered_on_click(&item_response, item);
 
         self.handle_root_container_drag_and_drop_interaction(
@@ -155,7 +156,7 @@ impl Viewport<'_, '_> {
             let remove_response = remove_button_ui(re_ui, ui, "Remove container");
             if remove_response.clicked() {
                 self.blueprint.mark_user_interaction(ctx);
-                self.blueprint.remove_contents(content.clone());
+                self.blueprint.remove_contents(content);
             }
 
             remove_response | vis_response
@@ -166,6 +167,7 @@ impl Viewport<'_, '_> {
             }
         });
 
+        context_menu_ui_for_item(ctx, self.blueprint, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
         self.blueprint
@@ -174,7 +176,7 @@ impl Viewport<'_, '_> {
         self.handle_drag_and_drop_interaction(
             ctx,
             ui,
-            content.clone(),
+            content,
             &response,
             body_response.as_ref().map(|r| &r.response),
         );
@@ -260,6 +262,7 @@ impl Viewport<'_, '_> {
             self.blueprint.focus_tab(space_view.id);
         }
 
+        context_menu_ui_for_item(ctx, self.blueprint, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
         let content = Contents::SpaceView(*space_view_id);
