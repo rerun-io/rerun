@@ -362,6 +362,17 @@ fn recommended_space_views_with_image_splits(
     // then split the space.
     if found_image_dimensions.len() > 1 || image_count > 1 || depth_count > 1 {
         // Otherwise, split the space and recurse
+
+        // If the root also had a visualizable entity, give it its own space.
+        // TODO(jleibs): Maybe merge this entity into each child
+        if entities.contains(recommended_root) {
+            recommended.push(RecommendedSpaceView {
+                root: recommended_root.clone(),
+                query_filter: EntityPathFilter::single_entity_filter(recommended_root),
+            });
+        }
+
+        // And then recurse into the children
         for child in subtree.children.values() {
             let sub_bucket: IntSet<_> = entities
                 .iter()
@@ -380,7 +391,7 @@ fn recommended_space_views_with_image_splits(
             }
         }
     } else {
-        // If there is only one image, or no images, then we can just use the space as is.
+        // Otherwise we can use the space as it is
         recommended.push(RecommendedSpaceView {
             root: recommended_root.clone(),
             query_filter: EntityPathFilter::subtree_entity_filter(recommended_root),
