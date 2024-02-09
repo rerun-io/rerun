@@ -1,19 +1,16 @@
 use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
-use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathFilter};
-use re_renderer::external::wgpu::naga::ImageDimension;
 use re_types::{
     archetypes::{DepthImage, Image},
-    components::TensorData,
     Archetype, ComponentName,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem as _, PerSystemEntities, RecommendedSpaceView,
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
-    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
+    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    VisualizableFilterContext,
 };
 
 use crate::{
@@ -25,7 +22,7 @@ use crate::{
     spatial_topology::{SpatialTopology, SubSpaceDimensionality},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{register_2d_spatial_visualizers, ImageVisualizer},
+    visualizers::register_2d_spatial_visualizers,
 };
 
 #[derive(Default)]
@@ -294,15 +291,18 @@ fn count_non_nested_entities_with_component(
 
 // Find the image dimensions of every image-entity in the bucket that is not
 // not nested under another image.
+//
+// We track a set of just height/width as different channels could be allowed to
+// stack.
 fn find_non_nested_image_dimensions(
     image_dimensions: &IntMap<EntityPath, ImageDimensions>,
     entity_bucket: &IntSet<EntityPath>,
     subtree: &EntityTree,
-    found_image_dimensions: &mut HashSet<ImageDimensions>,
+    found_image_dimensions: &mut HashSet<(u64, u64)>,
 ) {
     if let Some(dimensions) = image_dimensions.get(&subtree.path) {
         // If we found an image entity, add its dimensions to the set.
-        found_image_dimensions.insert(dimensions.clone());
+        found_image_dimensions.insert((dimensions.height, dimensions.width));
     } else if entity_bucket
         .iter()
         .any(|e| e.is_descendant_of(&subtree.path))
