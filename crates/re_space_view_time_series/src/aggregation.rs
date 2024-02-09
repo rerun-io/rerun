@@ -6,6 +6,9 @@ pub struct AverageAggregator;
 
 impl AverageAggregator {
     /// `aggregation_factor`: the width of the aggregation window.
+    ///
+    /// Adjacent plot points may have the same `PlotPoint::time`,
+    /// if data was logged multiple times on the same time stamp.
     #[inline]
     pub fn aggregate(aggregation_factor: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
@@ -91,13 +94,12 @@ pub enum MinMaxAggregator {
 }
 
 impl MinMaxAggregator {
+    /// Adjacent plot points may have the same `PlotPoint::time`,
+    /// if data was logged multiple times on the same time stamp.
     #[inline]
     pub fn aggregate(&self, aggregation_window_size: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
         // NOTE: `round()` since this can only handle discrete window sizes.
         let window_size = usize::max(1, aggregation_window_size.round() as usize);
-
-        // Keep in mind that adjacent plot points can have the same `PlotPoint::time`,
-        // if data was logged multiple times on the same time stamp.
 
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
         let max_time = points.last().map_or(i64::MAX, |p| p.time);
