@@ -268,6 +268,7 @@ impl EntityPathFilter {
     ///
     /// It should never return false positives.
     pub fn fully_contains(&self, other: &Self) -> bool {
+        // First check that we include everything included by other
         for (other_rule, other_effect) in &other.rules {
             match other_effect {
                 RuleEffect::Include => {
@@ -293,6 +294,27 @@ impl EntityPathFilter {
                     }
                 }
                 RuleEffect::Exclude => {}
+            }
+        }
+        // Next check that the other rule hasn't included something that we've excluded
+        for (self_rule, self_effect) in &self.rules {
+            match self_effect {
+                RuleEffect::Include => {}
+                RuleEffect::Exclude => {
+                    if let Some((_, effect)) = other
+                        .rules
+                        .iter()
+                        .rev()
+                        .find(|(r, _)| r.matches(&self_rule.path))
+                    {
+                        match effect {
+                            RuleEffect::Include => {
+                                return false;
+                            }
+                            RuleEffect::Exclude => {}
+                        }
+                    }
+                }
             }
         }
         // If we got here, we checked every inclusion rule in `other` and they all had a more-inclusive
@@ -516,6 +538,22 @@ fn test_fully_contains() {
                 "#,
             contains: ["+ /a", "+ /b/c"].into(),
             not_contains: ["+ /a/**", "+ /b/**"].into(),
+        },
+        TestCase {
+            filter: r#"
+                + /**
+                - /b/c
+                "#,
+            contains: ["+ /a", "+ /a/**", "+ /b", "+ /b/c/d"].into(),
+            not_contains: ["+ /b/**", "+ /b/c"].into(),
+        },
+        TestCase {
+            filter: r#"
+                + /**
+                - /b/c/**
+                "#,
+            contains: ["+ /a", "+ /a/**", "+ /b"].into(),
+            not_contains: ["+ /b/**", "+ /b/c", "+ /b/c/d"].into(),
         },
     ];
 
