@@ -515,6 +515,27 @@ impl SpaceViewBlueprint {
             .map(|q| q.entity_path_filter.clone())
             .sum()
     }
+
+    pub fn contains_all_entities_from(&self, other: &Self) -> bool {
+        // TODO(jleibs): Handle multi-query-aggregation
+
+        // If other has no query, by definition we contain all entities from it.
+        let Some(q_other) = other.queries.first() else {
+            return true;
+        };
+
+        // If other has any query, but self has no query, we clearly can't contain it
+        let Some(q_self) = self.queries.first() else {
+            return false;
+        };
+
+        // If the queries are equivalent, we contain all entities from it.
+        if q_self.fully_contains(q_other) {
+            return true;
+        }
+
+        return false;
+    }
 }
 
 #[cfg(test)]

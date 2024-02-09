@@ -350,18 +350,13 @@ impl<'a, 'b> Viewport<'a, 'b> {
             .values()
             .chain(already_added.iter())
         {
-            if existing_view.space_origin == space_view_candidate.space_origin {
+            if existing_view.class_identifier() == space_view_candidate.class_identifier() {
                 if existing_view.entities_determined_by_user {
                     // Since the user edited a space view with the same space path, we can't be sure our new one isn't redundant.
                     // So let's skip that.
                     return false;
                 }
-                if existing_view
-                    .queries
-                    .iter()
-                    .zip(space_view_candidate.queries.iter())
-                    .all(|(q1, q2)| q1.is_equivalent(q2))
-                {
+                if existing_view.contains_all_entities_from(space_view_candidate) {
                     // This space view wouldn't add anything we haven't already
                     return false;
                 }
