@@ -52,6 +52,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     for (path, obj) in inv {
         ctx.push(DocumentData {
             kind: DocumentKind::Python,
+            hidden_tags: vec!["py".into(), "python".into()],
             tags: vec![],
             content: docs.get(&path).cloned().unwrap_or_default(),
             url: format!("{base_url}/{uri}", uri = obj.uri),

@@ -26,9 +26,12 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("cpp");
 
     progress.set_message("doxygen");
-    Command::new("doxygen")
-        .with_arg("docs/Doxyfile")
-        .with_cwd(ctx.workspace_root().join("rerun_cpp"));
+    progress.suspend(|| {
+        Command::new("doxygen")
+            .with_arg("docs/Doxyfile")
+            .with_cwd(ctx.workspace_root().join("rerun_cpp"))
+            .run_async()
+    })?;
 
     let base_path = ctx.workspace_root().join("rerun_cpp/docs/xml");
     let mut visitor = Visitor {
@@ -61,6 +64,7 @@ impl<'a> Visitor<'a> {
         self.ctx.push(DocumentData {
             kind: DocumentKind::Cpp,
             title: name,
+            hidden_tags: vec!["c++".into(), "cpp".into()],
             tags: vec![],
             content: description,
             url: format!("https://ref.rerun.io/docs/cpp/stable/{uri}"),

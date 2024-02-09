@@ -18,6 +18,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         ctx.push(DocumentData {
             kind: DocumentKind::Examples,
             title: category.title.clone(),
+            hidden_tags: vec![],
             tags: vec![],
             content: category.prelude.clone(),
             url: format!("https://rerun.io/examples/{category_name}"),
@@ -38,6 +39,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
                 ctx.push(DocumentData {
                     kind: DocumentKind::Examples,
                     title: example.title,
+                    hidden_tags: vec![],
                     tags: example.tags,
                     content: example.readme_body,
                     url: format!("https://rerun.io/examples/{category_name}/{example_name}"),

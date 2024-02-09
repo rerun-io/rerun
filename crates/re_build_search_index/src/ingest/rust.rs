@@ -377,6 +377,7 @@ fn document(path: String, url: String, docs: String) -> DocumentData {
     DocumentData {
         kind: DocumentKind::Rust,
         title: path,
+        hidden_tags: vec!["rust".into()],
         tags: vec![],
         content: docs,
         url,

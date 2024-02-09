@@ -20,6 +20,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         ctx.push(DocumentData {
             kind: DocumentKind::Docs,
             title: frontmatter.title,
+            hidden_tags: vec![],
             tags: vec![],
             content: body,
             url,

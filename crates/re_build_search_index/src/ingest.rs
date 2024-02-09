@@ -115,6 +115,7 @@ impl Document {
 struct DocumentData {
     kind: DocumentKind,
     title: String,
+    hidden_tags: Vec<String>,
     tags: Vec<String>,
     content: String,
     url: String,
