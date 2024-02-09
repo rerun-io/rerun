@@ -197,7 +197,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                         for bucket_entities in
                             bucket_images_in_subspace(ctx, subspace, image_entities)
                         {
-                            add_recommended_space_views_for_bucket(
+                            add_recommended_space_views_for_image_bucket(
                                 ctx,
                                 &bucket_entities,
                                 &mut recommended_space_views,
@@ -316,7 +316,8 @@ fn count_non_nested_entities_with_component(
     }
 }
 
-fn add_recommended_space_views_for_bucket(
+/// Given a bucket of image entities.
+fn add_recommended_space_views_for_image_bucket(
     ctx: &ViewerContext<'_>,
     entity_bucket: &IntSet<EntityPath>,
     recommended: &mut Vec<RecommendedSpaceView>,
@@ -377,7 +378,7 @@ fn add_recommended_space_views_for_bucket(
             .collect();
 
         if !sub_bucket.is_empty() {
-            add_recommended_space_views_for_bucket(ctx, &sub_bucket, recommended);
+            add_recommended_space_views_for_image_bucket(ctx, &sub_bucket, recommended);
         }
     }
 }
