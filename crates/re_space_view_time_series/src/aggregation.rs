@@ -98,6 +98,9 @@ impl MinMaxAggregator {
         // NOTE: `round()` since this can only handle discrete window sizes.
         let window_size = usize::max(1, aggregation_window_size.round() as usize);
 
+        // Keep in mind that adjacent plot points can have the same `PlotPoint::time`,
+        // if data was logged multiple times on the same time stamp.
+
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
         let max_time = points.last().map_or(i64::MAX, |p| p.time);
 
@@ -115,9 +118,7 @@ impl MinMaxAggregator {
             let mut acc_max = points[i + j].clone();
             j += 1;
 
-            while j < window_size
-                && i + j < points.len()
-                && are_aggregatable(&points[i], &points[i + j], window_size)
+            while i + j < points.len() && are_aggregatable(&points[i], &points[i + j], window_size)
             {
                 let point = &points[i + j];
 
@@ -147,9 +148,11 @@ impl MinMaxAggregator {
 
             match self {
                 MinMaxAggregator::MinMax => {
-                    aggregated.push(acc_min);
-                    // Don't push the same point twice.
-                    if j > 1 {
+                    if acc_min == acc_max {
+                        // Don't push the same point twice.
+                        aggregated.push(acc_min);
+                    } else {
+                        aggregated.push(acc_min);
                         aggregated.push(acc_max);
                     }
                 }
