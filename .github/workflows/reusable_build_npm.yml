@@ -41,6 +41,9 @@ jobs:
         with:
           node-version: "20.x"
 
+      - name: Install Yarn
+        run: npm install -g yarn
+
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:
