@@ -292,6 +292,12 @@ impl SpaceViewClass for SpatialSpaceView2D {
     }
 }
 
+/// Count how many occurrences of the given component are in
+/// the intersection of the subtree and the entity bucket,
+/// but stops recursion if there is a hit.
+///
+/// * So if the subtree root is in the bucket: return 1 if it has the component, 0 otherwise.
+/// * If not: recurse on children and sum the results.
 fn count_non_nested_entities_with_component(
     entity_bucket: &IntSet<EntityPath>,
     subtree: &EntityTree,
@@ -304,7 +310,7 @@ fn count_non_nested_entities_with_component(
         .iter()
         .any(|e| e.is_descendant_of(&subtree.path))
     {
-        0
+        0 // early-out optimization
     } else {
         subtree
             .children
