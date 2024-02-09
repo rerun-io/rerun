@@ -52,8 +52,8 @@ jobs:
 
       - name: Install dependencies
         shell: bash
-        run: node rerun_js/web-viewer/scripts/install.mjs
+        run: yarn --cwd rerun_js install
 
       - name: Build package
         shell: bash
-        run: node rerun_js/web-viewer/scripts/build.mjs
+        run: yarn --cwd rerun_js workspaces run build
