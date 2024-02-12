@@ -273,17 +273,17 @@ impl EntityPathFilter {
         for (other_rule, other_effect) in &other.rules {
             match other_effect {
                 RuleEffect::Include => {
-                    if let Some((rule, effect)) = self
+                    if let Some((self_rule, self_effect)) = self
                         .rules
                         .iter()
                         .rev()
                         .find(|(r, _)| r.matches(&other_rule.path))
                     {
-                        match effect {
+                        match self_effect {
                             RuleEffect::Include => {
                                 // If the other rule includes the subtree, but the matching
                                 // rule doesn't, then we don't fully contain the other rule.
-                                if other_rule.include_subtree && !rule.include_subtree {
+                                if other_rule.include_subtree && !self_rule.include_subtree {
                                     return false;
                                 }
                             }
@@ -302,13 +302,13 @@ impl EntityPathFilter {
             match self_effect {
                 RuleEffect::Include => {}
                 RuleEffect::Exclude => {
-                    if let Some((_, effect)) = other
+                    if let Some((_, other_effect)) = other
                         .rules
                         .iter()
                         .rev()
                         .find(|(r, _)| r.matches(&self_rule.path))
                     {
-                        match effect {
+                        match other_effect {
                             RuleEffect::Include => {
                                 return false;
                             }
