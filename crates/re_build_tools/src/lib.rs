@@ -97,11 +97,11 @@ impl Environment {
             // "RERUN_IS_PUBLISHING" is set by `scripts/ci/crates.py`
             eprintln!("Environment: env-var RERUN_IS_PUBLISHING is set");
             Self::PublishingCrates
-        } else if is_in_rerun_workspace && is_on_ci() {
+        } else if is_in_rerun_workspace && std::env::var("CI").is_ok() {
             // `CI` is an env-var set by GitHub actions.
             eprintln!("Environment: env-var IS_IN_RERUN_WORKSPACE and CI are set");
             Self::RerunCI
-        } else if is_on_conda() {
+        } else if std::env::var("CONDA_BUILD").is_ok() {
             // `CONDA_BUILD` is an env-var set by conda build
             eprintln!("Environment: env-var CONDA_BUILD is set");
             Self::CondaBuild
@@ -114,21 +114,6 @@ impl Environment {
             Self::UsedAsDependency
         }
     }
-}
-
-/// Are we running on a CI machine?
-///
-/// Note that this will be true for users compiling a
-/// rerun crate dependency on their own GitHub Actions CI!
-pub fn is_on_ci() -> bool {
-    // `CI` is an env-var set by GitHub actions.
-    std::env::var("CI").is_ok()
-}
-
-/// Are we running in the Conda build environment?
-pub fn is_on_conda() -> bool {
-    // `CONDA_BUILD` is an env-var set by conda build
-    std::env::var("CONDA_BUILD").is_ok()
 }
 
 /// Call from the `build.rs` file of any crate you want to generate build info for.
@@ -199,7 +184,7 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         // We need to check `IS_IN_RERUN_WORKSPACE` in the build-script (here),
         // because otherwise it won't show up when compiling through maturin.
         // We must also make an exception for when we build actual wheels (on CI) for release.
-        if is_on_ci() {
+        if environment == Environment::RerunCI {
             // e.g. building wheels on CI.
             set_env("RE_BUILD_IS_IN_RERUN_WORKSPACE", "no");
         } else {
