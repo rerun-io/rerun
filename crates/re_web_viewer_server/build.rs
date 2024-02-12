@@ -17,9 +17,13 @@ fn should_run() -> bool {
         // We should build the web viewer before starting crate publishing
         Environment::PublishingCrates => false,
 
-        // TODO(emilk): only build the web viewer explicitly on CI
-        Environment::RerunCI | Environment::CondaBuild => true,
+        // We build the web viewer in an explicit, separate step.
+        Environment::RerunCI => false,
 
+        // TODO(emilk): build the web viewer as an explicit step instead
+        Environment::CondaBuild => true,
+
+        // If a developer is iterating on the viewer, they don't want to manually recompile it.
         Environment::DeveloperInWorkspace => true,
 
         // Definitely not
