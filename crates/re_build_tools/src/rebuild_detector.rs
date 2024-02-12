@@ -20,7 +20,7 @@ fn should_run() -> bool {
         Environment::PublishingCrates | Environment::CondaBuild => false,
 
         // Dependencies shouldn't change on CI, but who knows 🤷‍♂️
-        Environment::CI => true,
+        Environment::RerunCI => true,
 
         // Yes - this is what we want tracking for.
         Environment::DeveloperInWorkspace => true,

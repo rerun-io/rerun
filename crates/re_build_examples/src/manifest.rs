@@ -92,9 +92,9 @@ fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
     // In the CondaBuild environment we can't trust the git_branch name -- if it exists
     // at all it's going to be the feedstock branch-name, not our Rerun branch. However
     // conda should ONLY be building released versions, so we want to version the manifest.
-    let versioned_manifest = matches!(build_env, Environment::CondaBuild) || {
+    let versioned_manifest = build_env == Environment::CondaBuild || {
         let branch = re_build_tools::git_branch()?;
-        if branch == "main" || !re_build_tools::is_on_ci() {
+        if branch == "main" || build_env != Environment::RerunCI {
             // on `main` and local builds, use `version/main`
             // this will point to data uploaded by `.github/workflows/reusable_upload_examples.yml`
             // on every commit to the `main` branch

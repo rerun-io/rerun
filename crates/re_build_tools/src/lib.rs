@@ -58,13 +58,13 @@ pub(crate) fn should_output_cargo_build_instructions() -> bool {
 // ------------------
 
 /// Where is this `build.rs` build script running?
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Environment {
     /// We are running `cargo publish` (via `scripts/ci/crates.py`); _probably_ on CI.
     PublishingCrates,
 
-    /// We are running on CI, but NOT publishing crates
-    CI,
+    /// We are running on CI for the Rerun workspace, but NOT publishing crates.
+    RerunCI,
 
     /// We are running in the conda build environment.
     ///
@@ -78,7 +78,7 @@ pub enum Environment {
     /// Are we a developer running inside the workspace of <https://github.com/rerun-io/rerun> ?
     DeveloperInWorkspace,
 
-    /// We are not on CI, and not in the Rerun workspace.
+    /// We are not on Rerun's CI, and not in the Rerun workspace.
     ///
     /// This is _most likely_ a Rerun user who is compiling a `re_` crate
     /// because they depend on it either directly or indirectly in their `Cargo.toml`,
@@ -91,19 +91,21 @@ pub enum Environment {
 impl Environment {
     /// Detect what environment we are running in.
     pub fn detect() -> Self {
+        let is_in_rerun_workspace = is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE");
+
         if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
             // "RERUN_IS_PUBLISHING" is set by `scripts/ci/crates.py`
             eprintln!("Environment: env-var RERUN_IS_PUBLISHING is set");
             Self::PublishingCrates
-        } else if is_on_ci() {
+        } else if is_in_rerun_workspace && std::env::var("CI").is_ok() {
             // `CI` is an env-var set by GitHub actions.
-            eprintln!("Environment: env-var CI is set");
-            Self::CI
-        } else if is_on_conda() {
+            eprintln!("Environment: env-var IS_IN_RERUN_WORKSPACE and CI are set");
+            Self::RerunCI
+        } else if std::env::var("CONDA_BUILD").is_ok() {
             // `CONDA_BUILD` is an env-var set by conda build
             eprintln!("Environment: env-var CONDA_BUILD is set");
             Self::CondaBuild
-        } else if is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
+        } else if is_in_rerun_workspace {
             // IS_IN_RERUN_WORKSPACE is set by `.cargo/config.toml` and also in the Rust-analyzer settings in `.vscode/settings.json`
             eprintln!("Environment: env-var IS_IN_RERUN_WORKSPACE is set");
             Self::DeveloperInWorkspace
@@ -114,18 +116,6 @@ impl Environment {
     }
 }
 
-/// Are we running on a CI machine?
-pub fn is_on_ci() -> bool {
-    // `CI` is an env-var set by GitHub actions.
-    std::env::var("CI").is_ok()
-}
-
-/// Are we running in the Conda build environment?
-pub fn is_on_conda() -> bool {
-    // `CONDA_BUILD` is an env-var set by conda build
-    std::env::var("CONDA_BUILD").is_ok()
-}
-
 /// Call from the `build.rs` file of any crate you want to generate build info for.
 ///
 /// Use this crate together with the `re_build_info` crate.
@@ -133,7 +123,7 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
     let environment = Environment::detect();
 
     let export_datetime = match environment {
-        Environment::PublishingCrates | Environment::CI | Environment::CondaBuild => true,
+        Environment::PublishingCrates | Environment::RerunCI | Environment::CondaBuild => true,
 
         Environment::DeveloperInWorkspace => EXPORT_BUILD_TIME_FOR_DEVELOPERS,
 
@@ -143,7 +133,7 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
     };
 
     let export_git_info = match environment {
-        Environment::PublishingCrates | Environment::CI => true,
+        Environment::PublishingCrates | Environment::RerunCI => true,
 
         Environment::DeveloperInWorkspace => EXPORT_GIT_FOR_DEVELOPERS,
 
@@ -194,7 +184,7 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         // We need to check `IS_IN_RERUN_WORKSPACE` in the build-script (here),
         // because otherwise it won't show up when compiling through maturin.
         // We must also make an exception for when we build actual wheels (on CI) for release.
-        if is_on_ci() {
+        if environment == Environment::RerunCI {
             // e.g. building wheels on CI.
             set_env("RE_BUILD_IS_IN_RERUN_WORKSPACE", "no");
         } else {
