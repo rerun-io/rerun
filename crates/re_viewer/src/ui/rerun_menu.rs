@@ -386,19 +386,6 @@ fn experimental_feature_ui(
     re_ui
         .checkbox(
             ui,
-            &mut app_options.experimental_additive_workflow,
-            "Enable the container addition workflow",
-        )
-        .on_hover_text(
-            "This flag enables the experimental container addition workflow, including:\n\
-                - Remove the automatic simplification of the container tree.\n\
-                - Add a 'Content' list in the selection panel when a container is selected.\n\
-                - Add the 'Add space view/container' modal, accessible from the selection panel.",
-        );
-
-    re_ui
-        .checkbox(
-            ui,
             &mut app_options.experimental_plot_query_clamping,
             "Plots: query clamping",
         )
