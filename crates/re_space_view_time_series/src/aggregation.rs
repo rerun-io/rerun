@@ -6,6 +6,9 @@ pub struct AverageAggregator;
 
 impl AverageAggregator {
     /// `aggregation_factor`: the width of the aggregation window.
+    ///
+    /// Adjacent plot points may have the same `PlotPoint::time`,
+    /// if data was logged multiple times on the same time stamp.
     #[inline]
     pub fn aggregate(aggregation_factor: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
@@ -20,15 +23,14 @@ impl AverageAggregator {
 
         let mut i = 0;
         while i < points.len() {
+            // How many points to combine together this time.
             let mut j = 0;
 
             let mut ratio = 1.0;
             let mut acc = points[i + j].clone();
             j += 1;
 
-            while j < window_size
-                && i + j < points.len()
-                && are_aggregatable(&points[i], &points[i + j], window_size)
+            while i + j < points.len() && are_aggregatable(&points[i], &points[i + j], window_size)
             {
                 let point = &points[i + j];
 
@@ -93,6 +95,8 @@ pub enum MinMaxAggregator {
 }
 
 impl MinMaxAggregator {
+    /// Adjacent plot points may have the same `PlotPoint::time`,
+    /// if data was logged multiple times on the same time stamp.
     #[inline]
     pub fn aggregate(&self, aggregation_window_size: f64, points: &[PlotPoint]) -> Vec<PlotPoint> {
         // NOTE: `round()` since this can only handle discrete window sizes.
@@ -109,15 +113,14 @@ impl MinMaxAggregator {
 
         let mut i = 0;
         while i < points.len() {
+            // How many points to combine together this time.
             let mut j = 0;
 
             let mut acc_min = points[i + j].clone();
             let mut acc_max = points[i + j].clone();
             j += 1;
 
-            while j < window_size
-                && i + j < points.len()
-                && are_aggregatable(&points[i], &points[i + j], window_size)
+            while i + j < points.len() && are_aggregatable(&points[i], &points[i + j], window_size)
             {
                 let point = &points[i + j];
 
@@ -148,7 +151,7 @@ impl MinMaxAggregator {
             match self {
                 MinMaxAggregator::MinMax => {
                     aggregated.push(acc_min);
-                    // Don't push the same point twice.
+                    // Avoid pushing the same point twice.
                     if j > 1 {
                         aggregated.push(acc_max);
                     }

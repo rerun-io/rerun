@@ -59,7 +59,7 @@ impl PartialEq for PlotPointAttrs {
 
 impl Eq for PlotPointAttrs {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct PlotPoint {
     time: i64,
     value: f64,
