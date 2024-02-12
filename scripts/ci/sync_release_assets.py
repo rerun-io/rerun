@@ -96,28 +96,29 @@ def fetch_binary_assets(
         rerun_c_blobs = [
             (
                 f"rerun_c-{tag}-x86_64-pc-windows-msvc.lib",
-                bucket.get_blob(f"commit/{commit_short}/rerun_c/windows/rerun_c.lib"),
+                f"commit/{commit_short}/rerun_c/windows/rerun_c.lib",
             ),
             (
                 f"librerun_c-{tag}-x86_64-unknown-linux-gnu.a",
-                bucket.get_blob(f"commit/{commit_short}/rerun_c/linux/librerun_c.a"),
+                f"commit/{commit_short}/rerun_c/linux/librerun_c.a",
             ),
             (
                 f"librerun_c-{tag}-aarch64-apple-darwin.a",
-                bucket.get_blob(f"commit/{commit_short}/rerun_c/macos-arm/librerun_c.a"),
+                f"commit/{commit_short}/rerun_c/macos-arm/librerun_c.a",
             ),
             (
                 f"librerun_c-{tag}-x86_64-apple-darwin.a",
-                bucket.get_blob(f"commit/{commit_short}/rerun_c/macos-intel/librerun_c.a"),
+                f"commit/{commit_short}/rerun_c/macos-intel/librerun_c.a",
             ),
         ]
-        for name, blob in rerun_c_blobs:
+        for name, blob_url in rerun_c_blobs:
+            blob = bucket.get_blob(blob_url)
             if blob is not None:
                 print(f"Found Rerun C library: {name}")
                 assets[name] = blob
             else:
                 all_found = False
-                print(f"Rerun C library {name} not found")
+                print(f"Failed to fetch blob {blob_url} ({name})")
 
     # rerun_cpp_sdk
     if do_rerun_cpp_sdk:
@@ -138,31 +139,32 @@ def fetch_binary_assets(
         rerun_cli_blobs = [
             (
                 f"rerun-cli-{tag}-x86_64-pc-windows-msvc.exe",
-                bucket.get_blob(f"commit/{commit_short}/rerun-cli/windows/rerun.exe"),
+                f"commit/{commit_short}/rerun-cli/windows/rerun.exe",
             ),
             (
                 f"rerun-cli-{tag}-x86_64-unknown-linux-gnu",
-                bucket.get_blob(f"commit/{commit_short}/rerun-cli/linux/rerun"),
+                f"commit/{commit_short}/rerun-cli/linux/rerun",
             ),
             (
                 f"rerun-cli-{tag}-aarch64-apple-darwin",
-                bucket.get_blob(f"commit/{commit_short}/rerun-cli/macos-arm/rerun"),
+                f"commit/{commit_short}/rerun-cli/macos-arm/rerun",
             ),
             (
                 f"rerun-cli-{tag}-x86_64-apple-darwin",
-                bucket.get_blob(f"commit/{commit_short}/rerun-cli/macos-intel/rerun"),
+                f"commit/{commit_short}/rerun-cli/macos-intel/rerun",
             ),
         ]
-        for name, blob in rerun_cli_blobs:
+        for name, blob_url in rerun_cli_blobs:
+            blob = bucket.get_blob(blob_url)
             if blob is not None:
                 print(f"Found Rerun CLI binary: {name}")
                 assets[name] = blob
             else:
                 all_found = False
-                print(f"Rerun CLI binary {name} not found")
+                print(f"Failed to fetch blob {blob_url} ({name})")
 
     if not all_found:
-        raise Exception("some requested assets were not found")
+        raise Exception("Some requested assets were not found")
 
     return assets
 
