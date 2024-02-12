@@ -516,7 +516,7 @@ impl SpaceViewBlueprint {
             .sum()
     }
 
-    pub fn contains_all_entities_from(&self, other: &Self) -> bool {
+    pub fn entity_path_filter_is_superset_of(&self, other: &Self) -> bool {
         // TODO(jleibs): Handle multi-query-aggregation
 
         // If other has no query, by definition we contain all entities from it.
@@ -530,7 +530,7 @@ impl SpaceViewBlueprint {
         };
 
         // If this query fully contains the other, then we have all its entities
-        q_self.fully_contains(q_other)
+        q_self.entity_path_filter_is_superset_of(q_other)
     }
 }
 

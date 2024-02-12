@@ -57,7 +57,7 @@ impl DataQueryBlueprint {
     /// This is a conservative estimate, and may return `false` in situations where the
     /// query does in fact cover the other query. However, it should never return `true`
     /// in a case where the other query would not be fully covered.
-    pub fn fully_contains(&self, other: &DataQueryBlueprint) -> bool {
+    pub fn entity_path_filter_is_superset_of(&self, other: &DataQueryBlueprint) -> bool {
         // A query can't fully contain another if their space-view classes don't match
         if self.space_view_class_identifier != other.space_view_class_identifier {
             return false;
@@ -65,7 +65,7 @@ impl DataQueryBlueprint {
 
         // Anything included by the other query is also included by this query
         self.entity_path_filter
-            .fully_contains(&other.entity_path_filter)
+            .is_superset_of(&other.entity_path_filter)
     }
 }
 
