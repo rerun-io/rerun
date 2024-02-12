@@ -19,7 +19,7 @@ homepage = "https://rerun.io"
 include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
-rust-version = "1.72"
+rust-version = "1.74"
 version = "0.13.0"
 
 [workspace.dependencies]
