@@ -508,12 +508,13 @@ fn test_fully_contains() {
         TestCase {
             filter: "+ /**",
             contains: [
+                "",
                 "+ /**",
                 "+ /a/**",
                 r#"+ /a/**
-                + /b/c
-                + /b/d
-                "#,
+                   + /b/c
+                   + /b/d
+                   "#,
             ]
             .into(),
             not_contains: [].into(),
@@ -525,10 +526,9 @@ fn test_fully_contains() {
                 "+ /**",
                 "+ /b/**",
                 "+ /b",
-                r#"
-                + /a/b
-                + /b
-                "#,
+                r#"+ /a/b
+                   + /b
+                   "#,
             ]
             .into(),
         },
@@ -538,7 +538,7 @@ fn test_fully_contains() {
                 + /b/c
                 "#,
             contains: ["+ /a", "+ /b/c"].into(),
-            not_contains: ["+ /a/**", "+ /b/**"].into(),
+            not_contains: ["+ /a/**", "+ /b/**", "+ /b/c/d"].into(),
         },
         TestCase {
             filter: r#"
@@ -564,18 +564,18 @@ fn test_fully_contains() {
             let contains_filter = EntityPathFilter::parse_forgiving(contains);
             assert!(
                 filter.fully_contains(&contains_filter),
-                "filter: {:?}, contains: {:?}",
-                case.filter,
-                contains
+                "Expected {:?} to fully contain {:?}, but it didn't",
+                filter.formatted(),
+                contains_filter.formatted(),
             );
         }
         for not_contains in &case.not_contains {
             let not_contains_filter = EntityPathFilter::parse_forgiving(not_contains);
             assert!(
                 !filter.fully_contains(&not_contains_filter),
-                "filter: {:?}, not_contains: {:?}",
-                case.filter,
-                not_contains
+                "Expected {:?} to NOT fully contain {:?}, but it did",
+                filter.formatted(),
+                not_contains_filter.formatted(),
             );
         }
     }
