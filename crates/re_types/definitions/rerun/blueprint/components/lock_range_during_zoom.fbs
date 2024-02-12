@@ -13,7 +13,6 @@ namespace rerun.blueprint.components;
 ///
 /// Default is `false`, i.e. zoom will change the visualized range.
 struct LockRangeDuringZoom (
-    "attr.docs.unreleased",
     "attr.arrow.transparent",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Copy, PartialEq, Eq",

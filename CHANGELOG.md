@@ -7,7 +7,7 @@
 ### Overview & Highlights
 
 This release focuses on scalar time series -- both from a performance and UI perspectives.
-Check out our [associated blog post](https://www.rerun.io/blog/fast-plots?speculative-link) for more information.
+Check out our [associated blog post](https://www.rerun.io/blog/fast-plots) for more information.
 
 - 📈 Rerun can now visualize many time series in the kHz range in real-time:
     - The new query cache optimizes data access, improving query performance by 20-50x
