@@ -305,7 +305,7 @@ jobs:
         run: |
           git fetch
           git checkout ${{ github.ref_name }}
-          git push --force origin refs/heads${{ github.ref_name }}:refs/heads/latest
+          git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/latest
 
   github-release:
     name: "GitHub Release"
@@ -326,7 +326,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           ref: ${{ needs.version.outputs.release-commit }}
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
