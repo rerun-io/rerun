@@ -58,7 +58,7 @@ pub(crate) fn should_output_cargo_build_instructions() -> bool {
 // ------------------
 
 /// Where is this `build.rs` build script running?
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Environment {
     /// We are running `cargo publish` (via `scripts/ci/crates.py`); _probably_ on CI.
     PublishingCrates,
