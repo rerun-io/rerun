@@ -1,6 +1,6 @@
 [package]
 name = "custom_store_subscriber"
-version = "0.13.0-rc.6"
+version = "0.13.0-rc.7"
 edition = "2021"
 rust-version = "1.72"
 license = "MIT OR Apache-2.0"
