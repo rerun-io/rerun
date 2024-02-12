@@ -25,7 +25,26 @@ pub fn top_panel(
         .frame(app.re_ui().top_panel_frame())
         .exact_height(top_bar_style.height)
         .show_inside(ui, |ui| {
-            let _response = egui::menu::bar(ui, |ui| {
+            // React to dragging and double-clicking the top bar:
+            #[cfg(not(target_arch = "wasm32"))]
+            if !re_ui::NATIVE_WINDOW_BAR {
+                // Interact with background first, so that buttons in the top bar gets input priority
+                // (last added widget has priority for input).
+                let title_bar_response = ui.interact(
+                    ui.max_rect(),
+                    ui.id().with("background"),
+                    egui::Sense::click(),
+                );
+                if title_bar_response.double_clicked() {
+                    let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
+                    ui.ctx()
+                        .send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
+                } else if title_bar_response.is_pointer_button_down_on() {
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                }
+            }
+
+            egui::menu::bar(ui, |ui| {
                 ui.set_height(top_bar_style.height);
                 ui.add_space(top_bar_style.indent);
 
@@ -37,21 +56,7 @@ pub fn top_panel(
                     ui,
                     gpu_resource_stats,
                 );
-            })
-            .response;
-
-            // React to dragging and double-clicking the top bar:
-            #[cfg(not(target_arch = "wasm32"))]
-            if !re_ui::NATIVE_WINDOW_BAR {
-                let title_bar_response = _response.interact(egui::Sense::click());
-                if title_bar_response.double_clicked() {
-                    let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
-                    ui.ctx()
-                        .send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
-                } else if title_bar_response.is_pointer_button_down_on() {
-                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
-                }
-            }
+            });
         });
 }
 
