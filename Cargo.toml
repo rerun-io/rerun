@@ -74,15 +74,15 @@ re_ws_comms = { path = "crates/re_ws_comms", version = "=0.13.0-rc.7", default-f
 rerun = { path = "crates/rerun", version = "=0.13.0-rc.7", default-features = false }
 
 # egui-crates:
-ecolor = "0.26.0"
-eframe = { version = "0.26.0", default-features = false, features = [
+ecolor = "0.26.1"
+eframe = { version = "0.26.1", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "puffin",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.26.0", features = [
+egui = { version = "0.26.1", features = [
   "callstack",
   "extra_debug_asserts",
   "log",
@@ -90,11 +90,11 @@ egui = { version = "0.26.0", features = [
   "rayon",
 ] }
 egui_commonmark = { version = "0.12", default-features = false }
-egui_extras = { version = "0.26.0", features = ["http", "image", "puffin"] }
-egui_plot = "0.26.0"
+egui_extras = { version = "0.26.1", features = ["http", "image", "puffin"] }
+egui_plot = "0.26.1"
 egui_tiles = "0.7.2"
-egui-wgpu = "0.26.0"
-emath = "0.26.0"
+egui-wgpu = "0.26.1"
+emath = "0.26.1"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
