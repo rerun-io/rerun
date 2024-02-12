@@ -197,7 +197,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                         .cloned()
                         .collect();
 
-                    // For explicit 2D pinholes start at the origin, otherwise start at the common ancestor.
+                    // For explicit 2D spaces (typically indicated by a pinhole or similar) start at the origin, otherwise start at the common ancestor.
                     // This generally avoids the `/` root entity unless it's required as a common ancestor.
                     let recommended_root =
                         if subspace.dimensionality == SubSpaceDimensionality::TwoD {
@@ -257,9 +257,9 @@ impl SpaceViewClass for SpatialSpaceView2D {
     }
 }
 
-// Count the number of entities with the given component exist that aren't
+// Count the number of image entities with the given component exist that aren't
 // children of other entities in the bucket.
-fn count_non_nested_entities_with_component(
+fn count_non_nested_images_with_component(
     image_dimensions: &IntMap<EntityPath, ImageDimensions>,
     entity_bucket: &IntSet<EntityPath>,
     subtree: &EntityTree,
@@ -278,7 +278,7 @@ fn count_non_nested_entities_with_component(
             .children
             .values()
             .map(|child| {
-                count_non_nested_entities_with_component(
+                count_non_nested_images_with_component(
                     image_dimensions,
                     entity_bucket,
                     child,
@@ -298,11 +298,11 @@ fn find_non_nested_image_dimensions(
     image_dimensions: &IntMap<EntityPath, ImageDimensions>,
     entity_bucket: &IntSet<EntityPath>,
     subtree: &EntityTree,
-    found_image_dimensions: &mut HashSet<(u64, u64)>,
+    found_image_dimensions: &mut HashSet<[u64; 2]>,
 ) {
     if let Some(dimensions) = image_dimensions.get(&subtree.path) {
         // If we found an image entity, add its dimensions to the set.
-        found_image_dimensions.insert((dimensions.height, dimensions.width));
+        found_image_dimensions.insert([dimensions.height, dimensions.width]);
     } else if entity_bucket
         .iter()
         .any(|e| e.is_descendant_of(&subtree.path))
@@ -326,6 +326,8 @@ fn recommended_space_views_with_image_splits(
     entities: &IntSet<EntityPath>,
     recommended: &mut Vec<RecommendedSpaceView>,
 ) {
+    re_tracing::profile_function!();
+
     let tree = ctx.entity_db.tree();
 
     let Some(subtree) = tree.subtree(recommended_root) else {
@@ -344,14 +346,14 @@ fn recommended_space_views_with_image_splits(
         &mut found_image_dimensions,
     );
 
-    let image_count = count_non_nested_entities_with_component(
+    let image_count = count_non_nested_images_with_component(
         image_dimensions,
         entities,
         subtree,
         &Image::indicator().name(),
     );
 
-    let depth_count = count_non_nested_entities_with_component(
+    let depth_count = count_non_nested_images_with_component(
         image_dimensions,
         entities,
         subtree,
