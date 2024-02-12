@@ -34,7 +34,7 @@ Check out our [associated blog post](https://www.rerun.io/blog/fast-plots?specul
 
 - 🦀 The rust SDK now exposes an optional integration with the `mint` crate
 - 🕸️ The web UI SDK now supports loading multiple `.rrd` URLs
-- 🔺 The web viewer noew renders using WebGPU by default (when available), leading to lower memory usage on Chrome.
+- 🔺 The web viewer now renders using WebGPU by default (when available), leading to lower memory usage on Chrome.
   You can override this behavior using `?renderer=webgl`/`?renderer=webgpu` url parameter, or restart with WebGL/WebGPU respectively from the options menu.
 
 As well as a lot of miscellaneous bug fixes and usability improvements: see details below.
@@ -58,7 +58,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 - Fix support for compressing mono images by respecting mode to determine depth [#4847](https://github.com/rerun-io/rerun/pull/4847)
 
 #### 🪳 Bug Fixes
-- External loader: don't do process IO on compute threadpool [#4942](https://github.com/rerun-io/rerun/pull/4942)
+- External loader: don't do process IO on compute thread-pool [#4942](https://github.com/rerun-io/rerun/pull/4942)
 - Fix a Visible Time Range UI issue where the summary string would display the wrong data range [#5034](https://github.com/rerun-io/rerun/pull/5034)
 - Clear empty containers after tile drag-and-drop [#5044](https://github.com/rerun-io/rerun/pull/5044)
 - Allow for very large meshes & plots by always picking the largest available GPU buffer size [#5053](https://github.com/rerun-io/rerun/pull/5053)
@@ -98,7 +98,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
     - Primary caching 16: context-free range semantics [#4851](https://github.com/rerun-io/rerun/pull/4851)
     - Primary caching 17: timeless range [#4852](https://github.com/rerun-io/rerun/pull/4852)
     - Primary caching 18: range invalidation (ENABLED BY DEFAULT :confetti_ball:) [#4853](https://github.com/rerun-io/rerun/pull/4853)
-    - Primary caching 19 (final): de-staticify cache globals [#4856](https://github.com/rerun-io/rerun/pull/4856)
+    - Primary caching 19 (final): make cache globals non-static [#4856](https://github.com/rerun-io/rerun/pull/4856)
 - Integrate query caching with more primitives:
     - Cached 2D & 3D box clouds [#5000](https://github.com/rerun-io/rerun/pull/5000)
     - Cached 2D & 3D line clouds [#5083](https://github.com/rerun-io/rerun/pull/5083)
