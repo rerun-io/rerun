@@ -515,6 +515,23 @@ impl SpaceViewBlueprint {
             .map(|q| q.entity_path_filter.clone())
             .sum()
     }
+
+    pub fn entity_path_filter_is_superset_of(&self, other: &Self) -> bool {
+        // TODO(jleibs): Handle multi-query-aggregation
+
+        // If other has no query, by definition we contain all entities from it.
+        let Some(q_other) = other.queries.first() else {
+            return true;
+        };
+
+        // If other has any query, but self has no query, we clearly can't contain it
+        let Some(q_self) = self.queries.first() else {
+            return false;
+        };
+
+        // If this query fully contains the other, then we have all its entities
+        q_self.entity_path_filter_is_superset_of(q_other)
+    }
 }
 
 #[cfg(test)]
