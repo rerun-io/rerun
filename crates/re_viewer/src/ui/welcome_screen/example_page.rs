@@ -364,6 +364,11 @@ impl ExamplePage {
 
                 for example in examples {
                     if example.clicked(ui, self.id) {
+                        // TODO(#5177): This workaround is needed to avoid the click to "leak"
+                        // through the UI, potentially causing some views (e.g. timeseries or time
+                        // panel to quit auto-zoom mode.
+                        ui.input_mut(|i| i.pointer = Default::default());
+
                         let data_source =
                             re_data_source::DataSource::RrdHttpUrl(example.desc.rrd_url.clone());
                         command_sender.send_system(
