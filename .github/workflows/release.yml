@@ -326,7 +326,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.version.outputs.release-commit }}
+          fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - name: Release tag
@@ -334,7 +334,8 @@ jobs:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
           version="${{ needs.version.outputs.final }}"
-          git tag $version
+          commit="${{ needs.version.outputs.release-commit }}"
+          git tag $version $commit
           git push origin $version
           gh release create $version --verify-tag --draft --title $version
 
@@ -372,7 +373,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ needs.version.outputs.release-commit }}
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - uses: actions/setup-node@v4
