@@ -41,7 +41,7 @@ See the [Types](../reference/types.md) reference for a list of archetypes, compo
 
 ### Adding custom data
 
-Although both the SDKs' archetype objects and the space view are based on the same archetype definition (and are actually implemented using code that is automatically generated based that definition), they both operate on arbitrary collection
+Although both the SDKs' archetype objects and the space view are based on the same archetype definition (and are actually implemented using code that is automatically generated based on that definition), they both operate on arbitrary collection
 of components. Neither the SDKs nor the viewer enforce or require that an entity should contain a *specific* set of component.
 The Rerun viewer will display any data in a generic form, but its space views will only work on sets of components it can
 make sense of.
