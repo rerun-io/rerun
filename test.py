@@ -1,5 +1,7 @@
-import rerun as rr
+from __future__ import annotations
+
 import numpy as np
+import rerun as rr
 
 rr.init("test", spawn=True)
 
