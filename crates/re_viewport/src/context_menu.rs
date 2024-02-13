@@ -232,8 +232,9 @@ impl ContextMenuItem for AddContainer {
         format!("{:?}", self.container_kind)
     }
 
-    fn run(&self, _ctx: &ViewerContext<'_>, viewport_blueprint: &ViewportBlueprint) {
+    fn run(&self, ctx: &ViewerContext<'_>, viewport_blueprint: &ViewportBlueprint) {
         viewport_blueprint.add_container(self.container_kind, Some(self.target_container));
+        viewport_blueprint.mark_user_interaction(ctx);
     }
 }
 
