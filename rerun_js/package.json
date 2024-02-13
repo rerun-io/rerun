@@ -11,8 +11,5 @@
   "workspaces": [
     "web-viewer",
     "web-viewer-react"
-  ],
-  "scripts": {
-    "bump": "node scripts/version.mjs"
-  }
+  ]
 }

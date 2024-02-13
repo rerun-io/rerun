@@ -52,6 +52,29 @@ export function stripSemverBuildMetadata(version) {
 }
 
 /**
+ * Returns the appropriate NPM package tag for `version`.
+ *
+ * @type {(version: string) => "alpha" | "rc" | "latest"}
+ */
+export function inferTag(version) {
+  /** @type {"alpha" | "rc" | "latest"} */
+  let tag = "latest";
+
+  const [, prerelease] = version.split("-");
+  if (prerelease) {
+    const [kind, n] = prerelease.split(".");
+    switch (kind) {
+      case "alpha":
+        tag = "alpha";
+      case "rc":
+        tag = "rc";
+    }
+  }
+
+  return tag;
+}
+
+/**
  * Returns `true` if `package@version` is already published.
  *
  * @type {(packageName: string, version: string) => Promise<boolean>}
