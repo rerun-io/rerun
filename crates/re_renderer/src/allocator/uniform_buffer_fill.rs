@@ -1,7 +1,5 @@
 use re_log::ResultExt;
 
-pub use super::cpu_write_gpu_read_belt::{CpuWriteGpuReadBelt, CpuWriteGpuReadBuffer};
-
 use crate::{wgpu_resources::BindGroupEntry, DebugLabel, RenderContext};
 
 struct UniformBufferAlignmentCheck<T> {
