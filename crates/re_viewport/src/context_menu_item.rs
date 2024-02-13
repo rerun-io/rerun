@@ -39,7 +39,7 @@ fn context_menu_items_for_item(
 ) -> Vec<Box<dyn ContextMenuItem>> {
     match item {
         Item::Container(container_id) => vec![
-            ContentVisibilityTogggle::item(Contents::Container(*container_id)),
+            ContentVisibilityToggle::item(Contents::Container(*container_id)),
             ContentRemove::item(Contents::Container(*container_id)),
             Separator::item(),
             SubMenu::item(
@@ -60,7 +60,7 @@ fn context_menu_items_for_item(
             ),
         ],
         Item::SpaceView(space_view_id) => vec![
-            ContentVisibilityTogggle::item(Contents::SpaceView(*space_view_id)),
+            ContentVisibilityToggle::item(Contents::SpaceView(*space_view_id)),
             ContentRemove::item(Contents::SpaceView(*space_view_id)),
         ],
         Item::StoreId(_)
@@ -155,17 +155,17 @@ impl ContextMenuItem for Separator {
 // ================================================================================================
 
 /// Control the visibility of a container or space view
-struct ContentVisibilityTogggle {
+struct ContentVisibilityToggle {
     contents: Contents,
 }
 
-impl ContentVisibilityTogggle {
+impl ContentVisibilityToggle {
     fn item(contents: Contents) -> Box<dyn ContextMenuItem> {
         Box::new(Self { contents })
     }
 }
 
-impl ContextMenuItem for ContentVisibilityTogggle {
+impl ContextMenuItem for ContentVisibilityToggle {
     fn label(&self, _ctx: &ViewerContext<'_>, viewport_blueprint: &ViewportBlueprint) -> String {
         if viewport_blueprint.is_contents_visible(&self.contents) {
             "Hide".to_owned()
