@@ -286,9 +286,9 @@ pub fn create_labels(
     // Closest last (painters algorithm)
     labels.sort_by_key(|label| {
         if let UiLabelTarget::Position3D(pos) = label.target {
-            OrderedFloat::try_from(-ui_from_world_3d.transform_point3(pos).z).ok()
+            OrderedFloat::from(-ui_from_world_3d.transform_point3(pos).z)
         } else {
-            Default::default()
+            OrderedFloat::from(0.0)
         }
     });
 

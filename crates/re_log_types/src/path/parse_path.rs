@@ -266,12 +266,12 @@ fn join(tokens: &[&str]) -> String {
     s
 }
 
-/// "/foo/bar" -> ["/", "foo", "/", "bar"]
+/// `"/foo/bar"` -> `["/", "foo", "/", "bar"]`
 fn tokenize_entity_path(path: &str) -> Vec<&str> {
     tokenize_by(path, &[b'/'])
 }
 
-/// "/foo/bar[#42]:Color" -> ["/", "foo", "/", "bar", "[", "#42:", "]", ":", "Color"]
+/// `"/foo/bar[#42]:Color"` -> `["/", "foo", "/", "bar", "[", "#42:", "]", ":", "Color"]`
 fn tokenize_data_path(path: &str) -> Vec<&str> {
     tokenize_by(path, &[b'/', b'[', b']', b':'])
 }

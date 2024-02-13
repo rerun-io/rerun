@@ -407,17 +407,9 @@ fn e2e_latency_ui(
     ui: &mut egui::Ui,
     store_context: Option<&StoreContext<'_>>,
 ) -> Option<egui::Response> {
-    let Some(store_context) = store_context else {
-        return None;
-    };
-
-    let Some(recording) = store_context.recording else {
-        return None;
-    };
-
-    let Some(e2e_latency_sec) = recording.ingestion_stats().current_e2e_latency_sec() else {
-        return None;
-    };
+    let store_context = store_context?;
+    let recording = store_context.recording?;
+    let e2e_latency_sec = recording.ingestion_stats().current_e2e_latency_sec()?;
 
     if e2e_latency_sec > 60.0 {
         return None; // Probably an old recording and not live data.
