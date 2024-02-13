@@ -98,15 +98,14 @@ impl SeriesLineSystem {
 
         let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
 
-        let data_results = query
-            .iter_visible_data_results(Self::identifier())
-            .collect_vec();
+        let data_results = query.iter_visible_data_results(Self::identifier());
 
         if false {
             // TODO(emilk): enable parallel loading when it is faster, because right now it is often slower.
             use rayon::prelude::*;
             re_tracing::profile_wait!("load_series");
             for one_series in data_results
+                .collect_vec()
                 .par_iter()
                 .map(|data_result| -> Result<Vec<PlotSeries>, QueryError> {
                     let annotations = self.annotation_map.find(&data_result.entity_path);
