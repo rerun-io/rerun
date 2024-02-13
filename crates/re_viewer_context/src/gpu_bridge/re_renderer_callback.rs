@@ -78,7 +78,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
 
     fn paint<'a>(
         &'a self,
-        info: egui::PaintCallbackInfo,
+        _info: egui::PaintCallbackInfo,
         render_pass: &mut wgpu::RenderPass<'a>,
         paint_callback_resources: &'a egui_wgpu::CallbackResources,
     ) {
@@ -97,10 +97,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
             return;
         };
 
-        let screen_position = (info.viewport.min.to_vec2() * info.pixels_per_point).round();
-        let screen_position = glam::vec2(screen_position.x, screen_position.y);
-
         self.view_builder
-            .composite(ctx, render_pipelines, render_pass, screen_position);
+            .composite(ctx, render_pipelines, render_pass);
     }
 }
