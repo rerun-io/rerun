@@ -135,11 +135,6 @@ jobs:
           echo "current=$current"   >> "$GITHUB_OUTPUT"
           echo "final=$final"       >> "$GITHUB_OUTPUT"
 
-      - name: Update NPM versions
-        shell: bash
-        run: |
-          node rerun_js/web-viewer/scripts/version.mjs ${{ steps.versioning.outputs.current }}
-
       - name: Update rerun_c version
         shell: bash
         # Configuring CMake is enough to change the version on rerun.h!
@@ -269,15 +264,6 @@ jobs:
       concurrency: ${{ github.ref_name }}
     secrets: inherit
 
-  publish-npm:
-    name: "Publish to NPM"
-    needs: [version]
-    uses: ./.github/workflows/reusable_publish_npm.yml
-    with:
-      release-commit: ${{ needs.version.outputs.release-commit }}
-      concurrency: ${{ github.ref_name }}
-    secrets: inherit
-
   update-latest-branch:
     name: "Update Latest Branch"
     if: inputs.release-type == 'final'
@@ -290,7 +276,6 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
-        publish-npm,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -319,7 +304,6 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
-        publish-npm,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -364,7 +348,6 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
-        publish-npm,
         github-release,
       ]
     runs-on: ubuntu-latest
@@ -421,7 +404,6 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
-        publish-npm,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -451,13 +433,11 @@ jobs:
           fi
           wheels_link="https://pypi.org/project/rerun-sdk/${{ needs.version.outputs.current }}"
           crates_link="https://crates.io/crates/rerun/${{ needs.version.outputs.current }}"
-          npm_link="https://www.npmjs.com/package/@rerun-io/web-viewer/v/${{ needs.version.outputs.current }}"
           rs_docs_link="https://docs.rs/rerun/${{ needs.version.outputs.current }}"
           cpp_sdk_zip_link="https://build.rerun.io/commit/$short_commit_hash/rerun_cpp_sdk.zip"
 
           pip_install="pip install rerun-sdk==${{ needs.version.outputs.current }}"
           cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }}"
-          npm_install="npm install @rerun-io/web-viewer@${{ needs.version.outputs.current }}"
 
           cat <<EOF > comment-body.txt
           Version ${{ needs.version.outputs.current }} published successfully.
@@ -467,7 +447,6 @@ jobs:
           | [web app]($web_app_link)          |                |
           | [wheels]($wheels_link)            | $pip_install   |
           | [crates]($crates_link)            | $cargo_install |
-          | [npm]($npm_link)                  | $npm_install   |
           | [docs]($rerun_io_docs_link)       |                |
           | [py docs]($py_docs_link)          |                |
           | [rs docs]($rs_docs_link)          |                |

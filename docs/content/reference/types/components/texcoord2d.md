@@ -24,9 +24,9 @@ which places the origin at the bottom-left.
 * uv: [`Vec2D`](../datatypes/vec2d.md)
 
 ## Links
- * 🌊 [C++ API docs for `Texcoord2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Texcoord2D.html?speculative-link)
- * 🐍 [Python API docs for `Texcoord2D`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Texcoord2D)
- * 🦀 [Rust API docs for `Texcoord2D`](https://docs.rs/rerun/latest/rerun/components/struct.Texcoord2D.html?speculative-link)
+ * 🌊 [C++ API docs for `Texcoord2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Texcoord2D.html)
+ * 🐍 [Python API docs for `Texcoord2D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Texcoord2D)
+ * 🦀 [Rust API docs for `Texcoord2D`](https://docs.rs/rerun/latest/rerun/components/struct.Texcoord2D.html)
 
 
 ## Used by
