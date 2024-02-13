@@ -20,11 +20,11 @@ impl<T> UniformBufferAlignmentCheck<T> {
     /// Alternatively to enforcing this alignment on the type we could:
     /// * only align on the gpu buffer
     ///     -> causes more fine grained `copy_buffer_to_buffer` calls on the gpu encoder
-    /// * only align on the [`CpuWriteGpuReadBuffer`] & gpu buffer
-    ///     -> causes more complicated offset computation on [`CpuWriteGpuReadBuffer`] as well as either
+    /// * only align on the [`CpuWriteGpuReadBuffer`][crate::allocator::CpuWriteGpuReadBuffer] & gpu buffer
+    ///     -> causes more complicated offset computation on [`CpuWriteGpuReadBuffer`][crate::allocator::CpuWriteGpuReadBuffer] as well as either
     ///         holes at padding (-> undefined values & slow for write combined!) or complicated nulling of padding
     ///
-    /// About the [`bytemuck::Pod`] requirement (dragged in by [`CpuWriteGpuReadBuffer`]):
+    /// About the [`bytemuck::Pod`] requirement (dragged in by [`CpuWriteGpuReadBuffer`][crate::allocator::CpuWriteGpuReadBuffer]):
     /// [`bytemuck::Pod`] forces us to be explicit about padding as it doesn't allow invisible padding bytes!
     /// We could drop this and thus make it easier to define uniform buffer types.
     /// But this leads to more unsafe code, harder to avoid holes in write combined memory access
