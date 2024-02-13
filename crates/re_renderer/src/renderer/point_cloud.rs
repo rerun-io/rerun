@@ -742,14 +742,15 @@ fn data_texture_size(
 ) -> wgpu::Extent3d {
     assert!(max_texture_size.is_power_of_two());
 
-    // Our data textures are usually accessed in a linear fashion,
-    // so ideally we'd be using a 1D texture.
+    // Our data textures are usually accessed in a linear fashion, so ideally we'd be using a 1D texture.
     // However, 1D textures are very limited in size on many platforms, we we have to use 2D textures instead.
     // 2D textures perform a lot better when their dimensions are powers of two, so we'll strictly stick to that even
     // when it seems to cause memory overhead.
 
-    // Our current strategy is to fill row by row.
-    // Note that using shorter rows may be more efficient in some cases.
+    // We fill row by row. With the power-of-two requirement, this is the optimal strategy:
+    // if there were a texture with less padding that uses half the width,
+    // then we'd need to increase the height. We can't increase without doubling it, thus creating a texture
+    // with the exact same mount of padding as before ▮.
 
     let width = if num_elements < max_texture_size {
         num_elements
