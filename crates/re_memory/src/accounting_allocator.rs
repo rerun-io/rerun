@@ -31,7 +31,7 @@ thread_local! {
     ///
     /// Tracking an allocation (taking its backtrace etc) can itself create allocations.
     /// We don't want to track those allocations, or we will have infinite recursion.
-    static IS_THREAD_IN_ALLOCATION_TRACKER: std::cell::Cell<bool> = std::cell::Cell::new(false);
+    static IS_THREAD_IN_ALLOCATION_TRACKER: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 // ----------------------------------------------------------------------------
