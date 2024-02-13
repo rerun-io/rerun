@@ -166,6 +166,9 @@ fn load_series(
     let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
     let override_series_name = lookup_override::<Name>(data_result, ctx).map(|t| t.0);
     let override_stroke_width = lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
+
+    // All the default values for a `PlotPoint`, accounting for both overrides and default
+    // values.
     let default_point = PlotPoint {
         time: 0,
         value: 0.0,
@@ -176,7 +179,9 @@ fn load_series(
             kind: PlotSeriesKind::Continuous,
         },
     };
+
     let mut points = Vec::new();
+
     let time_range = determine_time_range(
         query,
         data_result,
@@ -267,6 +272,11 @@ fn load_series(
             },
         )?;
     }
+
+    // Check for an explicit label if any.
+    // We're using a separate latest-at query for this since the semantics for labels changing over time are a
+    // a bit unclear.
+    // Sidestepping the cache here shouldn't be a problem since we do so only once per entity.
     let series_name = if let Some(override_name) = override_series_name {
         Some(override_name)
     } else {
@@ -275,6 +285,8 @@ fn load_series(
             .query_latest_component::<Name>(&data_result.entity_path, &ctx.current_query())
             .map(|name| name.value.0)
     };
+
+    // Now convert the `PlotPoints` into `Vec<PlotSeries>`
     points_to_series(
         data_result,
         time_per_pixel,
