@@ -53,7 +53,7 @@ fn guess_query_and_store_for_selected_entity<'a>(
     {
         (
             ctx.blueprint_cfg.time_ctrl.read().current_query(),
-            &ctx.store_context.blueprint.store(),
+            ctx.store_context.blueprint.store(),
         )
     } else {
         (
