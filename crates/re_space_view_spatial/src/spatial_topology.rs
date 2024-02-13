@@ -317,19 +317,21 @@ impl SpatialTopology {
     ) {
         let subspace_origin_hash = self.subspace_origin_hash_for_entity(entity_path);
 
-        let target_space_origin_hash = if subspace_connections.is_empty() {
-            // Add entity to the existing space.
-            let subspace = self
-                .subspaces
-                .get_mut(&subspace_origin_hash)
-                .expect("Subspace origin not part of origin->subspace map.");
-            subspace.entities.insert(entity_path.clone());
-            subspace.origin.hash()
-        } else {
-            // Create a new subspace with this entity as its origin & containing this entity.
-            self.split_subspace(subspace_origin_hash, entity_path, subspace_connections);
-            entity_path.hash()
-        };
+        let target_space_origin_hash =
+            if subspace_connections.is_empty() || entity_path.hash() == subspace_origin_hash {
+                // Add entity to the existing space.
+                let subspace = self
+                    .subspaces
+                    .get_mut(&subspace_origin_hash)
+                    .expect("Subspace origin not part of origin->subspace map.");
+                subspace.entities.insert(entity_path.clone());
+                subspace.connection_to_parent.insert(subspace_connections);
+                subspace.origin.hash()
+            } else {
+                // Create a new subspace with this entity as its origin & containing this entity.
+                self.split_subspace(subspace_origin_hash, entity_path, subspace_connections);
+                entity_path.hash()
+            };
 
         self.subspace_origin_per_logged_entity
             .insert(entity_path.hash(), target_space_origin_hash);
@@ -440,6 +442,27 @@ mod tests {
             topo.subspace_for_entity(&"robo/leg".into()).origin,
             EntityPath::root()
         );
+
+        // Add splitting entities to the root space - this should not cause any splits.
+        for (name, flags) in [
+            (PinholeProjection::name(), SubSpaceConnectionFlags::Pinhole),
+            (
+                DisconnectedSpace::name(),
+                SubSpaceConnectionFlags::Pinhole | SubSpaceConnectionFlags::Disconnected,
+            ),
+            (
+                ViewCoordinates::name(),
+                SubSpaceConnectionFlags::Pinhole
+                    | SubSpaceConnectionFlags::Disconnected
+                    | SubSpaceConnectionFlags::ViewCoordinates3d,
+            ),
+        ] {
+            add_diff(&mut topo, "", &[name]);
+            let subspace = topo.subspace_for_entity(&"robo".into());
+            assert_eq!(subspace.connection_to_parent, flags);
+            assert!(subspace.child_spaces.is_empty());
+            assert!(subspace.parent_space.is_none());
+        }
     }
 
     #[test]
