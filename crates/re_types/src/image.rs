@@ -70,7 +70,7 @@ pub fn find_non_empty_dim_indices(shape: &[TensorDimension]) -> SmallVec<[usize;
 #[test]
 fn test_find_non_empty_dim_indices() {
     fn expect(shape: &[u64], expected: &[usize]) {
-        let dim = shape
+        let dim: Vec<_> = shape
             .iter()
             .map(|s| TensorDimension {
                 size: *s,
