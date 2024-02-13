@@ -5,7 +5,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_data_store::{StoreSubscriber, StoreSubscriberHandle};
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{
-    components::{DisconnectedSpace, PinholeProjection},
+    components::{DisconnectedSpace, PinholeProjection, ViewCoordinates},
     Loggable,
 };
 
@@ -14,6 +14,7 @@ bitflags::bitflags! {
     pub struct SubSpaceConnectionFlags: u8 {
         const Disconnected = 0b0000001;
         const Pinhole = 0b0000010;
+        const ViewCoordinates3d = 0b0000100;
     }
 }
 
@@ -265,6 +266,8 @@ impl SpatialTopology {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Disconnected);
             } else if added_component == &PinholeProjection::name() {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
+            } else if added_component == &ViewCoordinates::name() {
+                new_subspace_connections.insert(SubSpaceConnectionFlags::ViewCoordinates3d);
             };
         }
 
@@ -395,7 +398,7 @@ impl SpatialTopology {
 mod tests {
     use re_log_types::EntityPath;
     use re_types::{
-        components::{DisconnectedSpace, PinholeProjection},
+        components::{DisconnectedSpace, PinholeProjection, ViewCoordinates},
         ComponentName, Loggable as _,
     };
 
@@ -554,6 +557,31 @@ mod tests {
                 SubSpaceConnectionFlags::Pinhole
             );
             assert_eq!(root.connection_to_parent, SubSpaceConnectionFlags::empty());
+        }
+
+        // Add view coordinates to robo.
+        add_diff(&mut topo, "robo", &[ViewCoordinates::name()]);
+        {
+            let root = topo.subspace_for_entity(&"robo".into());
+            assert_eq!(
+                root.connection_to_parent,
+                SubSpaceConnectionFlags::ViewCoordinates3d
+            );
+
+            let root = topo.subspace_for_entity(&EntityPath::root());
+            let robo = topo.subspace_for_entity(&"robo".into());
+            let left_camera = topo.subspace_for_entity(&"robo/eyes/left/cam".into());
+            let right_camera = topo.subspace_for_entity(&"robo/eyes/right/cam".into());
+
+            assert_eq!(root.connection_to_parent, SubSpaceConnectionFlags::empty());
+            assert!(root.parent_space.is_none());
+            assert_eq!(
+                robo.connection_to_parent,
+                SubSpaceConnectionFlags::ViewCoordinates3d
+            );
+            assert_eq!(robo.parent_space, EntityPath::root().hash());
+            assert_eq!(left_camera.parent_space, robo.origin.hash());
+            assert_eq!(right_camera.parent_space, robo.origin.hash());
         }
     }
 
