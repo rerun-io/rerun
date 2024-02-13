@@ -57,6 +57,8 @@ Note: you do not need to create a PR for this branch -- the release workflow wil
 
 3. ### If this is a patch release, cherry-pick commits for inclusion in the release into the branch.
 
+  When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
+
 4. ### Update [`CHANGELOG.md`](/CHANGELOG.md).
 
     It should include:
