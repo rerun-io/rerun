@@ -18,7 +18,7 @@ fn should_run() -> bool {
         Environment::PublishingCrates => false,
 
         // TODO(emilk): only build the web viewer explicitly on CI
-        Environment::CI | Environment::CondaBuild => true,
+        Environment::RerunCI | Environment::CondaBuild => true,
 
         Environment::DeveloperInWorkspace => true,
 

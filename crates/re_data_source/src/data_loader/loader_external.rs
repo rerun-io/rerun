@@ -221,7 +221,7 @@ impl crate::DataLoader for ExternalLoader {
                                 break; // we still want to check for errors once it finally exits!
                             }
 
-                            // NOTE: This will busy loop if there's no work available in the native OS threadpool.
+                            // NOTE: This will busy loop if there's no work available in the native OS thread-pool.
                             std::thread::yield_now();
 
                             continue;

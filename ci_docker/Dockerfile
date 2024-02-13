@@ -59,7 +59,7 @@ RUN git clone --depth 1 --branch v23.5.9 https://github.com/google/flatbuffers.g
     cd .. && rm -rf flatbuffers
 
 # We need a more modern patchelf than ships on ubuntu-20.04
-RUN curl -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | tar -xz ./bin/patchelf
+RUN curl --fail -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | tar -xz ./bin/patchelf
 
 # TODO(andreas): Update cargo-deny below when updating rust version to 1.70.0 or above!
 ENV RUSTUP_HOME=/usr/local/rustup \
@@ -104,7 +104,7 @@ ADD rerun_py/requirements-lint.txt requirements-lint.txt
 RUN pip install -r requirements-lint.txt
 
 # Note: We need a more modern binaryen than ships on ubuntu-20.4, so we pull it from github
-RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
+RUN curl --fail -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
 
 # Increment this to invalidate cache
 ENV CACHE_KEY=rerun_docker_v0.10.0

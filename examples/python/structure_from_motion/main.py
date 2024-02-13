@@ -53,7 +53,7 @@ from the 3D camera frame to the 2D image plane. The extrinsics are logged as an
 [camera entity](recording://camera).
 
 ### Reprojection error
-For each image a [rr.Scalar archetype](https://www.rerun.io/docs/reference/types/archetypes/scalar?speculative-link)
+For each image a [rr.Scalar archetype](https://www.rerun.io/docs/reference/types/archetypes/scalar)
 containing the average reprojection error of the keypoints is logged to the
 [plot/avg_reproj_err entity](recording://plot/avg_reproj_err).
 

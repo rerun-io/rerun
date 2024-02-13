@@ -12,8 +12,7 @@ namespace rerun.components;
 /// A vector in 2D space.
 struct Vector2D (
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
-  "attr.rust.repr": "transparent",
-  "attr.docs.unreleased"
+  "attr.rust.repr": "transparent"
 ) {
   vector: rerun.datatypes.Vec2D (order: 100);
 }

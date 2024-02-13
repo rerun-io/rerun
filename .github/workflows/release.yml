@@ -135,11 +135,6 @@ jobs:
           echo "current=$current"   >> "$GITHUB_OUTPUT"
           echo "final=$final"       >> "$GITHUB_OUTPUT"
 
-      - name: Update NPM versions
-        shell: bash
-        run: |
-          node rerun_js/web-viewer/scripts/version.mjs ${{ steps.versioning.outputs.current }}
-
       - name: Update rerun_c version
         shell: bash
         # Configuring CMake is enough to change the version on rerun.h!
@@ -269,15 +264,6 @@ jobs:
       concurrency: ${{ github.ref_name }}
     secrets: inherit
 
-  publish-npm:
-    name: "Publish to NPM"
-    needs: [version]
-    uses: ./.github/workflows/reusable_publish_npm.yml
-    with:
-      release-commit: ${{ needs.version.outputs.release-commit }}
-      concurrency: ${{ github.ref_name }}
-    secrets: inherit
-
   update-latest-branch:
     name: "Update Latest Branch"
     if: inputs.release-type == 'final'
@@ -290,7 +276,6 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
-        publish-npm,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -305,7 +290,7 @@ jobs:
         run: |
           git fetch
           git checkout ${{ github.ref_name }}
-          git push --force origin refs/heads${{ github.ref_name }}:refs/heads/latest
+          git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/latest
 
   github-release:
     name: "GitHub Release"
@@ -319,7 +304,6 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
-        publish-npm,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -327,7 +311,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ needs.version.outputs.release-commit }}
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - name: Release tag
@@ -335,7 +318,8 @@ jobs:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
           version="${{ needs.version.outputs.final }}"
-          git tag $version
+          commit="${{ needs.version.outputs.release-commit }}"
+          git tag $version $commit
           git push origin $version
           gh release create $version --verify-tag --draft --title $version
 
@@ -364,7 +348,6 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
-        publish-npm,
         github-release,
       ]
     runs-on: ubuntu-latest
@@ -373,7 +356,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ needs.version.outputs.release-commit }}
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - uses: actions/setup-node@v4
@@ -385,31 +367,30 @@ jobs:
         with:
           python-version: 3.11
 
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.13.0
+
       - name: Install dependencies
         shell: bash
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
 
-      - name: Update version
-        id: update-version
-        shell: bash
-        run: |
-          python3 scripts/ci/crates.py version --bump auto
-          echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
-
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.13.0
-
-      - run: pixi run toml-fmt
-        shell: bash
-
       - name: Commit new version
         shell: bash
         run: |
+          # checkout + pull changes
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
-          git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
+          git checkout ${{ github.ref_name }}
+          git pull --rebase
+
+          # bump version and commit it
+          python3 scripts/ci/crates.py version --bump auto
+          pixi run toml-fmt
+          version="$(python3 scripts/ci/crates.py get-version)"
+
+          git commit -am "Bump versions to $version"
           git push
 
   comment-artifact-links:
@@ -423,7 +404,6 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
-        publish-npm,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -453,13 +433,11 @@ jobs:
           fi
           wheels_link="https://pypi.org/project/rerun-sdk/${{ needs.version.outputs.current }}"
           crates_link="https://crates.io/crates/rerun/${{ needs.version.outputs.current }}"
-          npm_link="https://www.npmjs.com/package/@rerun-io/web-viewer/v/${{ needs.version.outputs.current }}"
           rs_docs_link="https://docs.rs/rerun/${{ needs.version.outputs.current }}"
           cpp_sdk_zip_link="https://build.rerun.io/commit/$short_commit_hash/rerun_cpp_sdk.zip"
 
           pip_install="pip install rerun-sdk==${{ needs.version.outputs.current }}"
           cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }}"
-          npm_install="npm install @rerun-io/web-viewer@${{ needs.version.outputs.current }}"
 
           cat <<EOF > comment-body.txt
           Version ${{ needs.version.outputs.current }} published successfully.
@@ -469,7 +447,6 @@ jobs:
           | [web app]($web_app_link)          |                |
           | [wheels]($wheels_link)            | $pip_install   |
           | [crates]($crates_link)            | $cargo_install |
-          | [npm]($npm_link)                  | $npm_install   |
           | [docs]($rerun_io_docs_link)       |                |
           | [py docs]($py_docs_link)          |                |
           | [rs docs]($rs_docs_link)          |                |

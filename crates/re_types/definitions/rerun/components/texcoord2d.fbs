@@ -30,8 +30,7 @@ struct Texcoord2D (
   "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
   "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
-  "attr.rust.repr": "transparent",
-  "attr.docs.unreleased"
+  "attr.rust.repr": "transparent"
 ) {
   uv: rerun.datatypes.Vec2D (order: 100);
 }
