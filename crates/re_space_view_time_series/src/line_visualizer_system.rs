@@ -98,20 +98,47 @@ impl SeriesLineSystem {
 
         let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
 
-        // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
-            let annotations = self.annotation_map.find(&data_result.entity_path);
-            let all_series = &mut self.all_series;
+        let data_results = query
+            .iter_visible_data_results(Self::identifier())
+            .collect_vec();
 
-            load_series(
-                ctx,
-                query,
-                plot_bounds,
-                time_per_pixel,
-                &annotations,
-                data_result,
-                all_series,
-            )?;
+        if false {
+            // TODO(emilk): enable parallel loading when it is faster, because right now it is often slower.
+            use rayon::prelude::*;
+            re_tracing::profile_wait!("load_series");
+            for one_series in data_results
+                .par_iter()
+                .map(|data_result| -> Result<Vec<PlotSeries>, QueryError> {
+                    let annotations = self.annotation_map.find(&data_result.entity_path);
+                    let mut series = vec![];
+                    load_series(
+                        ctx,
+                        query,
+                        plot_bounds,
+                        time_per_pixel,
+                        &annotations,
+                        data_result,
+                        &mut series,
+                    )?;
+                    Ok(series)
+                })
+                .collect::<Vec<Result<_, _>>>()
+            {
+                self.all_series.append(&mut one_series?);
+            }
+        } else {
+            for data_result in data_results {
+                let annotations = self.annotation_map.find(&data_result.entity_path);
+                load_series(
+                    ctx,
+                    query,
+                    plot_bounds,
+                    time_per_pixel,
+                    &annotations,
+                    data_result,
+                    &mut self.all_series,
+                )?;
+            }
         }
 
         Ok(())
