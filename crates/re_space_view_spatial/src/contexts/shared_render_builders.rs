@@ -78,10 +78,13 @@ impl ViewContextSystem for SharedRenderBuilders {
             LineStripSeriesBuilder::new(ctx.render_ctx)
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
         ));
-        self.points = Mutex::new(Some(
-            PointCloudBuilder::new(ctx.render_ctx)
-                .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES),
-        ));
+        self.points =
+            Mutex::new(Some(
+                PointCloudBuilder::new(ctx.render_ctx, 4096) // TODO:
+                    .radius_boost_in_ui_points_for_outlines(
+                        SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+                    ),
+            ));
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

@@ -21,7 +21,7 @@ use crate::{
 
 /// Type used as user data on the gpu readback belt.
 struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
-    extent: glam::UVec2,
+    extent: wgpu::Extent3d,
     user_data: T,
 }
 
@@ -41,14 +41,19 @@ impl ScreenshotProcessor {
         readback_identifier: GpuReadbackIdentifier,
         readback_user_data: T,
     ) -> Self {
-        let buffer_info = Texture2DBufferInfo::new(Self::SCREENSHOT_COLOR_FORMAT, resolution);
+        let size = wgpu::Extent3d {
+            width: resolution.x,
+            height: resolution.y,
+            depth_or_array_layers: 1,
+        };
+        let buffer_info = Texture2DBufferInfo::new(Self::SCREENSHOT_COLOR_FORMAT, size);
         let screenshot_readback_buffer = Mutex::new(ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
             &ctx.gpu_resources.buffers,
             buffer_info.buffer_size_padded,
             readback_identifier,
             Box::new(ReadbackBeltMetadata {
-                extent: resolution,
+                extent: size,
                 user_data: readback_user_data,
             }),
         ));
@@ -57,11 +62,7 @@ impl ScreenshotProcessor {
             &ctx.device,
             &TextureDesc {
                 label: format!("{view_name} - ScreenshotProcessor").into(),
-                size: wgpu::Extent3d {
-                    width: resolution.x,
-                    height: resolution.y,
-                    depth_or_array_layers: 1,
-                },
+                size,
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
@@ -113,10 +114,7 @@ impl ScreenshotProcessor {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            glam::uvec2(
-                self.screenshot_texture.texture.width(),
-                self.screenshot_texture.texture.height(),
-            ),
+            self.screenshot_texture.texture.size(),
         )
     }
 
@@ -141,7 +139,11 @@ impl ScreenshotProcessor {
                 let buffer_info =
                     Texture2DBufferInfo::new(Self::SCREENSHOT_COLOR_FORMAT, metadata.extent);
                 let texture_data = buffer_info.remove_padding(data);
-                on_screenshot(&texture_data, metadata.extent, metadata.user_data);
+                on_screenshot(
+                    &texture_data,
+                    glam::uvec2(metadata.extent.width, metadata.extent.height),
+                    metadata.user_data,
+                );
             });
         screenshot_was_available
     }

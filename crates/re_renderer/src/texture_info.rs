@@ -23,10 +23,10 @@ impl Texture2DBufferInfo {
     ///
     /// If a single buffer is not possible for all aspects of the texture format, all sizes will be zero.
     #[inline]
-    pub fn new(format: wgpu::TextureFormat, extent: glam::UVec2) -> Self {
+    pub fn new(format: wgpu::TextureFormat, extent: wgpu::Extent3d) -> Self {
         let block_dimensions = format.block_dimensions();
-        let width_blocks = extent.x / block_dimensions.0;
-        let height_blocks = extent.y / block_dimensions.1;
+        let width_blocks = extent.width / block_dimensions.0;
+        let height_blocks = extent.height / block_dimensions.1;
 
         let block_size = format
             .block_copy_size(Some(wgpu::TextureAspect::All))
@@ -41,6 +41,10 @@ impl Texture2DBufferInfo {
             buffer_size_unpadded: (bytes_per_row_unpadded * height_blocks) as wgpu::BufferAddress,
             buffer_size_padded: (bytes_per_row_padded * height_blocks) as wgpu::BufferAddress,
         }
+    }
+
+    pub fn from_texture(texture: &wgpu::Texture) -> Self {
+        Self::new(texture.format(), texture.size())
     }
 
     #[inline]

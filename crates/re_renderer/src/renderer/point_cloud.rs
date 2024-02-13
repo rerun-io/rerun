@@ -160,17 +160,7 @@ pub enum PointCloudDrawDataError {
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
-/// Textures are 2D since 1D textures are very limited in size (8k typically).
-/// Need to keep this value in sync with `point_cloud.wgsl`!
-/// We store `vec4<f32> + [u8;4]` = 20 bytes per texel.
-const DATA_TEXTURE_SIZE: u32 = 2048; // 2ki x 2ki = 4 Mi = 80 MiB
-
 impl PointCloudDrawData {
-    /// Maximum number of vertices per [`PointCloudDrawData`].
-    ///
-    /// TODO(#3076): Get rid of this limit!.
-    pub const MAX_NUM_POINTS: usize = (DATA_TEXTURE_SIZE * DATA_TEXTURE_SIZE) as usize;
-
     /// Transforms and uploads point cloud data to be consumed by gpu.
     ///
     /// Try to bundle all points into a single draw data instance whenever possible.
@@ -212,39 +202,31 @@ impl PointCloudDrawData {
             batches
         };
 
-        // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
-        static_assertions::const_assert_eq!(
-            DATA_TEXTURE_SIZE * std::mem::size_of::<gpu_data::PositionRadius>() as u32
-                % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-            0
-        );
-        static_assertions::const_assert_eq!(
-            DATA_TEXTURE_SIZE * std::mem::size_of::<[u8; 4]>() as u32
-                % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-            0
-        );
-
-        let vertices = if vertices.len() > Self::MAX_NUM_POINTS {
+        // Points are stored on a 2d texture (we can't use buffers due to WebGL compatibility).
+        // 2D texture size limits on desktop is at least 8192x8192.
+        // Android WebGL is known to only support 4096x4096, see https://web3dsurvey.com/webgl2/parameters/MAX_TEXTURE_SIZE
+        // Android WebGPU, however almost always supports 8192x8192 and most of the time 16384x16384, see https://web3dsurvey.com/webgpu/limits/maxTextureDimension2D
+        // => Even with a conservative 4096x4096, we can store 16 million points on a single texture, so we're very unlikely to ever hit this.
+        // (and the typ typical 16384x16384 gives us a max 268 million points, far more than we can realistically render with this renderer)
+        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
+        let max_num_points = max_texture_dimension_2d as usize * max_texture_dimension_2d as usize;
+        let vertices = if vertices.len() > max_num_points {
             re_log::error_once!(
-                "Reached maximum number of supported points. Clamping down to {}, passed were {}. \
-                See also https://github.com/rerun-io/rerun/issues/957",
-                Self::MAX_NUM_POINTS,
+                "Reached maximum number of supported points. Clamping down to {}, passed were {}.",
+                max_num_points,
                 vertices.len()
             );
-            &vertices[..Self::MAX_NUM_POINTS]
+            &vertices[..max_num_points]
         } else {
             vertices
         };
 
-        // TODO(andreas): We want a "stack allocation" here that lives for one frame.
-        //                  Note also that this doesn't protect against sharing the same texture with several PointDrawData!
+        let data_texture_size =
+            Self::point_cloud_data_texture_size(vertices.len() as u32, max_texture_dimension_2d);
+
         let position_data_texture_desc = TextureDesc {
             label: "PointCloudDrawData::position_data_texture".into(),
-            size: wgpu::Extent3d {
-                width: DATA_TEXTURE_SIZE,
-                height: DATA_TEXTURE_SIZE,
-                depth_or_array_layers: 1,
-            },
+            size: data_texture_size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -273,22 +255,16 @@ impl PointCloudDrawData {
             },
         );
 
-        // To make the data upload simpler (and have it be done in copy-operation), we always update full rows of each of our textures
-        let num_points_written =
-            wgpu::util::align_to(vertices.len() as u32, DATA_TEXTURE_SIZE) as usize;
-        let num_elements_padding = num_points_written - vertices.len();
-        let texture_copy_extent = glam::uvec2(
-            DATA_TEXTURE_SIZE,
-            num_points_written as u32 / DATA_TEXTURE_SIZE,
-        );
-
+        let data_texture_element_count =
+            data_texture_size.width as usize * data_texture_size.height as usize;
+        let num_elements_padding = data_texture_element_count - vertices.len();
         {
             re_tracing::profile_scope!("write_pos_size_texture");
 
             let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
-                num_points_written,
+                data_texture_element_count,
             )?;
             staging_buffer.extend_from_slice(vertices)?;
             staging_buffer.fill_n(gpu_data::PositionRadius::zeroed(), num_elements_padding)?;
@@ -300,7 +276,7 @@ impl PointCloudDrawData {
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                texture_copy_extent,
+                data_texture_size,
             )?;
         }
 
@@ -315,7 +291,7 @@ impl PointCloudDrawData {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            texture_copy_extent,
+            data_texture_size,
         )?;
 
         builder
@@ -329,7 +305,7 @@ impl PointCloudDrawData {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            texture_copy_extent,
+            data_texture_size,
         )?;
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
@@ -438,7 +414,7 @@ impl PointCloudDrawData {
                 batches.iter().zip(uniform_buffer_bindings.into_iter())
             {
                 let point_vertex_range_end = (start_point_for_next_batch + batch_info.point_count)
-                    .min(Self::MAX_NUM_POINTS as u32);
+                    .min(max_num_points as u32);
                 let mut active_phases = enum_set![DrawPhase::Opaque | DrawPhase::PickingLayer];
                 // Does the entire batch participate in the outline mask phase?
                 if batch_info.overall_outline_mask_ids.is_some() {
@@ -479,6 +455,30 @@ impl PointCloudDrawData {
             bind_group_all_points_outline_mask: Some(bind_group_all_points_outline_mask),
             batches: batches_internal,
         })
+    }
+
+    /// Returns size in number of elements for buffers that store point cloud data.
+    ///
+    /// This padding is required since we can only copy full rows of a texture.
+    pub(crate) fn padded_buffer_element_count(ctx: &RenderContext, max_num_points: u32) -> usize {
+        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
+        let data_texture_size =
+            Self::point_cloud_data_texture_size(max_num_points, max_texture_dimension_2d);
+        data_texture_size.width as usize * data_texture_size.height as usize
+    }
+
+    /// Size used for all data textures for a given number of points.
+    fn point_cloud_data_texture_size(
+        num_elements: u32,
+        max_texture_dimension_2d: u32,
+    ) -> wgpu::Extent3d {
+        // Not all data textures have an element size of 4.
+        // For instance, the picking texture has an element size of 16.
+        //
+        // However, we'd like to use the same coordinates on all textures, so we're using the same size for all textures.
+        // By specifying the smallest element size, we might over-pad the textures with bigger elements.
+        let element_size = 4;
+        data_texture_size(num_elements, element_size, max_texture_dimension_2d)
     }
 }
 
@@ -723,5 +723,48 @@ impl Renderer for PointCloudRenderer {
         }
 
         Ok(())
+    }
+}
+
+/// Determines the size for a "data texture", i.e. a texture that we use to store data
+/// that we'd otherwise store inside a buffer, but can't due to WebGL compatibility.
+///
+/// `max_texture_size` must be a power of two.
+///
+/// For convenience, the returned texture size has a width that is also a multiple of `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`
+/// for the given element size.
+/// This makes it a lot easier to copy data from a continuous buffer to the texture.
+/// If we wouldn't do that, we'd need to do a copy per row in some cases.
+fn data_texture_size(
+    num_elements: u32,
+    element_size_in_bytes: u32,
+    max_texture_size: u32,
+) -> wgpu::Extent3d {
+    assert!(max_texture_size.is_power_of_two());
+
+    // Our data textures are usually accessed in a linear fashion,
+    // so ideally we'd be using a 1D texture.
+    // However, 1D textures are very limited in size on many platforms, we we have to use 2D textures instead.
+    // 2D textures perform a lot better when their dimensions are powers of two, so we'll strictly stick to that even
+    // when it seems to cause memory overhead.
+
+    // Our current strategy is to fill row by row.
+    // Note that using shorter rows may be more efficient in some cases.
+
+    let width = if num_elements < max_texture_size {
+        num_elements
+            .next_power_of_two()
+            // Keeping at a multiple of the alignment requirement makes copy operations a lot simpler.
+            .next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT / element_size_in_bytes)
+    } else {
+        max_texture_size
+    };
+
+    let height = num_elements.div_ceil(width);
+
+    wgpu::Extent3d {
+        width,
+        height,
+        depth_or_array_layers: 1,
     }
 }
