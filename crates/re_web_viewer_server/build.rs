@@ -20,8 +20,9 @@ fn should_run() -> bool {
         // We build the web viewer in an explicit, separate step.
         Environment::RerunCI => false,
 
-        // TODO(emilk): build the web viewer as an explicit step instead
-        Environment::CondaBuild => true,
+        // We build the web-viewer as an explicit step:
+        // https://github.com/conda-forge/rerun-sdk-feedstock/blob/8a63484685d6697c638c0d45b78396f049d10ce7/recipe/build.sh#L18
+        Environment::CondaBuild => false,
 
         // If a developer is iterating on the viewer, they don't want to manually recompile it.
         Environment::DeveloperInWorkspace => true,
