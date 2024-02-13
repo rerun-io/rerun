@@ -132,8 +132,7 @@ impl<E: Example + 'static> Application<E> {
                 &wgpu::DeviceDescriptor {
                     label: None,
                     required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::downlevel_webgl2_defaults()
-                        .using_resolution(adapter.limits()),
+                    required_limits: device_caps.limits(),
                 },
                 None,
             )
