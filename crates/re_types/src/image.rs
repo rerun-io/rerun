@@ -20,7 +20,7 @@ where
 ///
 /// For instance: `[1, 640, 480, 3, 1]` would return `[1, 2, 3]`,
 /// the indices of the `[640, 480, 3]` dimensions.
-pub fn find_non_empty_dim_indices(shape: &Vec<TensorDimension>) -> SmallVec<[usize; 4]> {
+pub fn find_non_empty_dim_indices(shape: &[TensorDimension]) -> SmallVec<[usize; 4]> {
     match shape.len() {
         0 => return smallvec![],
         1 => return smallvec![0],
@@ -70,7 +70,7 @@ pub fn find_non_empty_dim_indices(shape: &Vec<TensorDimension>) -> SmallVec<[usi
 #[test]
 fn test_find_non_empty_dim_indices() {
     fn expect(shape: &[u64], expected: &[usize]) {
-        let dim = shape
+        let dim: Vec<_> = shape
             .iter()
             .map(|s| TensorDimension {
                 size: *s,

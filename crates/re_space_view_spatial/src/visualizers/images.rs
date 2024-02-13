@@ -66,9 +66,7 @@ fn to_textured_rect(
 ) -> Option<re_renderer::renderer::TexturedRect> {
     re_tracing::profile_function!();
 
-    let Some([height, width, _]) = tensor.image_height_width_channels() else {
-        return None;
-    };
+    let [height, width, _] = tensor.image_height_width_channels()?;
 
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx
