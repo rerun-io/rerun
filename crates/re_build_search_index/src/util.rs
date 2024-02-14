@@ -23,11 +23,9 @@ pub trait CommandExt {
         K: AsRef<OsStr>,
         V: AsRef<OsStr>;
 
-    fn run_async(self) -> io::Result<()>;
-
     fn run(self) -> io::Result<()>;
 
-    fn run_with_output(self) -> io::Result<Vec<u8>>;
+    fn output(self) -> anyhow::Result<Vec<u8>>;
 
     fn parse_json<T>(self) -> anyhow::Result<T>
     where
@@ -73,21 +71,22 @@ impl CommandExt for Command {
         self
     }
 
-    fn run_async(mut self) -> io::Result<()> {
-        self.spawn()?.wait_async()
-    }
-
     fn run(mut self) -> io::Result<()> {
         self.spawn()?.wait()?.check()
     }
 
-    fn run_with_output(mut self) -> io::Result<Vec<u8>> {
+    fn output(mut self) -> anyhow::Result<Vec<u8>> {
         let output = self
             .stderr(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()?
             .wait_with_output()?;
-        output.check()?;
+        if let Err(err) = output.check() {
+            anyhow::bail!(
+                "failed to run {self:?}\n{err}\n{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
         Ok(output.stdout)
     }
 
@@ -95,7 +94,7 @@ impl CommandExt for Command {
     where
         T: for<'de> serde::Deserialize<'de>,
     {
-        let stdout = self.run_with_output()?;
+        let stdout = self.output()?;
         Ok(serde_json::from_slice(&stdout)?)
     }
 }
@@ -130,21 +129,5 @@ impl CheckStatus for std::process::ExitStatus {
 impl CheckStatus for std::process::Output {
     fn check(&self) -> io::Result<()> {
         self.status.check()
-    }
-}
-
-pub trait WaitAsync {
-    /// Wait with inherited IO
-    fn wait_async(self) -> io::Result<()>;
-}
-
-impl WaitAsync for std::process::Child {
-    fn wait_async(mut self) -> io::Result<()> {
-        loop {
-            if let Some(status) = self.try_wait()? {
-                status.check()?;
-                return Ok(());
-            }
-        }
     }
 }

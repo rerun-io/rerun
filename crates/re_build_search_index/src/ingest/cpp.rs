@@ -26,12 +26,10 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("cpp");
 
     progress.set_message("doxygen");
-    progress.suspend(|| {
-        Command::new("doxygen")
-            .with_arg("docs/Doxyfile")
-            .with_cwd(ctx.workspace_root().join("rerun_cpp"))
-            .run_async()
-    })?;
+    Command::new("doxygen")
+        .with_arg("docs/Doxyfile")
+        .with_cwd(ctx.workspace_root().join("rerun_cpp"))
+        .output()?;
 
     let base_path = ctx.workspace_root().join("rerun_cpp/docs/xml");
     let mut visitor = Visitor {

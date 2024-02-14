@@ -1,7 +1,7 @@
 //! This build script collects all of our documentation and examples, and
 //! uploads it to a Meilisearch instance for indexing.
 
-mod index;
+mod build;
 mod ingest;
 mod meili;
 mod repl;
@@ -11,9 +11,19 @@ mod util;
 async fn main() -> anyhow::Result<()> {
     let args: Args = argh::from_env();
 
-    match args.cmd.unwrap_or_default() {
+    let Some(cmd) = args.cmd else {
+        let help_text = <Args as argh::FromArgs>::from_args(&["search-index"], &["--help"])
+            .err()
+            .unwrap()
+            .output;
+
+        eprintln!("{help_text}");
+        return Ok(());
+    };
+
+    match cmd {
         Cmd::Repl(cmd) => cmd.run().await,
-        Cmd::Index(cmd) => cmd.run().await,
+        Cmd::Build(cmd) => cmd.run().await,
     }
 }
 
@@ -28,13 +38,7 @@ struct Args {
 #[argh(subcommand)]
 enum Cmd {
     Repl(repl::Repl),
-    Index(index::Index),
-}
-
-impl Default for Cmd {
-    fn default() -> Self {
-        Self::Index(Default::default())
-    }
+    Build(build::Build),
 }
 
 const DEFAULT_URL: &str = "http://localhost:7700";

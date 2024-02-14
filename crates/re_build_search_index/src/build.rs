@@ -2,8 +2,8 @@ use crate::{ingest, meili, DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL};
 
 /// Index documentation, examples, and API references for all languages
 #[derive(argh::FromArgs)]
-#[argh(subcommand, name = "index")]
-pub struct Index {
+#[argh(subcommand, name = "build")]
+pub struct Build {
     /// name of the meilisearch index to create/query
     #[argh(positional, default = "DEFAULT_INDEX.into()")]
     index_name: String,
@@ -17,7 +17,7 @@ pub struct Index {
     meilisearch_master_key: String,
 }
 
-impl Default for Index {
+impl Default for Build {
     fn default() -> Self {
         Self {
             index_name: DEFAULT_INDEX.into(),
@@ -27,7 +27,7 @@ impl Default for Index {
     }
 }
 
-impl Index {
+impl Build {
     pub async fn run(self) -> anyhow::Result<()> {
         let client = meili::connect(&self.meilisearch_url, &self.meilisearch_master_key).await?;
         let documents = ingest::run()?;

@@ -19,13 +19,11 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     // run `mkdocs` to generate documentation, which also produces a `objects.inv` file
     // this file contains every documented item and a URL to where it is documented
     progress.set_message("mkdocs build");
-    progress.suspend(|| {
-        Command::new("mkdocs")
-            .with_arg("build")
-            .with_arg("-f")
-            .with_arg(ctx.workspace_root().join("rerun_py/mkdocs.yml"))
-            .run_async()
-    })?;
+    Command::new("mkdocs")
+        .with_arg("build")
+        .with_arg("-f")
+        .with_arg(ctx.workspace_root().join("rerun_py/mkdocs.yml"))
+        .output()?;
 
     // run `sphobjinv` to convert the `objects.inv` file into JSON, and fully resolve all links/names
     progress.set_message("sphobjinv convert");

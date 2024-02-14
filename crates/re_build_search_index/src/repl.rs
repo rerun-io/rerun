@@ -17,6 +17,13 @@ pub struct Repl {
     #[argh(positional, default = "DEFAULT_INDEX.into()")]
     index_name: String,
 
+    #[argh(
+        option,
+        default = "false",
+        description = "ingest before starting the repl"
+    )]
+    ingest: bool,
+
     /// meilisearch URL
     #[argh(option, long = "url", default = "DEFAULT_URL.into()")]
     meilisearch_url: String,
@@ -29,8 +36,11 @@ pub struct Repl {
 impl Repl {
     pub async fn run(self) -> anyhow::Result<()> {
         let client = meili::connect(&self.meilisearch_url, &self.meilisearch_master_key).await?;
-        let documents = ingest::run()?;
-        client.index(&self.index_name, &documents).await?;
+
+        if self.ingest {
+            let documents = ingest::run()?;
+            client.index(&self.index_name, &documents).await?;
+        }
 
         let mut lines = Lines::spawn()?;
         loop {
@@ -67,7 +77,13 @@ impl Repl {
             }
             _ => {
                 for result in search.query(&self.index_name, line, Some(4)).await? {
-                    let content = result.content();
+                    let content = result
+                        .content()
+                        .split('\n')
+                        .map(|line| format!("   {line}"))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
                     println!("### {} [{}]", result.title(), result.url(),);
                     if content.len() > 200 {
                         println!("{}…\n", &content[..200]);
