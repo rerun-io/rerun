@@ -2,8 +2,6 @@
 
 //! Build the Rerun web-viewer .wasm and generate the .js bindings for it.
 
-use std::process::Stdio;
-
 use anyhow::Context as _;
 use cargo_metadata::camino::{Utf8Path, Utf8PathBuf};
 
