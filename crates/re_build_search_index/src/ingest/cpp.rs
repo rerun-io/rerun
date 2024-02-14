@@ -4,6 +4,7 @@ use std::fs::read_to_string;
 use std::process::Command;
 
 use camino::Utf8PathBuf;
+use itertools::Itertools as _;
 use roxmltree::Children;
 use roxmltree::Descendants;
 use roxmltree::Document;
@@ -177,8 +178,7 @@ impl<'a> Visitor<'a> {
 
 fn parse_description(node: Node<'_, '_>) -> anyhow::Result<String> {
     let content = |tag: &str| -> anyhow::Result<String> {
-        let mut out = String::new();
-
+        // retrieve all text node descendants of `tag`
         let text_nodes = node
             .children()
             .find(|n| n.tag_name().name() == tag)
@@ -189,27 +189,10 @@ fn parse_description(node: Node<'_, '_>) -> anyhow::Result<String> {
             .filter(|n| n.is_text())
             .map(|n| n.text().unwrap());
 
-        for text in text_nodes {
-            if text.trim().is_empty() {
-                continue;
-            }
-            for s in text.split_whitespace() {
-                if !out.is_empty() {
-                    out.push(' ');
-                }
-                out.push_str(s);
-            }
-            out.push(' ');
-        }
-
-        let mut prev = ' ';
-        out.retain(|ch| {
-            let keep = ch != ' ' || prev != ' ';
-            prev = ch;
-            keep
-        });
-
-        Ok(out)
+        Ok(text_nodes
+            .flat_map(|text| text.split_whitespace())
+            .filter(|t| !t.is_empty())
+            .join(" "))
     };
 
     let brief = content("briefdescription")?;
