@@ -51,7 +51,7 @@ sudo apt-get -y install \
 ```
 
 [TODO(#1250)](https://github.com/rerun-io/rerun/issues/1250): Running with the wayland window manager
-sometimes causes Rerun to crash. Try setting `WINIT_UNIX_BACKEND=x11` as a workaround.
+sometimes causes Rerun to crash. Try unsetting the wayland display (`unset WAYLAND_DISPLAY` or `WAYLAND_DISPLAY= `) as a workaround.
 
 ## Startup issues
 If Rerun is having trouble starting, you can try resetting its memory with:

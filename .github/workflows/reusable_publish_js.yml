@@ -1,4 +1,4 @@
-name: Build and publish NPM
+name: Build and publish JS
 
 on:
   workflow_call:
@@ -12,7 +12,7 @@ on:
         required: true
 
 concurrency:
-  group: ${{ inputs.concurrency }}-publish-npm
+  group: ${{ inputs.concurrency }}-publish-js
   cancel-in-progress: true
 
 permissions:
@@ -48,7 +48,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20.x"
-          registry-url: "https://registry.npmjs.org"
+
+      - name: Install Yarn
+        run: npm install -g yarn
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -67,4 +69,4 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         shell: bash
         run: |
-          pixi run node rerun_js/web-viewer/scripts/publish.mjs
+          pixi run node rerun_js/scripts/publish.mjs

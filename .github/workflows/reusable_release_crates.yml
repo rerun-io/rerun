@@ -28,7 +28,7 @@ jobs:
         with:
           pixi-version: v0.13.0
 
-      - name: Build web-viewer
+      - name: Build web-viewer (release)
         shell: bash
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release

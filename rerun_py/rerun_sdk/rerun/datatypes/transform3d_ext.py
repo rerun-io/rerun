@@ -45,7 +45,7 @@ class Transform3DExt:
         else:
             raise ValueError(
                 f"unknown transform 3d value: {data} (expected `Transform3D`, `TranslationAndMat3x3`, or "
-                "`TranslationRotationScale`"
+                "`TranslationRotationScale3D`"
             )
 
         storage = build_dense_union(data_type, discriminant, transform_repr)

@@ -1,4 +1,4 @@
-name: Reusable Build Web
+name: Reusable Build JS
 
 on:
   workflow_call:
@@ -41,6 +41,9 @@ jobs:
         with:
           node-version: "20.x"
 
+      - name: Install Yarn
+        run: npm install -g yarn
+
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -50,10 +53,14 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - uses: prefix-dev/setup-pixi@v0.3.0
+        with:
+          pixi-version: v0.13.0
+
       - name: Install dependencies
         shell: bash
-        run: node rerun_js/web-viewer/scripts/install.mjs
+        run: pixi run yarn --cwd rerun_js install
 
       - name: Build package
         shell: bash
-        run: node rerun_js/web-viewer/scripts/build.mjs
+        run: pixi run yarn --cwd rerun_js workspaces run build

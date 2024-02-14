@@ -95,7 +95,7 @@ def ensure_dataset_downloaded() -> Iterable[Path]:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Example using MRI scan data in the DICOM format.")
     rr.script_add_args(parser)
     args = parser.parse_args()
     rr.script_setup(args, "rerun_example_dicom_mri")
