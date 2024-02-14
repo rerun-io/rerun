@@ -18,9 +18,7 @@ namespace rerun.archetypes;
 /// \cpp See `rerun::archetypes::Scalar`
 ///
 /// \example series_point_style title="Series Point" image="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1200w.png"
-table SeriesPoint (
-    "attr.docs.unreleased"
-) {
+table SeriesPoint {
     // --- Required ---
 
     // --- Optional ---

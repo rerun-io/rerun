@@ -21,6 +21,9 @@ readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
 
+[environments]
+cpp = ["cpp"]
+
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
 
@@ -58,6 +61,7 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
+[feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
 cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug"
@@ -97,8 +101,9 @@ cpp-docs = { cmd = "doxygen docs/Doxyfile && echo '***************\nSuccess!\nOp
 
 meilisearch-test-db = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
-[target.win-64.tasks]
+[feature.cpp.target.win-64.tasks]
 cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
+
 
 [dependencies]
 attrs = ">=23.1.0"
@@ -134,22 +139,24 @@ meilisearch = "1.5.1.*"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
+
+[feature.cpp.target.linux-64.dependencies]
 clang = "16.0.6"
+ninja = "1.11.1"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
-ninja = "1.11.1"
 
-[target.osx-64.dependencies]
+[feature.cpp.target.osx-64.dependencies]
 clang = "16.0.6"
+ninja = "1.11.1"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
-ninja = "1.11.1"
 
-[target.osx-arm64.dependencies]
+[feature.cpp.target.osx-arm64.dependencies]
 clang = "16.0.6"
+ninja = "1.11.1"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
-ninja = "1.11.1"
 
-[target.win-64.dependencies]
+[feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822"

@@ -29,12 +29,12 @@ The [bar chart](recording://bar_chart) is created by logging the [rr.BarChart ar
 
 ### Time series
 All other plots are created using the
-[rr.Scalar archetype](https://www.rerun.io/docs/reference/types/archetypes/scalar?speculative-link)
+[rr.Scalar archetype](https://www.rerun.io/docs/reference/types/archetypes/scalar)
 archetype.
 Each plot is created by logging scalars at different time steps (i.e., the x-axis).
 Additionally, the plots are styled using the
-[rr.SeriesLine](https://www.rerun.io/docs/reference/types/archetypes/series_line?speculative-link) and
-[rr.SeriesPoint](https://www.rerun.io/docs/reference/types/archetypes/series_point?speculative-link)
+[rr.SeriesLine](https://www.rerun.io/docs/reference/types/archetypes/series_line) and
+[rr.SeriesPoint](https://www.rerun.io/docs/reference/types/archetypes/series_point)
 archetypes respectively.
 
 For the [parabola](recording://curves/parabola) the radius and color is changed over time,

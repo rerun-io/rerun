@@ -3,9 +3,6 @@ use std::sync::Arc;
 use super::AbortSignal;
 use crate::{Event, PostHogBatch, PostHogEvent};
 
-#[derive(Debug, Clone)]
-struct Url(String);
-
 #[derive(Default, Debug, Clone)]
 pub(crate) struct PostHogSink {}
 

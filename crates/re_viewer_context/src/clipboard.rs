@@ -32,7 +32,7 @@ impl Clipboard {
     pub fn with<R>(f: impl FnOnce(&mut Clipboard) -> R) -> R {
         use std::cell::RefCell;
         thread_local! {
-            static CLIPBOARD: RefCell<Option<Clipboard>> = RefCell::new(None);
+            static CLIPBOARD: RefCell<Option<Clipboard>> = const { RefCell::new(None) };
         }
 
         CLIPBOARD.with(|clipboard| {

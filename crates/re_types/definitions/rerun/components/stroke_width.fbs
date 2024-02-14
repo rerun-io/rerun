@@ -11,7 +11,6 @@ namespace rerun.components;
 
 /// The width of a stroke specified in UI points.
 struct StrokeWidth (
-  "attr.docs.unreleased",
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",

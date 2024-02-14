@@ -234,9 +234,7 @@ impl ViewportBlueprint {
         space_view_id: &SpaceViewId,
         ctx: &ViewerContext<'_>,
     ) -> Option<SpaceViewId> {
-        let Some(space_view) = self.space_view(space_view_id) else {
-            return None;
-        };
+        let space_view = self.space_view(space_view_id)?;
 
         let new_space_view = space_view.duplicate(ctx.store_context.blueprint, ctx.blueprint_query);
         let new_space_view_id = new_space_view.id;
@@ -358,9 +356,7 @@ impl ViewportBlueprint {
             return Some(Contents::Container(*container_id));
         }
 
-        let Some(container) = self.container(container_id) else {
-            return None;
-        };
+        let container = self.container(container_id)?;
 
         for contents in &container.contents {
             if predicate(contents) {
@@ -412,9 +408,7 @@ impl ViewportBlueprint {
         contents: &Contents,
         container_id: &ContainerId,
     ) -> Option<(ContainerId, usize)> {
-        let Some(container) = self.container(container_id) else {
-            return None;
-        };
+        let container = self.container(container_id)?;
 
         for (pos, child_contents) in container.contents.iter().enumerate() {
             if child_contents == contents {

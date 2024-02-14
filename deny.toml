@@ -61,13 +61,11 @@ skip = [
 skip-tree = [
   { name = "async-io" },        # Old version via rfd
   { name = "cargo-run-wasm" },  # Dev-tool
-  { name = "core-graphics" },   # old version via arboard
   { name = "criterion" },       # dev-dependency
+  { name = "meilisearch-sdk" }, # no user will need to build this
   { name = "objc2" },           # old version via accesskit
   { name = "prost-build" },     # only used in objectron example
   { name = "prost-derive" },    # only used in objectron example
-  { name = "x11rb" },           # old version via arboard
-  { name = "meilisearch-sdk" }, # no user will need to build this
 ]
 
 
