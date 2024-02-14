@@ -95,7 +95,7 @@ impl Eye {
             let ray_dir = self
                 .world_from_rub_view
                 .transform_vector3(glam::vec3(px, py, -1.0));
-            macaw::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize())
+            macaw::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize_or_zero())
         } else {
             // The ray originates on the camera plane, not from the camera position
             let ray_dir = self.world_from_rub_view.rotation().mul_vec3(glam::Vec3::Z);

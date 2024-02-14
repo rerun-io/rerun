@@ -687,11 +687,7 @@ pub fn view_3d(
 
             // We distinguish the eye up-axis from the other two axes:
             // Default to RFU
-            let up = if orbit_eye.eye_up == Vec3::ZERO {
-                glam::Vec3::Z
-            } else {
-                orbit_eye.eye_up.normalize()
-            };
+            let up = orbit_eye.eye_up.try_normalize().unwrap_or(glam::Vec3::Z);
 
             // For the other two axes, try to use the scene view coordinates if available:
             let right = scene_view_coordinates
@@ -799,17 +795,19 @@ fn show_projections_from_2d_space(
                     let stop_in_world = world_from_image.transform_point3(stop_in_image_plane);
 
                     let origin = cam.position();
-                    let ray =
-                        macaw::Ray3::from_origin_dir(origin, (stop_in_world - origin).normalize());
 
-                    let thick_ray_length = (stop_in_world - origin).length();
-                    add_picking_ray(
-                        line_builder,
-                        ray,
-                        &state.bounding_boxes.accumulated,
-                        thick_ray_length,
-                        color,
-                    );
+                    if let Some(dir) = (stop_in_world - origin).try_normalize() {
+                        let ray = macaw::Ray3::from_origin_dir(origin, dir);
+
+                        let thick_ray_length = (stop_in_world - origin).length();
+                        add_picking_ray(
+                            line_builder,
+                            ray,
+                            &state.bounding_boxes.accumulated,
+                            thick_ray_length,
+                            color,
+                        );
+                    }
                 }
             }
         }
@@ -874,12 +872,15 @@ fn default_eye(
     scene_view_coordinates: Option<ViewCoordinates>,
 ) -> OrbitEye {
     // Defaults to RFU.
-    let scene_up = scene_view_coordinates
-        .and_then(|vc| vc.up())
-        .unwrap_or(SignedAxis3::POSITIVE_Z);
     let scene_right = scene_view_coordinates
         .and_then(|vc| vc.right())
         .unwrap_or(SignedAxis3::POSITIVE_X);
+    let scene_forward = scene_view_coordinates
+        .and_then(|vc| vc.right())
+        .unwrap_or(SignedAxis3::POSITIVE_Y);
+    let scene_up = scene_view_coordinates
+        .and_then(|vc| vc.up())
+        .unwrap_or(SignedAxis3::POSITIVE_Z);
 
     let mut center = bounding_box.center();
     if !center.is_finite() {
@@ -899,7 +900,7 @@ fn default_eye(
         let fwd = eye_up.cross(right);
         0.75 * fwd + 0.25 * right - 0.25 * eye_up
     };
-    let eye_dir = eye_dir.normalize();
+    let eye_dir = eye_dir.try_normalize().unwrap_or(scene_forward.into());
 
     let eye_pos = center - radius * eye_dir;
 
