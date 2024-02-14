@@ -161,7 +161,7 @@ impl<'a> Visitor<'a> {
             | ItemKind::Macro => {
                 format!("{kind}.{name}.html")
             }
-            ItemKind::Assoc(parent, _) => {
+            ItemKind::Inherent(parent, _) => {
                 let parent_name = module_path.last().unwrap();
                 module_path = &module_path[..module_path.len() - 1];
                 format!("{parent}.{parent_name}.html#{kind}.{name}")
@@ -343,9 +343,11 @@ impl<'a> Visitor<'a> {
     ) {
         let item = &self.krate.index[id];
         let kind = match &item.inner {
-            ItemEnum::Function(_) => ItemKind::Assoc(parent_kind, AssocItemKind::Method),
-            ItemEnum::AssocConst { .. } => ItemKind::Assoc(parent_kind, AssocItemKind::Constant),
-            ItemEnum::AssocType { .. } => ItemKind::Assoc(parent_kind, AssocItemKind::Type),
+            ItemEnum::Function(_) => ItemKind::Inherent(parent_kind, InherentItemKind::Method),
+            ItemEnum::AssocConst { .. } => {
+                ItemKind::Inherent(parent_kind, InherentItemKind::Constant)
+            }
+            ItemEnum::AssocType { .. } => ItemKind::Inherent(parent_kind, InherentItemKind::Type),
             _ => unreachable!("invalid associated item {item:#?}"),
         };
 
@@ -412,8 +414,10 @@ enum ItemKind {
     /// `macro_rules! m {}`
     Macro,
 
-    /// Item is in an inherent impl
-    Assoc(ParentItemKind, AssocItemKind),
+    /// Inherent impl item
+    ///
+    /// These are also referred to as "associated items"
+    Inherent(ParentItemKind, InherentItemKind),
 }
 
 impl Display for ItemKind {
@@ -427,18 +431,20 @@ impl Display for ItemKind {
             ItemKind::Type => "type",
             ItemKind::Constant => "constant",
             ItemKind::Macro => "macro",
-            ItemKind::Assoc(ParentItemKind::Trait, AssocItemKind::Method) => "tymethod",
-            ItemKind::Assoc(_, AssocItemKind::Method) => "method",
-            ItemKind::Assoc(_, AssocItemKind::Constant) => "associatedconstant",
-            ItemKind::Assoc(_, AssocItemKind::Type) => "associatedtype",
+            ItemKind::Inherent(ParentItemKind::Trait, InherentItemKind::Method) => "tymethod",
+            ItemKind::Inherent(_, InherentItemKind::Method) => "method",
+            ItemKind::Inherent(_, InherentItemKind::Constant) => "associatedconstant",
+            ItemKind::Inherent(_, InherentItemKind::Type) => "associatedtype",
         };
         f.write_str(s)
     }
 }
 
 /// `ItemKind` for items in inherent impls
+///
+/// These are also referred to as associated items
 #[derive(Debug, Clone, Copy)]
-enum AssocItemKind {
+enum InherentItemKind {
     /// A `fn` in an inherent `impl` block:
     ///
     /// ```rust,ignore
