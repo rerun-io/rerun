@@ -61,7 +61,13 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
+# Build the documentation search index.
+# See `pixi run build-search-index --help` for more information.
 build-search-index = "cargo run -p re_build_search_index --release --"
+
+# Start a local meilisearch instance at `localhost:7700` with master key `test`.
+# This should only be used for testing the search index locally.
+# Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
 [feature.cpp.tasks]
