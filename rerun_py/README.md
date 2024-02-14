@@ -151,10 +151,10 @@ You can run with `RUST_LOG=debug` to get more output out of the rerun SDK.
 If you are using an Apple-silicon Mac, make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ``` sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.72
+rustup set default-host aarch64-apple-darwin && rustup install 1.74
 ```
 
 If you want to switch back, this is how:
 ``` sh
-rustup set default-host x86_64-apple-darwin && rustup install 1.72
+rustup set default-host x86_64-apple-darwin && rustup install 1.74
 ```

@@ -9,7 +9,7 @@ Generally, you should make sure that your SDK version matches the version of the
 There are many ways to install the viewer. Please pick whatever works best for your setup:
 
 * `cargo binstall rerun-cli` - download binaries via [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
-* `cargo install rerun-cli` - build it from source (this requires Rust 1.72+)
+* `cargo install rerun-cli` - build it from source (this requires Rust 1.74+)
 * Download it from the [GitHub Release artifacts](https://github.com/rerun-io/rerun/releases/latest/)
 * Together with the Rerun [Python SDK](python.md):
   * `pip3 install rerun-sdk` - download it via pip
