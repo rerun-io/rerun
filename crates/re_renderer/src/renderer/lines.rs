@@ -121,13 +121,13 @@ use crate::{
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, PoolError,
-        RenderPipelineDesc, TextureDesc,
+        RenderPipelineDesc,
     },
     Color32, DebugLabel, DepthOffset, LineStripSeriesBuilder, OutlineMaskPreference,
     PickingLayerObjectId, PickingLayerProcessor,
 };
 
-use super::{DrawData, DrawError, LineVertex, RenderContext, Renderer};
+use super::{data_texture_desc, DrawData, DrawError, LineVertex, RenderContext, Renderer};
 
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
@@ -347,22 +347,11 @@ pub enum LineDrawDataError {
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
-// Textures are 2D since 1D textures are very limited in size (8k typically).
-// Need to keep these values in sync with lines.wgsl!
-const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4MiB, 262144 PositionRadius
-const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 256 x 256 x vec2<u32> == 0.5MiB, 65536 line strips
-
 impl LineDrawData {
-    /// Total maximum number of line vertices per [`LineDrawData`].
-    ///
-    /// TODO(#3076): Get rid of this limit!.
-    pub const MAX_NUM_VERTICES: usize =
-        (POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 2) as usize; // Subtract sentinels
-
-    /// Total maximum number of line strips per [`LineDrawData`].
-    ///
-    /// TODO(#3076): Get rid of this limit!.
-    pub const MAX_NUM_STRIPS: usize = (LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE) as usize;
+    pub const POSITION_DATA_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
+    pub const LINE_STRIP_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Uint;
+    pub const PICKING_INSTANCE_ID_TEXTURE_FORMAT: wgpu::TextureFormat =
+        wgpu::TextureFormat::Rg32Uint;
 
     /// Transforms and uploads line strip data to be consumed by gpu.
     ///
@@ -390,6 +379,7 @@ impl LineDrawData {
             strips,
             mut picking_instance_ids_buffer,
             radius_boost_in_ui_points_for_outlines,
+            ..
         } = line_builder;
 
         let batches = if batches.is_empty() {
@@ -402,31 +392,22 @@ impl LineDrawData {
             batches
         };
 
-        // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
-        static_assertions::const_assert_eq!(
-            POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineVertex>() as u32
-                % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-            0
-        );
-        static_assertions::const_assert_eq!(
-            LINE_STRIP_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineStripInfo>() as u32
-                % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-            0
-        );
+        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
+        let max_num_texels = max_texture_dimension_2d as usize * max_texture_dimension_2d as usize;
+        let max_num_vertices = max_num_texels - 2; // Subtract 2 for the sentinel vertices.
+        let max_num_strips = max_num_vertices;
 
-        let vertices = if vertices.len() >= Self::MAX_NUM_VERTICES {
-            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}. \
-                                See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_VERTICES, vertices.len() );
-            &vertices[..Self::MAX_NUM_VERTICES]
+        let vertices = if vertices.len() >= max_num_vertices {
+            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}."
+                                , max_num_vertices, vertices.len() );
+            &vertices[..max_num_vertices]
         } else {
             &vertices[..]
         };
-        let strips = if strips.len() > Self::MAX_NUM_STRIPS {
-            re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}. \
-                                 This may lead to rendering artifacts. \
-                                 See also https://github.com/rerun-io/rerun/issues/957",
-                                 Self::MAX_NUM_STRIPS, strips.len());
-            &strips[..Self::MAX_NUM_STRIPS]
+        let strips = if strips.len() > max_num_strips {
+            re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}.",
+                                 max_num_strips, strips.len());
+            &strips[..max_num_strips]
         } else {
             // Can only check for strip index validity if we haven't clamped the strips!
             if vertices
@@ -438,156 +419,117 @@ impl LineDrawData {
             &strips[..]
         };
 
-        let num_strips = strips.len() as u32;
         // Add a sentinel vertex both at the beginning and the end to make cap calculation easier.
         let num_segments = vertices.len() as u32 + 2;
+        let num_strips = strips.len() as u32;
 
-        // TODO(andreas): We want a "stack allocation" here that lives for one frame.
-        //                  Note also that this doesn't protect against sharing the same texture with several LineDrawData!
-        let position_data_texture_desc = TextureDesc {
-            label: "LineDrawData::position_data_texture".into(),
-            size: wgpu::Extent3d {
-                width: POSITION_TEXTURE_SIZE,
-                height: POSITION_TEXTURE_SIZE,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba32Float,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        };
-        let position_data_texture = ctx
-            .gpu_resources
-            .textures
-            .alloc(&ctx.device, &position_data_texture_desc);
+        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
 
-        let line_strip_texture_desc = TextureDesc {
-            label: "LineDrawData::line_strip_texture".into(),
-            size: wgpu::Extent3d {
-                width: LINE_STRIP_TEXTURE_SIZE,
-                height: LINE_STRIP_TEXTURE_SIZE,
-                depth_or_array_layers: 1,
-            },
-            format: wgpu::TextureFormat::Rg32Uint,
-            ..position_data_texture_desc
-        };
-        let line_strip_texture = ctx
-            .gpu_resources
-            .textures
-            .alloc(&ctx.device, &line_strip_texture_desc);
+        let position_data_texture = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &data_texture_desc(
+                "LineDrawData::position_data_texture",
+                Self::POSITION_DATA_TEXTURE_FORMAT,
+                num_segments,
+                max_texture_dimension_2d,
+            ),
+        );
+        let line_strip_texture = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &data_texture_desc(
+                "LineDrawData::line_strip_texture",
+                Self::LINE_STRIP_TEXTURE_FORMAT,
+                num_strips,
+                max_texture_dimension_2d,
+            ),
+        );
         let picking_instance_id_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
-            &TextureDesc {
-                label: "LineDrawData::picking_instance_id_texture".into(),
-                format: wgpu::TextureFormat::Rg32Uint,
-                ..line_strip_texture_desc
-            },
+            &data_texture_desc(
+                "LineDrawData::picking_instance_id_texture",
+                Self::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
+                num_segments,
+                max_texture_dimension_2d,
+            ),
         );
+
+        let copy_encoder = &ctx.active_frame.before_view_builder_encoder;
 
         // Upload position data.
         {
-            // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
-            let mut position_data_staging = Vec::with_capacity(wgpu::util::align_to(
-                num_segments,
-                POSITION_TEXTURE_SIZE,
-            ) as usize);
+            re_tracing::profile_scope!("write_pos_data_texture");
+
+            let texture_size = position_data_texture.texture.size();
+            let texel_count = (texture_size.width * texture_size.height) as usize;
+            let num_elements_padding = texel_count - num_segments as usize;
+
+            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                texel_count,
+            )?;
+
             // sentinel at the beginning to facilitate caps.
-            position_data_staging.push(LineVertex {
+            staging_buffer.push(LineVertex {
                 position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
                 strip_index: u32::MAX,
-            });
-            position_data_staging.extend(vertices.iter());
+            })?;
+            staging_buffer.extend_from_slice(vertices)?;
             // placeholder at the end to facilitate caps.
-            position_data_staging.push(LineVertex {
+            staging_buffer.push(LineVertex {
                 position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
                 strip_index: u32::MAX,
-            });
-            position_data_staging.extend(std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
-                (wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) - num_segments) as usize,
-            ));
+            })?;
+            staging_buffer.fill_n(gpu_data::LineVertex::zeroed(), num_elements_padding)?;
 
-            // TODO(andreas): Use staging belt here.
-            ctx.queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &position_data_texture.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(&position_data_staging),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(
-                        POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineVertex>() as u32,
-                    ),
-                    rows_per_image: None,
-                },
-                wgpu::Extent3d {
-                    width: POSITION_TEXTURE_SIZE,
-                    height: (num_segments + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
-                    depth_or_array_layers: 1,
-                },
-            );
+            staging_buffer.copy_to_texture2d_entire_first_layer(
+                copy_encoder.lock().get(),
+                &position_data_texture,
+            )?;
         }
-
         // Upload strip data.
         {
-            let mut line_strip_info_staging = Vec::with_capacity(wgpu::util::align_to(
-                num_strips,
-                LINE_STRIP_TEXTURE_SIZE,
-            ) as usize);
-            line_strip_info_staging.extend(strips.iter().map(|line_strip| {
+            re_tracing::profile_scope!("write_strip_data_texture");
+
+            let texture_size = line_strip_texture.texture.size();
+            let texel_count = (texture_size.width * texture_size.height) as usize;
+            let num_elements_padding = texel_count - num_strips as usize;
+
+            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                texel_count,
+            )?;
+            staging_buffer.extend(strips.iter().map(|line_strip| {
                 gpu_data::LineStripInfo {
                     color: line_strip.color,
                     radius: line_strip.radius.into(),
                     stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
                     flags: line_strip.flags,
                 }
-            }));
-            let num_strips_padding =
-                (wgpu::util::align_to(num_strips, LINE_STRIP_TEXTURE_SIZE) - num_strips) as usize;
-            line_strip_info_staging.extend(
-                std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(num_strips_padding),
-            );
-
-            let strip_texture_extent = wgpu::Extent3d {
-                width: LINE_STRIP_TEXTURE_SIZE,
-                height: (num_strips + LINE_STRIP_TEXTURE_SIZE - 1) / LINE_STRIP_TEXTURE_SIZE,
-                depth_or_array_layers: 1,
-            };
-
-            // TODO(andreas): Use staging belt here.
-            ctx.queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &line_strip_texture.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(&line_strip_info_staging),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(
-                        LINE_STRIP_TEXTURE_SIZE
-                            * std::mem::size_of::<gpu_data::LineStripInfo>() as u32,
-                    ),
-                    rows_per_image: None,
-                },
-                strip_texture_extent,
-            );
-
-            picking_instance_ids_buffer.fill_n(Default::default(), num_strips_padding)?;
-            picking_instance_ids_buffer.copy_to_texture2d(
-                ctx.active_frame.before_view_builder_encoder.lock().get(),
-                wgpu::ImageCopyTexture {
-                    texture: &picking_instance_id_texture.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                strip_texture_extent,
+            }))?;
+            staging_buffer
+                .fill_n(gpu_data::LineStripInfo::zeroed(), num_elements_padding)
+                .unwrap();
+            staging_buffer.copy_to_texture2d_entire_first_layer(
+                copy_encoder.lock().get(),
+                &line_strip_texture,
             )?;
+        }
+        {
+            re_tracing::profile_scope!("write_picking_instance_ids_buffer");
+
+            let texture_size = picking_instance_id_texture.texture.size();
+            let texel_count = (texture_size.width * texture_size.height) as usize;
+            let num_elements_padding = texel_count - picking_instance_ids_buffer.num_written();
+
+            picking_instance_ids_buffer.fill_n(Default::default(), num_elements_padding)?;
+            picking_instance_ids_buffer
+                .copy_to_texture2d_entire_first_layer(
+                    copy_encoder.lock().get(),
+                    &picking_instance_id_texture,
+                )
+                .unwrap();
         }
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
@@ -691,7 +633,7 @@ impl LineDrawData {
             {
                 let line_vertex_range_end = (start_vertex_for_next_batch
                     + batch_info.line_vertex_count)
-                    .min(Self::MAX_NUM_VERTICES as u32);
+                    .min(max_num_vertices as u32);
                 let mut active_phases = enum_set![DrawPhase::Opaque | DrawPhase::PickingLayer];
                 // Does the entire batch participate in the outline mask phase?
                 if batch_info.overall_outline_mask_ids.is_some() {

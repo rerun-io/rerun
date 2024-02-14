@@ -5,7 +5,8 @@ use re_log::ResultExt;
 use crate::{
     allocator::CpuWriteGpuReadBuffer,
     renderer::{
-        LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags, LineStripInfo, LineVertex,
+        data_texture_source_buffer_element_count, LineBatchInfo, LineDrawData, LineDrawDataError,
+        LineStripFlags, LineStripInfo, LineVertex,
     },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId,
     PickingLayerObjectId, RenderContext, Size,
@@ -29,29 +30,35 @@ pub struct LineStripSeriesBuilder {
     pub(crate) picking_instance_ids_buffer: CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
 
     pub(crate) radius_boost_in_ui_points_for_outlines: f32,
+
+    max_num_strips: usize,
+    //max_num_vertices: usize,
 }
 
 impl LineStripSeriesBuilder {
-    pub fn new(ctx: &RenderContext) -> Self {
-        const RESERVE_SIZE: usize = 512;
-
-        // TODO(andreas): Be more resourceful about the size allocated here. Typically we know in advance!
+    pub fn new(ctx: &RenderContext, max_num_strips: u32, max_num_vertices: u32) -> Self {
         let picking_instance_ids_buffer = ctx
             .cpu_write_gpu_read_belt
             .lock()
             .allocate::<PickingLayerInstanceId>(
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
-                LineDrawData::MAX_NUM_STRIPS,
+                data_texture_source_buffer_element_count(
+                    LineDrawData::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
+                    max_num_vertices,
+                    ctx.device.limits().max_texture_dimension_2d,
+                ),
             )
             .expect("Failed to allocate picking instance id buffer"); // TODO(#3408): Should never happen but should propagate error anyways
 
         Self {
-            vertices: Vec::with_capacity(RESERVE_SIZE * 2),
-            strips: Vec::with_capacity(RESERVE_SIZE),
+            vertices: Vec::with_capacity(max_num_vertices as usize),
+            strips: Vec::with_capacity(max_num_strips as usize),
             batches: Vec::with_capacity(16),
             picking_instance_ids_buffer,
             radius_boost_in_ui_points_for_outlines: 0.0,
+            max_num_strips: max_num_strips as usize,
+            //max_num_vertices: max_num_vertices as usize,
         }
     }
 
@@ -192,11 +199,11 @@ impl<'a> LineBatchBuilder<'a> {
 
     /// Adds a 3D series of line connected points.
     pub fn add_strip(&mut self, points: impl Iterator<Item = glam::Vec3>) -> LineStripBuilder<'_> {
-        if self.0.strips.len() >= LineDrawData::MAX_NUM_STRIPS {
+        if self.0.strips.len() >= self.0.max_num_strips {
             re_log::error_once!(
-                "Reached maximum number of supported line strips of {}. \
-                 See also https://github.com/rerun-io/rerun/issues/957",
-                LineDrawData::MAX_NUM_STRIPS
+                "Reserved space for {} line strips, but reached {}.",
+                self.0.max_num_strips,
+                self.0.strips.len() + 1
             );
             return LineStripBuilder::placeholder(self.0);
         }
@@ -233,11 +240,11 @@ impl<'a> LineBatchBuilder<'a> {
     ) -> LineStripBuilder<'_> {
         #![allow(clippy::tuple_array_conversions)] // false positive
 
-        if self.0.strips.len() >= LineDrawData::MAX_NUM_STRIPS {
+        if self.0.strips.len() >= self.0.max_num_strips {
             re_log::error_once!(
-                "Reached maximum number of supported line strips of {}. \
-                 See also https://github.com/rerun-io/rerun/issues/957",
-                LineDrawData::MAX_NUM_STRIPS
+                "Reserved space for {} line strips, but reached {}.",
+                self.0.max_num_strips,
+                self.0.strips.len() + 1
             );
             return LineStripBuilder::placeholder(self.0);
         }

@@ -69,7 +69,7 @@ impl framework::Example for Render2D {
             splits[0].resolution_in_pixel[1] as f32,
         );
 
-        let mut line_strip_builder = LineStripSeriesBuilder::new(re_ctx);
+        let mut line_strip_builder = LineStripSeriesBuilder::new(re_ctx, 128, 2048);
 
         // Blue rect outline around the bottom right quarter.
         {

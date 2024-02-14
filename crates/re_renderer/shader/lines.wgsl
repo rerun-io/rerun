@@ -36,9 +36,6 @@ struct BatchUniformBuffer {
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
 
-const POSITION_TEXTURE_SIZE: u32 = 512u;
-const LINE_STRIP_TEXTURE_SIZE: u32 = 256u;
-
 // Flags
 // See lines.rs#LineStripFlags
 const FLAG_CAP_END_TRIANGLE: u32 = 1u;
@@ -89,7 +86,8 @@ struct LineStripData {
 
 // Read and unpack line strip data at a given location
 fn read_strip_data(idx: u32) -> LineStripData {
-    let coord = vec2u(idx % LINE_STRIP_TEXTURE_SIZE, idx / LINE_STRIP_TEXTURE_SIZE);
+    let texture_size = textureDimensions(position_data_texture);
+    let coord = vec2u(idx % texture_size.x, idx / texture_size.x);
     var raw_data = textureLoad(position_data_texture, coord, 0).xy;
 
     var data: LineStripData;
@@ -110,7 +108,9 @@ struct PositionData {
 
 // Read and unpack position data at a given location
 fn read_position_data(idx: u32) -> PositionData {
-    var raw_data = textureLoad(line_strip_texture, vec2u(idx % POSITION_TEXTURE_SIZE, idx / POSITION_TEXTURE_SIZE), 0);
+    let texture_size = textureDimensions(line_strip_texture);
+    let coord = vec2u(idx % texture_size.x, idx / texture_size.x);
+    var raw_data = textureLoad(line_strip_texture, coord, 0);
 
     var data: PositionData;
     let pos_4d = batch.world_from_obj * vec4f(raw_data.xyz, 1.0);
