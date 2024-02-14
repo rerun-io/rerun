@@ -19,7 +19,7 @@ use std::sync::mpsc;
 
 /// Ingest rust documentation for all published crates in the current workspace.
 ///
-/// It currently only collects the following items:
+/// It collects the following top-level `pub` items:
 /// - `mod`
 /// - `fn`
 /// - `struct`
@@ -33,6 +33,8 @@ use std::sync::mpsc;
 /// - associated `const`
 /// - associated `type`
 /// - associated `fn`
+///
+/// It will also walk through any `pub mod`, and correctly resolve `pub use mod::item` where `mod` is not `pub`.
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("rustdoc");
 
