@@ -168,11 +168,13 @@ impl<'a> Visitor<'a> {
             }
         };
 
-        let _ = self.documents.send(document(
-            path.join("::"),
-            format!("{}/{}/{}", self.base_url, module_path.join("/"), item_path),
-            self.krate.index[id].docs.clone().unwrap_or_default(),
-        ));
+        self.documents
+            .send(document(
+                path.join("::"),
+                format!("{}/{}/{}", self.base_url, module_path.join("/"), item_path),
+                self.krate.index[id].docs.clone().unwrap_or_default(),
+            ))
+            .ok();
     }
 
     fn visit_root(&mut self) {
@@ -184,11 +186,13 @@ impl<'a> Visitor<'a> {
 
         let name = root_module_item.name.as_ref().unwrap().clone();
         let url = format!("{}/{name}/index.html", self.base_url);
-        let _ = self.documents.send(document(
-            name.clone(),
-            url,
-            root_module_item.docs.clone().unwrap_or_default(),
-        ));
+        self.documents
+            .send(document(
+                name.clone(),
+                url,
+                root_module_item.docs.clone().unwrap_or_default(),
+            ))
+            .ok();
 
         for item_id in &root_module.items {
             self.visit_item(false, item_id);
