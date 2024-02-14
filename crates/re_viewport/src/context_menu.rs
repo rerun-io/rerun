@@ -35,30 +35,43 @@ trait ContextMenuItem {
 //          selections
 fn context_menu_items_for_item(
     ctx: &ViewerContext<'_>,
+    viewport_blueprint: &ViewportBlueprint,
     item: &Item,
 ) -> Vec<Box<dyn ContextMenuItem>> {
     match item {
-        Item::Container(container_id) => vec![
-            ContentVisibilityToggle::item(Contents::Container(*container_id)),
-            ContentRemove::item(Contents::Container(*container_id)),
-            Separator::item(),
-            SubMenu::item(
-                "Add Container",
-                [
-                    AddContainer::item(*container_id, egui_tiles::ContainerKind::Tabs),
-                    AddContainer::item(*container_id, egui_tiles::ContainerKind::Horizontal),
-                    AddContainer::item(*container_id, egui_tiles::ContainerKind::Vertical),
-                    AddContainer::item(*container_id, egui_tiles::ContainerKind::Grid),
-                ],
-            ),
-            SubMenu::item(
-                "Add Space View",
-                ctx.space_view_class_registry
-                    .iter_registry()
-                    .sorted_by_key(|entry| entry.class.display_name())
-                    .map(|entry| AddSpaceView::item(*container_id, entry.class.identifier())),
-            ),
-        ],
+        Item::Container(container_id) => {
+            let mut items = vec![];
+
+            // only show/hide and remove if it's not the root container
+            if Some(*container_id) != viewport_blueprint.root_container {
+                items.extend([
+                    ContentVisibilityToggle::item(Contents::Container(*container_id)),
+                    ContentRemove::item(Contents::Container(*container_id)),
+                    Separator::item(),
+                ]);
+            }
+
+            items.extend([
+                SubMenu::item(
+                    "Add Container",
+                    [
+                        AddContainer::item(*container_id, egui_tiles::ContainerKind::Tabs),
+                        AddContainer::item(*container_id, egui_tiles::ContainerKind::Horizontal),
+                        AddContainer::item(*container_id, egui_tiles::ContainerKind::Vertical),
+                        AddContainer::item(*container_id, egui_tiles::ContainerKind::Grid),
+                    ],
+                ),
+                SubMenu::item(
+                    "Add Space View",
+                    ctx.space_view_class_registry
+                        .iter_registry()
+                        .sorted_by_key(|entry| entry.class.display_name())
+                        .map(|entry| AddSpaceView::item(*container_id, entry.class.identifier())),
+                ),
+            ]);
+
+            items
+        }
         Item::SpaceView(space_view_id) => vec![
             ContentVisibilityToggle::item(Contents::SpaceView(*space_view_id)),
             ContentRemove::item(Contents::SpaceView(*space_view_id)),
@@ -78,7 +91,7 @@ pub fn context_menu_ui_for_item(
     item_response: &egui::Response,
 ) {
     item_response.context_menu(|ui| {
-        let actions = context_menu_items_for_item(ctx, item);
+        let actions = context_menu_items_for_item(ctx, viewport_blueprint, item);
         for action in actions {
             let response = action.ui(ctx, viewport_blueprint, ui);
             if response.clicked() {
