@@ -118,7 +118,7 @@ pub fn build(profile: Profile, target: Target, build_dir: &Utf8Path) -> anyhow::
     // values that only make sense for the native target host, not for a wasm build.
     cmd.env("CARGO_ENCODED_RUSTFLAGS", "--cfg=web_sys_unstable_apis");
 
-    eprintln!("> {cmd:?}");
+    eprintln!("{root_dir}> {cmd:?}");
     let status = cmd
         .current_dir(root_dir)
         .status()
@@ -167,29 +167,23 @@ pub fn build(profile: Profile, target: Target, build_dir: &Utf8Path) -> anyhow::
     if profile == Profile::Release {
         eprintln!("Optimizing wasm with wasm-opt…");
 
-        if !std::process::Command::new("wasm-opt")
-            .arg("--version")
-            .stderr(Stdio::null())
-            .stdout(Stdio::null())
-            .spawn()
-            .and_then(|mut p| p.wait())
-            .is_ok_and(|v| v.success())
-        {
-            anyhow::bail!("`wasm-opt` is not installed");
-        }
-
         // to get wasm-opt:  apt/brew/dnf install binaryen
         let mut cmd = std::process::Command::new("wasm-opt");
 
         // TODO(emilk): add `-g` to keep debug symbols; useful for profiling release builds in the in-browser profiler.
         cmd.args([wasm_path.as_str(), "-O2", "--output", wasm_path.as_str()]);
+        eprintln!("{root_dir}> {cmd:?}");
 
-        eprintln!("> {cmd:?}");
-        let status = cmd
+        let output = cmd
             .current_dir(root_dir)
-            .status()
-            .context("Failed to run wasm-opt")?;
-        assert!(status.success(), "Failed to run wasm-opt");
+            .output()
+            .context("Failed to run wasm-opt, it may not be installed")?;
+        if !output.status.success() {
+            eprintln!(
+                "Failed to run wasm-opt:\n{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
     }
 
     // --------------------------------------------------------------------------------
