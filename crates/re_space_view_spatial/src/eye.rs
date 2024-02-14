@@ -180,7 +180,8 @@ pub struct OrbitEye {
 }
 
 impl OrbitEye {
-    const MAX_PITCH: f32 = 0.999 * 0.25 * std::f32::consts::TAU;
+    /// Avoids zentith/nadir singularity.
+    const MAX_PITCH: f32 = 0.99 * 0.25 * std::f32::consts::TAU;
 
     pub fn new(
         orbit_center: Vec3,
@@ -252,9 +253,9 @@ impl OrbitEye {
         }
     }
 
-    /// Direction we are looking at
+    /// World-direction we are looking at
     fn fwd(&self) -> Vec3 {
-        self.world_from_view_rot * -Vec3::Z
+        self.world_from_view_rot * -Vec3::Z // view-coordinates are RUB
     }
 
     /// Only valid if we have an up vector.
@@ -305,12 +306,12 @@ impl OrbitEye {
         let mut did_interact = response.drag_delta().length() > 0.0;
 
         if response.drag_delta().length() > drag_threshold {
-            if response.dragged_by(ROLL_MOUSE)
+            let roll = response.dragged_by(ROLL_MOUSE)
                 || (response.dragged_by(ROLL_MOUSE_ALT)
                     && response
                         .ctx
-                        .input(|i| i.modifiers.contains(ROLL_MOUSE_MODIFIER)))
-            {
+                        .input(|i| i.modifiers.contains(ROLL_MOUSE_MODIFIER)));
+            if roll {
                 if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
                     self.roll(&response.rect, pointer_pos, response.drag_delta());
                 }
@@ -415,31 +416,26 @@ impl OrbitEye {
         let sensitivity = 0.004; // radians-per-point. TODO(emilk): take fov_y and canvas size into account
         let delta = sensitivity * delta;
 
-        if self.eye_up == Vec3::ZERO {
-            // 3-dof rotation
+        if let Some(old_pitch) = self.pitch() {
+            // 2-dof rotation
+
+            // Apply change in heading:
+            self.world_from_view_rot =
+                Quat::from_axis_angle(self.eye_up, -delta.x) * self.world_from_view_rot;
+
+            // We need to clamp pitch to avoid nadir/zenith singularity:
+            let new_pitch = (old_pitch - delta.y).clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
+            let pitch_delta = new_pitch - old_pitch;
+
+            // Apply change in pitch:
+            self.world_from_view_rot *= Quat::from_rotation_x(pitch_delta);
+
+            // Avoid numeric drift:
+            self.world_from_view_rot = self.world_from_view_rot.normalize();
+        } else {
+            // no up-axis -> no pitch -> 3-dof rotation
             let rot_delta = Quat::from_rotation_y(-delta.x) * Quat::from_rotation_x(-delta.y);
             self.world_from_view_rot *= rot_delta;
-        } else {
-            // 2-dof rotation
-            let fwd = Quat::from_axis_angle(self.eye_up, -delta.x) * self.fwd();
-            let fwd = fwd.normalize(); // Prevent drift
-
-            let pitch = self.pitch().unwrap() - delta.y;
-            let pitch = pitch.clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
-
-            let fwd = project_onto(fwd, self.eye_up).normalize(); // Remove pitch
-            let right = fwd.cross(self.eye_up).normalize();
-            let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
-            let fwd = fwd.normalize(); // Prevent drift
-
-            let new_world_from_view_rot =
-                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.eye_up).inverse());
-
-            if new_world_from_view_rot.is_finite() {
-                self.world_from_view_rot = new_world_from_view_rot;
-            } else {
-                re_log::debug_once!("Failed to rotate camera: got non-finites");
-            }
         }
     }
 
