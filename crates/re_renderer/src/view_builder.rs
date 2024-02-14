@@ -499,6 +499,11 @@ impl ViewBuilder {
         }
     }
 
+    /// Resolution in pixels as configured on view builder creation.
+    pub fn resolution_in_pixel(&self) -> [u32; 2] {
+        self.setup.resolution_in_pixel
+    }
+
     fn draw_phase<'a>(
         &'a self,
         renderers: &Renderers,
@@ -787,18 +792,8 @@ impl ViewBuilder {
         ctx: &RenderContext,
         render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         pass: &mut wgpu::RenderPass<'a>,
-        screen_position: glam::Vec2,
     ) {
         re_tracing::profile_function!();
-
-        pass.set_viewport(
-            screen_position.x,
-            screen_position.y,
-            self.setup.resolution_in_pixel[0] as f32,
-            self.setup.resolution_in_pixel[1] as f32,
-            0.0,
-            1.0,
-        );
 
         pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
         self.draw_phase(

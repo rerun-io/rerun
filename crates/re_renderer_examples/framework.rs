@@ -132,8 +132,7 @@ impl<E: Example + 'static> Application<E> {
                 &wgpu::DeviceDescriptor {
                     label: None,
                     required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::downlevel_webgl2_defaults()
-                        .using_resolution(adapter.limits()),
+                    required_limits: device_caps.limits(),
                 },
                 None,
             )
@@ -295,11 +294,18 @@ impl<E: Example + 'static> Application<E> {
                             );
 
                             for draw_result in &draw_results {
+                                composite_pass.set_viewport(
+                                    draw_result.target_location.x,
+                                    draw_result.target_location.y,
+                                    draw_result.view_builder.resolution_in_pixel()[0] as f32,
+                                    draw_result.view_builder.resolution_in_pixel()[1] as f32,
+                                    0.0,
+                                    1.0,
+                                );
                                 draw_result.view_builder.composite(
                                     &self.re_ctx,
                                     &render_pipelines,
                                     &mut composite_pass,
-                                    draw_result.target_location,
                                 );
                             }
                         };
