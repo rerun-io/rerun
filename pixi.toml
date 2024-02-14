@@ -116,6 +116,7 @@ gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 just = ">=1.15.0"
 maturin = ">=0.14,<0.15"
+meilisearch = "1.5.1.*"
 mypy = "1.4.1"
 numpy = ">=1.23,<2"
 pip = ">=23"
@@ -136,7 +137,6 @@ binaryen = "116.*"      # for `wasm-opt`
 nox = "2021.10.1.*"
 prettier = "2.8.8.*"
 tomlkit = "0.12.3.*"
-meilisearch = "1.5.1.*"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
