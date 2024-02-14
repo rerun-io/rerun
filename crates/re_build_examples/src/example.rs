@@ -141,9 +141,19 @@ impl ExamplesManifest {
 
 #[derive(serde::Deserialize)]
 pub struct ExampleCategory {
+    /// Used to sort categories in the `rerun.io/examples` navbar.
     pub order: u64,
+
+    /// `snake_case` name.
     pub title: String,
+
+    /// Multi-line description.
     pub prelude: String,
+
+    /// List of example names.
+    ///
+    /// `rerun.io/examples` attempts to search for these names under `examples/{language}`,
+    /// where `language` is any of the languages we currently support.
     pub examples: Vec<String>,
 }
 
