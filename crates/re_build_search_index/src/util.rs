@@ -29,7 +29,7 @@ pub trait CommandExt {
 
     fn run_with_output(self) -> io::Result<Vec<u8>>;
 
-    fn run_serde<T>(self) -> anyhow::Result<T>
+    fn parse_json<T>(self) -> anyhow::Result<T>
     where
         T: for<'de> serde::Deserialize<'de>;
 }
@@ -91,7 +91,7 @@ impl CommandExt for Command {
         Ok(output.stdout)
     }
 
-    fn run_serde<T>(self) -> anyhow::Result<T>
+    fn parse_json<T>(self) -> anyhow::Result<T>
     where
         T: for<'de> serde::Deserialize<'de>,
     {

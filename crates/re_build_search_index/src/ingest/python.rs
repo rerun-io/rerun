@@ -34,7 +34,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         .with_cwd(ctx.workspace_root())
         .with_arg("rerun_py/site/objects.inv")
         .with_arg("-")
-        .run_serde::<SphinxObjectInv>()
+        .parse_json::<SphinxObjectInv>()
         .context("sphobjinv may not be installed, install rerun_py/requirements-doc.txt")?
         .objects
         .into_values()
@@ -46,7 +46,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     progress.set_message("griffe dump");
     let dump: Dump = Command::new("griffe")
         .with_args(["dump", "rerun_sdk"])
-        .run_serde()
+        .parse_json()
         .context("either griffe or rerun_sdk is not installed")?;
 
     let docs = collect_docstrings(&dump[RERUN_SDK]);
