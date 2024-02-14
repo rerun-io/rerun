@@ -1,5 +1,4 @@
 use egui::{lerp, NumExt as _, Rect};
-use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
 use re_space_view::controls::{
@@ -259,35 +258,6 @@ impl OrbitEye {
         }
     }
 
-    fn set_fwd(&mut self, fwd: Vec3) {
-        if let Some(pitch) = self.pitch() {
-            let pitch = pitch.clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
-
-            let fwd = project_onto(fwd, self.eye_up).normalize(); // Remove pitch
-            let right = fwd.cross(self.eye_up).normalize();
-            let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
-            let fwd = fwd.normalize(); // Prevent drift
-
-            let world_from_view_rot =
-                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.eye_up).inverse());
-
-            if world_from_view_rot.is_finite() {
-                self.world_from_view_rot = world_from_view_rot;
-            }
-        } else {
-            self.world_from_view_rot = Quat::from_rotation_arc(-Vec3::Z, fwd);
-        }
-    }
-
-    #[allow(unused)]
-    pub fn set_up(&mut self, up: Vec3) {
-        self.eye_up = up.normalize_or_zero();
-
-        if self.eye_up != Vec3::ZERO {
-            self.set_fwd(self.fwd()); // this will clamp the rotation
-        }
-    }
-
     /// Returns `true` if interaction occurred.
     /// I.e. the camera changed via user input.
     pub fn update(&mut self, response: &egui::Response, drag_threshold: f32) -> bool {
@@ -456,9 +426,4 @@ impl OrbitEye {
 
         self.orbit_center += translate;
     }
-}
-
-/// e.g. up is `[0,0,1]`, we return things like `[x,y,0]`
-fn project_onto(v: Vec3, up: Vec3) -> Vec3 {
-    v - up * v.dot(up)
 }
