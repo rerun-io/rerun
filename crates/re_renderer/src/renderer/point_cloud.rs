@@ -259,8 +259,8 @@ impl PointCloudDrawData {
         {
             re_tracing::profile_scope!("write_pos_size_texture");
 
-            let textures_size = position_data_texture.texture.size();
-            let texel_count = (textures_size.width * textures_size.height) as usize;
+            let texture_size = position_data_texture.texture.size();
+            let texel_count = (texture_size.width * texture_size.height) as usize;
             let num_elements_padding = texel_count - vertices.len();
 
             let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
@@ -282,8 +282,8 @@ impl PointCloudDrawData {
             )?;
         }
         {
-            let textures_size = color_texture.texture.size();
-            let texel_count = (textures_size.width * textures_size.height) as usize;
+            let texture_size = color_texture.texture.size();
+            let texel_count = (texture_size.width * texture_size.height) as usize;
             let num_elements_padding = texel_count - vertices.len();
 
             builder
@@ -296,8 +296,8 @@ impl PointCloudDrawData {
         }
 
         {
-            let textures_size = picking_instance_id_texture.texture.size();
-            let texel_count = (textures_size.width * textures_size.height) as usize;
+            let texture_size = picking_instance_id_texture.texture.size();
+            let texel_count = (texture_size.width * texture_size.height) as usize;
             let num_elements_padding = texel_count - vertices.len();
 
             builder
