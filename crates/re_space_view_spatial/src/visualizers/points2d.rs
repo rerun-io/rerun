@@ -249,6 +249,7 @@ impl VisualizerSystem for Points2DVisualizer {
         let num_points = super::entity_iterator::count_instances_in_archetype_views::<
             Points2DVisualizer,
             Points2D,
+            9,
         >(ctx, query);
 
         if num_points == 0 {

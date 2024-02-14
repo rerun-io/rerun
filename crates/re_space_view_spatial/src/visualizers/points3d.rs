@@ -190,6 +190,7 @@ impl VisualizerSystem for Points3DVisualizer {
         let num_points = super::entity_iterator::count_instances_in_archetype_views::<
             Points3DVisualizer,
             Points3D,
+            8,
         >(ctx, query);
 
         if num_points == 0 {

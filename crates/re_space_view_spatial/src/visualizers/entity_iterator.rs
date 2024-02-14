@@ -242,10 +242,16 @@ seq!(NUM_COMP in 0..10 {
 ///
 /// Returned value might be conservative and some of the instances may not be displayable after all,
 /// e.g. due to invalid transformation etc.
-pub fn count_instances_in_archetype_views<System: IdentifiedViewSystem, A: Archetype>(
+pub fn count_instances_in_archetype_views<
+    System: IdentifiedViewSystem,
+    A: Archetype,
+    const N: usize,
+>(
     ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
 ) -> usize {
+    assert_eq!(A::all_components().len(), N);
+
     // TODO(andreas/cmc): Use cached code path for this.
     // This is right now a bit harder to do and requires knowing all queried components.
     // The only thing we really want to pass here are the POV components.
@@ -255,7 +261,7 @@ pub fn count_instances_in_archetype_views<System: IdentifiedViewSystem, A: Arche
     let mut num_instances = 0;
 
     for data_result in query.iter_visible_data_results(System::identifier()) {
-        match query_archetype_with_history::<A, 0>(
+        match query_archetype_with_history::<A, N>(
             ctx.entity_db.store(),
             &query.timeline,
             &query.latest_at,
