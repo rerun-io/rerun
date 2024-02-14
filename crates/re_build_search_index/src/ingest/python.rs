@@ -16,6 +16,8 @@ const RERUN_SDK: &str = "rerun_sdk";
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("python");
 
+    // run `mkdocs` to generate documentation, which also produces a `objects.inv` file
+    // this file contains every documented item and a URL to where it is documented
     progress.set_message("mkdocs build");
     progress.suspend(|| {
         Command::new("mkdocs")
@@ -25,6 +27,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             .run_async()
     })?;
 
+    // run `sphobjinv` to convert the `objects.inv` file into JSON, and fully resolve all links/names
     progress.set_message("sphobjinv convert");
     let inv: Inventory = Command::new("sphobjinv")
         .with_args(["convert", "json", "--expand"])
@@ -38,6 +41,8 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         .map(|o| (o.name.clone(), o))
         .collect();
 
+    // run `griffe` to obtain an tree of the entire public module hierarchy in `rerun_sdk`
+    // this dump is only used to obtain docstrings
     progress.set_message("griffe dump");
     let dump: Dump = Command::new("griffe")
         .with_args(["dump", "rerun_sdk"])
@@ -46,6 +51,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
     let docs = collect_docstrings(&dump[RERUN_SDK]);
 
+    // index each documented item
     let _version = &ctx.rerun_pkg().version;
     // let base_url = format!("https://ref.rerun.io/docs/python/{version}");
     let base_url = "https://ref.rerun.io/docs/python/main";
