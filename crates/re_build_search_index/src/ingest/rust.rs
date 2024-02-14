@@ -344,12 +344,8 @@ impl<'a> Visitor<'a> {
         let item = &self.krate.index[id];
         let kind = match &item.inner {
             ItemEnum::Function(_) => ItemKind::Assoc(parent_kind, AssocItemKind::Method),
-            ItemEnum::AssocConst { .. } => {
-                ItemKind::Assoc(parent_kind, AssocItemKind::AssociatedConstant)
-            }
-            ItemEnum::AssocType { .. } => {
-                ItemKind::Assoc(parent_kind, AssocItemKind::AssociatedType)
-            }
+            ItemEnum::AssocConst { .. } => ItemKind::Assoc(parent_kind, AssocItemKind::Constant),
+            ItemEnum::AssocType { .. } => ItemKind::Assoc(parent_kind, AssocItemKind::Type),
             _ => unreachable!("invalid associated item {item:#?}"),
         };
 
@@ -433,8 +429,8 @@ impl Display for ItemKind {
             ItemKind::Macro => "macro",
             ItemKind::Assoc(ParentItemKind::Trait, AssocItemKind::Method) => "tymethod",
             ItemKind::Assoc(_, AssocItemKind::Method) => "method",
-            ItemKind::Assoc(_, AssocItemKind::AssociatedConstant) => "associatedconstant",
-            ItemKind::Assoc(_, AssocItemKind::AssociatedType) => "associatedtype",
+            ItemKind::Assoc(_, AssocItemKind::Constant) => "associatedconstant",
+            ItemKind::Assoc(_, AssocItemKind::Type) => "associatedtype",
         };
         f.write_str(s)
     }
@@ -463,7 +459,7 @@ enum AssocItemKind {
     ///     const V: () = (); //<-
     /// }
     /// ```
-    AssociatedConstant,
+    Constant,
 
     /// A `type` in an inherent `impl` block:
     ///
@@ -474,7 +470,7 @@ enum AssocItemKind {
     ///     type U = (); //<-
     /// }
     /// ```
-    AssociatedType,
+    Type,
 }
 
 /// `ItemKind` for types which may have inherent impls
