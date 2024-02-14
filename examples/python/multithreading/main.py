@@ -20,7 +20,7 @@ def rect_logger(path: str, color: npt.NDArray[np.float32]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Demonstration of using rerun from multiple threads.")
     rr.script_add_args(parser)
     args = parser.parse_args()
 
