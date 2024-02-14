@@ -74,7 +74,7 @@ jobs:
   build-js:
     name: "Build JS"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    uses: ./.github/workflows/reusable_build_npm.yml
+    uses: ./.github/workflows/reusable_build_js.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
     secrets: inherit

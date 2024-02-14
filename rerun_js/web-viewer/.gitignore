@@ -1,5 +1,3 @@
-node_modules
-package-lock.json
 re_viewer.js
 re_viewer.d.ts
 re_viewer_bg.js

@@ -1,12 +1,18 @@
 {
   "name": "@rerun-io/web-viewer-react",
-  "version": "0.13.0-rc.4",
+  "version": "0.13.0",
   "description": "Embed the Rerun web viewer in your React app",
-  "private": false,
+  "licenses": [
+    {
+      "type": "MIT"
+    },
+    {
+      "type": "Apache-2.0"
+    }
+  ],
   "scripts": {
-    "build:types": "dts-buddy",
-    "build": "npm run build:types",
-    "prepublishOnly": "dts-buddy"
+    "build:types": "tsc --noEmit && dts-buddy",
+    "build": "npm run build:types"
   },
   "repository": {
     "type": "git",
@@ -18,6 +24,7 @@
     "url": "https://github.com/rerun-io/rerun/issues"
   },
   "homepage": "https://rerun.io",
+  "type": "module",
   "exports": {
     ".": {
       "types": "./index.d.ts",
@@ -32,11 +39,12 @@
     "tsconfig.json"
   ],
   "dependencies": {
-    "@rerun-io/web-viewer": "0.13.0-rc.4",
+    "@rerun-io/web-viewer": "0.13.0",
     "@types/react": "^18.2.33",
     "react": "^18.2.0"
   },
   "devDependencies": {
-    "dts-buddy": "^0.3.0"
+    "dts-buddy": "^0.3.0",
+    "typescript": "^5.2.2"
   }
 }

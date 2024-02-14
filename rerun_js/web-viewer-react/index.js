@@ -1,8 +1,6 @@
 import React, { createRef } from "react";
 import * as rerun from "@rerun-io/web-viewer";
 
-/** @typedef {import("react")} React */
-
 /**
  * @typedef Props
  * @property {string | string[]} rrd URL(s) of the `.rrd` file(s) to load.
