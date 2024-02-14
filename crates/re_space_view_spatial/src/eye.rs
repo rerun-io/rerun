@@ -164,7 +164,7 @@ pub struct OrbitEye {
     /// This is used to track changes to the scene's view coordinates reactively.
     pub scene_up: Option<Vec3>,
 
-    /// The up-axis of the eye itself.
+    /// The up-axis of the eye itself, in world-space.
     ///
     /// Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
     /// the scene has no up axis defined).
@@ -449,13 +449,14 @@ impl OrbitEye {
         let rel = pointer_pos - rect.center();
         let delta_angle = delta.rot90().dot(rel) / rel.length_sq();
         let rot_delta = Quat::from_rotation_z(delta_angle);
+
+        // Permanently change our up-axis, at least until the user resets the view:
+        let up_in_view = self.world_from_view_rot.inverse() * self.eye_up;
+
         self.world_from_view_rot *= rot_delta;
 
-        // Permanently change our up-axis, at least until the user resets the view!
-        self.eye_up = self
-            .world_from_view_rot
-            .mul_vec3(self.scene_up.unwrap_or(glam::Vec3::Z)) // default to RFU
-            .normalize_or_zero();
+        // Permanently change our up-axis, at least until the user resets the view:
+        self.eye_up = self.world_from_view_rot * up_in_view;
     }
 
     /// Translate based on a certain number of pixel delta.
