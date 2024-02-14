@@ -252,7 +252,7 @@ pub fn count_instances_in_archetype_views<
 ) -> usize {
     assert_eq!(A::all_components().len(), N);
 
-    // TODO(andreas/cmc): Use cached code path for this.
+    // TODO(andreas): Use cached code path for this.
     // This is right now a bit harder to do and requires knowing all queried components.
     // The only thing we really want to pass here are the POV components.
 

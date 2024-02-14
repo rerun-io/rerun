@@ -119,7 +119,7 @@ pub fn data_texture_size(
         .expect("Depth/stencil formats are not supported as data textures");
 
     // Our data textures are usually accessed in a linear fashion, so ideally we'd be using a 1D texture.
-    // However, 1D textures are very limited in size on many platforms, we we have to use 2D textures instead.
+    // However, 1D textures are very limited in size on many platforms, we have to use 2D textures instead.
     // 2D textures perform a lot better when their dimensions are powers of two, so we'll strictly stick to that even
     // when it seems to cause memory overhead.
 
