@@ -171,7 +171,7 @@ def rrt(
 
         step += 1
         rr.set_time_sequence("step", step)
-        rr.log("map/close_nodes", rr.Clear(recursive=False))
+        rr.log("map/new/close_nodes", rr.Clear(recursive=False))
         rr.log(
             "map/tree/edges",
             rr.LineStrips2D(tree.segments(), radii=0.0005, colors=[0, 0, 255, 128]),
@@ -182,22 +182,22 @@ def rrt(
             # So that we can see the cost at a node by hovering over it.
             rr.AnyValues(cost=[float(node.cost) for node in tree]),
         )
-        rr.log("map/random_point", rr.Points2D([random_point], radii=0.008))
-        rr.log("map/closest_node", rr.Points2D([closest_node.pos], radii=0.008))
-        rr.log("map/new_point", rr.Points2D([new_point], radii=0.008))
+        rr.log("map/new/random_point", rr.Points2D([random_point], radii=0.008))
+        rr.log("map/new/closest_node", rr.Points2D([closest_node.pos], radii=0.008))
+        rr.log("map/new/new_point", rr.Points2D([new_point], radii=0.008))
 
         color = np.array([0, 255, 0, 255]).astype(np.uint8)
         if intersects_obs:
             color = np.array([255, 0, 0, 255]).astype(np.uint8)
         rr.log(
-            "map/new_edge",
+            "map/new/new_edge",
             rr.LineStrips2D([(closest_node.pos, new_point)], colors=[color], radii=0.001),
         )
 
         if not intersects_obs:
             # Searches for the point in a neighborhood that would result in the minimal cost (distance from start).
             close_nodes = tree.in_neighborhood(new_point, neighborhood_size)
-            rr.log("map/close_nodes", rr.Points2D([node.pos for node in close_nodes]))
+            rr.log("map/new/close_nodes", rr.Points2D([node.pos for node in close_nodes]))
 
             min_node = min(
                 filter(
