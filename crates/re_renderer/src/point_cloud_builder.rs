@@ -6,8 +6,8 @@ use crate::{
     allocator::CpuWriteGpuReadBuffer,
     draw_phases::PickingLayerObjectId,
     renderer::{
-        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-        PositionRadius,
+        data_texture_source_buffer_element_count, PointCloudBatchFlags, PointCloudBatchInfo,
+        PointCloudDrawData, PointCloudDrawDataError, PositionRadius,
     },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
     Size,
@@ -30,21 +30,33 @@ pub struct PointCloudBuilder {
 
 impl PointCloudBuilder {
     pub fn new(ctx: &RenderContext, max_num_points: u32) -> Self {
-        let num_buffer_elements =
-            PointCloudDrawData::padded_buffer_element_count(ctx, max_num_points);
+        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
 
         let color_buffer = ctx
             .cpu_write_gpu_read_belt
             .lock()
-            .allocate::<Color32>(&ctx.device, &ctx.gpu_resources.buffers, num_buffer_elements)
+            .allocate::<Color32>(
+                &ctx.device,
+                &ctx.gpu_resources.buffers,
+                data_texture_source_buffer_element_count(
+                    PointCloudDrawData::COLOR_TEXTURE_FORMAT,
+                    max_num_points,
+                    max_texture_dimension_2d,
+                ),
+            )
             .expect("Failed to allocate color buffer"); // TODO(#3408): Should never happen but should propagate error anyways
+
         let picking_instance_ids_buffer = ctx
             .cpu_write_gpu_read_belt
             .lock()
             .allocate::<PickingLayerInstanceId>(
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
-                num_buffer_elements,
+                data_texture_source_buffer_element_count(
+                    PointCloudDrawData::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
+                    max_num_points,
+                    max_texture_dimension_2d,
+                ),
             )
             .expect("Failed to allocate picking layer buffer"); // TODO(#3408): Should never happen but should propagate error anyways
 

@@ -19,6 +19,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
+    renderer::data_texture_desc,
     wgpu_resources::GpuRenderPipelinePoolAccessor,
     DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
 };
@@ -32,7 +33,7 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, TextureDesc,
+        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
     },
 };
 
@@ -161,6 +162,11 @@ pub enum PointCloudDrawDataError {
 }
 
 impl PointCloudDrawData {
+    pub const COLOR_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+    pub const POSITION_DATA_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
+    pub const PICKING_INSTANCE_ID_TEXTURE_FORMAT: wgpu::TextureFormat =
+        wgpu::TextureFormat::Rg32Uint;
+
     /// Transforms and uploads point cloud data to be consumed by gpu.
     ///
     /// Try to bundle all points into a single draw data instance whenever possible.
@@ -221,50 +227,46 @@ impl PointCloudDrawData {
             vertices
         };
 
-        let data_texture_size =
-            Self::point_cloud_data_texture_size(vertices.len() as u32, max_texture_dimension_2d);
-
-        let position_data_texture_desc = TextureDesc {
-            label: "PointCloudDrawData::position_data_texture".into(),
-            size: data_texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba32Float,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        };
-
-        let position_data_texture = ctx
-            .gpu_resources
-            .textures
-            .alloc(&ctx.device, &position_data_texture_desc);
+        let position_data_texture = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &data_texture_desc(
+                "PointCloudDrawData::position_data_texture",
+                Self::POSITION_DATA_TEXTURE_FORMAT,
+                vertices.len() as u32,
+                max_texture_dimension_2d,
+            ),
+        );
         let color_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
-            &TextureDesc {
-                label: "PointCloudDrawData::color_texture".into(),
-                format: wgpu::TextureFormat::Rgba8UnormSrgb, // Declaring this as srgb here saves us manual conversion in the shader!
-                ..position_data_texture_desc
-            },
-        );
-        let picking_instance_id_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &TextureDesc {
-                label: "PointCloudDrawData::picking_instance_id_texture".into(),
-                format: wgpu::TextureFormat::Rg32Uint,
-                ..position_data_texture_desc
-            },
+            &data_texture_desc(
+                "PointCloudDrawData::color_texture",
+                Self::COLOR_TEXTURE_FORMAT,
+                vertices.len() as u32,
+                max_texture_dimension_2d,
+            ),
         );
 
-        let data_texture_element_count =
-            data_texture_size.width as usize * data_texture_size.height as usize;
-        let num_elements_padding = data_texture_element_count - vertices.len();
+        let picking_instance_id_texture = ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &data_texture_desc(
+                "PointCloudDrawData::picking_instance_id_texture",
+                Self::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
+                vertices.len() as u32,
+                max_texture_dimension_2d,
+            ),
+        );
+
         {
             re_tracing::profile_scope!("write_pos_size_texture");
+
+            let textures_size = position_data_texture.texture.size();
+            let texel_count = (textures_size.width * textures_size.height) as usize;
+            let num_elements_padding = texel_count - vertices.len();
 
             let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
-                data_texture_element_count,
+                texel_count,
             )?;
             staging_buffer.extend_from_slice(vertices)?;
             staging_buffer.fill_n(gpu_data::PositionRadius::zeroed(), num_elements_padding)?;
@@ -276,37 +278,38 @@ impl PointCloudDrawData {
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                data_texture_size,
+                position_data_texture.texture.size(),
+            )?;
+        }
+        {
+            let textures_size = color_texture.texture.size();
+            let texel_count = (textures_size.width * textures_size.height) as usize;
+            let num_elements_padding = texel_count - vertices.len();
+
+            builder
+                .color_buffer
+                .fill_n(ecolor::Color32::TRANSPARENT, num_elements_padding)?;
+            builder.color_buffer.copy_to_texture2d_entire_first_layer(
+                ctx.active_frame.before_view_builder_encoder.lock().get(),
+                &color_texture,
             )?;
         }
 
-        builder
-            .color_buffer
-            .fill_n(ecolor::Color32::TRANSPARENT, num_elements_padding)?;
-        builder.color_buffer.copy_to_texture2d(
-            ctx.active_frame.before_view_builder_encoder.lock().get(),
-            wgpu::ImageCopyTexture {
-                texture: &color_texture.texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            data_texture_size,
-        )?;
+        {
+            let textures_size = picking_instance_id_texture.texture.size();
+            let texel_count = (textures_size.width * textures_size.height) as usize;
+            let num_elements_padding = texel_count - vertices.len();
 
-        builder
-            .picking_instance_ids_buffer
-            .fill_n(Default::default(), num_elements_padding)?;
-        builder.picking_instance_ids_buffer.copy_to_texture2d(
-            ctx.active_frame.before_view_builder_encoder.lock().get(),
-            wgpu::ImageCopyTexture {
-                texture: &picking_instance_id_texture.texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            data_texture_size,
-        )?;
+            builder
+                .picking_instance_ids_buffer
+                .fill_n(Default::default(), num_elements_padding)?;
+            builder
+                .picking_instance_ids_buffer
+                .copy_to_texture2d_entire_first_layer(
+                    ctx.active_frame.before_view_builder_encoder.lock().get(),
+                    &picking_instance_id_texture,
+                )?;
+        }
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
@@ -455,30 +458,6 @@ impl PointCloudDrawData {
             bind_group_all_points_outline_mask: Some(bind_group_all_points_outline_mask),
             batches: batches_internal,
         })
-    }
-
-    /// Returns size in number of elements for buffers that store point cloud data.
-    ///
-    /// This padding is required since we can only copy full rows of a texture.
-    pub(crate) fn padded_buffer_element_count(ctx: &RenderContext, max_num_points: u32) -> usize {
-        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
-        let data_texture_size =
-            Self::point_cloud_data_texture_size(max_num_points, max_texture_dimension_2d);
-        data_texture_size.width as usize * data_texture_size.height as usize
-    }
-
-    /// Size used for all data textures for a given number of points.
-    fn point_cloud_data_texture_size(
-        num_elements: u32,
-        max_texture_dimension_2d: u32,
-    ) -> wgpu::Extent3d {
-        // Not all data textures have an element size of 4.
-        // For instance, the picking texture has an element size of 16.
-        //
-        // However, we'd like to use the same coordinates on all textures, so we're using the same size for all textures.
-        // By specifying the smallest element size, we might over-pad the textures with bigger elements.
-        let element_size = 4;
-        data_texture_size(num_elements, element_size, max_texture_dimension_2d)
     }
 }
 
@@ -723,49 +702,5 @@ impl Renderer for PointCloudRenderer {
         }
 
         Ok(())
-    }
-}
-
-/// Determines the size for a "data texture", i.e. a texture that we use to store data
-/// that we'd otherwise store inside a buffer, but can't due to WebGL compatibility.
-///
-/// `max_texture_size` must be a power of two.
-///
-/// For convenience, the returned texture size has a width that is also a multiple of `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`
-/// for the given element size.
-/// This makes it a lot easier to copy data from a continuous buffer to the texture.
-/// If we wouldn't do that, we'd need to do a copy per row in some cases.
-fn data_texture_size(
-    num_elements: u32,
-    element_size_in_bytes: u32,
-    max_texture_size: u32,
-) -> wgpu::Extent3d {
-    assert!(max_texture_size.is_power_of_two());
-
-    // Our data textures are usually accessed in a linear fashion, so ideally we'd be using a 1D texture.
-    // However, 1D textures are very limited in size on many platforms, we we have to use 2D textures instead.
-    // 2D textures perform a lot better when their dimensions are powers of two, so we'll strictly stick to that even
-    // when it seems to cause memory overhead.
-
-    // We fill row by row. With the power-of-two requirement, this is the optimal strategy:
-    // if there were a texture with less padding that uses half the width,
-    // then we'd need to increase the height. We can't increase without doubling it, thus creating a texture
-    // with the exact same mount of padding as before ▮.
-
-    let width = if num_elements < max_texture_size {
-        num_elements
-            .next_power_of_two()
-            // Keeping at a multiple of the alignment requirement makes copy operations a lot simpler.
-            .next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT / element_size_in_bytes)
-    } else {
-        max_texture_size
-    };
-
-    let height = num_elements.div_ceil(width);
-
-    wgpu::Extent3d {
-        width,
-        height,
-        depth_or_array_layers: 1,
     }
 }

@@ -2,7 +2,7 @@ use std::sync::mpsc;
 
 use crate::{
     texture_info::Texture2DBufferInfo,
-    wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool},
+    wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture},
 };
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
@@ -222,6 +222,29 @@ where
     /// Total number of elements that the buffer can hold.
     pub fn capacity(&self) -> usize {
         self.unwritten_element_range.end
+    }
+
+    /// Copies all all so far written data to the first layer of a 2d texture.
+    ///
+    /// Assumes that the buffer consists of as-tightly-packed-as-possible rows of data.
+    /// (taking into account required padding as specified by [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`])
+    ///
+    /// Fails if the buffer size is not sufficient to fill the entire texture.
+    pub fn copy_to_texture2d_entire_first_layer(
+        self,
+        encoder: &mut wgpu::CommandEncoder,
+        destination: &GpuTexture,
+    ) -> Result<(), CpuWriteGpuReadError> {
+        self.copy_to_texture2d(
+            encoder,
+            wgpu::ImageCopyTexture {
+                texture: &destination.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            destination.texture.size(),
+        )
     }
 
     /// Copies all so far written data to a rectangle on a single 2d texture layer.

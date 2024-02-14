@@ -75,12 +75,17 @@ struct PointData {
 
 // Read and unpack data at a given location
 fn read_data(idx: u32) -> PointData {
-    let texture_size = textureDimensions(position_data_texture);
-    let coord = vec2u(idx % texture_size.x, idx / texture_size.x);
+    let position_data_texture_size = textureDimensions(position_data_texture);
+    let position_data = textureLoad(position_data_texture,
+         vec2u(idx % position_data_texture_size.x, idx / position_data_texture_size.x), 0);
 
-    let position_data = textureLoad(position_data_texture, coord, 0);
-    let color = textureLoad(color_texture, coord, 0);
-    let picking_instance_id = textureLoad(picking_instance_id_texture, coord, 0).rg;
+    let color_texture_size = textureDimensions(color_texture);
+    let color = textureLoad(color_texture,
+         vec2u(idx % color_texture_size.x, idx / color_texture_size.x), 0);
+
+    let picking_instance_id_texture_size = textureDimensions(picking_instance_id_texture);
+    let picking_instance_id = textureLoad(picking_instance_id_texture,
+         vec2u(idx % picking_instance_id_texture_size.x, idx / picking_instance_id_texture_size.x), 0).xy;
 
     var data: PointData;
     let pos_4d = batch.world_from_obj * vec4f(position_data.xyz, 1.0);
