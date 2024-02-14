@@ -1,6 +1,6 @@
 use egui::{emath::RectTransform, NumExt as _};
 use glam::Affine3A;
-use macaw::{vec3, BoundingBox, Quat, Vec3};
+use macaw::{BoundingBox, Quat, Vec3};
 use web_time::Instant;
 
 use re_log_types::EntityPath;
@@ -680,17 +680,45 @@ pub fn view_3d(
 
         if orbit_center_fade > 0.001 {
             let half_line_length = orbit_eye.orbit_radius * 0.03;
-
             let half_line_length = half_line_length * orbit_center_fade;
+
+            // We distinguish the eye up-axis from the other two axes:
+            // Default to RFU
+            let up = if orbit_eye.eye_up == Vec3::ZERO {
+                glam::Vec3::Z
+            } else {
+                orbit_eye.eye_up.normalize()
+            };
+
+            // For the other two axes, try to use the scene view coordinates if available:
+            let right = scene_view_coordinates
+                .and_then(|vc| vc.right())
+                .map_or(glam::Vec3::X, Vec3::from);
+            let forward = up
+                .cross(right)
+                .try_normalize()
+                .unwrap_or_else(|| up.any_orthogonal_vector());
+            let right = forward.cross(up);
 
             line_builder
                 .batch("center orbit orientation help")
-                .add_segments(glam::Vec3::AXES.iter().map(|axis| {
-                    (
-                        orbit_eye.orbit_center - *axis * half_line_length,
-                        orbit_eye.orbit_center + *axis * half_line_length,
-                    )
-                }))
+                .add_segments(
+                    [
+                        (
+                            orbit_eye.orbit_center,
+                            orbit_eye.orbit_center + 0.5 * up * half_line_length,
+                        ),
+                        (
+                            orbit_eye.orbit_center - right * half_line_length,
+                            orbit_eye.orbit_center + right * half_line_length,
+                        ),
+                        (
+                            orbit_eye.orbit_center - forward * half_line_length,
+                            orbit_eye.orbit_center + forward * half_line_length,
+                        ),
+                    ]
+                    .into_iter(),
+                )
                 .radius(Size::new_points(0.75))
                 // TODO(andreas): Fade this out.
                 .color(re_renderer::Color32::WHITE);
