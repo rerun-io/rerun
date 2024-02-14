@@ -9,7 +9,6 @@ use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
 use re_types::components::{DepthMeter, InstanceKey, TensorData, ViewCoordinates};
 use re_types::tensor_data::TensorDataMeaning;
-use re_types::view_coordinates::SignedAxis3;
 use re_viewer_context::{
     HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
@@ -165,17 +164,18 @@ impl SpatialSpaceViewState {
                     let up_description = if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
                         format!("Scene up is {scene_up}")
                     } else {
-                        let scene_up = SignedAxis3::POSITIVE_Z; // defauls to RUF
-                        format!("Scene up is unspecified (defaulting to {scene_up})")
+                        "Scene up is unspecified".to_owned()
                     };
                     ui.label(up_description).on_hover_ui(|ui| {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 0.0;
-                            ui.label("Set with ");
-                            ui.code("rerun.ViewCoordinates");
-                            ui.label(".");
-                        });
+                        re_ui::markdown_ui(ui, egui::Id::new("view_coordinates_tooltip"), "Set with `rerun.ViewCoordinates`.");
                     });
+
+                    if let Some(eye) = &self.state_3d.orbit_eye {
+                        if eye.eye_up != glam::Vec3::ZERO {
+                            ui.label(format!("Current camera-eye up-axis is {}", format_vector(eye.eye_up)));
+                        }
+                    }
+
                     re_ui.checkbox(ui, &mut self.state_3d.show_axes, "Show origin axes").on_hover_text("Show X-Y-Z axes");
                     re_ui.checkbox(ui, &mut self.state_3d.show_bbox, "Show bounding box").on_hover_text("Show the current scene bounding box");
                     re_ui.checkbox(ui, &mut self.state_3d.show_accumulated_bbox, "Show accumulated bounding box").on_hover_text("Show bounding box accumulated over all rendered frames");
@@ -770,5 +770,25 @@ fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {
     if hit.hit_type == PickingHitType::GpuPickingResult {
         let glam::Vec3 { x, y, z } = hit.space_position;
         ui.label(format!("Hover position: [{x:.5}, {y:.5}, {z:.5}]"));
+    }
+}
+
+fn format_vector(v: glam::Vec3) -> String {
+    use glam::Vec3;
+
+    if v == Vec3::X {
+        "+X".to_owned()
+    } else if v == -Vec3::X {
+        "-X".to_owned()
+    } else if v == Vec3::Y {
+        "+Y".to_owned()
+    } else if v == -Vec3::Y {
+        "-Y".to_owned()
+    } else if v == Vec3::Z {
+        "+Z".to_owned()
+    } else if v == -Vec3::Z {
+        "-Z".to_owned()
+    } else {
+        format!("[{:.02}, {:.02}, {:.02}]", v.x, v.y, v.z)
     }
 }
