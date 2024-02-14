@@ -1,5 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_renderer::{renderer::LineStripFlags, PickingLayerInstanceId};
+use re_renderer::{renderer::LineStripFlags, LineBatchesBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Arrows2D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text, Vector2D},
@@ -12,7 +12,7 @@ use re_viewer_context::{
 
 use super::{
     process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
-    SpatialViewVisualizerData,
+    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
@@ -79,6 +79,7 @@ impl Arrows2DVisualizer {
 
     fn process_data(
         &mut self,
+        line_builder: &mut re_renderer::LineBatchesBuilder,
         query: &ViewQuery<'_>,
         data: &Arrows2DComponentData<'_>,
         ent_path: &EntityPath,
@@ -130,9 +131,8 @@ impl Arrows2DVisualizer {
             }
         }
 
-        let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
-            .batch("arrows2d")
+            .batch(ent_path.to_string())
             .world_from_obj(ent_context.world_from_entity)
             .outline_mask_ids(ent_context.highlight.overall)
             .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
@@ -209,6 +209,19 @@ impl VisualizerSystem for Arrows2DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        let num_arrows = super::entity_iterator::count_instances_in_archetype_views::<
+            Arrows2DVisualizer,
+            Arrows2D,
+            8,
+        >(ctx, query) as u32;
+
+        if num_arrows == 0 {
+            return Ok(Vec::new());
+        }
+
+        let mut line_builder = LineBatchesBuilder::new(ctx.render_ctx, num_arrows, num_arrows * 2)
+            .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+
         super::entity_iterator::process_archetype_pov1_comp6::<
             Arrows2DVisualizer,
             Arrows2D,
@@ -248,12 +261,12 @@ impl VisualizerSystem for Arrows2DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(query, &data, ent_path, ent_context);
-                Ok(())
+                self.process_data(&mut line_builder, query, &data, ent_path, ent_context);
+                Ok(Vec::new())
             },
         )?;
 
-        Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+        Ok(vec![(line_builder.into_draw_data(ctx.render_ctx)?.into())])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

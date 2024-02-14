@@ -11,11 +11,11 @@ pub enum CpuWriteGpuReadError {
     ZeroSizeBufferAllocation,
 
     #[error("Buffer is full, can't append more data!
- Buffer contains {buffer_element_size} elements and has a capacity for {buffer_element_capacity} elements.
+ Buffer contains {buffer_size_elements} elements and has a capacity for {buffer_capacity_elements} elements.
  Tried to add {num_elements_attempted_to_add} elements.")]
     BufferFull {
-        buffer_element_capacity: usize,
-        buffer_element_size: usize,
+        buffer_capacity_elements: usize,
+        buffer_size_elements: usize,
         num_elements_attempted_to_add: usize,
     },
 
@@ -100,8 +100,8 @@ where
         let (result, elements) = if elements.len() > self.remaining_capacity() {
             (
                 Err(CpuWriteGpuReadError::BufferFull {
-                    buffer_element_capacity: self.capacity(),
-                    buffer_element_size: self.num_written(),
+                    buffer_capacity_elements: self.capacity(),
+                    buffer_size_elements: self.num_written(),
                     num_elements_attempted_to_add: elements.len(),
                 }),
                 &elements[..self.remaining_capacity()],
@@ -140,8 +140,8 @@ where
             for element in elements {
                 if self.unwritten_element_range.start >= self.unwritten_element_range.end {
                     return Err(CpuWriteGpuReadError::BufferFull {
-                        buffer_element_capacity: self.capacity(),
-                        buffer_element_size: self.num_written(),
+                        buffer_capacity_elements: self.capacity(),
+                        buffer_size_elements: self.num_written(),
                         num_elements_attempted_to_add: 1,
                     });
                 }
@@ -163,8 +163,8 @@ where
         let (result, num_elements) = if num_elements > self.remaining_capacity() {
             (
                 Err(CpuWriteGpuReadError::BufferFull {
-                    buffer_element_capacity: self.capacity(),
-                    buffer_element_size: self.num_written(),
+                    buffer_capacity_elements: self.capacity(),
+                    buffer_size_elements: self.num_written(),
                     num_elements_attempted_to_add: num_elements,
                 }),
                 self.remaining_capacity(),
@@ -194,8 +194,8 @@ where
     pub fn push(&mut self, element: T) -> Result<(), CpuWriteGpuReadError> {
         if self.remaining_capacity() == 0 {
             return Err(CpuWriteGpuReadError::BufferFull {
-                buffer_element_capacity: self.capacity(),
-                buffer_element_size: self.num_written(),
+                buffer_capacity_elements: self.capacity(),
+                buffer_size_elements: self.num_written(),
                 num_elements_attempted_to_add: 1,
             });
         }

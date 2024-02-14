@@ -1,4 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
+use re_renderer::LineBatchesBuilder;
 use re_types::{
     archetypes::Boxes2D,
     components::{ClassId, Color, HalfSizes2D, InstanceKey, KeypointId, Position2D, Radius, Text},
@@ -18,7 +19,7 @@ use crate::{
 use super::{
     filter_visualizable_2d_entities, picking_id_from_instance_key,
     process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
-    SpatialViewVisualizerData,
+    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 pub struct Boxes2DVisualizer {
@@ -73,6 +74,7 @@ impl Boxes2DVisualizer {
 
     fn process_data(
         &mut self,
+        line_builder: &mut LineBatchesBuilder,
         query: &ViewQuery<'_>,
         data: &Boxes2DComponentData<'_>,
         ent_path: &EntityPath,
@@ -127,7 +129,6 @@ impl Boxes2DVisualizer {
             }
         }
 
-        let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
             .batch("boxes2d")
             .depth_offset(ent_context.depth_offset)
@@ -213,6 +214,21 @@ impl VisualizerSystem for Boxes2DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        let num_boxes = super::entity_iterator::count_instances_in_archetype_views::<
+            Boxes2DVisualizer,
+            Boxes2D,
+            9,
+        >(ctx, query) as u32;
+
+        if num_boxes == 0 {
+            return Ok(Vec::new());
+        }
+
+        // Each box consists of 4 independent lines.
+        let mut line_builder =
+            LineBatchesBuilder::new(ctx.render_ctx, num_boxes * 4, num_boxes * 4 * 2)
+                .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+
         super::entity_iterator::process_archetype_pov1_comp6::<
             Boxes2DVisualizer,
             Boxes2D,
@@ -252,12 +268,12 @@ impl VisualizerSystem for Boxes2DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(query, &data, ent_path, ent_context);
-                Ok(())
+                self.process_data(&mut line_builder, query, &data, ent_path, ent_context);
+                Ok(Vec::new())
             },
         )?;
 
-        Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+        Ok(vec![(line_builder.into_draw_data(ctx.render_ctx)?.into())])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

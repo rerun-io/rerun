@@ -6,7 +6,7 @@ use web_time::Instant;
 use re_log_types::EntityPath;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    LineStripSeriesBuilder, Size,
+    LineStripBatchBuilderAllocator, Size,
 };
 use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
@@ -19,7 +19,6 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SharedRenderBuilders,
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
@@ -458,8 +457,10 @@ pub fn view_3d(
     );
     let eye = orbit_eye.to_eye();
 
-    let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx)
-        .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+    // Various ui interactions draw additional lines.
+    // We don't know ahead of time how many, but it's not gonna be a huge amount!
+    let mut line_builder =
+        LineStripBatchBuilderAllocator::new(32, 64, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
     // Origin gizmo if requested.
     // TODO(andreas): Move this to the transform3d_arrow scene part.
@@ -467,12 +468,13 @@ pub fn view_3d(
     if state.state_3d.show_axes {
         let axis_length = 1.0; // The axes are also a measuring stick
         crate::visualizers::add_axis_arrows(
+            ctx.render_ctx,
             &mut line_builder,
             macaw::Affine3A::IDENTITY,
             None,
             axis_length,
             re_renderer::OutlineMaskPreference::NONE,
-        );
+        )?;
 
         // If we are showing the axes for the space, then add the space origin to the bounding box.
         state.bounding_boxes.current.extend(glam::Vec3::ZERO);
@@ -604,39 +606,40 @@ pub fn view_3d(
 
     for selected_context in ctx.selection_state().selected_space_context() {
         show_projections_from_2d_space(
+            ctx.render_ctx,
             &mut line_builder,
             space_cameras,
             state,
             selected_context,
             ui.style().visuals.selection.bg_fill,
-        );
+        )?;
     }
     if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
         show_projections_from_2d_space(
+            ctx.render_ctx,
             &mut line_builder,
             space_cameras,
             state,
             hovered_context,
             egui::Color32::WHITE,
-        );
+        )?;
     }
 
-    {
-        let mut box_batch = line_builder.batch("scene_bbox");
-        if state.state_3d.show_bbox {
-            box_batch
-                .add_box_outline(&state.bounding_boxes.current)
-                .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
-        }
-        if state.state_3d.show_accumulated_bbox {
-            box_batch
-                .add_box_outline(&state.bounding_boxes.accumulated)
-                .map(|lines| {
-                    lines
-                        .radius(Size::AUTO)
-                        .color(egui::Color32::from_gray(170))
-                });
-        }
+    if state.state_3d.show_bbox {
+        line_builder
+            .reserve_batch("scene_bbox", ctx.render_ctx, 1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
+            .add_box_outline(&state.bounding_boxes.current)
+            .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
+    }
+    if state.state_3d.show_accumulated_bbox {
+        line_builder
+            .reserve_batch("scene_bbox_accumulated", ctx.render_ctx, 1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
+            .add_box_outline(&state.bounding_boxes.accumulated)
+            .map(|lines| {
+                lines
+                    .radius(Size::AUTO)
+                    .color(egui::Color32::from_gray(170))
+            });
     }
 
     // Show center of orbit camera when interacting with camera (it's quite helpful).
@@ -700,7 +703,7 @@ pub fn view_3d(
             let right = forward.cross(up);
 
             line_builder
-                .batch("center orbit orientation help")
+                .reserve_batch("center orbit orientation help", ctx.render_ctx, 3, 3 * 2)?
                 .add_segments(
                     [
                         (
@@ -734,20 +737,10 @@ pub fn view_3d(
     for draw_data in draw_data {
         view_builder.queue_draw(draw_data);
     }
-    if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {
-        for draw_data in shared_render_builders.queuable_draw_data(ctx.render_ctx) {
-            view_builder.queue_draw(draw_data);
-        }
-    }
 
     // Commit ui induced lines.
-    match line_builder.into_draw_data(ctx.render_ctx) {
-        Ok(line_draw_data) => {
-            view_builder.queue_draw(line_draw_data);
-        }
-        Err(err) => {
-            re_log::error_once!("Failed to create draw data for lines from ui interaction: {err}");
-        }
+    for line_draw_data in line_builder.finish(ctx.render_ctx)? {
+        view_builder.queue_draw(line_draw_data);
     }
 
     // Composite viewbuilder into egui.
@@ -768,12 +761,13 @@ pub fn view_3d(
 }
 
 fn show_projections_from_2d_space(
-    line_builder: &mut LineStripSeriesBuilder,
+    render_ctx: &re_renderer::RenderContext,
+    line_builder: &mut re_renderer::LineStripBatchBuilderAllocator,
     space_cameras: &[SpaceCamera3D],
     state: &SpatialSpaceViewState,
     space_context: &SelectedSpaceContext,
     color: egui::Color32,
-) {
+) -> Result<(), re_renderer::renderer::LineDrawDataError> {
     match space_context {
         SelectedSpaceContext::TwoD { space_2d, pos } => {
             if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
@@ -801,12 +795,13 @@ fn show_projections_from_2d_space(
 
                         let thick_ray_length = (stop_in_world - origin).length();
                         add_picking_ray(
+                            render_ctx,
                             line_builder,
                             ray,
                             &state.bounding_boxes.accumulated,
                             thick_ray_length,
                             color,
-                        );
+                        )?;
                     }
                 }
             }
@@ -829,27 +824,31 @@ fn show_projections_from_2d_space(
                         cam_to_pos / distance,
                     );
                     add_picking_ray(
+                        render_ctx,
                         line_builder,
                         ray,
                         &state.bounding_boxes.accumulated,
                         distance,
                         color,
-                    );
+                    )?;
                 }
             }
         }
         SelectedSpaceContext::ThreeD { .. } => {}
     }
+
+    Ok(())
 }
 
 fn add_picking_ray(
-    line_builder: &mut LineStripSeriesBuilder,
+    render_ctx: &re_renderer::RenderContext,
+    line_builder: &mut re_renderer::LineStripBatchBuilderAllocator,
     ray: macaw::Ray3,
     scene_bbox_accum: &BoundingBox,
     thick_ray_length: f32,
     color: egui::Color32,
-) {
-    let mut line_batch = line_builder.batch("picking ray");
+) -> Result<(), re_renderer::renderer::LineDrawDataError> {
+    let mut line_batch = line_builder.reserve_batch("picking ray", render_ctx, 2, 4)?;
 
     let origin = ray.point_along(0.0);
     // No harm in making this ray _very_ long. (Infinite messes with things though!)
@@ -865,6 +864,8 @@ fn add_picking_ray(
         .color(color.gamma_multiply(0.7))
         // TODO(andreas): Make this dashed.
         .radius(Size::new_points(0.5));
+
+    Ok(())
 }
 
 fn default_eye(

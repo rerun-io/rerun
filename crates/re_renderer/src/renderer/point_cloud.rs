@@ -157,7 +157,7 @@ pub use gpu_data::PositionRadius;
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PointCloudDrawDataError {
-    #[error("Failed to transfer data to the GPU")]
+    #[error("Failed to transfer data to the GPU: {0}")]
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 

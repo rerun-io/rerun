@@ -10,8 +10,8 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{
-        AnnotationSceneContext, EntityDepthOffsets, PrimitiveCounter, SharedRenderBuilders,
-        SpatialSceneEntityContext, TransformContext,
+        AnnotationSceneContext, EntityDepthOffsets, PrimitiveCounter, SpatialSceneEntityContext,
+        TransformContext,
     },
     SpatialSpaceView3D,
 };
@@ -40,7 +40,6 @@ where
     let transforms = view_ctx.get::<TransformContext>()?;
     let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-    let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
     for data_result in query.iter_visible_data_results(System::identifier()) {
@@ -66,7 +65,6 @@ where
                 .get(&data_result.entity_path.hash())
                 .unwrap_or(&default_depth_offset),
             annotations: annotations.0.find(&data_result.entity_path),
-            shared_render_builders,
             highlight: query
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash()),
@@ -125,7 +123,7 @@ macro_rules! impl_process_archetype {
             view_ctx: &ViewContextCollection,
             default_depth_offset: DepthOffset,
             mut f: F,
-        ) -> Result<(), SpaceViewSystemExecutionError>
+        ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError>
         where
             S: IdentifiedViewSystem,
             A: Archetype + 'a,
@@ -140,7 +138,7 @@ macro_rules! impl_process_archetype {
                 &[InstanceKey],
                 $(&[$pov],)*
                 $(Option<&[Option<$comp>]>,)*
-            ) -> ::re_query::Result<()>,
+            ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError>,
         {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!(
@@ -151,8 +149,8 @@ macro_rules! impl_process_archetype {
             let transforms = view_ctx.get::<TransformContext>()?;
             let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
             let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-            let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
             let counter = view_ctx.get::<PrimitiveCounter>()?;
+            let mut draw_data = Vec::new();
 
             for data_result in query.iter_visible_data_results(S::identifier()) {
                 // The transform that considers pinholes only makes sense if this is a 3D space-view
@@ -176,7 +174,6 @@ macro_rules! impl_process_archetype {
                         .get(&data_result.entity_path.hash())
                         .unwrap_or(&default_depth_offset),
                     annotations: annotations.0.find(&data_result.entity_path),
-                    shared_render_builders,
                     highlight: query
                         .highlights
                         .entity_outline_mask(data_result.entity_path.hash()),
@@ -194,7 +191,7 @@ macro_rules! impl_process_archetype {
                             .num_primitives
                             .fetch_add(keys.len(), std::sync::atomic::Ordering::Relaxed);
 
-                        if let Err(err) = f(
+                        match f(
                             ctx,
                             &data_result.entity_path,
                             data_result.accumulated_properties(),
@@ -204,11 +201,14 @@ macro_rules! impl_process_archetype {
                             $($pov,)+
                             $($comp.as_deref(),)*
                         ) {
-                            re_log::error_once!(
-                                "Unexpected error querying {:?}: {err}",
-                                &data_result.entity_path
-                            );
-                        }
+                            Err(err) => {
+                                re_log::error_once!(
+                                    "Unexpected error querying {:?}: {err}",
+                                    &data_result.entity_path
+                                );
+                            },
+                            Ok(new_draw_data) => draw_data.extend(new_draw_data),
+                        };
                     }
                 ) {
                     Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
@@ -221,7 +221,7 @@ macro_rules! impl_process_archetype {
                 }
             }
 
-            Ok(())
+            Ok(draw_data)
         } }
     };
 

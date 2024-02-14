@@ -1,6 +1,6 @@
 use glam::vec3;
 use re_entity_db::{EntityPath, EntityProperties};
-use re_renderer::renderer::LineStripFlags;
+use re_renderer::{renderer::LineStripFlags, RenderContext};
 use re_types::{
     archetypes::Pinhole,
     components::{InstanceKey, Transform3D, ViewCoordinates},
@@ -13,10 +13,9 @@ use re_viewer_context::{
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
-    contexts::{SharedRenderBuilders, TransformContext},
-    instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    query_pinhole,
-    space_camera_3d::SpaceCamera3D,
+    contexts::TransformContext,
+    instance_hash_conversions::picking_layer_id_from_instance_path_hash, query_pinhole,
+    space_camera_3d::SpaceCamera3D, visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -47,15 +46,16 @@ impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
+        render_ctx: &RenderContext,
+        line_builder: &mut re_renderer::LineStripBatchBuilderAllocator,
         transforms: &TransformContext,
-        shared_render_builders: &SharedRenderBuilders,
         ent_path: &EntityPath,
         props: &EntityProperties,
         pinhole: &Pinhole,
         transform_at_entity: Option<Transform3D>,
         pinhole_view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         let instance_key = InstanceKey(0);
 
         let frustum_length = *props.pinhole_image_plane_distance;
@@ -69,7 +69,7 @@ impl CamerasVisualizer {
                 pinhole: Some(pinhole.clone()),
                 picture_plane_distance: frustum_length,
             });
-            return;
+            return Ok(());
         }
 
         // We need special handling to find the 3D transform for drawing the
@@ -99,7 +99,7 @@ impl CamerasVisualizer {
         let Some(world_from_camera_rigid_iso) =
             macaw::IsoTransform::from_mat4(&world_from_camera_rigid.into())
         else {
-            return;
+            return Ok(());
         };
 
         debug_assert!(world_from_camera_rigid_iso.is_finite());
@@ -113,7 +113,7 @@ impl CamerasVisualizer {
         });
 
         let Some(resolution) = pinhole.resolution.as_ref() else {
-            return;
+            return Ok(());
         };
 
         // Setup a RDF frustum (for non-RDF we apply a transformation matrix later).
@@ -156,9 +156,13 @@ impl CamerasVisualizer {
             re_entity_db::InstancePathHash::instance(ent_path, instance_key);
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
-        let mut line_builder = shared_render_builders.lines();
         let mut batch = line_builder
-            .batch("camera frustum")
+            .reserve_batch(
+                "camera frustum",
+                render_ctx,
+                segments.len() as u32,
+                segments.len() as u32 * 2,
+            )?
             // The frustum is setup as a RDF frustum, but if the view coordinates are not RDF,
             // we need to reorient the displayed frustum so that we indicate the correct orientation in the 3D world space.
             .world_from_obj(
@@ -184,6 +188,8 @@ impl CamerasVisualizer {
             std::iter::once(glam::Vec3::ZERO),
             world_from_camera_rigid,
         );
+
+        Ok(())
     }
 }
 
@@ -208,9 +214,16 @@ impl VisualizerSystem for CamerasVisualizer {
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let transforms = view_ctx.get::<TransformContext>()?;
-        let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
-
         let store = ctx.entity_db.store();
+
+        // Counting all cameras ahead of time is a bit wasteful and we don't expect a huge amount of lines from them,
+        // so use the `LineStripBatchBuilderAllocator` utility!
+        const LINES_PER_BATCH_BUILDER: u32 = 11 * 32; // 32 cameras per line builder (each camera draws 3 lines)
+        let mut line_builder = re_renderer::LineStripBatchBuilderAllocator::new(
+            LINES_PER_BATCH_BUILDER,
+            LINES_PER_BATCH_BUILDER * 2, // Strips with 2 vertices each.
+            SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let time_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
@@ -221,8 +234,9 @@ impl VisualizerSystem for CamerasVisualizer {
                     .entity_outline_mask(data_result.entity_path.hash());
 
                 self.visit_instance(
+                    ctx.render_ctx,
+                    &mut line_builder,
                     transforms,
-                    shared_render_builders,
                     &data_result.entity_path,
                     data_result.accumulated_properties(),
                     &pinhole,
@@ -234,11 +248,11 @@ impl VisualizerSystem for CamerasVisualizer {
                         .map(|c| c.value),
                     pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
                     entity_highlight,
-                );
+                )?;
             }
         }
 
-        Ok(Vec::new())
+        Ok(line_builder.finish(ctx.render_ctx)?)
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

@@ -18,7 +18,7 @@ use crate::{
 /// of writing to a GPU readable memory location.
 /// This will require some ahead of time size limit, but should be feasible.
 /// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
-pub struct LineStripBatchBuilder {
+pub struct LineBatchesBuilder {
     pub vertices: Vec<LineVertex>,
 
     pub batches: Vec<LineBatchInfo>,
@@ -35,7 +35,7 @@ pub struct LineStripBatchBuilder {
     max_num_vertices: usize,
 }
 
-impl LineStripBatchBuilder {
+impl LineBatchesBuilder {
     pub fn new(ctx: &RenderContext, max_num_strips: u32, max_num_vertices: u32) -> Self {
         let picking_instance_ids_buffer = ctx
             .cpu_write_gpu_read_belt
@@ -45,7 +45,7 @@ impl LineStripBatchBuilder {
                 &ctx.gpu_resources.buffers,
                 data_texture_source_buffer_element_count(
                     LineDrawData::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
-                    max_num_vertices,
+                    max_num_strips,
                     ctx.device.limits().max_texture_dimension_2d,
                 ),
             )
@@ -131,7 +131,7 @@ impl LineStripBatchBuilder {
     }
 }
 
-pub struct LineBatchBuilder<'a>(&'a mut LineStripBatchBuilder);
+pub struct LineBatchBuilder<'a>(&'a mut LineBatchesBuilder);
 
 impl<'a> Drop for LineBatchBuilder<'a> {
     fn drop(&mut self) {
@@ -333,7 +333,7 @@ impl<'a> LineBatchBuilder<'a> {
             ]
             .into_iter(),
         )
-        .flags(LineStripBatchBuilder::default_box_flags())
+        .flags(LineBatchesBuilder::default_box_flags())
     }
 
     /// Add box outlines.
@@ -370,7 +370,7 @@ impl<'a> LineBatchBuilder<'a> {
                 ]
                 .into_iter(),
             )
-            .flags(LineStripBatchBuilder::default_box_flags()),
+            .flags(LineBatchesBuilder::default_box_flags()),
         )
     }
 
@@ -400,7 +400,7 @@ impl<'a> LineBatchBuilder<'a> {
             ]
             .into_iter(),
         )
-        .flags(LineStripBatchBuilder::default_box_flags())
+        .flags(LineBatchesBuilder::default_box_flags())
     }
 
     /// Adds a 2D series of line connected points.
@@ -473,7 +473,7 @@ impl<'a> LineBatchBuilder<'a> {
 }
 
 pub struct LineStripBuilder<'a> {
-    builder: &'a mut LineStripBatchBuilder,
+    builder: &'a mut LineBatchesBuilder,
     outline_mask_ids: OutlineMaskPreference,
     picking_instance_id: PickingLayerInstanceId,
     vertex_range: Range<usize>,
@@ -481,7 +481,7 @@ pub struct LineStripBuilder<'a> {
 }
 
 impl<'a> LineStripBuilder<'a> {
-    fn placeholder(series_builder: &'a mut LineStripBatchBuilder) -> Self {
+    fn placeholder(series_builder: &'a mut LineBatchesBuilder) -> Self {
         Self {
             builder: series_builder,
             outline_mask_ids: OutlineMaskPreference::NONE,

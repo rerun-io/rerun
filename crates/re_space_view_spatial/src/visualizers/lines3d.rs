@@ -18,7 +18,7 @@ use crate::{
 
 use super::{
     filter_visualizable_3d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, SpatialViewVisualizerData,
+    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 pub struct Lines3DVisualizer {
@@ -82,11 +82,12 @@ impl Lines3DVisualizer {
 
     fn process_data(
         &mut self,
+        render_ctx: &re_renderer::RenderContext,
         query: &ViewQuery<'_>,
         data: &Lines3DComponentData<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let (annotation_infos, _) = process_annotation_and_keypoint_slices(
             query.latest_at,
             data.instance_keys,
@@ -126,36 +127,52 @@ impl Lines3DVisualizer {
             }
         }
 
-        let mut line_builder = ent_context.shared_render_builders.lines();
-        let mut line_batch = line_builder
-            .batch("lines 3d")
-            .depth_offset(ent_context.depth_offset)
-            .world_from_obj(ent_context.world_from_entity)
-            .outline_mask_ids(ent_context.highlight.overall)
-            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+        // TODO(andreas): It would be good if we could put line strips from several entities
+        // together into the same builder, but would require knowing number of lines and strips ahead of time
+        // which _might_ be more costly on average than what that kind of batching saves us.
+        let mut line_builder = re_renderer::LineBatchesBuilder::new(
+            render_ctx,
+            data.strips.len() as u32,
+            data.strips.iter().map(|strip| strip.0.len() as u32).sum(),
+        )
+        .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        let mut bounding_box = macaw::BoundingBox::nothing();
-
-        for (instance_key, strip, radius, color) in
-            itertools::izip!(data.instance_keys, data.strips, radii, colors)
         {
-            let lines = line_batch
-                .add_strip(strip.0.iter().copied().map(Into::into))
-                .color(color)
-                .radius(radius)
-                .picking_instance_id(PickingLayerInstanceId(instance_key.0));
+            let mut line_batch = line_builder
+                .batch(ent_path.to_string())
+                .depth_offset(ent_context.depth_offset)
+                .world_from_obj(ent_context.world_from_entity)
+                .outline_mask_ids(ent_context.highlight.overall)
+                .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(instance_key) {
-                lines.outline_mask_ids(*outline_mask_ids);
+            let mut bounding_box = macaw::BoundingBox::nothing();
+
+            for (instance_key, strip, radius, color) in
+                itertools::izip!(data.instance_keys, data.strips, radii, colors)
+            {
+                let lines = line_batch
+                    .add_strip(strip.0.iter().copied().map(Into::into))
+                    .color(color)
+                    .radius(radius)
+                    .picking_instance_id(PickingLayerInstanceId(instance_key.0));
+
+                if let Some(outline_mask_ids) = ent_context.highlight.instances.get(instance_key) {
+                    lines.outline_mask_ids(*outline_mask_ids);
+                }
+
+                for p in &strip.0 {
+                    bounding_box.extend((*p).into());
+                }
             }
 
-            for p in &strip.0 {
-                bounding_box.extend((*p).into());
-            }
+            self.data.add_bounding_box(
+                ent_path.hash(),
+                bounding_box,
+                ent_context.world_from_entity,
+            );
         }
 
-        self.data
-            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
+        Ok(vec![(line_builder.into_draw_data(render_ctx)?.into())])
     }
 }
 
@@ -233,12 +250,9 @@ impl VisualizerSystem for Lines3DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(query, &data, ent_path, ent_context);
-                Ok(())
+                self.process_data(ctx.render_ctx, query, &data, ent_path, ent_context)
             },
-        )?;
-
-        Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+        )
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

@@ -75,12 +75,13 @@ impl Points3DVisualizer {
 
     fn process_data(
         &mut self,
+        render_ctx: &re_renderer::RenderContext,
         point_builder: &mut PointCloudBuilder,
         query: &ViewQuery<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: &Points3DComponentData<'_>,
-    ) {
+    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let LoadedPoints {
@@ -130,7 +131,8 @@ impl Points3DVisualizer {
             ent_context.world_from_entity,
         );
 
-        load_keypoint_connections(ent_context, ent_path, &keypoints);
+        let keypoint_draw_data =
+            load_keypoint_connections(render_ctx, ent_context, ent_path, &keypoints)?;
 
         if data.instance_keys.len() <= self.max_labels {
             re_tracing::profile_scope!("labels");
@@ -158,6 +160,8 @@ impl Points3DVisualizer {
                 ));
             }
         }
+
+        Ok(keypoint_draw_data.into_iter().collect())
     }
 }
 
@@ -200,7 +204,7 @@ impl VisualizerSystem for Points3DVisualizer {
         let mut point_builder = PointCloudBuilder::new(ctx.render_ctx, num_points as u32)
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
-        super::entity_iterator::process_archetype_pov1_comp5::<
+        let mut draw_data = super::entity_iterator::process_archetype_pov1_comp5::<
             Points3DVisualizer,
             Points3D,
             Position3D,
@@ -236,16 +240,19 @@ impl VisualizerSystem for Points3DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(&mut point_builder, query, ent_path, ent_context, &data);
-                Ok(())
+                self.process_data(
+                    ctx.render_ctx,
+                    &mut point_builder,
+                    query,
+                    ent_path,
+                    ent_context,
+                    &data,
+                )
             },
         )?;
 
-        let draw_data = point_builder
-            .into_draw_data(ctx.render_ctx)
-            .map_err(|err| SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(err)))?;
-
-        Ok(vec![draw_data.into()])
+        draw_data.push(point_builder.into_draw_data(ctx.render_ctx)?.into());
+        Ok(draw_data)
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

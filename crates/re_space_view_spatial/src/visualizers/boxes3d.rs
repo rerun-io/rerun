@@ -1,4 +1,5 @@
 use re_entity_db::EntityPath;
+use re_renderer::LineBatchesBuilder;
 use re_types::{
     archetypes::Boxes3D,
     components::{
@@ -20,7 +21,7 @@ use crate::{
 use super::{
     filter_visualizable_3d_entities, picking_id_from_instance_key,
     process_annotation_and_keypoint_slices, process_color_slice, process_label_slice,
-    process_radius_slice, SpatialViewVisualizerData,
+    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 pub struct Boxes3DVisualizer(SpatialViewVisualizerData);
@@ -36,6 +37,7 @@ impl Default for Boxes3DVisualizer {
 impl Boxes3DVisualizer {
     fn process_data(
         &mut self,
+        line_builder: &mut LineBatchesBuilder,
         query: &ViewQuery<'_>,
         data: &Boxes3DComponentData<'_>,
         ent_path: &EntityPath,
@@ -73,7 +75,6 @@ impl Boxes3DVisualizer {
         let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
         let labels = process_label_slice(data.labels, data.half_sizes.len(), &annotation_infos);
 
-        let mut line_builder = ent_context.shared_render_builders.lines();
         let mut line_batch = line_builder
             .batch("boxes3d")
             .depth_offset(ent_context.depth_offset)
@@ -173,6 +174,21 @@ impl VisualizerSystem for Boxes3DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        let num_boxes = super::entity_iterator::count_instances_in_archetype_views::<
+            Boxes3DVisualizer,
+            Boxes3D,
+            9,
+        >(ctx, query) as u32;
+
+        if num_boxes == 0 {
+            return Ok(Vec::new());
+        }
+
+        // Each box consists of 12 independent lines.
+        let mut line_builder =
+            LineBatchesBuilder::new(ctx.render_ctx, num_boxes * 12, num_boxes * 12 * 2)
+                .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+
         super::entity_iterator::process_archetype_pov1_comp7::<
             Boxes3DVisualizer,
             Boxes3D,
@@ -215,12 +231,12 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(query, &data, ent_path, ent_context);
-                Ok(())
+                self.process_data(&mut line_builder, query, &data, ent_path, ent_context);
+                Ok(Vec::new())
             },
         )?;
 
-        Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+        Ok(vec![(line_builder.into_draw_data(ctx.render_ctx)?.into())])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

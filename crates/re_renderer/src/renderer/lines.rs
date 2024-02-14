@@ -123,7 +123,7 @@ use crate::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, PoolError,
         RenderPipelineDesc,
     },
-    Color32, DebugLabel, DepthOffset, LineStripBatchBuilder, OutlineMaskPreference,
+    Color32, DebugLabel, DepthOffset, LineBatchesBuilder, OutlineMaskPreference,
     PickingLayerObjectId, PickingLayerProcessor,
 };
 
@@ -343,7 +343,7 @@ pub enum LineDrawDataError {
     #[error("A resource failed to resolve.")]
     PoolError(#[from] PoolError),
 
-    #[error("Failed to transfer data to the GPU")]
+    #[error("Failed to transfer data to the GPU: {0}")]
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
@@ -361,7 +361,7 @@ impl LineDrawData {
     /// If no batches are passed, all lines are assumed to be in a single batch with identity transform.
     pub fn new(
         ctx: &RenderContext,
-        line_builder: LineStripBatchBuilder,
+        line_builder: LineBatchesBuilder,
     ) -> Result<Self, LineDrawDataError> {
         let line_renderer = ctx.renderer::<LineRenderer>();
 
@@ -373,7 +373,7 @@ impl LineDrawData {
             });
         }
 
-        let LineStripBatchBuilder {
+        let LineBatchesBuilder {
             vertices,
             batches,
             strips,
@@ -420,7 +420,7 @@ impl LineDrawData {
         };
 
         // Add a sentinel vertex both at the beginning and the end to make cap calculation easier.
-        let num_segments = vertices.len() as u32 + 2;
+        let num_line_vertices = vertices.len() as u32 + 2;
         let num_strips = strips.len() as u32;
 
         let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
@@ -430,7 +430,7 @@ impl LineDrawData {
             &data_texture_desc(
                 "LineDrawData::position_data_texture",
                 Self::POSITION_DATA_TEXTURE_FORMAT,
-                num_segments,
+                num_line_vertices,
                 max_texture_dimension_2d,
             ),
         );
@@ -448,7 +448,7 @@ impl LineDrawData {
             &data_texture_desc(
                 "LineDrawData::picking_instance_id_texture",
                 Self::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
-                num_segments,
+                num_strips,
                 max_texture_dimension_2d,
             ),
         );
@@ -461,7 +461,7 @@ impl LineDrawData {
 
             let texture_size = position_data_texture.texture.size();
             let texel_count = (texture_size.width * texture_size.height) as usize;
-            let num_elements_padding = texel_count - num_segments as usize;
+            let num_elements_padding = texel_count - num_line_vertices as usize;
 
             let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
                 &ctx.device,
@@ -508,9 +508,7 @@ impl LineDrawData {
                     flags: line_strip.flags,
                 }
             }))?;
-            staging_buffer
-                .fill_n(gpu_data::LineStripInfo::zeroed(), num_elements_padding)
-                .unwrap();
+            staging_buffer.fill_n(gpu_data::LineStripInfo::zeroed(), num_elements_padding)?;
             staging_buffer.copy_to_texture2d_entire_first_layer(
                 copy_encoder.lock().get(),
                 &line_strip_texture,
@@ -524,12 +522,10 @@ impl LineDrawData {
             let num_elements_padding = texel_count - picking_instance_ids_buffer.num_written();
 
             picking_instance_ids_buffer.fill_n(Default::default(), num_elements_padding)?;
-            picking_instance_ids_buffer
-                .copy_to_texture2d_entire_first_layer(
-                    copy_encoder.lock().get(),
-                    &picking_instance_id_texture,
-                )
-                .unwrap();
+            picking_instance_ids_buffer.copy_to_texture2d_entire_first_layer(
+                copy_encoder.lock().get(),
+                &picking_instance_id_texture,
+            )?;
         }
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
