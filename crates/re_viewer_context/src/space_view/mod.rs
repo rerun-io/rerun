@@ -51,4 +51,7 @@ pub enum SpaceViewSystemExecutionError {
 
     #[error(transparent)]
     DeserializationError(#[from] re_types::DeserializationError),
+
+    #[error("Failed to create draw data: {0}")]
+    DrawDataCreationError(Box<dyn std::error::Error>),
 }

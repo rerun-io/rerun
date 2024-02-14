@@ -1,18 +1,15 @@
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
-use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder, RenderContext};
+use re_renderer::{LineStripSeriesBuilder, RenderContext};
 use re_types::ComponentNameSet;
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
 
-use crate::visualizers::{
-    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-};
+use crate::visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES;
 
-// TODO(wumpf): Workaround for Point & Line builder taking up too much memory to emit them on every scene element that as points/lines.
+// TODO(wumpf): Workaround for Point & Line builder taking up too much memory to emit them on every scene element that as lines.
 // If these builders/draw-data would allocate space more dynamically, this would not be necessary!
 #[derive(Default)]
 pub struct SharedRenderBuilders {
     pub lines: Mutex<Option<LineStripSeriesBuilder>>,
-    pub points: Mutex<Option<PointCloudBuilder>>,
 }
 
 impl IdentifiedViewSystem for SharedRenderBuilders {
@@ -24,10 +21,6 @@ impl IdentifiedViewSystem for SharedRenderBuilders {
 impl SharedRenderBuilders {
     pub fn lines(&self) -> MappedMutexGuard<'_, LineStripSeriesBuilder> {
         MutexGuard::map(self.lines.lock(), |l| l.as_mut().unwrap())
-    }
-
-    pub fn points(&self) -> MappedMutexGuard<'_, PointCloudBuilder> {
-        MutexGuard::map(self.points.lock(), |l| l.as_mut().unwrap())
     }
 
     pub fn queuable_draw_data(
@@ -43,18 +36,6 @@ impl SharedRenderBuilders {
                     Ok(d) => Some(d.into()),
                     Err(err) => {
                         re_log::error_once!("Failed to build line strip draw data: {err}");
-                        None
-                    }
-                }),
-        );
-        result.extend(
-            self.points
-                .lock()
-                .take()
-                .and_then(|l| match l.into_draw_data(render_ctx) {
-                    Ok(d) => Some(d.into()),
-                    Err(err) => {
-                        re_log::error_once!("Failed to build point draw data: {err}");
                         None
                     }
                 }),
@@ -77,10 +58,6 @@ impl ViewContextSystem for SharedRenderBuilders {
         self.lines = Mutex::new(Some(
             LineStripSeriesBuilder::new(ctx.render_ctx)
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES),
-        ));
-        self.points = Mutex::new(Some(
-            PointCloudBuilder::new(ctx.render_ctx)
-                .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES),
         ));
     }
 

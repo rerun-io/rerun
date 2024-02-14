@@ -1,6 +1,6 @@
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_log_types::TimeInt;
-use re_renderer::PickingLayerInstanceId;
+use re_renderer::{PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points3D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position3D, Radius, Text},
@@ -20,7 +20,10 @@ use crate::{
     },
 };
 
-use super::{filter_visualizable_3d_entities, Keypoints, SpatialViewVisualizerData};
+use super::{
+    filter_visualizable_3d_entities, Keypoints, SpatialViewVisualizerData,
+    SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+};
 
 pub struct Points3DVisualizer {
     /// If the number of points in the batch is > max_labels, don't render point labels.
@@ -72,6 +75,7 @@ impl Points3DVisualizer {
 
     fn process_data(
         &mut self,
+        point_builder: &mut PointCloudBuilder,
         query: &ViewQuery<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
@@ -91,9 +95,8 @@ impl Points3DVisualizer {
         {
             re_tracing::profile_scope!("to_gpu");
 
-            let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
-                .batch("3d points")
+                .batch(ent_path.to_string())
                 .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
@@ -184,6 +187,19 @@ impl VisualizerSystem for Points3DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        let num_points = super::entity_iterator::count_instances_in_archetype_views::<
+            Points3DVisualizer,
+            Points3D,
+            8,
+        >(ctx, query);
+
+        if num_points == 0 {
+            return Ok(Vec::new());
+        }
+
+        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx, num_points as u32)
+            .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
+
         super::entity_iterator::process_archetype_pov1_comp5::<
             Points3DVisualizer,
             Points3D,
@@ -220,12 +236,16 @@ impl VisualizerSystem for Points3DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(query, ent_path, ent_context, &data);
+                self.process_data(&mut point_builder, query, ent_path, ent_context, &data);
                 Ok(())
             },
         )?;
 
-        Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+        let draw_data = point_builder
+            .into_draw_data(ctx.render_ctx)
+            .map_err(|err| SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(err)))?;
+
+        Ok(vec![draw_data.into()])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
