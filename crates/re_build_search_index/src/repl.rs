@@ -1,5 +1,5 @@
 use crate::meili::SearchClient;
-use crate::{ingest, meili, DEFAULT_KEY, DEFAULT_URL};
+use crate::{ingest, meili, DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL};
 
 use std::io::stdout;
 use std::io::Write as _;
@@ -14,7 +14,7 @@ use tokio::sync::mpsc::error::TryRecvError;
 #[argh(subcommand, name = "repl")]
 pub struct Repl {
     /// name of the meilisearch index to create/query
-    #[argh(positional)]
+    #[argh(positional, default = "DEFAULT_INDEX.into()")]
     index_name: String,
 
     /// meilisearch URL

@@ -1,11 +1,11 @@
-use crate::{ingest, meili, DEFAULT_KEY, DEFAULT_URL};
+use crate::{ingest, meili, DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL};
 
 /// Index documentation, examples, and API references for all languages
 #[derive(argh::FromArgs)]
 #[argh(subcommand, name = "index")]
 pub struct Index {
     /// name of the meilisearch index to create/query
-    #[argh(positional)]
+    #[argh(positional, default = "DEFAULT_INDEX.into()")]
     index_name: String,
 
     /// meilisearch URL
@@ -15,6 +15,16 @@ pub struct Index {
     /// meilisearch master key (must support both read and write)
     #[argh(option, long = "master-key", default = "DEFAULT_KEY.into()")]
     meilisearch_master_key: String,
+}
+
+impl Default for Index {
+    fn default() -> Self {
+        Self {
+            index_name: DEFAULT_INDEX.into(),
+            meilisearch_url: DEFAULT_URL.into(),
+            meilisearch_master_key: DEFAULT_KEY.into(),
+        }
+    }
 }
 
 impl Index {

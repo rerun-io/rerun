@@ -11,7 +11,7 @@ mod util;
 async fn main() -> anyhow::Result<()> {
     let args: Args = argh::from_env();
 
-    match args.cmd {
+    match args.cmd.unwrap_or_default() {
         Cmd::Repl(cmd) => cmd.run().await,
         Cmd::Index(cmd) => cmd.run().await,
     }
@@ -21,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
 #[derive(argh::FromArgs)]
 struct Args {
     #[argh(subcommand)]
-    cmd: Cmd,
+    cmd: Option<Cmd>,
 }
 
 #[derive(argh::FromArgs)]
@@ -31,5 +31,12 @@ enum Cmd {
     Index(index::Index),
 }
 
+impl Default for Cmd {
+    fn default() -> Self {
+        Self::Index(Default::default())
+    }
+}
+
 const DEFAULT_URL: &str = "http://localhost:7700";
 const DEFAULT_KEY: &str = "test";
+const DEFAULT_INDEX: &str = "temp";
