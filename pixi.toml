@@ -61,6 +61,9 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
+build-search-index = "cargo run -p re_build_search_index --release --"
+meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
+
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
@@ -98,8 +101,6 @@ cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp
 ] }
 cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
 cpp-docs = { cmd = "doxygen docs/Doxyfile && echo '***************\nSuccess!\nOpen ./rerun_cpp/docs/html/index.html in your browser.'", cwd = "rerun_cpp" }
-
-meilisearch-test-db = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
 [feature.cpp.target.win-64.tasks]
 cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."

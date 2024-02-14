@@ -1,3 +1,4 @@
+use anyhow::Context;
 use meilisearch_sdk::{Client, Error, ErrorCode, MeilisearchError, Task};
 
 use crate::ingest::Document;
@@ -18,7 +19,10 @@ impl SearchClient {
     pub async fn connect(url: &str, master_key: &str) -> anyhow::Result<Self> {
         let client = Client::new(url, Some(master_key));
         // this call can only be done with a valid master key
-        let _ = client.get_keys().await?;
+        let _ = client
+            .get_keys()
+            .await
+            .with_context(|| format!("cannot connect to meilisearch at {url:?}"))?;
         Ok(Self { client })
     }
 
