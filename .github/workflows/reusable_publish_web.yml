@@ -105,7 +105,7 @@ jobs:
           pixi run which rerun
           pixi run rerun --version
 
-      - name: Build app.rerun.io
+      - name: Build web-viewer (release)
         shell: bash
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release
