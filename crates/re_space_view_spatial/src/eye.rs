@@ -159,11 +159,6 @@ pub struct OrbitEye {
     pub world_from_view_rot: Quat,
     pub fov_y: f32,
 
-    /// The up-axis of the scene we're looking at, if defined by its [`ViewCoordinates`].
-    ///
-    /// This is used to track changes to the scene's view coordinates reactively.
-    pub scene_up: Option<Vec3>,
-
     /// The up-axis of the eye itself, in world-space.
     ///
     /// Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
@@ -187,7 +182,6 @@ impl OrbitEye {
         orbit_center: Vec3,
         orbit_radius: f32,
         world_from_view_rot: Quat,
-        scene_up: Option<Vec3>,
         eye_up: Vec3,
     ) -> Self {
         OrbitEye {
@@ -196,7 +190,6 @@ impl OrbitEye {
             world_from_view_rot,
             fov_y: Eye::DEFAULT_FOV_Y,
             eye_up,
-            scene_up,
             velocity: Vec3::ZERO,
         }
     }
@@ -227,6 +220,7 @@ impl OrbitEye {
         self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
+        self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
     }
 
     pub fn lerp(&self, other: &Self, t: f32) -> Self {
@@ -240,14 +234,10 @@ impl OrbitEye {
                 orbit_radius: lerp(self.orbit_radius..=other.orbit_radius, t),
                 world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
                 fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
+                // A slerp would technically be nicer for eye_up, but it only really
+                // matters if the user starts interacting half-way through the lerp,
+                // and even then it's not a big deal.
                 eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
-                scene_up: other.scene_up, // TODO: crazy interp bug
-                // scene_up: other.scene_up.map(|scene_up| {
-                //     self.scene_up
-                //         .unwrap_or(glam::Vec3::Z)
-                //         .lerp(scene_up, t)
-                //         .normalize_or_zero()
-                // }),
                 velocity: self.velocity.lerp(other.velocity, t),
             }
         }

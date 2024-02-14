@@ -52,6 +52,10 @@ pub struct View3DState {
 
     eye_interpolation: Option<EyeInterpolation>,
 
+    /// Last known view coordinates.
+    /// Used to detect changes in view coordinates, in which case we reset the camera eye.
+    scene_view_coordinates: Option<ViewCoordinates>,
+
     // options:
     spin: bool,
     pub show_axes: bool,
@@ -70,6 +74,7 @@ impl Default for View3DState {
             tracked_entity: None,
             camera_before_tracked_entity: None,
             eye_interpolation: Default::default(),
+            scene_view_coordinates: None,
             spin: false,
             show_axes: false,
             show_bbox: false,
@@ -113,15 +118,13 @@ impl View3DState {
         }
 
         // Detect live changes to view coordinates, and interpolate to the new up axis as needed.
-        let scene_up = scene_view_coordinates
-            .and_then(|vc| vc.up())
-            .map(Into::into);
-        if self.orbit_eye.and_then(|oe| oe.scene_up) != scene_up {
+        if scene_view_coordinates != self.scene_view_coordinates {
             self.interpolate_to_orbit_eye(default_eye(
                 &bounding_boxes.accumulated,
                 scene_view_coordinates,
             ));
         }
+        self.scene_view_coordinates = scene_view_coordinates;
 
         // Follow tracked object.
         if let Some(tracked_entity) = self.tracked_entity.clone() {
@@ -904,9 +907,6 @@ fn default_eye(
         center,
         radius,
         Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, eye_up).inverse()),
-        scene_view_coordinates
-            .and_then(|vc| vc.up())
-            .map(Into::into),
         eye_up,
     )
 }
