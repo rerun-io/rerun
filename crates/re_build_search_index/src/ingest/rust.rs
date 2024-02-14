@@ -392,14 +392,31 @@ fn document(path: String, url: String, docs: String) -> DocumentData {
 
 #[derive(Debug, Clone, Copy)]
 enum ItemKind {
+    /// `mod m`
     Module,
+
+    /// `struct S {}`
     Struct,
+
+    /// `enum E {}`
     Enum,
+
+    /// `trait I {}`
     Trait,
+
+    /// `fn f() {}`
     Function,
+
+    /// `type T = ...`
     Type,
+
+    /// `const V: T = ...`
     Constant,
+
+    /// `macro_rules! m {}`
     Macro,
+
+    /// Item is in an inherent impl
     Assoc(ParentItemKind, AssocItemKind),
 }
 
@@ -423,10 +440,40 @@ impl Display for ItemKind {
     }
 }
 
+/// `ItemKind` for items in inherent impls
 #[derive(Debug, Clone, Copy)]
 enum AssocItemKind {
+    /// A `fn` in an inherent `impl` block:
+    ///
+    /// ```rust,ignore
+    /// struct T;
+    ///
+    /// impl T {
+    ///     fn f() {} //<-
+    /// }
+    /// ```
     Method,
+
+    /// A `const` in an inherent `impl` block:
+    ///
+    /// ```rust,ignore
+    /// struct T;
+    ///
+    /// impl T {
+    ///     const V: () = (); //<-
+    /// }
+    /// ```
     AssociatedConstant,
+
+    /// A `type` in an inherent `impl` block:
+    ///
+    /// ```rust,ignore
+    /// struct T;
+    ///
+    /// impl T {
+    ///     type U = (); //<-
+    /// }
+    /// ```
     AssociatedType,
 }
 
