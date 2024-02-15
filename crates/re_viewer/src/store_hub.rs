@@ -186,11 +186,18 @@ impl StoreHub {
     }
 
     /// Clear the current blueprint
-    pub fn clear_blueprint(&mut self) {
+    pub fn clear_current_blueprint(&mut self) {
         if let Some(app_id) = &self.selected_application_id {
             if let Some(blueprint_id) = self.blueprint_by_app_id.remove(app_id) {
                 self.store_bundle.remove(&blueprint_id);
             }
+        }
+    }
+
+    /// Forgets all blueprints
+    pub fn clear_all_blueprints(&mut self) {
+        for (_app_id, blueprint_id) in self.blueprint_by_app_id.drain() {
+            self.store_bundle.remove(&blueprint_id);
         }
     }
 
