@@ -1,10 +1,11 @@
 use crate::{renderer::LineDrawDataError, LineDrawableBuilder, QueueableDrawData, RenderContext};
 
-/// Simple allocator mechanism to manage line strip builders.
+/// Simple allocator mechanism to manage line draw data builders.
 ///
-/// It allows you to lazily create line strip builders if the need arises and close full ones.
+/// It allows you to lazily create [`LineDrawableBuilder`] when the need arises and close full ones
+/// using a pre-determined block size.
 /// Use this only if you don't know the number of strips and vertices ahead of time,
-/// otherwise use [`LineBatchesBuilder`] directly!
+/// otherwise use [`LineDrawableBuilder`] directly!
 ///
 /// Creating new line strip builders is fairly expensive and should be avoided if possible!
 pub struct LineDrawableBuilderAllocator<'a> {
