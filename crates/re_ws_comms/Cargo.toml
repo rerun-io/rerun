@@ -63,7 +63,9 @@ futures-util = { workspace = true, optional = true, default-features = false, fe
   "std",
 ] }
 parking_lot = { workspace = true, optional = true }
-tokio-tungstenite = { workspace = true, optional = true }
+tokio-tungstenite = { workspace = true, optional = true, features = [
+  "handshake",
+] }
 tokio = { workspace = true, optional = true, features = [
   "io-std",
   "macros",

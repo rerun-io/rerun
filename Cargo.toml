@@ -213,10 +213,10 @@ time = { version = "0.3", default-features = false, features = [
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
 tokio = { version = "1.24", default-features = false }
-tokio-tungstenite = { version = "0.17.1", default-features = false }
+tokio-tungstenite = { version = "0.20.0", default-features = false }
 toml = { version = "0.7.8", default-features = false }
 tracing = { version = "0.1", default-features = false }
-tungstenite = { version = "0.17", default-features = false }
+tungstenite = { version = "0.20", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"
