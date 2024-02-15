@@ -156,11 +156,8 @@ impl CamerasVisualizer {
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut batch = line_builder
-            .reserve_batch(
-                "camera frustum",
-                segments.len() as u32,
-                segments.len() as u32 * 2,
-            )?
+            .reserve(segments.len() as u32, segments.len() as u32 * 2)?
+            .batch(ent_path.to_string())
             // The frustum is setup as a RDF frustum, but if the view coordinates are not RDF,
             // we need to reorient the displayed frustum so that we indicate the correct orientation in the 3D world space.
             .world_from_obj(

@@ -627,13 +627,15 @@ pub fn view_3d(
 
     if state.state_3d.show_bbox {
         line_builder
-            .reserve_batch("scene_bbox", 1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
+            .reserve(1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
+            .batch("scene_bbox_current")
             .add_box_outline(&state.bounding_boxes.current)
             .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
     }
     if state.state_3d.show_accumulated_bbox {
         line_builder
-            .reserve_batch("scene_bbox_accumulated", 1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
+            .reserve(1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
+            .batch("scene_bbox_accumulated")
             .add_box_outline(&state.bounding_boxes.accumulated)
             .map(|lines| {
                 lines
@@ -703,7 +705,8 @@ pub fn view_3d(
             let right = forward.cross(up);
 
             line_builder
-                .reserve_batch("center orbit orientation help", 3, 3 * 2)?
+                .reserve(3, 3 * 2)?
+                .batch("center orbit orientation help")
                 .add_segments(
                     [
                         (
@@ -844,7 +847,7 @@ fn add_picking_ray(
     thick_ray_length: f32,
     color: egui::Color32,
 ) -> Result<(), re_renderer::renderer::LineDrawDataError> {
-    let mut line_batch = line_builder.reserve_batch("picking ray", 2, 4)?;
+    let mut line_batch = line_builder.reserve(2, 4)?.batch("picking ray");
 
     let origin = ray.point_along(0.0);
     // No harm in making this ray _very_ long. (Infinite messes with things though!)

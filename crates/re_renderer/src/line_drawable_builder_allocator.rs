@@ -85,16 +85,6 @@ impl<'a> LineDrawableBuilderAllocator<'a> {
         Ok(self.active_line_builder.as_mut().unwrap())
     }
 
-    /// Returns a line batch builder that is guaranteed to have at least the given amount of space.
-    pub fn reserve_batch(
-        &mut self,
-        name: impl Into<DebugLabel>,
-        num_strips: u32,
-        num_vertices: u32,
-    ) -> Result<LineBatchBuilder<'_>, LineDrawDataError> {
-        Ok(self.reserve(num_strips, num_vertices)?.batch(name))
-    }
-
     pub fn finish(mut self) -> Result<Vec<QueueableDrawData>, LineDrawDataError> {
         if let Some(line_builder) = self.active_line_builder {
             self.draw_data

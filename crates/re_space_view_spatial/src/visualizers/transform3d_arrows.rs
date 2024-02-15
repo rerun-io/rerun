@@ -133,9 +133,9 @@ pub fn add_axis_arrows(
 
     let line_radius = re_renderer::Size::new_points(1.0);
 
-    let batch_name = ent_path.map_or("axis_arrows".to_owned(), |p| p.to_string());
     let mut line_batch = line_builder
-        .reserve_batch(batch_name, 3, 6)?
+        .reserve(3, 6)?
+        .batch(ent_path.map_or("axis_arrows".to_owned(), |p| p.to_string()))
         .world_from_obj(world_from_obj)
         .triangle_cap_length_factor(10.0)
         .triangle_cap_width_factor(3.0)
