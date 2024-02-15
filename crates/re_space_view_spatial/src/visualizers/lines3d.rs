@@ -127,9 +127,7 @@ impl Lines3DVisualizer {
             }
         }
 
-        // TODO(andreas): It would be good if we could put line strips from several entities
-        // together into the same builder, but would require knowing number of lines and strips ahead of time
-        // which _might_ be more costly on average than what that kind of batching saves us.
+        // Putting all entities into the same builder would be nice, but determining the strip & vertex count ahead of time is likely too costly.
         let mut line_builder = re_renderer::LineBatchesBuilder::new(
             render_ctx,
             data.strips.len() as u32,
