@@ -273,7 +273,7 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
             .and_then(|w| w.local_storage().ok())
             .flatten()
         {
-            storage.delete("egui").ok();
+            storage.delete("egui_memory_ron").ok();
             storage.delete(eframe::APP_KEY).ok();
         }
 
