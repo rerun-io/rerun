@@ -292,6 +292,7 @@
     "rsplit",
     "runable",
     "rustc",
+    "rustdoc",
     "rustflags",
     "rustsec",
     "rustup",
