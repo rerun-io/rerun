@@ -32,6 +32,30 @@ impl Rgba32 {
         ]
     }
 
+    /// Red channel
+    #[inline]
+    pub const fn r(self) -> u8 {
+        (self.0 >> 24) as u8
+    }
+
+    /// Green channel
+    #[inline]
+    pub const fn g(self) -> u8 {
+        (self.0 >> 16) as u8
+    }
+
+    /// Blue channel
+    #[inline]
+    pub const fn b(self) -> u8 {
+        (self.0 >> 8) as u8
+    }
+
+    /// Alpha channel
+    #[inline]
+    pub const fn a(self) -> u8 {
+        self.0 as u8
+    }
+
     /// Most significant byte is `r`, least significant byte is `a`.
     #[inline]
     pub const fn to_u32(self) -> u32 {
