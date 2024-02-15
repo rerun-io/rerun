@@ -404,10 +404,10 @@ enum ItemKind {
     /// `fn f() {}`
     Function,
 
-    /// `type T = ...`
+    /// `type T = ()`
     Type,
 
-    /// `const V: T = ...`
+    /// `const V: T = ()`
     Constant,
 
     /// `macro_rules! m {}`
