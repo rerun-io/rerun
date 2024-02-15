@@ -115,6 +115,14 @@ pub enum TreeAction {
         target_position_in_container: usize,
     },
 
+    /// Move one or more [`Contents`] to a newly created container
+    MoveContentsToNewContainer {
+        contents_to_move: Vec<Contents>,
+        new_container_kind: egui_tiles::ContainerKind,
+        target_container: ContainerId,
+        target_position_in_container: usize,
+    },
+
     /// Set the container that is currently identified as the drop target of an ongoing drag.
     ///
     /// This is used for highlighting the drop target in the UI. Note that the drop target container is reset at every
@@ -497,6 +505,36 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         target_position_in_container,
                         true,
                     );
+                    self.tree_edited = true;
+                }
+                TreeAction::MoveContentsToNewContainer {
+                    contents_to_move,
+                    new_container_kind,
+                    target_container,
+                    target_position_in_container,
+                } => {
+                    let new_container_tile_id = self
+                        .tree
+                        .tiles
+                        .insert_container(egui_tiles::Container::new(new_container_kind, vec![]));
+
+                    let target_container_tile_id = blueprint_id_to_tile_id(&target_container);
+                    self.tree.move_tile_to_container(
+                        new_container_tile_id,
+                        target_container_tile_id,
+                        target_position_in_container,
+                        true,
+                    );
+
+                    for (pos, content) in contents_to_move.into_iter().enumerate() {
+                        self.tree.move_tile_to_container(
+                            content.as_tile_id(),
+                            new_container_tile_id,
+                            pos,
+                            true,
+                        );
+                    }
+
                     self.tree_edited = true;
                 }
                 TreeAction::SetDropTarget(container_id) => {

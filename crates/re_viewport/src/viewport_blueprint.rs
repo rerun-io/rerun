@@ -460,6 +460,22 @@ impl ViewportBlueprint {
         });
     }
 
+    /// Move some [`Contents`] to a newly created container of the given kind.
+    pub fn move_contents_to_new_container(
+        &self,
+        contents: Vec<Contents>,
+        new_container_kind: egui_tiles::ContainerKind,
+        target_container: ContainerId,
+        target_position_in_container: usize,
+    ) {
+        self.send_tree_action(TreeAction::MoveContentsToNewContainer {
+            contents_to_move: contents,
+            new_container_kind,
+            target_container,
+            target_position_in_container,
+        });
+    }
+
     /// Make sure the tab corresponding to this space view is focused.
     pub fn focus_tab(&self, space_view_id: SpaceViewId) {
         self.send_tree_action(TreeAction::FocusTab(space_view_id));

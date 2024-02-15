@@ -1,14 +1,17 @@
-//TODO(ab): use list items to make those context menu nice to look at
+use std::rc::Rc;
 
-use crate::{Contents, ViewportBlueprint};
 use itertools::Itertools;
+
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_space_view::{DataQueryBlueprint, SpaceViewBlueprint};
 use re_viewer_context::{ContainerId, Item, Selection, SpaceViewClassIdentifier, ViewerContext};
 
+use crate::{Contents, ViewportBlueprint};
+
 /// Trait for things that can populate a context menu
 trait ContextMenuItem {
-    //TODO(ab): should probably return `egui::WidgetText` instead
+    // TODO(ab): return a `ListItem` to make those context menu nice to look at. This requires
+    // changes to the context menu UI code to support full-span highlighting.
     fn label(&self, _ctx: &ViewerContext<'_>, _viewport_blueprint: &ViewportBlueprint) -> String {
         String::new()
     }
@@ -34,6 +37,7 @@ trait ContextMenuItem {
 fn context_menu_items_for_selection_summary(
     ctx: &ViewerContext<'_>,
     viewport_blueprint: &ViewportBlueprint,
+    item: &Item,
     selection_summary: SelectionSummary,
 ) -> Vec<Box<dyn ContextMenuItem>> {
     match selection_summary {
@@ -42,7 +46,7 @@ fn context_menu_items_for_selection_summary(
 
             // only show/hide and remove if it's not the root container
             if Some(container_id) != viewport_blueprint.root_container {
-                let contents = vec![Contents::Container(container_id)];
+                let contents = Rc::new(vec![Contents::Container(container_id)]);
                 items.extend([
                     ContentVisibilityToggle::item(viewport_blueprint, contents.clone()),
                     ContentRemove::item(contents),
@@ -74,18 +78,65 @@ fn context_menu_items_for_selection_summary(
         SelectionSummary::ContentsItems(contents) => {
             // exclude the root container from the list of contents, as it cannot be shown/hidden
             // nor removed
-            let contents: Vec<_> = contents
-                .into_iter()
-                .filter(|c| Some(*c) != viewport_blueprint.root_container.map(Contents::Container))
-                .collect();
+            let contents: Rc<Vec<_>> = Rc::new(
+                contents
+                    .into_iter()
+                    .filter(|c| {
+                        Some(*c) != viewport_blueprint.root_container.map(Contents::Container)
+                    })
+                    .collect(),
+            );
 
             if contents.is_empty() {
                 vec![]
-            } else {
+            } else if let Some(root_container_id) = viewport_blueprint.root_container {
+                // The new container should be created in place of the right-clicked content, so we
+                // look for its parent and position, and fall back to the root container.
+                let clicked_content = match item {
+                    Item::Container(container_id) => Some(Contents::Container(*container_id)),
+                    Item::SpaceView(space_view_id) => Some(Contents::SpaceView(*space_view_id)),
+                    _ => None,
+                };
+                let (target_container, target_position) = clicked_content
+                    .and_then(|c| viewport_blueprint.find_parent_and_position_index(&c))
+                    .unwrap_or((root_container_id, 0));
+
                 vec![
                     ContentVisibilityToggle::item(viewport_blueprint, contents.clone()),
-                    ContentRemove::item(contents),
+                    ContentRemove::item(contents.clone()),
+                    Separator::item(),
+                    SubMenu::item(
+                        "Move to new container",
+                        [
+                            MoveContentsToNewContainer::item(
+                                target_container,
+                                target_position,
+                                egui_tiles::ContainerKind::Tabs,
+                                contents.clone(),
+                            ),
+                            MoveContentsToNewContainer::item(
+                                target_container,
+                                target_position,
+                                egui_tiles::ContainerKind::Horizontal,
+                                contents.clone(),
+                            ),
+                            MoveContentsToNewContainer::item(
+                                target_container,
+                                target_position,
+                                egui_tiles::ContainerKind::Vertical,
+                                contents.clone(),
+                            ),
+                            MoveContentsToNewContainer::item(
+                                target_container,
+                                target_position,
+                                egui_tiles::ContainerKind::Grid,
+                                contents.clone(),
+                            ),
+                        ],
+                    ),
                 ]
+            } else {
+                vec![]
             }
         }
         SelectionSummary::Heterogeneous | SelectionSummary::Empty => vec![],
@@ -121,8 +172,12 @@ pub fn context_menu_ui_for_item(
             summarize_selection(ctx.selection())
         };
 
-        let actions =
-            context_menu_items_for_selection_summary(ctx, viewport_blueprint, selection_summary);
+        let actions = context_menu_items_for_selection_summary(
+            ctx,
+            viewport_blueprint,
+            item,
+            selection_summary,
+        );
 
         if actions.is_empty() {
             ui.label(
@@ -252,14 +307,14 @@ impl ContextMenuItem for Separator {
 
 /// Control the visibility of a container or space view
 struct ContentVisibilityToggle {
-    contents: Vec<Contents>,
+    contents: Rc<Vec<Contents>>,
     set_visible: bool,
 }
 
 impl ContentVisibilityToggle {
     fn item(
         viewport_blueprint: &ViewportBlueprint,
-        contents: Vec<Contents>,
+        contents: Rc<Vec<Contents>>,
     ) -> Box<dyn ContextMenuItem> {
         Box::new(Self {
             set_visible: !contents
@@ -280,7 +335,7 @@ impl ContextMenuItem for ContentVisibilityToggle {
     }
 
     fn run(&self, ctx: &ViewerContext<'_>, viewport_blueprint: &ViewportBlueprint) {
-        for content in &self.contents {
+        for content in &*self.contents {
             viewport_blueprint.set_content_visibility(ctx, content, self.set_visible);
         }
     }
@@ -288,11 +343,11 @@ impl ContextMenuItem for ContentVisibilityToggle {
 
 /// Remove a container or space view
 struct ContentRemove {
-    contents: Vec<Contents>,
+    contents: Rc<Vec<Contents>>,
 }
 
 impl ContentRemove {
-    fn item(contents: Vec<Contents>) -> Box<dyn ContextMenuItem> {
+    fn item(contents: Rc<Vec<Contents>>) -> Box<dyn ContextMenuItem> {
         Box::new(Self { contents })
     }
 }
@@ -303,7 +358,7 @@ impl ContextMenuItem for ContentRemove {
     }
 
     fn run(&self, ctx: &ViewerContext<'_>, viewport_blueprint: &ViewportBlueprint) {
-        for content in &self.contents {
+        for content in &*self.contents {
             viewport_blueprint.mark_user_interaction(ctx);
             viewport_blueprint.remove_contents(*content);
         }
@@ -383,6 +438,49 @@ impl ContextMenuItem for AddSpaceView {
             ctx,
             Some(self.target_container),
         );
+        viewport_blueprint.mark_user_interaction(ctx);
+    }
+}
+
+// ---
+
+/// Move the selected contents to a newly created container of the given kind
+struct MoveContentsToNewContainer {
+    parent_container: ContainerId,
+    position_in_parent: usize,
+    container_kind: egui_tiles::ContainerKind,
+    contents: Rc<Vec<Contents>>,
+}
+
+impl MoveContentsToNewContainer {
+    fn item(
+        parent_container: ContainerId,
+        position_in_parent: usize,
+        container_kind: egui_tiles::ContainerKind,
+        contents: Rc<Vec<Contents>>,
+    ) -> Box<dyn ContextMenuItem> {
+        Box::new(Self {
+            parent_container,
+            position_in_parent,
+            container_kind,
+            contents,
+        })
+    }
+}
+
+impl ContextMenuItem for MoveContentsToNewContainer {
+    fn label(&self, _ctx: &ViewerContext<'_>, _viewport_blueprint: &ViewportBlueprint) -> String {
+        format!("{:?}", self.container_kind)
+    }
+
+    fn run(&self, ctx: &ViewerContext<'_>, viewport_blueprint: &ViewportBlueprint) {
+        viewport_blueprint.move_contents_to_new_container(
+            (*self.contents).clone(),
+            self.container_kind,
+            self.parent_container,
+            self.position_in_parent,
+        );
+
         viewport_blueprint.mark_user_interaction(ctx);
     }
 }
