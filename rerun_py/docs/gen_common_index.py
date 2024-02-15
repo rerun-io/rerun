@@ -2,6 +2,8 @@
 """
 Generate an index table and rendered pages for the common APIs.
 
+NOTE: When changing anything in this file, also consider how it affects `re_build_search_index/src/ingest/python.rs`.
+
 The top-level index file should look like
 ```
 ## Initialization
@@ -289,7 +291,6 @@ rerun_pkg = griffe.load("rerun", search_paths=search_paths)
 nav = mkdocs_gen_files.Nav()
 nav["index"] = "index.md"
 
-
 # This is the top-level index which will include a table-view of each sub-section
 index_path = common_dir.joinpath("index.md")
 
@@ -382,7 +383,6 @@ If you run into any issues don't hesitate to [open a ticket](https://github.com/
 or [join our Discord](https://discord.gg/Gcm8BbTaAj).
 """
     )
-
 
 # Generate the SUMMARY.txt file
 with mkdocs_gen_files.open(common_dir.joinpath("SUMMARY.txt"), "w") as nav_file:
