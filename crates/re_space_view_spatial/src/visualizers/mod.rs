@@ -134,10 +134,30 @@ pub fn process_color_slice<'a>(
         (Some(colors), ResolvedAnnotationInfos::Same(count, annotation_info)) => {
             re_tracing::profile_scope!("many-colors, same annotation");
             debug_assert_eq!(colors.len(), *count);
-            colors
-                .iter()
-                .map(|color| annotation_info.color(color.map(|c| c.to_array()), default_color))
-                .collect()
+
+            // Transparency means we need to pre-multiply the alpha.
+            // This can be very slow, so we parallelize this case.
+            // Otherwise parallelization runs the risk of just slowing things down.
+            // We don't check all colors, just one to save CPU.
+            let parallelize = !cfg!(target = "wasm32-unknown-unknown")
+                && colors
+                    .first()
+                    .copied()
+                    .flatten()
+                    .map_or(false, |c| c.a() < 255);
+
+            if parallelize {
+                use rayon::prelude::*;
+                colors
+                    .par_iter()
+                    .map(|color| annotation_info.color(color.map(|c| c.to_array()), default_color))
+                    .collect()
+            } else {
+                colors
+                    .iter()
+                    .map(|color| annotation_info.color(color.map(|c| c.to_array()), default_color))
+                    .collect()
+            }
         }
 
         (Some(colors), ResolvedAnnotationInfos::Many(annotation_infos)) => {
