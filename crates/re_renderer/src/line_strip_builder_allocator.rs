@@ -7,7 +7,7 @@ use crate::{
 ///
 /// It allows you to lazily create line strip builders if the need arises and close full ones.
 /// Use this only if you don't know the number of strips and vertices ahead of time,
-/// otherwise use [`LineStripBatchBuilder`] directly!
+/// otherwise use [`LineBatchesBuilder`] directly!
 ///
 /// Creating new line strip builders is fairly expensive and should be avoided if possible!
 pub struct LineStripBatchBuilderAllocator {
