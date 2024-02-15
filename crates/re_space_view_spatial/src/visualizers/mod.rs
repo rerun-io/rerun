@@ -27,7 +27,7 @@ pub use points3d::{LoadedPoints, Points3DComponentData};
 use ahash::HashMap;
 
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_renderer::{LineBatchesBuilder, QueueableDrawData};
+use re_renderer::{LineDrawableBuilder, QueueableDrawData};
 use re_types::{
     components::{Color, InstanceKey},
     datatypes::{KeypointId, KeypointPair},
@@ -326,7 +326,7 @@ pub fn load_keypoint_connections(
 
     // Generate keypoint connections if any.
     let mut line_builder =
-        LineBatchesBuilder::new(render_ctx, max_num_connections, max_num_connections * 2);
+        LineDrawableBuilder::new(render_ctx, max_num_connections, max_num_connections * 2);
     {
         let mut line_batch = line_builder
             .batch("keypoint connections")

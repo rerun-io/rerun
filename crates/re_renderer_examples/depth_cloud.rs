@@ -25,7 +25,7 @@ use re_renderer::{
     },
     resource_managers::{GpuTexture2D, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
-    Color32, LineBatchesBuilder, PointCloudBuilder, Rgba, Size,
+    Color32, LineDrawableBuilder, PointCloudBuilder, Rgba, Size,
 };
 use winit::{
     event::ElementState,
@@ -294,7 +294,7 @@ impl framework::Example for RenderDepthClouds {
         let world_from_model = rotation * translation_center * scale;
 
         let frame_draw_data = {
-            let mut builder = LineBatchesBuilder::new(re_ctx, 1, 12);
+            let mut builder = LineDrawableBuilder::new(re_ctx, 1, 12);
             {
                 let mut line_batch = builder.batch("frame").world_from_obj(world_from_model);
                 line_batch.add_box_outline_from_transform(

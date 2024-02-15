@@ -57,7 +57,8 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         // Counting all transform ahead of time is a bit wasteful and we don't expect a huge amount of lines from them,
         // so use the `LineStripBatchBuilderAllocator` utility!
         const LINES_PER_BATCH_BUILDER: u32 = 3 * 32; // 32 cameras per line builder (each camera draws 3 lines)
-        let mut line_builder = re_renderer::LineStripBatchBuilderAllocator::new(
+        let mut line_builder = re_renderer::LineDrawableBuilderAllocator::new(
+            ctx.render_ctx,
             LINES_PER_BATCH_BUILDER,
             LINES_PER_BATCH_BUILDER * 2, // Strips with 2 vertices each.
             SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
@@ -92,7 +93,6 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             );
 
             add_axis_arrows(
-                ctx.render_ctx,
                 &mut line_builder,
                 world_from_obj,
                 Some(&data_result.entity_path),
@@ -104,7 +104,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             )?;
         }
 
-        Ok(line_builder.finish(ctx.render_ctx)?)
+        Ok(line_builder.finish()?)
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -121,8 +121,7 @@ const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
 const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
 pub fn add_axis_arrows(
-    render_ctx: &re_renderer::RenderContext,
-    line_builder: &mut re_renderer::LineStripBatchBuilderAllocator,
+    line_builder: &mut re_renderer::LineDrawableBuilderAllocator<'_>,
     world_from_obj: macaw::Affine3A,
     ent_path: Option<&EntityPath>,
     axis_length: f32,
@@ -136,7 +135,7 @@ pub fn add_axis_arrows(
 
     let batch_name = ent_path.map_or("axis_arrows".to_owned(), |p| p.to_string());
     let mut line_batch = line_builder
-        .reserve_batch(batch_name, render_ctx, 3, 6)?
+        .reserve_batch(batch_name, 3, 6)?
         .world_from_obj(world_from_obj)
         .triangle_cap_length_factor(10.0)
         .triangle_cap_width_factor(3.0)

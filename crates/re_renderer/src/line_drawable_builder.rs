@@ -15,15 +15,11 @@ use crate::{
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
 ///
 /// TODO(andreas): We could make significant optimizations here by making this builder capable
-/// of writing to a GPU readable memory location.
-/// This will require some ahead of time size limit, but should be feasible.
-/// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
-pub struct LineBatchesBuilder {
-    pub vertices: Vec<LineVertex>,
-
-    pub batches: Vec<LineBatchInfo>,
-
-    pub strips: Vec<LineStripInfo>,
+/// of writing to a GPU readable memory location for all its data.
+pub struct LineDrawableBuilder {
+    pub(crate) vertices: Vec<LineVertex>,
+    pub(crate) batches: Vec<LineBatchInfo>,
+    pub(crate) strips: Vec<LineStripInfo>,
 
     /// Buffer for picking instance id - every strip gets its own instance id.
     /// Therefore, there need to be always as many picking instance ids as there are strips.
@@ -35,7 +31,7 @@ pub struct LineBatchesBuilder {
     max_num_vertices: usize,
 }
 
-impl LineBatchesBuilder {
+impl LineDrawableBuilder {
     pub fn new(ctx: &RenderContext, max_num_strips: u32, max_num_vertices: u32) -> Self {
         let picking_instance_ids_buffer = ctx
             .cpu_write_gpu_read_belt
@@ -131,7 +127,7 @@ impl LineBatchesBuilder {
     }
 }
 
-pub struct LineBatchBuilder<'a>(&'a mut LineBatchesBuilder);
+pub struct LineBatchBuilder<'a>(&'a mut LineDrawableBuilder);
 
 impl<'a> Drop for LineBatchBuilder<'a> {
     fn drop(&mut self) {
@@ -333,7 +329,7 @@ impl<'a> LineBatchBuilder<'a> {
             ]
             .into_iter(),
         )
-        .flags(LineBatchesBuilder::default_box_flags())
+        .flags(LineDrawableBuilder::default_box_flags())
     }
 
     /// Add box outlines.
@@ -370,7 +366,7 @@ impl<'a> LineBatchBuilder<'a> {
                 ]
                 .into_iter(),
             )
-            .flags(LineBatchesBuilder::default_box_flags()),
+            .flags(LineDrawableBuilder::default_box_flags()),
         )
     }
 
@@ -400,7 +396,7 @@ impl<'a> LineBatchBuilder<'a> {
             ]
             .into_iter(),
         )
-        .flags(LineBatchesBuilder::default_box_flags())
+        .flags(LineDrawableBuilder::default_box_flags())
     }
 
     /// Adds a 2D series of line connected points.
@@ -473,7 +469,7 @@ impl<'a> LineBatchBuilder<'a> {
 }
 
 pub struct LineStripBuilder<'a> {
-    builder: &'a mut LineBatchesBuilder,
+    builder: &'a mut LineDrawableBuilder,
     outline_mask_ids: OutlineMaskPreference,
     picking_instance_id: PickingLayerInstanceId,
     vertex_range: Range<usize>,
@@ -481,7 +477,7 @@ pub struct LineStripBuilder<'a> {
 }
 
 impl<'a> LineStripBuilder<'a> {
-    fn placeholder(series_builder: &'a mut LineBatchesBuilder) -> Self {
+    fn placeholder(series_builder: &'a mut LineDrawableBuilder) -> Self {
         Self {
             builder: series_builder,
             outline_mask_ids: OutlineMaskPreference::NONE,

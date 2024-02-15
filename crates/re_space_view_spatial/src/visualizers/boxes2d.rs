@@ -1,5 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_renderer::LineBatchesBuilder;
+use re_renderer::LineDrawableBuilder;
 use re_types::{
     archetypes::Boxes2D,
     components::{ClassId, Color, HalfSizes2D, InstanceKey, KeypointId, Position2D, Radius, Text},
@@ -74,7 +74,7 @@ impl Boxes2DVisualizer {
 
     fn process_data(
         &mut self,
-        line_builder: &mut LineBatchesBuilder,
+        line_builder: &mut LineDrawableBuilder,
         query: &ViewQuery<'_>,
         data: &Boxes2DComponentData<'_>,
         ent_path: &EntityPath,
@@ -226,7 +226,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
 
         // Each box consists of 4 independent lines.
         let mut line_builder =
-            LineBatchesBuilder::new(ctx.render_ctx, num_boxes * 4, num_boxes * 4 * 2)
+            LineDrawableBuilder::new(ctx.render_ctx, num_boxes * 4, num_boxes * 4 * 2)
                 .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
         super::entity_iterator::process_archetype_pov1_comp6::<

@@ -123,7 +123,7 @@ impl Lines2DVisualizer {
         }
 
         // Putting all entities into the same builder would be nice, but determining the strip & vertex count ahead of time is likely too costly.
-        let mut line_builder = re_renderer::LineBatchesBuilder::new(
+        let mut line_builder = re_renderer::LineDrawableBuilder::new(
             render_ctx,
             data.strips.len() as u32,
             data.strips.iter().map(|strip| strip.0.len() as u32).sum(),

@@ -1,6 +1,6 @@
 use glam::vec3;
 use re_entity_db::{EntityPath, EntityProperties};
-use re_renderer::{renderer::LineStripFlags, RenderContext};
+use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
     components::{InstanceKey, Transform3D, ViewCoordinates},
@@ -46,8 +46,7 @@ impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
-        render_ctx: &RenderContext,
-        line_builder: &mut re_renderer::LineStripBatchBuilderAllocator,
+        line_builder: &mut re_renderer::LineDrawableBuilderAllocator<'_>,
         transforms: &TransformContext,
         ent_path: &EntityPath,
         props: &EntityProperties,
@@ -159,7 +158,6 @@ impl CamerasVisualizer {
         let mut batch = line_builder
             .reserve_batch(
                 "camera frustum",
-                render_ctx,
                 segments.len() as u32,
                 segments.len() as u32 * 2,
             )?
@@ -219,7 +217,8 @@ impl VisualizerSystem for CamerasVisualizer {
         // Counting all cameras ahead of time is a bit wasteful and we don't expect a huge amount of lines from them,
         // so use the `LineStripBatchBuilderAllocator` utility!
         const LINES_PER_BATCH_BUILDER: u32 = 11 * 32; // 32 cameras per line builder (each camera draws 3 lines)
-        let mut line_builder = re_renderer::LineStripBatchBuilderAllocator::new(
+        let mut line_builder = re_renderer::LineDrawableBuilderAllocator::new(
+            ctx.render_ctx,
             LINES_PER_BATCH_BUILDER,
             LINES_PER_BATCH_BUILDER * 2, // Strips with 2 vertices each.
             SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
@@ -234,7 +233,6 @@ impl VisualizerSystem for CamerasVisualizer {
                     .entity_outline_mask(data_result.entity_path.hash());
 
                 self.visit_instance(
-                    ctx.render_ctx,
                     &mut line_builder,
                     transforms,
                     &data_result.entity_path,
@@ -252,7 +250,7 @@ impl VisualizerSystem for CamerasVisualizer {
             }
         }
 
-        Ok(line_builder.finish(ctx.render_ctx)?)
+        Ok(line_builder.finish()?)
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

@@ -6,7 +6,7 @@ use web_time::Instant;
 use re_log_types::EntityPath;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    LineStripBatchBuilderAllocator, Size,
+    LineDrawableBuilderAllocator, Size,
 };
 use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
@@ -458,9 +458,12 @@ pub fn view_3d(
     let eye = orbit_eye.to_eye();
 
     // Various ui interactions draw additional lines.
-    // We don't know ahead of time how many, but it's not gonna be a huge amount!
-    let mut line_builder =
-        LineStripBatchBuilderAllocator::new(32, 64, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+    let mut line_builder = LineDrawableBuilderAllocator::new(
+        ctx.render_ctx,
+        32, // We don't know ahead of time how lines we need, but it's not gonna be a huge amount!
+        64,
+        SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    );
 
     // Origin gizmo if requested.
     // TODO(andreas): Move this to the transform3d_arrow scene part.
@@ -468,7 +471,6 @@ pub fn view_3d(
     if state.state_3d.show_axes {
         let axis_length = 1.0; // The axes are also a measuring stick
         crate::visualizers::add_axis_arrows(
-            ctx.render_ctx,
             &mut line_builder,
             macaw::Affine3A::IDENTITY,
             None,
@@ -606,7 +608,6 @@ pub fn view_3d(
 
     for selected_context in ctx.selection_state().selected_space_context() {
         show_projections_from_2d_space(
-            ctx.render_ctx,
             &mut line_builder,
             space_cameras,
             state,
@@ -616,7 +617,6 @@ pub fn view_3d(
     }
     if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
         show_projections_from_2d_space(
-            ctx.render_ctx,
             &mut line_builder,
             space_cameras,
             state,
@@ -627,13 +627,13 @@ pub fn view_3d(
 
     if state.state_3d.show_bbox {
         line_builder
-            .reserve_batch("scene_bbox", ctx.render_ctx, 1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
+            .reserve_batch("scene_bbox", 1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
             .add_box_outline(&state.bounding_boxes.current)
             .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
     }
     if state.state_3d.show_accumulated_bbox {
         line_builder
-            .reserve_batch("scene_bbox_accumulated", ctx.render_ctx, 1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
+            .reserve_batch("scene_bbox_accumulated", 1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
             .add_box_outline(&state.bounding_boxes.accumulated)
             .map(|lines| {
                 lines
@@ -703,7 +703,7 @@ pub fn view_3d(
             let right = forward.cross(up);
 
             line_builder
-                .reserve_batch("center orbit orientation help", ctx.render_ctx, 3, 3 * 2)?
+                .reserve_batch("center orbit orientation help", 3, 3 * 2)?
                 .add_segments(
                     [
                         (
@@ -739,7 +739,7 @@ pub fn view_3d(
     }
 
     // Commit ui induced lines.
-    for line_draw_data in line_builder.finish(ctx.render_ctx)? {
+    for line_draw_data in line_builder.finish()? {
         view_builder.queue_draw(line_draw_data);
     }
 
@@ -761,8 +761,7 @@ pub fn view_3d(
 }
 
 fn show_projections_from_2d_space(
-    render_ctx: &re_renderer::RenderContext,
-    line_builder: &mut re_renderer::LineStripBatchBuilderAllocator,
+    line_builder: &mut re_renderer::LineDrawableBuilderAllocator<'_>,
     space_cameras: &[SpaceCamera3D],
     state: &SpatialSpaceViewState,
     space_context: &SelectedSpaceContext,
@@ -795,7 +794,6 @@ fn show_projections_from_2d_space(
 
                         let thick_ray_length = (stop_in_world - origin).length();
                         add_picking_ray(
-                            render_ctx,
                             line_builder,
                             ray,
                             &state.bounding_boxes.accumulated,
@@ -824,7 +822,6 @@ fn show_projections_from_2d_space(
                         cam_to_pos / distance,
                     );
                     add_picking_ray(
-                        render_ctx,
                         line_builder,
                         ray,
                         &state.bounding_boxes.accumulated,
@@ -841,14 +838,13 @@ fn show_projections_from_2d_space(
 }
 
 fn add_picking_ray(
-    render_ctx: &re_renderer::RenderContext,
-    line_builder: &mut re_renderer::LineStripBatchBuilderAllocator,
+    line_builder: &mut re_renderer::LineDrawableBuilderAllocator<'_>,
     ray: macaw::Ray3,
     scene_bbox_accum: &BoundingBox,
     thick_ray_length: f32,
     color: egui::Color32,
 ) -> Result<(), re_renderer::renderer::LineDrawDataError> {
-    let mut line_batch = line_builder.reserve_batch("picking ray", render_ctx, 2, 4)?;
+    let mut line_batch = line_builder.reserve_batch("picking ray", 2, 4)?;
 
     let origin = ray.point_along(0.0);
     // No harm in making this ray _very_ long. (Infinite messes with things though!)
