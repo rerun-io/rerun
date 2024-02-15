@@ -222,6 +222,8 @@ tungstenite = { version = "0.17", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"
+ureq = "2.6"
+url = "2.3"
 uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"

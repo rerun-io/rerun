@@ -28,10 +28,10 @@ impl Default for Build {
 }
 
 impl Build {
-    pub async fn run(self) -> anyhow::Result<()> {
-        let client = meili::connect(&self.meilisearch_url, &self.meilisearch_master_key).await?;
+    pub fn run(self) -> anyhow::Result<()> {
+        let client = meili::connect(&self.meilisearch_url, &self.meilisearch_master_key)?;
         let documents = ingest::run()?;
-        client.index(&self.index_name, &documents).await?;
+        client.index(&self.index_name, &documents)?;
         Ok(())
     }
 }

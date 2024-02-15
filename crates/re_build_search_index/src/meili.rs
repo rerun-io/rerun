@@ -1,14 +1,18 @@
+use std::ops::ControlFlow;
+
 use anyhow::Context;
-use meilisearch_sdk::{Client, Error, ErrorCode, MeilisearchError, Task};
+use url::Url;
 
 use crate::ingest::Document;
 
-pub async fn connect(url: &str, master_key: &str) -> anyhow::Result<SearchClient> {
-    SearchClient::connect(url, master_key).await
+pub fn connect(url: &str, master_key: &str) -> anyhow::Result<SearchClient> {
+    SearchClient::connect(url, master_key)
 }
 
 pub struct SearchClient {
-    client: Client,
+    url: String,
+    master_key: String,
+    agent: ureq::Agent,
 }
 
 impl SearchClient {
@@ -16,83 +20,200 @@ impl SearchClient {
     ///
     /// `master_key` can be obtained via the Meilisearch could console,
     /// or set via the `--master-key` option when running a local instance.
-    pub async fn connect(url: &str, master_key: &str) -> anyhow::Result<Self> {
-        let client = Client::new(url, Some(master_key));
-        // this call can only be done with a valid master key
-        let _ = client
-            .get_keys()
-            .await
-            .with_context(|| format!("cannot connect to meilisearch at {url:?}"))?;
-        Ok(Self { client })
+    pub fn connect(url: &str, master_key: &str) -> anyhow::Result<Self> {
+        let this = SearchClient {
+            url: url.into(),
+            master_key: master_key.into(),
+            agent: ureq::agent(),
+        };
+
+        this.check_master_key()?;
+
+        Ok(this)
     }
 
     /// Create an index from `documents`.
     ///
     /// If an index with the same name already exists, it is deleted first.
-    pub async fn index(&self, index: &str, documents: &[Document]) -> anyhow::Result<()> {
-        if self.index_exists(index).await? {
-            self.delete_index(index).await?; // delete existing index
+    pub fn index(&self, index: &str, documents: &[Document]) -> anyhow::Result<()> {
+        if self.index_exists(index)? {
+            self.delete_index(index).context("failed to delete index")?; // delete existing index
         }
-        self.create_index(index, documents).await
+        self.create_index(index).context("failed to create index")?;
+        self.add_or_replace_documents(index, documents)
+            .context("failed to add documents")?;
+        println!("created index {index:?}");
+        Ok(())
     }
 
     /// Query a specific index in the database.
-    pub async fn query(
+    pub fn query(
         &self,
         index: &str,
         q: &str,
         limit: Option<usize>,
-    ) -> anyhow::Result<impl Iterator<Item = Document> + DoubleEndedIterator + ExactSizeIterator>
-    {
-        let index = self.client.index(index);
-        let mut request = index.search();
-        let request = request.with_query(q);
-        request.limit = limit;
-        let results = request.execute().await?;
-        Ok(results.hits.into_iter().map(|hit| hit.result))
+    ) -> anyhow::Result<Vec<Document>> {
+        let Self { url, .. } = self;
+        let limit = limit.unwrap_or(20).to_string();
+        let url = Url::parse_with_params(
+            &format!("{url}/indexes/{index}/search"),
+            [("q", q), ("limit", limit.as_str())],
+        )?;
+
+        let result: QueryResult<Document> = self
+            .request_with_url(Method::Get, &url)
+            .call()?
+            .into_json()?;
+
+        Ok(result.hits)
     }
 
-    async fn index_exists(&self, index: &str) -> anyhow::Result<bool> {
-        match self.client.get_index(index).await {
+    fn index_exists(&self, index: &str) -> anyhow::Result<bool> {
+        match self.get(&format!("/indexes/{index}")).call() {
             Ok(_) => Ok(true),
-            Err(Error::Meilisearch(MeilisearchError {
-                error_code: ErrorCode::IndexNotFound,
-                ..
-            })) => Ok(false),
-            Err(err) => Err(err.into()),
+            Err(ureq::Error::Status(404, _)) => Ok(false),
+            Err(err) => Err(anyhow::anyhow!(err)),
         }
     }
 
-    async fn create_index(&self, index: &str, documents: &[Document]) -> anyhow::Result<()> {
-        self.client
-            .index(index)
-            .add_or_update(documents, Some("id"))
-            .await?
-            .wait_for_completion(&self.client, None, None)
-            .await?
-            .to_result()
+    fn create_index(&self, index: &str) -> anyhow::Result<()> {
+        self.post("/indexes")
+            .send_json(ureq::json!({ "uid": index, "primaryKey": Document::PRIMARY_KEY }))?;
+        Ok(())
     }
 
-    async fn delete_index(&self, index: &str) -> anyhow::Result<()> {
-        self.client
-            .delete_index(index)
-            .await?
-            .wait_for_completion(&self.client, None, None)
-            .await?
-            .to_result()
+    fn add_or_replace_documents(&self, index: &str, documents: &[Document]) -> anyhow::Result<()> {
+        // Meilisearch uses a queue for indexing operations.
+
+        // This call enqueues a task which we have to poll for completion
+        let task: Task = self
+            .post(&format!("/indexes/{index}/documents"))
+            .send_json(documents)?
+            .into_json()?;
+        self.wait_for_task(task)?;
+
+        Ok(())
+    }
+
+    fn delete_index(&self, index: &str) -> anyhow::Result<()> {
+        let task: Task = self
+            .delete(&format!("/indexes/{index}"))
+            .call()?
+            .into_json()?;
+        self.wait_for_task(task).context("while waiting for task")?;
+        Ok(())
+    }
+
+    fn wait_for_task(&self, mut task: Task) -> anyhow::Result<()> {
+        let task_url = format!("/tasks/{}", task.uid);
+        loop {
+            if task.check_status()?.is_break() {
+                break;
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(1));
+            task = self.get(&task_url).call()?.into_json()?;
+        }
+
+        Ok(())
+    }
+
+    fn check_master_key(&self) -> anyhow::Result<()> {
+        // `/keys` can only be called with a valid master key
+        self.get("/keys").call()?;
+        Ok(())
+    }
+
+    /// GET `{self.url}{path}`
+    fn get(&self, path: &str) -> ureq::Request {
+        self.request(Method::Get, path)
+    }
+
+    /// POST `{self.url}{path}`
+    fn post(&self, path: &str) -> ureq::Request {
+        self.request(Method::Post, path)
+    }
+
+    /// DELETE `{self.url}{path}`
+    fn delete(&self, path: &str) -> ureq::Request {
+        self.request(Method::Delete, path)
+    }
+
+    fn request(&self, method: Method, path: &str) -> ureq::Request {
+        let Self {
+            url, master_key, ..
+        } = self;
+
+        self.agent
+            .request(method.as_str(), &format!("{url}{path}"))
+            .set("Authorization", &format!("Bearer {master_key}"))
+    }
+
+    fn request_with_url(&self, method: Method, url: &Url) -> ureq::Request {
+        let Self { master_key, .. } = self;
+
+        self.agent
+            .request_url(method.as_str(), url)
+            .set("Authorization", &format!("Bearer {master_key}"))
     }
 }
 
-trait ToResult {
-    fn to_result(self) -> anyhow::Result<()>;
+#[derive(serde::Deserialize)]
+struct QueryResult<T> {
+    hits: Vec<T>,
 }
 
-impl ToResult for Task {
-    fn to_result(self) -> anyhow::Result<()> {
-        if self.is_failure() {
-            Err(self.unwrap_failure().into())
-        } else {
-            Ok(())
+#[derive(serde::Deserialize)]
+struct Task {
+    #[serde(alias = "taskUid")]
+    uid: u64,
+    status: TaskStatus,
+    error: Option<TaskError>,
+}
+
+#[derive(serde::Deserialize)]
+struct TaskError {
+    message: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum TaskStatus {
+    Enqueued,
+    Processing,
+    Succeeded,
+    Failed,
+    Canceled,
+}
+
+impl Task {
+    fn check_status(&self) -> anyhow::Result<ControlFlow<()>> {
+        match self.status {
+            TaskStatus::Enqueued | TaskStatus::Processing => Ok(ControlFlow::Continue(())),
+
+            TaskStatus::Succeeded => Ok(ControlFlow::Break(())),
+
+            TaskStatus::Failed => {
+                anyhow::bail!("task failed: {}", self.error.as_ref().unwrap().message)
+            }
+            TaskStatus::Canceled => anyhow::bail!("task was canceled"),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Method {
+    Get,
+    Post,
+    Delete,
+}
+
+impl Method {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Method::Get => "GET",
+            Method::Post => "POST",
+            Method::Delete => "DELETE",
         }
     }
 }

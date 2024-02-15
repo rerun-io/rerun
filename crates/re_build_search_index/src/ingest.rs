@@ -85,7 +85,7 @@ impl Context {
 
     fn finish(self) -> Vec<Document> {
         let documents = self.documents.into_inner();
-        println!("indexed {} documents", documents.len());
+        println!("collected {} documents", documents.len());
         documents
     }
 }
@@ -98,6 +98,8 @@ pub struct Document {
 }
 
 impl Document {
+    pub const PRIMARY_KEY: &'static str = "id";
+
     pub fn title(&self) -> &String {
         &self.data.title
     }

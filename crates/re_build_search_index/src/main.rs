@@ -7,8 +7,7 @@ mod meili;
 mod repl;
 mod util;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let args: Args = argh::from_env();
 
     let Some(cmd) = args.cmd else {
@@ -22,8 +21,8 @@ async fn main() -> anyhow::Result<()> {
     };
 
     match cmd {
-        Cmd::Repl(cmd) => cmd.run().await,
-        Cmd::Build(cmd) => cmd.run().await,
+        Cmd::Repl(cmd) => cmd.run(),
+        Cmd::Build(cmd) => cmd.run(),
     }
 }
 

@@ -35,22 +35,7 @@ rustdoc-types = "0.24.0"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde_yaml.workspace = true
-tokio = { workspace = true, features = [
-  "macros",
-  "net",
-  "rt-multi-thread",
-  "signal",
-  "io-util",
-  "sync",
-] }
 toml = { workspace = true, features = ["parse", "preserve_order"] }
+ureq = { workspace = true, features = ["json"] }
+url.workspace = true
 
-[dependencies.meilisearch-sdk]
-# released version of meilisearch-sdk uses isahc as the http client,
-# which depends on CURL, which depends on openssl. openssl fails to
-# build. luckily, someone is maintaining a branch which uses reqwest:
-# https://github.com/meilisearch/meilisearch-rust/pull/524
-git = "https://github.com/gibbz00/meilisearch-rust"
-rev = "d6ac8247dfd51170fe90cccd846e87e94bebd9dd"
-default-features = false
-features = ["reqwest-rustls"]
