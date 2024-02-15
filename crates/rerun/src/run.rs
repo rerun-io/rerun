@@ -381,7 +381,7 @@ where
             Command::Print(print_command) => print_command.run(),
 
             #[cfg(feature = "native_viewer")]
-            Command::Reset => reset_viewer(),
+            Command::Reset => re_viewer::reset_viewer_persistence(),
         }
     } else {
         run_impl(build_info, call_source, args).await
@@ -879,35 +879,4 @@ fn parse_max_latency(max_latency: Option<&String>) -> f32 {
         re_format::parse_duration(time)
             .unwrap_or_else(|err| panic!("Failed to parse max_latency ({max_latency:?}): {err}"))
     })
-}
-
-#[cfg(feature = "native_viewer")]
-fn reset_viewer() -> anyhow::Result<()> {
-    let Some(data_dir) = re_viewer::external::eframe::storage_dir(re_viewer::native::APP_ID) else {
-        anyhow::bail!("Failed to figure out where Rerun stores its data.")
-    };
-
-    // Note: `remove_dir_all` fails if the directory doesn't exist.
-    if data_dir.exists() {
-        // Keep analytics, because it is used to uniquely identify users over time.
-        let analytics_file_path = data_dir.join("analytics.json");
-        let analytics = std::fs::read(&analytics_file_path);
-
-        if let Err(err) = std::fs::remove_dir_all(&data_dir) {
-            anyhow::bail!("Failed to remove {data_dir:?}: {err}");
-        } else {
-            eprintln!("Cleared {data_dir:?}.");
-        }
-
-        if let Ok(analytics) = analytics {
-            // Restore analytics.json:
-            std::fs::create_dir(&data_dir).ok();
-            std::fs::write(&analytics_file_path, analytics).ok();
-        }
-
-        Ok(())
-    } else {
-        eprintln!("Rerun state was already cleared.");
-        Ok(())
-    }
 }
