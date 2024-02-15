@@ -7,7 +7,9 @@ import argparse
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
 
-parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+parser = argparse.ArgumentParser(
+    description="Demonstrates the most barebone usage of the Rerun SDK, with standard options."
+)
 rr.script_add_args(parser)
 args = parser.parse_args()
 

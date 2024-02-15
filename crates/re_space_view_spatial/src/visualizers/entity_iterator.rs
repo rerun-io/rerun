@@ -237,3 +237,51 @@ macro_rules! impl_process_archetype {
 seq!(NUM_COMP in 0..10 {
     impl_process_archetype!(for N=1, M=NUM_COMP);
 });
+
+/// Count the number of primary instances for a given archetype query that should be displayed.
+///
+/// Returned value might be conservative and some of the instances may not be displayable after all,
+/// e.g. due to invalid transformation etc.
+pub fn count_instances_in_archetype_views<
+    System: IdentifiedViewSystem,
+    A: Archetype,
+    const N: usize,
+>(
+    ctx: &ViewerContext<'_>,
+    query: &ViewQuery<'_>,
+) -> usize {
+    assert_eq!(A::all_components().len(), N);
+
+    // TODO(andreas): Use cached code path for this.
+    // This is right now a bit harder to do and requires knowing all queried components.
+    // The only thing we really want to pass here are the POV components.
+
+    re_tracing::profile_function!();
+
+    let mut num_instances = 0;
+
+    for data_result in query.iter_visible_data_results(System::identifier()) {
+        match query_archetype_with_history::<A, N>(
+            ctx.entity_db.store(),
+            &query.timeline,
+            &query.latest_at,
+            &data_result.accumulated_properties().visible_history,
+            &data_result.entity_path,
+        )
+        .map(|arch_views| {
+            for arch_view in arch_views {
+                num_instances += arch_view.num_instances();
+            }
+        }) {
+            Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
+            Err(err) => {
+                re_log::error_once!(
+                    "Unexpected error querying {:?}: {err}",
+                    &data_result.entity_path
+                );
+            }
+        }
+    }
+
+    num_instances
+}

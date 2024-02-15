@@ -7,7 +7,7 @@ files = ["*.yml", "*.yaml"]
 options = { tabWidth = 2 }
 
 [[overrides]]
-files = "*.js"
+files = ["*.js", "*.mjs", "*.cjs"]
 options = { semi = true, tabWidth = 2 }
 
 [[overrides]]

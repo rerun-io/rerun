@@ -10,12 +10,9 @@
 //! An example may also specify args to be run with via the frontmatter
 //! `build_args` string array.
 
-mod example;
-mod manifest;
-mod rrd;
+pub use re_build_examples::*;
 
 use argh::FromArgs;
-use example::{Channel, Example};
 
 fn main() -> anyhow::Result<()> {
     re_build_tools::set_output_cargo_build_instructions(false);

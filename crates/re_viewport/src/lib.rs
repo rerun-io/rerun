@@ -7,6 +7,7 @@ pub const VIEWPORT_PATH: &str = "viewport";
 mod add_space_view_or_container_modal;
 mod auto_layout;
 mod container;
+mod context_menu;
 mod screenshot;
 mod space_view_entity_picker;
 pub mod space_view_heuristics;
@@ -24,6 +25,7 @@ mod viewport_blueprint_ui;
 pub mod blueprint;
 
 pub use container::{ContainerBlueprint, Contents};
+pub use context_menu::context_menu_ui_for_item;
 pub use viewport::{Viewport, ViewportState};
 pub use viewport_blueprint::ViewportBlueprint;
 pub use viewport_blueprint_ui::space_view_name_style;

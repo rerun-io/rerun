@@ -85,6 +85,7 @@
     "ruff.lint.args": [
         "--config=rerun_py/pyproject.toml"
     ],
+    "prettier.requireConfig": true,
     "prettier.configPath": ".prettierrc.toml",
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff"

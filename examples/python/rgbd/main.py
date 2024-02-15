@@ -145,7 +145,7 @@ def download_progress(url: str, dst: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(description="Example using an example depth dataset from NYU.")
     parser.add_argument(
         "--recording",
         type=str,

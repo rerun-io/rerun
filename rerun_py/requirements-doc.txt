@@ -8,4 +8,5 @@ git+https://github.com/rerun-io/mkdocs-redirects.git@v1.3.1 # forked mkdocs-redi
 mkdocstrings==0.23.0
 mkdocstrings-python==1.7.3
 mike==1.1.2
+sphobjinv==2.3.1
 typing_extensions==4.8.0 # uncaptured dep for mkdocstrings (https://github.com/mkdocstrings/mkdocstrings/issues/548)

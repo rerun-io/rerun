@@ -6,8 +6,8 @@ use crate::{
     allocator::CpuWriteGpuReadBuffer,
     draw_phases::PickingLayerObjectId,
     renderer::{
-        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-        PositionRadius,
+        data_texture_source_buffer_element_count, PointCloudBatchFlags, PointCloudBatchInfo,
+        PointCloudDrawData, PointCloudDrawDataError, PositionRadius,
     },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
     Size,
@@ -24,38 +24,49 @@ pub struct PointCloudBuilder {
     pub(crate) batches: Vec<PointCloudBatchInfo>,
 
     pub(crate) radius_boost_in_ui_points_for_outlines: f32,
+
+    max_num_points: usize,
 }
 
 impl PointCloudBuilder {
-    pub fn new(ctx: &RenderContext) -> Self {
-        const RESERVE_SIZE: usize = 512;
+    pub fn new(ctx: &RenderContext, max_num_points: u32) -> Self {
+        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
 
-        // TODO(andreas): Be more resourceful about the size allocated here. Typically we know in advance!
         let color_buffer = ctx
             .cpu_write_gpu_read_belt
             .lock()
             .allocate::<Color32>(
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
-                PointCloudDrawData::MAX_NUM_POINTS,
+                data_texture_source_buffer_element_count(
+                    PointCloudDrawData::COLOR_TEXTURE_FORMAT,
+                    max_num_points,
+                    max_texture_dimension_2d,
+                ),
             )
             .expect("Failed to allocate color buffer"); // TODO(#3408): Should never happen but should propagate error anyways
+
         let picking_instance_ids_buffer = ctx
             .cpu_write_gpu_read_belt
             .lock()
             .allocate::<PickingLayerInstanceId>(
                 &ctx.device,
                 &ctx.gpu_resources.buffers,
-                PointCloudDrawData::MAX_NUM_POINTS,
+                data_texture_source_buffer_element_count(
+                    PointCloudDrawData::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
+                    max_num_points,
+                    max_texture_dimension_2d,
+                ),
             )
             .expect("Failed to allocate picking layer buffer"); // TODO(#3408): Should never happen but should propagate error anyways
 
         Self {
-            vertices: Vec::with_capacity(RESERVE_SIZE),
+            vertices: Vec::with_capacity(max_num_points as usize),
             color_buffer,
             picking_instance_ids_buffer,
             batches: Vec::with_capacity(16),
             radius_boost_in_ui_points_for_outlines: 0.0,
+            max_num_points: max_num_points as usize,
         }
     }
 
@@ -182,13 +193,13 @@ impl<'a> PointCloudBatchBuilder<'a> {
             self.0.picking_instance_ids_buffer.num_written()
         );
 
-        if num_points + self.0.vertices.len() > PointCloudDrawData::MAX_NUM_POINTS {
+        if num_points + self.0.vertices.len() > self.0.max_num_points {
             re_log::error_once!(
-                "Reached maximum number of supported points of {}. \
-                 See also https://github.com/rerun-io/rerun/issues/957",
-                PointCloudDrawData::MAX_NUM_POINTS
+                "Reserved space for {} points, but reached {}. Clamping to previously set maximum",
+                self.0.max_num_points,
+                num_points + self.0.vertices.len()
             );
-            num_points = PointCloudDrawData::MAX_NUM_POINTS - self.0.vertices.len();
+            num_points = self.0.max_num_points - self.0.vertices.len();
         }
         if num_points == 0 {
             return self;

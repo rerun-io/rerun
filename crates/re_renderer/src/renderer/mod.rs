@@ -39,7 +39,8 @@ use crate::{
     context::RenderContext,
     draw_phases::DrawPhase,
     include_shader_module,
-    wgpu_resources::{GpuRenderPipelinePoolAccessor, PoolError},
+    wgpu_resources::{self, GpuRenderPipelinePoolAccessor, PoolError},
+    DebugLabel,
 };
 
 /// GPU sided data used by a [`Renderer`] to draw things to the screen.
@@ -88,4 +89,98 @@ pub fn screen_triangle_vertex_shader(
         ctx,
         &include_shader_module!("../../shader/screen_triangle.wgsl"),
     )
+}
+
+/// Texture size for storing a given amount of data.
+///
+/// For WebGL compatibility we sometimes have to use textures instead of buffers.
+/// We call these textures "data textures".
+/// This method determines the size of a data texture holding a given number of used texels.
+/// Each texel is typically a single data entry (think `struct`).
+///
+/// `max_texture_dimension_2d` must be a power of two and is the maximum supported size of 2D textures.
+///
+/// For convenience, the returned texture size has a width such that its
+/// row size in bytes is a multiple of `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`.
+/// This makes it a lot easier to copy data from a continuous buffer to the texture.
+/// If we wouldn't do that, we'd need to do a copy for each row in some cases.
+pub fn data_texture_size(
+    format: wgpu::TextureFormat,
+    num_texels_written: u32,
+    max_texture_dimension_2d: u32,
+) -> wgpu::Extent3d {
+    debug_assert!(max_texture_dimension_2d.is_power_of_two());
+    debug_assert!(!format.has_depth_aspect());
+    debug_assert!(!format.has_stencil_aspect());
+    debug_assert!(!format.is_compressed());
+
+    let texel_size_in_bytes = format
+        .block_copy_size(None)
+        .expect("Depth/stencil formats are not supported as data textures");
+
+    // Our data textures are usually accessed in a linear fashion, so ideally we'd be using a 1D texture.
+    // However, 1D textures are very limited in size on many platforms, we have to use 2D textures instead.
+    // 2D textures perform a lot better when their dimensions are powers of two, so we'll strictly stick to that even
+    // when it seems to cause memory overhead.
+
+    // We fill row by row. With the power-of-two requirement, this is the optimal strategy:
+    // if there were a texture with less padding that uses half the width,
+    // then we'd need to increase the height. We can't increase without doubling it, thus creating a texture
+    // with the exact same mount of padding as before.
+
+    let width = if num_texels_written < max_texture_dimension_2d {
+        num_texels_written
+            .next_power_of_two()
+            // For too few number of written texels, or too small texels we might need to increase the size to stay
+            // above a row **byte** size of `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`.
+            // Note that this implies that for very large texels, we need less wide textures to stay above this limit.
+            // (width is in number of texels, but alignment cares about bytes!)
+            .next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT / texel_size_in_bytes)
+    } else {
+        max_texture_dimension_2d
+    };
+
+    let height = num_texels_written.div_ceil(width);
+
+    wgpu::Extent3d {
+        width,
+        height,
+        depth_or_array_layers: 1,
+    }
+}
+
+/// Texture descriptor for data storage.
+///
+/// See [`data_texture_size`]
+pub fn data_texture_desc(
+    label: impl Into<DebugLabel>,
+    format: wgpu::TextureFormat,
+    num_texels_written: u32,
+    max_texture_dimension_2d: u32,
+) -> wgpu_resources::TextureDesc {
+    wgpu_resources::TextureDesc {
+        label: label.into(),
+        size: data_texture_size(format, num_texels_written, max_texture_dimension_2d),
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+    }
+}
+
+/// Pendent to [`data_texture_size`] for determining the element size (==texels on data texture)
+/// need to be in a buffer that fills an entire data texture.
+pub fn data_texture_source_buffer_element_count(
+    texture_format: wgpu::TextureFormat,
+    num_texels_written: u32,
+    max_texture_dimension_2d: u32,
+) -> usize {
+    let data_texture_size =
+        data_texture_size(texture_format, num_texels_written, max_texture_dimension_2d);
+    let element_count = data_texture_size.width as usize * data_texture_size.height as usize;
+
+    debug_assert!(element_count >= num_texels_written as usize);
+
+    element_count
 }

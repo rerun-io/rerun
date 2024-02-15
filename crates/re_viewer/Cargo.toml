@@ -113,6 +113,7 @@ web-sys = { workspace = true, features = [
   'Url',
   'UrlSearchParams',
   'Window',
+  "Storage",
 ] }
 
 

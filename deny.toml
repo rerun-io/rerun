@@ -26,10 +26,7 @@ targets = [
 vulnerability = "deny"
 unmaintained = "warn"
 yanked = "deny"
-ignore = [
-  "RUSTSEC-2023-0052", # https://rustsec.org/advisories/RUSTSEC-2023-0052 - webpki: CPU denial of service in certificate path building - can be fixed by `cargo update -p ureq`, but then we run into duplicate crates: https://github.com/algesten/ureq/issues/653
-  "RUSTSEC-2023-0065", # https://rustsec.org/advisories/RUSTSEC-2023-0065 - Tungstenite WebSocket server can be DOS-attacked by malicious clients
-]
+ignore = []
 
 [bans]
 multiple-versions = "deny"
@@ -56,17 +53,17 @@ skip = [
   { name = "raw-window-handle" }, # Pretty small crate; some crates still on old version
   { name = "redox_syscall" },     # Plenty of versions in the wild
   { name = "spin" },              # Old version used by rusttls
+  { name = "webpki-roots" },      # ureq and tungstenite are on different version 😭
   { name = "windows" },           # Old version used by accesskit_windows, newer version used by wgpu
 ]
 skip-tree = [
   { name = "async-io" },       # Old version via rfd
   { name = "cargo-run-wasm" }, # Dev-tool
-  { name = "core-graphics" },  # old version via arboard
   { name = "criterion" },      # dev-dependency
   { name = "objc2" },          # old version via accesskit
   { name = "prost-build" },    # only used in objectron example
   { name = "prost-derive" },   # only used in objectron example
-  { name = "x11rb" },          # old version via arboard
+  { name = "toml_edit" },      # Old version via egui-winit, newer used by rustdoc-json
 ]
 
 
