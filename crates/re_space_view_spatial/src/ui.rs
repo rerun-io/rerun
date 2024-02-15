@@ -160,7 +160,6 @@ impl SpatialSpaceViewState {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view");
                 ui.vertical(|ui|{
-                    // TODO(#3816): We should also display the current eye's up axis.
                     let up_description = if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
                         format!("Scene up is {scene_up}")
                     } else {
