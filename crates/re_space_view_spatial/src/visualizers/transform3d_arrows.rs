@@ -55,8 +55,8 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
         // Counting all transform ahead of time is a bit wasteful and we don't expect a huge amount of lines from them,
-        // so use the `LineStripBatchBuilderAllocator` utility!
-        const LINES_PER_BATCH_BUILDER: u32 = 3 * 32; // 32 cameras per line builder (each camera draws 3 lines)
+        // so use the `LineDrawableBuilderAllocator` utility!
+        const LINES_PER_BATCH_BUILDER: u32 = 3 * 32; // 32 transforms per line builder (each transform draws 3 lines)
         let mut line_builder = re_renderer::LineDrawableBuilderAllocator::new(
             ctx.render_ctx,
             LINES_PER_BATCH_BUILDER,

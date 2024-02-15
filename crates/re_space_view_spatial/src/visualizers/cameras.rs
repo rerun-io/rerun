@@ -215,7 +215,7 @@ impl VisualizerSystem for CamerasVisualizer {
         let store = ctx.entity_db.store();
 
         // Counting all cameras ahead of time is a bit wasteful and we don't expect a huge amount of lines from them,
-        // so use the `LineStripBatchBuilderAllocator` utility!
+        // so use the `LineDrawableBuilderAllocator` utility!
         const LINES_PER_BATCH_BUILDER: u32 = 11 * 32; // 32 cameras per line builder (each camera draws 3 lines)
         let mut line_builder = re_renderer::LineDrawableBuilderAllocator::new(
             ctx.render_ctx,
