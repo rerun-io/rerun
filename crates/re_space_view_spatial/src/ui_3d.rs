@@ -1,6 +1,6 @@
 use egui::{emath::RectTransform, NumExt as _};
 use glam::Affine3A;
-use macaw::{vec3, BoundingBox, Quat, Vec3};
+use macaw::{BoundingBox, Quat, Vec3};
 use web_time::Instant;
 
 use re_log_types::EntityPath;
@@ -12,7 +12,7 @@ use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
     ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
-use re_types::components::ViewCoordinates;
+use re_types::{components::ViewCoordinates, view_coordinates::SignedAxis3};
 use re_viewer_context::{
     gpu_bridge, Item, SelectedSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
     ViewQuery, ViewerContext,
@@ -52,6 +52,10 @@ pub struct View3DState {
 
     eye_interpolation: Option<EyeInterpolation>,
 
+    /// Last known view coordinates.
+    /// Used to detect changes in view coordinates, in which case we reset the camera eye.
+    scene_view_coordinates: Option<ViewCoordinates>,
+
     // options:
     spin: bool,
     pub show_axes: bool,
@@ -70,6 +74,7 @@ impl Default for View3DState {
             tracked_entity: None,
             camera_before_tracked_entity: None,
             eye_interpolation: Default::default(),
+            scene_view_coordinates: None,
             spin: false,
             show_axes: false,
             show_bbox: false,
@@ -88,9 +93,9 @@ impl View3DState {
     pub fn reset_camera(
         &mut self,
         scene_bbox_accum: &BoundingBox,
-        view_coordinates: &Option<ViewCoordinates>,
+        scene_view_coordinates: Option<ViewCoordinates>,
     ) {
-        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, view_coordinates));
+        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, scene_view_coordinates));
         self.tracked_entity = None;
         self.camera_before_tracked_entity = None;
     }
@@ -100,7 +105,7 @@ impl View3DState {
         response: &egui::Response,
         bounding_boxes: &SceneBoundingBoxes,
         space_cameras: &[SpaceCamera3D],
-        view_coordinates: Option<ViewCoordinates>,
+        scene_view_coordinates: Option<ViewCoordinates>,
     ) -> OrbitEye {
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
@@ -108,9 +113,18 @@ impl View3DState {
         if self.last_eye_interaction.is_none() {
             self.interpolate_to_orbit_eye(default_eye(
                 &bounding_boxes.accumulated,
-                &view_coordinates,
+                scene_view_coordinates,
             ));
         }
+
+        // Detect live changes to view coordinates, and interpolate to the new up axis as needed.
+        if scene_view_coordinates != self.scene_view_coordinates {
+            self.interpolate_to_orbit_eye(default_eye(
+                &bounding_boxes.accumulated,
+                scene_view_coordinates,
+            ));
+        }
+        self.scene_view_coordinates = scene_view_coordinates;
 
         // Follow tracked object.
         if let Some(tracked_entity) = self.tracked_entity.clone() {
@@ -128,9 +142,9 @@ impl View3DState {
             }
         }
 
-        let orbit_eye = self
-            .orbit_eye
-            .get_or_insert_with(|| default_eye(&bounding_boxes.accumulated, &view_coordinates));
+        let orbit_eye = self.orbit_eye.get_or_insert_with(|| {
+            default_eye(&bounding_boxes.accumulated, scene_view_coordinates)
+        });
 
         if self.spin {
             orbit_eye.rotate(egui::vec2(
@@ -421,7 +435,7 @@ pub fn view_3d(
 
     let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
-    let view_coordinates = ctx
+    let scene_view_coordinates = ctx
         .entity_db
         .store()
         // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
@@ -440,7 +454,7 @@ pub fn view_3d(
         &response,
         &state.bounding_boxes,
         space_cameras,
-        view_coordinates,
+        scene_view_coordinates,
     );
     let eye = orbit_eye.to_eye();
 
@@ -532,7 +546,7 @@ pub fn view_3d(
                 if space_view_id == &query.space_view_id {
                     state
                         .state_3d
-                        .reset_camera(&state.bounding_boxes.accumulated, &view_coordinates);
+                        .reset_camera(&state.bounding_boxes.accumulated, scene_view_coordinates);
                 }
                 None
             }
@@ -669,17 +683,41 @@ pub fn view_3d(
 
         if orbit_center_fade > 0.001 {
             let half_line_length = orbit_eye.orbit_radius * 0.03;
-
             let half_line_length = half_line_length * orbit_center_fade;
+
+            // We distinguish the eye up-axis from the other two axes:
+            // Default to RFU
+            let up = orbit_eye.eye_up.try_normalize().unwrap_or(glam::Vec3::Z);
+
+            // For the other two axes, try to use the scene view coordinates if available:
+            let right = scene_view_coordinates
+                .and_then(|vc| vc.right())
+                .map_or(glam::Vec3::X, Vec3::from);
+            let forward = up
+                .cross(right)
+                .try_normalize()
+                .unwrap_or_else(|| up.any_orthogonal_vector());
+            let right = forward.cross(up);
 
             line_builder
                 .batch("center orbit orientation help")
-                .add_segments(glam::Vec3::AXES.iter().map(|axis| {
-                    (
-                        orbit_eye.orbit_center - *axis * half_line_length,
-                        orbit_eye.orbit_center + *axis * half_line_length,
-                    )
-                }))
+                .add_segments(
+                    [
+                        (
+                            orbit_eye.orbit_center,
+                            orbit_eye.orbit_center + 0.5 * up * half_line_length,
+                        ),
+                        (
+                            orbit_eye.orbit_center - right * half_line_length,
+                            orbit_eye.orbit_center + right * half_line_length,
+                        ),
+                        (
+                            orbit_eye.orbit_center - forward * half_line_length,
+                            orbit_eye.orbit_center + forward * half_line_length,
+                        ),
+                    ]
+                    .into_iter(),
+                )
                 .radius(Size::new_points(0.75))
                 // TODO(andreas): Fade this out.
                 .color(re_renderer::Color32::WHITE);
@@ -757,17 +795,19 @@ fn show_projections_from_2d_space(
                     let stop_in_world = world_from_image.transform_point3(stop_in_image_plane);
 
                     let origin = cam.position();
-                    let ray =
-                        macaw::Ray3::from_origin_dir(origin, (stop_in_world - origin).normalize());
 
-                    let thick_ray_length = (stop_in_world - origin).length();
-                    add_picking_ray(
-                        line_builder,
-                        ray,
-                        &state.bounding_boxes.accumulated,
-                        thick_ray_length,
-                        color,
-                    );
+                    if let Some(dir) = (stop_in_world - origin).try_normalize() {
+                        let ray = macaw::Ray3::from_origin_dir(origin, dir);
+
+                        let thick_ray_length = (stop_in_world - origin).length();
+                        add_picking_ray(
+                            line_builder,
+                            ray,
+                            &state.bounding_boxes.accumulated,
+                            thick_ray_length,
+                            color,
+                        );
+                    }
                 }
             }
         }
@@ -829,8 +869,19 @@ fn add_picking_ray(
 
 fn default_eye(
     bounding_box: &macaw::BoundingBox,
-    view_coordinates: &Option<ViewCoordinates>,
+    scene_view_coordinates: Option<ViewCoordinates>,
 ) -> OrbitEye {
+    // Defaults to RFU.
+    let scene_right = scene_view_coordinates
+        .and_then(|vc| vc.right())
+        .unwrap_or(SignedAxis3::POSITIVE_X);
+    let scene_forward = scene_view_coordinates
+        .and_then(|vc| vc.right())
+        .unwrap_or(SignedAxis3::POSITIVE_Y);
+    let scene_up = scene_view_coordinates
+        .and_then(|vc| vc.up())
+        .unwrap_or(SignedAxis3::POSITIVE_Z);
+
     let mut center = bounding_box.center();
     if !center.is_finite() {
         center = Vec3::ZERO;
@@ -841,34 +892,22 @@ fn default_eye(
         radius = 1.0;
     }
 
-    let look_up: glam::Vec3 = view_coordinates
-        .and_then(|vc| vc.up())
-        .unwrap_or(re_types::view_coordinates::SignedAxis3::POSITIVE_Z)
-        .into();
+    let eye_up: glam::Vec3 = scene_up.into();
 
-    let look_dir = if let Some(right) = view_coordinates.and_then(|vc| vc.right()) {
+    let eye_dir = {
         // Make sure right is to the right, and up is up:
-        let right = right.into();
-        let fwd = look_up.cross(right);
-        0.75 * fwd + 0.25 * right - 0.25 * look_up
-    } else {
-        // Look along the cardinal directions:
-        let look_dir = vec3(1.0, 1.0, 1.0);
-
-        // Make sure the eye is looking down, but just slightly:
-        look_dir + look_up * (-0.5 - look_dir.dot(look_up))
+        let right = scene_right.into();
+        let fwd = eye_up.cross(right);
+        0.75 * fwd + 0.25 * right - 0.25 * eye_up
     };
+    let eye_dir = eye_dir.try_normalize().unwrap_or(scene_forward.into());
 
-    let look_dir = look_dir.normalize();
-
-    let eye_pos = center - radius * look_dir;
+    let eye_pos = center - radius * eye_dir;
 
     OrbitEye::new(
         center,
         radius,
-        Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, look_up).inverse()),
-        view_coordinates
-            .and_then(|vc| vc.up())
-            .map_or(glam::Vec3::ZERO, Into::into),
+        Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, eye_up).inverse()),
+        eye_up,
     )
 }

@@ -193,7 +193,9 @@ def main() -> None:
     logging.getLogger().addHandler(rr.LoggingHandler())
     logging.getLogger().setLevel("INFO")
 
-    parser = argparse.ArgumentParser(description="Uses the MediaPipe Face Detection to track a human pose in video.")
+    parser = argparse.ArgumentParser(
+        description="Load an Open Photogrammetry Format (OPF) project and display the cameras and point cloud."
+    )
     parser.add_argument(
         "--dataset",
         choices=DATASETS.keys(),

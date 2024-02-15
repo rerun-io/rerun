@@ -261,14 +261,15 @@ impl PickingLayerProcessor {
             frame_uniform_buffer,
         );
 
-        let row_info_id = Texture2DBufferInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.extent);
+        let row_info_id =
+            Texture2DBufferInfo::new(Self::PICKING_LAYER_FORMAT, picking_rect.wgpu_extent());
         let row_info_depth = Texture2DBufferInfo::new(
             if direct_depth_readback {
                 Self::PICKING_LAYER_DEPTH_FORMAT
             } else {
                 DepthReadbackWorkaround::READBACK_FORMAT
             },
-            picking_rect.extent,
+            picking_rect.wgpu_extent(),
         );
 
         // Offset of the depth buffer in the readback buffer needs to be aligned to size of a depth pixel.
@@ -343,10 +344,7 @@ impl PickingLayerProcessor {
         encoder: &mut wgpu::CommandEncoder,
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
     ) -> Result<(), PickingLayerError> {
-        let extent = glam::uvec2(
-            self.picking_target.texture.width(),
-            self.picking_target.texture.height(),
-        );
+        let extent = self.picking_target.texture.size();
 
         let readable_depth_texture =
             if let Some(depth_copy_workaround) = self.depth_readback_workaround.as_ref() {
@@ -420,7 +418,7 @@ impl PickingLayerProcessor {
 
                 let buffer_info_id = Texture2DBufferInfo::new(
                     Self::PICKING_LAYER_FORMAT,
-                    metadata.picking_rect.extent,
+                    metadata.picking_rect.wgpu_extent(),
                 );
                 let buffer_info_depth = Texture2DBufferInfo::new(
                     if metadata.depth_readback_workaround_in_use {
@@ -428,7 +426,7 @@ impl PickingLayerProcessor {
                     } else {
                         Self::PICKING_LAYER_DEPTH_FORMAT
                     },
-                    metadata.picking_rect.extent,
+                    metadata.picking_rect.wgpu_extent(),
                 );
 
                 let picking_id_data = buffer_info_id

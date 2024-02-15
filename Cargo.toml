@@ -75,15 +75,15 @@ re_ws_comms = { path = "crates/re_ws_comms", version = "=0.14.0-alpha.1", defaul
 rerun = { path = "crates/rerun", version = "=0.14.0-alpha.1", default-features = false }
 
 # egui-crates:
-ecolor = "0.26.1"
-eframe = { version = "0.26.1", default-features = false, features = [
+ecolor = "0.26.2"
+eframe = { version = "0.26.2", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "puffin",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.26.1", features = [
+egui = { version = "0.26.2", features = [
   "callstack",
   "extra_debug_asserts",
   "log",
@@ -91,11 +91,11 @@ egui = { version = "0.26.1", features = [
   "rayon",
 ] }
 egui_commonmark = { version = "0.12", default-features = false }
-egui_extras = { version = "0.26.1", features = ["http", "image", "puffin"] }
-egui_plot = "0.26.1"
+egui_extras = { version = "0.26.2", features = ["http", "image", "puffin"] }
+egui_plot = "0.26.2"
 egui_tiles = "0.7.2"
-egui-wgpu = "0.26.1"
-emath = "0.26.1"
+egui-wgpu = "0.26.2"
+emath = "0.26.2"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
@@ -215,10 +215,10 @@ time = { version = "0.3", default-features = false, features = [
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
 tokio = { version = "1.24", default-features = false }
-tokio-tungstenite = { version = "0.17.1", default-features = false }
+tokio-tungstenite = { version = "0.20.0", default-features = false }
 toml = { version = "0.8.10", default-features = false }
 tracing = { version = "0.1", default-features = false }
-tungstenite = { version = "0.17", default-features = false }
+tungstenite = { version = "0.20", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"

@@ -42,7 +42,7 @@ impl GpuReadbackBuffer {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         source: wgpu::ImageCopyTexture<'_>,
-        copy_extents: glam::UVec2,
+        copy_extents: wgpu::Extent3d,
     ) -> Result<(), GpuReadbackError> {
         self.read_multiple_texture2d(encoder, &[(source, copy_extents)])
     }
@@ -60,7 +60,7 @@ impl GpuReadbackBuffer {
     pub fn read_multiple_texture2d(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
-        sources_and_extents: &[(wgpu::ImageCopyTexture<'_>, glam::UVec2)],
+        sources_and_extents: &[(wgpu::ImageCopyTexture<'_>, wgpu::Extent3d)],
     ) -> Result<(), GpuReadbackError> {
         for (source, copy_extents) in sources_and_extents {
             let start_offset = wgpu::util::align_to(
@@ -92,11 +92,7 @@ impl GpuReadbackBuffer {
                         rows_per_image: None,
                     },
                 },
-                wgpu::Extent3d {
-                    width: copy_extents.x,
-                    height: copy_extents.y,
-                    depth_or_array_layers: 1,
-                },
+                *copy_extents,
             );
 
             self.range_in_chunk =

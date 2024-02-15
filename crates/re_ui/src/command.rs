@@ -119,7 +119,7 @@ impl UICommand {
 
             Self::ResetViewer => (
                 "Reset Viewer",
-                "Reset the Viewer to how it looked the first time you ran it",
+                "Reset the Viewer to how it looked the first time you ran it, forgetting all stored blueprints and UI state",
             ),
 
             #[cfg(not(target_arch = "wasm32"))]

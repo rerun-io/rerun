@@ -497,6 +497,85 @@ impl ViewportBlueprint {
         self.send_tree_action(TreeAction::SetDropTarget(*container_id));
     }
 
+    /// Check the visibility of the provided content.
+    ///
+    /// This function may be called from UI code.
+    pub fn is_contents_visible(&self, contents: &Contents) -> bool {
+        match contents {
+            Contents::Container(container_id) => {
+                if let Some(container) = self.container(container_id) {
+                    container.visible
+                } else {
+                    re_log::warn_once!(
+                        "Visibility check failed due to unknown container id {container_id:?}"
+                    );
+
+                    false
+                }
+            }
+            Contents::SpaceView(space_view_id) => {
+                if let Some(space_view) = self.space_view(space_view_id) {
+                    space_view.visible
+                } else {
+                    re_log::warn_once!(
+                        "Visibility check failed due to unknown space view id {space_view_id:?}"
+                    );
+
+                    false
+                }
+            }
+        }
+    }
+
+    /// Sets the visibility for the provided content.
+    ///
+    /// This function may be called from UI code.
+    pub fn set_content_visibility(
+        &self,
+        ctx: &ViewerContext<'_>,
+        contents: &Contents,
+        visible: bool,
+    ) {
+        match contents {
+            Contents::Container(container_id) => {
+                if let Some(container) = self.container(container_id) {
+                    if visible != container.visible {
+                        if self.auto_layout {
+                            re_log::trace!(
+                                "Container visibility changed - will no longer auto-layout"
+                            );
+                        }
+
+                        self.set_auto_layout(false, ctx);
+                        container.set_visible(ctx, visible);
+                    }
+                } else {
+                    re_log::warn_once!(
+                        "Visibility change failed due to unknown container id {container_id:?}"
+                    );
+                }
+            }
+            Contents::SpaceView(space_view_id) => {
+                if let Some(space_view) = self.space_view(space_view_id) {
+                    if visible != space_view.visible {
+                        if self.auto_layout {
+                            re_log::trace!(
+                                "Space-view visibility changed - will no longer auto-layout"
+                            );
+                        }
+
+                        self.set_auto_layout(false, ctx);
+                        space_view.set_visible(ctx, visible);
+                    }
+                } else {
+                    re_log::warn_once!(
+                        "Visibility change failed due to unknown space view id {space_view_id:?}"
+                    );
+                }
+            }
+        }
+    }
+
     #[allow(clippy::unused_self)]
     pub fn space_views_containing_entity_path(
         &self,
