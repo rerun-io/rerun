@@ -14,7 +14,6 @@ bitflags::bitflags! {
     pub struct SubSpaceConnectionFlags: u8 {
         const Disconnected = 0b0000001;
         const Pinhole = 0b0000010;
-        const ViewCoordinates3d = 0b0000100;
     }
 }
 
@@ -24,6 +23,14 @@ impl SubSpaceConnectionFlags {
     pub fn is_connected_pinhole(&self) -> bool {
         self.contains(SubSpaceConnectionFlags::Pinhole)
             && !self.contains(SubSpaceConnectionFlags::Disconnected)
+    }
+}
+
+bitflags::bitflags! {
+    /// Marks entities that are of special interest for heuristics.
+    #[derive(PartialEq, Eq, Debug, Copy, Clone)]
+    pub struct HeuristicHints: u8 {
+        const ViewCoordinates3d = 0b0000001;
     }
 }
 
@@ -74,6 +81,9 @@ pub struct SubSpace {
     /// Note that since flags are derived from the presence of components at the origin,
     /// the root space still tracks this information.
     pub connection_to_parent: SubSpaceConnectionFlags,
+
+    /// Entities in this space that qualify for one or more heuristic hints.
+    pub heuristic_hints: IntMap<EntityPath, HeuristicHints>,
     //
     // TODO(andreas):
     // We could (and should) add here additional transform hierarchy information within this space.
@@ -186,6 +196,7 @@ impl Default for SpatialTopology {
                     child_spaces: IntSet::default(),
                     parent_space: EntityPathHash::NONE,
                     connection_to_parent: SubSpaceConnectionFlags::empty(),
+                    heuristic_hints: IntMap::default(),
                 },
             ))
             .collect(),
@@ -261,13 +272,15 @@ impl SpatialTopology {
         re_tracing::profile_function!();
 
         let mut new_subspace_connections = SubSpaceConnectionFlags::empty();
+        let mut new_heuristic_hints = HeuristicHints::empty();
+
         for added_component in added_components {
             if added_component == &DisconnectedSpace::name() {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Disconnected);
             } else if added_component == &PinholeProjection::name() {
                 new_subspace_connections.insert(SubSpaceConnectionFlags::Pinhole);
             } else if added_component == &ViewCoordinates::name() {
-                new_subspace_connections.insert(SubSpaceConnectionFlags::ViewCoordinates3d);
+                new_heuristic_hints.insert(HeuristicHints::ViewCoordinates3d);
             };
         }
 
@@ -287,6 +300,18 @@ impl SpatialTopology {
         } else {
             self.add_new_entity(entity_path, new_subspace_connections);
         };
+
+        if !new_heuristic_hints.is_empty() {
+            let subspace = self
+                .subspaces
+                .get_mut(&self.subspace_origin_hash_for_entity(entity_path))
+                .expect("unknown subspace origin, `SpatialTopology` is in an invalid state");
+            subspace
+                .heuristic_hints
+                .entry(entity_path.clone())
+                .or_insert(HeuristicHints::empty())
+                .insert(new_heuristic_hints);
+        }
     }
 
     fn update_space_with_new_connections(
@@ -355,6 +380,7 @@ impl SpatialTopology {
             child_spaces: Default::default(),
             parent_space: split_subspace_origin_hash,
             connection_to_parent,
+            heuristic_hints: Default::default(),
         };
 
         // Transfer entities from self to the new space if they're children of the new space.
@@ -404,7 +430,7 @@ mod tests {
         ComponentName, Loggable as _,
     };
 
-    use crate::spatial_topology::SubSpaceConnectionFlags;
+    use crate::spatial_topology::{HeuristicHints, SubSpaceConnectionFlags};
 
     use super::SpatialTopology;
 
@@ -452,9 +478,7 @@ mod tests {
             ),
             (
                 ViewCoordinates::name(),
-                SubSpaceConnectionFlags::Pinhole
-                    | SubSpaceConnectionFlags::Disconnected
-                    | SubSpaceConnectionFlags::ViewCoordinates3d,
+                SubSpaceConnectionFlags::Pinhole | SubSpaceConnectionFlags::Disconnected,
             ),
         ] {
             add_diff(&mut topo, "", &[name]);
@@ -585,26 +609,15 @@ mod tests {
         // Add view coordinates to robo.
         add_diff(&mut topo, "robo", &[ViewCoordinates::name()]);
         {
-            let root = topo.subspace_for_entity(&"robo".into());
-            assert_eq!(
-                root.connection_to_parent,
-                SubSpaceConnectionFlags::ViewCoordinates3d
-            );
-
             let root = topo.subspace_for_entity(&EntityPath::root());
-            let robo = topo.subspace_for_entity(&"robo".into());
-            let left_camera = topo.subspace_for_entity(&"robo/eyes/left/cam".into());
-            let right_camera = topo.subspace_for_entity(&"robo/eyes/right/cam".into());
 
-            assert_eq!(root.connection_to_parent, SubSpaceConnectionFlags::empty());
             assert!(root.parent_space.is_none());
+            assert_eq!(root.connection_to_parent, SubSpaceConnectionFlags::empty());
             assert_eq!(
-                robo.connection_to_parent,
-                SubSpaceConnectionFlags::ViewCoordinates3d
+                root.heuristic_hints,
+                std::iter::once((EntityPath::from("robo"), HeuristicHints::ViewCoordinates3d))
+                    .collect()
             );
-            assert_eq!(robo.parent_space, EntityPath::root().hash());
-            assert_eq!(left_camera.parent_space, robo.origin.hash());
-            assert_eq!(right_camera.parent_space, robo.origin.hash());
         }
     }
 

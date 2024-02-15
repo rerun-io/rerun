@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, EntityPathFilter};
@@ -13,7 +14,7 @@ use crate::{
     heuristics::{
         default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
     },
-    spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
+    spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::register_3d_spatial_visualizers,
@@ -158,18 +159,35 @@ impl SpaceViewClass for SpatialSpaceView3D {
             recommended_space_views: topo
                 .iter_subspaces()
                 .filter_map(|subspace| {
-                    if !subspace.supports_3d_content()
-                        || subspace.entities.is_empty()
-                        || indicated_entities.is_disjoint(&subspace.entities)
-                    {
+                    if !subspace.supports_3d_content() || subspace.entities.is_empty() {
                         None
                     } else {
-                        Some(RecommendedSpaceView {
-                            root: subspace.origin.clone(),
-                            query_filter: EntityPathFilter::subtree_entity_filter(&subspace.origin),
-                        })
+                        // Creates space views at each view coordinates if there's any.
+                        // (yes, we do so even if they're empty at the moment!)
+                        let mut roots = subspace
+                            .heuristic_hints
+                            .iter()
+                            .filter(|(_, hint)| hint.contains(HeuristicHints::ViewCoordinates3d))
+                            .map(|(root, _)| root.clone())
+                            .collect::<Vec<_>>();
+
+                        // If there's no view coordinates or there are still some entities not covered,
+                        // create a view at the subspace origin.
+                        if !roots.iter().contains(&subspace.origin)
+                            && indicated_entities
+                                .intersection(&subspace.entities)
+                                .any(|e| roots.iter().all(|root| !e.starts_with(root)))
+                        {
+                            roots.push(subspace.origin.clone());
+                        }
+
+                        Some(roots.into_iter().map(|root| RecommendedSpaceView {
+                            query_filter: EntityPathFilter::subtree_entity_filter(&root),
+                            root,
+                        }))
                     }
                 })
+                .flatten()
                 .collect(),
         })
         .unwrap_or_default()
