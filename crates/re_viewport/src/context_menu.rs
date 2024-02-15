@@ -42,18 +42,19 @@ fn context_menu_items_for_selection_summary(
 ) -> Vec<Box<dyn ContextMenuItem>> {
     match selection_summary {
         SelectionSummary::SingleContainerItem(container_id) => {
-            let mut items = vec![];
+            // We want all the actions available for collections of contents…
+            let mut items = context_menu_items_for_selection_summary(
+                ctx,
+                viewport_blueprint,
+                item,
+                SelectionSummary::ContentsItems(vec![Contents::Container(container_id)]),
+            );
 
-            // only show/hide and remove if it's not the root container
-            if Some(container_id) != viewport_blueprint.root_container {
-                let contents = Rc::new(vec![Contents::Container(container_id)]);
-                items.extend([
-                    ContentVisibilityToggle::item(viewport_blueprint, contents.clone()),
-                    ContentRemove::item(contents),
-                    Separator::item(),
-                ]);
+            if !items.is_empty() {
+                items.push(Separator::item());
             }
 
+            // …plus some more that apply to single container only.
             items.extend([
                 SubMenu::item(
                     "Add Container",
