@@ -406,13 +406,16 @@ impl OrbitEye {
         let delta_angle = delta.rot90().dot(rel) / rel.length_sq();
         let rot_delta = Quat::from_rotation_z(delta_angle);
 
-        // Permanently change our up-axis, at least until the user resets the view:
         let up_in_view = self.world_from_view_rot.inverse() * self.eye_up;
 
         self.world_from_view_rot *= rot_delta;
 
         // Permanently change our up-axis, at least until the user resets the view:
         self.eye_up = self.world_from_view_rot * up_in_view;
+
+        // Prevent numeric drift:
+        self.world_from_view_rot = self.world_from_view_rot.normalize();
+        self.eye_up = self.eye_up.normalize_or_zero();
     }
 
     /// Translate based on a certain number of pixel delta.
