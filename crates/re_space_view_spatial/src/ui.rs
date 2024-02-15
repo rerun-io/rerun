@@ -7,7 +7,7 @@ use re_entity_db::EntityPath;
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
-use re_types::components::{DepthMeter, InstanceKey, TensorData};
+use re_types::components::{DepthMeter, InstanceKey, TensorData, ViewCoordinates};
 use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
     HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight, SpaceViewHighlights,
@@ -97,10 +97,10 @@ impl SpatialSpaceViewState {
     ) {
         let re_ui = ctx.re_ui;
 
-        let view_coordinates = ctx
+        let scene_view_coordinates = ctx
             .entity_db
             .store()
-            .query_latest_component(space_origin, &ctx.current_query())
+            .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
             .map(|c| c.value);
 
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
@@ -145,7 +145,7 @@ impl SpatialSpaceViewState {
                         .clicked()
                     {
                         self.bounding_boxes.accumulated = self.bounding_boxes.current;
-                        self.state_3d.reset_camera(&self.bounding_boxes.accumulated, &view_coordinates);
+                        self.state_3d.reset_camera(&self.bounding_boxes.accumulated, scene_view_coordinates);
                     }
                     let mut spin = self.state_3d.spin();
                     if re_ui.checkbox(ui, &mut spin, "Spin")
@@ -160,19 +160,21 @@ impl SpatialSpaceViewState {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view");
                 ui.vertical(|ui|{
-                    let up_description = if let Some(up) = view_coordinates.and_then(|v| v.up()) {
-                        format!("Up is {up}")
+                    let up_description = if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
+                        format!("Scene up is {scene_up}")
                     } else {
-                        "Up is unspecified".to_owned()
+                        "Scene up is unspecified".to_owned()
                     };
                     ui.label(up_description).on_hover_ui(|ui| {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 0.0;
-                            ui.label("Set with ");
-                            ui.code("rerun.log_view_coordinates");
-                            ui.label(".");
-                        });
+                        re_ui::markdown_ui(ui, egui::Id::new("view_coordinates_tooltip"), "Set with `rerun.ViewCoordinates`.");
                     });
+
+                    if let Some(eye) = &self.state_3d.orbit_eye {
+                        if eye.eye_up != glam::Vec3::ZERO {
+                            ui.label(format!("Current camera-eye up-axis is {}", format_vector(eye.eye_up)));
+                        }
+                    }
+
                     re_ui.checkbox(ui, &mut self.state_3d.show_axes, "Show origin axes").on_hover_text("Show X-Y-Z axes");
                     re_ui.checkbox(ui, &mut self.state_3d.show_bbox, "Show bounding box").on_hover_text("Show the current scene bounding box");
                     re_ui.checkbox(ui, &mut self.state_3d.show_accumulated_bbox, "Show accumulated bounding box").on_hover_text("Show bounding box accumulated over all rendered frames");
@@ -767,5 +769,25 @@ fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {
     if hit.hit_type == PickingHitType::GpuPickingResult {
         let glam::Vec3 { x, y, z } = hit.space_position;
         ui.label(format!("Hover position: [{x:.5}, {y:.5}, {z:.5}]"));
+    }
+}
+
+fn format_vector(v: glam::Vec3) -> String {
+    use glam::Vec3;
+
+    if v == Vec3::X {
+        "+X".to_owned()
+    } else if v == -Vec3::X {
+        "-X".to_owned()
+    } else if v == Vec3::Y {
+        "+Y".to_owned()
+    } else if v == -Vec3::Y {
+        "-Y".to_owned()
+    } else if v == Vec3::Z {
+        "+Z".to_owned()
+    } else if v == -Vec3::Z {
+        "-Z".to_owned()
+    } else {
+        format!("[{:.02}, {:.02}, {:.02}]", v.x, v.y, v.z)
     }
 }
