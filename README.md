@@ -72,8 +72,7 @@ There are many features we want to add, and the API is still evolving.
 _Expect breaking changes!_
 
 Some shortcomings:
-* [Time-scalar plots and text logs are currently very slow](https://github.com/rerun-io/rerun/issues/374).
-* [Points cloud sizes are limited](https://github.com/rerun-io/rerun/issues/3076), and [big point clouds are slow](https://github.com/rerun-io/rerun/issues/1136).
+* [Multi-million point clouds are slow](https://github.com/rerun-io/rerun/issues/1136).
 * The data you want to visualize must fit in RAM.
   - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use.
   - We plan on having a disk-based data store some time in the future.
