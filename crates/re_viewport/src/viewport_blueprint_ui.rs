@@ -9,7 +9,7 @@ use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::{container::Contents, Viewport};
+use crate::{container::Contents, context_menu_ui_for_item, Viewport};
 
 /// The style to use for displaying this space view name in the UI.
 pub fn space_view_name_style(name: &SpaceViewName) -> re_ui::LabelStyle {
@@ -105,6 +105,7 @@ impl Viewport<'_, '_> {
             self.contents_ui(ctx, ui, child, true);
         }
 
+        context_menu_ui_for_item(ctx, self.blueprint, &item, &item_response);
         ctx.select_hovered_on_click(&item_response, item);
 
         self.handle_root_container_drag_and_drop_interaction(
@@ -122,16 +123,15 @@ impl Viewport<'_, '_> {
         parent_visible: bool,
     ) {
         let item = Item::Container(*container_id);
+        let content = Contents::Container(*container_id);
 
         let Some(container_blueprint) = self.blueprint.containers.get(container_id) else {
             re_log::warn_once!("Ignoring unknown container {container_id}");
             return;
         };
 
-        let mut visibility_changed = false;
         let mut visible = container_blueprint.visible;
         let container_visible = visible && parent_visible;
-        let mut remove = false;
 
         let default_open = true;
 
@@ -152,10 +152,12 @@ impl Viewport<'_, '_> {
         ))
         .with_buttons(|re_ui, ui| {
             let vis_response = visibility_button_ui(re_ui, ui, parent_visible, &mut visible);
-            visibility_changed = vis_response.changed();
 
             let remove_response = remove_button_ui(re_ui, ui, "Remove container");
-            remove = remove_response.clicked();
+            if remove_response.clicked() {
+                self.blueprint.mark_user_interaction(ctx);
+                self.blueprint.remove_contents(content);
+            }
 
             remove_response | vis_response
         })
@@ -165,32 +167,19 @@ impl Viewport<'_, '_> {
             }
         });
 
+        context_menu_ui_for_item(ctx, self.blueprint, &item, &response);
         ctx.select_hovered_on_click(&response, item);
+
+        self.blueprint
+            .set_content_visibility(ctx, &content, visible);
 
         self.handle_drag_and_drop_interaction(
             ctx,
             ui,
-            Contents::Container(*container_id),
+            content,
             &response,
             body_response.as_ref().map(|r| &r.response),
         );
-
-        if remove {
-            self.blueprint.mark_user_interaction(ctx);
-            self.blueprint
-                .remove_contents(Contents::Container(*container_id));
-        }
-
-        if visibility_changed {
-            if self.blueprint.auto_layout {
-                re_log::trace!("Container visibility changed - will no longer auto-layout");
-            }
-
-            // Keep `auto_space_views` enabled.
-            self.blueprint.set_auto_layout(false, ctx);
-
-            container_blueprint.set_visible(ctx, visible);
-        }
     }
 
     fn space_view_entry_ui(
@@ -212,7 +201,6 @@ impl Viewport<'_, '_> {
 
         let result_tree = &query_result.tree;
 
-        let mut visibility_changed = false;
         let mut visible = space_view.visible;
         let space_view_visible = visible && container_visible;
         let item = Item::SpaceView(space_view.id);
@@ -240,7 +228,6 @@ impl Viewport<'_, '_> {
             .force_hovered(is_item_hovered)
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, container_visible, &mut visible);
-                visibility_changed = vis_response.changed();
 
                 let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
                 if response.clicked() {
@@ -275,30 +262,20 @@ impl Viewport<'_, '_> {
             self.blueprint.focus_tab(space_view.id);
         }
 
+        context_menu_ui_for_item(ctx, self.blueprint, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
+        let content = Contents::SpaceView(*space_view_id);
+
+        self.blueprint
+            .set_content_visibility(ctx, &content, visible);
         self.handle_drag_and_drop_interaction(
             ctx,
             ui,
-            Contents::SpaceView(*space_view_id),
+            content,
             &response,
             body_response.as_ref().map(|r| &r.response),
         );
-
-        if visibility_changed {
-            if self.blueprint.auto_layout {
-                re_log::trace!("Space view visibility changed - will no longer auto-layout");
-            }
-
-            // Keep `auto_space_views` enabled.
-            self.blueprint.set_auto_layout(false, ctx);
-
-            // Note: we set visibility directly on the space view so it gets saved
-            // to the blueprint directly. If we set it on the tree there are some
-            // edge-cases where visibility can get lost when we simplify out trivial
-            // tab-containers.
-            space_view.set_visible(ctx, visible);
-        }
     }
 
     fn space_view_blueprint_ui(
