@@ -123,7 +123,7 @@ use crate::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, PoolError,
         RenderPipelineDesc,
     },
-    Color32, DebugLabel, DepthOffset, LineStripSeriesBuilder, OutlineMaskPreference,
+    Color32, DebugLabel, DepthOffset, LineStripBatchBuilder, OutlineMaskPreference,
     PickingLayerObjectId, PickingLayerProcessor,
 };
 
@@ -361,7 +361,7 @@ impl LineDrawData {
     /// If no batches are passed, all lines are assumed to be in a single batch with identity transform.
     pub fn new(
         ctx: &RenderContext,
-        line_builder: LineStripSeriesBuilder,
+        line_builder: LineStripBatchBuilder,
     ) -> Result<Self, LineDrawDataError> {
         let line_renderer = ctx.renderer::<LineRenderer>();
 
@@ -373,7 +373,7 @@ impl LineDrawData {
             });
         }
 
-        let LineStripSeriesBuilder {
+        let LineStripBatchBuilder {
             vertices,
             batches,
             strips,

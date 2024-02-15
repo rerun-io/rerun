@@ -12,7 +12,7 @@ use re_renderer::{
     },
     resource_managers::{GpuTexture2D, Texture2DCreationDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
-    Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
+    Color32, LineStripBatchBuilder, PointCloudBuilder, Size,
 };
 
 mod framework;
@@ -69,7 +69,7 @@ impl framework::Example for Render2D {
             splits[0].resolution_in_pixel[1] as f32,
         );
 
-        let mut line_strip_builder = LineStripSeriesBuilder::new(re_ctx, 128, 2048);
+        let mut line_strip_builder = LineStripBatchBuilder::new(re_ctx, 128, 2048);
 
         // Blue rect outline around the bottom right quarter.
         {

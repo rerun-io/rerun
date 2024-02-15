@@ -18,7 +18,7 @@ use crate::{
 /// of writing to a GPU readable memory location.
 /// This will require some ahead of time size limit, but should be feasible.
 /// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
-pub struct LineStripSeriesBuilder {
+pub struct LineStripBatchBuilder {
     pub vertices: Vec<LineVertex>,
 
     pub batches: Vec<LineBatchInfo>,
@@ -32,10 +32,10 @@ pub struct LineStripSeriesBuilder {
     pub(crate) radius_boost_in_ui_points_for_outlines: f32,
 
     max_num_strips: usize,
-    //max_num_vertices: usize,
+    max_num_vertices: usize,
 }
 
-impl LineStripSeriesBuilder {
+impl LineStripBatchBuilder {
     pub fn new(ctx: &RenderContext, max_num_strips: u32, max_num_vertices: u32) -> Self {
         let picking_instance_ids_buffer = ctx
             .cpu_write_gpu_read_belt
@@ -58,7 +58,7 @@ impl LineStripSeriesBuilder {
             picking_instance_ids_buffer,
             radius_boost_in_ui_points_for_outlines: 0.0,
             max_num_strips: max_num_strips as usize,
-            //max_num_vertices: max_num_vertices as usize,
+            max_num_vertices: max_num_vertices as usize,
         }
     }
 
@@ -69,6 +69,18 @@ impl LineStripSeriesBuilder {
     ) -> Self {
         self.radius_boost_in_ui_points_for_outlines = radius_boost_in_ui_points_for_outlines;
         self
+    }
+
+    /// How many more line vertices can be added without dropping any.
+    #[inline]
+    pub fn remaining_vertex_capacity(&self) -> u32 {
+        (self.max_num_vertices - self.vertices.len()) as u32
+    }
+
+    /// How many more strips can be added without dropping any.
+    #[inline]
+    pub fn remaining_strip_capacity(&self) -> u32 {
+        (self.max_num_strips - self.strips.len()) as u32
     }
 
     /// Start of a new batch.
@@ -119,7 +131,7 @@ impl LineStripSeriesBuilder {
     }
 }
 
-pub struct LineBatchBuilder<'a>(&'a mut LineStripSeriesBuilder);
+pub struct LineBatchBuilder<'a>(&'a mut LineStripBatchBuilder);
 
 impl<'a> Drop for LineBatchBuilder<'a> {
     fn drop(&mut self) {
@@ -321,7 +333,7 @@ impl<'a> LineBatchBuilder<'a> {
             ]
             .into_iter(),
         )
-        .flags(LineStripSeriesBuilder::default_box_flags())
+        .flags(LineStripBatchBuilder::default_box_flags())
     }
 
     /// Add box outlines.
@@ -358,7 +370,7 @@ impl<'a> LineBatchBuilder<'a> {
                 ]
                 .into_iter(),
             )
-            .flags(LineStripSeriesBuilder::default_box_flags()),
+            .flags(LineStripBatchBuilder::default_box_flags()),
         )
     }
 
@@ -388,7 +400,7 @@ impl<'a> LineBatchBuilder<'a> {
             ]
             .into_iter(),
         )
-        .flags(LineStripSeriesBuilder::default_box_flags())
+        .flags(LineStripBatchBuilder::default_box_flags())
     }
 
     /// Adds a 2D series of line connected points.
@@ -461,7 +473,7 @@ impl<'a> LineBatchBuilder<'a> {
 }
 
 pub struct LineStripBuilder<'a> {
-    builder: &'a mut LineStripSeriesBuilder,
+    builder: &'a mut LineStripBatchBuilder,
     outline_mask_ids: OutlineMaskPreference,
     picking_instance_id: PickingLayerInstanceId,
     vertex_range: Range<usize>,
@@ -469,7 +481,7 @@ pub struct LineStripBuilder<'a> {
 }
 
 impl<'a> LineStripBuilder<'a> {
-    fn placeholder(series_builder: &'a mut LineStripSeriesBuilder) -> Self {
+    fn placeholder(series_builder: &'a mut LineStripBatchBuilder) -> Self {
         Self {
             builder: series_builder,
             outline_mask_ids: OutlineMaskPreference::NONE,
