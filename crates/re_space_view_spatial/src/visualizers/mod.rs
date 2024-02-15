@@ -317,7 +317,7 @@ pub fn load_keypoint_connections(
                 .annotations
                 .resolved_class_description(Some(*class_id))
                 .class_description
-                .map_or(0, |d| d.keypoint_annotations.len() as u32)
+                .map_or(0, |d| d.keypoint_connections.len() as u32)
         })
         .sum();
     if max_num_connections == 0 {
