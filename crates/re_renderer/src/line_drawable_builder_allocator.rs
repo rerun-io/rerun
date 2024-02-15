@@ -1,7 +1,4 @@
-use crate::{
-    line_drawable_builder::LineBatchBuilder, renderer::LineDrawDataError, DebugLabel,
-    LineDrawableBuilder, QueueableDrawData, RenderContext,
-};
+use crate::{renderer::LineDrawDataError, LineDrawableBuilder, QueueableDrawData, RenderContext};
 
 /// Simple allocator mechanism to manage line strip builders.
 ///
@@ -59,30 +56,27 @@ impl<'a> LineDrawableBuilderAllocator<'a> {
         num_strips: u32,
         num_vertices: u32,
     ) -> Result<&'_ mut LineDrawableBuilder, LineDrawDataError> {
-        if self.active_line_builder.as_ref().map_or(false, |b| {
-            b.remaining_strip_capacity() >= num_strips
-                && b.remaining_vertex_capacity() >= num_vertices
-        }) {
-            if let Some(line_builder) = self.active_line_builder.take() {
+        if let Some(line_builder) = self.active_line_builder.take() {
+            self.active_line_builder = if line_builder.remaining_strip_capacity() >= num_strips
+                && line_builder.remaining_vertex_capacity() >= num_vertices
+            {
+                // Finalize previous line builder if out of capacity.
                 self.draw_data
                     .push(line_builder.into_draw_data(self.render_ctx)?.into());
+                None
+            } else {
+                Some(line_builder)
             }
         }
 
-        if self.active_line_builder.is_none() {
-            self.active_line_builder = Some(
-                LineDrawableBuilder::new(
-                    self.render_ctx,
-                    num_strips.max(self.min_num_strips_per_drawable),
-                    num_vertices.max(self.min_num_vertices_per_drawable),
-                )
-                .radius_boost_in_ui_points_for_outlines(
-                    self.radius_boost_in_ui_points_for_outlines,
-                ),
-            );
-        };
-
-        Ok(self.active_line_builder.as_mut().unwrap())
+        Ok(self.active_line_builder.get_or_insert_with(|| {
+            LineDrawableBuilder::new(
+                self.render_ctx,
+                num_strips.max(self.min_num_strips_per_drawable),
+                num_vertices.max(self.min_num_vertices_per_drawable),
+            )
+            .radius_boost_in_ui_points_for_outlines(self.radius_boost_in_ui_points_for_outlines)
+        }))
     }
 
     pub fn finish(mut self) -> Result<Vec<QueueableDrawData>, LineDrawDataError> {
