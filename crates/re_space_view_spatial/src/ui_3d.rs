@@ -92,10 +92,13 @@ fn ease_out(t: f32) -> f32 {
 impl View3DState {
     pub fn reset_camera(
         &mut self,
-        scene_bbox_accum: &BoundingBox,
+        scene_bbox: &SceneBoundingBoxes,
         scene_view_coordinates: Option<ViewCoordinates>,
     ) {
-        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, scene_view_coordinates));
+        // Mark as interaction since we want to stop doing any automatic interpolations,
+        // even if this is caused by a full reset.
+        self.last_eye_interaction = Some(Instant::now());
+        self.interpolate_to_orbit_eye(default_eye(&scene_bbox.current, scene_view_coordinates));
         self.tracked_entity = None;
         self.camera_before_tracked_entity = None;
     }
@@ -546,7 +549,7 @@ pub fn view_3d(
                 if space_view_id == &query.space_view_id {
                     state
                         .state_3d
-                        .reset_camera(&state.bounding_boxes.accumulated, scene_view_coordinates);
+                        .reset_camera(&state.bounding_boxes, scene_view_coordinates);
                 }
                 None
             }

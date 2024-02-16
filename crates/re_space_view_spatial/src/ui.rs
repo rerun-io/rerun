@@ -145,7 +145,7 @@ impl SpatialSpaceViewState {
                         .clicked()
                     {
                         self.bounding_boxes.accumulated = self.bounding_boxes.current;
-                        self.state_3d.reset_camera(&self.bounding_boxes.accumulated, scene_view_coordinates);
+                        self.state_3d.reset_camera(&self.bounding_boxes, scene_view_coordinates);
                     }
                     let mut spin = self.state_3d.spin();
                     if re_ui.checkbox(ui, &mut spin, "Spin")

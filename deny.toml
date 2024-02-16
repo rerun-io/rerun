@@ -63,6 +63,7 @@ skip-tree = [
   { name = "objc2" },          # old version via accesskit
   { name = "prost-build" },    # only used in objectron example
   { name = "prost-derive" },   # only used in objectron example
+  { name = "toml_edit" },      # Old version via egui-winit, newer used by rustdoc-json
 ]
 
 

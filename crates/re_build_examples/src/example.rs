@@ -1,9 +1,12 @@
 //! Example collection and parsing.
 
+use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use anyhow::Context;
 
 pub struct Example {
     pub name: String,
@@ -14,6 +17,144 @@ pub struct Example {
     pub thumbnail_dimensions: [u64; 2],
     pub script_path: PathBuf,
     pub script_args: Vec<String>,
+    pub readme_body: String,
+    pub language: Language,
+}
+
+impl Example {
+    fn exists(
+        workspace_root: impl AsRef<Path>,
+        name: &str,
+        language: Language,
+    ) -> anyhow::Result<bool> {
+        Ok(workspace_root
+            .as_ref()
+            .join("examples")
+            .join(language.examples_dir())
+            .join(name)
+            .try_exists()?)
+    }
+
+    pub fn load(
+        workspace_root: impl AsRef<Path>,
+        name: &str,
+        language: Language,
+    ) -> anyhow::Result<Option<Self>> {
+        let workspace_root = workspace_root.as_ref();
+
+        if !Self::exists(workspace_root, name, language)? {
+            return Ok(None);
+        }
+
+        let dir = workspace_root
+            .join("examples")
+            .join(language.examples_dir())
+            .join(name);
+        let readme_path = dir.join("README.md");
+        let Some((readme, body)) = Frontmatter::load(&readme_path).with_context(|| {
+            format!(
+                "loading example {}/{name} README.md",
+                language.examples_dir().display()
+            )
+        })?
+        else {
+            anyhow::bail!("example {name:?} has no frontmatter");
+        };
+        Ok(Some(Example {
+            name: name.to_owned(),
+            title: readme.title,
+            description: readme.description,
+            tags: readme.tags,
+            thumbnail_url: readme.thumbnail,
+            thumbnail_dimensions: readme.thumbnail_dimensions,
+            script_path: dir.join(language.entrypoint_path()),
+            script_args: readme.build_args,
+            readme_body: body,
+            language,
+        }))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum Language {
+    Rust,
+    Python,
+    C,
+    Cpp,
+}
+
+impl Language {
+    /// Path of the directory where examples for this language are stored,
+    /// relative to `{workspace_root}/examples`.
+    pub fn examples_dir(&self) -> &'static Path {
+        match self {
+            Language::Rust => Path::new("rust"),
+            Language::Python => Path::new("python"),
+            Language::C => Path::new("c"),
+            Language::Cpp => Path::new("cpp"),
+        }
+    }
+
+    /// Extension without the leading dot, e.g. `rs`.
+    pub fn extension(&self) -> &'static str {
+        match self {
+            Language::Rust => "rs",
+            Language::Python => "py",
+            Language::C => "c",
+            Language::Cpp => "cpp",
+        }
+    }
+
+    /// Path of the file which contains the entrypoint,
+    /// relative to `{workspace_root}/examples/{example_name}`.
+    ///
+    /// For example:
+    /// - `main.py` for Python
+    /// - `src/main.rs` for Rust
+    pub fn entrypoint_path(&self) -> &'static Path {
+        match self {
+            Language::Rust => Path::new("src/main.rs"),
+            Language::Python => Path::new("main.py"),
+            Language::C => Path::new("main.c"),
+            Language::Cpp => Path::new("main.cpp"),
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct ExamplesManifest {
+    pub categories: BTreeMap<String, ExampleCategory>,
+}
+
+impl ExamplesManifest {
+    /// Loads the `examples/manifest.toml` file.
+    pub fn load(workspace_root: impl AsRef<Path>) -> anyhow::Result<ExamplesManifest> {
+        let manifest_toml = workspace_root
+            .as_ref()
+            .join("examples")
+            .join("manifest.toml");
+        let manifest =
+            std::fs::read_to_string(manifest_toml).context("loading examples/manifest.toml")?;
+        Ok(toml::from_str(&manifest)?)
+    }
+}
+
+#[derive(serde::Deserialize)]
+pub struct ExampleCategory {
+    /// Used to sort categories in the `rerun.io/examples` navbar.
+    pub order: u64,
+
+    /// `snake_case` name.
+    pub title: String,
+
+    /// Multi-line description.
+    pub prelude: String,
+
+    /// List of example names.
+    ///
+    /// `rerun.io/examples` attempts to search for these names under `examples/{language}`,
+    /// where `language` is any of the languages we currently support.
+    pub examples: Vec<String>,
 }
 
 #[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq)]
@@ -42,18 +183,25 @@ impl Channel {
         }
     }
 
-    pub fn examples(self) -> anyhow::Result<Vec<Example>> {
+    pub fn examples(self, workspace_root: impl AsRef<Path>) -> anyhow::Result<Vec<Example>> {
+        // currently we only treat Python examples as runnable
+        let language = Language::Python;
+
         let mut examples = vec![];
-        let dir = Path::new("examples/python");
+
+        let dir = workspace_root
+            .as_ref()
+            .join("examples")
+            .join(language.examples_dir());
         if !dir.exists() {
-            anyhow::bail!("Failed to find {}", dir.display())
+            anyhow::bail!("Failed to find {dir:?}")
         }
         if !dir.is_dir() {
-            anyhow::bail!("{} is not a directory", dir.display())
+            anyhow::bail!("{dir:?} is not a directory")
         }
 
         let folders: std::collections::BTreeMap<String, std::fs::DirEntry> =
-            std::fs::read_dir(dir)?
+            std::fs::read_dir(&dir)?
                 .filter_map(Result::ok)
                 .map(|folder| {
                     let name = folder.file_name().to_string_lossy().to_string();
@@ -63,10 +211,9 @@ impl Channel {
 
         for (name, folder) in folders {
             let metadata = folder.metadata()?;
-            let readme = folder.path().join("README.md");
-            if metadata.is_dir() && readme.exists() {
-                let readme = parse_frontmatter(readme)?;
-                let Some(readme) = readme else {
+            let readme_path = folder.path().join("README.md");
+            if metadata.is_dir() && readme_path.exists() {
+                let Some((readme, body)) = Frontmatter::load(&readme_path)? else {
                     eprintln!("{name:?}: skipped - MISSING FRONTMATTER");
                     continue;
                 };
@@ -89,14 +236,16 @@ impl Channel {
                     tags: readme.tags,
                     thumbnail_url: readme.thumbnail,
                     thumbnail_dimensions: readme.thumbnail_dimensions,
-                    script_path: folder.path().join("main.py"),
+                    script_path: folder.path().join(language.entrypoint_path()),
                     script_args: readme.build_args,
+                    readme_body: body,
+                    language: Language::Python,
                 });
             }
         }
 
         if examples.is_empty() {
-            anyhow::bail!("No examples found in {}", dir.display())
+            anyhow::bail!("No examples found in {dir:?}")
         }
 
         examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
@@ -163,29 +312,38 @@ struct Frontmatter {
     build_args: Vec<String>,
 }
 
-fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatter>> {
-    const START: &str = "<!--[metadata]";
-    const END: &str = "-->";
+impl Frontmatter {
+    fn load(path: &Path) -> anyhow::Result<Option<(Frontmatter, String)>> {
+        const START: &str = "<!--[metadata]";
+        const END: &str = "-->";
 
-    let path = path.as_ref();
-    let content = std::fs::read_to_string(path)?;
+        let content =
+            std::fs::read_to_string(path).with_context(|| format!("loading {}", path.display()))?;
 
-    let Some(start) = content.find(START) else {
-        return Ok(None);
-    };
-    let start = start + START.len();
+        let Some(start) = content.find(START) else {
+            return Ok(None);
+        };
+        let start = start + START.len();
 
-    let Some(end) = content[start..].find(END) else {
-        anyhow::bail!("{:?} has invalid frontmatter: missing --> terminator", path);
-    };
-    let end = start + end;
+        let Some(end) = content[start..].find(END) else {
+            anyhow::bail!(
+                "{:?} has invalid frontmatter: missing {END:?} terminator",
+                path
+            );
+        };
+        let end = start + end;
 
-    toml::from_str(content[start..end].trim())
-        .map(Some)
-        .map_err(|err| {
-            anyhow::anyhow!(
-                "Failed to parse TOML metadata of {:?}: {err}",
-                path.parent().unwrap().file_name().unwrap()
-            )
-        })
+        let frontmatter: Frontmatter =
+            toml::from_str(content[start..end].trim()).map_err(|err| {
+                anyhow::anyhow!(
+                    "Failed to parse TOML metadata of {:?}: {err}",
+                    path.parent().unwrap().file_name().unwrap()
+                )
+            })?;
+
+        Ok(Some((
+            frontmatter,
+            content[end + END.len()..].trim().to_owned(),
+        )))
+    }
 }
