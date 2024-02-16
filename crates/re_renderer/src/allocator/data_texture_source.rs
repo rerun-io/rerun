@@ -58,18 +58,20 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     }
 
     #[inline]
-    fn max_texture_width(&self) -> usize {
-        // We limit the data texture width to 32768 or whatever smaller value is supported.
-        // (in fact, more commonly supported values are 8192 and 16384)
+    fn max_data_texture_width(&self) -> usize {
+        // We limit the data texture width to 16384 or whatever smaller value is supported but the device.
         //
-        // This then means that if we're always a multiple of this width,
-        // we can do all buffer copies in a single copy!
+        // If we make buffers always a multiple of this width, we can do all buffer copies in a single copy!
         //
-        // But wait! Isn't this too big for a minimum size?
-        // 32768 * float4 (worst case) = 0.5MiB.
-        // Yes, not nothing, but also not all that much, and keep in mind that weaker hardware will have 8192 max width.
-        // Note also, that many of our textures use 4 & 8 byte formats.
-        (self.ctx.device.limits().max_texture_dimension_2d as usize).min(32768)
+        // But wait! If we're using this as the minimum buffer size, isn't that too big?
+        // 16384 * float4 (worst case) = 256KiB.
+        // Keep in mind that weaker hardware will have 8192 max width.
+        // Also note, that many of our textures use 4 & 8 byte formats.
+        // So while this is still a considerable amount of memory when used for very small data textures
+        // it's not as bad as it seems.
+        // Given how much it simplifies to keep buffers a multiple of the texture width,
+        // this seems to be a reasonable trade-off.
+        (self.ctx.device.limits().max_texture_dimension_2d as usize).min(16384)
     }
 
     /// The number of elements written so far.
@@ -98,7 +100,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         let last_buffer_size = self.buffers.last().map_or(0, |b| b.capacity());
         let new_buffer_size = (num_elements - remaining_capacity)
             .max(last_buffer_size * 2)
-            .next_multiple_of(self.max_texture_width());
+            .next_multiple_of(self.max_data_texture_width());
 
         self.buffers
             .push(self.ctx.cpu_write_gpu_read_belt.lock().allocate(
@@ -165,7 +167,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             texture_label,
             texture_format,
             total_num_elements as u32,
-            self.max_texture_width() as u32,
+            self.max_data_texture_width() as u32,
         );
         let data_texture = self
             .ctx
