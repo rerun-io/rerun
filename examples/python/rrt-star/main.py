@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Visualizes the pathfinding algorithm RRT* in a simple environment.
+Visualizes the path finding algorithm RRT* in a simple environment.
 
 Run:
 ```bash

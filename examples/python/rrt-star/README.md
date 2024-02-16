@@ -1,14 +1,13 @@
 <!--[metadata]
 title = "RRT*"
-description = "Visualization of the pathfinding algorithm RRT* in a simple environment."
+description = "Visualization of the path finding algorithm RRT* in a simple environment."
 -->
 
-<!--
-Place a screenshot in place of this comment
-Use `just upload --help` for instructions
--->
+<picture>
+  <img src="https://private-user-images.githubusercontent.com/28707703/305388881-3bea9efc-4c82-4022-9260-cdec630d3005.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MDgwODI2NDIsIm5iZiI6MTcwODA4MjM0MiwicGF0aCI6Ii8yODcwNzcwMy8zMDUzODg4ODEtM2JlYTllZmMtNGM4Mi00MDIyLTkyNjAtY2RlYzYzMGQzMDA1LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNDAyMTYlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjQwMjE2VDExMTkwMlomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTQzMzA4NzE2MDcyZmQ2Njc5NWVjNDE4NmZjMGUyM2U0NjRhMmE0NjgzMGQ2NDRjNzlkMDNmYmE1NDVjYzIxMTkmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.qYzOZglPysI7r3WApYk9xxVbvpV_FLBEwW8f36dVykg" alt="">
+</picture>
 
-This examples visualizes the pathfinding algorithm RRT* in a simple environment.
+This example visualizes the path finding algorithm RRT\* in a simple environment.
 
 ```bash
 pip install -r examples/python/rrt-star/requirements.txt
