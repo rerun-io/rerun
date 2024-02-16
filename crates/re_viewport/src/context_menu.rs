@@ -107,10 +107,16 @@ pub fn context_menu_ui_for_item(
 
         // handle selection
         let selection_summary = if !ctx.selection().contains_item(item) {
-            ctx.selection_state()
-                .set_selection(std::iter::once(item.clone()));
+            // When the context menu is trigged open, we check if we're part of the selection, and,
+            // if not, we update the selection to include only the item that was clicked.
+            if item_response.hovered() && item_response.secondary_clicked() {
+                ctx.selection_state()
+                    .set_selection(std::iter::once(item.clone()));
 
-            summarize_selection(&Selection::from(item.clone()))
+                summarize_selection(&Selection::from(item.clone()))
+            } else {
+                summarize_selection(ctx.selection())
+            }
         } else {
             summarize_selection(ctx.selection())
         };
