@@ -158,27 +158,19 @@ fn summarize_selection(selection: &Selection) -> SelectionSummary {
     }
 
     // test if the selection contains only contents
-    let mut only_space_view_or_container_only = true;
-    for (item, _) in selection.iter() {
-        match item {
-            Item::Container(_) | Item::SpaceView(_) => {}
-            _ => only_space_view_or_container_only = false,
-        }
-    }
+    let only_space_view_or_container_only = selection
+        .iter()
+        .all(|(item, _)| matches!(item, Item::Container(_) | Item::SpaceView(_)));
 
     if only_space_view_or_container_only {
-        let mut contents = vec![];
-        for (item, _) in selection.iter() {
-            match item {
-                Item::Container(container_id) => {
-                    contents.push(Contents::Container(*container_id));
-                }
-                Item::SpaceView(space_view_id) => {
-                    contents.push(Contents::SpaceView(*space_view_id));
-                }
-                _ => unreachable!(),
-            }
-        }
+        let contents = selection
+            .iter()
+            .filter_map(|(item, _)| match item {
+                Item::Container(container_id) => Some(Contents::Container(*container_id)),
+                Item::SpaceView(space_view_id) => Some(Contents::SpaceView(*space_view_id)),
+                _ => None,
+            })
+            .collect();
         return SelectionSummary::ContentsItems(contents);
     }
 
