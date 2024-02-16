@@ -53,6 +53,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         }
     }
 
+    #[inline]
     fn max_texture_row_size(&self) -> usize {
         // We limit the data texture width to 32768 or whatever smaller value is supported.
         // (in fact, more commonly supported values are 8192 and 16384)
@@ -65,6 +66,12 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         // Yes, not nothing, but also not all that much, and keep in mind that weaker hardware will have 8192 max width.
         // Note also, that many of our textures use 4 & 8 byte formats.
         (self.ctx.device.limits().max_texture_dimension_2d as usize).min(32768)
+    }
+
+    /// The number of elements written so far.
+    #[inline]
+    pub fn num_written(&self) -> usize {
+        self.buffers.iter().map(|b| b.num_written()).sum()
     }
 
     /// Reserves space for at least `num_elements` elements.
@@ -147,6 +154,8 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         texture_format: wgpu::TextureFormat,
         texture_label: impl Into<DebugLabel>,
     ) -> Result<GpuTexture, CpuWriteGpuReadError> {
+        re_tracing::profile_function!();
+
         let total_num_elements: usize = self.buffers.iter().map(|b| b.num_written()).sum();
 
         // TODO: we can fully integrate this logic here \o/!!!
@@ -164,26 +173,29 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             .alloc(&self.ctx.device, &texture_desc);
 
         // Copy all buffers to the texture.
+        let mut current_row = 0;
         let mut encoder = self.ctx.active_frame.before_view_builder_encoder.lock();
 
-        let mut current_row = 0;
         for mut buffer in self.buffers.into_iter().take(self.active_buffer_index + 1) {
             // Buffer sizes were chosen such that they will always copy full rows!
             debug_assert!(buffer.capacity() % texture_desc.size.width as usize == 0);
 
             // The last buffer might need padding to fill a full row.
+            let num_written = buffer.num_written();
             let num_elements_padding = buffer
                 .num_written()
-                .next_multiple_of(texture_desc.size.width as usize);
-            buffer.fill_n(T::zeroed(), num_elements_padding);
-
+                .next_multiple_of(texture_desc.size.width as usize)
+                - num_written;
+            if num_elements_padding > 0 {
+                buffer.fill_n(T::zeroed(), num_elements_padding)?;
+            }
             let num_rows = buffer.num_written() / texture_desc.size.width as usize;
 
             buffer.copy_to_texture2d(
                 encoder.get(),
                 wgpu::ImageCopyTexture {
                     texture: &data_texture.texture,
-                    mip_level: 1,
+                    mip_level: 0,
                     origin: wgpu::Origin3d {
                         x: 0,
                         y: current_row,

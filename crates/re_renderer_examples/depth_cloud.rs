@@ -294,7 +294,7 @@ impl framework::Example for RenderDepthClouds {
         let world_from_model = rotation * translation_center * scale;
 
         let frame_draw_data = {
-            let mut builder = LineDrawableBuilder::new(re_ctx, 1, 12);
+            let mut builder = LineDrawableBuilder::new(re_ctx);
             {
                 let mut line_batch = builder.batch("frame").world_from_obj(world_from_model);
                 line_batch.add_box_outline_from_transform(
@@ -305,7 +305,7 @@ impl framework::Example for RenderDepthClouds {
                     ),
                 );
             }
-            builder.into_draw_data(re_ctx).unwrap()
+            builder.into_draw_data().unwrap()
         };
 
         let image_draw_data = RectangleDrawData::new(

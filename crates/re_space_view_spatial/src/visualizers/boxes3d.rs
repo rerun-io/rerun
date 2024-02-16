@@ -37,7 +37,7 @@ impl Default for Boxes3DVisualizer {
 impl Boxes3DVisualizer {
     fn process_data(
         &mut self,
-        line_builder: &mut LineDrawableBuilder,
+        line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         data: &Boxes3DComponentData<'_>,
         ent_path: &EntityPath,
@@ -178,16 +178,18 @@ impl VisualizerSystem for Boxes3DVisualizer {
             Boxes3DVisualizer,
             Boxes3D,
             9,
-        >(ctx, query) as u32;
+        >(ctx, query);
 
         if num_boxes == 0 {
             return Ok(Vec::new());
         }
 
-        // Each box consists of 12 independent lines.
-        let mut line_builder =
-            LineDrawableBuilder::new(ctx.render_ctx, num_boxes * 12, num_boxes * 12 * 2)
-                .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+
+        // Each box consists of 12 independent lines with 2 vertices each.
+        line_builder.reserve_strips(num_boxes * 12)?;
+        line_builder.reserve_vertices(num_boxes * 12 * 2)?;
 
         super::entity_iterator::process_archetype_pov1_comp7::<
             Boxes3DVisualizer,
@@ -232,11 +234,11 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     class_ids,
                 };
                 self.process_data(&mut line_builder, query, &data, ent_path, ent_context);
-                Ok(Vec::new())
+                Ok(())
             },
         )?;
 
-        Ok(vec![(line_builder.into_draw_data(ctx.render_ctx)?.into())])
+        Ok(vec![(line_builder.into_draw_data()?.into())])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

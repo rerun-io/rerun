@@ -350,8 +350,6 @@ pub enum LineDrawDataError {
 impl LineDrawData {
     pub const POSITION_DATA_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
     pub const LINE_STRIP_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Uint;
-    pub const PICKING_INSTANCE_ID_TEXTURE_FORMAT: wgpu::TextureFormat =
-        wgpu::TextureFormat::Rg32Uint;
 
     /// Transforms and uploads line strip data to be consumed by gpu.
     ///
@@ -361,7 +359,7 @@ impl LineDrawData {
     /// If no batches are passed, all lines are assumed to be in a single batch with identity transform.
     pub fn new(
         ctx: &RenderContext,
-        line_builder: LineDrawableBuilder,
+        line_builder: LineDrawableBuilder<'_>,
     ) -> Result<Self, LineDrawDataError> {
         let line_renderer = ctx.renderer::<LineRenderer>();
 
@@ -377,7 +375,7 @@ impl LineDrawData {
             vertices,
             batches,
             strips,
-            mut picking_instance_ids_buffer,
+            picking_instance_ids_buffer,
             radius_boost_in_ui_points_for_outlines,
             ..
         } = line_builder;
@@ -443,15 +441,10 @@ impl LineDrawData {
                 max_texture_dimension_2d,
             ),
         );
-        let picking_instance_id_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &data_texture_desc(
-                "LineDrawData::picking_instance_id_texture",
-                Self::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
-                num_strips,
-                max_texture_dimension_2d,
-            ),
-        );
+        let picking_instance_id_texture = picking_instance_ids_buffer.finish(
+            wgpu::TextureFormat::Rg32Uint,
+            "LineDrawData::picking_instance_id_texture",
+        )?;
 
         let copy_encoder = &ctx.active_frame.before_view_builder_encoder;
 
@@ -512,19 +505,6 @@ impl LineDrawData {
             staging_buffer.copy_to_texture2d_entire_first_layer(
                 copy_encoder.lock().get(),
                 &line_strip_texture,
-            )?;
-        }
-        {
-            re_tracing::profile_scope!("write_picking_instance_ids_buffer");
-
-            let texture_size = picking_instance_id_texture.texture.size();
-            let texel_count = (texture_size.width * texture_size.height) as usize;
-            let num_elements_padding = texel_count - picking_instance_ids_buffer.num_written();
-
-            picking_instance_ids_buffer.fill_n(Default::default(), num_elements_padding)?;
-            picking_instance_ids_buffer.copy_to_texture2d_entire_first_layer(
-                copy_encoder.lock().get(),
-                &picking_instance_id_texture,
             )?;
         }
 

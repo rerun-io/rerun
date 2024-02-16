@@ -26,9 +26,9 @@ pub enum CpuWriteGpuReadError {
         destination_offset: u64,
     },
 
-    #[error("Target texture doesn't fit the size of the written data to this buffer! Texture copy size: {copy_size:?} bytes, written data size: {written_data_size} bytes")]
+    #[error("Target texture doesn't fit the size of the written data to this buffer! Texture target buffer should be at most {max_copy_size} bytes, but the to be written data was {written_data_size} bytes.")]
     TargetTextureBufferSizeMismatch {
-        copy_size: wgpu::Extent3d,
+        max_copy_size: u64,
         written_data_size: usize,
     },
 }
@@ -263,12 +263,11 @@ where
         let buffer_info = Texture2DBufferInfo::new(destination.texture.format(), copy_size);
 
         // Validate that we stay within the written part of the slice (wgpu can't fully know our intention here, so we have to check).
-        // We go one step further and require the size to be exactly equal - it's too unlikely that you wrote more than is needed!
-        // (and if you did you probably have regrets anyways!)
-        if buffer_info.buffer_size_padded as usize != self.num_written() * std::mem::size_of::<T>()
+        // This is a bit of a leaky check since we haven't looked at copy_size which may limit the amount of memory we need.
+        if (buffer_info.buffer_size_padded as usize) < self.num_written() * std::mem::size_of::<T>()
         {
             return Err(CpuWriteGpuReadError::TargetTextureBufferSizeMismatch {
-                copy_size,
+                max_copy_size: buffer_info.buffer_size_padded,
                 written_data_size: self.num_written() * std::mem::size_of::<T>(),
             });
         }

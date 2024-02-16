@@ -6,7 +6,7 @@ use web_time::Instant;
 use re_log_types::EntityPath;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    LineDrawableBuilderAllocator, Size,
+    LineDrawableBuilder, Size,
 };
 use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
@@ -458,12 +458,11 @@ pub fn view_3d(
     let eye = orbit_eye.to_eye();
 
     // Various ui interactions draw additional lines.
-    let mut line_builder = LineDrawableBuilderAllocator::new(
-        ctx.render_ctx,
-        32, // We don't know ahead of time how lines we need, but it's not gonna be a huge amount!
-        64,
-        SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
-    );
+    let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+    line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+    // We don't know ahead of time how many lines we need, but it's not gonna be a huge amount!
+    line_builder.reserve_strips(32)?;
+    line_builder.reserve_vertices(64)?;
 
     // Origin gizmo if requested.
     // TODO(andreas): Move this to the transform3d_arrow scene part.
@@ -613,7 +612,7 @@ pub fn view_3d(
             state,
             selected_context,
             ui.style().visuals.selection.bg_fill,
-        )?;
+        );
     }
     if let Some(hovered_context) = ctx.selection_state().hovered_space_context() {
         show_projections_from_2d_space(
@@ -622,19 +621,17 @@ pub fn view_3d(
             state,
             hovered_context,
             egui::Color32::WHITE,
-        )?;
+        );
     }
 
     if state.state_3d.show_bbox {
         line_builder
-            .reserve(1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
             .batch("scene_bbox_current")
             .add_box_outline(&state.bounding_boxes.current)
             .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
     }
     if state.state_3d.show_accumulated_bbox {
         line_builder
-            .reserve(1, 5)? // TODO(andreas): hardcoded knowledge of box->lines is confusing.
             .batch("scene_bbox_accumulated")
             .add_box_outline(&state.bounding_boxes.accumulated)
             .map(|lines| {
@@ -705,7 +702,6 @@ pub fn view_3d(
             let right = forward.cross(up);
 
             line_builder
-                .reserve(3, 3 * 2)?
                 .batch("center orbit orientation help")
                 .add_segments(
                     [
@@ -742,9 +738,7 @@ pub fn view_3d(
     }
 
     // Commit ui induced lines.
-    for line_draw_data in line_builder.finish()? {
-        view_builder.queue_draw(line_draw_data);
-    }
+    view_builder.queue_draw(line_builder.into_draw_data()?);
 
     // Composite viewbuilder into egui.
     view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
@@ -764,12 +758,12 @@ pub fn view_3d(
 }
 
 fn show_projections_from_2d_space(
-    line_builder: &mut re_renderer::LineDrawableBuilderAllocator<'_>,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     space_cameras: &[SpaceCamera3D],
     state: &SpatialSpaceViewState,
     space_context: &SelectedSpaceContext,
     color: egui::Color32,
-) -> Result<(), re_renderer::renderer::LineDrawDataError> {
+) {
     match space_context {
         SelectedSpaceContext::TwoD { space_2d, pos } => {
             if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
@@ -802,7 +796,7 @@ fn show_projections_from_2d_space(
                             &state.bounding_boxes.accumulated,
                             thick_ray_length,
                             color,
-                        )?;
+                        );
                     }
                 }
             }
@@ -830,24 +824,22 @@ fn show_projections_from_2d_space(
                         &state.bounding_boxes.accumulated,
                         distance,
                         color,
-                    )?;
+                    );
                 }
             }
         }
         SelectedSpaceContext::ThreeD { .. } => {}
     }
-
-    Ok(())
 }
 
 fn add_picking_ray(
-    line_builder: &mut re_renderer::LineDrawableBuilderAllocator<'_>,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     ray: macaw::Ray3,
     scene_bbox_accum: &BoundingBox,
     thick_ray_length: f32,
     color: egui::Color32,
-) -> Result<(), re_renderer::renderer::LineDrawDataError> {
-    let mut line_batch = line_builder.reserve(2, 4)?.batch("picking ray");
+) {
+    let mut line_batch = line_builder.batch("picking ray");
 
     let origin = ray.point_along(0.0);
     // No harm in making this ray _very_ long. (Infinite messes with things though!)
@@ -863,8 +855,6 @@ fn add_picking_ray(
         .color(color.gamma_multiply(0.7))
         // TODO(andreas): Make this dashed.
         .radius(Size::new_points(0.5));
-
-    Ok(())
 }
 
 fn default_eye(

@@ -85,7 +85,11 @@ fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> LineDrawDa
     // Calculate some points that look nice for an animated line.
     let lorenz_points = lorenz_points(seconds_since_startup);
 
-    let mut builder = LineDrawableBuilder::new(re_ctx, 3, lorenz_points.len() as u32 + 4 + 1000);
+    let mut builder = LineDrawableBuilder::new(re_ctx);
+    builder
+        .reserve_vertices(lorenz_points.len() + 4 + 1000)
+        .unwrap();
+
     {
         let mut batch = builder.batch("lines without transform");
 
@@ -133,7 +137,7 @@ fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> LineDrawDa
         .radius(Size::new_scene(0.1))
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE);
 
-    builder.into_draw_data(re_ctx).unwrap()
+    builder.into_draw_data().unwrap()
 }
 
 enum CameraControl {

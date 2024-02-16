@@ -1,4 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
+use re_renderer::LineDrawableBuilder;
 use re_types::{
     archetypes::LineStrips2D,
     components::{ClassId, Color, InstanceKey, KeypointId, LineStrip2D, Radius, Text},
@@ -78,12 +79,12 @@ impl Lines2DVisualizer {
 
     fn process_data(
         &mut self,
-        render_ctx: &re_renderer::RenderContext,
+        line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         data: &Lines2DComponentData<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+    ) {
         let (annotation_infos, _) = process_annotation_and_keypoint_slices(
             query.latest_at,
             data.instance_keys,
@@ -122,49 +123,34 @@ impl Lines2DVisualizer {
             }
         }
 
-        // Putting all entities into the same builder would be nice, but determining the strip & vertex count ahead of time is likely too costly.
-        let mut line_builder = re_renderer::LineDrawableBuilder::new(
-            render_ctx,
-            data.strips.len() as u32,
-            data.strips.iter().map(|strip| strip.0.len() as u32).sum(),
-        )
-        .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        let mut line_batch = line_builder
+            .batch(ent_path.to_string())
+            .depth_offset(ent_context.depth_offset)
+            .world_from_obj(ent_context.world_from_entity)
+            .outline_mask_ids(ent_context.highlight.overall)
+            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
+        let mut bounding_box = macaw::BoundingBox::nothing();
+        for (instance_key, strip, radius, color) in
+            itertools::izip!(data.instance_keys, data.strips, radii, colors)
         {
-            let mut line_batch = line_builder
-                .batch(ent_path.to_string())
-                .depth_offset(ent_context.depth_offset)
-                .world_from_obj(ent_context.world_from_entity)
-                .outline_mask_ids(ent_context.highlight.overall)
-                .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+            let lines = line_batch
+                .add_strip_2d(strip.0.iter().copied().map(Into::into))
+                .color(color)
+                .radius(radius)
+                .picking_instance_id(re_renderer::PickingLayerInstanceId(instance_key.0));
 
-            let mut bounding_box = macaw::BoundingBox::nothing();
-            for (instance_key, strip, radius, color) in
-                itertools::izip!(data.instance_keys, data.strips, radii, colors)
-            {
-                let lines = line_batch
-                    .add_strip_2d(strip.0.iter().copied().map(Into::into))
-                    .color(color)
-                    .radius(radius)
-                    .picking_instance_id(re_renderer::PickingLayerInstanceId(instance_key.0));
-
-                if let Some(outline_mask_ids) = ent_context.highlight.instances.get(instance_key) {
-                    lines.outline_mask_ids(*outline_mask_ids);
-                }
-
-                for p in &strip.0 {
-                    bounding_box.extend(glam::vec3(p.x(), p.y(), 0.0));
-                }
+            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(instance_key) {
+                lines.outline_mask_ids(*outline_mask_ids);
             }
 
-            self.data.add_bounding_box(
-                ent_path.hash(),
-                bounding_box,
-                ent_context.world_from_entity,
-            );
+            for p in &strip.0 {
+                bounding_box.extend(glam::vec3(p.x(), p.y(), 0.0));
+            }
         }
 
-        Ok(vec![(line_builder.into_draw_data(render_ctx)?.into())])
+        self.data
+            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
     }
 }
 
@@ -206,6 +192,11 @@ impl VisualizerSystem for Lines2DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        // Counting all lines (strips and vertices) ahead of time is a bit expensive since we need to do a full query for this.
+        // We choose a semi-dynamic approach here, where we reserve on every new line batch.
+        let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.render_ctx);
+        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+
         super::entity_iterator::process_archetype_pov1_comp5::<
             Lines2DVisualizer,
             LineStrips2D,
@@ -242,9 +233,12 @@ impl VisualizerSystem for Lines2DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(ctx.render_ctx, query, &data, ent_path, ent_context)
+                self.process_data(&mut line_builder, query, &data, ent_path, ent_context);
+                Ok(())
             },
-        )
+        )?;
+
+        Ok(vec![(line_builder.into_draw_data()?.into())])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

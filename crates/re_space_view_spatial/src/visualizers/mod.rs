@@ -27,7 +27,6 @@ pub use points3d::{LoadedPoints, Points3DComponentData};
 use ahash::HashMap;
 
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_renderer::{LineDrawableBuilder, QueueableDrawData};
 use re_types::{
     components::{Color, InstanceKey},
     datatypes::{KeypointId, KeypointPair},
@@ -301,11 +300,11 @@ pub struct UiLabel {
 }
 
 pub fn load_keypoint_connections(
-    render_ctx: &re_renderer::RenderContext,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     ent_context: &SpatialSceneEntityContext<'_>,
     ent_path: &re_entity_db::EntityPath,
     keypoints: &Keypoints,
-) -> Result<Option<QueueableDrawData>, SpaceViewSystemExecutionError> {
+) -> Result<(), SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
     // TODO(andreas): We should be able to compute this already when we load the keypoints
@@ -317,61 +316,59 @@ pub fn load_keypoint_connections(
                 .annotations
                 .resolved_class_description(Some(*class_id))
                 .class_description
-                .map_or(0, |d| d.keypoint_connections.len() as u32)
+                .map_or(0, |d| d.keypoint_connections.len())
         })
         .sum();
     if max_num_connections == 0 {
-        return Ok(None);
+        return Ok(());
     }
 
     // Generate keypoint connections if any.
-    let mut line_builder =
-        LineDrawableBuilder::new(render_ctx, max_num_connections, max_num_connections * 2);
-    {
-        let mut line_batch = line_builder
-            .batch("keypoint connections")
-            .world_from_obj(ent_context.world_from_entity)
-            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+    line_builder.reserve_strips(max_num_connections)?;
+    line_builder.reserve_vertices(max_num_connections * 2)?;
 
-        for ((class_id, _time), keypoints_in_class) in keypoints {
-            let resolved_class_description = ent_context
-                .annotations
-                .resolved_class_description(Some(*class_id));
+    let mut line_batch = line_builder
+        .batch("keypoint connections")
+        .world_from_obj(ent_context.world_from_entity)
+        .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
-            let Some(class_description) = resolved_class_description.class_description else {
-                continue;
-            };
+    for ((class_id, _time), keypoints_in_class) in keypoints {
+        let resolved_class_description = ent_context
+            .annotations
+            .resolved_class_description(Some(*class_id));
 
-            let color = class_description.info.color.map_or_else(
-                || auto_color(class_description.info.id),
-                |color| color.into(),
-            );
+        let Some(class_description) = resolved_class_description.class_description else {
+            continue;
+        };
 
-            for KeypointPair {
-                keypoint0: a,
-                keypoint1: b,
-            } in &class_description.keypoint_connections
-            {
-                let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b))
-                else {
-                    re_log::warn_once!(
+        let color = class_description.info.color.map_or_else(
+            || auto_color(class_description.info.id),
+            |color| color.into(),
+        );
+
+        for KeypointPair {
+            keypoint0: a,
+            keypoint1: b,
+        } in &class_description.keypoint_connections
+        {
+            let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
+                re_log::warn_once!(
                     "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
                     a, b, ent_path
                 );
-                    continue;
-                };
-                line_batch
-                    .add_segment(*a, *b)
-                    .radius(re_renderer::Size::AUTO)
-                    .color(color)
-                    .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
-                    // Select the entire object when clicking any of the lines.
-                    .picking_instance_id(re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0));
-            }
+                continue;
+            };
+            line_batch
+                .add_segment(*a, *b)
+                .radius(re_renderer::Size::AUTO)
+                .color(color)
+                .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
+                // Select the entire object when clicking any of the lines.
+                .picking_instance_id(re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0));
         }
     }
 
-    Ok(Some(line_builder.into_draw_data(render_ctx)?.into()))
+    Ok(())
 }
 
 /// Returns the view coordinates used for 2D (image) views.

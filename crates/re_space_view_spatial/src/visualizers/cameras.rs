@@ -46,7 +46,7 @@ impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
-        line_builder: &mut re_renderer::LineDrawableBuilderAllocator<'_>,
+        line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformContext,
         ent_path: &EntityPath,
         props: &EntityProperties,
@@ -54,7 +54,7 @@ impl CamerasVisualizer {
         transform_at_entity: Option<Transform3D>,
         pinhole_view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
+    ) {
         let instance_key = InstanceKey(0);
 
         let frustum_length = *props.pinhole_image_plane_distance;
@@ -68,7 +68,7 @@ impl CamerasVisualizer {
                 pinhole: Some(pinhole.clone()),
                 picture_plane_distance: frustum_length,
             });
-            return Ok(());
+            return;
         }
 
         // We need special handling to find the 3D transform for drawing the
@@ -98,7 +98,7 @@ impl CamerasVisualizer {
         let Some(world_from_camera_rigid_iso) =
             macaw::IsoTransform::from_mat4(&world_from_camera_rigid.into())
         else {
-            return Ok(());
+            return;
         };
 
         debug_assert!(world_from_camera_rigid_iso.is_finite());
@@ -112,7 +112,7 @@ impl CamerasVisualizer {
         });
 
         let Some(resolution) = pinhole.resolution.as_ref() else {
-            return Ok(());
+            return;
         };
 
         // Setup a RDF frustum (for non-RDF we apply a transformation matrix later).
@@ -156,7 +156,6 @@ impl CamerasVisualizer {
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut batch = line_builder
-            .reserve(segments.len() as u32, segments.len() as u32 * 2)?
             .batch(ent_path.to_string())
             // The frustum is setup as a RDF frustum, but if the view coordinates are not RDF,
             // we need to reorient the displayed frustum so that we indicate the correct orientation in the 3D world space.
@@ -183,8 +182,6 @@ impl CamerasVisualizer {
             std::iter::once(glam::Vec3::ZERO),
             world_from_camera_rigid,
         );
-
-        Ok(())
     }
 }
 
@@ -211,15 +208,10 @@ impl VisualizerSystem for CamerasVisualizer {
         let transforms = view_ctx.get::<TransformContext>()?;
         let store = ctx.entity_db.store();
 
-        // Counting all cameras ahead of time is a bit wasteful and we don't expect a huge amount of lines from them,
-        // so use the `LineDrawableBuilderAllocator` utility!
-        const LINES_PER_BATCH_BUILDER: u32 = 11 * 32; // 32 cameras per line builder (each camera draws 3 lines)
-        let mut line_builder = re_renderer::LineDrawableBuilderAllocator::new(
-            ctx.render_ctx,
-            LINES_PER_BATCH_BUILDER,
-            LINES_PER_BATCH_BUILDER * 2, // Strips with 2 vertices each.
-            SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
-        );
+        // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
+        // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
+        let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.render_ctx);
+        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let time_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
@@ -243,11 +235,11 @@ impl VisualizerSystem for CamerasVisualizer {
                         .map(|c| c.value),
                     pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
                     entity_highlight,
-                )?;
+                );
             }
         }
 
-        Ok(line_builder.finish()?)
+        Ok(vec![(line_builder.into_draw_data()?.into())])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

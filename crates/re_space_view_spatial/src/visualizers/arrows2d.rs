@@ -79,7 +79,7 @@ impl Arrows2DVisualizer {
 
     fn process_data(
         &mut self,
-        line_builder: &mut re_renderer::LineDrawableBuilder,
+        line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         data: &Arrows2DComponentData<'_>,
         ent_path: &EntityPath,
@@ -213,14 +213,16 @@ impl VisualizerSystem for Arrows2DVisualizer {
             Arrows2DVisualizer,
             Arrows2D,
             8,
-        >(ctx, query) as u32;
+        >(ctx, query);
 
         if num_arrows == 0 {
             return Ok(Vec::new());
         }
 
-        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx, num_arrows, num_arrows * 2)
-            .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+        line_builder.reserve_strips(num_arrows)?;
+        line_builder.reserve_vertices(num_arrows * 2)?;
+        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
         super::entity_iterator::process_archetype_pov1_comp6::<
             Arrows2DVisualizer,
@@ -262,11 +264,11 @@ impl VisualizerSystem for Arrows2DVisualizer {
                     class_ids,
                 };
                 self.process_data(&mut line_builder, query, &data, ent_path, ent_context);
-                Ok(Vec::new())
+                Ok(())
             },
         )?;
 
-        Ok(vec![(line_builder.into_draw_data(ctx.render_ctx)?.into())])
+        Ok(vec![(line_builder.into_draw_data()?.into())])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

@@ -54,6 +54,9 @@ pub enum SpaceViewSystemExecutionError {
 
     #[error("Failed to create draw data: {0}")]
     DrawDataCreationError(Box<dyn std::error::Error>),
+
+    #[error(transparent)]
+    GpuTransferError(#[from] re_renderer::CpuWriteGpuReadError),
 }
 
 // Convenience conversions for some re_renderer error types since these are so frequent.

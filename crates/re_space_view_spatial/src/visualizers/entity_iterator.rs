@@ -123,7 +123,7 @@ macro_rules! impl_process_archetype {
             view_ctx: &ViewContextCollection,
             default_depth_offset: DepthOffset,
             mut f: F,
-        ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError>
+        ) -> Result<(), SpaceViewSystemExecutionError>
         where
             S: IdentifiedViewSystem,
             A: Archetype + 'a,
@@ -138,7 +138,7 @@ macro_rules! impl_process_archetype {
                 &[InstanceKey],
                 $(&[$pov],)*
                 $(Option<&[Option<$comp>]>,)*
-            ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError>,
+            ) -> Result<(), SpaceViewSystemExecutionError>,
         {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!(
@@ -150,7 +150,6 @@ macro_rules! impl_process_archetype {
             let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
             let annotations = view_ctx.get::<AnnotationSceneContext>()?;
             let counter = view_ctx.get::<PrimitiveCounter>()?;
-            let mut draw_data = Vec::new();
 
             for data_result in query.iter_visible_data_results(S::identifier()) {
                 // The transform that considers pinholes only makes sense if this is a 3D space-view
@@ -191,7 +190,7 @@ macro_rules! impl_process_archetype {
                             .num_primitives
                             .fetch_add(keys.len(), std::sync::atomic::Ordering::Relaxed);
 
-                        match f(
+                        if let Err(err) = f(
                             ctx,
                             &data_result.entity_path,
                             data_result.accumulated_properties(),
@@ -201,13 +200,10 @@ macro_rules! impl_process_archetype {
                             $($pov,)+
                             $($comp.as_deref(),)*
                         ) {
-                            Err(err) => {
-                                re_log::error_once!(
-                                    "Unexpected error querying {:?}: {err}",
-                                    &data_result.entity_path
-                                );
-                            },
-                            Ok(new_draw_data) => draw_data.extend(new_draw_data),
+                            re_log::error_once!(
+                                "Unexpected error querying {:?}: {err}",
+                                &data_result.entity_path
+                            );
                         };
                     }
                 ) {
@@ -221,7 +217,7 @@ macro_rules! impl_process_archetype {
                 }
             }
 
-            Ok(draw_data)
+            Ok(())
         } }
     };
 

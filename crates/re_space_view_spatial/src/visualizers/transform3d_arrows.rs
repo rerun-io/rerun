@@ -54,15 +54,10 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         let store = ctx.entity_db.store();
         let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-        // Counting all transform ahead of time is a bit wasteful and we don't expect a huge amount of lines from them,
-        // so use the `LineDrawableBuilderAllocator` utility!
-        const LINES_PER_BATCH_BUILDER: u32 = 3 * 32; // 32 transforms per line builder (each transform draws 3 lines)
-        let mut line_builder = re_renderer::LineDrawableBuilderAllocator::new(
-            ctx.render_ctx,
-            LINES_PER_BATCH_BUILDER,
-            LINES_PER_BATCH_BUILDER * 2, // Strips with 2 vertices each.
-            SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
-        );
+        // Counting all transforms ahead of time is a bit wasteful, but we also don't expect a huge amount,
+        // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
+        let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.render_ctx);
+        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             if store
@@ -104,7 +99,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             )?;
         }
 
-        Ok(line_builder.finish()?)
+        Ok(vec![line_builder.into_draw_data()?.into()])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -121,7 +116,7 @@ const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
 const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
 pub fn add_axis_arrows(
-    line_builder: &mut re_renderer::LineDrawableBuilderAllocator<'_>,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     world_from_obj: macaw::Affine3A,
     ent_path: Option<&EntityPath>,
     axis_length: f32,
@@ -134,7 +129,6 @@ pub fn add_axis_arrows(
     let line_radius = re_renderer::Size::new_points(1.0);
 
     let mut line_batch = line_builder
-        .reserve(3, 6)?
         .batch(ent_path.map_or("axis_arrows".to_owned(), |p| p.to_string()))
         .world_from_obj(world_from_obj)
         .triangle_cap_length_factor(10.0)
