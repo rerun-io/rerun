@@ -523,7 +523,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         new_container_tile_id,
                         target_container_tile_id,
                         target_position_in_container,
-                        true,
+                        true, // reflow grid if needed
                     );
 
                     for (pos, content) in contents_to_move.into_iter().enumerate() {
@@ -531,7 +531,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                             content.as_tile_id(),
                             new_container_tile_id,
                             pos,
-                            true,
+                            true, // reflow grid if needed
                         );
                     }
 
