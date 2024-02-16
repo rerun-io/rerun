@@ -33,10 +33,15 @@ jobs:
           # This list of file extensions matches the one in `scripts/lint.py`, except .html is omitted due to relative links.
           paths: "**/*.c, **/*.cpp, **/*.fbs, **/*.h, **/*.hpp, **/*.js, **/*.md, **/*.py, **/*.rs, **/*.sh, **/*.toml, **/*.txt, **/*.wgsl, **/*.yml"
 
-          # Avoid crates.io rate-limiting, skip changelog PR links (so many), and skip speculative links
-          # TODO(#4085): https://rerun-io.github.io/rerun/dev/bench/ often 404:s for unknown reasons
-          # TODO(#4556): remove the `static.rerun.io` and `github.com` skips
-          linksToSkip: "https://static.rerun.io/.*, https://github.com/.*, https://crates.io/crates/.*, https://github.com/rerun-io/rerun/pull/.*, .*?speculative-link, https://rerun-io.github.io/rerun/dev/bench/"
+          # Exceptions:
+          # * avoid crates.io rate-limiting
+          # * skip changelog PR links (so many)
+          # * skip speculative links
+          # * Stackoverflow links are no longer accessible from CI.
+          # * Nyud links are down every now and then.
+          # * TODO(#4085): https://rerun-io.github.io/rerun/dev/bench/ often 404:s for unknown reasons
+          # * TODO(#4556): remove the `static.rerun.io` and `github.com` skips
+          linksToSkip: "https://stackoverflow.com/.*, https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html, https://static.rerun.io/.*, https://github.com/.*, https://crates.io/crates/.*, https://github.com/rerun-io/rerun/pull/.*, .*?speculative-link, https://rerun-io.github.io/rerun/dev/bench/"
           retry: true
           retryErrors: true
           retryErrorsCount: 5
