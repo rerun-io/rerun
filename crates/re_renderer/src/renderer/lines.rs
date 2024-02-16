@@ -390,9 +390,11 @@ impl LineDrawData {
             batches
         };
 
+        const NUM_SENTINEL_VERTICES: usize = 2;
+
         let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
         let max_num_texels = max_texture_dimension_2d as usize * max_texture_dimension_2d as usize;
-        let max_num_vertices = max_num_texels - 2; // Subtract 2 for the sentinel vertices.
+        let max_num_vertices = max_num_texels - NUM_SENTINEL_VERTICES;
         let max_num_strips = max_num_vertices;
 
         let vertices = if vertices.len() >= max_num_vertices {
@@ -418,7 +420,7 @@ impl LineDrawData {
         };
 
         // Add a sentinel vertex both at the beginning and the end to make cap calculation easier.
-        let num_line_vertices = vertices.len() as u32 + 2;
+        let num_line_vertices = vertices.len() as u32 + NUM_SENTINEL_VERTICES;
         let num_strips = strips.len() as u32;
 
         let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
@@ -448,7 +450,6 @@ impl LineDrawData {
 
         let copy_encoder = &ctx.active_frame.before_view_builder_encoder;
 
-        // Upload position data.
         {
             re_tracing::profile_scope!("write_pos_data_texture");
 
@@ -480,7 +481,6 @@ impl LineDrawData {
                 &position_data_texture,
             )?;
         }
-        // Upload strip data.
         {
             re_tracing::profile_scope!("write_strip_data_texture");
 
