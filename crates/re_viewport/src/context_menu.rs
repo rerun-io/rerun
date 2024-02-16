@@ -107,8 +107,8 @@ pub fn context_menu_ui_for_item(
 
         // handle selection
         let selection_summary = if !ctx.selection().contains_item(item) {
-            // When the context menu is trigged open, we check if we're part of the selection, and,
-            // if not, we update the selection to include only the item that was clicked.
+            // When the context menu is triggered open, we check if we're part of the selection,
+            // and, if not, we update the selection to include only the item that was clicked.
             if item_response.hovered() && item_response.secondary_clicked() {
                 ctx.selection_state()
                     .set_selection(std::iter::once(item.clone()));
@@ -125,8 +125,9 @@ pub fn context_menu_ui_for_item(
             context_menu_items_for_selection_summary(ctx, viewport_blueprint, selection_summary);
 
         if actions.is_empty() {
-            ui.close_menu();
-            return;
+            ui.label(
+                egui::RichText::from("No action available for the current selection").italics(),
+            );
         }
 
         for action in actions {
