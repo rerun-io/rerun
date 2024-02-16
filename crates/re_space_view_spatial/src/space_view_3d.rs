@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, EntityPathFilter};
@@ -11,10 +12,9 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{
-        default_visualized_entities_for_visualizer_kind, root_space_split_heuristic,
-        update_object_property_heuristics,
+        default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
     },
-    spatial_topology::{SpatialTopology, SubSpaceDimensionality},
+    spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::register_3d_spatial_visualizers,
@@ -84,46 +84,40 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         let context = SpatialTopology::access(entity_db.store_id(), |topo| {
             let primary_space = topo.subspace_for_entity(space_origin);
-            match primary_space.dimensionality {
-                SubSpaceDimensionality::Unknown => VisualizableFilterContext3D {
-                    entities_in_main_3d_space: primary_space.entities.clone(),
+            if !primary_space.supports_3d_content() {
+                // If this is strict 2D space, only display the origin entity itself.
+                // Everything else we have to assume requires some form of transformation.
+                return VisualizableFilterContext3D {
+                    entities_in_main_3d_space: std::iter::once(space_origin.clone()).collect(),
                     entities_under_pinholes: Default::default(),
-                },
+                };
+            }
 
-                SubSpaceDimensionality::ThreeD => {
-                    // All entities in the 3d space are visualizable + everything under pinholes.
-                    let mut entities_in_main_3d_space = primary_space.entities.clone();
-                    let mut entities_under_pinholes = IntSet::<EntityPath>::default();
+            // All entities in the 3d space are visualizable + everything under pinholes.
+            let mut entities_in_main_3d_space = primary_space.entities.clone();
+            let mut entities_under_pinholes = IntSet::<EntityPath>::default();
 
-                    for (child_origin, connection) in &primary_space.child_spaces {
-                        if connection.is_connected_pinhole() {
-                            let Some(child_space) =
-                                topo.subspace_for_subspace_origin(child_origin.hash())
-                            else {
-                                // Should never happen, implies that a child space is not in the list of subspaces.
-                                continue;
-                            };
+            for child_origin in &primary_space.child_spaces {
+                let Some(child_space) = topo.subspace_for_subspace_origin(child_origin.hash())
+                else {
+                    // Should never happen, implies that a child space is not in the list of subspaces.
+                    continue;
+                };
 
-                            // Entities _at_ pinholes are a special case: we display both 3d and 2d visualizers for them.
-                            entities_in_main_3d_space.insert(child_space.origin.clone());
-                            entities_under_pinholes.extend(child_space.entities.iter().cloned());
-                        }
-                    }
-
-                    VisualizableFilterContext3D {
-                        entities_in_main_3d_space,
-                        entities_under_pinholes,
-                    }
+                if child_space
+                    .connection_to_parent
+                    .contains(SubSpaceConnectionFlags::Pinhole)
+                {
+                    // Note that for this the connection to the parent is allowed to contain the disconnected flag.
+                    // Entities _at_ pinholes are a special case: we display both 3d and 2d visualizers for them.
+                    entities_in_main_3d_space.insert(child_space.origin.clone());
+                    entities_under_pinholes.extend(child_space.entities.iter().cloned());
                 }
+            }
 
-                SubSpaceDimensionality::TwoD => {
-                    // If this is 2D space, only display the origin entity itself.
-                    // Everything else we have to assume requires some form of transformation.
-                    VisualizableFilterContext3D {
-                        entities_in_main_3d_space: std::iter::once(space_origin.clone()).collect(),
-                        entities_under_pinholes: Default::default(),
-                    }
-                }
+            VisualizableFilterContext3D {
+                entities_in_main_3d_space,
+                entities_under_pinholes,
             }
         });
 
@@ -161,40 +155,40 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Spawn a space view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.entity_db.store_id(), |topo| {
-            let split_root_spaces = root_space_split_heuristic(
-                topo,
-                &indicated_entities,
-                SubSpaceDimensionality::ThreeD,
-            );
+        SpatialTopology::access(ctx.entity_db.store_id(), |topo| SpaceViewSpawnHeuristics {
+            recommended_space_views: topo
+                .iter_subspaces()
+                .filter_map(|subspace| {
+                    if !subspace.supports_3d_content() || subspace.entities.is_empty() {
+                        None
+                    } else {
+                        // Creates space views at each view coordinates if there's any.
+                        // (yes, we do so even if they're empty at the moment!)
+                        let mut roots = subspace
+                            .heuristic_hints
+                            .iter()
+                            .filter(|(_, hint)| hint.contains(HeuristicHints::ViewCoordinates3d))
+                            .map(|(root, _)| root.clone())
+                            .collect::<Vec<_>>();
 
-            SpaceViewSpawnHeuristics {
-                recommended_space_views: topo
-                    .iter_subspaces()
-                    .flat_map(|subspace| {
-                        if subspace.origin.is_root() && !split_root_spaces.is_empty() {
-                            itertools::Either::Left(split_root_spaces.values())
-                        } else {
-                            itertools::Either::Right(std::iter::once(subspace))
-                        }
-                    })
-                    .filter_map(|subspace| {
-                        if subspace.dimensionality == SubSpaceDimensionality::TwoD
-                            || subspace.entities.is_empty()
-                            || indicated_entities.is_disjoint(&subspace.entities)
+                        // If there's no view coordinates or there are still some entities not covered,
+                        // create a view at the subspace origin.
+                        if !roots.iter().contains(&subspace.origin)
+                            && indicated_entities
+                                .intersection(&subspace.entities)
+                                .any(|e| roots.iter().all(|root| !e.starts_with(root)))
                         {
-                            None
-                        } else {
-                            Some(RecommendedSpaceView {
-                                root: subspace.origin.clone(),
-                                query_filter: EntityPathFilter::subtree_entity_filter(
-                                    &subspace.origin,
-                                ),
-                            })
+                            roots.push(subspace.origin.clone());
                         }
-                    })
-                    .collect(),
-            }
+
+                        Some(roots.into_iter().map(|root| RecommendedSpaceView {
+                            query_filter: EntityPathFilter::subtree_entity_filter(&root),
+                            root,
+                        }))
+                    }
+                })
+                .flatten()
+                .collect(),
         })
         .unwrap_or_default()
     }

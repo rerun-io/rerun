@@ -19,7 +19,7 @@ use crate::{
         default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
     },
     max_image_dimension_subscriber::{ImageDimensions, MaxImageDimensions},
-    spatial_topology::{SpatialTopology, SubSpaceDimensionality},
+    spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::register_2d_spatial_visualizers,
@@ -90,51 +90,29 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
         let context = SpatialTopology::access(entity_db.store_id(), |topo| {
             let primary_space = topo.subspace_for_entity(space_origin);
-            match primary_space.dimensionality {
-                SubSpaceDimensionality::Unknown => VisualizableFilterContext2D {
-                    entities_in_main_2d_space: primary_space.entities.clone(),
+            if !primary_space.supports_2d_content() {
+                // If this is strict 3D space, only display the origin entity itself.
+                // Everything else we have to assume requires some form of transformation.
+                return VisualizableFilterContext2D {
+                    entities_in_main_2d_space: std::iter::once(space_origin.clone()).collect(),
                     reprojectable_3d_entities: Default::default(),
-                },
+                };
+            }
 
-                SubSpaceDimensionality::TwoD => {
-                    // All entities in the 2d space are visualizable + the parent space if it is connected via a pinhole.
-                    // For the moment we don't allow going down pinholes again.
-                    let reprojected_3d_entities = primary_space
-                        .parent_space
-                        .and_then(|parent_space_origin| {
-                            let is_connected_pinhole = topo
-                                .subspace_for_subspace_origin(parent_space_origin)
-                                .and_then(|parent_space| {
-                                    parent_space
-                                        .child_spaces
-                                        .get(&primary_space.origin)
-                                        .map(|connection| connection.is_connected_pinhole())
-                                })
-                                .unwrap_or(false);
+            // All space are visualizable + the parent space if it is connected via a pinhole.
+            // For the moment we don't allow going down pinholes again.
+            let reprojectable_3d_entities =
+                if primary_space.connection_to_parent.is_connected_pinhole() {
+                    topo.subspace_for_subspace_origin(primary_space.parent_space)
+                        .map(|parent_space| parent_space.entities.clone())
+                        .unwrap_or_default()
+                } else {
+                    Default::default()
+                };
 
-                            if is_connected_pinhole {
-                                topo.subspace_for_subspace_origin(parent_space_origin)
-                                    .map(|parent_space| parent_space.entities.clone())
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap_or_default();
-
-                    VisualizableFilterContext2D {
-                        entities_in_main_2d_space: primary_space.entities.clone(),
-                        reprojectable_3d_entities: reprojected_3d_entities,
-                    }
-                }
-
-                SubSpaceDimensionality::ThreeD => {
-                    // If this is 3D space, only display the origin entity itself.
-                    // Everything else we have to assume requires some form of transformation.
-                    VisualizableFilterContext2D {
-                        entities_in_main_2d_space: std::iter::once(space_origin.clone()).collect(),
-                        reprojectable_3d_entities: Default::default(),
-                    }
-                }
+            VisualizableFilterContext2D {
+                entities_in_main_2d_space: primary_space.entities.clone(),
+                reprojectable_3d_entities,
             }
         });
 
@@ -182,7 +160,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
             recommended_space_views: topo
                 .iter_subspaces()
                 .flat_map(|subspace| {
-                    if subspace.dimensionality == SubSpaceDimensionality::ThreeD
+                    if !subspace.supports_2d_content()
                         || subspace.entities.is_empty()
                         || indicated_entities.is_disjoint(&subspace.entities)
                     {
@@ -197,14 +175,16 @@ impl SpaceViewClass for SpatialSpaceView2D {
                         .cloned()
                         .collect();
 
-                    // For explicit 2D spaces (typically indicated by a pinhole or similar) start at the origin, otherwise start at the common ancestor.
+                    // For explicit 2D spaces with a pinhole at the origin, otherwise start at the common ancestor.
                     // This generally avoids the `/` root entity unless it's required as a common ancestor.
-                    let recommended_root =
-                        if subspace.dimensionality == SubSpaceDimensionality::TwoD {
-                            subspace.origin.clone()
-                        } else {
-                            EntityPath::common_ancestor_of(relevant_entities.iter())
-                        };
+                    let recommended_root = if subspace
+                        .connection_to_parent
+                        .contains(SubSpaceConnectionFlags::Pinhole)
+                    {
+                        subspace.origin.clone()
+                    } else {
+                        EntityPath::common_ancestor_of(relevant_entities.iter())
+                    };
 
                     let mut recommended_space_views = Vec::<RecommendedSpaceView>::new();
 
