@@ -87,7 +87,7 @@ impl Lines3DVisualizer {
         data: &Lines3DComponentData<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         let (annotation_infos, _) = process_annotation_and_keypoint_slices(
             query.latest_at,
             data.instance_keys,
@@ -127,6 +127,9 @@ impl Lines3DVisualizer {
             }
         }
 
+        line_builder.reserve_strips(data.strips.len())?;
+        line_builder.reserve_vertices(data.strips.iter().map(|s| s.0.len()).sum())?;
+
         let mut line_batch = line_builder
             .batch(ent_path.to_string())
             .depth_offset(ent_context.depth_offset)
@@ -156,6 +159,8 @@ impl Lines3DVisualizer {
 
         self.data
             .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
+
+        Ok(())
     }
 }
 
@@ -238,8 +243,7 @@ impl VisualizerSystem for Lines3DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(&mut line_builder, query, &data, ent_path, ent_context);
-                Ok(())
+                self.process_data(&mut line_builder, query, &data, ent_path, ent_context)
             },
         )?;
 
