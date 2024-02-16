@@ -58,12 +58,8 @@ fn context_menu_items_for_selection_summary(
             items.extend([
                 SubMenu::item(
                     "Add Container",
-                    [
-                        AddContainer::item(container_id, egui_tiles::ContainerKind::Tabs),
-                        AddContainer::item(container_id, egui_tiles::ContainerKind::Horizontal),
-                        AddContainer::item(container_id, egui_tiles::ContainerKind::Vertical),
-                        AddContainer::item(container_id, egui_tiles::ContainerKind::Grid),
-                    ],
+                    possible_child_container_kind(viewport_blueprint, container_id)
+                        .map(|kind| AddContainer::item(container_id, kind)),
                 ),
                 SubMenu::item(
                     "Add Space View",
@@ -98,7 +94,7 @@ fn context_menu_items_for_selection_summary(
                     Item::SpaceView(space_view_id) => Some(Contents::SpaceView(*space_view_id)),
                     _ => None,
                 };
-                let (target_container, target_position) = clicked_content
+                let (target_container_id, target_position) = clicked_content
                     .and_then(|c| viewport_blueprint.find_parent_and_position_index(&c))
                     .unwrap_or((root_container_id, 0));
 
@@ -108,32 +104,16 @@ fn context_menu_items_for_selection_summary(
                     Separator::item(),
                     SubMenu::item(
                         "Move to new container",
-                        [
-                            MoveContentsToNewContainer::item(
-                                target_container,
-                                target_position,
-                                egui_tiles::ContainerKind::Tabs,
-                                contents.clone(),
-                            ),
-                            MoveContentsToNewContainer::item(
-                                target_container,
-                                target_position,
-                                egui_tiles::ContainerKind::Horizontal,
-                                contents.clone(),
-                            ),
-                            MoveContentsToNewContainer::item(
-                                target_container,
-                                target_position,
-                                egui_tiles::ContainerKind::Vertical,
-                                contents.clone(),
-                            ),
-                            MoveContentsToNewContainer::item(
-                                target_container,
-                                target_position,
-                                egui_tiles::ContainerKind::Grid,
-                                contents.clone(),
-                            ),
-                        ],
+                        possible_child_container_kind(viewport_blueprint, target_container_id).map(
+                            |kind| {
+                                MoveContentsToNewContainer::item(
+                                    target_container_id,
+                                    target_position,
+                                    kind,
+                                    contents.clone(),
+                                )
+                            },
+                        ),
                     ),
                 ]
             } else {
@@ -193,6 +173,33 @@ pub fn context_menu_ui_for_item(
             }
         }
     });
+}
+
+/// Helper that returns the allowable containers
+fn possible_child_container_kind(
+    viewport_blueprint: &ViewportBlueprint,
+    container_id: ContainerId,
+) -> impl Iterator<Item = egui_tiles::ContainerKind> + 'static {
+    let container_kind = viewport_blueprint
+        .container(&container_id)
+        .map(|c| c.container_kind);
+
+    static ALL_CONTAINERS: &[egui_tiles::ContainerKind] = &[
+        egui_tiles::ContainerKind::Tabs,
+        egui_tiles::ContainerKind::Horizontal,
+        egui_tiles::ContainerKind::Vertical,
+        egui_tiles::ContainerKind::Grid,
+    ];
+
+    ALL_CONTAINERS
+        .iter()
+        .copied()
+        .filter(move |kind| match kind {
+            egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical => {
+                container_kind != Some(*kind)
+            }
+            _ => true,
+        })
 }
 
 // ================================================================================================
