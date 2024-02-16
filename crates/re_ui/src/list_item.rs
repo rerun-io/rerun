@@ -288,7 +288,8 @@ impl<'a> ListItem<'a> {
 
     /// Draw the item.
     pub fn show(self, ui: &mut Ui) -> Response {
-        self.ui(ui, None).response
+        // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        ui.scope(|ui| self.ui(ui, None)).inner.response
     }
 
     /// Draw the item as a collapsing header.
@@ -309,7 +310,8 @@ impl<'a> ListItem<'a> {
         self.collapse_openness = Some(state.openness(ui.ctx()));
 
         let re_ui = self.re_ui;
-        let response = self.ui(ui, Some(id));
+        // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        let response = ui.scope(|ui| self.ui(ui, Some(id))).inner;
 
         if let Some(collapse_response) = response.collapse_response {
             if collapse_response.clicked() {
