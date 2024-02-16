@@ -453,6 +453,11 @@ impl App {
                 );
             }
             #[cfg(not(target_arch = "wasm32"))]
+            UICommand::SaveBlueprint => {
+                save_blueprint(self, store_context);
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => {
                 for file_path in open_file_dialog_native() {
                     self.command_sender
@@ -1517,6 +1522,44 @@ fn save(
         .save_file()
     {
         let f = match save_database_to_file(entity_db, path, loop_selection) {
+            Ok(f) => f,
+            Err(err) => {
+                re_log::error!("File saving failed: {err}");
+                return;
+            }
+        };
+        if let Err(err) = app.background_tasks.spawn_file_saver(f) {
+            // NOTE: Can only happen if saving through the command palette.
+            re_log::error!("File saving failed: {err}");
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) {
+    use crate::saving::{sanitize_app_id, save_database_to_file};
+
+    let app_id = store_context
+        .as_ref()
+        .map(|view| view.blueprint)
+        .and_then(|rec| rec.app_id())
+        .cloned()
+        .unwrap_or_else(re_log_types::ApplicationId::unknown);
+
+    let sanitized_app_id = sanitize_app_id(&app_id);
+
+    let Some(entity_db) = store_context.as_ref().map(|view| view.blueprint) else {
+        // NOTE: Can only happen if saving through the command palette.
+        re_log::error!("No data to save!");
+        return;
+    };
+
+    if let Some(path) = rfd::FileDialog::new()
+        .set_file_name(format!("{sanitized_app_id}.blueprint"))
+        .set_title("Save Blueprint")
+        .save_file()
+    {
+        let f = match save_database_to_file(entity_db, path, None) {
             Ok(f) => f,
             Err(err) => {
                 re_log::error!("File saving failed: {err}");

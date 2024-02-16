@@ -7,7 +7,7 @@ use re_log_types::ApplicationId;
 #[cfg(not(target_arch = "wasm32"))]
 /// Convert to lowercase and replace any character that is not a fairly common
 /// filename character with '-'
-fn sanitize_app_id(app_id: &ApplicationId) -> String {
+pub fn sanitize_app_id(app_id: &ApplicationId) -> String {
     let output = app_id.0.to_lowercase();
     output.replace(
         |c: char| !matches!(c, '0'..='9' | 'a'..='z' | '.' | '_' | '+' | '(' | ')' | '[' | ']'),

@@ -169,6 +169,7 @@ impl App {
 
         let save_button = UICommand::Save.menu_button(ui.ctx());
         let save_selection_button = UICommand::SaveSelection.menu_button(ui.ctx());
+        let save_blueprint = UICommand::SaveBlueprint.menu_button(ui.ctx());
 
         if file_save_in_progress {
             ui.add_enabled_ui(false, |ui| {
@@ -178,6 +179,10 @@ impl App {
                 });
                 ui.horizontal(|ui| {
                     ui.add(save_selection_button);
+                    ui.spinner();
+                });
+                ui.horizontal(|ui| {
+                    ui.add(save_blueprint);
                     ui.spinner();
                 });
             });
@@ -210,6 +215,17 @@ impl App {
                 {
                     ui.close_menu();
                     self.command_sender.send_ui(UICommand::SaveSelection);
+                }
+
+                if ui
+                    .add(save_blueprint)
+                    .on_hover_text(
+                        "Save the current blueprint to a Rerun blueprint file (.blueprint)",
+                    )
+                    .clicked()
+                {
+                    ui.close_menu();
+                    self.command_sender.send_ui(UICommand::SaveBlueprint);
                 }
             });
         }

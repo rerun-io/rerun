@@ -18,6 +18,8 @@ pub enum UICommand {
     Save,
     #[cfg(not(target_arch = "wasm32"))]
     SaveSelection,
+    #[cfg(not(target_arch = "wasm32"))]
+    SaveBlueprint,
     CloseCurrentRecording,
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
@@ -102,6 +104,12 @@ impl UICommand {
             Self::SaveSelection => (
                 "Save loop selection…",
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
+            ),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::SaveBlueprint => (
+                "Save the current blueprint…",
+                "Save data for blueprint data for this recording to a Rerun blueprint file (.blueprint)",
             ),
 
             Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …)"),
@@ -252,6 +260,8 @@ impl UICommand {
             Self::Save => Some(cmd(Key::S)),
             #[cfg(not(target_arch = "wasm32"))]
             Self::SaveSelection => Some(cmd_alt(Key::S)),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::SaveBlueprint => None,
             Self::Open => Some(cmd(Key::O)),
             Self::CloseCurrentRecording => None,
 
