@@ -3,10 +3,9 @@ use std::ops::Range;
 use re_log::ResultExt;
 
 use crate::{
-    allocator::CpuWriteGpuReadBuffer,
+    allocator::{data_texture_source_buffer_element_count, CpuWriteGpuReadBuffer},
     renderer::{
-        data_texture_source_buffer_element_count, LineBatchInfo, LineDrawData, LineDrawDataError,
-        LineStripFlags, LineStripInfo, LineVertex,
+        LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags, LineStripInfo, LineVertex,
     },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId,
     PickingLayerObjectId, RenderContext, Size,

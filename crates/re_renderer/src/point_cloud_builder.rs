@@ -3,11 +3,11 @@ use itertools::izip;
 use re_log::ResultExt;
 
 use crate::{
-    allocator::CpuWriteGpuReadBuffer,
+    allocator::{data_texture_source_buffer_element_count, CpuWriteGpuReadBuffer},
     draw_phases::PickingLayerObjectId,
     renderer::{
-        data_texture_source_buffer_element_count, PointCloudBatchFlags, PointCloudBatchInfo,
-        PointCloudDrawData, PointCloudDrawDataError, PositionRadius,
+        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
+        PositionRadius,
     },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
     Size,

@@ -189,7 +189,7 @@ where
 
     /// Pushes a single element into the buffer and advances the write pointer.
     ///
-    /// Panics if the data no longer fits into the buffer.
+    /// Returns an error if the data no longer fits into the buffer.
     #[inline]
     pub fn push(&mut self, element: T) -> Result<(), CpuWriteGpuReadError> {
         if self.remaining_capacity() == 0 {

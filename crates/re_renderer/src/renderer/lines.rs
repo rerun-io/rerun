@@ -113,7 +113,7 @@ use re_tracing::profile_function;
 use smallvec::smallvec;
 
 use crate::{
-    allocator::create_and_fill_uniform_buffer_batch,
+    allocator::{create_and_fill_uniform_buffer_batch, data_texture_desc},
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
     size::Size,
@@ -127,7 +127,7 @@ use crate::{
     PickingLayerObjectId, PickingLayerProcessor,
 };
 
-use super::{data_texture_desc, DrawData, DrawError, LineVertex, RenderContext, Renderer};
+use super::{DrawData, DrawError, LineVertex, RenderContext, Renderer};
 
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.

@@ -16,10 +16,9 @@
 use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
-    allocator::create_and_fill_uniform_buffer_batch,
+    allocator::{create_and_fill_uniform_buffer_batch, data_texture_desc},
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
-    renderer::data_texture_desc,
     wgpu_resources::GpuRenderPipelinePoolAccessor,
     DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
 };
