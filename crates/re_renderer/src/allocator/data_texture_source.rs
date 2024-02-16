@@ -11,10 +11,10 @@ use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};
 ///
 /// For WebGL compatibility we sometimes have to use textures instead of buffers.
 /// We call these textures "data textures".
-/// This construct allows to write data to gpu readable memory which
-/// thus that upon finishing it can be used to create a appropriately sized
-/// texture which receives all data written here.
-/// Each texel in this texture is a single element of the type `T`.
+/// This construct allows to write data directly to gpu readable memory which
+/// then upon finishing is automatically copied into an appropriately sized
+/// texture which receives all data written to [`DataTextureSource`].
+/// Each texel in the data texture represents a single element of the type `T`.
 pub struct DataTextureSource<'a, T: Pod + Send + Sync> {
     ctx: &'a RenderContext, // TODO(andreas): take more fine-grained reference?
 
@@ -33,11 +33,15 @@ pub struct DataTextureSource<'a, T: Pod + Send + Sync> {
     ///
     /// We're going with option (1)!
     ///
-    /// This means that there might be 'n' full buffers followed by a single active buffer, followed by 'm' empty buffer.
-    /// By using using large reserve sizes, we can minimize 'm'.
+    /// This means that there might be 'n' full buffers followed by a single active buffer, followed by 'm' empty buffers.
     buffers: Vec<CpuWriteGpuReadBuffer<T>>,
 
     /// Buffer in which data is currently written.
+    ///
+    /// All buffers before are full and all after (if any) are empty.
+    ///
+    /// After `reserve` it is guaranteed to point to a buffer with remaining capacity.
+    /// Prior to that, it may point to no buffer at all or a full buffer.
     active_buffer_index: usize,
 }
 
@@ -54,7 +58,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     }
 
     #[inline]
-    fn max_texture_row_size(&self) -> usize {
+    fn max_texture_width(&self) -> usize {
         // We limit the data texture width to 32768 or whatever smaller value is supported.
         // (in fact, more commonly supported values are 8192 and 16384)
         //
@@ -87,16 +91,14 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         }
 
         // Constraints on the buffer size:
-        // * have at least as many elements as missing
+        // * have at least as many elements as requested
         // * be at least double the size of the last buffer
         // * keep it easy to copy to textures by always being a multiple of the maximum row size we use for data textures
         //      -> this massively simplifies the buffer->texture copy logic!
-
         let last_buffer_size = self.buffers.last().map_or(0, |b| b.capacity());
-
         let new_buffer_size = (num_elements - remaining_capacity)
             .max(last_buffer_size * 2)
-            .next_multiple_of(self.max_texture_row_size());
+            .next_multiple_of(self.max_texture_width());
 
         self.buffers
             .push(self.ctx.cpu_write_gpu_read_belt.lock().allocate(
@@ -163,7 +165,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             texture_label,
             texture_format,
             total_num_elements as u32,
-            self.ctx.device.limits().max_texture_dimension_2d,
+            self.max_texture_width() as u32,
         );
         let data_texture = self
             .ctx
