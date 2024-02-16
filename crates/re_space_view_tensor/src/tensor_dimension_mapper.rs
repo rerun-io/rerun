@@ -186,7 +186,7 @@ pub fn dimension_mapping_ui(
     });
 
     // persist drag/drop
-    if drop_target.is_some() && drag_source.is_some() {
+    if drag_source.is_some() && drop_target.is_some() {
         let previous_value_source = drag_source.read_from_address(dim_mapping);
         let previous_value_target = drop_target.read_from_address(dim_mapping);
         drag_source.write_to_address(dim_mapping, previous_value_target);
