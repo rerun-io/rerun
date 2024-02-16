@@ -420,7 +420,7 @@ impl LineDrawData {
         };
 
         // Add a sentinel vertex both at the beginning and the end to make cap calculation easier.
-        let num_line_vertices = vertices.len() as u32 + NUM_SENTINEL_VERTICES;
+        let num_line_vertices = vertices.len() + NUM_SENTINEL_VERTICES;
         let num_strips = strips.len() as u32;
 
         let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
@@ -430,7 +430,7 @@ impl LineDrawData {
             &data_texture_desc(
                 "LineDrawData::position_data_texture",
                 Self::POSITION_DATA_TEXTURE_FORMAT,
-                num_line_vertices,
+                num_line_vertices as u32,
                 max_texture_dimension_2d,
             ),
         );
@@ -455,7 +455,7 @@ impl LineDrawData {
 
             let texture_size = position_data_texture.texture.size();
             let texel_count = (texture_size.width * texture_size.height) as usize;
-            let num_elements_padding = texel_count - num_line_vertices as usize;
+            let num_elements_padding = texel_count - num_line_vertices;
 
             let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
                 &ctx.device,
