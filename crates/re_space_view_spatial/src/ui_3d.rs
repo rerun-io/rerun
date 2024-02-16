@@ -475,7 +475,7 @@ pub fn view_3d(
             None,
             axis_length,
             re_renderer::OutlineMaskPreference::NONE,
-        )?;
+        );
 
         // If we are showing the axes for the space, then add the space origin to the bounding box.
         state.bounding_boxes.current.extend(glam::Vec3::ZERO);

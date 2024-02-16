@@ -96,7 +96,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                     .highlights
                     .entity_outline_mask(data_result.entity_path.hash())
                     .overall,
-            )?;
+            );
         }
 
         Ok(vec![line_builder.into_draw_data()?.into()])
@@ -121,7 +121,7 @@ pub fn add_axis_arrows(
     ent_path: Option<&EntityPath>,
     axis_length: f32,
     outline_mask_ids: re_renderer::OutlineMaskPreference,
-) -> Result<(), re_renderer::renderer::LineDrawDataError> {
+) {
     use re_renderer::renderer::LineStripFlags;
 
     // TODO(andreas): It would be nice if could display the ViewCoordinates axis names (left/right/up) as a tooltip on hover.
@@ -157,6 +157,4 @@ pub fn add_axis_arrows(
         .color(AXIS_COLOR_Z)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
-
-    Ok(())
 }

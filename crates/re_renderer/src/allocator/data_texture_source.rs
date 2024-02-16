@@ -140,6 +140,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         }
     }
 
+    #[allow(unused)] // TODO(andreas): soon!
     #[inline]
     pub fn push(&mut self, element: T) -> Result<(), CpuWriteGpuReadError> {
         self.reserve(1)?;
@@ -158,14 +159,12 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
 
         let total_num_elements: usize = self.buffers.iter().map(|b| b.num_written()).sum();
 
-        // TODO: we can fully integrate this logic here \o/!!!
         let texture_desc = data_texture_desc(
             texture_label,
             texture_format,
             total_num_elements as u32,
             self.ctx.device.limits().max_texture_dimension_2d,
         );
-
         let data_texture = self
             .ctx
             .gpu_resources
@@ -229,6 +228,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
 /// row size in bytes is a multiple of `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`.
 /// This makes it a lot easier to copy data from a continuous buffer to the texture.
 /// If we wouldn't do that, we'd need to do a copy for each row in some cases.
+// TODO(andreas): everything should use `DataTextureSource` directly, then this function is no longer needed!
 pub fn data_texture_size(
     format: wgpu::TextureFormat,
     num_texels_written: u32,
@@ -277,6 +277,7 @@ pub fn data_texture_size(
 /// Texture descriptor for data storage.
 ///
 /// See [`data_texture_size`]
+// TODO(andreas): everything should use `DataTextureSource` directly, then this function is no longer needed!
 pub fn data_texture_desc(
     label: impl Into<DebugLabel>,
     format: wgpu::TextureFormat,
@@ -294,9 +295,9 @@ pub fn data_texture_desc(
     }
 }
 
-// TODO: Remove
 /// Pendent to [`data_texture_size`] for determining the element size (==texels on data texture)
 /// need to be in a buffer that fills an entire data texture.
+// TODO(andreas): everything should use `DataTextureSource` directly, then this function is no longer needed!
 pub fn data_texture_source_buffer_element_count(
     texture_format: wgpu::TextureFormat,
     num_texels_written: u32,
