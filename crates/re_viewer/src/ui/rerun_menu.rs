@@ -40,6 +40,8 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
+                UICommand::OpenBlueprint.menu_button_ui(ui, &self.command_sender);
+
                 self.save_buttons_ui(ui, _store_context);
 
                 UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);

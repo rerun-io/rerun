@@ -24,7 +24,7 @@ impl crate::DataLoader for RrdLoader {
         re_tracing::profile_function!(filepath.display().to_string());
 
         let extension = crate::extension(&filepath);
-        if extension != "rrd" {
+        if !matches!(extension.as_str(), "rrd" | "blueprint") {
             return Err(crate::DataLoaderError::Incompatible(filepath.clone()));
         }
 
@@ -66,7 +66,7 @@ impl crate::DataLoader for RrdLoader {
         re_tracing::profile_function!(filepath.display().to_string());
 
         let extension = crate::extension(&filepath);
-        if extension != "rrd" {
+        if !matches!(extension.as_str(), "rrd" | "blueprint") {
             return Err(crate::DataLoaderError::Incompatible(filepath));
         }
 

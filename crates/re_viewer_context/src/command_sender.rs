@@ -8,6 +8,10 @@ use re_ui::{UICommand, UICommandSender};
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
 pub enum SystemCommand {
+    /// Load blueprint
+    #[cfg(not(target_arch = "wasm32"))]
+    LoadBlueprint(DataSource),
+
     /// Load some data.
     LoadDataSource(DataSource),
 

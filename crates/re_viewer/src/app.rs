@@ -1,6 +1,6 @@
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
-use re_log_types::{FileSource, LogMsg, StoreKind};
+use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
@@ -341,6 +341,61 @@ impl App {
                 store_hub.remove_recording_id(&recording_id);
             }
 
+            #[cfg(not(target_arch = "wasm32"))]
+            SystemCommand::LoadBlueprint(data_source) => {
+                // TODO(jleibs): The architecture for managing store-ids and
+                // application-ids is a mess.
+                //
+                // In an ideal world, we wouldn't need a separate path here at
+                // all and could use `LoadDataSource` instead, but there is a
+                // bunch of stuff to sort out in the interim.
+                //
+                // Most blueprints right now use the "default" blueprint-id
+                // which is set to be equal to the app id and has special
+                // meaning. see `StoreInfo::is_app_default_blueprint`. This
+                // default causes `auto_space_views` to default to true.
+                // However, that means if the viewer runs before the new
+                // blueprint is in place, we'll end up spawning space-views when
+                // what we want to do is wait for the new blueprint to be in
+                // place.
+                //
+                // Additionally, the blueprint currently needs to have an app-id
+                // that matches the recordings app-id. But there are cases where
+                // we might want to open a blueprint from a different app or after
+                // it was renamed.
+                //
+                // Finally, although blueprint-timeline timestamps use
+                // `nanos_since_epoch`, we have no guarantee the blueprint was
+                // created with a valid clock. This means we could be loading
+                // blueprint data in the future which would then cause current
+                // user-interactions not to have an effect (See: #5222).
+
+                // To work around this we generate a new, unique, blueprint-id
+                // and then patch the blueprint stream to use it. We also patch
+                // the StoreInfo message to refer to the currently selected app-id
+                // instead so this blueprint will apply to the current app regardless.
+
+                // Generate a clean blueprint and set it as the current blueprint
+                let app_id = store_hub
+                    .selected_application_id()
+                    .cloned()
+                    .unwrap_or_else(ApplicationId::unknown);
+
+                let blueprint_id =
+                    re_log_types::StoreId::random(re_log_types::StoreKind::Blueprint);
+
+                match data_source.stream(None) {
+                    Ok(rx) => {
+                        let rx =
+                            crate::loading::blueprint_rewriter(app_id.clone(), blueprint_id, rx);
+                        self.add_receiver(rx);
+                    }
+                    Err(err) => {
+                        re_log::error!("Failed to open data source: {}", re_error::format(err));
+                    }
+                }
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 let egui_ctx = self.re_ui.egui_ctx.clone();
 
@@ -475,6 +530,16 @@ impl App {
                     egui_ctx.request_repaint(); // Wake ui thread
                     file
                 }));
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::OpenBlueprint => {
+                if let Some(blueprint_path) = open_blueprint_dialog_native() {
+                    self.command_sender
+                        .send_system(SystemCommand::LoadBlueprint(DataSource::FilePath(
+                            FileSource::FileDialog,
+                            blueprint_path,
+                        )));
+                }
             }
             UICommand::CloseCurrentRecording => {
                 let cur_rec = store_context
@@ -1465,6 +1530,17 @@ fn open_file_dialog_native() -> Vec<std::path::PathBuf> {
     }
 
     dialog.pick_files().unwrap_or_default()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn open_blueprint_dialog_native() -> Option<std::path::PathBuf> {
+    re_tracing::profile_function!();
+
+    let supported: Vec<_> = vec!["blueprint"];
+    let mut dialog = rfd::FileDialog::new();
+    dialog = dialog.add_filter("Supported files", &supported);
+
+    dialog.pick_file()
 }
 
 #[cfg(target_arch = "wasm32")]

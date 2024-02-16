@@ -14,6 +14,11 @@ pub trait UICommandSender {
 pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     Open,
+    // TODO(jleibs): It sucks this needs to be a different path.
+    // Make this part of the generic file-loader so blueprints can be
+    // used on open, drag-and-drop, etc.
+    #[cfg(not(target_arch = "wasm32"))]
+    OpenBlueprint,
     #[cfg(not(target_arch = "wasm32"))]
     Save,
     #[cfg(not(target_arch = "wasm32"))]
@@ -113,6 +118,9 @@ impl UICommand {
             ),
 
             Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …)"),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::OpenBlueprint => ("Open Blueprint…", "Open a .blueprint file."),
+
 
             Self::CloseCurrentRecording => (
                 "Close current Recording",
@@ -263,6 +271,8 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::SaveBlueprint => None,
             Self::Open => Some(cmd(Key::O)),
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::OpenBlueprint => None,
             Self::CloseCurrentRecording => None,
 
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
