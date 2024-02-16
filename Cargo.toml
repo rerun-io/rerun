@@ -282,13 +282,13 @@ debug = true
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }      # egui master 2024-02-05
-# eframe = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }      # egui master 2024-02-05
-# egui = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }        # egui master 2024-02-05
-# egui_extras = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" } # egui master 2024-02-05
-# egui_plot = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }   # egui master 2024-02-05
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }   # egui master 2024-02-05
-# emath = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }       # egui master 2024-02-05
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "emilk/hit-test" }      # TODO: commit hash on master branch
+eframe = { git = "https://github.com/emilk/egui.git", branch = "emilk/hit-test" }      # TODO: commit hash on master branch
+egui = { git = "https://github.com/emilk/egui.git", branch = "emilk/hit-test" }        # TODO: commit hash on master branch
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "emilk/hit-test" } # TODO: commit hash on master branch
+egui_plot = { git = "https://github.com/emilk/egui.git", branch = "emilk/hit-test" }   # TODO: commit hash on master branch
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "emilk/hit-test" }   # TODO: commit hash on master branch
+emath = { git = "https://github.com/emilk/egui.git", branch = "emilk/hit-test" }       # TODO: commit hash on master branch
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -299,6 +299,6 @@ debug = true
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "50732cf58528b7060844915bdbcb47a3b0d4d07e" } # master 2024-02-06
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" } # TODO: commit hash on main branch
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "3d83a92f995a1d18ab1172d0b129d496e0eedaae" } # Update to egui 0.25 https://github.com/lampsitter/egui_commonmark/pull/27

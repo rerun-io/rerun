@@ -522,7 +522,7 @@ pub fn view_3d(
         SpatialSpaceViewKind::ThreeD,
     );
 
-    if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
+    if ui.ctx().dragged_id().is_none() {
         response = picking(
             ctx,
             response,
