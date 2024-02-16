@@ -13,7 +13,6 @@ use re_types::{
 use re_types_core::components::InstanceKey;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
-use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{
     blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId,
     DataQueryId, HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId,
@@ -416,20 +415,23 @@ fn what_is_selected_ui(
                 "Entity instance"
             };
 
-            let name = instance_path.syntax_highlighted(ui.style());
+            let (query, store) =
+                guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
 
             if let Some(space_view_id) = space_view_id {
                 if let Some(space_view) = viewport.space_view(space_view_id) {
-                    item_title_ui(
-                        ctx.re_ui,
+                    item_ui::instance_path_parts_buttons(
+                        ctx,
+                        &query,
+                        store,
                         ui,
-                        name,
-                        None,
-                        &format!(
-                            "{typ} '{instance_path}' as shown in Space View {:?}",
-                            space_view.display_name
-                        ),
-                    );
+                        Some(*space_view_id),
+                        instance_path,
+                    )
+                    .on_hover_text(format!(
+                        "{typ} '{instance_path}' as shown in Space View {:?}",
+                        space_view.display_name
+                    ));
 
                     ui.horizontal(|ui| {
                         ui.label("in");
@@ -437,13 +439,8 @@ fn what_is_selected_ui(
                     });
                 }
             } else {
-                item_title_ui(
-                    ctx.re_ui,
-                    ui,
-                    name,
-                    None,
-                    &format!("{typ} '{instance_path}'"),
-                );
+                item_ui::instance_path_parts_buttons(ctx, &query, store, ui, None, instance_path)
+                    .on_hover_text(format!("{typ} '{instance_path}'"));
 
                 list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);
             }
