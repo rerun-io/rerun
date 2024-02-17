@@ -186,7 +186,9 @@ impl SelectionPanel {
                             // TODO(jleibs): Overrides still require special handling inside the visualizers.
                             // For now, only show the override section for TimeSeries until support is implemented
                             // generically.
-                            if space_view.class_identifier() == TimeSeriesSpaceView::IDENTIFIER {
+                            if space_view.class_identifier() == TimeSeriesSpaceView::IDENTIFIER
+                                || ctx.app_options.experimental_visualizer_selection
+                            {
                                 ctx.re_ui
                                     .large_collapsing_header(ui, "Visualizers", true, |ui| {
                                         override_visualizer_ui(ctx, space_view, instance_path, ui);

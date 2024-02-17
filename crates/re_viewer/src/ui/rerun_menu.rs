@@ -390,6 +390,14 @@ fn experimental_feature_ui(
             "Plots: query clamping",
         )
         .on_hover_text("Toggle query clamping for the plot visualizers.");
+
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_visualizer_selection,
+            "Visualizer selection for all views",
+        )
+        .on_hover_text("Enables explicit visualizer selection for all views, not just Time Series where it's default enabled.");
 }
 
 #[cfg(debug_assertions)]
