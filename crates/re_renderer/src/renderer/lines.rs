@@ -421,7 +421,7 @@ impl LineDrawData {
 
         // Add a sentinel vertex both at the beginning and the end to make cap calculation easier.
         let num_line_vertices = vertices.len() + NUM_SENTINEL_VERTICES;
-        let num_strips = strips.len() as u32;
+        let num_strips = strips.len();
 
         let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
 
@@ -430,7 +430,7 @@ impl LineDrawData {
             &data_texture_desc(
                 "LineDrawData::position_data_texture",
                 Self::POSITION_DATA_TEXTURE_FORMAT,
-                num_line_vertices as u32,
+                num_line_vertices,
                 max_texture_dimension_2d,
             ),
         );
@@ -474,7 +474,7 @@ impl LineDrawData {
                 position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
                 strip_index: u32::MAX,
             })?;
-            staging_buffer.fill_n(gpu_data::LineVertex::zeroed(), num_elements_padding)?;
+            staging_buffer.add_n(gpu_data::LineVertex::zeroed(), num_elements_padding)?;
 
             staging_buffer.copy_to_texture2d_entire_first_layer(
                 copy_encoder.lock().get(),
@@ -501,7 +501,7 @@ impl LineDrawData {
                     flags: line_strip.flags,
                 }
             }))?;
-            staging_buffer.fill_n(gpu_data::LineStripInfo::zeroed(), num_elements_padding)?;
+            staging_buffer.add_n(gpu_data::LineStripInfo::zeroed(), num_elements_padding)?;
             staging_buffer.copy_to_texture2d_entire_first_layer(
                 copy_encoder.lock().get(),
                 &line_strip_texture,

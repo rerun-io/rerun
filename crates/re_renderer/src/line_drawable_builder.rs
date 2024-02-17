@@ -222,7 +222,7 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
 
         debug_assert_eq!(
             self.0.strips.len(),
-            self.0.picking_instance_ids_buffer.num_written()
+            self.0.picking_instance_ids_buffer.len()
         );
 
         let old_strip_count = self.0.strips.len();
@@ -499,7 +499,7 @@ impl<'a, 'ctx> Drop for LineStripBuilder<'a, 'ctx> {
 
         self.builder
             .picking_instance_ids_buffer
-            .fill_n(self.picking_instance_id, self.strip_range.len())
+            .add_n(self.picking_instance_id, self.strip_range.len())
             .ok_or_log_error_once(); // Transfer errors are rarely actionable anyways.
     }
 }

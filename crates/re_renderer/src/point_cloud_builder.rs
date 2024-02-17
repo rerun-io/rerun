@@ -29,7 +29,7 @@ pub struct PointCloudBuilder {
 }
 
 impl PointCloudBuilder {
-    pub fn new(ctx: &RenderContext, max_num_points: u32) -> Self {
+    pub fn new(ctx: &RenderContext, max_num_points: usize) -> Self {
         let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
 
         let color_buffer = ctx
@@ -234,7 +234,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .color_buffer
-                .fill_n(Color32::WHITE, num_points.saturating_sub(colors.len()))
+                .add_n(Color32::WHITE, num_points.saturating_sub(colors.len()))
                 .ok_or_log_error();
         }
         {
@@ -248,7 +248,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .picking_instance_ids_buffer
-                .fill_n(
+                .add_n(
                     PickingLayerInstanceId::default(),
                     num_points.saturating_sub(picking_ids.len()),
                 )

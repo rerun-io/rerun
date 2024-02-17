@@ -200,7 +200,7 @@ impl VisualizerSystem for Points3DVisualizer {
             return Ok(Vec::new());
         }
 
-        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx, num_points as u32)
+        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx, num_points)
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
         // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll go with the dynamic allocation approach.

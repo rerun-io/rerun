@@ -15,6 +15,9 @@ use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};
 /// then upon finishing is automatically copied into an appropriately sized
 /// texture which receives all data written to [`DataTextureSource`].
 /// Each texel in the data texture represents a single element of the type `T`.
+///
+/// This is implemented by dynamically allocating cpu-write-gpu-read buffers from the
+/// central [`super::CpuWriteGpuReadBelt`] and copying all of them to the texture in the end.
 pub struct DataTextureSource<'a, T: Pod + Send + Sync> {
     ctx: &'a RenderContext, // TODO(andreas): take more fine-grained reference?
 
@@ -76,27 +79,72 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
 
     /// The number of elements written so far.
     #[inline]
-    pub fn num_written(&self) -> usize {
-        self.buffers.iter().map(|b| b.num_written()).sum()
+    pub fn len(&self) -> usize {
+        self.buffers
+            .iter()
+            .take(self.active_buffer_index + 1)
+            .map(|b| b.num_written())
+            .sum()
     }
 
-    /// Reserves space for at least `num_elements` elements.
+    /// The number of elements that can be written without allocating more memory.
+    #[inline]
+    #[allow(unused)]
+    pub fn capacity(&self) -> usize {
+        self.buffers.iter().map(|b| b.capacity()).sum()
+    }
+
+    /// The number of elements that can be written without allocating more memory.
+    #[inline]
+    pub fn remaining_capacity(&self) -> usize {
+        self.buffers
+            .iter()
+            .skip(self.active_buffer_index)
+            .map(|b| b.remaining_capacity())
+            .sum()
+    }
+
+    /// Ensure invariant that the active buffer has some remaining capacity or is the next buffer that needs to be allocated.
+    #[inline]
+    fn ensure_active_buffer_invariant(&mut self) {
+        if self.active_buffer_index < self.len()
+            && self.buffers[self.active_buffer_index].remaining_capacity() == 0
+        {
+            self.active_buffer_index += 1;
+        }
+
+        // Note that if we're *very* unlucky there might be a lot of unused buffers.
+        // This happens only if there's quadratic growing `reserve` calls without any writes.
+        debug_assert!(self.buffers.len() >= self.active_buffer_index);
+        // If the active buffer exists, it must have remaining capacity.
+        debug_assert!(
+            self.buffers.len() == self.active_buffer_index
+                || self.buffers[self.active_buffer_index].remaining_capacity() > 0
+        );
+        // The buffer before the active buffer must be full.
+        debug_assert!(
+            self.active_buffer_index == 0
+                || self.buffers[self.active_buffer_index - 1].remaining_capacity() == 0
+        );
+    }
+
+    /// Ensures that there's space internally for at least `num_elements` more elements.
     ///
     /// Creating new buffers is a relatively expensive operation, so it's best to
-    /// reserve gratuitously!
-    /// Ideally, you know exactly how many elements you're going to write and reserve
+    /// reserve gratuitously and often. Ideally, you know exactly how many elements you're going to write and reserve
     /// accordingly at the start.
+    ///
+    /// If there's no more space, a new buffer is allocated such that:
+    /// * have a total capacity for at least as many elements as requested
+    /// * be at least double the size of the last buffer
+    /// * keep it easy to copy to textures by always being a multiple of the maximum row size we use for data textures
+    ///      -> this massively simplifies the buffer->texture copy logic!
     pub fn reserve(&mut self, num_elements: usize) -> Result<(), CpuWriteGpuReadError> {
-        let remaining_capacity: usize = self.buffers.iter().map(|b| b.remaining_capacity()).sum();
+        let remaining_capacity = self.remaining_capacity();
         if remaining_capacity >= num_elements {
             return Ok(());
         }
 
-        // Constraints on the buffer size:
-        // * have at least as many elements as requested
-        // * be at least double the size of the last buffer
-        // * keep it easy to copy to textures by always being a multiple of the maximum row size we use for data textures
-        //      -> this massively simplifies the buffer->texture copy logic!
         let last_buffer_size = self.buffers.last().map_or(0, |b| b.capacity());
         let new_buffer_size = (num_elements - remaining_capacity)
             .max(last_buffer_size * 2)
@@ -109,36 +157,37 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
                 new_buffer_size,
             )?);
 
-        // Ensure invariant that the active buffer has some remaining capacity.
-        if self.buffers[self.active_buffer_index].remaining_capacity() == 0 {
-            self.active_buffer_index += 1;
-        }
-
         Ok(())
     }
 
+    /// Fills the buffer with n instances of an element.
     #[inline]
-    pub fn fill_n(&mut self, element: T, num_elements: usize) -> Result<(), CpuWriteGpuReadError> {
+    pub fn add_n(&mut self, element: T, num_elements: usize) -> Result<(), CpuWriteGpuReadError> {
+        if num_elements == 0 {
+            return Ok(());
+        }
+
+        re_tracing::profile_function!();
+
         self.reserve(num_elements)?;
 
         let mut num_elements_remaining = num_elements;
 
         loop {
             let result =
-                self.buffers[self.active_buffer_index].fill_n(element, num_elements_remaining);
+                self.buffers[self.active_buffer_index].add_n(element, num_elements_remaining);
 
             // `fill_n` is documented to write as many elements as possible, so we can just continue with the next buffer,
             // if we ran out of space!
             if let Err(CpuWriteGpuReadError::BufferFull {
-                buffer_capacity_elements,
-                buffer_size_elements,
-                num_elements_attempted_to_add: _,
+                num_elements_actually_added: num_elements_added,
+                ..
             }) = result
             {
-                let actually_written = buffer_capacity_elements - buffer_size_elements;
-                num_elements_remaining -= actually_written;
+                num_elements_remaining -= num_elements_added;
                 self.active_buffer_index += 1;
             } else {
+                self.ensure_active_buffer_invariant();
                 return result;
             }
         }
@@ -148,7 +197,10 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     #[inline]
     pub fn push(&mut self, element: T) -> Result<(), CpuWriteGpuReadError> {
         self.reserve(1)?;
-        self.buffers[self.active_buffer_index].push(element)
+        self.buffers[self.active_buffer_index].push(element);
+        self.ensure_active_buffer_invariant();
+
+        Ok(())
     }
 
     /// Schedules copies of all previous writes to this `DataTextureSource` to a `GpuTexture`.
@@ -161,12 +213,12 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     ) -> Result<GpuTexture, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 
-        let total_num_elements: usize = self.buffers.iter().map(|b| b.num_written()).sum();
+        let total_num_elements = self.len();
 
         let texture_desc = data_texture_desc(
             texture_label,
             texture_format,
-            total_num_elements as u32,
+            total_num_elements,
             self.max_data_texture_width() as u32,
         );
         let data_texture = self
@@ -174,6 +226,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             .gpu_resources
             .textures
             .alloc(&self.ctx.device, &texture_desc);
+        let texture_width = texture_desc.size.width as usize;
 
         // Copy all buffers to the texture.
         let mut current_row = 0;
@@ -181,18 +234,15 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
 
         for mut buffer in self.buffers.into_iter().take(self.active_buffer_index + 1) {
             // Buffer sizes were chosen such that they will always copy full rows!
-            debug_assert!(buffer.capacity() % texture_desc.size.width as usize == 0);
+            debug_assert!(buffer.capacity() % texture_width == 0);
 
             // The last buffer might need padding to fill a full row.
             let num_written = buffer.num_written();
-            let num_elements_padding = buffer
-                .num_written()
-                .next_multiple_of(texture_desc.size.width as usize)
-                - num_written;
-            if num_elements_padding > 0 {
-                buffer.fill_n(T::zeroed(), num_elements_padding)?;
-            }
-            let num_rows = buffer.num_written() / texture_desc.size.width as usize;
+            let num_elements_padding =
+                buffer.num_written().next_multiple_of(texture_width) - num_written;
+            buffer.add_n(T::zeroed(), num_elements_padding)?;
+
+            let num_rows = buffer.num_written() / texture_width;
 
             buffer.copy_to_texture2d(
                 encoder.get(),
@@ -235,7 +285,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
 // TODO(andreas): everything should use `DataTextureSource` directly, then this function is no longer needed!
 pub fn data_texture_size(
     format: wgpu::TextureFormat,
-    num_texels_written: u32,
+    num_texels_written: usize,
     max_texture_dimension_2d: u32,
 ) -> wgpu::Extent3d {
     debug_assert!(max_texture_dimension_2d.is_power_of_two());
@@ -257,23 +307,29 @@ pub fn data_texture_size(
     // then we'd need to increase the height. We can't increase without doubling it, thus creating a texture
     // with the exact same mount of padding as before.
 
-    let width = if num_texels_written < max_texture_dimension_2d {
+    let width = if num_texels_written < max_texture_dimension_2d as usize {
         num_texels_written
             .next_power_of_two()
             // For too few number of written texels, or too small texels we might need to increase the size to stay
             // above a row **byte** size of `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`.
             // Note that this implies that for very large texels, we need less wide textures to stay above this limit.
             // (width is in number of texels, but alignment cares about bytes!)
-            .next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT / texel_size_in_bytes)
+            .next_multiple_of((wgpu::COPY_BYTES_PER_ROW_ALIGNMENT / texel_size_in_bytes) as usize)
+            as u32
     } else {
         max_texture_dimension_2d
     };
 
-    let height = num_texels_written.div_ceil(width);
+    let mut height = num_texels_written.div_ceil(width as usize);
+    if height > max_texture_dimension_2d as usize {
+        // TODO(andreas): forward this error proper when refactoring `data_texture_size` into `DataTextureSource`. The error we can give here isn't that great.
+        re_log::error_once!("Would need to allocate a {width}x{height} texture to hold all data, but the maximum supported size is {max_texture_dimension_2d}x{max_texture_dimension_2d}.");
+        height = max_texture_dimension_2d as usize;
+    }
 
     wgpu::Extent3d {
         width,
-        height,
+        height: height as u32,
         depth_or_array_layers: 1,
     }
 }
@@ -285,7 +341,7 @@ pub fn data_texture_size(
 pub fn data_texture_desc(
     label: impl Into<DebugLabel>,
     format: wgpu::TextureFormat,
-    num_texels_written: u32,
+    num_texels_written: usize,
     max_texture_dimension_2d: u32,
 ) -> wgpu_resources::TextureDesc {
     wgpu_resources::TextureDesc {
@@ -304,14 +360,14 @@ pub fn data_texture_desc(
 // TODO(andreas): everything should use `DataTextureSource` directly, then this function is no longer needed!
 pub fn data_texture_source_buffer_element_count(
     texture_format: wgpu::TextureFormat,
-    num_texels_written: u32,
+    num_texels_written: usize,
     max_texture_dimension_2d: u32,
 ) -> usize {
     let data_texture_size =
         data_texture_size(texture_format, num_texels_written, max_texture_dimension_2d);
     let element_count = data_texture_size.width as usize * data_texture_size.height as usize;
 
-    debug_assert!(element_count >= num_texels_written as usize);
+    debug_assert!(element_count >= num_texels_written);
 
     element_count
 }
