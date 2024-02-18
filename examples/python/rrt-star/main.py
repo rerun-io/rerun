@@ -2,6 +2,15 @@
 """
 Visualizes the path finding algorithm RRT* in a simple environment.
 
+The algorithm finds a path between two points by randomly expanding a tree from the start point.
+After it has added a random edge to the tree it looks at nearby nodes to check if it's faster to
+reach them through this new edge instead, and if so it changes the parent of these nodes.
+This ensures that the algorithm will converge to the optimal path given enough time.
+
+A more detailed explanation can be found in the original paper
+Karaman, S. Frazzoli, S. 2011. "Sampling-based algorithms for optimal motion planning".
+or in the following medium article: https://theclassytim.medium.com/robotic-path-planning-rrt-and-rrt-212319121378
+
 Run:
 ```bash
 pip install -r examples/python/rrt-star/requirements.txt
@@ -245,7 +254,7 @@ def rrt(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Example of using the Rerun visualizer")
+    parser = argparse.ArgumentParser(description="Visualization of the path finding algorithm RRT*.")
     rr.script_add_args(parser)
     parser.add_argument("--max-step-size", type=float, default=0.1)
     parser.add_argument("--iterations", type=int, help="How many iterations it should do")
@@ -259,6 +268,23 @@ def main() -> None:
     end_point = np.array([1.8, 0.5])
 
     rr.set_time_sequence("step", 0)
+    rr.log(
+        "description",
+        rr.TextDocument(
+            """
+Visualizes the path finding algorithm RRT* in a simple environment.
+
+The algorithm finds a [path](recording://map/path) between two points by randomly expanding a [tree](recording://map/tree/edges) from the [start point](recording://map/start).
+After it has added a [random edge](recording://map/new/new_edge) to the tree it looks at [nearby nodes](recording://map/new/close_nodes) to check if it's faster to reach them through this [new edge](recording://map/new/new_edge) instead, and if so it changes the parent of these nodes.
+This ensures that the algorithm will converge to the optimal path given enough time.
+
+A more detailed explanation can be found in the original paper
+Karaman, S. Frazzoli, S. 2011. "Sampling-based algorithms for optimal motion planning".
+or in [this medium article](https://theclassytim.medium.com/robotic-path-planning-rrt-and-rrt-212319121378)
+            """.strip(),
+            media_type=rr.MediaType.MARKDOWN,
+        ),
+    )
     rr.log(
         "map/start",
         rr.Points2D([start_point], radii=0.02, colors=[[255, 255, 255, 255]]),
