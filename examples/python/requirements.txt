@@ -33,3 +33,4 @@
 -r stdio/requirements.txt
 -r structure_from_motion/requirements.txt
 -r template/requirements.txt
+-r rrt-star/requirements.txt
