@@ -41,10 +41,13 @@ pub struct DataTextureSource<'a, T: Pod + Send + Sync> {
 
     /// Buffer in which data is currently written.
     ///
-    /// All buffers before are full and all after (if any) are empty.
+    /// Between all public calls:
+    /// * all buffers before are full
+    /// * all buffers after are empty (if any)
+    /// * the buffer at this index either does not exist or has remaining capacity
     ///
-    /// After `reserve` it is guaranteed to point to a buffer with remaining capacity.
-    /// Prior to that, it may point to no buffer at all or a full buffer.
+    /// At the end of any operation that adds new elements, call
+    /// `ensure_active_buffer_invariant_after_adding_elements` to ensure this invariant.
     active_buffer_index: usize,
 }
 
@@ -105,11 +108,16 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     }
 
     /// Ensure invariant that the active buffer has some remaining capacity or is the next buffer that needs to be allocated.
+    ///
+    /// Since elements were just added to the active buffer, this function assumes that the `active_buffer_index` points to a valid buffer.
     #[inline]
-    fn ensure_active_buffer_invariant(&mut self) {
-        if self.active_buffer_index < self.len()
-            && self.buffers[self.active_buffer_index].remaining_capacity() == 0
-        {
+    fn ensure_active_buffer_invariant_after_adding_elements(&mut self) {
+        debug_assert!(
+            self.active_buffer_index < self.len(),
+            "Active buffer index was expected to point at a valid buffer."
+        );
+
+        if self.buffers[self.active_buffer_index].remaining_capacity() == 0 {
             self.active_buffer_index += 1;
         }
 
@@ -185,9 +193,9 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             }) = result
             {
                 num_elements_remaining -= num_elements_added;
-                self.active_buffer_index += 1;
+                self.active_buffer_index += 1; // Due to the prior `reserve` call we know that there's more buffers!
             } else {
-                self.ensure_active_buffer_invariant();
+                self.ensure_active_buffer_invariant_after_adding_elements();
                 return result;
             }
         }
@@ -198,7 +206,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     pub fn push(&mut self, element: T) -> Result<(), CpuWriteGpuReadError> {
         self.reserve(1)?;
         self.buffers[self.active_buffer_index].push(element);
-        self.ensure_active_buffer_invariant();
+        self.ensure_active_buffer_invariant_after_adding_elements();
 
         Ok(())
     }
