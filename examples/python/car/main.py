@@ -255,7 +255,9 @@ def generate_car_data(num_frames: int) -> Iterator[SampleFrame]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(
+        description="A very simple 2D car is drawn using OpenCV, and a depth image is simulated and logged as a point cloud."
+    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 

@@ -55,14 +55,15 @@ fn drag_source_ui_id(drag_context_id: egui::Id, dim_idx: usize) -> egui::Id {
 fn tensor_dimension_ui(
     ui: &mut egui::Ui,
     drag_context_id: egui::Id,
-    can_accept_dragged: bool,
     bound_dim_idx: Option<usize>,
     location: DragDropAddress,
     shape: &[TensorDimension],
-    drop_source: &mut DragDropAddress,
+    drag_source: &mut DragDropAddress,
     drop_target: &mut DragDropAddress,
 ) {
-    let response = drop_target_ui(ui, can_accept_dragged, |ui| {
+    let frame = egui::Frame::default().inner_margin(4.0);
+
+    let (_response, dropped) = ui.dnd_drop_zone::<DragDropAddress>(frame, |ui| {
         ui.set_min_size(egui::vec2(80., 15.));
 
         if let Some(dim_idx) = bound_dim_idx {
@@ -75,94 +76,17 @@ fn tensor_dimension_ui(
                 format!("▓ {dim_idx} ({})", dim.size)
             };
 
-            drag_source_ui(ui, dim_ui_id, |ui| {
+            ui.dnd_drag_source(dim_ui_id, location, |ui| {
                 // TODO(emilk): make these buttons respond on hover.
                 ui.colored_label(ui.visuals().widgets.inactive.fg_stroke.color, label_text);
             });
-
-            if ui.memory(|mem| mem.is_being_dragged(dim_ui_id)) {
-                *drop_source = location;
-            }
         }
-    })
-    .response;
+    });
 
-    let is_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
-    if is_being_dragged && response.hovered() {
+    if let Some(dropped) = dropped {
+        *drag_source = *dropped;
         *drop_target = location;
     }
-}
-
-fn drag_source_ui(ui: &mut egui::Ui, id: egui::Id, body: impl FnOnce(&mut egui::Ui)) {
-    let is_being_dragged = ui.memory(|mem| mem.is_being_dragged(id));
-
-    if !is_being_dragged {
-        let response = ui.scope(body).response;
-
-        // Check for drags:
-        let response = ui.interact(response.rect, id, egui::Sense::drag());
-        if response.hovered() {
-            ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
-        }
-    } else {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
-
-        // Paint the body to a new layer:
-        let layer_id = egui::LayerId::new(egui::Order::Tooltip, id);
-        let response = ui.with_layer_id(layer_id, body).response;
-
-        // Now we move the visuals of the body to where the mouse is.
-        // Normally you need to decide a location for a widget first,
-        // because otherwise that widget cannot interact with the mouse.
-        // However, a dragged component cannot be interacted with anyway
-        // (anything with `Order::Tooltip` always gets an empty [`Response`])
-        // So this is fine!
-
-        if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
-            let delta = pointer_pos - response.rect.center();
-            ui.ctx().translate_layer(layer_id, delta);
-        }
-    }
-}
-
-// Draws rectangle for a drop landing zone for dimensions
-fn drop_target_ui<R>(
-    ui: &mut egui::Ui,
-    can_accept_dragged: bool,
-    body: impl FnOnce(&mut egui::Ui) -> R,
-) -> egui::InnerResponse<R> {
-    let is_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
-
-    let margin = egui::Vec2::splat(4.0);
-
-    let outer_rect_bounds = ui.available_rect_before_wrap();
-    let inner_rect = outer_rect_bounds.shrink2(margin);
-    let where_to_put_background = ui.painter().add(egui::Shape::Noop);
-    let mut content_ui = ui.child_ui(inner_rect, *ui.layout());
-    let ret = body(&mut content_ui);
-    let outer_rect =
-        egui::Rect::from_min_max(outer_rect_bounds.min, content_ui.min_rect().max + margin);
-    let (rect, response) = ui.allocate_at_least(outer_rect.size(), egui::Sense::hover());
-
-    let style = if is_being_dragged && can_accept_dragged && response.contains_pointer() {
-        ui.visuals().widgets.active
-    } else {
-        ui.visuals().widgets.inactive
-    };
-
-    let mut fill = style.bg_fill;
-    let mut stroke = style.bg_stroke;
-    if is_being_dragged && !can_accept_dragged {
-        fill = ui.visuals().gray_out(fill);
-        stroke.color = ui.visuals().gray_out(stroke.color);
-    }
-
-    ui.painter().set(
-        where_to_put_background,
-        egui::epaint::RectShape::new(rect, style.rounding, fill, stroke),
-    );
-
-    egui::InnerResponse::new(ret, response)
 }
 
 pub fn dimension_mapping_ui(
@@ -175,13 +99,10 @@ pub fn dimension_mapping_ui(
         *dim_mapping = DimensionMapping::create(shape);
     }
 
-    let mut drop_source = DragDropAddress::None;
-    let mut drop_target = DragDropAddress::None;
+    let mut drag_source = DragDropAddress::None; // Drag this…
+    let mut drop_target = DragDropAddress::None; // …onto this.
 
     let drag_context_id = ui.id();
-    let can_accept_dragged = (0..shape.len()).any(|dim_idx| {
-        ui.memory(|mem| mem.is_being_dragged(drag_source_ui_id(drag_context_id, dim_idx)))
-    });
 
     ui.vertical(|ui| {
         ui.vertical(|ui| {
@@ -190,11 +111,10 @@ pub fn dimension_mapping_ui(
                 tensor_dimension_ui(
                     ui,
                     drag_context_id,
-                    can_accept_dragged,
                     dim_mapping.width,
                     DragDropAddress::Width,
                     shape,
-                    &mut drop_source,
+                    &mut drag_source,
                     &mut drop_target,
                 );
                 ui.horizontal(|ui| {
@@ -206,11 +126,10 @@ pub fn dimension_mapping_ui(
                 tensor_dimension_ui(
                     ui,
                     drag_context_id,
-                    can_accept_dragged,
                     dim_mapping.height,
                     DragDropAddress::Height,
                     shape,
-                    &mut drop_source,
+                    &mut drag_source,
                     &mut drop_target,
                 );
                 ui.horizontal(|ui| {
@@ -233,11 +152,10 @@ pub fn dimension_mapping_ui(
                         tensor_dimension_ui(
                             ui,
                             drag_context_id,
-                            can_accept_dragged,
                             Some(selector.dim_idx),
                             DragDropAddress::Selector(selector_idx),
                             shape,
-                            &mut drop_source,
+                            &mut drag_source,
                             &mut drop_target,
                         );
 
@@ -255,11 +173,10 @@ pub fn dimension_mapping_ui(
                         tensor_dimension_ui(
                             ui,
                             drag_context_id,
-                            can_accept_dragged,
                             None,
                             DragDropAddress::NewSelector,
                             shape,
-                            &mut drop_source,
+                            &mut drag_source,
                             &mut drop_target,
                         );
                         ui.end_row();
@@ -269,10 +186,10 @@ pub fn dimension_mapping_ui(
     });
 
     // persist drag/drop
-    if drop_target.is_some() && drop_source.is_some() && ui.input(|i| i.pointer.any_released()) {
-        let previous_value_source = drop_source.read_from_address(dim_mapping);
+    if drag_source.is_some() && drop_target.is_some() {
+        let previous_value_source = drag_source.read_from_address(dim_mapping);
         let previous_value_target = drop_target.read_from_address(dim_mapping);
-        drop_source.write_to_address(dim_mapping, previous_value_target);
+        drag_source.write_to_address(dim_mapping, previous_value_target);
         drop_target.write_to_address(dim_mapping, previous_value_source);
     }
 }

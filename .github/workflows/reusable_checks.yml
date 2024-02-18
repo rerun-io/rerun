@@ -174,6 +174,14 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      # We need to build the web viewer for `rust_checks.py` to succeed.
+      - name: Build web-viewer (release)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          # We build in release so that we can reuse the results for actual publishing, if necessary
+          args: --locked -p re_build_web_viewer -- --release
+
       - name: Rust checks & tests
         if: ${{ !inputs.ALL_CHECKS }}
         run: ./scripts/ci/rust_checks.py --skip-check-individual-crates
@@ -214,11 +222,12 @@ jobs:
           command: check
           args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
 
-      - name: Build web-viewer (debug)
+      - name: Build web-viewer (release)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --locked -p re_build_web_viewer -- --debug
+          # We build in release so that we can reuse the results for actual publishing, if necessary
+          args: --locked -p re_build_web_viewer -- --release
 
   # ---------------------------------------------------------------------------
 

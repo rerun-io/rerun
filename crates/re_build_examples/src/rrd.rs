@@ -30,11 +30,12 @@ impl Rrd {
     pub fn run(self) -> anyhow::Result<()> {
         create_dir_all(&self.output_dir)?;
 
+        let workspace_root = re_build_tools::cargo_metadata()?.workspace_root;
         let examples = if self.examples.is_empty() {
-            self.channel.examples()?
+            self.channel.examples(workspace_root)?
         } else {
             Channel::Nightly
-                .examples()?
+                .examples(workspace_root)?
                 .into_iter()
                 .filter(|example| self.examples.contains(&example.name))
                 .collect()

@@ -234,9 +234,7 @@ impl ViewportBlueprint {
         space_view_id: &SpaceViewId,
         ctx: &ViewerContext<'_>,
     ) -> Option<SpaceViewId> {
-        let Some(space_view) = self.space_view(space_view_id) else {
-            return None;
-        };
+        let space_view = self.space_view(space_view_id)?;
 
         let new_space_view = space_view.duplicate(ctx.store_context.blueprint, ctx.blueprint_query);
         let new_space_view_id = new_space_view.id;
@@ -358,9 +356,7 @@ impl ViewportBlueprint {
             return Some(Contents::Container(*container_id));
         }
 
-        let Some(container) = self.container(container_id) else {
-            return None;
-        };
+        let container = self.container(container_id)?;
 
         for contents in &container.contents {
             if predicate(contents) {
@@ -412,9 +408,7 @@ impl ViewportBlueprint {
         contents: &Contents,
         container_id: &ContainerId,
     ) -> Option<(ContainerId, usize)> {
-        let Some(container) = self.container(container_id) else {
-            return None;
-        };
+        let container = self.container(container_id)?;
 
         for (pos, child_contents) in container.contents.iter().enumerate() {
             if child_contents == contents {
@@ -466,6 +460,22 @@ impl ViewportBlueprint {
         });
     }
 
+    /// Move some [`Contents`] to a newly created container of the given kind.
+    pub fn move_contents_to_new_container(
+        &self,
+        contents: Vec<Contents>,
+        new_container_kind: egui_tiles::ContainerKind,
+        target_container: ContainerId,
+        target_position_in_container: usize,
+    ) {
+        self.send_tree_action(TreeAction::MoveContentsToNewContainer {
+            contents_to_move: contents,
+            new_container_kind,
+            target_container,
+            target_position_in_container,
+        });
+    }
+
     /// Make sure the tab corresponding to this space view is focused.
     pub fn focus_tab(&self, space_view_id: SpaceViewId) {
         self.send_tree_action(TreeAction::FocusTab(space_view_id));
@@ -501,6 +511,85 @@ impl ViewportBlueprint {
     /// frame, so this command must be re-sent every frame as long as a drop target is identified.
     pub fn set_drop_target(&self, container_id: &ContainerId) {
         self.send_tree_action(TreeAction::SetDropTarget(*container_id));
+    }
+
+    /// Check the visibility of the provided content.
+    ///
+    /// This function may be called from UI code.
+    pub fn is_contents_visible(&self, contents: &Contents) -> bool {
+        match contents {
+            Contents::Container(container_id) => {
+                if let Some(container) = self.container(container_id) {
+                    container.visible
+                } else {
+                    re_log::warn_once!(
+                        "Visibility check failed due to unknown container id {container_id:?}"
+                    );
+
+                    false
+                }
+            }
+            Contents::SpaceView(space_view_id) => {
+                if let Some(space_view) = self.space_view(space_view_id) {
+                    space_view.visible
+                } else {
+                    re_log::warn_once!(
+                        "Visibility check failed due to unknown space view id {space_view_id:?}"
+                    );
+
+                    false
+                }
+            }
+        }
+    }
+
+    /// Sets the visibility for the provided content.
+    ///
+    /// This function may be called from UI code.
+    pub fn set_content_visibility(
+        &self,
+        ctx: &ViewerContext<'_>,
+        contents: &Contents,
+        visible: bool,
+    ) {
+        match contents {
+            Contents::Container(container_id) => {
+                if let Some(container) = self.container(container_id) {
+                    if visible != container.visible {
+                        if self.auto_layout {
+                            re_log::trace!(
+                                "Container visibility changed - will no longer auto-layout"
+                            );
+                        }
+
+                        self.set_auto_layout(false, ctx);
+                        container.set_visible(ctx, visible);
+                    }
+                } else {
+                    re_log::warn_once!(
+                        "Visibility change failed due to unknown container id {container_id:?}"
+                    );
+                }
+            }
+            Contents::SpaceView(space_view_id) => {
+                if let Some(space_view) = self.space_view(space_view_id) {
+                    if visible != space_view.visible {
+                        if self.auto_layout {
+                            re_log::trace!(
+                                "Space-view visibility changed - will no longer auto-layout"
+                            );
+                        }
+
+                        self.set_auto_layout(false, ctx);
+                        space_view.set_visible(ctx, visible);
+                    }
+                } else {
+                    re_log::warn_once!(
+                        "Visibility change failed due to unknown space view id {space_view_id:?}"
+                    );
+                }
+            }
+        }
     }
 
     #[allow(clippy::unused_self)]

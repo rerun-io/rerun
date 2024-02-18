@@ -16,7 +16,6 @@ enum LegendPosition: byte {
 
 /// One of four 2D corners, typically used to align objects.
 table Corner2D (
-    "attr.docs.unreleased",
     "attr.arrow.transparent",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",

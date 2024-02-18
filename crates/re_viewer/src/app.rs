@@ -374,7 +374,7 @@ impl App {
                 // By clearing the blueprint it will be re-populated with the defaults
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint");
-                store_hub.clear_blueprint();
+                store_hub.clear_current_blueprint();
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 // We only want to update the blueprint if the "inspect blueprint timeline" mode is
@@ -1048,12 +1048,17 @@ impl App {
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         self.state = Default::default();
-        store_hub.clear_blueprint();
 
-        // Keep the style:
+        store_hub.clear_all_blueprints();
+
+        // Reset egui, but keep the style:
         let style = egui_ctx.style();
         egui_ctx.memory_mut(|mem| *mem = Default::default());
         egui_ctx.set_style((*style).clone());
+
+        if let Err(err) = crate::reset_viewer_persistence() {
+            re_log::warn!("Failed to reset viewer: {err}");
+        }
     }
 
     pub fn recording_db(&self) -> Option<&EntityDb> {

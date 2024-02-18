@@ -1,8 +1,8 @@
 [package]
 name = "clock"
-version = "0.13.0-alpha.3"
+version = "0.14.0-alpha.1+dev"
 edition = "2021"
-rust-version = "1.72"
+rust-version = "1.74"
 license = "MIT OR Apache-2.0"
 publish = false
 

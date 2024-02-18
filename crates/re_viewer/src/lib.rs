@@ -234,3 +234,51 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
         .unwrap();
     new_rx
 }
+
+/// Reset the viewer state as stored on disk and local storage,
+/// keeping only the analytics state.
+#[allow(clippy::unnecessary_wraps)] // wasm only
+pub fn reset_viewer_persistence() -> anyhow::Result<()> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let Some(data_dir) = eframe::storage_dir(native::APP_ID) else {
+            anyhow::bail!("Failed to figure out where Rerun stores its data.")
+        };
+
+        // Note: `remove_dir_all` fails if the directory doesn't exist.
+        if data_dir.exists() {
+            // Keep analytics, because it is used to uniquely identify users over time.
+            let analytics_file_path = data_dir.join("analytics.json");
+            let analytics = std::fs::read(&analytics_file_path);
+
+            if let Err(err) = std::fs::remove_dir_all(&data_dir) {
+                anyhow::bail!("Failed to remove {data_dir:?}: {err}");
+            } else {
+                re_log::info!("Cleared {data_dir:?}.");
+            }
+
+            if let Ok(analytics) = analytics {
+                // Restore analytics.json:
+                std::fs::create_dir(&data_dir).ok();
+                std::fs::write(&analytics_file_path, analytics).ok();
+            }
+        } else {
+            re_log::info!("Rerun state was already cleared.");
+        }
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        // TODO(emilk): eframe should have an API for this.
+        if let Some(storage) = web_sys::window()
+            .and_then(|w| w.local_storage().ok())
+            .flatten()
+        {
+            storage.delete("egui_memory_ron").ok();
+            storage.delete(eframe::APP_KEY).ok();
+        }
+
+        // TODO(#2579): implement web-storage for blueprints as well, and clear it here
+    }
+
+    Ok(())
+}

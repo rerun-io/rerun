@@ -259,6 +259,74 @@ impl EntityPathFilter {
 
         false // no matching rule and we are exclude-by-default.
     }
+
+    /// Checks whether this results of this filter "fully contain" the results of another filter.
+    ///
+    /// If this returns `true` there should not exist any [`EntityPath`] for which [`Self::is_included`]
+    /// would return `true` and the other filter would return `false` for this filter.
+    ///
+    /// This check operates purely on the rule expressions and not the actual entity tree,
+    /// and will thus not reason about entities included in an actual recording:
+    /// different queries that are *not* a superset of each other may still query the same entities
+    /// in given recording.
+    ///
+    /// This is a conservative estimate, and may return `false` in situations where the
+    /// query does in fact cover the other query. However, it should never return `true`
+    /// in a case where the other query would not be fully covered.
+    pub fn is_superset_of(&self, other: &Self) -> bool {
+        // First check that we include everything included by other
+        for (other_rule, other_effect) in &other.rules {
+            match other_effect {
+                RuleEffect::Include => {
+                    if let Some((self_rule, self_effect)) = self
+                        .rules
+                        .iter()
+                        .rev()
+                        .find(|(r, _)| r.matches(&other_rule.path))
+                    {
+                        match self_effect {
+                            RuleEffect::Include => {
+                                // If the other rule includes the subtree, but the matching
+                                // rule doesn't, then we don't fully contain the other rule.
+                                if other_rule.include_subtree && !self_rule.include_subtree {
+                                    return false;
+                                }
+                            }
+                            RuleEffect::Exclude => return false,
+                        }
+                    } else {
+                        // No matching rule means this path isn't included
+                        return false;
+                    }
+                }
+                RuleEffect::Exclude => {}
+            }
+        }
+        // Next check that the other rule hasn't included something that we've excluded
+        for (self_rule, self_effect) in &self.rules {
+            match self_effect {
+                RuleEffect::Include => {}
+                RuleEffect::Exclude => {
+                    if let Some((_, other_effect)) = other
+                        .rules
+                        .iter()
+                        .rev()
+                        .find(|(r, _)| r.matches(&self_rule.path))
+                    {
+                        match other_effect {
+                            RuleEffect::Include => {
+                                return false;
+                            }
+                            RuleEffect::Exclude => {}
+                        }
+                    }
+                }
+            }
+        }
+        // If we got here, we checked every inclusion rule in `other` and they all had a more-inclusive
+        // inclusion rule and didn't hit an exclusion rule.
+        true
+    }
 }
 
 impl EntityPathRule {
@@ -325,83 +393,87 @@ impl std::cmp::PartialOrd for EntityPathRule {
     }
 }
 
-#[test]
-fn test_rule_order() {
-    use std::cmp::Ordering;
+#[cfg(test)]
+mod tests {
+    use crate::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
 
-    fn check_total_order(rules: &[EntityPathRule]) {
-        fn ordering_str(ord: Ordering) -> &'static str {
-            match ord {
-                Ordering::Greater => ">",
-                Ordering::Equal => "=",
-                Ordering::Less => "<",
+    #[test]
+    fn test_rule_order() {
+        use std::cmp::Ordering;
+
+        fn check_total_order(rules: &[EntityPathRule]) {
+            fn ordering_str(ord: Ordering) -> &'static str {
+                match ord {
+                    Ordering::Greater => ">",
+                    Ordering::Equal => "=",
+                    Ordering::Less => "<",
+                }
+            }
+
+            for (i, x) in rules.iter().enumerate() {
+                for (j, y) in rules.iter().enumerate() {
+                    let actual_ordering = x.cmp(y);
+                    let expected_ordering = i.cmp(&j);
+                    assert!(
+                        actual_ordering == expected_ordering,
+                        "Got {x:?} {} {y:?}; expected {x:?} {} {y:?}",
+                        ordering_str(actual_ordering),
+                        ordering_str(expected_ordering),
+                    );
+                }
             }
         }
 
-        for (i, x) in rules.iter().enumerate() {
-            for (j, y) in rules.iter().enumerate() {
-                let actual_ordering = x.cmp(y);
-                let expected_ordering = i.cmp(&j);
-                assert!(
-                    actual_ordering == expected_ordering,
-                    "Got {x:?} {} {y:?}; expected {x:?} {} {y:?}",
-                    ordering_str(actual_ordering),
-                    ordering_str(expected_ordering),
-                );
-            }
-        }
+        let rules = [
+            "/**",
+            "/apa",
+            "/world/**",
+            "/world/",
+            "/world/car",
+            "/world/car/driver",
+            "/x/y/z",
+        ];
+        let rules = rules.map(EntityPathRule::parse_forgiving);
+        check_total_order(&rules);
     }
 
-    let rules = [
-        "/**",
-        "/apa",
-        "/world/**",
-        "/world/",
-        "/world/car",
-        "/world/car/driver",
-        "/x/y/z",
-    ];
-    let rules = rules.map(EntityPathRule::parse_forgiving);
-    check_total_order(&rules);
-}
-
-#[test]
-fn test_entity_path_filter() {
-    let filter = EntityPathFilter::parse_forgiving(
-        r#"
+    #[test]
+    fn test_entity_path_filter() {
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
         + /world/**
         - /world/
         - /world/car/**
         + /world/car/driver
         "#,
-    );
+        );
 
-    for (path, expected_effect) in [
-        ("/unworldly", None),
-        ("/world", Some(RuleEffect::Exclude)),
-        ("/world/house", Some(RuleEffect::Include)),
-        ("/world/car", Some(RuleEffect::Exclude)),
-        ("/world/car/hood", Some(RuleEffect::Exclude)),
-        ("/world/car/driver", Some(RuleEffect::Include)),
-        ("/world/car/driver/head", Some(RuleEffect::Exclude)),
-    ] {
+        for (path, expected_effect) in [
+            ("/unworldly", None),
+            ("/world", Some(RuleEffect::Exclude)),
+            ("/world/house", Some(RuleEffect::Include)),
+            ("/world/car", Some(RuleEffect::Exclude)),
+            ("/world/car/hood", Some(RuleEffect::Exclude)),
+            ("/world/car/driver", Some(RuleEffect::Include)),
+            ("/world/car/driver/head", Some(RuleEffect::Exclude)),
+        ] {
+            assert_eq!(
+                filter.most_specific_match(&EntityPath::from(path)),
+                expected_effect,
+                "path: {path:?}",
+            );
+        }
+
         assert_eq!(
-            filter.most_specific_match(&EntityPath::from(path)),
-            expected_effect,
-            "path: {path:?}",
+            EntityPathFilter::parse_forgiving("/**").formatted(),
+            "+ /**"
         );
     }
 
-    assert_eq!(
-        EntityPathFilter::parse_forgiving("/**").formatted(),
-        "+ /**"
-    );
-}
-
-#[test]
-fn test_entity_path_filter_subtree() {
-    let filter = EntityPathFilter::parse_forgiving(
-        r#"
+    #[test]
+    fn test_entity_path_filter_subtree() {
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
         + /world/**
         - /world/car/**
         + /world/car/driver
@@ -409,26 +481,112 @@ fn test_entity_path_filter_subtree() {
         - /world/city
         - /world/houses/**
         "#,
-    );
-
-    for (path, expected) in [
-        ("/2d", false),
-        ("/2d/image", false),
-        ("/world", true),
-        ("/world/car", true),
-        ("/world/car/driver", true),
-        ("/world/car/driver/head", false),
-        ("/world/car/driver/head/ear", false),
-        ("/world/city", true),
-        ("/world/city/block", true),
-        ("/world/houses", false),
-        ("/world/houses/1", false),
-        ("/world/houses/1/roof", false),
-    ] {
-        assert_eq!(
-            filter.is_anything_in_subtree_included(&EntityPath::from(path)),
-            expected,
-            "path: {path:?}",
         );
+
+        for (path, expected) in [
+            ("/2d", false),
+            ("/2d/image", false),
+            ("/world", true),
+            ("/world/car", true),
+            ("/world/car/driver", true),
+            ("/world/car/driver/head", false),
+            ("/world/car/driver/head/ear", false),
+            ("/world/city", true),
+            ("/world/city/block", true),
+            ("/world/houses", false),
+            ("/world/houses/1", false),
+            ("/world/houses/1/roof", false),
+        ] {
+            assert_eq!(
+                filter.is_anything_in_subtree_included(&EntityPath::from(path)),
+                expected,
+                "path: {path:?}",
+            );
+        }
+    }
+
+    #[test]
+    fn test_is_superset_of() {
+        struct TestCase {
+            filter: &'static str,
+            contains: Vec<&'static str>,
+            not_contains: Vec<&'static str>,
+        }
+
+        let cases = [
+            TestCase {
+                filter: "+ /**",
+                contains: [
+                    "",
+                    "+ /**",
+                    "+ /a/**",
+                    r#"+ /a/**
+                   + /b/c
+                   + /b/d
+                   "#,
+                ]
+                .into(),
+                not_contains: [].into(),
+            },
+            TestCase {
+                filter: "+ /a/**",
+                contains: ["+ /a/**", "+ /a", "+ /a/b/**"].into(),
+                not_contains: [
+                    "+ /**",
+                    "+ /b/**",
+                    "+ /b",
+                    r#"+ /a/b
+                   + /b
+                   "#,
+                ]
+                .into(),
+            },
+            TestCase {
+                filter: r#"
+                + /a
+                + /b/c
+                "#,
+                contains: ["+ /a", "+ /b/c"].into(),
+                not_contains: ["+ /a/**", "+ /b/**", "+ /b/c/d"].into(),
+            },
+            TestCase {
+                filter: r#"
+                + /**
+                - /b/c
+                "#,
+                contains: ["+ /a", "+ /a/**", "+ /b", "+ /b/c/d"].into(),
+                not_contains: ["+ /b/**", "+ /b/c"].into(),
+            },
+            TestCase {
+                filter: r#"
+                + /**
+                - /b/c/**
+                "#,
+                contains: ["+ /a", "+ /a/**", "+ /b"].into(),
+                not_contains: ["+ /b/**", "+ /b/c", "+ /b/c/d"].into(),
+            },
+        ];
+
+        for case in &cases {
+            let filter = EntityPathFilter::parse_forgiving(case.filter);
+            for contains in &case.contains {
+                let contains_filter = EntityPathFilter::parse_forgiving(contains);
+                assert!(
+                    filter.is_superset_of(&contains_filter),
+                    "Expected {:?} to fully contain {:?}, but it didn't",
+                    filter.formatted(),
+                    contains_filter.formatted(),
+                );
+            }
+            for not_contains in &case.not_contains {
+                let not_contains_filter = EntityPathFilter::parse_forgiving(not_contains);
+                assert!(
+                    !filter.is_superset_of(&not_contains_filter),
+                    "Expected {:?} to NOT fully contain {:?}, but it did",
+                    filter.formatted(),
+                    not_contains_filter.formatted(),
+                );
+            }
+        }
     }
 }

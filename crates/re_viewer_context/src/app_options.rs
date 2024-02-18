@@ -22,6 +22,9 @@ pub struct AppOptions {
     /// Toggle query clamping for the plot visualizers.
     pub experimental_plot_query_clamping: bool,
 
+    /// Toggle explicit visualizer selection for all views.
+    pub experimental_visualizer_selection: bool,
+
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -52,6 +55,8 @@ impl Default for AppOptions {
             experimental_entity_filter_editor: false,
 
             experimental_plot_query_clamping: false,
+
+            experimental_visualizer_selection: false,
 
             show_picking_debug_overlay: false,
 

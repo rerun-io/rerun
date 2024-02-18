@@ -169,7 +169,7 @@ namespace rerun {
             return spawn(options, std::chrono::duration_cast<seconds_float>(flush_timeout).count());
         }
 
-        /// Stream all log-data to a given file.
+        /// Stream all log-data to a given `.rrd` file.
         ///
         /// This function returns immediately.
         Error save(std::string_view path) const;

@@ -1,5 +1,4 @@
 use egui::{lerp, NumExt as _, Rect};
-use glam::Affine3A;
 use macaw::{vec3, IsoTransform, Mat4, Quat, Vec3};
 
 use re_space_view::controls::{
@@ -96,7 +95,7 @@ impl Eye {
             let ray_dir = self
                 .world_from_rub_view
                 .transform_vector3(glam::vec3(px, py, -1.0));
-            macaw::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize())
+            macaw::Ray3::from_origin_dir(self.pos_in_world(), ray_dir.normalize_or_zero())
         } else {
             // The ray originates on the camera plane, not from the camera position
             let ray_dir = self.world_from_rub_view.rotation().mul_vec3(glam::Vec3::Z);
@@ -159,23 +158,37 @@ pub struct OrbitEye {
     pub world_from_view_rot: Quat,
     pub fov_y: f32,
 
-    /// Zero = no up (3dof rotation)
-    pub up: Vec3,
+    /// The up-axis of the eye itself, in world-space.
+    ///
+    /// Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
+    /// the scene has no up axis defined).
+    /// Rolling the camera (e.g. middle-click) will permanently modify the eye's up axis, until the
+    /// next reset.
+    ///
+    /// A value of `Vec3::ZERO` is valid and will result in 3 degrees of freedom, although we never
+    /// use it at the moment.
+    pub eye_up: Vec3,
 
     /// For controlling the eye with WSAD in a smooth way.
     pub velocity: Vec3,
 }
 
 impl OrbitEye {
-    const MAX_PITCH: f32 = 0.999 * 0.25 * std::f32::consts::TAU;
+    /// Avoids zentith/nadir singularity.
+    const MAX_PITCH: f32 = 0.99 * 0.25 * std::f32::consts::TAU;
 
-    pub fn new(orbit_center: Vec3, orbit_radius: f32, world_from_view_rot: Quat, up: Vec3) -> Self {
+    pub fn new(
+        orbit_center: Vec3,
+        orbit_radius: f32,
+        world_from_view_rot: Quat,
+        eye_up: Vec3,
+    ) -> Self {
         OrbitEye {
             orbit_center,
             orbit_radius,
             world_from_view_rot,
             fov_y: Eye::DEFAULT_FOV_Y,
-            up,
+            eye_up,
             velocity: Vec3::ZERO,
         }
     }
@@ -206,6 +219,7 @@ impl OrbitEye {
         self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
+        self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
     }
 
     pub fn lerp(&self, other: &Self, t: f32) -> Self {
@@ -219,54 +233,28 @@ impl OrbitEye {
                 orbit_radius: lerp(self.orbit_radius..=other.orbit_radius, t),
                 world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
                 fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
-                up: self.up.lerp(other.up, t).normalize_or_zero(),
+                // A slerp would technically be nicer for eye_up, but it only really
+                // matters if the user starts interacting half-way through the lerp,
+                // and even then it's not a big deal.
+                eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
                 velocity: self.velocity.lerp(other.velocity, t),
             }
         }
     }
 
-    /// Direction we are looking at
+    /// World-direction we are looking at
     fn fwd(&self) -> Vec3 {
-        self.world_from_view_rot * -Vec3::Z
+        self.world_from_view_rot * -Vec3::Z // view-coordinates are RUB
     }
 
     /// Only valid if we have an up vector.
     ///
     /// `[-tau/4, +tau/4]`
     fn pitch(&self) -> Option<f32> {
-        if self.up == Vec3::ZERO {
+        if self.eye_up == Vec3::ZERO {
             None
         } else {
-            Some(self.fwd().dot(self.up).clamp(-1.0, 1.0).asin())
-        }
-    }
-
-    fn set_fwd(&mut self, fwd: Vec3) {
-        if let Some(pitch) = self.pitch() {
-            let pitch = pitch.clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
-
-            let fwd = project_onto(fwd, self.up).normalize(); // Remove pitch
-            let right = fwd.cross(self.up).normalize();
-            let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
-            let fwd = fwd.normalize(); // Prevent drift
-
-            let world_from_view_rot =
-                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.up).inverse());
-
-            if world_from_view_rot.is_finite() {
-                self.world_from_view_rot = world_from_view_rot;
-            }
-        } else {
-            self.world_from_view_rot = Quat::from_rotation_arc(-Vec3::Z, fwd);
-        }
-    }
-
-    #[allow(unused)]
-    pub fn set_up(&mut self, up: Vec3) {
-        self.up = up.normalize_or_zero();
-
-        if self.up != Vec3::ZERO {
-            self.set_fwd(self.fwd()); // this will clamp the rotation
+            Some(self.fwd().dot(self.eye_up).clamp(-1.0, 1.0).asin())
         }
     }
 
@@ -278,12 +266,12 @@ impl OrbitEye {
         let mut did_interact = response.drag_delta().length() > 0.0;
 
         if response.drag_delta().length() > drag_threshold {
-            if response.dragged_by(ROLL_MOUSE)
+            let roll = response.dragged_by(ROLL_MOUSE)
                 || (response.dragged_by(ROLL_MOUSE_ALT)
                     && response
                         .ctx
-                        .input(|i| i.modifiers.contains(ROLL_MOUSE_MODIFIER)))
-            {
+                        .input(|i| i.modifiers.contains(ROLL_MOUSE_MODIFIER)));
+            if roll {
                 if let Some(pointer_pos) = response.ctx.pointer_latest_pos() {
                     self.roll(&response.rect, pointer_pos, response.drag_delta());
                 }
@@ -388,31 +376,26 @@ impl OrbitEye {
         let sensitivity = 0.004; // radians-per-point. TODO(emilk): take fov_y and canvas size into account
         let delta = sensitivity * delta;
 
-        if self.up == Vec3::ZERO {
-            // 3-dof rotation
+        if let Some(old_pitch) = self.pitch() {
+            // 2-dof rotation
+
+            // Apply change in heading:
+            self.world_from_view_rot =
+                Quat::from_axis_angle(self.eye_up, -delta.x) * self.world_from_view_rot;
+
+            // We need to clamp pitch to avoid nadir/zenith singularity:
+            let new_pitch = (old_pitch - delta.y).clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
+            let pitch_delta = new_pitch - old_pitch;
+
+            // Apply change in pitch:
+            self.world_from_view_rot *= Quat::from_rotation_x(pitch_delta);
+
+            // Avoid numeric drift:
+            self.world_from_view_rot = self.world_from_view_rot.normalize();
+        } else {
+            // no up-axis -> no pitch -> 3-dof rotation
             let rot_delta = Quat::from_rotation_y(-delta.x) * Quat::from_rotation_x(-delta.y);
             self.world_from_view_rot *= rot_delta;
-        } else {
-            // 2-dof rotation
-            let fwd = Quat::from_axis_angle(self.up, -delta.x) * self.fwd();
-            let fwd = fwd.normalize(); // Prevent drift
-
-            let pitch = self.pitch().unwrap() - delta.y;
-            let pitch = pitch.clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
-
-            let fwd = project_onto(fwd, self.up).normalize(); // Remove pitch
-            let right = fwd.cross(self.up).normalize();
-            let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
-            let fwd = fwd.normalize(); // Prevent drift
-
-            let new_world_from_view_rot =
-                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.up).inverse());
-
-            if new_world_from_view_rot.is_finite() {
-                self.world_from_view_rot = new_world_from_view_rot;
-            } else {
-                re_log::debug_once!("Failed to rotate camera: got non-finites");
-            }
         }
     }
 
@@ -422,9 +405,17 @@ impl OrbitEye {
         let rel = pointer_pos - rect.center();
         let delta_angle = delta.rot90().dot(rel) / rel.length_sq();
         let rot_delta = Quat::from_rotation_z(delta_angle);
+
+        let up_in_view = self.world_from_view_rot.inverse() * self.eye_up;
+
         self.world_from_view_rot *= rot_delta;
 
-        self.up = Vec3::ZERO; // forget about this until user resets the eye
+        // Permanently change our up-axis, at least until the user resets the view:
+        self.eye_up = self.world_from_view_rot * up_in_view;
+
+        // Prevent numeric drift:
+        self.world_from_view_rot = self.world_from_view_rot.normalize();
+        self.eye_up = self.eye_up.normalize_or_zero();
     }
 
     /// Translate based on a certain number of pixel delta.
@@ -438,9 +429,4 @@ impl OrbitEye {
 
         self.orbit_center += translate;
     }
-}
-
-/// e.g. up is `[0,0,1]`, we return things like `[x,y,0]`
-fn project_onto(v: Vec3, up: Vec3) -> Vec3 {
-    v - up * v.dot(up)
 }

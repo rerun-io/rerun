@@ -115,6 +115,14 @@ pub enum TreeAction {
         target_position_in_container: usize,
     },
 
+    /// Move one or more [`Contents`] to a newly created container
+    MoveContentsToNewContainer {
+        contents_to_move: Vec<Contents>,
+        new_container_kind: egui_tiles::ContainerKind,
+        target_container: ContainerId,
+        target_position_in_container: usize,
+    },
+
     /// Set the container that is currently identified as the drop target of an ongoing drag.
     ///
     /// This is used for highlighting the drop target in the UI. Note that the drop target container is reset at every
@@ -350,18 +358,14 @@ impl<'a, 'b> Viewport<'a, 'b> {
             .values()
             .chain(already_added.iter())
         {
-            if existing_view.space_origin == space_view_candidate.space_origin {
+            if existing_view.class_identifier() == space_view_candidate.class_identifier() {
                 if existing_view.entities_determined_by_user {
-                    // Since the user edited a space view with the same space path, we can't be sure our new one isn't redundant.
-                    // So let's skip that.
+                    // If the entities filter of any space view of the same type was edited,
+                    // we don't want to flicker in new space views into existence,
+                    // since there might be more edits on the way.
                     return false;
                 }
-                if existing_view
-                    .queries
-                    .iter()
-                    .zip(space_view_candidate.queries.iter())
-                    .all(|(q1, q2)| q1.is_equivalent(q2))
-                {
+                if existing_view.entity_path_filter_is_superset_of(space_view_candidate) {
                     // This space view wouldn't add anything we haven't already
                     return false;
                 }
@@ -501,6 +505,36 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         target_position_in_container,
                         true,
                     );
+                    self.tree_edited = true;
+                }
+                TreeAction::MoveContentsToNewContainer {
+                    contents_to_move,
+                    new_container_kind,
+                    target_container,
+                    target_position_in_container,
+                } => {
+                    let new_container_tile_id = self
+                        .tree
+                        .tiles
+                        .insert_container(egui_tiles::Container::new(new_container_kind, vec![]));
+
+                    let target_container_tile_id = blueprint_id_to_tile_id(&target_container);
+                    self.tree.move_tile_to_container(
+                        new_container_tile_id,
+                        target_container_tile_id,
+                        target_position_in_container,
+                        true, // reflow grid if needed
+                    );
+
+                    for (pos, content) in contents_to_move.into_iter().enumerate() {
+                        self.tree.move_tile_to_container(
+                            content.as_tile_id(),
+                            new_container_tile_id,
+                            pos,
+                            true, // reflow grid if needed
+                        );
+                    }
+
                     self.tree_edited = true;
                 }
                 TreeAction::SetDropTarget(container_id) => {

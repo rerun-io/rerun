@@ -2,7 +2,7 @@ use std::sync::mpsc;
 
 use crate::{
     texture_info::Texture2DBufferInfo,
-    wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool},
+    wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture},
 };
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
@@ -10,8 +10,14 @@ pub enum CpuWriteGpuReadError {
     #[error("Attempting to allocate an empty buffer.")]
     ZeroSizeBufferAllocation,
 
-    #[error("Buffer is full, can't append more data! Buffer has capacity for {buffer_element_capacity} elements.")]
-    BufferFull { buffer_element_capacity: usize },
+    #[error("Buffer is full, can't append more data!
+ Buffer contains {buffer_element_size} elements and has a capacity for {buffer_element_capacity} elements.
+ Tried to add {num_elements_attempted_to_add} elements.")]
+    BufferFull {
+        buffer_element_capacity: usize,
+        buffer_element_size: usize,
+        num_elements_attempted_to_add: usize,
+    },
 
     #[error("Target buffer has a size of {target_buffer_size}, can't write {copy_size} bytes with an offset of {destination_offset}!")]
     TargetBufferTooSmall {
@@ -20,9 +26,9 @@ pub enum CpuWriteGpuReadError {
         destination_offset: u64,
     },
 
-    #[error("Target texture doesn't fit the size of the written data to this buffer! Texture size: {target_texture_size} bytes, written data size: {written_data_size} bytes")]
+    #[error("Target texture doesn't fit the size of the written data to this buffer! Texture copy size: {copy_size:?} bytes, written data size: {written_data_size} bytes")]
     TargetTextureBufferSizeMismatch {
-        target_texture_size: u64,
+        copy_size: wgpu::Extent3d,
         written_data_size: usize,
     },
 }
@@ -95,6 +101,8 @@ where
             (
                 Err(CpuWriteGpuReadError::BufferFull {
                     buffer_element_capacity: self.capacity(),
+                    buffer_element_size: self.num_written(),
+                    num_elements_attempted_to_add: elements.len(),
                 }),
                 &elements[..self.remaining_capacity()],
             )
@@ -133,6 +141,8 @@ where
                 if self.unwritten_element_range.start >= self.unwritten_element_range.end {
                     return Err(CpuWriteGpuReadError::BufferFull {
                         buffer_element_capacity: self.capacity(),
+                        buffer_element_size: self.num_written(),
+                        num_elements_attempted_to_add: 1,
                     });
                 }
 
@@ -154,6 +164,8 @@ where
             (
                 Err(CpuWriteGpuReadError::BufferFull {
                     buffer_element_capacity: self.capacity(),
+                    buffer_element_size: self.num_written(),
+                    num_elements_attempted_to_add: num_elements,
                 }),
                 self.remaining_capacity(),
             )
@@ -183,6 +195,8 @@ where
         if self.remaining_capacity() == 0 {
             return Err(CpuWriteGpuReadError::BufferFull {
                 buffer_element_capacity: self.capacity(),
+                buffer_element_size: self.num_written(),
+                num_elements_attempted_to_add: 1,
             });
         }
 
@@ -210,6 +224,29 @@ where
         self.unwritten_element_range.end
     }
 
+    /// Copies all so far written data to the first layer of a 2d texture.
+    ///
+    /// Assumes that the buffer consists of as-tightly-packed-as-possible rows of data.
+    /// (taking into account required padding as specified by [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`])
+    ///
+    /// Fails if the buffer size is not sufficient to fill the entire texture.
+    pub fn copy_to_texture2d_entire_first_layer(
+        self,
+        encoder: &mut wgpu::CommandEncoder,
+        destination: &GpuTexture,
+    ) -> Result<(), CpuWriteGpuReadError> {
+        self.copy_to_texture2d(
+            encoder,
+            wgpu::ImageCopyTexture {
+                texture: &destination.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            destination.texture.size(),
+        )
+    }
+
     /// Copies all so far written data to a rectangle on a single 2d texture layer.
     ///
     /// Assumes that the buffer consists of as-tightly-packed-as-possible rows of data.
@@ -221,9 +258,9 @@ where
         self,
         encoder: &mut wgpu::CommandEncoder,
         destination: wgpu::ImageCopyTexture<'_>,
-        copy_extent: glam::UVec2,
+        copy_size: wgpu::Extent3d,
     ) -> Result<(), CpuWriteGpuReadError> {
-        let buffer_info = Texture2DBufferInfo::new(destination.texture.format(), copy_extent);
+        let buffer_info = Texture2DBufferInfo::new(destination.texture.format(), copy_size);
 
         // Validate that we stay within the written part of the slice (wgpu can't fully know our intention here, so we have to check).
         // We go one step further and require the size to be exactly equal - it's too unlikely that you wrote more than is needed!
@@ -231,7 +268,7 @@ where
         if buffer_info.buffer_size_padded as usize != self.num_written() * std::mem::size_of::<T>()
         {
             return Err(CpuWriteGpuReadError::TargetTextureBufferSizeMismatch {
-                target_texture_size: buffer_info.buffer_size_padded,
+                copy_size,
                 written_data_size: self.num_written() * std::mem::size_of::<T>(),
             });
         }
@@ -246,11 +283,7 @@ where
                 },
             },
             destination,
-            wgpu::Extent3d {
-                width: copy_extent.x,
-                height: copy_extent.y,
-                depth_or_array_layers: 1,
-            },
+            copy_size,
         );
 
         Ok(())

@@ -586,7 +586,7 @@ impl LineDrawData {
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                glam::uvec2(strip_texture_extent.width, strip_texture_extent.height),
+                strip_texture_extent,
             )?;
         }
 

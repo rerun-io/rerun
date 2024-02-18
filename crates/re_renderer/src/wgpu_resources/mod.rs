@@ -13,17 +13,13 @@ pub use bind_group_layout_pool::{
 };
 
 mod bind_group_pool;
-pub use bind_group_pool::{
-    BindGroupDesc, BindGroupEntry, GpuBindGroup, GpuBindGroupHandle, GpuBindGroupPool,
-};
+pub use bind_group_pool::{BindGroupDesc, BindGroupEntry, GpuBindGroup, GpuBindGroupPool};
 
 mod buffer_pool;
-pub use buffer_pool::{BufferDesc, GpuBuffer, GpuBufferHandle, GpuBufferPool};
+pub use buffer_pool::{BufferDesc, GpuBuffer, GpuBufferPool};
 
 mod pipeline_layout_pool;
-pub use pipeline_layout_pool::{
-    GpuPipelineLayoutHandle, GpuPipelineLayoutPool, PipelineLayoutDesc,
-};
+pub use pipeline_layout_pool::{GpuPipelineLayoutPool, PipelineLayoutDesc};
 
 mod render_pipeline_pool;
 pub use render_pipeline_pool::{
@@ -38,16 +34,13 @@ mod shader_module_pool;
 pub use shader_module_pool::{GpuShaderModuleHandle, GpuShaderModulePool, ShaderModuleDesc};
 
 mod texture_pool;
-pub use texture_pool::{
-    GpuTexture, GpuTextureHandle, GpuTextureInternal, GpuTexturePool, TextureDesc,
-};
+pub use texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool, TextureDesc};
 
 mod resource;
 pub use resource::PoolError;
 
 mod dynamic_resource_pool;
 mod static_resource_pool;
-pub use static_resource_pool::StaticResourcePoolAccessor;
 
 /// Collection of all wgpu resource pools.
 ///

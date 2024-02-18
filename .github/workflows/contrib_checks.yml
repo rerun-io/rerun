@@ -197,11 +197,12 @@ jobs:
           command: check
           args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
 
-      - name: Build web-viewer (debug)
+      - name: Build web-viewer (release)
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --locked -p re_build_web_viewer -- --debug
+          # We build in release so that we can reuse the results for actual publishing, if necessary
+          args: --locked -p re_build_web_viewer -- --release
 
   toml-lints:
     name: Lint TOML files

@@ -329,7 +329,7 @@ extern void rr_recording_stream_spawn(
     rr_error* error
 );
 
-/// Stream all log-data to a given file.
+/// Stream all log-data to a given `.rrd` file.
 ///
 /// This function returns immediately.
 extern void rr_recording_stream_save(rr_recording_stream stream, rr_string path, rr_error* error);

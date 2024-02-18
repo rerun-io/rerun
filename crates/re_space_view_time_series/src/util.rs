@@ -150,7 +150,14 @@ pub fn apply_aggregation(
     // So it can be displayed in the UI by the SpaceViewClass.
     let num_points_before = points.len() as f64;
 
-    let points = if aggregation_duration > 2.0 {
+    // If the user logged multiples scalars per time stamp, we should aggregate them,
+    // no matter what the aggregation duration (=zoom level) is.
+    let multiple_values_per_time_stamp = || points.windows(2).any(|w| w[0].time == w[1].time);
+
+    let should_aggregate = aggregator != TimeSeriesAggregator::Off
+        && (2.0 <= aggregation_duration || multiple_values_per_time_stamp());
+
+    let points = if should_aggregate {
         re_tracing::profile_scope!("aggregate", aggregator.to_string());
 
         #[allow(clippy::match_same_arms)] // readability

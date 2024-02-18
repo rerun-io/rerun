@@ -40,8 +40,6 @@ var<uniform> batch: BatchUniformBuffer;
 const FLAG_ENABLE_SHADING: u32 = 1u;
 const FLAG_DRAW_AS_CIRCLES: u32 = 2u;
 
-const TEXTURE_SIZE: u32 = 2048u;
-
 struct VertexOut {
     @builtin(position)
     position: vec4f,
@@ -77,16 +75,24 @@ struct PointData {
 
 // Read and unpack data at a given location
 fn read_data(idx: u32) -> PointData {
-    let coord = vec2u(idx % TEXTURE_SIZE, idx / TEXTURE_SIZE);
-    let position_data = textureLoad(position_data_texture, coord, 0);
-    let color = textureLoad(color_texture, coord, 0);
+    let position_data_texture_size = textureDimensions(position_data_texture);
+    let position_data = textureLoad(position_data_texture,
+         vec2u(idx % position_data_texture_size.x, idx / position_data_texture_size.x), 0);
+
+    let color_texture_size = textureDimensions(color_texture);
+    let color = textureLoad(color_texture,
+         vec2u(idx % color_texture_size.x, idx / color_texture_size.x), 0);
+
+    let picking_instance_id_texture_size = textureDimensions(picking_instance_id_texture);
+    let picking_instance_id = textureLoad(picking_instance_id_texture,
+         vec2u(idx % picking_instance_id_texture_size.x, idx / picking_instance_id_texture_size.x), 0).xy;
 
     var data: PointData;
     let pos_4d = batch.world_from_obj * vec4f(position_data.xyz, 1.0);
     data.pos = pos_4d.xyz / pos_4d.w;
     data.unresolved_radius = position_data.w;
     data.color = color;
-    data.picking_instance_id = textureLoad(picking_instance_id_texture, coord, 0).rg;
+    data.picking_instance_id = picking_instance_id;
     return data;
 }
 

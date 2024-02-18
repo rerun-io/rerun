@@ -18,6 +18,7 @@ crates/re_types_builder/source_hash.txt
 _deps
 **/.cache/
 **/rerun_cpp/docs/html
+**/rerun_cpp/docs/xml
 
 # Rust compile target directory:
 **/target
@@ -56,3 +57,5 @@ wheels
 
 .nox/
 *.rrd
+
+/meilisearch

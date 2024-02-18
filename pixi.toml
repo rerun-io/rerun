@@ -21,6 +21,9 @@ readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
 
+[environments]
+cpp = ["cpp"]
+
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
 
@@ -58,6 +61,16 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
+# Build the documentation search index.
+# See `pixi run search-index --help` for more information.
+search-index = "cargo run -p re_build_search_index --release --"
+
+# Start a local meilisearch instance at `localhost:7700` with master key `test`.
+# This should only be used for testing the search index locally.
+# Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
+meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
+
+[feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
 cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug"
@@ -95,8 +108,9 @@ cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp
 cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
 cpp-docs = { cmd = "doxygen docs/Doxyfile && echo '***************\nSuccess!\nOpen ./rerun_cpp/docs/html/index.html in your browser.'", cwd = "rerun_cpp" }
 
-[target.win-64.tasks]
+[feature.cpp.target.win-64.tasks]
 cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
+
 
 [dependencies]
 attrs = ">=23.1.0"
@@ -107,7 +121,8 @@ flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 just = ">=1.15.0"
-maturin = ">=0.14,<0.15"
+maturin = "1.4.0"
+meilisearch = "1.5.1.*"
 mypy = "1.4.1"
 numpy = ">=1.23,<2"
 pip = ">=23"
@@ -131,22 +146,24 @@ tomlkit = "0.12.3.*"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
+
+[feature.cpp.target.linux-64.dependencies]
 clang = "16.0.6"
+ninja = "1.11.1"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
-ninja = "1.11.1"
 
-[target.osx-64.dependencies]
+[feature.cpp.target.osx-64.dependencies]
 clang = "16.0.6"
+ninja = "1.11.1"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
-ninja = "1.11.1"
 
-[target.osx-arm64.dependencies]
+[feature.cpp.target.osx-arm64.dependencies]
 clang = "16.0.6"
+ninja = "1.11.1"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
-ninja = "1.11.1"
 
-[target.win-64.dependencies]
+[feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822"

@@ -247,10 +247,11 @@ fn picking_textured_rects(context: &PickingContext, images: &[ViewerImage]) -> V
 
     for image in images {
         let rect = &image.textured_rect;
-        let rect_plane = macaw::Plane3::from_normal_point(
-            rect.extent_u.cross(rect.extent_v).normalize(),
-            rect.top_left_corner_position,
-        );
+        let Some(normal) = rect.extent_u.cross(rect.extent_v).try_normalize() else {
+            continue; // extent_u and extent_v are parallel. Shouldn't happen.
+        };
+
+        let rect_plane = macaw::Plane3::from_normal_point(normal, rect.top_left_corner_position);
 
         // TODO(andreas): Interaction radius is currently ignored for rects.
         let (intersect, t) =
