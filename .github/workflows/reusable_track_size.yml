@@ -101,13 +101,14 @@ jobs:
 
           python3 scripts/ci/count_dependencies.py -p re_sdk    --no-default-features > /tmp/deps1.json
           python3 scripts/ci/count_dependencies.py -p re_viewer --all-features        > /tmp/deps2.json
+          python3 scripts/ci/count_dependencies.py -p rerun     --all-features        > /tmp/deps3.json
 
           # Merge the results, putting dependencies first (on top):
-          jq -s '.[0] + .[1] + .[2]' /tmp/deps1.json /tmp/deps2.json /tmp/sizes.json > /tmp/data.json
+          jq -s '.[0] + .[1] + .[2]' /tmp/deps1.json /tmp/deps2.json /tmp/deps3.json /tmp/sizes.json > /tmp/data.json
 
           comparison=$(
             python3 scripts/ci/compare.py \
-              --threshold=5% \
+              --threshold=2% \
               --before-header=${{ (inputs.PR_NUMBER && github.event.pull_request.base.ref) || 'Before' }} \
               --after-header=${{ github.ref_name }} \
               "/tmp/prev.json" "/tmp/data.json"
