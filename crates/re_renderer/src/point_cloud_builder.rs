@@ -142,10 +142,6 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
         colors: &[Color32],
         picking_ids: &[PickingLayerInstanceId],
     ) -> Self {
-        // TODO(jleibs): Figure out if we can plumb-through proper support for `Iterator::size_hints()`
-        // or potentially make `FixedSizedIterator` work correctly. This should be possible size the
-        // underlying arrow structures are of known-size, but carries some complexity with the amount of
-        // chaining, joining, filtering, etc. that happens along the way.
         re_tracing::profile_function!();
 
         debug_assert_eq!(
@@ -157,14 +153,36 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
             self.0.picking_instance_ids_buffer.len()
         );
 
-        if positions.is_empty() {
+        // Do a reserve ahead of time, to check whether we're hitting the data texture limit.
+        // The limit is the same for all data textures, so we only need to check one.
+        let Some(num_available_points) = self
+            .0
+            .position_radius_buffer
+            .reserve(positions.len())
+            .ok_or_log_error()
+        else {
+            return self;
+        };
+
+        let num_points = if positions.len() > num_available_points {
+            re_log::error_once!(
+                "Reached maximum number of points for point cloud of {}. Ignoring all excess points.",
+                self.0.position_radius_buffer.len() + num_available_points
+            );
+            num_available_points
+        } else {
+            positions.len()
+        };
+
+        if num_points == 0 {
             return self;
         }
 
         // Shorten slices if needed:
-        let radii = &radii[0..positions.len().min(radii.len())];
-        let colors = &colors[0..positions.len().min(colors.len())];
-        let picking_ids = &picking_ids[0..positions.len().min(picking_ids.len())];
+        let positions = &positions[0..num_points.min(positions.len())];
+        let radii = &radii[0..num_points.min(radii.len())];
+        let colors = &colors[0..num_points.min(colors.len())];
+        let picking_ids = &picking_ids[0..num_points.min(picking_ids.len())];
 
         self.batch_mut().point_count += positions.len() as u32;
 
@@ -192,8 +210,6 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
                 .color_buffer
                 .extend_from_slice(colors)
                 .ok_or_log_error();
-
-            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .color_buffer
                 .add_n(Color32::WHITE, positions.len().saturating_sub(colors.len()))
@@ -206,8 +222,6 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
                 .picking_instance_ids_buffer
                 .extend_from_slice(picking_ids)
                 .ok_or_log_error();
-
-            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .picking_instance_ids_buffer
                 .add_n(

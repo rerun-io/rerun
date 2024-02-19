@@ -35,7 +35,6 @@ pub enum DataTextureSourceWriteError {
 /// This is implemented by dynamically allocating cpu-write-gpu-read buffers from the
 /// central [`super::CpuWriteGpuReadBelt`] and copying all of them to the texture in the end.
 pub struct DataTextureSource<'a, T: Pod + Send + Sync> {
-    // TODO(andreas): Rename to `DataTextureBuilder`?
     ctx: &'a RenderContext, // TODO(andreas): Don't dependency inject, layers on top of this can do that.
 
     /// Buffers that need to be transferred to the data texture in the end.
@@ -171,7 +170,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         let new_buffer_size = (num_elements - remaining_capacity)
             .max(last_buffer_size * 2)
             .next_multiple_of(max_data_texture_width(max_texture_dimension_2d) as usize)
-            .min(max_num_elements_per_data_texture(max_texture_dimension_2d) - self.len());
+            .min(max_num_elements_per_data_texture(max_texture_dimension_2d) - self.capacity());
 
         if new_buffer_size > 0 {
             self.buffers
@@ -292,7 +291,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         let texel_size_in_bytes = std::mem::size_of::<T>() as u32;
         let num_texels = self.len();
 
-        debug_assert!(num_texels < max_num_elements_per_data_texture(max_texture_dimension_2d));
+        debug_assert!(num_texels <= max_num_elements_per_data_texture(max_texture_dimension_2d));
 
         // Our data textures are usually accessed in a linear fashion, so ideally we'd be using a 1D texture.
         // However, 1D textures are very limited in size on many platforms, we have to use 2D textures instead.
