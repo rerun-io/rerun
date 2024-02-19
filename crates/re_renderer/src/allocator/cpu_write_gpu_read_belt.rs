@@ -61,14 +61,6 @@ pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + Send + Sync> {
     _type: std::marker::PhantomData<T>,
 }
 
-#[allow(unsafe_code)]
-// SAFETY: TODO(gfx-rs/wgpu#4818): Upstream wgpu allows `wgpu::BufferViewMut` to be Send.
-unsafe impl<T> Send for CpuWriteGpuReadBuffer<T> where T: bytemuck::Pod + Send + Sync {}
-
-#[allow(unsafe_code)]
-// SAFETY: TODO(gfx-rs/wgpu#4818): Upstream wgpu allows `wgpu::BufferViewMut` to be Sync.
-unsafe impl<T> Sync for CpuWriteGpuReadBuffer<T> where T: bytemuck::Pod + Send + Sync {}
-
 impl<T> CpuWriteGpuReadBuffer<T>
 where
     T: bytemuck::Pod + Send + Sync,
