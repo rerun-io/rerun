@@ -12,7 +12,7 @@ use re_types::{
 };
 use re_types_core::components::InstanceKey;
 use re_ui::list_item::ListItem;
-use re_ui::ReUi;
+use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId,
     DataQueryId, HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId,
@@ -409,29 +409,50 @@ fn what_is_selected_ui(
             }
         }
         Item::InstancePath(space_view_id, instance_path) => {
-            let typ = if instance_path.instance_key.is_splat() {
-                "Entity"
-            } else {
+            let is_instance = !instance_path.instance_key.is_splat();
+
+            let typ = if is_instance {
                 "Entity instance"
+            } else {
+                "Entity"
             };
 
             let (query, store) =
                 guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
 
+            let name = instance_path.syntax_highlighted(ui.style());
+            let parent = if is_instance {
+                Some(instance_path.entity_path.clone())
+            } else {
+                instance_path.entity_path.parent()
+            };
+
             if let Some(space_view_id) = space_view_id {
                 if let Some(space_view) = viewport.space_view(space_view_id) {
-                    item_ui::instance_path_parts_buttons(
-                        ctx,
-                        &query,
-                        store,
+                    item_title_ui(
+                        ctx.re_ui,
                         ui,
-                        Some(*space_view_id),
-                        instance_path,
-                    )
-                    .on_hover_text(format!(
-                        "{typ} '{instance_path}' as shown in Space View {:?}",
-                        space_view.display_name
-                    ));
+                        name,
+                        None,
+                        &format!(
+                            "{typ} '{instance_path}' as shown in Space View {:?}",
+                            space_view.display_name
+                        ),
+                    );
+
+                    if let Some(parent) = parent {
+                        ui.horizontal(|ui| {
+                            ui.label("path");
+                            item_ui::entity_path_parts_buttons(
+                                ctx,
+                                &query,
+                                store,
+                                ui,
+                                Some(*space_view_id),
+                                &parent,
+                            );
+                        });
+                    }
 
                     ui.horizontal(|ui| {
                         ui.label("in");
@@ -439,8 +460,20 @@ fn what_is_selected_ui(
                     });
                 }
             } else {
-                item_ui::instance_path_parts_buttons(ctx, &query, store, ui, None, instance_path)
-                    .on_hover_text(format!("{typ} '{instance_path}'"));
+                item_title_ui(
+                    ctx.re_ui,
+                    ui,
+                    name,
+                    None,
+                    &format!("{typ} '{instance_path}'"),
+                );
+
+                if let Some(parent) = parent {
+                    ui.horizontal(|ui| {
+                        ui.label("path");
+                        item_ui::entity_path_parts_buttons(ctx, &query, store, ui, None, &parent);
+                    });
+                }
 
                 list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);
             }
@@ -761,7 +794,9 @@ fn show_list_item_for_container_child(
 fn has_blueprint_section(item: &Item) -> bool {
     match item {
         Item::ComponentPath(_) | Item::Container(_) => false,
-        Item::InstancePath(space_view_id, _) => space_view_id.is_some(),
+        Item::InstancePath(space_view_id, instance_path) => {
+            space_view_id.is_some() && instance_path.instance_key.is_splat()
+        }
         _ => true,
     }
 }
@@ -912,22 +947,7 @@ fn blueprint_ui_for_instance_path(
 ) {
     if let Some(space_view_id) = space_view_id {
         if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-            if instance_path.instance_key.is_specific() {
-                let (query, store) =
-                    guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
-                ui.horizontal(|ui| {
-                    ui.label("Part of");
-                    item_ui::entity_path_button(
-                        ctx,
-                        &query,
-                        store,
-                        ui,
-                        Some(*space_view_id),
-                        &instance_path.entity_path,
-                    );
-                });
-                // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
-            } else {
+            if instance_path.instance_key.is_splat() {
                 // splat - the whole entity
                 let space_view_class = *space_view.class_identifier();
                 let entity_path = &instance_path.entity_path;

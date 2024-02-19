@@ -67,6 +67,8 @@ pub fn entity_path_parts_buttons(
     entity_path: &EntityPath,
 ) -> egui::Response {
     ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 4.0;
+
         let mut accumulated = Vec::new();
         for part in entity_path.iter() {
             accumulated.push(part.clone());
@@ -158,6 +160,8 @@ pub fn instance_path_parts_buttons(
     instance_path: &InstancePath,
 ) -> egui::Response {
     ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 4.0;
+
         let mut accumulated = Vec::new();
         for part in instance_path.entity_path.iter() {
             accumulated.push(part.clone());
