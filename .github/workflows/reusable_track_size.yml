@@ -99,7 +99,7 @@ jobs:
 
           python3 scripts/ci/count_bytes.py "${entries[@]}"  > /tmp/sizes.json
 
-          python3 scripts/ci/count_dependencies.py -p rerun     --no-default-features > /tmp/deps1.json
+          python3 scripts/ci/count_dependencies.py -p re_sdk    --no-default-features > /tmp/deps1.json
           python3 scripts/ci/count_dependencies.py -p re_viewer --all-features        > /tmp/deps2.json
 
           # Merge the results, putting dependencies first (on top):
