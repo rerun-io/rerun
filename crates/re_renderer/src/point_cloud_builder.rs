@@ -184,7 +184,7 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
         let colors = &colors[0..num_points.min(colors.len())];
         let picking_ids = &picking_ids[0..num_points.min(picking_ids.len())];
 
-        self.batch_mut().point_count += positions.len() as u32;
+        self.batch_mut().point_count += num_points as u32;
 
         {
             re_tracing::profile_scope!("positions & radii");
@@ -212,7 +212,7 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
                 .ok_or_log_error();
             self.0
                 .color_buffer
-                .add_n(Color32::WHITE, positions.len().saturating_sub(colors.len()))
+                .add_n(Color32::WHITE, num_points.saturating_sub(colors.len()))
                 .ok_or_log_error();
         }
         {
@@ -226,9 +226,9 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
                 .picking_instance_ids_buffer
                 .add_n(
                     PickingLayerInstanceId::default(),
-                    positions.len().saturating_sub(picking_ids.len()),
+                    num_points.saturating_sub(picking_ids.len()),
                 )
-                .ok_or_log_error(); // TODO: forward errors here and elsewhere?
+                .ok_or_log_error();
         }
 
         self

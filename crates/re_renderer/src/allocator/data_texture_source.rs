@@ -204,7 +204,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         }
     }
 
-    /// Pushes a slice of elements into the data texture builder.
+    /// Pushes a slice of elements into the data texture.
     pub fn extend_from_slice(&mut self, elements: &[T]) -> Result<(), DataTextureSourceWriteError> {
         if elements.is_empty() {
             return Ok(());
@@ -213,9 +213,9 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         re_tracing::profile_function!();
 
         let num_elements_available = self.reserve(elements.len())?;
-        let num_elements_actually_added = num_elements_available.min(elements.len());
+        let total_elements_actually_added = num_elements_available.min(elements.len());
 
-        let mut remaining_elements = &elements[..num_elements_actually_added];
+        let mut remaining_elements = &elements[..total_elements_actually_added];
         loop {
             let write_result =
                 self.buffers[self.active_buffer_index].extend_from_slice(remaining_elements);
@@ -230,14 +230,14 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
                 remaining_elements = &remaining_elements[num_elements_actually_added..];
                 self.active_buffer_index += 1; // Due to the prior `reserve` call we know that there's more buffers!
             } else {
-                write_result?;
                 self.ensure_active_buffer_invariant_after_adding_elements();
-                return self.error_on_clamped_write(elements.len(), num_elements_actually_added);
+                write_result?;
+                return self.error_on_clamped_write(elements.len(), total_elements_actually_added);
             }
         }
     }
 
-    /// Fills the buffer with n instances of an element.
+    /// Fills the data texture with n instances of an element.
     pub fn add_n(
         &mut self,
         element: T,
@@ -250,9 +250,9 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         re_tracing::profile_function!();
 
         let num_elements_available = self.reserve(num_elements)?;
-        let num_elements_actually_added = num_elements_available.min(num_elements);
+        let total_elements_actually_added = num_elements_available.min(num_elements);
 
-        let mut num_elements_remaining = num_elements_actually_added;
+        let mut num_elements_remaining = total_elements_actually_added;
         loop {
             let write_result =
                 self.buffers[self.active_buffer_index].add_n(element, num_elements_remaining);
@@ -267,9 +267,9 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
                 num_elements_remaining -= num_elements_actually_added;
                 self.active_buffer_index += 1; // Due to the prior `reserve` call we know that there's more buffers!
             } else {
-                write_result?;
                 self.ensure_active_buffer_invariant_after_adding_elements();
-                return self.error_on_clamped_write(num_elements, num_elements_actually_added);
+                write_result?;
+                return self.error_on_clamped_write(num_elements, total_elements_actually_added);
             }
         }
     }
@@ -329,7 +329,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
 
     /// Schedules copies of all previous writes to this `DataTextureSource` to a `GpuTexture`.
     ///
-    /// The format *has* to be uncompressed, not a depth/stencil format and have the exact same block size of the size of type `T`.
+    /// The format has to be uncompressed, not a depth/stencil format and have the exact same block size of the size of type `T`.
     /// The resulting `GpuTexture` is ready to be bound as a data texture in a shader.
     pub fn finish(
         self,
@@ -419,7 +419,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
 /// row size in bytes is a multiple of `wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`.
 /// This makes it a lot easier to copy data from a continuous buffer to the texture.
 /// If we wouldn't do that, we'd need to do a copy for each row in some cases.
-pub fn data_texture_size(
+fn data_texture_size(
     format: wgpu::TextureFormat,
     num_texels_written: usize,
     max_texture_dimension_2d: u32,
@@ -470,6 +470,7 @@ pub fn data_texture_size(
     }
 }
 
+// TODO(andreas): This is now redundant to a code block in `DataTextureSource::finish`. Remove this once all line data has moved to `DataTextureSource`.
 /// Texture descriptor for data storage.
 ///
 /// See [`data_texture_size`]
