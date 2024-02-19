@@ -104,7 +104,7 @@ jobs:
           python3 scripts/ci/count_dependencies.py -p rerun     --all-features        > /tmp/deps3.json
 
           # Merge the results, putting dependencies first (on top):
-          jq -s '.[0] + .[1] + .[2]' /tmp/deps1.json /tmp/deps2.json /tmp/deps3.json /tmp/sizes.json > /tmp/data.json
+          jq -s '.[0] + .[1] + .[2] + .[3]' /tmp/deps1.json /tmp/deps2.json /tmp/deps3.json /tmp/sizes.json > /tmp/data.json
 
           comparison=$(
             python3 scripts/ci/compare.py \
