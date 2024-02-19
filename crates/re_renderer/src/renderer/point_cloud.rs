@@ -171,7 +171,7 @@ impl PointCloudDrawData {
 
         let PointCloudBuilder {
             ctx,
-            vertices_buffer,
+            position_radius_buffer: vertices_buffer,
             color_buffer,
             picking_instance_ids_buffer,
             batches,

@@ -18,7 +18,7 @@ pub struct PointCloudBuilder<'ctx> {
     pub(crate) ctx: &'ctx RenderContext,
 
     // Size of `point`/color` must be equal.
-    pub(crate) vertices_buffer: DataTextureSource<'ctx, PositionRadius>,
+    pub(crate) position_radius_buffer: DataTextureSource<'ctx, PositionRadius>,
 
     pub(crate) color_buffer: DataTextureSource<'ctx, Color32>,
     pub(crate) picking_instance_ids_buffer: DataTextureSource<'ctx, PickingLayerInstanceId>,
@@ -32,7 +32,7 @@ impl<'ctx> PointCloudBuilder<'ctx> {
     pub fn new(ctx: &'ctx RenderContext) -> Self {
         Self {
             ctx,
-            vertices_buffer: DataTextureSource::new(ctx),
+            position_radius_buffer: DataTextureSource::new(ctx),
             color_buffer: DataTextureSource::new(ctx),
             picking_instance_ids_buffer: DataTextureSource::new(ctx),
             batches: Vec::with_capacity(16),
@@ -44,7 +44,7 @@ impl<'ctx> PointCloudBuilder<'ctx> {
         &mut self,
         expected_number_of_additional_points: usize,
     ) -> Result<(), CpuWriteGpuReadError> {
-        self.vertices_buffer
+        self.position_radius_buffer
             .reserve(expected_number_of_additional_points)?;
         self.color_buffer
             .reserve(expected_number_of_additional_points)?;
@@ -145,9 +145,12 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
         // chaining, joining, filtering, etc. that happens along the way.
         re_tracing::profile_function!();
 
-        debug_assert_eq!(self.0.vertices_buffer.len(), self.0.color_buffer.len());
         debug_assert_eq!(
-            self.0.vertices_buffer.len(),
+            self.0.position_radius_buffer.len(),
+            self.0.color_buffer.len()
+        );
+        debug_assert_eq!(
+            self.0.position_radius_buffer.len(),
             self.0.picking_instance_ids_buffer.len()
         );
 
@@ -175,7 +178,7 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
             .map(|(pos, radius)| PositionRadius { pos, radius })
             .collect_vec();
             self.0
-                .vertices_buffer
+                .position_radius_buffer
                 .extend_from_slice(&vertices)
                 .ok_or_log_error();
         }
