@@ -21,7 +21,6 @@ import json
 import os.path
 import sys
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
 
@@ -85,65 +84,6 @@ class Format(Enum):
             return json.dumps(data)
         if self is Format.GITHUB:
             return render_table_dict(data)
-
-
-def compare(
-    previous_path: str,
-    current_path: str,
-    threshold_pct: float,
-    before_header: str,
-    after_header: str,
-) -> None:
-    previous = json.loads(Path(previous_path).read_text())
-    current = json.loads(Path(current_path).read_text())
-
-    entries = {}
-    for entry in current:
-        name = entry["name"]
-        entries[name] = {"current": entry}
-    for entry in previous:
-        name = entry["name"]
-        if name not in entries:
-            entries[name] = {}
-        entries[name]["previous"] = entry
-
-    headers = ["Name", before_header, after_header, "Change"]
-    rows: list[tuple[str, str, str, str]] = []
-    for name, entry in entries.items():
-        if "previous" in entry and "current" in entry:
-            previous_bytes = float(entry["previous"]["value"]) * DIVISORS[entry["previous"]["unit"]]
-            current_bytes = float(entry["current"]["value"]) * DIVISORS[entry["current"]["unit"]]
-            unit = get_unit(min(previous_bytes, current_bytes))
-            div = get_divisor(unit)
-
-            abs_diff_bytes = abs(current_bytes - previous_bytes)
-            min_diff_bytes = previous_bytes * (threshold_pct / 100)
-            if abs_diff_bytes >= min_diff_bytes:
-                previous = previous_bytes / div
-                current = current_bytes / div
-                change_pct = ((current_bytes - previous_bytes) / previous_bytes) * 100
-                rows.append(
-                    (
-                        name,
-                        f"{previous:.2f} {unit}",
-                        f"{current:.2f} {unit}",
-                        f"{change_pct:+.2f}%",
-                    )
-                )
-        elif "current" in entry:
-            value = entry["current"]["value"]
-            unit = entry["current"]["unit"]
-
-            rows.append((name, "(none)", f"{value} {unit}", "+100%"))
-        elif "previous" in entry:
-            value = entry["previous"]["value"]
-            unit = entry["previous"]["unit"]
-
-            rows.append((name, f"{value} {unit}", "(deleted)", "-100%"))
-
-    if len(rows) > 0:
-        sys.stdout.write(render_table_rows(rows, headers))
-        sys.stdout.flush()
 
 
 def measure(files: list[str], format: Format) -> None:
