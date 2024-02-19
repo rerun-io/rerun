@@ -40,10 +40,13 @@ impl<'ctx> PointCloudBuilder<'ctx> {
         }
     }
 
+    /// Returns number of points that can be added without reallocation.
+    /// This may be smaller than the requested number if the maximum number of strips is reached.
     pub fn reserve(
         &mut self,
         expected_number_of_additional_points: usize,
-    ) -> Result<(), CpuWriteGpuReadError> {
+    ) -> Result<usize, CpuWriteGpuReadError> {
+        // We know that the maximum number is independent of datatype, so we can use the same value for all.
         self.position_radius_buffer
             .reserve(expected_number_of_additional_points)?;
         self.color_buffer
