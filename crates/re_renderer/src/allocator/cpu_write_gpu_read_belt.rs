@@ -212,6 +212,12 @@ where
         Ok(())
     }
 
+    /// True if no elements have been pushed into the buffer so far.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.unwritten_element_range.start == 0
+    }
+
     /// The number of elements pushed into the buffer so far.
     #[inline]
     pub fn num_written(&self) -> usize {

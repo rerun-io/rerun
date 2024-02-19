@@ -64,8 +64,9 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         }
     }
 
+    /// Maximum width for data textures.
     #[inline]
-    fn max_data_texture_width(&self) -> usize {
+    pub fn max_data_texture_width(device_limits: &wgpu::Limits) -> usize {
         // We limit the data texture width to 16384 or whatever smaller value is supported but the device.
         //
         // If we make buffers always a multiple of this width, we can do all buffer copies in a single copy!
@@ -78,7 +79,22 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         // it's not as bad as it seems.
         // Given how much it simplifies to keep buffers a multiple of the texture width,
         // this seems to be a reasonable trade-off.
-        (self.ctx.device.limits().max_texture_dimension_2d as usize).min(16384)
+        (device_limits.max_texture_dimension_2d as usize).min(16384)
+    }
+
+    /// Maximum number of elements that can be written to a single data texture.
+    pub fn max_num_elements(device_limits: &wgpu::Limits) -> usize {
+        let max_width = Self::max_data_texture_width(device_limits);
+        let max_height = device_limits.max_texture_dimension_2d as usize;
+        max_width * max_height
+    }
+
+    /// Whether no elements have been written at all.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.buffers
+            .first()
+            .map_or(false, |first_buffer| first_buffer.is_empty())
     }
 
     /// The number of elements written so far.
@@ -157,7 +173,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
         let last_buffer_size = self.buffers.last().map_or(0, |b| b.capacity());
         let new_buffer_size = (num_elements - remaining_capacity)
             .max(last_buffer_size * 2)
-            .next_multiple_of(self.max_data_texture_width());
+            .next_multiple_of(Self::max_data_texture_width(&self.ctx.device.limits()));
 
         self.buffers
             .push(self.ctx.cpu_write_gpu_read_belt.lock().allocate(
@@ -189,11 +205,11 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             // `extend_from_slice` is documented to write as many elements as possible, so we can just continue with the next buffer,
             // if we ran out of space!
             if let Err(CpuWriteGpuReadError::BufferFull {
-                num_elements_actually_added: num_elements_added,
+                num_elements_actually_added,
                 ..
             }) = result
             {
-                remaining_elements = &remaining_elements[num_elements_added..];
+                remaining_elements = &remaining_elements[num_elements_actually_added..];
                 self.active_buffer_index += 1; // Due to the prior `reserve` call we know that there's more buffers!
             } else {
                 self.ensure_active_buffer_invariant_after_adding_elements();
@@ -222,11 +238,11 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             // `fill_n` is documented to write as many elements as possible, so we can just continue with the next buffer,
             // if we ran out of space!
             if let Err(CpuWriteGpuReadError::BufferFull {
-                num_elements_actually_added: num_elements_added,
+                num_elements_actually_added,
                 ..
             }) = result
             {
-                num_elements_remaining -= num_elements_added;
+                num_elements_remaining -= num_elements_actually_added;
                 self.active_buffer_index += 1; // Due to the prior `reserve` call we know that there's more buffers!
             } else {
                 self.ensure_active_buffer_invariant_after_adding_elements();
@@ -261,7 +277,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             texture_label,
             texture_format,
             total_num_elements,
-            self.max_data_texture_width() as u32,
+            Self::max_data_texture_width(&self.ctx.device.limits()) as u32,
         );
         let data_texture = self
             .ctx

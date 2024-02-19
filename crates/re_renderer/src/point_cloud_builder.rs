@@ -1,4 +1,4 @@
-use itertools::izip;
+use itertools::{izip, Itertools};
 
 use re_log::ResultExt;
 
@@ -18,7 +18,7 @@ pub struct PointCloudBuilder<'ctx> {
     pub(crate) ctx: &'ctx RenderContext,
 
     // Size of `point`/color` must be equal.
-    pub(crate) vertices: Vec<PositionRadius>,
+    pub(crate) vertices_buffer: DataTextureSource<'ctx, PositionRadius>,
 
     pub(crate) color_buffer: DataTextureSource<'ctx, Color32>,
     pub(crate) picking_instance_ids_buffer: DataTextureSource<'ctx, PickingLayerInstanceId>,
@@ -32,7 +32,7 @@ impl<'ctx> PointCloudBuilder<'ctx> {
     pub fn new(ctx: &'ctx RenderContext) -> Self {
         Self {
             ctx,
-            vertices: Vec::new(),
+            vertices_buffer: DataTextureSource::new(ctx),
             color_buffer: DataTextureSource::new(ctx),
             picking_instance_ids_buffer: DataTextureSource::new(ctx),
             batches: Vec::with_capacity(16),
@@ -44,7 +44,8 @@ impl<'ctx> PointCloudBuilder<'ctx> {
         &mut self,
         expected_number_of_additional_points: usize,
     ) -> Result<(), CpuWriteGpuReadError> {
-        self.vertices.reserve(expected_number_of_additional_points);
+        self.vertices_buffer
+            .reserve(expected_number_of_additional_points)?;
         self.color_buffer
             .reserve(expected_number_of_additional_points)?;
         self.picking_instance_ids_buffer
@@ -74,24 +75,6 @@ impl<'ctx> PointCloudBuilder<'ctx> {
         });
 
         PointCloudBatchBuilder(self)
-    }
-
-    // Iterate over all batches, yielding the batch info and a point vertex iterator.
-    pub fn iter_vertices_by_batch(
-        &self,
-    ) -> impl Iterator<Item = (&PointCloudBatchInfo, impl Iterator<Item = &PositionRadius>)> {
-        let mut vertex_offset = 0;
-        self.batches.iter().map(move |batch| {
-            let out = (
-                batch,
-                self.vertices
-                    .iter()
-                    .skip(vertex_offset)
-                    .take(batch.point_count as usize),
-            );
-            vertex_offset += batch.point_count as usize;
-            out
-        })
     }
 
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
@@ -162,9 +145,9 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
         // chaining, joining, filtering, etc. that happens along the way.
         re_tracing::profile_function!();
 
-        debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.len());
+        debug_assert_eq!(self.0.vertices_buffer.len(), self.0.color_buffer.len());
         debug_assert_eq!(
-            self.0.vertices.len(),
+            self.0.vertices_buffer.len(),
             self.0.picking_instance_ids_buffer.len()
         );
 
@@ -181,13 +164,20 @@ impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
 
         {
             re_tracing::profile_scope!("positions & radii");
-            self.0.vertices.extend(
-                izip!(
-                    positions.iter().copied(),
-                    radii.iter().copied().chain(std::iter::repeat(Size::AUTO))
-                )
-                .map(|(pos, radius)| PositionRadius { pos, radius }),
-            );
+
+            // TODO(andreas): It would be nice to pass on the iterator as is so we don't have to do yet another
+            // copy of the data and instead write into the buffers directly - if done right this should be the fastest.
+            // But it's surprisingly tricky to do this effectively.
+            let vertices = izip!(
+                positions.iter().copied(),
+                radii.iter().copied().chain(std::iter::repeat(Size::AUTO))
+            )
+            .map(|(pos, radius)| PositionRadius { pos, radius })
+            .collect_vec();
+            self.0
+                .vertices_buffer
+                .extend_from_slice(&vertices)
+                .ok_or_log_error();
         }
         {
             re_tracing::profile_scope!("colors");

@@ -16,14 +16,13 @@
 use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
-    allocator::{create_and_fill_uniform_buffer_batch, data_texture_desc},
+    allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
     wgpu_resources::GpuRenderPipelinePoolAccessor,
     DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
 };
 use bitflags::bitflags;
-use bytemuck::Zeroable as _;
 use enumset::{enum_set, EnumSet};
 use itertools::Itertools as _;
 use smallvec::smallvec;
@@ -161,8 +160,6 @@ pub enum PointCloudDrawDataError {
 }
 
 impl PointCloudDrawData {
-    pub const POSITION_DATA_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
-
     /// Transforms and uploads point cloud data to be consumed by gpu.
     ///
     /// Try to bundle all points into a single draw data instance whenever possible.
@@ -174,7 +171,7 @@ impl PointCloudDrawData {
 
         let PointCloudBuilder {
             ctx,
-            vertices,
+            vertices_buffer,
             color_buffer,
             picking_instance_ids_buffer,
             batches,
@@ -182,11 +179,9 @@ impl PointCloudDrawData {
         } = builder;
 
         let point_renderer = ctx.renderer::<PointCloudRenderer>();
-
-        let vertices = vertices.as_slice();
         let batches = batches.as_slice();
 
-        if vertices.is_empty() {
+        if vertices_buffer.is_empty() {
             return Ok(PointCloudDrawData {
                 bind_group_all_points: None,
                 bind_group_all_points_outline_mask: None,
@@ -194,11 +189,13 @@ impl PointCloudDrawData {
             });
         }
 
+        let num_vertices = vertices_buffer.len();
+
         let fallback_batches = [PointCloudBatchInfo {
             label: "fallback_batches".into(),
             world_from_obj: glam::Affine3A::IDENTITY,
             flags: PointCloudBatchFlags::empty(),
-            point_count: vertices.len() as _,
+            point_count: num_vertices as _,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
             picking_object_id: Default::default(),
@@ -210,35 +207,10 @@ impl PointCloudDrawData {
             batches
         };
 
-        // Points are stored on a 2d texture (we can't use buffers due to WebGL compatibility).
-        // 2D texture size limits on desktop is at least 8192x8192.
-        // Android WebGL is known to only support 4096x4096, see https://web3dsurvey.com/webgl2/parameters/MAX_TEXTURE_SIZE
-        // Android WebGPU, however almost always supports 8192x8192 and most of the time 16384x16384, see https://web3dsurvey.com/webgpu/limits/maxTextureDimension2D
-        // => Even with a conservative 4096x4096, we can store 16 million points on a single texture, so we're very unlikely to ever hit this.
-        // (and the typ typical 16384x16384 gives us a max 268 million points, far more than we can realistically render with this renderer)
-        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
-        let max_num_points = max_texture_dimension_2d as usize * max_texture_dimension_2d as usize;
-        let vertices = if vertices.len() > max_num_points {
-            re_log::error_once!(
-                "Reached maximum number of supported points. Clamping down to {}, passed were {}.",
-                max_num_points,
-                vertices.len()
-            );
-            &vertices[..max_num_points]
-        } else {
-            vertices
-        };
-
-        let position_data_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &data_texture_desc(
-                "PointCloudDrawData::position_data_texture",
-                Self::POSITION_DATA_TEXTURE_FORMAT,
-                vertices.len(),
-                max_texture_dimension_2d,
-            ),
-        );
-
+        let position_data_texture = vertices_buffer.finish(
+            wgpu::TextureFormat::Rgba32Float,
+            "PointCloudDrawData::position_data_texture",
+        )?;
         let color_texture = color_buffer.finish(
             wgpu::TextureFormat::Rgba8UnormSrgb,
             "PointCloudDrawData::color_texture",
@@ -247,32 +219,6 @@ impl PointCloudDrawData {
             wgpu::TextureFormat::Rg32Uint,
             "PointCloudDrawData::picking_instance_id_texture",
         )?;
-
-        {
-            re_tracing::profile_scope!("write_pos_size_texture");
-
-            let texture_size = position_data_texture.texture.size();
-            let texel_count = (texture_size.width * texture_size.height) as usize;
-            let num_elements_padding = texel_count - vertices.len();
-
-            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
-                &ctx.device,
-                &ctx.gpu_resources.buffers,
-                texel_count,
-            )?;
-            staging_buffer.extend_from_slice(vertices)?;
-            staging_buffer.add_n(gpu_data::PositionRadius::zeroed(), num_elements_padding)?;
-            staging_buffer.copy_to_texture2d(
-                ctx.active_frame.before_view_builder_encoder.lock().get(),
-                wgpu::ImageCopyTexture {
-                    texture: &position_data_texture.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                position_data_texture.texture.size(),
-            )?;
-        }
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
@@ -377,8 +323,7 @@ impl PointCloudDrawData {
             for (batch_info, uniform_buffer_binding) in
                 batches.iter().zip(uniform_buffer_bindings.into_iter())
             {
-                let point_vertex_range_end = (start_point_for_next_batch + batch_info.point_count)
-                    .min(max_num_points as u32);
+                let point_vertex_range_end = start_point_for_next_batch + batch_info.point_count;
                 let mut active_phases = enum_set![DrawPhase::Opaque | DrawPhase::PickingLayer];
                 // Does the entire batch participate in the outline mask phase?
                 if batch_info.overall_outline_mask_ids.is_some() {
@@ -408,7 +353,7 @@ impl PointCloudDrawData {
                 start_point_for_next_batch = point_vertex_range_end;
 
                 // Should happen only if the number of vertices was clamped.
-                if start_point_for_next_batch >= vertices.len() as u32 {
+                if start_point_for_next_batch >= num_vertices as u32 {
                     break;
                 }
             }
