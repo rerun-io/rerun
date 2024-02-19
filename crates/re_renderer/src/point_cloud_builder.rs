@@ -3,85 +3,65 @@ use itertools::izip;
 use re_log::ResultExt;
 
 use crate::{
-    allocator::{data_texture_source_buffer_element_count, CpuWriteGpuReadBuffer},
+    allocator::DataTextureSource,
     draw_phases::PickingLayerObjectId,
     renderer::{
         PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
         PositionRadius,
     },
-    Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
-    Size,
+    Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, OutlineMaskPreference,
+    PickingLayerInstanceId, RenderContext, Size,
 };
 
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].
-pub struct PointCloudBuilder {
-    // Size of `point`/color` must be equal.
-    pub vertices: Vec<PositionRadius>,
+pub struct PointCloudBuilder<'ctx> {
+    pub(crate) ctx: &'ctx RenderContext,
 
-    pub(crate) color_buffer: CpuWriteGpuReadBuffer<Color32>,
-    pub(crate) picking_instance_ids_buffer: CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
+    // Size of `point`/color` must be equal.
+    pub(crate) vertices: Vec<PositionRadius>,
+
+    pub(crate) color_buffer: DataTextureSource<'ctx, Color32>,
+    pub(crate) picking_instance_ids_buffer: DataTextureSource<'ctx, PickingLayerInstanceId>,
 
     pub(crate) batches: Vec<PointCloudBatchInfo>,
 
     pub(crate) radius_boost_in_ui_points_for_outlines: f32,
-
-    max_num_points: usize,
 }
 
-impl PointCloudBuilder {
-    pub fn new(ctx: &RenderContext, max_num_points: usize) -> Self {
-        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
-
-        let color_buffer = ctx
-            .cpu_write_gpu_read_belt
-            .lock()
-            .allocate::<Color32>(
-                &ctx.device,
-                &ctx.gpu_resources.buffers,
-                data_texture_source_buffer_element_count(
-                    PointCloudDrawData::COLOR_TEXTURE_FORMAT,
-                    max_num_points,
-                    max_texture_dimension_2d,
-                ),
-            )
-            .expect("Failed to allocate color buffer"); // TODO(#3408): Should never happen but should propagate error anyways
-
-        let picking_instance_ids_buffer = ctx
-            .cpu_write_gpu_read_belt
-            .lock()
-            .allocate::<PickingLayerInstanceId>(
-                &ctx.device,
-                &ctx.gpu_resources.buffers,
-                data_texture_source_buffer_element_count(
-                    PointCloudDrawData::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
-                    max_num_points,
-                    max_texture_dimension_2d,
-                ),
-            )
-            .expect("Failed to allocate picking layer buffer"); // TODO(#3408): Should never happen but should propagate error anyways
-
+impl<'ctx> PointCloudBuilder<'ctx> {
+    pub fn new(ctx: &'ctx RenderContext) -> Self {
         Self {
-            vertices: Vec::with_capacity(max_num_points),
-            color_buffer,
-            picking_instance_ids_buffer,
+            ctx,
+            vertices: Vec::new(),
+            color_buffer: DataTextureSource::new(ctx),
+            picking_instance_ids_buffer: DataTextureSource::new(ctx),
             batches: Vec::with_capacity(16),
             radius_boost_in_ui_points_for_outlines: 0.0,
-            max_num_points,
         }
+    }
+
+    pub fn reserve(
+        &mut self,
+        expected_number_of_additional_points: usize,
+    ) -> Result<(), CpuWriteGpuReadError> {
+        self.vertices.reserve(expected_number_of_additional_points);
+        self.color_buffer
+            .reserve(expected_number_of_additional_points)?;
+        self.picking_instance_ids_buffer
+            .reserve(expected_number_of_additional_points)
     }
 
     /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
     pub fn radius_boost_in_ui_points_for_outlines(
-        mut self,
+        &mut self,
         radius_boost_in_ui_points_for_outlines: f32,
-    ) -> Self {
+    ) {
         self.radius_boost_in_ui_points_for_outlines = radius_boost_in_ui_points_for_outlines;
-        self
     }
 
     /// Start of a new batch.
     #[inline]
-    pub fn batch(&mut self, label: impl Into<DebugLabel>) -> PointCloudBatchBuilder<'_> {
+    pub fn batch(&mut self, label: impl Into<DebugLabel>) -> PointCloudBatchBuilder<'_, 'ctx> {
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
             world_from_obj: glam::Affine3A::IDENTITY,
@@ -115,17 +95,14 @@ impl PointCloudBuilder {
     }
 
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
-    pub fn into_draw_data(
-        self,
-        ctx: &crate::context::RenderContext,
-    ) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
-        PointCloudDrawData::new(ctx, self)
+    pub fn into_draw_data(self) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
+        PointCloudDrawData::new(self)
     }
 }
 
-pub struct PointCloudBatchBuilder<'a>(&'a mut PointCloudBuilder);
+pub struct PointCloudBatchBuilder<'a, 'ctx>(&'a mut PointCloudBuilder<'ctx>);
 
-impl<'a> Drop for PointCloudBatchBuilder<'a> {
+impl<'a, 'ctx> Drop for PointCloudBatchBuilder<'a, 'ctx> {
     fn drop(&mut self) {
         // Remove batch again if it wasn't actually used.
         if self.0.batches.last().unwrap().point_count == 0 {
@@ -134,7 +111,7 @@ impl<'a> Drop for PointCloudBatchBuilder<'a> {
     }
 }
 
-impl<'a> PointCloudBatchBuilder<'a> {
+impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
     #[inline]
     fn batch_mut(&mut self) -> &mut PointCloudBatchInfo {
         self.0
@@ -185,33 +162,22 @@ impl<'a> PointCloudBatchBuilder<'a> {
         // chaining, joining, filtering, etc. that happens along the way.
         re_tracing::profile_function!();
 
-        let mut num_points = positions.len();
-
-        debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
+        debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.len());
         debug_assert_eq!(
             self.0.vertices.len(),
-            self.0.picking_instance_ids_buffer.num_written()
+            self.0.picking_instance_ids_buffer.len()
         );
 
-        if num_points + self.0.vertices.len() > self.0.max_num_points {
-            re_log::error_once!(
-                "Reserved space for {} points, but reached {}. Clamping to previously set maximum",
-                self.0.max_num_points,
-                num_points + self.0.vertices.len()
-            );
-            num_points = self.0.max_num_points - self.0.vertices.len();
-        }
-        if num_points == 0 {
+        if positions.is_empty() {
             return self;
         }
 
         // Shorten slices if needed:
-        let positions = &positions[0..num_points.min(positions.len())];
-        let radii = &radii[0..num_points.min(radii.len())];
-        let colors = &colors[0..num_points.min(colors.len())];
-        let picking_ids = &picking_ids[0..num_points.min(picking_ids.len())];
+        let radii = &radii[0..positions.len().min(radii.len())];
+        let colors = &colors[0..positions.len().min(colors.len())];
+        let picking_ids = &picking_ids[0..positions.len().min(picking_ids.len())];
 
-        self.batch_mut().point_count += num_points as u32;
+        self.batch_mut().point_count += positions.len() as u32;
 
         {
             re_tracing::profile_scope!("positions & radii");
@@ -234,7 +200,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .color_buffer
-                .add_n(Color32::WHITE, num_points.saturating_sub(colors.len()))
+                .add_n(Color32::WHITE, positions.len().saturating_sub(colors.len()))
                 .ok_or_log_error();
         }
         {
@@ -250,9 +216,9 @@ impl<'a> PointCloudBatchBuilder<'a> {
                 .picking_instance_ids_buffer
                 .add_n(
                     PickingLayerInstanceId::default(),
-                    num_points.saturating_sub(picking_ids.len()),
+                    positions.len().saturating_sub(picking_ids.len()),
                 )
-                .ok_or_log_error();
+                .ok_or_log_error(); // TODO: forward errors here and elsewhere?
         }
 
         self

@@ -16,7 +16,7 @@ use crate::{
 /// TODO(andreas): We could make significant optimizations here by making this builder capable
 /// of writing to a GPU readable memory location for all its data.
 pub struct LineDrawableBuilder<'ctx> {
-    ctx: &'ctx crate::context::RenderContext,
+    ctx: &'ctx RenderContext,
 
     pub(crate) vertices: Vec<LineVertex>,
     pub(crate) batches: Vec<LineBatchInfo>,

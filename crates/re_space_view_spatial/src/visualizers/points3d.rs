@@ -75,7 +75,7 @@ impl Points3DVisualizer {
 
     fn process_data(
         &mut self,
-        point_builder: &mut PointCloudBuilder,
+        point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         ent_path: &EntityPath,
@@ -200,7 +200,9 @@ impl VisualizerSystem for Points3DVisualizer {
             return Ok(Vec::new());
         }
 
-        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx, num_points)
+        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx);
+        point_builder.reserve(num_points)?;
+        point_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
         // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll go with the dynamic allocation approach.
@@ -256,7 +258,7 @@ impl VisualizerSystem for Points3DVisualizer {
         )?;
 
         Ok(vec![
-            point_builder.into_draw_data(ctx.render_ctx)?.into(),
+            point_builder.into_draw_data()?.into(),
             line_builder.into_draw_data()?.into(),
         ])
     }

@@ -74,7 +74,7 @@ impl Points2DVisualizer {
 
     fn process_data(
         &mut self,
-        point_builder: &mut PointCloudBuilder,
+        point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         data: &Points2DComponentData<'_>,
@@ -259,7 +259,8 @@ impl VisualizerSystem for Points2DVisualizer {
             return Ok(Vec::new());
         }
 
-        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx, num_points)
+        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx);
+        point_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
         // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll go with the dynamic allocation approach.
@@ -315,7 +316,7 @@ impl VisualizerSystem for Points2DVisualizer {
         )?;
 
         Ok(vec![
-            point_builder.into_draw_data(ctx.render_ctx)?.into(),
+            point_builder.into_draw_data()?.into(),
             line_builder.into_draw_data()?.into(),
         ])
     }

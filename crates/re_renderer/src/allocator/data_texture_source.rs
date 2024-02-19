@@ -19,7 +19,8 @@ use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};
 /// This is implemented by dynamically allocating cpu-write-gpu-read buffers from the
 /// central [`super::CpuWriteGpuReadBelt`] and copying all of them to the texture in the end.
 pub struct DataTextureSource<'a, T: Pod + Send + Sync> {
-    ctx: &'a RenderContext, // TODO(andreas): take more fine-grained reference?
+    // TODO(andreas): Rename to `DataTextureBuilder`?
+    ctx: &'a RenderContext, // TODO(andreas): Don't dependency inject, layers on top of this can do that.
 
     /// Buffers that need to be transferred to the data texture in the end.
     ///
@@ -166,6 +167,39 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
             )?);
 
         Ok(())
+    }
+
+    /// Pushes a slice of elements into the data texture builder.
+    #[inline]
+    pub fn extend_from_slice(&mut self, elements: &[T]) -> Result<(), CpuWriteGpuReadError> {
+        if elements.is_empty() {
+            return Ok(());
+        }
+
+        re_tracing::profile_function!();
+
+        self.reserve(elements.len())?;
+
+        let mut remaining_elements = elements;
+
+        loop {
+            let result =
+                self.buffers[self.active_buffer_index].extend_from_slice(remaining_elements);
+
+            // `extend_from_slice` is documented to write as many elements as possible, so we can just continue with the next buffer,
+            // if we ran out of space!
+            if let Err(CpuWriteGpuReadError::BufferFull {
+                num_elements_actually_added: num_elements_added,
+                ..
+            }) = result
+            {
+                remaining_elements = &remaining_elements[num_elements_added..];
+                self.active_buffer_index += 1; // Due to the prior `reserve` call we know that there's more buffers!
+            } else {
+                self.ensure_active_buffer_invariant_after_adding_elements();
+                return result;
+            }
+        }
     }
 
     /// Fills the buffer with n instances of an element.
@@ -361,21 +395,4 @@ pub fn data_texture_desc(
         format,
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
     }
-}
-
-/// Pendent to [`data_texture_size`] for determining the element size (==texels on data texture)
-/// need to be in a buffer that fills an entire data texture.
-// TODO(andreas): everything should use `DataTextureSource` directly, then this function is no longer needed!
-pub fn data_texture_source_buffer_element_count(
-    texture_format: wgpu::TextureFormat,
-    num_texels_written: usize,
-    max_texture_dimension_2d: u32,
-) -> usize {
-    let data_texture_size =
-        data_texture_size(texture_format, num_texels_written, max_texture_dimension_2d);
-    let element_count = data_texture_size.width as usize * data_texture_size.height as usize;
-
-    debug_assert!(element_count >= num_texels_written);
-
-    element_count
 }

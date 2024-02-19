@@ -161,10 +161,7 @@ pub enum PointCloudDrawDataError {
 }
 
 impl PointCloudDrawData {
-    pub const COLOR_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
     pub const POSITION_DATA_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
-    pub const PICKING_INSTANCE_ID_TEXTURE_FORMAT: wgpu::TextureFormat =
-        wgpu::TextureFormat::Rg32Uint;
 
     /// Transforms and uploads point cloud data to be consumed by gpu.
     ///
@@ -172,16 +169,22 @@ impl PointCloudDrawData {
     /// Number of vertices and colors has to be equal.
     ///
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
-    pub fn new(
-        ctx: &RenderContext,
-        mut builder: PointCloudBuilder,
-    ) -> Result<Self, PointCloudDrawDataError> {
+    pub fn new(builder: PointCloudBuilder<'_>) -> Result<Self, PointCloudDrawDataError> {
         re_tracing::profile_function!();
+
+        let PointCloudBuilder {
+            ctx,
+            vertices,
+            color_buffer,
+            picking_instance_ids_buffer,
+            batches,
+            radius_boost_in_ui_points_for_outlines,
+        } = builder;
 
         let point_renderer = ctx.renderer::<PointCloudRenderer>();
 
-        let vertices = builder.vertices.as_slice();
-        let batches = builder.batches.as_slice();
+        let vertices = vertices.as_slice();
+        let batches = batches.as_slice();
 
         if vertices.is_empty() {
             return Ok(PointCloudDrawData {
@@ -235,25 +238,15 @@ impl PointCloudDrawData {
                 max_texture_dimension_2d,
             ),
         );
-        let color_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &data_texture_desc(
-                "PointCloudDrawData::color_texture",
-                Self::COLOR_TEXTURE_FORMAT,
-                vertices.len(),
-                max_texture_dimension_2d,
-            ),
-        );
 
-        let picking_instance_id_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &data_texture_desc(
-                "PointCloudDrawData::picking_instance_id_texture",
-                Self::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
-                vertices.len(),
-                max_texture_dimension_2d,
-            ),
-        );
+        let color_texture = color_buffer.finish(
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            "PointCloudDrawData::color_texture",
+        )?;
+        let picking_instance_id_texture = picking_instance_ids_buffer.finish(
+            wgpu::TextureFormat::Rg32Uint,
+            "PointCloudDrawData::picking_instance_id_texture",
+        )?;
 
         {
             re_tracing::profile_scope!("write_pos_size_texture");
@@ -280,35 +273,6 @@ impl PointCloudDrawData {
                 position_data_texture.texture.size(),
             )?;
         }
-        {
-            let texture_size = color_texture.texture.size();
-            let texel_count = (texture_size.width * texture_size.height) as usize;
-            let num_elements_padding = texel_count - vertices.len();
-
-            builder
-                .color_buffer
-                .add_n(ecolor::Color32::TRANSPARENT, num_elements_padding)?;
-            builder.color_buffer.copy_to_texture2d_entire_first_layer(
-                ctx.active_frame.before_view_builder_encoder.lock().get(),
-                &color_texture,
-            )?;
-        }
-
-        {
-            let texture_size = picking_instance_id_texture.texture.size();
-            let texel_count = (texture_size.width * texture_size.height) as usize;
-            let num_elements_padding = texel_count - vertices.len();
-
-            builder
-                .picking_instance_ids_buffer
-                .add_n(Default::default(), num_elements_padding)?;
-            builder
-                .picking_instance_ids_buffer
-                .copy_to_texture2d_entire_first_layer(
-                    ctx.active_frame.before_view_builder_encoder.lock().get(),
-                    &picking_instance_id_texture,
-                )?;
-        }
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
@@ -319,9 +283,7 @@ impl PointCloudDrawData {
                     end_padding: Default::default(),
                 },
                 gpu_data::DrawDataUniformBuffer {
-                    radius_boost_in_ui_points: builder
-                        .radius_boost_in_ui_points_for_outlines
-                        .into(),
+                    radius_boost_in_ui_points: radius_boost_in_ui_points_for_outlines.into(),
                     end_padding: Default::default(),
                 },
             ]
