@@ -36,9 +36,6 @@ struct BatchUniformBuffer {
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
 
-const POSITION_TEXTURE_SIZE: u32 = 512u;
-const LINE_STRIP_TEXTURE_SIZE: u32 = 256u;
-
 // Flags
 // See lines.rs#LineStripFlags
 const FLAG_CAP_END_TRIANGLE: u32 = 1u;
@@ -89,8 +86,13 @@ struct LineStripData {
 
 // Read and unpack line strip data at a given location
 fn read_strip_data(idx: u32) -> LineStripData {
-    let coord = vec2u(idx % LINE_STRIP_TEXTURE_SIZE, idx / LINE_STRIP_TEXTURE_SIZE);
-    var raw_data = textureLoad(position_data_texture, coord, 0).xy;
+    let position_data_texture_size = textureDimensions(position_data_texture);
+    let raw_data = textureLoad(position_data_texture,
+         vec2u(idx % position_data_texture_size.x, idx / position_data_texture_size.x), 0);
+
+    let picking_instance_id_texture_size = textureDimensions(picking_instance_id_texture);
+    let picking_instance_id = textureLoad(picking_instance_id_texture,
+         vec2u(idx % picking_instance_id_texture_size.x, idx / picking_instance_id_texture_size.x), 0).xy;
 
     var data: LineStripData;
     data.color = linear_from_srgba(unpack4x8unorm_workaround(raw_data.x));
@@ -99,7 +101,7 @@ fn read_strip_data(idx: u32) -> LineStripData {
     data.unresolved_radius = unpack2x16float(raw_data.y).y;
     data.flags = ((raw_data.y >> 8u) & 0xFFu);
     data.stippling = f32((raw_data.y >> 16u) & 0xFFu) * (1.0 / 255.0);
-    data.picking_instance_id = textureLoad(picking_instance_id_texture, coord, 0).rg;
+    data.picking_instance_id = picking_instance_id;
     return data;
 }
 
@@ -110,7 +112,9 @@ struct PositionData {
 
 // Read and unpack position data at a given location
 fn read_position_data(idx: u32) -> PositionData {
-    var raw_data = textureLoad(line_strip_texture, vec2u(idx % POSITION_TEXTURE_SIZE, idx / POSITION_TEXTURE_SIZE), 0);
+    let texture_size = textureDimensions(line_strip_texture);
+    let coord = vec2u(idx % texture_size.x, idx / texture_size.x);
+    var raw_data = textureLoad(line_strip_texture, coord, 0);
 
     var data: PositionData;
     let pos_4d = batch.world_from_obj * vec4f(raw_data.xyz, 1.0);

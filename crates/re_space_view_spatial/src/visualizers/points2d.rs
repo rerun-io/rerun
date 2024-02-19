@@ -1,5 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_renderer::{PickingLayerInstanceId, PointCloudBuilder};
+use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text},
@@ -75,11 +75,12 @@ impl Points2DVisualizer {
     fn process_data(
         &mut self,
         point_builder: &mut PointCloudBuilder,
+        line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         data: &Points2DComponentData<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let (annotation_infos, keypoints) = process_annotation_and_keypoint_slices(
@@ -100,7 +101,7 @@ impl Points2DVisualizer {
             re_tracing::profile_scope!("to_gpu");
 
             let point_batch = point_builder
-                .batch("2d points")
+                .batch(ent_path.to_string())
                 .depth_offset(ent_context.depth_offset)
                 .flags(
                     re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
@@ -139,7 +140,7 @@ impl Points2DVisualizer {
             ent_context.world_from_entity,
         );
 
-        load_keypoint_connections(ent_context, ent_path, &keypoints);
+        load_keypoint_connections(line_builder, ent_context, ent_path, &keypoints)?;
 
         if data.instance_keys.len() <= self.max_labels {
             re_tracing::profile_scope!("labels");
@@ -166,6 +167,8 @@ impl Points2DVisualizer {
                 ));
             }
         }
+
+        Ok(())
     }
 
     #[inline]
@@ -256,7 +259,12 @@ impl VisualizerSystem for Points2DVisualizer {
             return Ok(Vec::new());
         }
 
-        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx, num_points as u32)
+        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx, num_points)
+            .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
+
+        // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll go with the dynamic allocation approach.
+        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+        line_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
         super::entity_iterator::process_archetype_pov1_comp5::<
@@ -295,16 +303,21 @@ impl VisualizerSystem for Points2DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(&mut point_builder, query, &data, ent_path, ent_context);
-                Ok(())
+                self.process_data(
+                    &mut point_builder,
+                    &mut line_builder,
+                    query,
+                    &data,
+                    ent_path,
+                    ent_context,
+                )
             },
         )?;
 
-        let draw_data = point_builder
-            .into_draw_data(ctx.render_ctx)
-            .map_err(|err| SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(err)))?;
-
-        Ok(vec![draw_data.into()])
+        Ok(vec![
+            point_builder.into_draw_data(ctx.render_ctx)?.into(),
+            line_builder.into_draw_data()?.into(),
+        ])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

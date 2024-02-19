@@ -6,7 +6,7 @@ use web_time::Instant;
 use re_log_types::EntityPath;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    LineStripSeriesBuilder, Size,
+    LineDrawableBuilder, Size,
 };
 use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
@@ -19,7 +19,6 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SharedRenderBuilders,
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
@@ -461,8 +460,12 @@ pub fn view_3d(
     );
     let eye = orbit_eye.to_eye();
 
-    let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx)
-        .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+    // Various ui interactions draw additional lines.
+    let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+    line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+    // We don't know ahead of time how many lines we need, but it's not gonna be a huge amount!
+    line_builder.reserve_strips(32)?;
+    line_builder.reserve_vertices(64)?;
 
     // Origin gizmo if requested.
     // TODO(andreas): Move this to the transform3d_arrow scene part.
@@ -624,22 +627,21 @@ pub fn view_3d(
         );
     }
 
-    {
-        let mut box_batch = line_builder.batch("scene_bbox");
-        if state.state_3d.show_bbox {
-            box_batch
-                .add_box_outline(&state.bounding_boxes.current)
-                .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
-        }
-        if state.state_3d.show_accumulated_bbox {
-            box_batch
-                .add_box_outline(&state.bounding_boxes.accumulated)
-                .map(|lines| {
-                    lines
-                        .radius(Size::AUTO)
-                        .color(egui::Color32::from_gray(170))
-                });
-        }
+    if state.state_3d.show_bbox {
+        line_builder
+            .batch("scene_bbox_current")
+            .add_box_outline(&state.bounding_boxes.current)
+            .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
+    }
+    if state.state_3d.show_accumulated_bbox {
+        line_builder
+            .batch("scene_bbox_accumulated")
+            .add_box_outline(&state.bounding_boxes.accumulated)
+            .map(|lines| {
+                lines
+                    .radius(Size::AUTO)
+                    .color(egui::Color32::from_gray(170))
+            });
     }
 
     // Show center of orbit camera when interacting with camera (it's quite helpful).
@@ -737,21 +739,9 @@ pub fn view_3d(
     for draw_data in draw_data {
         view_builder.queue_draw(draw_data);
     }
-    if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {
-        for draw_data in shared_render_builders.queuable_draw_data(ctx.render_ctx) {
-            view_builder.queue_draw(draw_data);
-        }
-    }
 
     // Commit ui induced lines.
-    match line_builder.into_draw_data(ctx.render_ctx) {
-        Ok(line_draw_data) => {
-            view_builder.queue_draw(line_draw_data);
-        }
-        Err(err) => {
-            re_log::error_once!("Failed to create draw data for lines from ui interaction: {err}");
-        }
-    }
+    view_builder.queue_draw(line_builder.into_draw_data()?);
 
     // Composite viewbuilder into egui.
     view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
@@ -771,7 +761,7 @@ pub fn view_3d(
 }
 
 fn show_projections_from_2d_space(
-    line_builder: &mut LineStripSeriesBuilder,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     space_cameras: &[SpaceCamera3D],
     state: &SpatialSpaceViewState,
     space_context: &SelectedSpaceContext,
@@ -846,7 +836,7 @@ fn show_projections_from_2d_space(
 }
 
 fn add_picking_ray(
-    line_builder: &mut LineStripSeriesBuilder,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     ray: macaw::Ray3,
     scene_bbox_accum: &BoundingBox,
     thick_ray_length: f32,

@@ -16,10 +16,9 @@
 use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
-    allocator::create_and_fill_uniform_buffer_batch,
+    allocator::{create_and_fill_uniform_buffer_batch, data_texture_desc},
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
-    renderer::data_texture_desc,
     wgpu_resources::GpuRenderPipelinePoolAccessor,
     DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
 };
@@ -157,7 +156,7 @@ pub use gpu_data::PositionRadius;
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PointCloudDrawDataError {
-    #[error("Failed to transfer data to the GPU")]
+    #[error("Failed to transfer data to the GPU: {0}")]
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 
@@ -232,7 +231,7 @@ impl PointCloudDrawData {
             &data_texture_desc(
                 "PointCloudDrawData::position_data_texture",
                 Self::POSITION_DATA_TEXTURE_FORMAT,
-                vertices.len() as u32,
+                vertices.len(),
                 max_texture_dimension_2d,
             ),
         );
@@ -241,7 +240,7 @@ impl PointCloudDrawData {
             &data_texture_desc(
                 "PointCloudDrawData::color_texture",
                 Self::COLOR_TEXTURE_FORMAT,
-                vertices.len() as u32,
+                vertices.len(),
                 max_texture_dimension_2d,
             ),
         );
@@ -251,7 +250,7 @@ impl PointCloudDrawData {
             &data_texture_desc(
                 "PointCloudDrawData::picking_instance_id_texture",
                 Self::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
-                vertices.len() as u32,
+                vertices.len(),
                 max_texture_dimension_2d,
             ),
         );
@@ -269,7 +268,7 @@ impl PointCloudDrawData {
                 texel_count,
             )?;
             staging_buffer.extend_from_slice(vertices)?;
-            staging_buffer.fill_n(gpu_data::PositionRadius::zeroed(), num_elements_padding)?;
+            staging_buffer.add_n(gpu_data::PositionRadius::zeroed(), num_elements_padding)?;
             staging_buffer.copy_to_texture2d(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 wgpu::ImageCopyTexture {
@@ -288,7 +287,7 @@ impl PointCloudDrawData {
 
             builder
                 .color_buffer
-                .fill_n(ecolor::Color32::TRANSPARENT, num_elements_padding)?;
+                .add_n(ecolor::Color32::TRANSPARENT, num_elements_padding)?;
             builder.color_buffer.copy_to_texture2d_entire_first_layer(
                 ctx.active_frame.before_view_builder_encoder.lock().get(),
                 &color_texture,
@@ -302,7 +301,7 @@ impl PointCloudDrawData {
 
             builder
                 .picking_instance_ids_buffer
-                .fill_n(Default::default(), num_elements_padding)?;
+                .add_n(Default::default(), num_elements_padding)?;
             builder
                 .picking_instance_ids_buffer
                 .copy_to_texture2d_entire_first_layer(

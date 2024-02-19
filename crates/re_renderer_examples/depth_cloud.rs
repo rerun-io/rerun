@@ -25,7 +25,7 @@ use re_renderer::{
     },
     resource_managers::{GpuTexture2D, Texture2DCreationDesc},
     view_builder::{self, Projection, ViewBuilder},
-    Color32, LineStripSeriesBuilder, PointCloudBuilder, Rgba, Size,
+    Color32, LineDrawableBuilder, PointCloudBuilder, Rgba, Size,
 };
 use winit::{
     event::ElementState,
@@ -99,7 +99,7 @@ impl RenderDepthClouds {
                 })
                 .multiunzip();
 
-            let mut builder = PointCloudBuilder::new(re_ctx, points.len() as u32);
+            let mut builder = PointCloudBuilder::new(re_ctx, points.len());
             builder
                 .batch("backprojected point cloud")
                 .add_points(&points, &radii, &colors, &[]);
@@ -294,7 +294,7 @@ impl framework::Example for RenderDepthClouds {
         let world_from_model = rotation * translation_center * scale;
 
         let frame_draw_data = {
-            let mut builder = LineStripSeriesBuilder::new(re_ctx);
+            let mut builder = LineDrawableBuilder::new(re_ctx);
             {
                 let mut line_batch = builder.batch("frame").world_from_obj(world_from_model);
                 line_batch.add_box_outline_from_transform(
@@ -305,7 +305,7 @@ impl framework::Example for RenderDepthClouds {
                     ),
                 );
             }
-            builder.into_draw_data(re_ctx).unwrap()
+            builder.into_draw_data().unwrap()
         };
 
         let image_draw_data = RectangleDrawData::new(

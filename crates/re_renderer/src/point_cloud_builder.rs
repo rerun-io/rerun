@@ -3,11 +3,11 @@ use itertools::izip;
 use re_log::ResultExt;
 
 use crate::{
-    allocator::CpuWriteGpuReadBuffer,
+    allocator::{data_texture_source_buffer_element_count, CpuWriteGpuReadBuffer},
     draw_phases::PickingLayerObjectId,
     renderer::{
-        data_texture_source_buffer_element_count, PointCloudBatchFlags, PointCloudBatchInfo,
-        PointCloudDrawData, PointCloudDrawDataError, PositionRadius,
+        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
+        PositionRadius,
     },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
     Size,
@@ -29,7 +29,7 @@ pub struct PointCloudBuilder {
 }
 
 impl PointCloudBuilder {
-    pub fn new(ctx: &RenderContext, max_num_points: u32) -> Self {
+    pub fn new(ctx: &RenderContext, max_num_points: usize) -> Self {
         let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
 
         let color_buffer = ctx
@@ -61,12 +61,12 @@ impl PointCloudBuilder {
             .expect("Failed to allocate picking layer buffer"); // TODO(#3408): Should never happen but should propagate error anyways
 
         Self {
-            vertices: Vec::with_capacity(max_num_points as usize),
+            vertices: Vec::with_capacity(max_num_points),
             color_buffer,
             picking_instance_ids_buffer,
             batches: Vec::with_capacity(16),
             radius_boost_in_ui_points_for_outlines: 0.0,
-            max_num_points: max_num_points as usize,
+            max_num_points,
         }
     }
 
@@ -234,7 +234,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .color_buffer
-                .fill_n(Color32::WHITE, num_points.saturating_sub(colors.len()))
+                .add_n(Color32::WHITE, num_points.saturating_sub(colors.len()))
                 .ok_or_log_error();
         }
         {
@@ -248,7 +248,7 @@ impl<'a> PointCloudBatchBuilder<'a> {
             // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .picking_instance_ids_buffer
-                .fill_n(
+                .add_n(
                     PickingLayerInstanceId::default(),
                     num_points.saturating_sub(picking_ids.len()),
                 )

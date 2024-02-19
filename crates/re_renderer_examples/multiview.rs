@@ -14,7 +14,7 @@ use re_renderer::{
         TestTriangleDrawData,
     },
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    Color32, GpuReadbackIdentifier, Hsva, LineStripSeriesBuilder, PointCloudBuilder, RenderContext,
+    Color32, GpuReadbackIdentifier, Hsva, LineDrawableBuilder, PointCloudBuilder, RenderContext,
     Rgba, ScreenshotProcessor, Size,
 };
 use winit::{event::ElementState, keyboard};
@@ -85,7 +85,11 @@ fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> LineDrawDa
     // Calculate some points that look nice for an animated line.
     let lorenz_points = lorenz_points(seconds_since_startup);
 
-    let mut builder = LineStripSeriesBuilder::new(re_ctx);
+    let mut builder = LineDrawableBuilder::new(re_ctx);
+    builder
+        .reserve_vertices(lorenz_points.len() + 4 + 1000)
+        .unwrap();
+
     {
         let mut batch = builder.batch("lines without transform");
 
@@ -133,7 +137,7 @@ fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> LineDrawDa
         .radius(Size::new_scene(0.1))
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE);
 
-    builder.into_draw_data(re_ctx).unwrap()
+    builder.into_draw_data().unwrap()
 }
 
 enum CameraControl {
@@ -323,7 +327,7 @@ impl Example for Multiview {
         let skybox = GenericSkyboxDrawData::new(re_ctx);
         let lines = build_lines(re_ctx, seconds_since_startup);
 
-        let mut builder = PointCloudBuilder::new(re_ctx, self.random_points_positions.len() as u32);
+        let mut builder = PointCloudBuilder::new(re_ctx, self.random_points_positions.len());
         builder
             .batch("Random Points")
             .world_from_obj(glam::Affine3A::from_rotation_x(seconds_since_startup))

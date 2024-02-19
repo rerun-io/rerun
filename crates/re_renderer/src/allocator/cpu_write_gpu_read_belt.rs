@@ -10,13 +10,14 @@ pub enum CpuWriteGpuReadError {
     #[error("Attempting to allocate an empty buffer.")]
     ZeroSizeBufferAllocation,
 
-    #[error("Buffer is full, can't append more data!
- Buffer contains {buffer_element_size} elements and has a capacity for {buffer_element_capacity} elements.
- Tried to add {num_elements_attempted_to_add} elements.")]
+    #[error(
+        "Buffer is full, can't append more data! Buffer has a capacity for {buffer_capacity_elements} elements.
+ Tried to add {num_elements_attempted_to_add} elements, but only added {num_elements_actually_added}."
+    )]
     BufferFull {
-        buffer_element_capacity: usize,
-        buffer_element_size: usize,
+        buffer_capacity_elements: usize,
         num_elements_attempted_to_add: usize,
+        num_elements_actually_added: usize,
     },
 
     #[error("Target buffer has a size of {target_buffer_size}, can't write {copy_size} bytes with an offset of {destination_offset}!")]
@@ -26,9 +27,9 @@ pub enum CpuWriteGpuReadError {
         destination_offset: u64,
     },
 
-    #[error("Target texture doesn't fit the size of the written data to this buffer! Texture copy size: {copy_size:?} bytes, written data size: {written_data_size} bytes")]
+    #[error("Target texture doesn't fit the size of the written data to this buffer! Texture target buffer should be at most {max_copy_size} bytes, but the to be written data was {written_data_size} bytes.")]
     TargetTextureBufferSizeMismatch {
-        copy_size: wgpu::Extent3d,
+        max_copy_size: u64,
         written_data_size: usize,
     },
 }
@@ -89,14 +90,16 @@ where
     #[inline]
     pub fn extend_from_slice(&mut self, elements: &[T]) -> Result<(), CpuWriteGpuReadError> {
         re_tracing::profile_function!();
-        let (result, elements) = if elements.len() > self.remaining_capacity() {
+
+        let remaining_capacity = self.remaining_capacity();
+        let (result, elements) = if elements.len() > remaining_capacity {
             (
                 Err(CpuWriteGpuReadError::BufferFull {
-                    buffer_element_capacity: self.capacity(),
-                    buffer_element_size: self.num_written(),
+                    buffer_capacity_elements: self.capacity(),
                     num_elements_attempted_to_add: elements.len(),
+                    num_elements_actually_added: remaining_capacity,
                 }),
-                &elements[..self.remaining_capacity()],
+                &elements[..remaining_capacity],
             )
         } else {
             (Ok(()), elements)
@@ -111,12 +114,12 @@ where
 
     /// Pushes several elements into the buffer.
     ///
-    /// If the buffer is not big enough, only the first `self.remaining_capacity()` elements are pushed before returning an error.
+    /// If the buffer is not big enough, only the first [`CpuWriteGpuReadBuffer::remaining_capacity`] elements are pushed before returning an error.
     /// Otherwise, returns the number of elements pushed for convenience.
     #[inline]
     pub fn extend(
         &mut self,
-        elements: impl Iterator<Item = T>,
+        mut elements: impl Iterator<Item = T>,
     ) -> Result<usize, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 
@@ -129,12 +132,16 @@ where
         } else {
             let num_written_before = self.num_written();
 
-            for element in elements {
+            while let Some(element) = elements.next() {
                 if self.unwritten_element_range.start >= self.unwritten_element_range.end {
+                    let num_elements_actually_added = self.num_written() - num_written_before;
+
                     return Err(CpuWriteGpuReadError::BufferFull {
-                        buffer_element_capacity: self.capacity(),
-                        buffer_element_size: self.num_written(),
-                        num_elements_attempted_to_add: 1,
+                        buffer_capacity_elements: self.capacity(),
+                        num_elements_attempted_to_add: num_elements_actually_added
+                            + elements.count()
+                            + 1,
+                        num_elements_actually_added,
                     });
                 }
 
@@ -150,16 +157,22 @@ where
     /// Fills the buffer with n instances of an element.
     ///
     /// If the buffer is not big enough, only the first `self.remaining_capacity()` elements are pushed before returning an error.
-    pub fn fill_n(&mut self, element: T, num_elements: usize) -> Result<(), CpuWriteGpuReadError> {
+    pub fn add_n(&mut self, element: T, num_elements: usize) -> Result<(), CpuWriteGpuReadError> {
+        if num_elements == 0 {
+            return Ok(());
+        }
+
         re_tracing::profile_function!();
-        let (result, num_elements) = if num_elements > self.remaining_capacity() {
+
+        let remaining_capacity = self.remaining_capacity();
+        let (result, num_elements) = if num_elements > remaining_capacity {
             (
                 Err(CpuWriteGpuReadError::BufferFull {
-                    buffer_element_capacity: self.capacity(),
-                    buffer_element_size: self.num_written(),
+                    buffer_capacity_elements: self.capacity(),
                     num_elements_attempted_to_add: num_elements,
+                    num_elements_actually_added: remaining_capacity,
                 }),
-                self.remaining_capacity(),
+                remaining_capacity,
             )
         } else {
             (Ok(()), num_elements)
@@ -181,14 +194,14 @@ where
 
     /// Pushes a single element into the buffer and advances the write pointer.
     ///
-    /// Panics if the data no longer fits into the buffer.
+    /// Returns an error if the data no longer fits into the buffer.
     #[inline]
     pub fn push(&mut self, element: T) -> Result<(), CpuWriteGpuReadError> {
         if self.remaining_capacity() == 0 {
             return Err(CpuWriteGpuReadError::BufferFull {
-                buffer_element_capacity: self.capacity(),
-                buffer_element_size: self.num_written(),
+                buffer_capacity_elements: self.capacity(),
                 num_elements_attempted_to_add: 1,
+                num_elements_actually_added: 0,
             });
         }
 
@@ -255,12 +268,11 @@ where
         let buffer_info = Texture2DBufferInfo::new(destination.texture.format(), copy_size);
 
         // Validate that we stay within the written part of the slice (wgpu can't fully know our intention here, so we have to check).
-        // We go one step further and require the size to be exactly equal - it's too unlikely that you wrote more than is needed!
-        // (and if you did you probably have regrets anyways!)
-        if buffer_info.buffer_size_padded as usize != self.num_written() * std::mem::size_of::<T>()
+        // This is a bit of a leaky check since we haven't looked at copy_size which may limit the amount of memory we need.
+        if (buffer_info.buffer_size_padded as usize) < self.num_written() * std::mem::size_of::<T>()
         {
             return Err(CpuWriteGpuReadError::TargetTextureBufferSizeMismatch {
-                copy_size,
+                max_copy_size: buffer_info.buffer_size_padded,
                 written_data_size: self.num_written() * std::mem::size_of::<T>(),
             });
         }
