@@ -37,7 +37,7 @@ def main() -> None:
     print(f"Running command: {cmd}", file=sys.stderr, flush=True)
     count = int(os.popen(cmd).read().strip())
     assert count > 0, f"Command failed. Maybe unknown crate? cmd: {cmd}"
-    print(json.dumps({"name": f"{crate} {flags}", "value": count, "unit": "crates"}))
+    print(json.dumps([{"name": f"{crate} {flags}", "value": count, "unit": "crates"}]))
 
 
 if __name__ == "__main__":
