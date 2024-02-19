@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 
 """
-Measure or compare sizes of a list of files.
+Measure sizes of a list of files.
 
 This produces the format for use in https://github.com/benchmark-action/github-action-benchmark.
 
 Use the script:
-    python3 scripts/ci/sizes.py --help
+    python3 scripts/ci/count_bytes.py --help
 
-    python3 scripts/ci/sizes.py measure \
+    python3 scripts/ci/count_bytes.py \
         "Wasm":web_viewer/re_viewer_bg.wasm
 
-    python3 scripts/ci/sizes.py measure --format=github \
+    python3 scripts/ci/count_bytes.py --format=github \
         "Wasm":web_viewer/re_viewer_bg.wasm
-
-    python3 scripts/ci/sizes.py compare --threshold=20 previous.json current.json
 """
 from __future__ import annotations
 
@@ -177,56 +175,17 @@ def percentage(value: str) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
-
-    cmds_parser = parser.add_subparsers(title="cmds", dest="cmd", help="Command")
-
-    compare_parser = cmds_parser.add_parser("compare", help="Compare results")
-    compare_parser.add_argument("before", type=str, help="Previous result .json file")
-    compare_parser.add_argument("after", type=str, help="Current result .json file")
-    compare_parser.add_argument(
-        "--threshold",
-        type=percentage,
-        required=False,
-        default=20,
-        help="Only print row if value is N%% larger or smaller",
-    )
-    compare_parser.add_argument(
-        "--before-header",
-        type=str,
-        required=False,
-        default="Before",
-        help="Header for before column",
-    )
-    compare_parser.add_argument(
-        "--after-header",
-        type=str,
-        required=False,
-        default="After",
-        help="Header for after column",
-    )
-
-    measure_parser = cmds_parser.add_parser("measure", help="Measure sizes")
-    measure_parser.add_argument(
+    parser.add_argument(
         "--format",
         type=Format,
         choices=list(Format),
         default=Format.JSON,
         help="Format to render",
     )
-    measure_parser.add_argument("files", nargs="*", help="Entries to measure. Format: name:path[:unit]")
+    parser.add_argument("files", nargs="*", help="Entries to measure. Format: name:path[:unit]")
 
     args = parser.parse_args()
-
-    if args.cmd == "compare":
-        compare(
-            args.before,
-            args.after,
-            args.threshold,
-            args.before_header,
-            args.after_header,
-        )
-    elif args.cmd == "measure":
-        measure(args.files, args.format)
+    measure(args.files, args.format)
 
 
 if __name__ == "__main__":
