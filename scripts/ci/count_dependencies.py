@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Count the total number of dependendencies of a file (recursively).
+Count the total number of dependencies of a file (recursively).
 
 This produces the format for use in https://github.com/benchmark-action/github-action-benchmark.
 
