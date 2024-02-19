@@ -97,11 +97,16 @@ jobs:
             entries+=("$name:$file:MiB")
           done
 
-          data=$(python3 scripts/ci/sizes.py measure "${entries[@]}")
-          echo "$data" > "/tmp/data.json"
+          python3 scripts/ci/sizes.py measure "${entries[@]}"  > /tmp/sizes.json
+
+          python3 scripts/ci/count_dependencies.py -p rerun     --no-default-features > /tmp/deps1.json
+          python3 scripts/ci/count_dependencies.py -p re_viewer --all-features        > /tmp/deps2.json
+
+          # Merge the results, putting dependencies first (on top):
+          jq -s '.[0] + .[1] + .[2]' /tmp/deps1.json /tmp/deps2.json /tmp/sizes.json > /tmp/data.json
 
           comparison=$(
-            python3 scripts/ci/sizes.py compare \
+            python3 scripts/ci/compare.py \
               --threshold=5% \
               --before-header=${{ (inputs.PR_NUMBER && github.event.pull_request.base.ref) || 'Before' }} \
               --after-header=${{ github.ref_name }} \
