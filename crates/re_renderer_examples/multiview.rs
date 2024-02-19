@@ -327,7 +327,7 @@ impl Example for Multiview {
         let skybox = GenericSkyboxDrawData::new(re_ctx);
         let lines = build_lines(re_ctx, seconds_since_startup);
 
-        let mut builder = PointCloudBuilder::new(re_ctx, self.random_points_positions.len() as u32);
+        let mut builder = PointCloudBuilder::new(re_ctx, self.random_points_positions.len());
         builder
             .batch("Random Points")
             .world_from_obj(glam::Affine3A::from_rotation_x(seconds_since_startup))

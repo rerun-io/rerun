@@ -61,12 +61,12 @@ impl PointCloudBuilder {
             .expect("Failed to allocate picking layer buffer"); // TODO(#3408): Should never happen but should propagate error anyways
 
         Self {
-            vertices: Vec::with_capacity(max_num_points as usize),
+            vertices: Vec::with_capacity(max_num_points),
             color_buffer,
             picking_instance_ids_buffer,
             batches: Vec::with_capacity(16),
             radius_boost_in_ui_points_for_outlines: 0.0,
-            max_num_points: max_num_points as usize,
+            max_num_points,
         }
     }
 

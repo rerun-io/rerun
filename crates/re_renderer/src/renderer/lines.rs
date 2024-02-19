@@ -486,7 +486,7 @@ impl LineDrawData {
 
             let texture_size = line_strip_texture.texture.size();
             let texel_count = (texture_size.width * texture_size.height) as usize;
-            let num_elements_padding = texel_count - num_strips as usize;
+            let num_elements_padding = texel_count - num_strips;
 
             let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
                 &ctx.device,

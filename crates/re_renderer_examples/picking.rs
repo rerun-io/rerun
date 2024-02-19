@@ -158,10 +158,7 @@ impl framework::Example for Picking {
 
         let mut point_builder = PointCloudBuilder::new(
             re_ctx,
-            self.point_sets
-                .iter()
-                .map(|set| set.positions.len() as u32)
-                .sum(),
+            self.point_sets.iter().map(|set| set.positions.len()).sum(),
         );
         for (i, point_set) in self.point_sets.iter().enumerate() {
             point_builder
