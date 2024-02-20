@@ -14,9 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os.path
 import sys
-from enum import Enum
 from pathlib import Path
 from typing import Any
 

@@ -33,7 +33,7 @@ def main() -> None:
         flags = "--no-default-features"
     else:
         flags = ""
-    cmd = f'cargo tree --edges normal -p {crate} {flags} | tail -n +2 | grep -E "\w+ v[0-9.]+" -o | sort -u | wc -l'
+    cmd = f'cargo tree --edges normal -p {crate} {flags} | tail -n +2 | grep -E "\\w+ v[0-9.]+" -o | sort -u | wc -l'
     print(f"Running command: {cmd}", file=sys.stderr, flush=True)
     count = int(os.popen(cmd).read().strip())
     assert count > 0, f"Command failed. Maybe unknown crate? cmd: {cmd}"
