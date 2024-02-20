@@ -103,13 +103,6 @@ impl AsRef<str> for InternedString {
     }
 }
 
-impl std::borrow::Borrow<str> for InternedString {
-    #[inline]
-    fn borrow(&self) -> &str {
-        self.as_str()
-    }
-}
-
 impl std::ops::Deref for InternedString {
     type Target = str;
     #[inline]
