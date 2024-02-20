@@ -1,8 +1,7 @@
 <!--[metadata]
 title = "Hand Tracking and Gesture Recognition"
-tags = ["mediapipe"]
+tags = ["mediapipe", "keypoint-detection", "2D", "3D"]
 description = "Use the MediaPipe Gesture Detection solution to track hand and recognise gestures in image/video."
-channel = "main"
 thumbnail = "https://github.com/rerun-io/rerun/assets/49308613/6895d06c-b2f3-4aa3-9d7f-4e50fff3bf6e"
 thumbnail_dimensions = [480, 272]
 -->
@@ -238,7 +237,7 @@ class GestureDetectorLogger:
 
 ## Gesture Detection Presentation
 
-![Untitled design](https://github.com/rerun-io/rerun/assets/49308613/3d9b4726-da27-4342-81b2-ca60b9c0f25d)
+![Gesture Detection Presentation](https://github.com/rerun-io/rerun/assets/49308613/32cc44f4-28e5-4ed1-b283-f7351a087535)
 
 One effective method to present these results to the viewer is by utilizing a TextDocument along with emojis for enhanced visual communication.
 
