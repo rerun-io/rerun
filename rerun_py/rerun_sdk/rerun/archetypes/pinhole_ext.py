@@ -23,6 +23,8 @@ class PinholeExt:
         height: int | float | None = None,
         focal_length: float | npt.ArrayLike | None = None,
         principal_point: npt.ArrayLike | None = None,
+        fov_y: float | None = None,
+        aspect_ratio: float | None = None,
     ) -> None:
         """
         Create a new instance of the Pinhole archetype.
@@ -78,6 +80,10 @@ class PinholeExt:
             Width of the image in pixels.
         height:
             Height of the image in pixels.
+        fov_y:
+            Vertical field of view.
+        aspect_ratio
+            Aspect ratio.
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
@@ -88,6 +94,11 @@ class PinholeExt:
 
             # TODO(andreas): Use a union type for the Pinhole component instead ~Zof converting to a matrix here
             if image_from_camera is None:
+                if fov_y is not None and aspect_ratio is not None:
+                    EPSILON = 1.19209e-07
+                    focal_length = focal_length = 0.5 / max(fov_y * 0.5, EPSILON)
+                    resolution = [aspect_ratio, 1.0]
+
                 if resolution is not None:
                     res_vec = Vec2D(resolution)
                     width = cast(float, res_vec.xy[0])
@@ -132,6 +143,8 @@ class PinholeExt:
                     _send_warning_or_raise("Both image_from_camera and focal_length set", 1)
                 if principal_point is not None:
                     _send_warning_or_raise("Both image_from_camera and principal_point set", 1)
+                if fov_y is not None or aspect_ratio is not None:
+                    _send_warning_or_raise("Both image_from_camera and fov_y or aspect_ratio set", 1)
 
             self.__attrs_init__(image_from_camera=image_from_camera, resolution=resolution, camera_xyz=camera_xyz)
             return
