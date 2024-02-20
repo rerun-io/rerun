@@ -1,11 +1,9 @@
 //! Logs a point cloud and a perspective camera looking at it.
 
-use ndarray::{Array, ShapeBuilder};
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole_perspective").spawn()?;
 
-    let fov = 0.7853982;
+    let fov = std::f32::consts::FRAC_PI_4;
     let aspect_ratio = 1.7777778;
     rec.log(
         "world/cam",

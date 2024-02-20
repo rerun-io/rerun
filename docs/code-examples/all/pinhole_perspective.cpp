@@ -6,8 +6,8 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_pinhole_perspective");
     rec.spawn().exit_on_failure();
 
-    const auto fov = 0.7853982f;
-    const auto aspect_ratio = 1.7777778f;
+    const float fov = 0.7853982f;
+    const float aspect_ratio = 1.7777778f;
     rec.log(
         "world/cam",
         rerun::Pinhole::from_fov_and_aspect_ratio(fov, aspect_ratio)
