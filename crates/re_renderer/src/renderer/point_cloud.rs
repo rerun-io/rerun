@@ -52,7 +52,7 @@ bitflags! {
     }
 }
 
-mod gpu_data {
+pub mod gpu_data {
     use crate::{draw_phases::PickingLayerObjectId, wgpu_buffer_types, Size};
 
     // Don't use `wgsl_buffer_types` since this data doesn't go into a buffer, so alignment rules don't apply like on buffers..
@@ -150,8 +150,6 @@ pub struct PointCloudBatchInfo {
     /// Depth offset applied after projection.
     pub depth_offset: DepthOffset,
 }
-
-pub use gpu_data::PositionRadius;
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PointCloudDrawDataError {

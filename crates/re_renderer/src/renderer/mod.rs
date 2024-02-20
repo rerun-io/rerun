@@ -2,15 +2,11 @@ mod generic_skybox;
 pub use generic_skybox::GenericSkyboxDrawData;
 
 mod lines;
-pub use lines::{
-    gpu_data::LineVertex, LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags,
-    LineStripInfo,
-};
+pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
 
 mod point_cloud;
 pub use point_cloud::{
     PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-    PositionRadius,
 };
 
 mod depth_cloud;
@@ -34,6 +30,11 @@ pub(crate) use compositor::CompositorDrawData;
 
 mod debug_overlay;
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
+
+pub mod gpu_data {
+    pub use super::lines::gpu_data::{LineStripInfo, LineVertex};
+    pub use super::point_cloud::gpu_data::PositionRadius;
+}
 
 use crate::{
     context::RenderContext,
