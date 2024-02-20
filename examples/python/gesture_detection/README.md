@@ -5,6 +5,8 @@ description = "Use the MediaPipe Gesture Detection solution to track hand and re
 channel = "main"
 -->
 
+<img width="1372" alt="gesture_detection_cover" src="https://github.com/rerun-io/rerun/assets/49308613/6895d06c-b2f3-4aa3-9d7f-4e50fff3bf6e">
+
 # Overview
 
 Use the [MediaPipe](https://google.github.io/mediapipe/)  Gesture detection and Gesture landmark detection solutions to track hands and recognise gestures in images and videos.
@@ -141,6 +143,8 @@ def run_from_video_capture(vid: int | str, max_frame_count: int | None) -> None:
 
 ## Hand Landmarks as 2D Points
 
+![gesture_recognition_2d_points](https://github.com/rerun-io/rerun/assets/49308613/7e5dd809-be06-4f62-93a8-4fc03e5dfa0e)
+
 You can extract hand landmark points as normalized values, utilizing the image's width and height for conversion into image coordinates. These coordinates are then logged as 2D points to the Rerun SDK. Additionally, you can identify connections between the landmarks and log them as 2D linestrips.
 
 ```python
@@ -189,7 +193,7 @@ class GestureDetectorLogger:
 ```
 ## Hand Landmarks as 3D Points
 
-
+![gesture_recongition_3d_ponts](https://github.com/rerun-io/rerun/assets/49308613/b24bb0e5-57cc-43f0-948b-3480fe9073a2)
 
 You can first define the connections between the points using keypoints from Annotation Context in the init function, and then log them as 3D points.
 
@@ -231,6 +235,8 @@ class GestureDetectorLogger:
 
 
 ## Gesture Detection Presentation
+
+![Untitled design](https://github.com/rerun-io/rerun/assets/49308613/3d9b4726-da27-4342-81b2-ca60b9c0f25d)
 
 One effective method to present these results to the viewer is by utilizing a TextDocument along with emojis for enhanced visual communication.
 
