@@ -1,6 +1,7 @@
 use super::Rgba32;
 
 impl Rgba32 {
+    pub const BLACK: Self = Self::from_rgb(0, 0, 0);
     pub const WHITE: Self = Self::from_rgb(255, 255, 255);
 
     #[inline]
@@ -29,6 +30,30 @@ impl Rgba32 {
             (self.0 >> 8) as u8,
             self.0 as u8,
         ]
+    }
+
+    /// Red channel
+    #[inline]
+    pub const fn r(self) -> u8 {
+        (self.0 >> 24) as u8
+    }
+
+    /// Green channel
+    #[inline]
+    pub const fn g(self) -> u8 {
+        (self.0 >> 16) as u8
+    }
+
+    /// Blue channel
+    #[inline]
+    pub const fn b(self) -> u8 {
+        (self.0 >> 8) as u8
+    }
+
+    /// Alpha channel
+    #[inline]
+    pub const fn a(self) -> u8 {
+        self.0 as u8
     }
 
     /// Most significant byte is `r`, least significant byte is `a`.

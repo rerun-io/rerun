@@ -30,6 +30,12 @@ table Points3D (
   /// \python As either 0-1 floats or 0-255 integers, with separate alpha.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
 
+  /// Scale of points. Like `radii`, but 3D, allowing for ellipsoids / splats.
+  scales: [rerun.components.HalfSizes3D] ("attr.rerun.component_optional", nullable, order: 2200);
+
+  /// Rotations of point splats.
+  rotations: [rerun.components.Rotation3D] ("attr.rerun.component_optional", nullable, order: 2300);
+
   // --- Optional ---
 
   /// Optional text labels for the points.

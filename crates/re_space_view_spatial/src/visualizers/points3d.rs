@@ -1,9 +1,12 @@
+use glam::{Quat, Vec3};
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_log_types::TimeInt;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points3D,
-    components::{ClassId, Color, InstanceKey, KeypointId, Position3D, Radius, Text},
+    components::{
+        ClassId, Color, HalfSizes3D, InstanceKey, KeypointId, Position3D, Radius, Rotation3D, Text,
+    },
 };
 use re_viewer_context::{
     Annotations, ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -89,6 +92,8 @@ impl Points3DVisualizer {
             keypoints,
             positions,
             radii,
+            scales,
+            rotations,
             colors,
             picking_instance_ids,
         } = LoadedPoints::load(data, ent_path, query.latest_at, &ent_context.annotations);
@@ -104,6 +109,13 @@ impl Points3DVisualizer {
 
             let mut point_range_builder =
                 point_batch.add_points(&positions, &radii, &colors, &picking_instance_ids);
+
+            if let Some(scales) = scales {
+                point_range_builder.push_scales3(&scales);
+            }
+            if let Some(rotations) = rotations {
+                point_range_builder.push_rotations(&rotations);
+            }
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
@@ -125,6 +137,7 @@ impl Points3DVisualizer {
             }
         }
 
+        // NOTE: we ignore scale and rotation here for performance and simplicity.
         self.data.add_bounding_box_from_points(
             ent_path.hash(),
             positions.iter().copied(),
@@ -193,7 +206,7 @@ impl VisualizerSystem for Points3DVisualizer {
         let num_points = super::entity_iterator::count_instances_in_archetype_views::<
             Points3DVisualizer,
             Points3D,
-            8,
+            10,
         >(ctx, query);
 
         if num_points == 0 {
@@ -208,12 +221,14 @@ impl VisualizerSystem for Points3DVisualizer {
         line_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
-        super::entity_iterator::process_archetype_pov1_comp5::<
+        super::entity_iterator::process_archetype_pov1_comp7::<
             Points3DVisualizer,
             Points3D,
             Position3D,
             Color,
             Radius,
+            HalfSizes3D,
+            Rotation3D,
             Text,
             re_types::components::KeypointId,
             re_types::components::ClassId,
@@ -232,6 +247,8 @@ impl VisualizerSystem for Points3DVisualizer {
              positions,
              colors,
              radii,
+             scales,
+             rotations,
              labels,
              keypoint_ids,
              class_ids| {
@@ -240,6 +257,8 @@ impl VisualizerSystem for Points3DVisualizer {
                     positions,
                     colors,
                     radii,
+                    scales,
+                    rotations,
                     labels,
                     keypoint_ids,
                     class_ids,
@@ -278,6 +297,8 @@ pub struct LoadedPoints {
     pub keypoints: Keypoints,
     pub positions: Vec<glam::Vec3>,
     pub radii: Vec<re_renderer::Size>,
+    pub scales: Option<Vec<glam::Vec3>>,
+    pub rotations: Option<Vec<glam::Quat>>,
     pub colors: Vec<re_renderer::Color32>,
     pub picking_instance_ids: Vec<PickingLayerInstanceId>,
 }
@@ -288,6 +309,8 @@ pub struct Points3DComponentData<'a> {
     pub positions: &'a [Position3D],
     pub colors: Option<&'a [Option<Color>]>,
     pub radii: Option<&'a [Option<Radius>]>,
+    pub scales: Option<&'a [Option<HalfSizes3D>]>,
+    pub rotations: Option<&'a [Option<Rotation3D>]>,
     pub labels: Option<&'a [Option<Text>]>,
     pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
     pub class_ids: Option<&'a [Option<ClassId>]>,
@@ -312,9 +335,11 @@ impl LoadedPoints {
             annotations,
         );
 
-        let (positions, radii, colors, picking_instance_ids) = join4(
+        let (positions, radii, scales, rotations, colors, picking_instance_ids) = join6(
             || Self::load_positions(data),
             || Self::load_radii(data, ent_path),
+            || Self::load_scales(data),
+            || Self::load_rotations(data),
             || Self::load_colors(data, ent_path, &annotation_infos),
             || Self::load_picking_ids(data),
         );
@@ -324,6 +349,8 @@ impl LoadedPoints {
             keypoints,
             positions,
             radii,
+            scales,
+            rotations,
             colors,
             picking_instance_ids,
         }
@@ -335,6 +362,35 @@ impl LoadedPoints {
     ) -> Vec<glam::Vec3> {
         re_tracing::profile_function!();
         bytemuck::cast_slice(positions).to_vec()
+    }
+
+    #[inline]
+    pub fn load_scales(
+        Points3DComponentData { scales, .. }: &Points3DComponentData<'_>,
+    ) -> Option<Vec<Vec3>> {
+        re_tracing::profile_function!();
+        let default_scale = Vec3::ONE;
+        scales.map(|scales| {
+            scales
+                .iter()
+                .map(|s| s.map_or(default_scale, Vec3::from))
+                .collect()
+        })
+    }
+
+    #[inline]
+    pub fn load_rotations(
+        Points3DComponentData { rotations, .. }: &Points3DComponentData<'_>,
+    ) -> Option<Vec<glam::Quat>> {
+        re_tracing::profile_function!();
+        use rayon::prelude::*;
+        let default_rot = Quat::IDENTITY;
+        rotations.map(|rotations| {
+            rotations
+                .par_iter()
+                .map(|rot| rot.map_or(default_rot, glam::Quat::from))
+                .collect()
+        })
     }
 
     #[inline]
@@ -374,7 +430,7 @@ fn join4<A: Send, B: Send, C: Send, D: Send>(
 ) -> (A, B, C, D) {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        re_tracing::profile_function!();
+        re_tracing::profile_wait!("join");
         let ((a, b), (c, d)) = rayon::join(|| rayon::join(a, b), || rayon::join(c, d));
         (a, b, c, d)
     }
@@ -382,5 +438,27 @@ fn join4<A: Send, B: Send, C: Send, D: Send>(
     #[cfg(target_arch = "wasm32")]
     {
         (a(), b(), c(), d())
+    }
+}
+
+/// Run 6 things in parallel
+fn join6<A: Send, B: Send, C: Send, D: Send, E: Send, F: Send>(
+    a: impl FnOnce() -> A + Send,
+    b: impl FnOnce() -> B + Send,
+    c: impl FnOnce() -> C + Send,
+    d: impl FnOnce() -> D + Send,
+    e: impl FnOnce() -> E + Send,
+    f: impl FnOnce() -> F + Send,
+) -> (A, B, C, D, E, F) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        re_tracing::profile_wait!("join");
+        let ((a, b, c, d), (e, f)) = rayon::join(|| join4(a, b, c, d), || rayon::join(e, f));
+        (a, b, c, d, e, f)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        (a(), b(), c(), d(), e(), f())
     }
 }
