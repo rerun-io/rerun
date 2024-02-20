@@ -3,39 +3,11 @@ title = "Hand Tracking and Gesture Recognition"
 tags = ["mediapipe"]
 description = "Use the MediaPipe Gesture Detection solution to track hand and recognise gestures in image/video."
 channel = "main"
+thumbnail = "https://github.com/rerun-io/rerun/assets/49308613/6895d06c-b2f3-4aa3-9d7f-4e50fff3bf6e"
+thumbnail_dimensions = [480, 272]
 -->
 
 <img width="1372" alt="gesture_detection_cover" src="https://github.com/rerun-io/rerun/assets/49308613/6895d06c-b2f3-4aa3-9d7f-4e50fff3bf6e">
-
-# Overview
-
-Use the [MediaPipe](https://google.github.io/mediapipe/)  Gesture detection and Gesture landmark detection solutions to track hands and recognise gestures in images and videos.
-
-Logging Details:
-
-1. Hand Landmarks as 2D Points:
-
-   - Extracts hand landmark points as normalized 2D coordinates. 
-
-   - Utilizes image width and height for conversion into image coordinates.
-
-   - Logs the 2D points to the Rerun SDK.
-   
-
-2. Hand Landmarks as 3D Points:
-
-    - Detects hand landmarks using MediaPipe solutions.
-
-    - Converts the detected hand landmarks into 3D coordinates.
-
-    - Logs the 3D points to the Rerun SDK.
-
-
-3. Gesture Detection Results:
-
-    - Utilizes the Gesture Detection solution from MediaPipe. 
-
-    - Logs the results of gesture detection as emoji
 
 # Run
 
@@ -83,6 +55,36 @@ Here is an overview of the options specific to this example:
 
 - ***Running modes*:** By default, this example streams images from the default webcam. Another webcam can be used by providing a camera index with the `--camera` option. Alternatively, images can be read from a video file (using `--video PATH`) or a single image file (using `-image PATH`). Also, a demo image can be automatically downloaded and used with `--demo-image`. Also, a demo video can be automatically downloaded and used with `--demo-video`.
 - ***Limiting frame count*:** When running from a webcam or a video file, this example can be set to stop after a given number of frames using `--max-frame MAX_FRAME`.
+
+# Overview
+
+Use the [MediaPipe](https://google.github.io/mediapipe/)  Gesture detection and Gesture landmark detection solutions to track hands and recognise gestures in images and videos.
+
+Logging Details:
+
+1. Hand Landmarks as 2D Points:
+
+   - Extracts hand landmark points as normalized 2D coordinates. 
+
+   - Utilizes image width and height for conversion into image coordinates.
+
+   - Logs the 2D points to the Rerun SDK.
+   
+
+2. Hand Landmarks as 3D Points:
+
+    - Detects hand landmarks using MediaPipe solutions.
+
+    - Converts the detected hand landmarks into 3D coordinates.
+
+    - Logs the 3D points to the Rerun SDK.
+
+
+3. Gesture Detection Results:
+
+    - Utilizes the Gesture Detection solution from MediaPipe. 
+
+    - Logs the results of gesture detection as emoji
 
 # Logging Data
 
