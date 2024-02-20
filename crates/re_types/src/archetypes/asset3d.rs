@@ -21,7 +21,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
+/// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 ///
 /// See also [`Mesh3D`][crate::archetypes::Mesh3D].
 ///
@@ -63,7 +63,9 @@ pub struct Asset3D {
     ///
     /// Supported values:
     /// * `model/gltf-binary`
+    /// * `model/gltf+json`
     /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+    /// * `model/stl`
     ///
     /// If omitted, the viewer will try to guess from the data blob.
     /// If it cannot guess, it won't be able to render the asset.

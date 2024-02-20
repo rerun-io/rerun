@@ -17,7 +17,7 @@ __all__ = ["Asset3D"]
 @define(str=False, repr=False, init=False)
 class Asset3D(Asset3DExt, Archetype):
     """
-    **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
+    **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 
     See also [`Mesh3D`][rerun.archetypes.Mesh3D].
 
@@ -83,7 +83,9 @@ class Asset3D(Asset3DExt, Archetype):
     #
     # Supported values:
     # * `model/gltf-binary`
+    # * `model/gltf+json`
     # * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+    # * `model/stl`
     #
     # If omitted, the viewer will try to guess from the data blob.
     # If it cannot guess, it won't be able to render the asset.
