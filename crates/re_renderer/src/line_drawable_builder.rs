@@ -16,7 +16,7 @@ use crate::{
 /// TODO(andreas): We could make significant optimizations here by making this builder capable
 /// of writing to a GPU readable memory location for all its data.
 pub struct LineDrawableBuilder<'ctx> {
-    ctx: &'ctx crate::context::RenderContext,
+    ctx: &'ctx RenderContext,
 
     pub(crate) vertices: Vec<LineVertex>,
     pub(crate) batches: Vec<LineBatchInfo>,
@@ -41,15 +41,19 @@ impl<'ctx> LineDrawableBuilder<'ctx> {
         }
     }
 
-    pub fn reserve_strips(&mut self, num_strips: usize) -> Result<(), CpuWriteGpuReadError> {
+    /// Returns number of strips that can be added without reallocation.
+    /// This may be smaller than the requested number if the maximum number of strips is reached.
+    pub fn reserve_strips(&mut self, num_strips: usize) -> Result<usize, CpuWriteGpuReadError> {
         self.strips.reserve(num_strips);
         self.picking_instance_ids_buffer.reserve(num_strips)
     }
 
+    /// Returns number of vertices that can be added without reallocation.
+    /// This may be smaller than the requested number if the maximum number of vertices is reached.
     #[allow(clippy::unnecessary_wraps)] // TODO(andreas): will be needed once vertices writes directly to GPU readable memory.
-    pub fn reserve_vertices(&mut self, num_vertices: usize) -> Result<(), CpuWriteGpuReadError> {
+    pub fn reserve_vertices(&mut self, num_vertices: usize) -> Result<usize, CpuWriteGpuReadError> {
         self.vertices.reserve(num_vertices);
-        Ok(())
+        Ok(self.vertices.capacity() - self.vertices.len())
     }
 
     /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
