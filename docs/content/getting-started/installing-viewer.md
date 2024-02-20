@@ -25,4 +25,4 @@ The Rerun Viewer has built-in support for opening many kinds of files, and can b
 To start getting your own data logged & visualized in the viewer check one of the respective getting started guides:
 * [Python](python.md)
 * [C++](cpp.md)
-* [Rust](python.md)
+* [Rust](rust.md)
