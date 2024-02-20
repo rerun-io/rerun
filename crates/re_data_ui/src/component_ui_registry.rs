@@ -143,11 +143,13 @@ fn text_ui(string: &str, ui: &mut egui::Ui, verbosity: UiVerbosity) {
         }
     }
 
+    let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
+
     if needs_scroll_area {
         egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.label(layout_job);
+            ui.label(galley);
         });
     } else {
-        ui.label(layout_job);
+        ui.label(galley);
     }
 }
