@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""Use the MediaPipe Gesture detection and Gesture landmark detection solutions to track hands and recognise gestures
-in images and videos."""
+"""
+Use the MediaPipe Gesture detection and Gesture landmark detection solutions to track hands and recognise gestures
+in images and videos.
+"""
 from __future__ import annotations
 
-import mediapipe as mp
-from mediapipe.tasks.python import vision
-from mediapipe.tasks import python
-from pathlib import Path
-from typing import Final, Iterable, Any
-
-import rerun as rr  # pip install rerun-sdk
-
-import numpy.typing as npt
-import numpy as np
-
-import itertools
-import requests
 import argparse
+import itertools
 import logging
-import tqdm
-import cv2
 import os
+from pathlib import Path
+from typing import Final, Iterable
+
+import cv2
+import mediapipe as mp
+import numpy as np
+import numpy.typing as npt
+import requests
+import rerun as rr  # pip install rerun-sdk
+import tqdm
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "hand_gestures"
@@ -52,11 +52,11 @@ GESTURE_PICTURES = {
 
 class GestureDetectorLogger:
     """
-        Logger for the MediaPipe Gesture Detection solution.
-        This class provides logging and utility functions for handling gesture recognition.
+    Logger for the MediaPipe Gesture Detection solution.
+    This class provides logging and utility functions for handling gesture recognition.
 
-        For more information on MediaPipe Gesture Detection:
-        https://developers.google.com/mediapipe/solutions/vision/gesture_recognizer
+    For more information on MediaPipe Gesture Detection:
+    https://developers.google.com/mediapipe/solutions/vision/gesture_recognizer
     """
 
     # URL to the pre-trained MediaPipe Gesture Detection model
