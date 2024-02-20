@@ -107,13 +107,12 @@
 use std::{num::NonZeroU64, ops::Range};
 
 use bitflags::bitflags;
-use bytemuck::Zeroable;
 use enumset::{enum_set, EnumSet};
 use re_tracing::profile_function;
 use smallvec::smallvec;
 
 use crate::{
-    allocator::{create_and_fill_uniform_buffer_batch, data_texture_desc},
+    allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
     view_builder::ViewBuilder,
@@ -145,6 +144,17 @@ pub mod gpu_data {
     }
     // (unlike the fields in a uniform buffer)
     static_assertions::assert_eq_size!(LineVertex, glam::Vec4);
+
+    impl LineVertex {
+        /// Sentinel vertex used at the start and the end of the line vertex data texture to facilitate caps.
+        pub const SENTINEL: LineVertex = LineVertex {
+            position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
+            strip_index: u32::MAX,
+        };
+
+        /// Number of sentinel vertices, one at the start and one at the end.
+        pub const NUM_SENTINEL_VERTICES: usize = 2;
+    }
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -324,16 +334,17 @@ pub enum LineDrawDataError {
     #[error("Line vertex refers to unknown line strip.")]
     InvalidStripIndex,
 
-    #[error("A resource failed to resolve.")]
+    #[error(transparent)]
     PoolError(#[from] PoolError),
 
-    #[error("Failed to transfer data to the GPU: {0}")]
+    #[error(transparent)]
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
+
+    #[error(transparent)]
+    DataTextureSourceWriteError(#[from] crate::allocator::DataTextureSourceWriteError),
 }
 
 impl LineDrawData {
-    pub const POSITION_DATA_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
-
     /// Transforms and uploads line strip data to be consumed by gpu.
     ///
     /// Try to bundle all line strips into a single draw data instance whenever possible.
@@ -343,7 +354,7 @@ impl LineDrawData {
     pub fn new(line_builder: LineDrawableBuilder<'_>) -> Result<Self, LineDrawDataError> {
         let LineDrawableBuilder {
             ctx,
-            vertices,
+            vertices_buffer,
             batches,
             strips_buffer,
             picking_instance_ids_buffer,
@@ -363,7 +374,7 @@ impl LineDrawData {
         let batches = if batches.is_empty() {
             vec![LineBatchInfo {
                 label: "LineDrawData::fallback_batch".into(),
-                line_vertex_count: vertices.len() as _,
+                line_vertex_count: vertices_buffer.len() as _,
                 ..Default::default()
             }]
         } else {
@@ -376,29 +387,10 @@ impl LineDrawData {
         let max_num_texels = max_texture_dimension_2d as usize * max_texture_dimension_2d as usize;
         let max_num_vertices = max_num_texels - NUM_SENTINEL_VERTICES;
 
-        let vertices = if vertices.len() >= max_num_vertices {
-            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}."
-                                , max_num_vertices, vertices.len() );
-            &vertices[..max_num_vertices]
-        } else {
-            &vertices[..]
-        };
-
-        // Add a sentinel vertex both at the beginning and the end to make cap calculation easier.
-        let num_line_vertices = vertices.len() + NUM_SENTINEL_VERTICES;
-
-        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
-
-        let position_data_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &data_texture_desc(
-                "LineDrawData::position_data_texture",
-                Self::POSITION_DATA_TEXTURE_FORMAT,
-                num_line_vertices,
-                max_texture_dimension_2d,
-            ),
-        );
-
+        let position_data_texture = vertices_buffer.finish(
+            wgpu::TextureFormat::Rgba32Float,
+            "LineDrawData::position_data_texture",
+        )?;
         let line_strip_texture = strips_buffer.finish(
             wgpu::TextureFormat::Rg32Uint,
             "LineDrawData::line_strip_texture",
@@ -407,40 +399,6 @@ impl LineDrawData {
             wgpu::TextureFormat::Rg32Uint,
             "LineDrawData::picking_instance_id_texture",
         )?;
-
-        let copy_encoder = &ctx.active_frame.before_view_builder_encoder;
-
-        {
-            re_tracing::profile_scope!("write_pos_data_texture");
-
-            let texture_size = position_data_texture.texture.size();
-            let texel_count = (texture_size.width * texture_size.height) as usize;
-            let num_elements_padding = texel_count - num_line_vertices;
-
-            let mut staging_buffer = ctx.cpu_write_gpu_read_belt.lock().allocate(
-                &ctx.device,
-                &ctx.gpu_resources.buffers,
-                texel_count,
-            )?;
-
-            // sentinel at the beginning to facilitate caps.
-            staging_buffer.push(gpu_data::LineVertex {
-                position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
-                strip_index: u32::MAX,
-            })?;
-            staging_buffer.extend_from_slice(vertices)?;
-            // placeholder at the end to facilitate caps.
-            staging_buffer.push(gpu_data::LineVertex {
-                position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
-                strip_index: u32::MAX,
-            })?;
-            staging_buffer.add_n(gpu_data::LineVertex::zeroed(), num_elements_padding)?;
-
-            staging_buffer.copy_to_texture2d_entire_first_layer(
-                copy_encoder.lock().get(),
-                &position_data_texture,
-            )?;
-        }
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
@@ -569,11 +527,6 @@ impl LineDrawData {
                 }
 
                 start_vertex_for_next_batch = line_vertex_range_end;
-
-                // Should happen only if the number of vertices was clamped.
-                if start_vertex_for_next_batch >= vertices.len() as u32 {
-                    break;
-                }
             }
         }
 

@@ -3,7 +3,7 @@ use std::ops::Range;
 use re_log::ResultExt;
 
 use crate::{
-    allocator::{CpuWriteGpuReadError, DataTextureSource},
+    allocator::{CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError},
     renderer::{
         gpu_data::{LineStripInfo, LineVertex},
         LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags,
@@ -19,7 +19,7 @@ use crate::{
 pub struct LineDrawableBuilder<'ctx> {
     pub ctx: &'ctx RenderContext,
 
-    pub(crate) vertices: Vec<LineVertex>,
+    pub(crate) vertices_buffer: DataTextureSource<'ctx, LineVertex>,
     pub(crate) batches: Vec<LineBatchInfo>,
     pub(crate) strips_buffer: DataTextureSource<'ctx, LineStripInfo>,
 
@@ -34,7 +34,7 @@ impl<'ctx> LineDrawableBuilder<'ctx> {
     pub fn new(ctx: &'ctx RenderContext) -> Self {
         Self {
             ctx,
-            vertices: Vec::new(),
+            vertices_buffer: DataTextureSource::new(ctx),
             strips_buffer: DataTextureSource::new(ctx),
             batches: Vec::with_capacity(16),
             picking_instance_ids_buffer: DataTextureSource::new(ctx),
@@ -52,10 +52,8 @@ impl<'ctx> LineDrawableBuilder<'ctx> {
 
     /// Returns number of vertices that can be added without reallocation.
     /// This may be smaller than the requested number if the maximum number of vertices is reached.
-    #[allow(clippy::unnecessary_wraps)] // TODO(andreas): will be needed once vertices writes directly to GPU readable memory.
     pub fn reserve_vertices(&mut self, num_vertices: usize) -> Result<usize, CpuWriteGpuReadError> {
-        self.vertices.reserve(num_vertices);
-        Ok(self.vertices.capacity() - self.vertices.len())
+        self.vertices_buffer.reserve(num_vertices)
     }
 
     /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
@@ -76,26 +74,13 @@ impl<'ctx> LineDrawableBuilder<'ctx> {
         LineBatchBuilder(self)
     }
 
-    // Iterate over all batches, yielding the batch info and all line vertices (note that these will span several line strips!)
-    pub fn iter_vertices_by_batch(
-        &self,
-    ) -> impl Iterator<Item = (&LineBatchInfo, impl Iterator<Item = &LineVertex>)> {
-        let mut vertex_offset = 0;
-        self.batches.iter().map(move |batch| {
-            let out = (
-                batch,
-                self.vertices
-                    .iter()
-                    .skip(vertex_offset)
-                    .take(batch.line_vertex_count as usize),
-            );
-            vertex_offset += batch.line_vertex_count as usize;
-            out
-        })
-    }
-
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
-    pub fn into_draw_data(self) -> Result<LineDrawData, LineDrawDataError> {
+    pub fn into_draw_data(mut self) -> Result<LineDrawData, LineDrawDataError> {
+        if !self.vertices_buffer.is_empty() {
+            // sentinel at the end to facilitate caps.
+            self.vertices_buffer.push(LineVertex::SENTINEL)?;
+        }
+
         LineDrawData::new(self)
     }
 
@@ -131,14 +116,31 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
             .expect("batch should have been added on PointCloudBatchBuilder creation")
     }
 
-    fn add_vertices(&mut self, points: impl Iterator<Item = glam::Vec3>, strip_index: u32) {
-        let old_len = self.0.vertices.len();
+    fn add_vertices(
+        &mut self,
+        points: impl Iterator<Item = glam::Vec3>,
+        strip_index: u32,
+    ) -> Result<(), DataTextureSourceWriteError> {
+        re_tracing::profile_function!();
 
-        self.0.vertices.extend(points.map(|pos| LineVertex {
-            position: pos,
-            strip_index,
-        }));
-        self.batch_mut().line_vertex_count += (self.0.vertices.len() - old_len) as u32;
+        if self.0.vertices_buffer.is_empty() {
+            // sentinel at the beginning to facilitate caps.
+            self.0.vertices_buffer.push(LineVertex::SENTINEL)?;
+        }
+
+        // TODO: check for max vertices
+
+        // TODO(andreas): It would be nice to pass on the iterator as is so we don't have to do yet another
+        // copy of the data and instead write into the buffers directly - if done right this should be the fastest.
+        // But it's surprisingly tricky to do this effectively.
+        let vertices = points
+            .map(|pos| LineVertex {
+                position: pos,
+                strip_index,
+            })
+            .collect::<Vec<_>>();
+        self.batch_mut().line_vertex_count += vertices.len() as u32;
+        self.0.vertices_buffer.extend_from_slice(&vertices)
     }
 
     /// Sets the `world_from_obj` matrix for the *entire* batch.
@@ -195,11 +197,12 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
         points: impl Iterator<Item = glam::Vec3>,
     ) -> LineStripBuilder<'_, 'ctx> {
         let old_strip_count = self.0.strips_buffer.len();
-        let old_vertex_count = self.0.vertices.len();
+        let old_vertex_count = self.0.vertices_buffer.len();
         let strip_index = old_strip_count as _;
 
-        self.add_vertices(points, strip_index);
-        let new_vertex_count = self.0.vertices.len();
+        self.add_vertices(points, strip_index)
+            .ok_or_log_error_once();
+        let new_vertex_count = self.0.vertices_buffer.len();
 
         // TODO: check for max strips
 
@@ -232,17 +235,18 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
         );
 
         let old_strip_count = self.0.strips_buffer.len();
-        let old_vertex_count = self.0.vertices.len();
+        let old_vertex_count = self.0.vertices_buffer.len();
         let mut strip_index = old_strip_count as u32;
 
         // It's tempting to assign the same strip to all vertices, after all they share
         // color/radius/tag properties.
         // However, if we don't assign different strip indices, we don't know when a strip (==segment) starts and ends.
         for (a, b) in segments {
-            self.add_vertices([a, b].into_iter(), strip_index);
+            self.add_vertices([a, b].into_iter(), strip_index)
+                .ok_or_log_error_once();
             strip_index += 1;
         }
-        let new_vertex_count = self.0.vertices.len();
+        let new_vertex_count = self.0.vertices_buffer.len();
         let num_strips_added = strip_index as usize - old_strip_count;
 
         // TODO: check for max strips
