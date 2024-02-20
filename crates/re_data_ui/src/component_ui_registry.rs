@@ -98,12 +98,12 @@ fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array
     }
 
     let num_bytes = array.total_size_bytes();
-    if num_bytes < 256 {
+    if num_bytes < 3000 {
         // Print small items:
         let mut string = String::new();
         let display = arrow2::array::get_display(array, "null");
         if display(&mut string, 0).is_ok() {
-            ui.label(string);
+            text_ui(ui, verbosity, &string);
             return;
         }
     }
