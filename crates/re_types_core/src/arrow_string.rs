@@ -90,6 +90,29 @@ impl std::borrow::Borrow<str> for ArrowString {
     }
 }
 
+#[test]
+fn borrow_hash_is_self_hash() {
+    use std::borrow::Borrow as _;
+    use std::hash::{Hash as _, Hasher as _};
+
+    let s = ArrowString::from("hello world");
+
+    let self_hash = {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        s.hash(&mut hasher);
+        hasher.finish()
+    };
+
+    let borrowed_hash = {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let s: &str = s.borrow();
+        s.hash(&mut hasher);
+        hasher.finish()
+    };
+
+    assert_eq!(self_hash, borrowed_hash);
+}
+
 impl std::ops::Deref for ArrowString {
     type Target = str;
     #[inline]
