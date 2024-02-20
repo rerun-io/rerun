@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Use the MediaPipe Gesture detection and Gesture landmark detection solutions to track hands and recognise gestures
 in images and videos."""
 from __future__ import annotations
@@ -258,7 +259,7 @@ def run_from_video_capture(vid: int | str, max_frame_count: int | None) -> None:
             detector.detect_and_log(frame, frame_time_nano)
             rr.log(
                 "Media/Video",
-                rr.Image(frame)
+                rr.Image(frame).compress(jpeg_quality=75)
             )
 
     except KeyboardInterrupt:
