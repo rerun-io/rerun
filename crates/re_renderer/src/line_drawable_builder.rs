@@ -125,25 +125,29 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
         if num_new_vertices == 0 {
             return Ok(());
         }
-        let mut reserve_count = num_new_vertices + 1; // +1 for end-sentinel
-        if self.0.vertices_buffer.is_empty() {
-            reserve_count += 1; // +1 for start-sentinel
-        }
+
+        // Sentinel at the beginning and end to facilitate caps.
+        let add_start_sentinel = self.0.vertices_buffer.is_empty();
+        let num_sentinels_to_add = if add_start_sentinel {
+            LineVertex::NUM_SENTINEL_VERTICES // Start and end sentinel.
+        } else {
+            1 // End sentinel only.
+        };
 
         // Do a reserve ahead of time including sentinel vertices, in order to check whether we're hitting the data texture limit.
+        let reserve_count = num_new_vertices + num_sentinels_to_add;
         let num_available_points = self.0.vertices_buffer.reserve(reserve_count)?;
-        let num_new_vertices = if num_new_vertices > num_available_points {
+        let num_new_vertices = if reserve_count > num_available_points {
             re_log::error_once!(
                 "Reached maximum number of vertices for lines strips of {}. Ignoring all excess vertices.",
                 self.0.vertices_buffer.len() + num_available_points - LineVertex::NUM_SENTINEL_VERTICES
             );
-            num_available_points
+            num_available_points - num_sentinels_to_add
         } else {
             num_new_vertices
         };
 
-        if self.0.vertices_buffer.is_empty() {
-            // sentinel at the beginning to facilitate caps.
+        if add_start_sentinel {
             self.0.vertices_buffer.push(LineVertex::SENTINEL)?;
         }
 
@@ -280,6 +284,7 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
         // It's tempting to assign the same strip to all vertices, after all they share
         // color/radius/tag properties.
         // However, if we don't assign different strip indices, we don't know when a strip (==segment) starts and ends.
+        // TODO(andreas): There's likely some low hanging fruit here to make this faster by collapsing into a single call to `add_vertices`.
         for (a, b) in segments {
             self.add_vertices([a, b].into_iter(), strip_index)
                 .ok_or_log_error_once();
