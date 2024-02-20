@@ -85,14 +85,14 @@ fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array
     if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i32>>() {
         if utf8.len() == 1 {
             let string = utf8.value(0);
-            text_ui(string, ui, verbosity);
+            text_ui(ui, verbosity, string);
             return;
         }
     }
     if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i64>>() {
         if utf8.len() == 1 {
             let string = utf8.value(0);
-            text_ui(string, ui, verbosity);
+            text_ui(ui, verbosity, string);
             return;
         }
     }
@@ -116,7 +116,7 @@ fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array
     ));
 }
 
-fn text_ui(string: &str, ui: &mut egui::Ui, verbosity: UiVerbosity) {
+fn text_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, string: &str) {
     let font_id = egui::TextStyle::Monospace.resolve(ui.style());
     let color = ui.visuals().text_color();
     let wrap_width = ui.available_width();
