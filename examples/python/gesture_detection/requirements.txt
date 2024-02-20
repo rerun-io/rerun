@@ -1,0 +1,6 @@
+mediapipe==0.10.9 # For mac also you may need to run this: export SYSTEM_VERSION_COMPAT=0
+numpy
+opencv-python>4.9
+requests>=2.31,<3
+rerun-sdk
+tqdm
