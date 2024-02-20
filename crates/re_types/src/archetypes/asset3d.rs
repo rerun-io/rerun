@@ -34,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// fn main() -> anyhow::Result<()> {
 ///     let args = std::env::args().collect::<Vec<_>>();
 ///     let Some(path) = args.get(1) else {
-///         anyhow::bail!("Usage: {} <path_to_asset.[gltf|glb|obj]>", args[0]);
+///         anyhow::bail!("Usage: {} <path_to_asset.[gltf|glb|obj|stl]>", args[0]);
 ///     };
 ///
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_asset3d").spawn()?;
