@@ -560,5 +560,9 @@ impl<'a, 'ctx> Drop for LineStripBuilder<'a, 'ctx> {
             .strips_buffer
             .add_n(self.strip, self.num_strips_added)
             .ok_or_log_error_once();
+
+        debug_assert!(
+            self.builder.strips_buffer.len() == self.builder.picking_instance_ids_buffer.len()
+        );
     }
 }
