@@ -109,11 +109,18 @@ fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array
     }
 
     // Fallback:
-    ui.label(format!(
-        "{} of {:?}",
-        re_format::format_bytes(num_bytes as _),
-        array.data_type()
-    ));
+    let bytes = re_format::format_bytes(num_bytes as _);
+
+    // TODO(emilk): pretty-print data type
+    let data_type_formatted = format!("{:?}", array.data_type());
+
+    if data_type_formatted.len() < 20 {
+        // e.g. "4.2 KiB of Float32"
+        text_ui(ui, verbosity, &format!("{bytes} of {data_type_formatted}"));
+    } else {
+        // Huge datatype, probably a union horror show
+        ui.label(format!("{bytes} of data"));
+    }
 }
 
 fn text_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, string: &str) {
