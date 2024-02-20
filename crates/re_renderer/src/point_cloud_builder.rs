@@ -6,8 +6,8 @@ use crate::{
     allocator::DataTextureSource,
     draw_phases::PickingLayerObjectId,
     renderer::{
-        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-        PositionRadius,
+        gpu_data::PositionRadius, PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData,
+        PointCloudDrawDataError,
     },
     Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, OutlineMaskPreference,
     PickingLayerInstanceId, RenderContext, Size,
