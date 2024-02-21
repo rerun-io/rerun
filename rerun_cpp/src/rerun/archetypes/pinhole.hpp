@@ -69,7 +69,7 @@ namespace rerun::archetypes {
     ///
     ///     rec.log(
     ///         "world/points",
-    ///         rerun::Points3D({{0.0f, 0.0f, -0.5f}, {0.1, 0.1, -0.5}, {-0.1, -0.1, -0.5}})
+    ///         rerun::Points3D({{0.0f, 0.0f, -0.5f}, {0.1f, 0.1f, -0.5f}, {-0.1f, -0.1f, -0.5f}})
     ///     );
     /// }
     /// ```
