@@ -182,8 +182,10 @@ fn recording_ui(
                 ui.visuals().widgets.noninteractive.fg_stroke.color
             };
 
-            ui.painter()
-                .circle(rect.center(), 4.0, color, egui::Stroke::NONE);
+            re_ui::icons::STORE
+                .as_image()
+                .tint(color)
+                .paint_at(ui, rect);
         })
         .with_buttons(|re_ui, ui| {
             // Close-button:
