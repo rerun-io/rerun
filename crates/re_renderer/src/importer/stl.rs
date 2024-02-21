@@ -6,23 +6,8 @@ use crate::{mesh, renderer::MeshInstance, resource_managers::ResourceLifeTime, R
 
 #[derive(thiserror::Error, Debug)]
 pub enum StlImportError {
-    #[error("Missing data in STL file.")]
-    MissingData,
-
-    #[error("Unexpected data in STL file at line {0}.")]
-    Unexpected(usize),
-
-    #[error("Failed to parse line {0} (usually due to a malformed vertex).")]
-    Parse(usize),
-
-    #[error("Failed to convert the number of triangles to a 32bit unsigned integer (as required by the STL specification).")]
-    TooManyFacets,
-
-    #[error("Failed to parse integer.")]
-    TryFromInt,
-
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
+    #[error("Error loading STL mesh: {0}")]
+    TinyStl(tinystl::Error),
 
     #[error(transparent)]
     MeshError(#[from] mesh::MeshError),
@@ -39,22 +24,12 @@ pub fn load_stl_from_buffer(
     re_tracing::profile_function!();
 
     let cursor = std::io::Cursor::new(buffer);
-    let stl_data =
-        StlData::read_buffer(std::io::BufReader::new(cursor)).map_err(|err| match err {
-            tinystl::Error::MissingData => StlImportError::MissingData,
-            tinystl::Error::Unexpected(line) => StlImportError::Unexpected(line),
-            tinystl::Error::Parse(line) => StlImportError::Parse(line),
-            tinystl::Error::TooManyFacets(_) => StlImportError::TooManyFacets,
-            tinystl::Error::TryFromInt(_) => StlImportError::TryFromInt,
-            tinystl::Error::Io(err) => err.into(),
-        })?;
-
     let StlData {
         name,
         triangles,
         normals,
         ..
-    } = stl_data;
+    } = StlData::read_buffer(std::io::BufReader::new(cursor)).map_err(StlImportError::TinyStl)?;
 
     let num_vertices = triangles.len() * 3;
 
