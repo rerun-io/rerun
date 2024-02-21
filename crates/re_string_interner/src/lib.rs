@@ -299,6 +299,7 @@ macro_rules! declare_new_type {
 
 // ----------------------------------------------------------------------------
 
+use ahash::HashMap;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 static GLOBAL_INTERNER: Lazy<Mutex<StringInterner>> =
@@ -347,4 +348,22 @@ fn test_newtype_macro() {
     let b = MyString::new("test");
     assert_eq!(a, b);
     assert_eq!(a.as_str(), "test");
+}
+
+#[test]
+#[allow(clippy::redundant_type_annotations)]
+fn find_yourself() {
+    declare_new_type!(
+        /// My typesafe string
+        pub struct MyString;
+    );
+
+    let hello_my_string: MyString = "hello".into();
+    let hello_str: &str = "hello";
+
+    let mut my_map: HashMap<MyString, u32> = HashMap::default();
+    my_map.insert(hello_my_string, 42u32);
+
+    assert_eq!(Some(42), my_map.get(&hello_my_string).copied());
+    assert_eq!(Some(42), my_map.get(hello_str).copied());
 }
