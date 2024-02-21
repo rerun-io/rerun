@@ -59,17 +59,17 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_pinhole_perspective");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     const float fov = 0.7853982f;
+    ///     const float fov_y = 0.7853982f;
     ///     const float aspect_ratio = 1.7777778f;
     ///     rec.log(
     ///         "world/cam",
-    ///         rerun::Pinhole::from_fov_and_aspect_ratio(fov, aspect_ratio)
+    ///         rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
     ///             .with_camera_xyz(rerun::components::ViewCoordinates::RUB)
     ///     );
     ///
     ///     rec.log(
     ///         "world/points",
-    ///         rerun::Points3D({{0.0, 0.0, -0.5}, {0.1, 0.1, -0.5}, {-0.1, -0.1, -0.5}})
+    ///         rerun::Points3D({{0.0f, 0.0f, -0.5f}, {0.1, 0.1, -0.5}, {-0.1, -0.1, -0.5}})
     ///     );
     /// }
     /// ```
@@ -148,7 +148,7 @@ namespace rerun::archetypes {
             return from_focal_length_and_resolution({focal_length, focal_length}, resolution);
         }
 
-        /// Creates a pinhole from the camera vertical field of view and aspect ratio.
+        /// Creates a pinhole from the camera vertical field of view (in radians) and aspect ratio (width/height).
         ///
         /// Assumes the principal point to be in the middle of the sensor.
         static Pinhole from_fov_and_aspect_ratio(float fov_y, float aspect_ratio) {
