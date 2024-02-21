@@ -212,6 +212,7 @@ thiserror = "1.0"
 time = { version = "0.3", default-features = false, features = [
   "wasm-bindgen",
 ] }
+tinystl = { version = "0.0.3", default-features = false }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
 tokio = { version = "1.24", default-features = false }

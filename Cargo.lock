@@ -4577,6 +4577,7 @@ dependencies = [
  "smallvec",
  "static_assertions",
  "thiserror",
+ "tinystl",
  "tobj",
  "type-map",
  "unindent",
@@ -6283,6 +6284,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "372950940a5f07bf38dbe211d7283c9e6d7327df53794992d293e534c733d09b"
 dependencies = [
  "time-core",
+]
+
+[[package]]
+name = "tinystl"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fdbcdda2f86a57b89b5d9ac17cd4c9f3917ec8edcde403badf3d992d2947af2a"
+dependencies = [
+ "bytemuck",
 ]
 
 [[package]]

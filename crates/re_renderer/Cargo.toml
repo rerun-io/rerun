@@ -24,7 +24,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = ["import-obj", "import-gltf"]
+default = ["import-obj", "import-gltf", "import-stl"]
 
 ## Support for Arrow datatypes for end-to-end zero-copy.
 arrow = ["dep:arrow2"]
@@ -34,6 +34,9 @@ import-obj = ["dep:tobj"]
 
 ## Support importing .gltf and .glb files
 import-gltf = ["dep:gltf"]
+
+## Support importing binary & ascii .stl files
+import-stl = ["dep:tinystl"]
 
 ## Enable (de)serialization using serde.
 serde = ["dep:serde"]
@@ -73,6 +76,7 @@ wgpu-core.workspace = true                                           # Needed fo
 # optional
 arrow2 = { workspace = true, optional = true }
 gltf = { workspace = true, optional = true }
+tinystl = { workspace = true, features = ["bytemuck"], optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 tobj = { workspace = true, optional = true }
 
