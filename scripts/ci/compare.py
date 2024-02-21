@@ -1,28 +1,20 @@
 #!/usr/bin/env python3
 
 """
-Measure or compare sizes of a list of files.
+Compare sizes of a list of files.
 
 This produces the format for use in https://github.com/benchmark-action/github-action-benchmark.
 
 Use the script:
-    python3 scripts/ci/sizes.py --help
+    python3 scripts/ci/compare.py --help
 
-    python3 scripts/ci/sizes.py measure \
-        "Wasm":web_viewer/re_viewer_bg.wasm
-
-    python3 scripts/ci/sizes.py measure --format=github \
-        "Wasm":web_viewer/re_viewer_bg.wasm
-
-    python3 scripts/ci/sizes.py compare --threshold=20 previous.json current.json
+    python3 scripts/ci/compare.py --threshold=20 previous.json current.json
 """
 from __future__ import annotations
 
 import argparse
 import json
-import os.path
 import sys
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -78,17 +70,6 @@ def render_table_rows(rows: list[Any], headers: list[str]) -> str:
     return table
 
 
-class Format(Enum):
-    JSON = "json"
-    GITHUB = "github"
-
-    def render(self, data: list[dict[str, str]]) -> str:
-        if self is Format.JSON:
-            return json.dumps(data)
-        if self is Format.GITHUB:
-            return render_table_dict(data)
-
-
 def compare(
     previous_path: str,
     current_path: str,
@@ -113,23 +94,40 @@ def compare(
     rows: list[tuple[str, str, str, str]] = []
     for name, entry in entries.items():
         if "previous" in entry and "current" in entry:
-            previous_bytes = float(entry["previous"]["value"]) * DIVISORS[entry["previous"]["unit"]]
-            current_bytes = float(entry["current"]["value"]) * DIVISORS[entry["current"]["unit"]]
-            unit = get_unit(min(previous_bytes, current_bytes))
-            div = get_divisor(unit)
+            previous_unit = entry["previous"]["unit"]
+            current_unit = entry["current"]["unit"]
 
-            abs_diff_bytes = abs(current_bytes - previous_bytes)
-            min_diff_bytes = previous_bytes * (threshold_pct / 100)
-            if abs_diff_bytes >= min_diff_bytes:
+            previous = float(entry["previous"]["value"])
+            current = float(entry["current"]["value"])
+
+            if previous_unit == current_unit:
+                div = 1
+                unit = previous_unit
+            else:
+                previous_divisor = DIVISORS.get(previous_unit, 1)
+                current_divisor = DIVISORS.get(current_unit, 1)
+
+                previous_bytes = previous * previous_divisor
+                current_bytes = current * current_divisor
+
                 previous = previous_bytes / div
                 current = current_bytes / div
-                change_pct = ((current_bytes - previous_bytes) / previous_bytes) * 100
+
+                unit = get_unit(min(previous_bytes, current_bytes))
+                div = get_divisor(unit)
+
+            change_pct = ((current - previous) / previous) * 100
+            if abs(change_pct) >= threshold_pct:
+                if unit in DIVISORS:
+                    change = f"{change_pct:+.2f}%"
+                else:
+                    change = f"{format_num(current - previous)} {unit}"
                 rows.append(
                     (
                         name,
-                        f"{previous:.2f} {unit}",
-                        f"{current:.2f} {unit}",
-                        f"{change_pct:+.2f}%",
+                        f"{format_num(previous)} {unit}",
+                        f"{format_num(current)} {unit}",
+                        change,
                     )
                 )
         elif "current" in entry:
@@ -148,56 +146,36 @@ def compare(
         sys.stdout.flush()
 
 
-def measure(files: list[str], format: Format) -> None:
-    output: list[dict[str, str]] = []
-    for arg in files:
-        parts = arg.split(":")
-        name = parts[0]
-        file = parts[1]
-        size = os.path.getsize(file)
-        unit = parts[2] if len(parts) > 2 else get_unit(size)
-        div = get_divisor(unit)
-
-        output.append(
-            {
-                "name": name,
-                "value": str(round(size / div, 2)),
-                "unit": unit,
-            }
-        )
-
-    sys.stdout.write(format.render(output))
-    sys.stdout.flush()
+def format_num(num: float) -> str:
+    if num.is_integer():
+        return str(int(num))
+    return f"{num:.2f}"
 
 
-def percentage(value: str) -> int:
+def percentage(value: str) -> float:
     value = value.replace("%", "")
-    return int(value)
+    return float(value)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
-
-    cmds_parser = parser.add_subparsers(title="cmds", dest="cmd", help="Command")
-
-    compare_parser = cmds_parser.add_parser("compare", help="Compare results")
-    compare_parser.add_argument("before", type=str, help="Previous result .json file")
-    compare_parser.add_argument("after", type=str, help="Current result .json file")
-    compare_parser.add_argument(
+    parser.add_argument("before", type=str, help="Previous result .json file")
+    parser.add_argument("after", type=str, help="Current result .json file")
+    parser.add_argument(
         "--threshold",
         type=percentage,
         required=False,
         default=20,
         help="Only print row if value is N%% larger or smaller",
     )
-    compare_parser.add_argument(
+    parser.add_argument(
         "--before-header",
         type=str,
         required=False,
         default="Before",
         help="Header for before column",
     )
-    compare_parser.add_argument(
+    parser.add_argument(
         "--after-header",
         type=str,
         required=False,
@@ -205,28 +183,15 @@ def main() -> None:
         help="Header for after column",
     )
 
-    measure_parser = cmds_parser.add_parser("measure", help="Measure sizes")
-    measure_parser.add_argument(
-        "--format",
-        type=Format,
-        choices=list(Format),
-        default=Format.JSON,
-        help="Format to render",
-    )
-    measure_parser.add_argument("files", nargs="*", help="Entries to measure. Format: name:path[:unit]")
-
     args = parser.parse_args()
 
-    if args.cmd == "compare":
-        compare(
-            args.before,
-            args.after,
-            args.threshold,
-            args.before_header,
-            args.after_header,
-        )
-    elif args.cmd == "measure":
-        measure(args.files, args.format)
+    compare(
+        args.before,
+        args.after,
+        args.threshold,
+        args.before_header,
+        args.after_header,
+    )
 
 
 if __name__ == "__main__":
