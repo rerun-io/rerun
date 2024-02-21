@@ -1,10 +1,17 @@
 <!--[metadata]
 title = "RRT*"
+tags = ["2D"]
 description = "Visualization of the path finding algorithm RRT* in a simple environment."
+thumbnail= "https://static.rerun.io/rrt-star/4d4684a24eab7d5def5768b7c1685d8b1cb2c010/full.png"
+thumbnail_dimensions = [480, 360]
 -->
 
 <picture>
-  <img src="https://private-user-images.githubusercontent.com/28707703/305388881-3bea9efc-4c82-4022-9260-cdec630d3005.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MDgyODkzNzEsIm5iZiI6MTcwODI4OTA3MSwicGF0aCI6Ii8yODcwNzcwMy8zMDUzODg4ODEtM2JlYTllZmMtNGM4Mi00MDIyLTkyNjAtY2RlYzYzMGQzMDA1LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNDAyMTglMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjQwMjE4VDIwNDQzMVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWI3YjgwNGNjZGIyZjMyM2Q1MzhlMzkyNWNmMzM4MWI2OGM4NTYyMmJlYTUyMzhhODFkNGViOTBkYTdlZTI4ZTAmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.tS42gvZm7rPLIPs-O34WyWYcaNXiN6j2F1bKeYJHzXI" alt="">
+  <img src="https://static.rerun.io/rrt-star/4d4684a24eab7d5def5768b7c1685d8b1cb2c010/full.png" alt="RRT* example screenshot">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/rrt-star/4d4684a24eab7d5def5768b7c1685d8b1cb2c010/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/rrt-star/4d4684a24eab7d5def5768b7c1685d8b1cb2c010/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/rrt-star/4d4684a24eab7d5def5768b7c1685d8b1cb2c010/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rrt-star/4d4684a24eab7d5def5768b7c1685d8b1cb2c010/1200w.png">
 </picture>
 
 This example visualizes the path finding algorithm RRT\* in a simple environment.
