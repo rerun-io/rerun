@@ -28,3 +28,6 @@ parking_lot.workspace = true
 
 # Optional dependencies
 serde = { workspace = true, features = ["serde_derive"], optional = true }
+
+[dev-dependencies]
+trybuild = "1.0"

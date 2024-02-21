@@ -245,13 +245,6 @@ macro_rules! declare_new_type {
             }
         }
 
-        impl std::borrow::Borrow<str> for $StructName {
-            #[inline]
-            fn borrow(&self) -> &str {
-                self.as_str()
-            }
-        }
-
         impl std::ops::Deref for $StructName {
             type Target = str;
             #[inline]
@@ -299,7 +292,6 @@ macro_rules! declare_new_type {
 
 // ----------------------------------------------------------------------------
 
-use ahash::HashMap;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 static GLOBAL_INTERNER: Lazy<Mutex<StringInterner>> =
@@ -350,20 +342,10 @@ fn test_newtype_macro() {
     assert_eq!(a.as_str(), "test");
 }
 
+// This should never implement `Borrow`.
+// See <https://github.com/rerun-io/rerun/pull/5243> for more information.
 #[test]
-#[allow(clippy::redundant_type_annotations)]
-fn find_yourself() {
-    declare_new_type!(
-        /// My typesafe string
-        pub struct MyString;
-    );
-
-    let hello_my_string: MyString = "hello".into();
-    let hello_str: &str = "hello";
-
-    let mut my_map: HashMap<MyString, u32> = HashMap::default();
-    my_map.insert(hello_my_string, 42u32);
-
-    assert_eq!(Some(42), my_map.get(&hello_my_string).copied());
-    assert_eq!(Some(42), my_map.get(hello_str).copied());
+fn do_not_implement_borrow() {
+    let t = trybuild::TestCases::new();
+    t.compile_fail("tests/trybuild/forbid_borrow.rs");
 }
