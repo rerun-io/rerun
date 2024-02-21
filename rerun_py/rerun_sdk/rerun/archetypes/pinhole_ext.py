@@ -82,9 +82,9 @@ class PinholeExt:
         height:
             Height of the image in pixels.
         fov_y:
-            Vertical field of view.
+            Vertical field of view in radians.
         aspect_ratio
-            Aspect ratio.
+            Aspect ratio (width/height).
 
         """
 
