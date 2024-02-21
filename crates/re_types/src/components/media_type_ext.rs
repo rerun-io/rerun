@@ -25,6 +25,12 @@ impl MediaType {
     ///
     /// <https://www.iana.org/assignments/media-types/model/obj>
     pub const OBJ: &'static str = "model/obj";
+
+    /// [Stereolithography Model `stl`](https://en.wikipedia.org/wiki/STL_(file_format)): `model/stl`.
+    ///
+    /// Either binary or ASCII.
+    /// <https://www.iana.org/assignments/media-types/model/stl>
+    pub const STL: &'static str = "model/stl";
 }
 
 impl MediaType {
@@ -57,6 +63,12 @@ impl MediaType {
     pub fn obj() -> Self {
         Self(Self::OBJ.into())
     }
+
+    /// `model/stl`
+    #[inline]
+    pub fn stl() -> Self {
+        Self(Self::STL.into())
+    }
 }
 
 impl MediaType {
@@ -71,15 +83,20 @@ impl MediaType {
     #[inline]
     pub fn guess_from_path(path: impl AsRef<std::path::Path>) -> Option<Self> {
         let path = path.as_ref();
-
-        // `mime_guess2` considers `.obj` to be a tgif… but really it's way more likely to be an obj.
-        if path
+        let extension = path
             .extension()
-            .and_then(|ext| ext.to_str().map(|s| s.to_lowercase()))
-            .as_deref()
-            == Some("obj")
-        {
-            return Some(Self::obj());
+            .and_then(|ext| ext.to_str().map(|s| s.to_lowercase()));
+
+        match extension.as_deref() {
+            // `mime_guess2` considers `.obj` to be a tgif… but really it's way more likely to be an obj.
+            Some("obj") => {
+                return Some(Self::obj());
+            }
+            // `mime_guess2` considers `.stl` to be a `application/vnd.ms-pki.stl`.
+            Some("stl") => {
+                return Some(Self::stl());
+            }
+            _ => {}
         }
 
         mime_guess2::from_path(path)
@@ -95,6 +112,18 @@ impl MediaType {
             buf.len() >= 4 && buf[0] == b'g' && buf[1] == b'l' && buf[2] == b'T' && buf[3] == b'F'
         }
 
+        fn stl_matcher(buf: &[u8]) -> bool {
+            // ASCII STL
+            buf.len() >= 5
+                && buf[0] == b's'
+                && buf[1] == b'o'
+                && buf[2] == b'l'
+                && buf[3] == b'i'
+                && buf[3] == b'd'
+            // Binary STL is hard to infer since it starts with an 80 byte header that is commonly ignored, see
+            // https://en.wikipedia.org/wiki/STL_(file_format)#Binary
+        }
+
         // NOTE:
         // - gltf is simply json, so no magic byte
         //   (also most gltf files contain file:// links, so not much point in sending that to
@@ -103,6 +132,7 @@ impl MediaType {
 
         let mut inferer = infer::Infer::new();
         inferer.add(Self::GLB, "", glb_matcher);
+        inferer.add(Self::STL, "", stl_matcher);
 
         inferer
             .get(data)

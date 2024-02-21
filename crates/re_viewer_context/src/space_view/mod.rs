@@ -54,4 +54,21 @@ pub enum SpaceViewSystemExecutionError {
 
     #[error("Failed to create draw data: {0}")]
     DrawDataCreationError(Box<dyn std::error::Error>),
+
+    #[error(transparent)]
+    GpuTransferError(#[from] re_renderer::CpuWriteGpuReadError),
+}
+
+// Convenience conversions for some re_renderer error types since these are so frequent.
+
+impl From<re_renderer::renderer::LineDrawDataError> for SpaceViewSystemExecutionError {
+    fn from(val: re_renderer::renderer::LineDrawDataError) -> Self {
+        SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(val))
+    }
+}
+
+impl From<re_renderer::renderer::PointCloudDrawDataError> for SpaceViewSystemExecutionError {
+    fn from(val: re_renderer::renderer::PointCloudDrawDataError) -> Self {
+        SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(val))
+    }
 }

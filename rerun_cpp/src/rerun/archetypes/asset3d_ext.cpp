@@ -77,6 +77,8 @@ namespace rerun::archetypes {
             return rerun::components::MediaType::gltf();
         } else if (ext == ".obj") {
             return rerun::components::MediaType::obj();
+        } else if (ext == ".stl") {
+            return rerun::components::MediaType::stl();
         } else {
             return std::nullopt;
         }

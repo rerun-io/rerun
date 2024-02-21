@@ -41,6 +41,14 @@ class MediaTypeExt:
     <https://www.iana.org/assignments/media-types/model/obj>
     """
 
+    STL: MediaType = None  # type: ignore[assignment]
+    """
+    [Stereolithography Model `stl`](https://en.wikipedia.org/wiki/STL_(file_format)): `model/stl`.
+    Either binary or ASCII.
+
+    <https://www.iana.org/assignments/media-types/model/stl>
+    """
+
     @staticmethod
     def deferred_patch_class(cls: Any) -> None:
         cls.TEXT = cls("text/plain")
@@ -48,3 +56,4 @@ class MediaTypeExt:
         cls.GLB = cls("model/gltf-binary")
         cls.GLTF = cls("model/gltf+json")
         cls.OBJ = cls("model/obj")
+        cls.STL = cls("model/stl")

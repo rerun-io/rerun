@@ -1,5 +1,5 @@
 use re_entity_db::InstancePath;
-use re_log_types::{EntityPath, EntityPathPart};
+use re_log_types::{external::re_types_core::components::InstanceKey, EntityPath, EntityPathPart};
 
 use egui::{text::LayoutJob, Color32, Style, TextFormat};
 
@@ -39,6 +39,14 @@ impl SyntaxHighlighting for EntityPathPart {
     }
 }
 
+impl SyntaxHighlighting for InstanceKey {
+    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+        job.append("[", 0.0, faint_text_format(style));
+        job.append(&self.to_string(), 0.0, text_format(style));
+        job.append("]", 0.0, faint_text_format(style));
+    }
+}
+
 impl SyntaxHighlighting for EntityPath {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         job.append("/", 0.0, faint_text_format(style));
@@ -56,9 +64,7 @@ impl SyntaxHighlighting for InstancePath {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         self.entity_path.syntax_highlight_into(style, job);
         if !self.instance_key.is_splat() {
-            job.append("[", 0.0, faint_text_format(style));
-            job.append(&self.instance_key.to_string(), 0.0, text_format(style));
-            job.append("]", 0.0, faint_text_format(style));
+            self.instance_key.syntax_highlight_into(style, job);
         }
     }
 }

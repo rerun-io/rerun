@@ -1,6 +1,5 @@
 use egui::Color32;
 use re_log_types::EntityPath;
-use re_renderer::LineStripSeriesBuilder;
 use re_types::components::{InstanceKey, Transform3D};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -9,8 +8,8 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{SharedRenderBuilders, TransformContext},
-    view_kind::SpatialSpaceViewKind,
+    contexts::TransformContext, view_kind::SpatialSpaceViewKind,
+    visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
@@ -50,11 +49,16 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let mut line_builder = view_ctx.get::<SharedRenderBuilders>()?.lines();
         let transforms = view_ctx.get::<TransformContext>()?;
 
         let store = ctx.entity_db.store();
         let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
+
+        // Counting all transforms ahead of time is a bit wasteful, but we also don't expect a huge amount,
+        // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
+        let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.render_ctx);
+        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             if store
                 .query_latest_component::<Transform3D>(&data_result.entity_path, &latest_at_query)
@@ -83,8 +87,6 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 world_from_obj,
             );
 
-            // Given how simple transform gizmos are it would be nice to put them all into a single line batch.
-            // However, we can set object picking ids only per batch.
             add_axis_arrows(
                 &mut line_builder,
                 world_from_obj,
@@ -97,7 +99,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             );
         }
 
-        Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+        Ok(vec![line_builder.into_draw_data()?.into()])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -114,7 +116,7 @@ const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
 const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
 
 pub fn add_axis_arrows(
-    line_builder: &mut LineStripSeriesBuilder,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     world_from_obj: macaw::Affine3A,
     ent_path: Option<&EntityPath>,
     axis_length: f32,
@@ -127,7 +129,7 @@ pub fn add_axis_arrows(
     let line_radius = re_renderer::Size::new_points(1.0);
 
     let mut line_batch = line_builder
-        .batch("axis_arrows")
+        .batch(ent_path.map_or("axis_arrows".to_owned(), |p| p.to_string()))
         .world_from_obj(world_from_obj)
         .triangle_cap_length_factor(10.0)
         .triangle_cap_width_factor(3.0)

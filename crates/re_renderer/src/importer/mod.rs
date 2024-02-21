@@ -4,6 +4,9 @@ pub mod obj;
 #[cfg(feature = "import-gltf")]
 pub mod gltf;
 
+#[cfg(feature = "import-stl")]
+pub mod stl;
+
 use macaw::Vec3Ext as _;
 
 use crate::renderer::MeshInstance;

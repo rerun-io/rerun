@@ -19,7 +19,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
+    /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
     ///
     /// ## Example
     ///
@@ -35,7 +35,7 @@ namespace rerun::archetypes {
     ///
     /// int main(int argc, char* argv[]) {
     ///     if (argc <2) {
-    ///         std::cerr <<"Usage: " <<argv[0] <<" <path_to_asset.[gltf|glb|obj]>" <<std::endl;
+    ///         std::cerr <<"Usage: " <<argv[0] <<" <path_to_asset.[gltf|glb|obj|stl]>" <<std::endl;
     ///         return 1;
     ///     }
     ///
@@ -56,7 +56,9 @@ namespace rerun::archetypes {
         ///
         /// Supported values:
         /// * `model/gltf-binary`
+        /// * `model/gltf+json`
         /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+        /// * `model/stl`
         ///
         /// If omitted, the viewer will try to guess from the data blob.
         /// If it cannot guess, it won't be able to render the asset.
@@ -111,7 +113,9 @@ namespace rerun::archetypes {
         ///
         /// Supported values:
         /// * `model/gltf-binary`
+        /// * `model/gltf+json`
         /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+        /// * `model/stl`
         ///
         /// If omitted, the viewer will try to guess from the data blob.
         /// If it cannot guess, it won't be able to render the asset.

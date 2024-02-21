@@ -18,7 +18,7 @@ use crate::{
 
 use super::{
     filter_visualizable_3d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, SpatialViewVisualizerData,
+    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 pub struct Lines3DVisualizer {
@@ -82,11 +82,12 @@ impl Lines3DVisualizer {
 
     fn process_data(
         &mut self,
+        line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         data: &Lines3DComponentData<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         let (annotation_infos, _) = process_annotation_and_keypoint_slices(
             query.latest_at,
             data.instance_keys,
@@ -126,9 +127,11 @@ impl Lines3DVisualizer {
             }
         }
 
-        let mut line_builder = ent_context.shared_render_builders.lines();
+        line_builder.reserve_strips(data.strips.len())?;
+        line_builder.reserve_vertices(data.strips.iter().map(|s| s.0.len()).sum())?;
+
         let mut line_batch = line_builder
-            .batch("lines 3d")
+            .batch(ent_path.to_string())
             .depth_offset(ent_context.depth_offset)
             .world_from_obj(ent_context.world_from_entity)
             .outline_mask_ids(ent_context.highlight.overall)
@@ -156,6 +159,8 @@ impl Lines3DVisualizer {
 
         self.data
             .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
+
+        Ok(())
     }
 }
 
@@ -197,6 +202,11 @@ impl VisualizerSystem for Lines3DVisualizer {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        // Counting all lines (strips and vertices) ahead of time is a bit expensive since we need to do a full query for this.
+        // We choose a semi-dynamic approach here, where we reserve on every new line batch.
+        let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.render_ctx);
+        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+
         super::entity_iterator::process_archetype_pov1_comp5::<
             Lines3DVisualizer,
             LineStrips3D,
@@ -233,12 +243,11 @@ impl VisualizerSystem for Lines3DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(query, &data, ent_path, ent_context);
-                Ok(())
+                self.process_data(&mut line_builder, query, &data, ent_path, ent_context)
             },
         )?;
 
-        Ok(Vec::new()) // TODO(andreas): Optionally return point & line draw data once SharedRenderBuilders is gone.
+        Ok(vec![(line_builder.into_draw_data()?.into())])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

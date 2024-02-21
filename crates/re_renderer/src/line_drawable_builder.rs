@@ -3,9 +3,10 @@ use std::ops::Range;
 use re_log::ResultExt;
 
 use crate::{
-    allocator::CpuWriteGpuReadBuffer,
+    allocator::{CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError},
     renderer::{
-        LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags, LineStripInfo, LineVertex,
+        gpu_data::{LineStripInfo, LineVertex},
+        LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags,
     },
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId,
     PickingLayerObjectId, RenderContext, Size,
@@ -14,58 +15,57 @@ use crate::{
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].
 ///
 /// TODO(andreas): We could make significant optimizations here by making this builder capable
-/// of writing to a GPU readable memory location.
-/// This will require some ahead of time size limit, but should be feasible.
-/// But before that we first need to sort out cpu->gpu transfers better by providing staging buffers.
-pub struct LineStripSeriesBuilder {
-    pub vertices: Vec<LineVertex>,
+/// of writing to a GPU readable memory location for all its data.
+pub struct LineDrawableBuilder<'ctx> {
+    pub ctx: &'ctx RenderContext,
 
-    pub batches: Vec<LineBatchInfo>,
-
-    pub strips: Vec<LineStripInfo>,
+    pub(crate) vertices_buffer: DataTextureSource<'ctx, LineVertex>,
+    pub(crate) batches: Vec<LineBatchInfo>,
+    pub(crate) strips_buffer: DataTextureSource<'ctx, LineStripInfo>,
 
     /// Buffer for picking instance id - every strip gets its own instance id.
     /// Therefore, there need to be always as many picking instance ids as there are strips.
-    pub(crate) picking_instance_ids_buffer: CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
+    pub(crate) picking_instance_ids_buffer: DataTextureSource<'ctx, PickingLayerInstanceId>,
 
     pub(crate) radius_boost_in_ui_points_for_outlines: f32,
 }
 
-impl LineStripSeriesBuilder {
-    pub fn new(ctx: &RenderContext) -> Self {
-        const RESERVE_SIZE: usize = 512;
-
-        // TODO(andreas): Be more resourceful about the size allocated here. Typically we know in advance!
-        let picking_instance_ids_buffer = ctx
-            .cpu_write_gpu_read_belt
-            .lock()
-            .allocate::<PickingLayerInstanceId>(
-                &ctx.device,
-                &ctx.gpu_resources.buffers,
-                LineDrawData::MAX_NUM_STRIPS,
-            )
-            .expect("Failed to allocate picking instance id buffer"); // TODO(#3408): Should never happen but should propagate error anyways
-
+impl<'ctx> LineDrawableBuilder<'ctx> {
+    pub fn new(ctx: &'ctx RenderContext) -> Self {
         Self {
-            vertices: Vec::with_capacity(RESERVE_SIZE * 2),
-            strips: Vec::with_capacity(RESERVE_SIZE),
+            ctx,
+            vertices_buffer: DataTextureSource::new(ctx),
+            strips_buffer: DataTextureSource::new(ctx),
             batches: Vec::with_capacity(16),
-            picking_instance_ids_buffer,
+            picking_instance_ids_buffer: DataTextureSource::new(ctx),
             radius_boost_in_ui_points_for_outlines: 0.0,
         }
     }
 
+    /// Returns number of strips that can be added without reallocation.
+    /// This may be smaller than the requested number if the maximum number of strips is reached.
+    pub fn reserve_strips(&mut self, num_strips: usize) -> Result<usize, CpuWriteGpuReadError> {
+        // We know that the maximum number is independent of datatype, so we can use the same value for all.
+        self.strips_buffer.reserve(num_strips)?;
+        self.picking_instance_ids_buffer.reserve(num_strips)
+    }
+
+    /// Returns number of vertices that can be added without reallocation.
+    /// This may be smaller than the requested number if the maximum number of vertices is reached.
+    pub fn reserve_vertices(&mut self, num_vertices: usize) -> Result<usize, CpuWriteGpuReadError> {
+        self.vertices_buffer.reserve(num_vertices)
+    }
+
     /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
     pub fn radius_boost_in_ui_points_for_outlines(
-        mut self,
+        &mut self,
         radius_boost_in_ui_points_for_outlines: f32,
-    ) -> Self {
+    ) {
         self.radius_boost_in_ui_points_for_outlines = radius_boost_in_ui_points_for_outlines;
-        self
     }
 
     /// Start of a new batch.
-    pub fn batch(&mut self, label: impl Into<DebugLabel>) -> LineBatchBuilder<'_> {
+    pub fn batch(&mut self, label: impl Into<DebugLabel>) -> LineBatchBuilder<'_, 'ctx> {
         self.batches.push(LineBatchInfo {
             label: label.into(),
             ..LineBatchInfo::default()
@@ -74,34 +74,18 @@ impl LineStripSeriesBuilder {
         LineBatchBuilder(self)
     }
 
-    // Iterate over all batches, yielding the batch info and all line vertices (note that these will span several line strips!)
-    pub fn iter_vertices_by_batch(
-        &self,
-    ) -> impl Iterator<Item = (&LineBatchInfo, impl Iterator<Item = &LineVertex>)> {
-        let mut vertex_offset = 0;
-        self.batches.iter().map(move |batch| {
-            let out = (
-                batch,
-                self.vertices
-                    .iter()
-                    .skip(vertex_offset)
-                    .take(batch.line_vertex_count as usize),
-            );
-            vertex_offset += batch.line_vertex_count as usize;
-            out
-        })
-    }
-
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
-    pub fn into_draw_data(
-        self,
-        ctx: &crate::context::RenderContext,
-    ) -> Result<LineDrawData, LineDrawDataError> {
-        LineDrawData::new(ctx, self)
+    pub fn into_draw_data(mut self) -> Result<LineDrawData, LineDrawDataError> {
+        if !self.vertices_buffer.is_empty() {
+            // sentinel at the end to facilitate caps.
+            self.vertices_buffer.push(LineVertex::SENTINEL)?;
+        }
+
+        LineDrawData::new(self)
     }
 
     pub fn is_empty(&self) -> bool {
-        self.strips.is_empty()
+        self.strips_buffer.is_empty()
     }
 
     pub fn default_box_flags() -> LineStripFlags {
@@ -112,9 +96,9 @@ impl LineStripSeriesBuilder {
     }
 }
 
-pub struct LineBatchBuilder<'a>(&'a mut LineStripSeriesBuilder);
+pub struct LineBatchBuilder<'a, 'ctx>(&'a mut LineDrawableBuilder<'ctx>);
 
-impl<'a> Drop for LineBatchBuilder<'a> {
+impl<'a, 'ctx> Drop for LineBatchBuilder<'a, 'ctx> {
     fn drop(&mut self) {
         // Remove batch again if it wasn't actually used.
         if self.0.batches.last().unwrap().line_vertex_count == 0 {
@@ -123,7 +107,7 @@ impl<'a> Drop for LineBatchBuilder<'a> {
     }
 }
 
-impl<'a> LineBatchBuilder<'a> {
+impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
     #[inline]
     fn batch_mut(&mut self) -> &mut LineBatchInfo {
         self.0
@@ -132,14 +116,88 @@ impl<'a> LineBatchBuilder<'a> {
             .expect("batch should have been added on PointCloudBatchBuilder creation")
     }
 
-    fn add_vertices(&mut self, points: impl Iterator<Item = glam::Vec3>, strip_index: u32) {
-        let old_len = self.0.vertices.len();
+    fn add_vertices(
+        &mut self,
+        points: impl ExactSizeIterator<Item = glam::Vec3>,
+        strip_index: u32,
+    ) -> Result<(), DataTextureSourceWriteError> {
+        let num_new_vertices = points.len();
+        if num_new_vertices == 0 {
+            return Ok(());
+        }
 
-        self.0.vertices.extend(points.map(|pos| LineVertex {
-            position: pos,
-            strip_index,
-        }));
-        self.batch_mut().line_vertex_count += (self.0.vertices.len() - old_len) as u32;
+        // Sentinel at the beginning and end to facilitate caps.
+        let add_start_sentinel = self.0.vertices_buffer.is_empty();
+        let num_sentinels_to_add = if add_start_sentinel {
+            LineVertex::NUM_SENTINEL_VERTICES // Start and end sentinel.
+        } else {
+            1 // End sentinel only.
+        };
+
+        // Do a reserve ahead of time including sentinel vertices, in order to check whether we're hitting the data texture limit.
+        let reserve_count = num_new_vertices + num_sentinels_to_add;
+        let num_available_points = self.0.vertices_buffer.reserve(reserve_count)?;
+        let num_new_vertices = if reserve_count > num_available_points {
+            re_log::error_once!(
+                "Reached maximum number of vertices for lines strips of {}. Ignoring all excess vertices.",
+                self.0.vertices_buffer.len() + num_available_points - LineVertex::NUM_SENTINEL_VERTICES
+            );
+            num_available_points - num_sentinels_to_add
+        } else {
+            num_new_vertices
+        };
+
+        if add_start_sentinel {
+            self.0.vertices_buffer.push(LineVertex::SENTINEL)?;
+        }
+
+        // TODO(andreas): It would be nice to pass on the iterator as is so we don't have to do yet another
+        // copy of the data and instead write into the buffers directly - if done right this should be the fastest.
+        // But it's surprisingly tricky to do this effectively.
+        let vertices = points
+            .map(|pos| LineVertex {
+                position: pos,
+                strip_index,
+            })
+            .take(num_new_vertices)
+            .collect::<Vec<_>>();
+        self.0.vertices_buffer.extend_from_slice(&vertices)?;
+
+        self.batch_mut().line_vertex_count += num_new_vertices as u32;
+
+        Ok(())
+    }
+
+    fn create_strip_builder(
+        &mut self,
+        mut num_strips_added: usize,
+        vertex_range: Range<usize>,
+    ) -> LineStripBuilder<'_, 'ctx> {
+        // Reserve space ahead of time to figure out whether we're hitting the data texture limit.
+        let Some(num_available_strips) = self
+            .0
+            .strips_buffer
+            .reserve(num_strips_added)
+            .ok_or_log_error_once()
+        else {
+            return LineStripBuilder::new_empty(self.0);
+        };
+        if num_available_strips < num_strips_added {
+            re_log::error_once!(
+                "Reached maximum number of strips for lines of {}. Ignoring all excess strips.",
+                self.0.strips_buffer.len() + num_available_strips
+            );
+            num_strips_added = num_available_strips;
+        }
+
+        LineStripBuilder {
+            builder: self.0,
+            outline_mask_ids: OutlineMaskPreference::NONE,
+            picking_instance_id: PickingLayerInstanceId::default(),
+            vertex_range,
+            num_strips_added,
+            strip: LineStripInfo::default(),
+        }
     }
 
     /// Sets the `world_from_obj` matrix for the *entire* batch.
@@ -191,38 +249,24 @@ impl<'a> LineBatchBuilder<'a> {
     }
 
     /// Adds a 3D series of line connected points.
-    pub fn add_strip(&mut self, points: impl Iterator<Item = glam::Vec3>) -> LineStripBuilder<'_> {
-        if self.0.strips.len() >= LineDrawData::MAX_NUM_STRIPS {
-            re_log::error_once!(
-                "Reached maximum number of supported line strips of {}. \
-                 See also https://github.com/rerun-io/rerun/issues/957",
-                LineDrawData::MAX_NUM_STRIPS
-            );
-            return LineStripBuilder::placeholder(self.0);
-        }
-
-        let old_strip_count = self.0.strips.len();
-        let old_vertex_count = self.0.vertices.len();
+    pub fn add_strip(
+        &mut self,
+        points: impl ExactSizeIterator<Item = glam::Vec3>,
+    ) -> LineStripBuilder<'_, 'ctx> {
+        let old_strip_count = self.0.strips_buffer.len();
+        let old_vertex_count = self.0.vertices_buffer.len();
         let strip_index = old_strip_count as _;
 
-        self.add_vertices(points, strip_index);
-        let new_vertex_count = self.0.vertices.len();
+        self.add_vertices(points, strip_index)
+            .ok_or_log_error_once();
+        let new_vertex_count = self.0.vertices_buffer.len();
 
-        self.0.strips.push(LineStripInfo::default());
-        let new_strip_count = self.0.strips.len();
-
-        LineStripBuilder {
-            builder: self.0,
-            outline_mask_ids: OutlineMaskPreference::NONE,
-            picking_instance_id: PickingLayerInstanceId::default(),
-            vertex_range: old_vertex_count..new_vertex_count,
-            strip_range: old_strip_count..new_strip_count,
-        }
+        self.create_strip_builder(1, old_vertex_count..new_vertex_count)
     }
 
     /// Adds a single 3D line segment connecting two points.
     #[inline]
-    pub fn add_segment(&mut self, a: glam::Vec3, b: glam::Vec3) -> LineStripBuilder<'_> {
+    pub fn add_segment(&mut self, a: glam::Vec3, b: glam::Vec3) -> LineStripBuilder<'_, 'ctx> {
         self.add_strip([a, b].into_iter())
     }
 
@@ -230,49 +274,26 @@ impl<'a> LineBatchBuilder<'a> {
     pub fn add_segments(
         &mut self,
         segments: impl Iterator<Item = (glam::Vec3, glam::Vec3)>,
-    ) -> LineStripBuilder<'_> {
+    ) -> LineStripBuilder<'_, 'ctx> {
         #![allow(clippy::tuple_array_conversions)] // false positive
 
-        if self.0.strips.len() >= LineDrawData::MAX_NUM_STRIPS {
-            re_log::error_once!(
-                "Reached maximum number of supported line strips of {}. \
-                 See also https://github.com/rerun-io/rerun/issues/957",
-                LineDrawData::MAX_NUM_STRIPS
-            );
-            return LineStripBuilder::placeholder(self.0);
-        }
-
-        debug_assert_eq!(
-            self.0.strips.len(),
-            self.0.picking_instance_ids_buffer.num_written()
-        );
-
-        let old_strip_count = self.0.strips.len();
-        let old_vertex_count = self.0.vertices.len();
+        let old_strip_count = self.0.strips_buffer.len();
+        let old_vertex_count = self.0.vertices_buffer.len();
         let mut strip_index = old_strip_count as u32;
 
         // It's tempting to assign the same strip to all vertices, after all they share
         // color/radius/tag properties.
         // However, if we don't assign different strip indices, we don't know when a strip (==segment) starts and ends.
+        // TODO(andreas): There's likely some low hanging fruit here to make this faster by collapsing into a single call to `add_vertices`.
         for (a, b) in segments {
-            self.add_vertices([a, b].into_iter(), strip_index);
+            self.add_vertices([a, b].into_iter(), strip_index)
+                .ok_or_log_error_once();
             strip_index += 1;
         }
-        let new_vertex_count = self.0.vertices.len();
+        let new_vertex_count = self.0.vertices_buffer.len();
         let num_strips_added = strip_index as usize - old_strip_count;
 
-        self.0
-            .strips
-            .extend(std::iter::repeat(LineStripInfo::default()).take(num_strips_added));
-        let new_strip_count = self.0.strips.len();
-
-        LineStripBuilder {
-            builder: self.0,
-            outline_mask_ids: OutlineMaskPreference::NONE,
-            picking_instance_id: PickingLayerInstanceId::default(),
-            vertex_range: old_vertex_count..new_vertex_count,
-            strip_range: old_strip_count..new_strip_count,
-        }
+        self.create_strip_builder(num_strips_added, old_vertex_count..new_vertex_count)
     }
 
     /// Add box outlines from a unit cube transformed by `transform`.
@@ -283,7 +304,7 @@ impl<'a> LineBatchBuilder<'a> {
     pub fn add_box_outline_from_transform(
         &mut self,
         transform: glam::Affine3A,
-    ) -> LineStripBuilder<'_> {
+    ) -> LineStripBuilder<'_, 'ctx> {
         let corners = [
             transform.transform_point3(glam::vec3(-0.5, -0.5, -0.5)),
             transform.transform_point3(glam::vec3(-0.5, -0.5, 0.5)),
@@ -314,7 +335,7 @@ impl<'a> LineBatchBuilder<'a> {
             ]
             .into_iter(),
         )
-        .flags(LineStripSeriesBuilder::default_box_flags())
+        .flags(LineDrawableBuilder::default_box_flags())
     }
 
     /// Add box outlines.
@@ -324,7 +345,10 @@ impl<'a> LineBatchBuilder<'a> {
     ///
     /// Returns None for empty and non-finite boxes.
     #[inline]
-    pub fn add_box_outline(&mut self, bbox: &macaw::BoundingBox) -> Option<LineStripBuilder<'_>> {
+    pub fn add_box_outline(
+        &mut self,
+        bbox: &macaw::BoundingBox,
+    ) -> Option<LineStripBuilder<'_, 'ctx>> {
         if !bbox.is_something() || !bbox.is_finite() {
             return None;
         }
@@ -351,7 +375,7 @@ impl<'a> LineBatchBuilder<'a> {
                 ]
                 .into_iter(),
             )
-            .flags(LineStripSeriesBuilder::default_box_flags()),
+            .flags(LineDrawableBuilder::default_box_flags()),
         )
     }
 
@@ -365,7 +389,7 @@ impl<'a> LineBatchBuilder<'a> {
         top_left_corner: glam::Vec3,
         extent_u: glam::Vec3,
         extent_v: glam::Vec3,
-    ) -> LineStripBuilder<'_> {
+    ) -> LineStripBuilder<'_, 'ctx> {
         self.add_segments(
             [
                 (top_left_corner, top_left_corner + extent_u),
@@ -381,7 +405,7 @@ impl<'a> LineBatchBuilder<'a> {
             ]
             .into_iter(),
         )
-        .flags(LineStripSeriesBuilder::default_box_flags())
+        .flags(LineDrawableBuilder::default_box_flags())
     }
 
     /// Adds a 2D series of line connected points.
@@ -390,15 +414,15 @@ impl<'a> LineBatchBuilder<'a> {
     #[inline]
     pub fn add_strip_2d(
         &mut self,
-        points: impl Iterator<Item = glam::Vec2>,
-    ) -> LineStripBuilder<'_> {
+        points: impl ExactSizeIterator<Item = glam::Vec2>,
+    ) -> LineStripBuilder<'_, 'ctx> {
         self.add_strip(points.map(|p| p.extend(0.0)))
             .flags(LineStripFlags::FLAG_FORCE_ORTHO_SPANNING)
     }
 
     /// Adds a single 2D line segment connecting two points. Uses autogenerated depth value.
     #[inline]
-    pub fn add_segment_2d(&mut self, a: glam::Vec2, b: glam::Vec2) -> LineStripBuilder<'_> {
+    pub fn add_segment_2d(&mut self, a: glam::Vec2, b: glam::Vec2) -> LineStripBuilder<'_, 'ctx> {
         self.add_strip_2d([a, b].into_iter())
             .flags(LineStripFlags::FLAG_FORCE_ORTHO_SPANNING)
     }
@@ -410,7 +434,7 @@ impl<'a> LineBatchBuilder<'a> {
     pub fn add_segments_2d(
         &mut self,
         segments: impl Iterator<Item = (glam::Vec2, glam::Vec2)>,
-    ) -> LineStripBuilder<'_> {
+    ) -> LineStripBuilder<'_, 'ctx> {
         self.add_segments(segments.map(|(a, b)| (a.extend(0.0), b.extend(0.0))))
             .flags(LineStripFlags::FLAG_FORCE_ORTHO_SPANNING)
     }
@@ -425,7 +449,7 @@ impl<'a> LineBatchBuilder<'a> {
         top_left_corner: glam::Vec2,
         extent_u: glam::Vec2,
         extent_v: glam::Vec2,
-    ) -> LineStripBuilder<'_> {
+    ) -> LineStripBuilder<'_, 'ctx> {
         self.add_rectangle_outline(
             top_left_corner.extend(0.0),
             extent_u.extend(0.0),
@@ -443,7 +467,7 @@ impl<'a> LineBatchBuilder<'a> {
         &mut self,
         min: glam::Vec2,
         max: glam::Vec2,
-    ) -> LineStripBuilder<'_> {
+    ) -> LineStripBuilder<'_, 'ctx> {
         self.add_rectangle_outline(
             min.extend(0.0),
             glam::Vec3::X * (max.x - min.x),
@@ -453,47 +477,44 @@ impl<'a> LineBatchBuilder<'a> {
     }
 }
 
-pub struct LineStripBuilder<'a> {
-    builder: &'a mut LineStripSeriesBuilder,
+pub struct LineStripBuilder<'a, 'ctx> {
+    builder: &'a mut LineDrawableBuilder<'ctx>,
     outline_mask_ids: OutlineMaskPreference,
-    picking_instance_id: PickingLayerInstanceId,
     vertex_range: Range<usize>,
-    strip_range: Range<usize>,
+
+    picking_instance_id: PickingLayerInstanceId,
+    strip: LineStripInfo,
+    num_strips_added: usize,
 }
 
-impl<'a> LineStripBuilder<'a> {
-    fn placeholder(series_builder: &'a mut LineStripSeriesBuilder) -> Self {
+impl<'a, 'ctx> LineStripBuilder<'a, 'ctx> {
+    pub fn new_empty(builder: &'a mut LineDrawableBuilder<'ctx>) -> Self {
         Self {
-            builder: series_builder,
+            builder,
             outline_mask_ids: OutlineMaskPreference::NONE,
-            picking_instance_id: PickingLayerInstanceId::default(),
             vertex_range: 0..0,
-            strip_range: 0..0,
+            picking_instance_id: PickingLayerInstanceId::default(),
+            strip: LineStripInfo::default(),
+            num_strips_added: 0,
         }
     }
 
     #[inline]
-    pub fn radius(self, radius: Size) -> Self {
-        for strip in &mut self.builder.strips[self.strip_range.clone()] {
-            strip.radius = radius;
-        }
+    pub fn radius(mut self, radius: Size) -> Self {
+        self.strip.radius = radius.into();
         self
     }
 
     #[inline]
-    pub fn color(self, color: Color32) -> Self {
-        for strip in &mut self.builder.strips[self.strip_range.clone()] {
-            strip.color = color;
-        }
+    pub fn color(mut self, color: Color32) -> Self {
+        self.strip.color = color;
         self
     }
 
     /// Adds (!) flags to the line strip.
     #[inline]
-    pub fn flags(self, flags: LineStripFlags) -> Self {
-        for strip in &mut self.builder.strips[self.strip_range.clone()] {
-            strip.flags |= flags;
-        }
+    pub fn flags(mut self, flags: LineStripFlags) -> Self {
+        self.strip.flags |= flags;
         self
     }
 
@@ -512,8 +533,13 @@ impl<'a> LineStripBuilder<'a> {
     }
 }
 
-impl<'a> Drop for LineStripBuilder<'a> {
+impl<'a, 'ctx> Drop for LineStripBuilder<'a, 'ctx> {
     fn drop(&mut self) {
+        if self.num_strips_added == 0 {
+            // Happens if we reached the maximum number of strips.
+            return;
+        }
+
         if self.outline_mask_ids.is_some() {
             self.builder
                 .batches
@@ -525,9 +551,18 @@ impl<'a> Drop for LineStripBuilder<'a> {
                     self.outline_mask_ids,
                 ));
         }
+
         self.builder
             .picking_instance_ids_buffer
-            .fill_n(self.picking_instance_id, self.strip_range.len())
-            .ok_or_log_error_once(); // May run out of space, but we should have already handled that earlier.
+            .add_n(self.picking_instance_id, self.num_strips_added)
+            .ok_or_log_error_once();
+        self.builder
+            .strips_buffer
+            .add_n(self.strip, self.num_strips_added)
+            .ok_or_log_error_once();
+
+        debug_assert!(
+            self.builder.strips_buffer.len() == self.builder.picking_instance_ids_buffer.len()
+        );
     }
 }

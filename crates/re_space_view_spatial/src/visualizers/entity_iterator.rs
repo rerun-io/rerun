@@ -10,8 +10,8 @@ use re_viewer_context::{
 
 use crate::{
     contexts::{
-        AnnotationSceneContext, EntityDepthOffsets, PrimitiveCounter, SharedRenderBuilders,
-        SpatialSceneEntityContext, TransformContext,
+        AnnotationSceneContext, EntityDepthOffsets, PrimitiveCounter, SpatialSceneEntityContext,
+        TransformContext,
     },
     SpatialSpaceView3D,
 };
@@ -40,7 +40,6 @@ where
     let transforms = view_ctx.get::<TransformContext>()?;
     let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-    let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
     for data_result in query.iter_visible_data_results(System::identifier()) {
@@ -66,7 +65,6 @@ where
                 .get(&data_result.entity_path.hash())
                 .unwrap_or(&default_depth_offset),
             annotations: annotations.0.find(&data_result.entity_path),
-            shared_render_builders,
             highlight: query
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash()),
@@ -140,7 +138,7 @@ macro_rules! impl_process_archetype {
                 &[InstanceKey],
                 $(&[$pov],)*
                 $(Option<&[Option<$comp>]>,)*
-            ) -> ::re_query::Result<()>,
+            ) -> Result<(), SpaceViewSystemExecutionError>,
         {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!(
@@ -151,7 +149,6 @@ macro_rules! impl_process_archetype {
             let transforms = view_ctx.get::<TransformContext>()?;
             let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
             let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-            let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
             let counter = view_ctx.get::<PrimitiveCounter>()?;
 
             for data_result in query.iter_visible_data_results(S::identifier()) {
@@ -176,7 +173,6 @@ macro_rules! impl_process_archetype {
                         .get(&data_result.entity_path.hash())
                         .unwrap_or(&default_depth_offset),
                     annotations: annotations.0.find(&data_result.entity_path),
-                    shared_render_builders,
                     highlight: query
                         .highlights
                         .entity_outline_mask(data_result.entity_path.hash()),
@@ -208,7 +204,7 @@ macro_rules! impl_process_archetype {
                                 "Unexpected error querying {:?}: {err}",
                                 &data_result.entity_path
                             );
-                        }
+                        };
                     }
                 ) {
                     Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}

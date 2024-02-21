@@ -12,7 +12,7 @@ use re_renderer::{
     },
     resource_managers::{GpuTexture2D, Texture2DCreationDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
-    Color32, LineStripSeriesBuilder, PointCloudBuilder, Size,
+    Color32, LineDrawableBuilder, PointCloudBuilder, Size,
 };
 
 mod framework;
@@ -69,7 +69,9 @@ impl framework::Example for Render2D {
             splits[0].resolution_in_pixel[1] as f32,
         );
 
-        let mut line_strip_builder = LineStripSeriesBuilder::new(re_ctx);
+        let mut line_strip_builder = LineDrawableBuilder::new(re_ctx);
+        line_strip_builder.reserve_strips(128).unwrap();
+        line_strip_builder.reserve_vertices(2048).unwrap();
 
         // Blue rect outline around the bottom right quarter.
         {
@@ -173,7 +175,8 @@ impl framework::Example for Render2D {
         // Moving the windows to a high dpi screen makes the second one bigger.
         // Also, it looks different under perspective projection.
         // The third point is automatic thickness which is determined by the point renderer implementation.
-        let mut point_cloud_builder = PointCloudBuilder::new(re_ctx, 128);
+        let mut point_cloud_builder = PointCloudBuilder::new(re_ctx);
+        point_cloud_builder.reserve(128).unwrap();
         point_cloud_builder.batch("points").add_points_2d(
             &[
                 glam::vec3(500.0, 120.0, 0.0),
@@ -241,8 +244,8 @@ impl framework::Example for Render2D {
                 .add_points_2d(&positions, &sizes, &colors, &picking_ids);
         }
 
-        let line_strip_draw_data = line_strip_builder.into_draw_data(re_ctx).unwrap();
-        let point_draw_data = point_cloud_builder.into_draw_data(re_ctx).unwrap();
+        let line_strip_draw_data = line_strip_builder.into_draw_data().unwrap();
+        let point_draw_data = point_cloud_builder.into_draw_data().unwrap();
 
         let image_scale = 4.0;
         let rectangle_draw_data = RectangleDrawData::new(

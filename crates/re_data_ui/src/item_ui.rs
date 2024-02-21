@@ -57,6 +57,37 @@ pub fn entity_path_button(
     )
 }
 
+/// Show the different parts of an entity path and make them selectable.
+pub fn entity_path_parts_buttons(
+    ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
+    ui: &mut egui::Ui,
+    space_view_id: Option<SpaceViewId>,
+    entity_path: &EntityPath,
+) -> egui::Response {
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 4.0;
+
+        let mut accumulated = Vec::new();
+        for part in entity_path.iter() {
+            accumulated.push(part.clone());
+
+            ui.strong("/");
+            entity_path_button_to(
+                ctx,
+                query,
+                store,
+                ui,
+                space_view_id,
+                &accumulated.clone().into(),
+                part.syntax_highlighted(ui.style()),
+            );
+        }
+    })
+    .response
+}
+
 /// Show an entity path and make it selectable.
 pub fn entity_path_button_to(
     ctx: &ViewerContext<'_>,
@@ -117,6 +148,50 @@ pub fn instance_path_button_to(
         });
 
     cursor_interact_with_selectable(ctx, response, item)
+}
+
+/// Show the different parts of an instance path and make them selectable.
+pub fn instance_path_parts_buttons(
+    ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
+    ui: &mut egui::Ui,
+    space_view_id: Option<SpaceViewId>,
+    instance_path: &InstancePath,
+) -> egui::Response {
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 4.0;
+
+        let mut accumulated = Vec::new();
+        for part in instance_path.entity_path.iter() {
+            accumulated.push(part.clone());
+
+            ui.strong("/");
+            entity_path_button_to(
+                ctx,
+                query,
+                store,
+                ui,
+                space_view_id,
+                &accumulated.clone().into(),
+                part.syntax_highlighted(ui.style()),
+            );
+        }
+
+        if !instance_path.instance_key.is_splat() {
+            ui.strong("/");
+            instance_path_button_to(
+                ctx,
+                query,
+                store,
+                ui,
+                space_view_id,
+                instance_path,
+                instance_path.instance_key.syntax_highlighted(ui.style()),
+            );
+        }
+    })
+    .response
 }
 
 fn entity_tree_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, tree: &EntityTree) {
