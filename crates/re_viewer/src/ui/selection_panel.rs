@@ -266,19 +266,19 @@ fn container_children(
         stroke: ui.visuals().widgets.noninteractive.bg_stroke,
         ..Default::default()
     }
-    .show(ui, |ui| {
-        let clip_rect = ui.clip_rect();
-        ui.set_clip_rect(ui.max_rect());
-        ui.spacing_mut().item_spacing.y = 0.0;
+        .show(ui, |ui| {
+            let clip_rect = ui.clip_rect();
+            ui.set_clip_rect(ui.max_rect());
+            ui.spacing_mut().item_spacing.y = 0.0;
 
-        egui::Frame {
-            inner_margin: egui::Margin::symmetric(4.0, 0.0),
-            ..Default::default()
-        }
-        .show(ui, show_content);
+            egui::Frame {
+                inner_margin: egui::Margin::symmetric(4.0, 0.0),
+                ..Default::default()
+            }
+                .show(ui, show_content);
 
-        ui.set_clip_rect(clip_rect);
-    });
+            ui.set_clip_rect(clip_rect);
+        });
 }
 
 fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
@@ -357,9 +357,9 @@ fn what_is_selected_ui(
             }
         }
         Item::ComponentPath(re_log_types::ComponentPath {
-            entity_path,
-            component_name,
-        }) => {
+                                entity_path,
+                                component_name,
+                            }) => {
             item_title_ui(
                 ctx.re_ui,
                 ui,
@@ -793,7 +793,7 @@ fn show_list_item_for_container_child(
 
 fn has_blueprint_section(item: &Item) -> bool {
     match item {
-        Item::ComponentPath(_) | Item::Container(_) => false,
+        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) => false,
         Item::InstancePath(space_view_id, instance_path) => {
             space_view_id.is_some() && instance_path.instance_key.is_splat()
         }
@@ -853,7 +853,7 @@ fn blueprint_ui_for_space_view(
                         1,
                         [expressions_component],
                     )
-                    .unwrap();
+                        .unwrap();
 
                     ctx.command_sender
                         .send_system(SystemCommand::UpdateBlueprint(
@@ -1059,7 +1059,7 @@ The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded
 The last rule matching `/world` is `- /world`, so it is excluded.
 The last rule matching `/world/house` is `+ /world/**`, so it is included.
     "#
-        .trim();
+            .trim();
 
         re_ui::markdown_ui(ui, egui::Id::new("entity_path_filter_help_ui"), markdown);
     }
@@ -1314,12 +1314,12 @@ fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue
     let mut value = *property.get();
     let speed = (value * 0.05).at_least(0.01);
     let response = ui
-    .add(
-        egui::DragValue::new(&mut value)
-            .clamp_range(0.0..=1.0e8)
-            .speed(speed),
-    )
-    .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
+        .add(
+            egui::DragValue::new(&mut value)
+                .clamp_range(0.0..=1.0e8)
+                .speed(speed),
+        )
+        .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
                     Double-click to reset.");
     if response.double_clicked() {
         // reset to auto - the exact value will be restored somewhere else
