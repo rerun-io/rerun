@@ -25,9 +25,7 @@ ahash.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
+static_assertions.workspace = true
 
 # Optional dependencies
 serde = { workspace = true, features = ["serde_derive"], optional = true }
-
-[dev-dependencies]
-trybuild = "1.0"

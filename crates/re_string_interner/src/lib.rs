@@ -34,6 +34,8 @@ pub struct InternedString {
     string: &'static str,
 }
 
+static_assertions::assert_not_impl_any!(InternedString: std::borrow::Borrow<str>);
+
 impl InternedString {
     #[inline]
     pub fn new(string: &str) -> Self {
@@ -346,6 +348,9 @@ fn test_newtype_macro() {
 // See <https://github.com/rerun-io/rerun/pull/5243> for more information.
 #[test]
 fn do_not_implement_borrow() {
-    let t = trybuild::TestCases::new();
-    t.compile_fail("tests/trybuild/forbid_borrow.rs");
+    declare_new_type!(
+        /// My typesafe string
+        pub struct MyString;
+    );
+    static_assertions::assert_not_impl_any!(MyString: std::borrow::Borrow<str>);
 }
