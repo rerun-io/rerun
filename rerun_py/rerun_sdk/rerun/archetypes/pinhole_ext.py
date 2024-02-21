@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any, cast
 
 import numpy.typing as npt
@@ -84,6 +85,7 @@ class PinholeExt:
             Vertical field of view.
         aspect_ratio
             Aspect ratio.
+
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
@@ -96,7 +98,7 @@ class PinholeExt:
             if image_from_camera is None:
                 if fov_y is not None and aspect_ratio is not None:
                     EPSILON = 1.19209e-07
-                    focal_length = focal_length = 0.5 / max(fov_y * 0.5, EPSILON)
+                    focal_length = focal_length = 0.5 / math.tan(max(fov_y * 0.5, EPSILON))
                     resolution = [aspect_ratio, 1.0]
 
                 if resolution is not None:

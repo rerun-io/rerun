@@ -59,7 +59,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole_perspective").spawn()?;
 ///
-///     let fov = std::f32::consts::FRAC_PI_4;
+///     let fov = 0.7853982;
 ///     let aspect_ratio = 1.7777778;
 ///     rec.log(
 ///         "world/cam",
