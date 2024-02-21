@@ -27,7 +27,7 @@ impl Pinhole {
         .with_resolution(resolution)
     }
 
-    /// Creates a pinhole from the camera vertical field of view and aspect ratio.
+    /// Creates a pinhole from the camera vertical field of view (in radians) and aspect ratio (width/height). 
     ///
     /// Assumes the principal point to be in the middle of the sensor.
     #[inline]
