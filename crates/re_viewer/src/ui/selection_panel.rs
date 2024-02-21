@@ -266,19 +266,19 @@ fn container_children(
         stroke: ui.visuals().widgets.noninteractive.bg_stroke,
         ..Default::default()
     }
-        .show(ui, |ui| {
-            let clip_rect = ui.clip_rect();
-            ui.set_clip_rect(ui.max_rect());
-            ui.spacing_mut().item_spacing.y = 0.0;
+    .show(ui, |ui| {
+        let clip_rect = ui.clip_rect();
+        ui.set_clip_rect(ui.max_rect());
+        ui.spacing_mut().item_spacing.y = 0.0;
 
-            egui::Frame {
-                inner_margin: egui::Margin::symmetric(4.0, 0.0),
-                ..Default::default()
-            }
-                .show(ui, show_content);
+        egui::Frame {
+            inner_margin: egui::Margin::symmetric(4.0, 0.0),
+            ..Default::default()
+        }
+        .show(ui, show_content);
 
-            ui.set_clip_rect(clip_rect);
-        });
+        ui.set_clip_rect(clip_rect);
+    });
 }
 
 fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
@@ -357,9 +357,9 @@ fn what_is_selected_ui(
             }
         }
         Item::ComponentPath(re_log_types::ComponentPath {
-                                entity_path,
-                                component_name,
-                            }) => {
+            entity_path,
+            component_name,
+        }) => {
             item_title_ui(
                 ctx.re_ui,
                 ui,
@@ -853,7 +853,7 @@ fn blueprint_ui_for_space_view(
                         1,
                         [expressions_component],
                     )
-                        .unwrap();
+                    .unwrap();
 
                     ctx.command_sender
                         .send_system(SystemCommand::UpdateBlueprint(
@@ -1059,7 +1059,7 @@ The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded
 The last rule matching `/world` is `- /world`, so it is excluded.
 The last rule matching `/world/house` is `+ /world/**`, so it is included.
     "#
-            .trim();
+        .trim();
 
         re_ui::markdown_ui(ui, egui::Id::new("entity_path_filter_help_ui"), markdown);
     }
