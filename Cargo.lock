@@ -4858,6 +4858,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "serde",
+ "static_assertions",
 ]
 
 [[package]]
