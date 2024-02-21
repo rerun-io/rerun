@@ -27,4 +27,4 @@ once_cell.workspace = true
 parking_lot.workspace = true
 
 # Optional dependencies
-serde = { workspace = true, optional = true }
+serde = { workspace = true, features = ["serde_derive"], optional = true }
