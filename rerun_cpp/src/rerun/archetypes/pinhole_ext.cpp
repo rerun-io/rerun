@@ -31,7 +31,7 @@ namespace rerun {
             return from_focal_length_and_resolution({focal_length, focal_length}, resolution);
         }
 
-        /// Creates a pinhole from the camera vertical field of view and aspect ratio.
+        /// Creates a pinhole from the camera vertical field of view (in radians) and aspect ratio (width/height).
         ///
         /// Assumes the principal point to be in the middle of the sensor.
         static Pinhole from_fov_and_aspect_ratio(float fov_y, float aspect_ratio) {
