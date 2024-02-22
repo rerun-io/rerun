@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Use the MediaPipe Gesture detection and Gesture landmark detection solutions to track hands and recognize gestures
-in images and videos.
-"""
+"""Use the MediaPipe Gesture detection and Gesture landmark detection solutions to track hands and recognize gestures in images and videos."""
 from __future__ import annotations
 
 import argparse
@@ -35,8 +32,9 @@ SAMPLE_VIDEO_PATH = EXAMPLE_DIR / "dataset" / "hand_gestures" / "peace.mp4"
 SAMPLE_VIDEO_URL = "https://storage.googleapis.com/rerun-example-datasets/hand_gestures/peace.mp4"
 
 # Emojis from https://github.com/googlefonts/noto-emoji/tree/main
-GESTURE_URL = ("https://raw.githubusercontent.com/googlefonts/noto-emoji/9cde38ef5ee6f090ce23f9035e494cb390a2b051/png"
-               "/128/")
+GESTURE_URL = (
+    "https://raw.githubusercontent.com/googlefonts/noto-emoji/9cde38ef5ee6f090ce23f9035e494cb390a2b051/png" "/128/"
+)
 # Mapping of gesture categories to corresponding emojis
 GESTURE_PICTURES = {
     "None": "emoji_u2754.png",
@@ -46,13 +44,14 @@ GESTURE_PICTURES = {
     "Thumb_Down": "emoji_u1f44e.png",
     "Thumb_Up": "emoji_u1f44d.png",
     "Victory": "emoji_u270c.png",
-    "ILoveYou": "emoji_u1f91f.png"
+    "ILoveYou": "emoji_u1f91f.png",
 }
 
 
 class GestureDetectorLogger:
     """
     Logger for the MediaPipe Gesture Detection solution.
+
     This class provides logging and utility functions for handling gesture recognition.
 
     For more information on MediaPipe Gesture Detection:
@@ -62,9 +61,7 @@ class GestureDetectorLogger:
     # URL to the pre-trained MediaPipe Gesture Detection model
     MODEL_DIR: Final = EXAMPLE_DIR / "model"
     MODEL_PATH: Final = (MODEL_DIR / "gesture_recognizer.task").resolve()
-    MODEL_URL: Final = (
-        "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/latest/gesture_recognizer.task"
-    )
+    MODEL_URL: Final = "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/latest/gesture_recognizer.task"
 
     def __init__(self, video_mode: bool = False):
         self._video_mode = video_mode
@@ -72,12 +69,10 @@ class GestureDetectorLogger:
         if not self.MODEL_PATH.exists():
             download_file(self.MODEL_URL, self.MODEL_PATH)
 
-        base_options = python.BaseOptions(
-            model_asset_path=str(self.MODEL_PATH)
-        )
+        base_options = python.BaseOptions(model_asset_path=str(self.MODEL_PATH))
         options = vision.GestureRecognizerOptions(
             base_options=base_options,
-            running_mode=mp.tasks.vision.RunningMode.VIDEO if self._video_mode else mp.tasks.vision.RunningMode.IMAGE
+            running_mode=mp.tasks.vision.RunningMode.VIDEO if self._video_mode else mp.tasks.vision.RunningMode.IMAGE,
         )
         self.recognizer = vision.GestureRecognizer.create_from_options(options)
 
@@ -86,7 +81,7 @@ class GestureDetectorLogger:
             rr.AnnotationContext(
                 rr.ClassDescription(
                     info=rr.AnnotationInfo(id=0, label="Hand3D"),
-                    keypoint_connections=mp.solutions.hands.HAND_CONNECTIONS
+                    keypoint_connections=mp.solutions.hands.HAND_CONNECTIONS,
                 )
             ),
             timeless=True,
@@ -128,8 +123,12 @@ class GestureDetectorLogger:
             if landmark_positions_3d is not None:
                 rr.log(
                     "Hand3D/Points",
-                    rr.Points3D(landmark_positions_3d, radii=20, class_ids=0,
-                                keypoint_ids=[i for i in range(len(landmark_positions_3d))]),
+                    rr.Points3D(
+                        landmark_positions_3d,
+                        radii=20,
+                        class_ids=0,
+                        keypoint_ids=[i for i in range(len(landmark_positions_3d))],
+                    ),
                 )
 
             # Convert normalized coordinates to image coordinates
@@ -137,10 +136,7 @@ class GestureDetectorLogger:
 
             # Log points to the image and Hand Entity
             for log_key in ["Media/Points", "Hand/Points"]:
-                rr.log(
-                    log_key,
-                    rr.Points2D(points, radii=10, colors=[255, 0, 0])
-                )
+                rr.log(log_key, rr.Points2D(points, radii=10, colors=[255, 0, 0]))
 
             # Obtain hand connections from MediaPipe
             mp_hands_connections = mp.solutions.hands.HAND_CONNECTIONS
@@ -149,28 +145,19 @@ class GestureDetectorLogger:
 
             # Log connections to the image and Hand Entity [128, 128, 128]
             for log_key in ["Media/Connections", "Hand/Connections"]:
-                rr.log(
-                    log_key,
-                    rr.LineStrips2D(
-                        np.stack((points1, points2), axis=1),
-                        colors=[255, 165, 0]
-                    )
-                )
+                rr.log(log_key, rr.LineStrips2D(np.stack((points1, points2), axis=1), colors=[255, 165, 0]))
 
     def present_detected_gesture(self, category):
         # Get the corresponding ulr of the picture for the detected gesture category
         gesture_pic = GESTURE_PICTURES.get(
             category,
-            "emoji_u2754.png"  # default
+            "emoji_u2754.png",  # default
         )
 
         # Log the detection by using the appropriate image
         rr.log(
             "Detection",
-            rr.TextDocument(
-                f'![Image]({GESTURE_URL + gesture_pic})'.strip(),
-                media_type=rr.MediaType.MARKDOWN
-            )
+            rr.TextDocument(f"![Image]({GESTURE_URL + gesture_pic})".strip(), media_type=rr.MediaType.MARKDOWN),
         )
 
 
@@ -179,11 +166,11 @@ def download_file(url: str, path: Path) -> None:
     logging.info("Downloading %s to %s", url, path)
     response = requests.get(url, stream=True)
     with tqdm.tqdm.wrapattr(
-            open(path, "wb"),
-            "write",
-            miniters=1,
-            total=int(response.headers.get("content-length", 0)),
-            desc=f"Downloading {path.name}",
+        open(path, "wb"),
+        "write",
+        miniters=1,
+        total=int(response.headers.get("content-length", 0)),
+        desc=f"Downloading {path.name}",
     ) as f:
         for chunk in response.iter_content(chunk_size=4096):
             f.write(chunk)
@@ -205,10 +192,7 @@ def run_from_sample_image(path) -> None:
     image = cv2.imread(str(path))
     # image = resize_image(image, max_dim)
     show_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    rr.log(
-        "Media/Image",
-        rr.Image(show_image)
-    )
+    rr.log("Media/Image", rr.Image(show_image))
     logger = GestureDetectorLogger(video_mode=False)
     logger.detect_and_log(show_image, 0)
 
@@ -257,10 +241,7 @@ def run_from_video_capture(vid: int | str, max_frame_count: int | None) -> None:
             rr.set_time_sequence("frame_nr", frame_idx)
             rr.set_time_nanos("frame_time", frame_time_nano)
             detector.detect_and_log(frame, frame_time_nano)
-            rr.log(
-                "Media/Video",
-                rr.Image(frame).compress(jpeg_quality=75)
-            )
+            rr.log("Media/Video", rr.Image(frame).compress(jpeg_quality=75))
 
     except KeyboardInterrupt:
         pass
@@ -285,26 +266,18 @@ def main() -> None:
         action="store_true",
         help="Run on a demo image automatically downloaded",
     )
-    parser.add_argument(
-        "--demo-video",
-        action="store_true",
-        help="Run on a demo image automatically downloaded."
-    )
+    parser.add_argument("--demo-video", action="store_true", help="Run on a demo image automatically downloaded.")
     parser.add_argument(
         "--image",
         type=Path,
         help="Run on the provided image",
     )
-    parser.add_argument(
-        "--video",
-        type=Path,
-        help="Run on the provided video file."
-    )
+    parser.add_argument("--video", type=Path, help="Run on the provided video file.")
     parser.add_argument(
         "--camera",
         type=int,
         default=0,
-        help="Run from the camera stream (parameter is the camera ID, usually 0; or maybe 1 on mac)"
+        help="Run from the camera stream (parameter is the camera ID, usually 0; or maybe 1 on mac)",
     )
     parser.add_argument(
         "--max-frame",
