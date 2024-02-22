@@ -63,12 +63,12 @@ Logging Details:
 
 1. Hand Landmarks as 2D Points:
 
-   - Extracts hand landmark points as normalized 2D coordinates. 
+   - Extracts hand landmark points as normalized 2D coordinates.
 
    - Utilizes image width and height for conversion into image coordinates.
 
    - Logs the 2D points to the Rerun SDK.
-   
+
 
 2. Hand Landmarks as 3D Points:
 
@@ -81,7 +81,7 @@ Logging Details:
 
 3. Gesture Detection Results:
 
-    - Utilizes the Gesture Detection solution from MediaPipe. 
+    - Utilizes the Gesture Detection solution from MediaPipe.
 
     - Logs the results of gesture detection as emoji
 
@@ -150,7 +150,7 @@ You can extract hand landmark points as normalized values, utilizing the image's
 
 ```python
 class GestureDetectorLogger:
-    
+
     def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int | None) -> None:
         # Recognize gestures in the image
         height, width, _ = image.shape
@@ -183,7 +183,7 @@ class GestureDetectorLogger:
             points1 = [points[connection[0]] for connection in mp_hands_connections]
             points2 = [points[connection[1]] for connection in mp_hands_connections]
 
-            # Log connections to the image and Hand Entity 
+            # Log connections to the image and Hand Entity
             rr.log(
                "Media/Connections",
                 rr.LineStrips2D(
@@ -203,7 +203,7 @@ You can first define the connections between the points using keypoints from Ann
 class GestureDetectorLogger:
 
   def __init__(self, video_mode: bool = False):
-      # ... existing code ...
+      # … existing code …
       rr.log(
             "/",
             rr.AnnotationContext(
@@ -217,7 +217,7 @@ class GestureDetectorLogger:
        rr.log("Hand3D", rr.ViewCoordinates.RIGHT_HAND_X_DOWN, timeless=True)
 
    def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int | None) -> None:
-      # ... existing code ...
+      # … existing code …
 
       if recognition_result.hand_landmarks:
          hand_landmarks = recognition_result.hand_landmarks
@@ -229,7 +229,7 @@ class GestureDetectorLogger:
                  rr.Points3D(landmark_positions_3d, radii=20, class_ids=0, keypoint_ids=[i for i in range(len(landmark_positions_3d))]),
               )
 
-      # ... existing code ...
+      # … existing code …
 
 ```
 
@@ -260,7 +260,7 @@ GESTURE_PICTURES = {
 }
 
 class GestureDetectorLogger:
-    
+
     def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int | None) -> None:
         # Recognize gestures in the image
         height, width, _ = image.shape
@@ -279,7 +279,7 @@ class GestureDetectorLogger:
             # Get the top gesture from the recognition result
             gesture_category = gesture[0].category_name if recognition_result.gestures else "None"
             self.present_detected_gesture(gesture_category)  # Log the detected gesture
-    
+
     def present_detected_gesture(self, category):
         # Get the corresponding ulr of the picture for the detected gesture category
         gesture_pic = GESTURE_PICTURES.get(
