@@ -272,6 +272,7 @@ impl TransformContext {
     pub fn reference_from_entity_ignoring_pinhole(
         &self,
         ent_path: &EntityPath,
+        query_caches: &re_query_cache::Caches,
         store: &re_data_store::DataStore,
         query: &LatestAtQuery,
     ) -> Option<glam::Affine3A> {
@@ -281,10 +282,9 @@ impl TransformContext {
             ent_path.parent(),
         ) {
             self.reference_from_entity(&parent).map(|t| {
-                t * store
-                    .query_latest_component::<Transform3D>(ent_path, query)
+                t * get_cached_transform(ent_path, query_caches, store, query)
                     .map_or(glam::Affine3A::IDENTITY, |transform| {
-                        transform.value.into_parent_from_child_transform()
+                        transform.into_parent_from_child_transform()
                     })
             })
         } else {
