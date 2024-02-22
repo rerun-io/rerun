@@ -153,7 +153,7 @@ impl ViewContextSystem for TransformContext {
             // Note that the transform at the reference is the first that needs to be inverted to "break out" of its hierarchy.
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match transform_at(
-                &current_tree.path,
+                current_tree,
                 query_caches,
                 data_store,
                 &time_query,
@@ -220,7 +220,7 @@ impl TransformContext {
         for child_tree in tree.children.values() {
             let mut encountered_pinhole = encountered_pinhole.clone();
             let reference_from_child = match transform_at(
-                &child_tree.path,
+                child_tree,
                 query_caches,
                 data_store,
                 query,
@@ -304,7 +304,7 @@ impl TransformContext {
 }
 
 fn transform_at(
-    entity_path: &EntityPath,
+    entity_tree: &EntityTree,
     query_caches: &re_query_cache::Caches,
     store: &re_data_store::DataStore,
     query: &LatestAtQuery,
@@ -312,6 +312,8 @@ fn transform_at(
     encountered_pinhole: &mut Option<EntityPath>,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransformReason> {
     re_tracing::profile_function!();
+
+    let entity_path = &entity_tree.path;
 
     let pinhole = query_pinhole(store, query, entity_path);
     if pinhole.is_some() {
@@ -322,9 +324,9 @@ fn transform_at(
         }
     }
 
-    let mut transform3d = None;
-
-    query_caches
+    let transform3d = {
+        let mut transform3d = None;
+        query_caches
         .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::Transform3D, Transform3D, _>(
             store,
             query,
@@ -336,6 +338,8 @@ fn transform_at(
             },
         )
         .ok();
+        transform3d
+    };
 
     let pinhole = pinhole.map(|pinhole| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
@@ -377,16 +381,29 @@ fn transform_at(
         // See also `ui_2d.rs#setup_target_config`
     });
 
+    let is_disconnect_space = || {
+        let mut disconnected_space = false;
+        query_caches
+            .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::DisconnectedSpace, DisconnectedSpace, _>(
+                store,
+                query,
+                entity_path,
+                |(_, _, disconnected_spaces)| {
+                    disconnected_space = disconnected_spaces
+                        .first() .map_or(false, |dp| dp.0);
+                },
+            )
+            .ok();
+        disconnected_space
+    };
+
     // If there is any other transform, we ignore `DisconnectedSpace`.
     if transform3d.is_some() || pinhole.is_some() {
         Ok(Some(
             transform3d.unwrap_or(glam::Affine3A::IDENTITY)
                 * pinhole.unwrap_or(glam::Affine3A::IDENTITY),
         ))
-    } else if store
-        .query_latest_component::<DisconnectedSpace>(entity_path, query)
-        .map_or(false, |dp| dp.0)
-    {
+    } else if is_disconnect_space() {
         Err(UnreachableTransformReason::DisconnectedSpace)
     } else {
         Ok(None)
