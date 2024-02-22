@@ -168,19 +168,20 @@ pub enum EyeMode {
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ViewEye {
     /// First person or orbital?
-    pub mode: EyeMode,
+    mode: EyeMode,
 
     /// Center of orbit, or camera position in first person mode.
-    pub center: Vec3,
+    center: Vec3,
 
-    /// Ignored for [`EyeControl::FirstPerson`].
-    pub orbit_radius: f32,
+    /// Ignored for [`EyeControl::FirstPerson`],
+    /// but kept for if/when the user switches to orbital mode.
+    orbit_radius: f32,
 
     /// Rotate to world-space from view-space (RUB).
-    pub world_from_view_rot: Quat,
+    world_from_view_rot: Quat,
 
     /// Vertical field of view in radians.
-    pub fov_y: f32,
+    fov_y: f32,
 
     /// The up-axis of the eye itself, in world-space.
     ///
@@ -191,10 +192,10 @@ pub struct ViewEye {
     ///
     /// A value of `Vec3::ZERO` is valid and will result in 3 degrees of freedom, although we never
     /// use it at the moment.
-    pub eye_up: Vec3,
+    eye_up: Vec3,
 
     /// For controlling the eye with WSAD in a smooth way.
-    pub velocity: Vec3,
+    velocity: Vec3,
 }
 
 impl ViewEye {
@@ -218,14 +219,65 @@ impl ViewEye {
         }
     }
 
+    pub fn mode(&self) -> EyeMode {
+        self.mode
+    }
+
+    pub fn set_mode(&mut self, new_mode: EyeMode) {
+        if self.mode != new_mode {
+            // Keep the same position:
+            match new_mode {
+                EyeMode::FirstPerson => self.center = self.position(),
+                EyeMode::Orbital => {
+                    self.center = self.position() + self.orbit_radius * self.fwd();
+                }
+            }
+
+            self.mode = new_mode;
+        }
+    }
+
+    /// If in orbit mode, what are we orbiting around?
+    pub fn orbit_center(&self) -> Option<Vec3> {
+        match self.mode {
+            EyeMode::FirstPerson => None,
+            EyeMode::Orbital => Some(self.center),
+        }
+    }
+
+    /// If in orbit mode, how far from the orbit center are we?
+    pub fn orbit_radius(&self) -> Option<f32> {
+        match self.mode {
+            EyeMode::FirstPerson => None,
+            EyeMode::Orbital => Some(self.orbit_radius),
+        }
+    }
+
+    /// Set what we orbit around, and at what distance.
+    ///
+    /// If we are not in orbit mode, the state will still be set and used if the user switches to orbit mode.
+    pub fn set_orbit_center_and_radius(&mut self, orbit_center: Vec3, orbit_radius: f32) {
+        // Temporarily switch to orbital, set the values, and then switch back.
+        // This ensures the camera position will be set correctly, even if we
+        // were in first-person mode:
+        let old_mode = self.mode();
+        self.set_mode(EyeMode::Orbital);
+        self.center = orbit_center;
+        self.orbit_radius = orbit_radius;
+        self.set_mode(old_mode);
+    }
+
     /// The world-space position of the eye.
     pub fn position(&self) -> Vec3 {
         match self.mode {
             EyeMode::FirstPerson => self.center,
-            EyeMode::Orbital => {
-                self.center + self.orbit_radius * (self.world_from_view_rot * Vec3::Z)
-            }
+            EyeMode::Orbital => self.center - self.orbit_radius * self.fwd(),
         }
+    }
+
+    /// The local up-axis, if set
+    pub fn eye_up(&self) -> Option<Vec3> {
+        self.eye_up.try_normalize()
     }
 
     pub fn to_eye(self) -> Eye {

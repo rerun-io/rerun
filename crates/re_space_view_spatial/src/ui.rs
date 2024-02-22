@@ -171,10 +171,10 @@ impl SpatialSpaceViewState {
                         });
 
                         if let Some(eye) = &self.state_3d.view_eye {
-                            if eye.eye_up != glam::Vec3::ZERO {
+                            if let Some(eye_up) = eye.eye_up() {
                                 ui.label(format!(
                                     "Current camera-eye up-axis is {}",
-                                    format_vector(eye.eye_up)
+                                    format_vector(eye_up)
                                 ));
                             }
                         }
@@ -248,10 +248,11 @@ impl SpatialSpaceViewState {
 
         if let Some(eye) = &mut self.state_3d.view_eye {
             ui.horizontal(|ui| {
-                let mode = &mut eye.mode;
+                let mut mode = eye.mode();
                 ui.label("Mode:");
-                ui.selectable_value(mode, EyeMode::FirstPerson, "First Person");
-                ui.selectable_value(mode, EyeMode::Orbital, "Orbital");
+                ui.selectable_value(&mut mode, EyeMode::FirstPerson, "First Person");
+                ui.selectable_value(&mut mode, EyeMode::Orbital, "Orbital");
+                eye.set_mode(mode);
             });
         }
     }

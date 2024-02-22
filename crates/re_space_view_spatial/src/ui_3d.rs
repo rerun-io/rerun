@@ -19,7 +19,6 @@ use re_viewer_context::{
 };
 
 use crate::{
-    eye::EyeMode,
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
@@ -251,15 +250,14 @@ impl View3DState {
             };
 
             let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
-            if radius < 0.0001 {
-                // Bounding box may be zero size.
-                new_view_eye.orbit_radius =
-                    (bounding_boxes.accumulated.centered_bounding_sphere_radius() * 1.5)
-                        .at_least(0.01);
+            let orbit_radius = if radius < 0.0001 {
+                // Handle zero-sized bounding boxes:
+                (bounding_boxes.accumulated.centered_bounding_sphere_radius() * 1.5).at_least(0.01)
             } else {
-                new_view_eye.orbit_radius = radius;
-            }
-            new_view_eye.center = entity_bbox.center();
+                radius
+            };
+
+            new_view_eye.set_orbit_center_and_radius(entity_bbox.center(), orbit_radius);
 
             self.interpolate_to_view_eye(new_view_eye);
         }
@@ -685,9 +683,12 @@ fn show_view_eye_center(
     view_eye: &ViewEye,
     scene_view_coordinates: Option<ViewCoordinates>,
 ) {
-    if view_eye.mode != EyeMode::Orbital {
+    let Some(orbit_center) = view_eye.orbit_center() else {
         return;
-    }
+    };
+    let Some(orbit_radius) = view_eye.orbit_radius() else {
+        return;
+    };
 
     const FADE_DURATION: f32 = 0.1;
 
@@ -728,12 +729,12 @@ fn show_view_eye_center(
     };
 
     if orbit_center_fade > 0.001 {
-        let half_line_length = view_eye.orbit_radius * 0.03;
+        let half_line_length = orbit_radius * 0.03;
         let half_line_length = half_line_length * orbit_center_fade;
 
         // We distinguish the eye up-axis from the other two axes:
         // Default to RFU
-        let up = view_eye.eye_up.try_normalize().unwrap_or(glam::Vec3::Z);
+        let up = view_eye.eye_up().unwrap_or(glam::Vec3::Z);
 
         // For the other two axes, try to use the scene view coordinates if available:
         let right = scene_view_coordinates
@@ -749,17 +750,14 @@ fn show_view_eye_center(
             .batch("center orbit orientation help")
             .add_segments(
                 [
+                    (orbit_center, orbit_center + 0.5 * up * half_line_length),
                     (
-                        view_eye.center,
-                        view_eye.center + 0.5 * up * half_line_length,
+                        orbit_center - right * half_line_length,
+                        orbit_center + right * half_line_length,
                     ),
                     (
-                        view_eye.center - right * half_line_length,
-                        view_eye.center + right * half_line_length,
-                    ),
-                    (
-                        view_eye.center - forward * half_line_length,
-                        view_eye.center + forward * half_line_length,
+                        orbit_center - forward * half_line_length,
+                        orbit_center + forward * half_line_length,
                     ),
                 ]
                 .into_iter(),
