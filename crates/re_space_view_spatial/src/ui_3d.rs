@@ -133,7 +133,7 @@ impl View3DState {
             if let Some(target_eye) = find_camera(space_cameras, &tracked_entity) {
                 // For cameras, we want to exactly track the camera pose once we're done interpolating.
                 if let Some(eye_interpolation) = &mut self.eye_interpolation {
-                    eye_interpolation.target_orbit = None;
+                    eye_interpolation.target_view_eye = None;
                     eye_interpolation.target_eye = Some(target_eye);
                 } else if let Some(view_eye) = &mut self.view_eye {
                     view_eye.copy_from_eye(&target_eye);
@@ -163,7 +163,7 @@ impl View3DState {
             let t = t.clamp(0.0, 1.0);
             let t = ease_out(t);
 
-            if let Some(target_orbit) = &cam_interpolation.target_orbit {
+            if let Some(target_orbit) = &cam_interpolation.target_view_eye {
                 *view_eye = cam_interpolation.start.lerp(target_orbit, t);
             } else if let Some(target_eye) = &cam_interpolation.target_eye {
                 let camera = cam_interpolation.start.to_eye().lerp(target_eye, t);
@@ -210,7 +210,7 @@ impl View3DState {
                     elapsed_time: 0.0,
                     target_time,
                     start: *start,
-                    target_orbit: None,
+                    target_view_eye: None,
                     target_eye: Some(target),
                 });
             } else {
@@ -263,7 +263,12 @@ impl View3DState {
         }
     }
 
-    fn interpolate_to_view_eye(&mut self, target: ViewEye) {
+    /// The taregt mode will be ignored, and the mode of the current eye will be kept unchanged.
+    fn interpolate_to_view_eye(&mut self, mut target: ViewEye) {
+        if let Some(view_eye) = &self.view_eye {
+            target.set_mode(view_eye.mode());
+        }
+
         // the user wants to move the camera somewhere, so stop spinning
         self.spin = false;
 
@@ -273,7 +278,7 @@ impl View3DState {
 
         // Don't restart interpolation if we're already on it.
         if let Some(eye_interpolation) = &self.eye_interpolation {
-            if eye_interpolation.target_orbit == Some(target) {
+            if eye_interpolation.target_view_eye == Some(target) {
                 return;
             }
         }
@@ -286,7 +291,7 @@ impl View3DState {
                     elapsed_time: 0.0,
                     target_time,
                     start,
-                    target_orbit: Some(target),
+                    target_view_eye: Some(target),
                     target_eye: None,
                 });
             } else {
@@ -331,7 +336,7 @@ struct EyeInterpolation {
     elapsed_time: f32,
     target_time: f32,
     start: ViewEye,
-    target_orbit: Option<ViewEye>,
+    target_view_eye: Option<ViewEye>,
     target_eye: Option<Eye>,
 }
 
