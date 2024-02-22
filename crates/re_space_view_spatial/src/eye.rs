@@ -160,6 +160,10 @@ pub enum EyeMode {
 
 /// An eye (camera) in 3D space, controlled by the user.
 ///
+/// This is either a first person camera or an orbital camera,
+/// controlled by [`EyeMode`].
+/// We combine these two modes in one struct because they share a lot of state and logic.
+///
 /// Note: we use "eye" so we don't confuse this with logged camera.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct OrbitEye {
@@ -214,6 +218,7 @@ impl OrbitEye {
         }
     }
 
+    /// The world-space position of the eye.
     pub fn position(&self) -> Vec3 {
         match self.mode {
             EyeMode::FirstPerson => self.center,
@@ -235,13 +240,21 @@ impl OrbitEye {
 
     /// Create an [`OrbitEye`] from a [`Eye`].
     pub fn copy_from_eye(&mut self, eye: &Eye) {
-        // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
-        let distance = eye
-            .forward_in_world()
-            .dot(self.center - eye.pos_in_world())
-            .abs();
-        self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
-        self.center = eye.pos_in_world() + self.orbit_radius * eye.forward_in_world();
+        match self.mode {
+            EyeMode::FirstPerson => {
+                self.center = eye.pos_in_world();
+            }
+
+            EyeMode::Orbital => {
+                // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
+                let distance = eye
+                    .forward_in_world()
+                    .dot(self.center - eye.pos_in_world())
+                    .abs();
+                self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
+                self.center = eye.pos_in_world() + self.orbit_radius * eye.forward_in_world();
+            }
+        }
         self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
@@ -274,7 +287,7 @@ impl OrbitEye {
         self.world_from_view_rot * -Vec3::Z // view-coordinates are RUB
     }
 
-    /// Only valid if we have an up vector.
+    /// Only valid if we have an up-vector set.
     ///
     /// `[-tau/4, +tau/4]`
     fn pitch(&self) -> Option<f32> {
