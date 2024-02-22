@@ -645,98 +645,13 @@ pub fn view_3d(
             });
     }
 
-    // Show center of orbit camera when interacting with camera (it's quite helpful).
-    let is_orbital = orbit_eye.mode == EyeMode::Orbital;
-    if is_orbital {
-        const FADE_DURATION: f32 = 0.1;
-
-        let ui_time = ui.input(|i| i.time);
-        let any_mouse_button_down = ui.input(|i| i.pointer.any_down());
-
-        let should_show_center_of_orbit_camera = state
-            .state_3d
-            .last_eye_interaction
-            .map_or(false, |d| d.elapsed().as_secs_f32() < 0.35);
-
-        if !state.state_3d.eye_interact_fade_in && should_show_center_of_orbit_camera {
-            // Any interaction immediately causes fade in to start if it's not already on.
-            state.state_3d.eye_interact_fade_change_time = ui_time;
-            state.state_3d.eye_interact_fade_in = true;
-        }
-        if state.state_3d.eye_interact_fade_in
-            && !should_show_center_of_orbit_camera
-            // Don't start fade-out while dragging, even if mouse is still
-            && !any_mouse_button_down
-        {
-            state.state_3d.eye_interact_fade_change_time = ui_time;
-            state.state_3d.eye_interact_fade_in = false;
-        }
-
-        pub fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
-            let t = f32::clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
-            t * t * (3.0 - t * 2.0)
-        }
-
-        // Compute smooth fade.
-        let time_since_fade_change =
-            (ui_time - state.state_3d.eye_interact_fade_change_time) as f32;
-        let orbit_center_fade = if state.state_3d.eye_interact_fade_in {
-            // Fade in.
-            smoothstep(0.0, FADE_DURATION, time_since_fade_change)
-        } else {
-            // Fade out.
-            smoothstep(FADE_DURATION, 0.0, time_since_fade_change)
-        };
-
-        if orbit_center_fade > 0.001 {
-            let half_line_length = orbit_eye.orbit_radius * 0.03;
-            let half_line_length = half_line_length * orbit_center_fade;
-
-            // We distinguish the eye up-axis from the other two axes:
-            // Default to RFU
-            let up = orbit_eye.eye_up.try_normalize().unwrap_or(glam::Vec3::Z);
-
-            // For the other two axes, try to use the scene view coordinates if available:
-            let right = scene_view_coordinates
-                .and_then(|vc| vc.right())
-                .map_or(glam::Vec3::X, Vec3::from);
-            let forward = up
-                .cross(right)
-                .try_normalize()
-                .unwrap_or_else(|| up.any_orthogonal_vector());
-            let right = forward.cross(up);
-
-            line_builder
-                .batch("center orbit orientation help")
-                .add_segments(
-                    [
-                        (
-                            orbit_eye.center,
-                            orbit_eye.center + 0.5 * up * half_line_length,
-                        ),
-                        (
-                            orbit_eye.center - right * half_line_length,
-                            orbit_eye.center + right * half_line_length,
-                        ),
-                        (
-                            orbit_eye.center - forward * half_line_length,
-                            orbit_eye.center + forward * half_line_length,
-                        ),
-                    ]
-                    .into_iter(),
-                )
-                .radius(Size::new_points(0.75))
-                // TODO(andreas): Fade this out.
-                .color(re_renderer::Color32::WHITE);
-
-            // TODO(andreas): Idea for nice depth perception:
-            // Render the lines once with additive blending and depth test enabled
-            // and another time without depth test. In both cases it needs to be rendered last,
-            // something re_renderer doesn't support yet for primitives within renderers.
-
-            ui.ctx().request_repaint(); // show it for a bit longer.
-        }
-    }
+    show_orbit_eye_center(
+        ui.ctx(),
+        &mut state.state_3d,
+        &mut line_builder,
+        &orbit_eye,
+        scene_view_coordinates,
+    );
 
     for draw_data in draw_data {
         view_builder.queue_draw(draw_data);
@@ -760,6 +675,106 @@ pub fn view_3d(
     painter.extend(label_shapes);
 
     Ok(())
+}
+
+/// Show center of orbit camera when interacting with camera (it's quite helpful).
+fn show_orbit_eye_center(
+    egui_ctx: &egui::Context,
+    state_3d: &mut View3DState,
+    line_builder: &mut LineDrawableBuilder<'_>,
+    orbit_eye: &OrbitEye,
+    scene_view_coordinates: Option<ViewCoordinates>,
+) {
+    if orbit_eye.mode != EyeMode::Orbital {
+        return;
+    }
+
+    const FADE_DURATION: f32 = 0.1;
+
+    let ui_time = egui_ctx.input(|i| i.time);
+    let any_mouse_button_down = egui_ctx.input(|i| i.pointer.any_down());
+
+    let should_show_center_of_orbit_camera = state_3d
+        .last_eye_interaction
+        .map_or(false, |d| d.elapsed().as_secs_f32() < 0.35);
+
+    if !state_3d.eye_interact_fade_in && should_show_center_of_orbit_camera {
+        // Any interaction immediately causes fade in to start if it's not already on.
+        state_3d.eye_interact_fade_change_time = ui_time;
+        state_3d.eye_interact_fade_in = true;
+    }
+    if state_3d.eye_interact_fade_in
+            && !should_show_center_of_orbit_camera
+            // Don't start fade-out while dragging, even if mouse is still
+            && !any_mouse_button_down
+    {
+        state_3d.eye_interact_fade_change_time = ui_time;
+        state_3d.eye_interact_fade_in = false;
+    }
+
+    pub fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
+        let t = f32::clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+        t * t * (3.0 - t * 2.0)
+    }
+
+    // Compute smooth fade.
+    let time_since_fade_change = (ui_time - state_3d.eye_interact_fade_change_time) as f32;
+    let orbit_center_fade = if state_3d.eye_interact_fade_in {
+        // Fade in.
+        smoothstep(0.0, FADE_DURATION, time_since_fade_change)
+    } else {
+        // Fade out.
+        smoothstep(FADE_DURATION, 0.0, time_since_fade_change)
+    };
+
+    if orbit_center_fade > 0.001 {
+        let half_line_length = orbit_eye.orbit_radius * 0.03;
+        let half_line_length = half_line_length * orbit_center_fade;
+
+        // We distinguish the eye up-axis from the other two axes:
+        // Default to RFU
+        let up = orbit_eye.eye_up.try_normalize().unwrap_or(glam::Vec3::Z);
+
+        // For the other two axes, try to use the scene view coordinates if available:
+        let right = scene_view_coordinates
+            .and_then(|vc| vc.right())
+            .map_or(glam::Vec3::X, Vec3::from);
+        let forward = up
+            .cross(right)
+            .try_normalize()
+            .unwrap_or_else(|| up.any_orthogonal_vector());
+        let right = forward.cross(up);
+
+        line_builder
+            .batch("center orbit orientation help")
+            .add_segments(
+                [
+                    (
+                        orbit_eye.center,
+                        orbit_eye.center + 0.5 * up * half_line_length,
+                    ),
+                    (
+                        orbit_eye.center - right * half_line_length,
+                        orbit_eye.center + right * half_line_length,
+                    ),
+                    (
+                        orbit_eye.center - forward * half_line_length,
+                        orbit_eye.center + forward * half_line_length,
+                    ),
+                ]
+                .into_iter(),
+            )
+            .radius(Size::new_points(0.75))
+            // TODO(andreas): Fade this out.
+            .color(re_renderer::Color32::WHITE);
+
+        // TODO(andreas): Idea for nice depth perception:
+        // Render the lines once with additive blending and depth test enabled
+        // and another time without depth test. In both cases it needs to be rendered last,
+        // something re_renderer doesn't support yet for primitives within renderers.
+
+        egui_ctx.request_repaint(); // show it for a bit longer.
+    }
 }
 
 fn show_projections_from_2d_space(
