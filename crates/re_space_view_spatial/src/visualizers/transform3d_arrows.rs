@@ -73,6 +73,8 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                     &data_result.entity_path,
                     |_| {},
                 )
+                // NOTE: Can only fail if the primary component is missing, which is what we
+                // want to check here (i.e.: there's no transform for this entity!).
                 .is_err()
             {
                 continue;
