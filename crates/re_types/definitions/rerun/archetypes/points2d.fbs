@@ -56,7 +56,4 @@ table Points2D (
   /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
   /// detected skeleton.
   keypoint_ids: [rerun.components.KeypointId] ("attr.rerun.component_optional", nullable, order: 3300);
-
-  /// Unique identifiers for each individual point in the batch.
-  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
 }

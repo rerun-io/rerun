@@ -53,7 +53,4 @@ table Boxes2D (
   ///
   /// The class ID provides colors and labels if not specified explicitly.
   class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
-
-  /// Unique identifiers for each individual boxes in the batch.
-  instance_keys: [rerun.components.InstanceKey] ("attr.rerun.component_optional", nullable, order: 3400);
 }

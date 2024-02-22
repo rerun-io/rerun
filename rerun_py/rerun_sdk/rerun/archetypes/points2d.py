@@ -61,7 +61,6 @@ class Points2D(Points2DExt, Archetype):
             draw_order=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
             keypoint_ids=None,  # type: ignore[arg-type]
-            instance_keys=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -144,15 +143,6 @@ class Points2D(Points2DExt, Archetype):
     # with `class_id`).
     # E.g. the classification might be 'Person' and the keypoints refer to joints on a
     # detected skeleton.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    instance_keys: components.InstanceKeyBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
-    )
-    # Unique identifiers for each individual point in the batch.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

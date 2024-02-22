@@ -67,7 +67,6 @@ class Boxes3D(Boxes3DExt, Archetype):
             radii=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
-            instance_keys=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -134,15 +133,6 @@ class Boxes3D(Boxes3DExt, Archetype):
     # Optional `ClassId`s for the boxes.
     #
     # The class ID provides colors and labels if not specified explicitly.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    instance_keys: components.InstanceKeyBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
-    )
-    # Unique identifiers for each individual boxes in the batch.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
