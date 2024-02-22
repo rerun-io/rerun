@@ -303,6 +303,24 @@ impl TransformContext {
     }
 }
 
+fn get_cached_transform(
+    entity_path: &EntityPath,
+    query_caches: &re_query_cache::Caches,
+    store: &re_data_store::DataStore,
+    query: &LatestAtQuery,
+) -> Option<Transform3D> {
+    let mut transform3d = None;
+    query_caches
+        .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::Transform3D, Transform3D, _>(
+            store,
+            query,
+            entity_path,
+            |(_, _, transforms)| transform3d = transforms.first().cloned(),
+        )
+        .ok();
+    transform3d
+}
+
 fn transform_at(
     entity_tree: &EntityTree,
     query_caches: &re_query_cache::Caches,
@@ -324,22 +342,8 @@ fn transform_at(
         }
     }
 
-    let transform3d = {
-        let mut transform3d = None;
-        query_caches
-        .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::Transform3D, Transform3D, _>(
-            store,
-            query,
-            entity_path,
-            |(_, _, transforms)| {
-                transform3d = transforms
-                    .first()
-                    .map(|transform| transform.clone().into_parent_from_child_transform());
-            },
-        )
-        .ok();
-        transform3d
-    };
+    let transform3d = get_cached_transform(entity_path, query_caches, store, query)
+        .map(|transform| transform.clone().into_parent_from_child_transform());
 
     let pinhole = pinhole.map(|pinhole| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
