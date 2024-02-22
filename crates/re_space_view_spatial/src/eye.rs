@@ -173,7 +173,7 @@ pub struct ViewEye {
     /// Center of orbit, or camera position in first person mode.
     center: Vec3,
 
-    /// Ignored for [`EyeControl::FirstPerson`],
+    /// Ignored for [`EyeMode::FirstPerson`],
     /// but kept for if/when the user switches to orbital mode.
     orbit_radius: f32,
 
