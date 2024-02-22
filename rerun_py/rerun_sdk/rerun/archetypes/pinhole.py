@@ -19,8 +19,8 @@ class Pinhole(PinholeExt, Archetype):
     """
     **Archetype**: Camera perspective projection (a.k.a. intrinsics).
 
-    Example
-    -------
+    Examples
+    --------
     ### Simple Pinhole Camera:
     ```python
     import numpy as np
@@ -40,6 +40,26 @@ class Pinhole(PinholeExt, Archetype):
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png">
       <img src="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png" width="640">
+    </picture>
+    </center>
+
+    ### Perspective Pinhole Camera:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_pinhole_perspective", spawn=True)
+
+    rr.log("world/cam", rr.Pinhole(fov_y=0.7853982, aspect_ratio=1.7777778, camera_xyz=rr.ViewCoordinates.RUB))
+
+    rr.log("world/points", rr.Points3D([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)]))
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/1200w.png">
+      <img src="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/full.png" width="640">
     </picture>
     </center>
     """

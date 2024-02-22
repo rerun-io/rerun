@@ -5,6 +5,9 @@ namespace rerun {
 #ifdef CODEGEN
         // <CODEGEN_COPY_TO_HEADER>
 
+#include <cmath>
+#include <limits>
+
         /// Creates a pinhole from the camera focal length and resolution, both specified in pixels.
         ///
         /// The focal length is the diagonal of the projection matrix.
@@ -26,6 +29,18 @@ namespace rerun {
             float focal_length, const datatypes::Vec2D& resolution
         ) {
             return from_focal_length_and_resolution({focal_length, focal_length}, resolution);
+        }
+
+        /// Creates a pinhole from the camera vertical field of view (in radians) and aspect ratio (width/height).
+        ///
+        /// Assumes the principal point to be in the middle of the sensor.
+        static Pinhole from_fov_and_aspect_ratio(float fov_y, float aspect_ratio) {
+            const float EPSILON = std::numeric_limits<float>::epsilon();
+            const float focal_length_y = 0.5f / std::tan(std::max(fov_y * 0.5f, EPSILON));
+            return from_focal_length_and_resolution(
+                {focal_length_y, focal_length_y},
+                {aspect_ratio, 1.0}
+            );
         }
 
         /// Pixel resolution (usually integers) of child image space. Width and height.

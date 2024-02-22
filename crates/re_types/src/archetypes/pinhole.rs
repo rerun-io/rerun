@@ -23,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ### Simple Pinhole Camera
 /// ```ignore
@@ -51,6 +51,37 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png">
 ///   <img src="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Perspective Pinhole Camera
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole_perspective").spawn()?;
+///
+///     let fov_y = std::f32::consts::FRAC_PI_4;
+///     let aspect_ratio = 1.7777778;
+///     rec.log(
+///         "world/cam",
+///         &rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
+///             .with_camera_xyz(rerun::components::ViewCoordinates::RUB),
+///     )?;
+///
+///     rec.log(
+///         "world/points",
+///         &rerun::Points3D::new([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)]),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/1200w.png">
+///   <img src="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
