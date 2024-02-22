@@ -19,6 +19,7 @@ use re_viewer_context::{
 };
 
 use crate::{
+    eye::EyeMode,
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
@@ -190,7 +191,7 @@ impl View3DState {
             0.0
         };
 
-        if orbit_eye.update(response, orbit_eye_drag_threshold) {
+        if orbit_eye.update(response, orbit_eye_drag_threshold, bounding_boxes) {
             self.last_eye_interaction = Some(Instant::now());
             self.eye_interpolation = None;
             self.tracked_entity = None;
@@ -258,7 +259,7 @@ impl View3DState {
             } else {
                 new_orbit_eye.orbit_radius = radius;
             }
-            new_orbit_eye.orbit_center = entity_bbox.center();
+            new_orbit_eye.center = entity_bbox.center();
 
             self.interpolate_to_orbit_eye(new_orbit_eye);
         }
@@ -645,7 +646,8 @@ pub fn view_3d(
     }
 
     // Show center of orbit camera when interacting with camera (it's quite helpful).
-    {
+    let is_orbital = orbit_eye.mode == EyeMode::Orbital;
+    if is_orbital {
         const FADE_DURATION: f32 = 0.1;
 
         let ui_time = ui.input(|i| i.time);
@@ -709,16 +711,16 @@ pub fn view_3d(
                 .add_segments(
                     [
                         (
-                            orbit_eye.orbit_center,
-                            orbit_eye.orbit_center + 0.5 * up * half_line_length,
+                            orbit_eye.center,
+                            orbit_eye.center + 0.5 * up * half_line_length,
                         ),
                         (
-                            orbit_eye.orbit_center - right * half_line_length,
-                            orbit_eye.orbit_center + right * half_line_length,
+                            orbit_eye.center - right * half_line_length,
+                            orbit_eye.center + right * half_line_length,
                         ),
                         (
-                            orbit_eye.orbit_center - forward * half_line_length,
-                            orbit_eye.orbit_center + forward * half_line_length,
+                            orbit_eye.center - forward * half_line_length,
+                            orbit_eye.center + forward * half_line_length,
                         ),
                     ]
                     .into_iter(),
@@ -897,7 +899,7 @@ fn default_eye(
 
     let eye_pos = center - radius * eye_dir;
 
-    OrbitEye::new(
+    OrbitEye::new_orbital(
         center,
         radius,
         Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, eye_up).inverse()),
