@@ -20,9 +20,8 @@ SCENARIO(
                 .with_mesh_properties(MeshProperties::from_triangle_indices({1, 2, 3, 4, 5, 6}))
                 .with_mesh_material(Material::from_albedo_factor(0xEE112233))
                 .with_class_ids({126, 127})
-                .with_instance_keys({123ull, 124ull});
 
-        rerun::datatypes::MeshProperties mesh_properties_inner_manual;
+                    rerun::datatypes::MeshProperties mesh_properties_inner_manual;
         mesh_properties_inner_manual.indices = {1, 2, 3, 4, 5, 6};
 
         MeshProperties mesh_properties_manual;

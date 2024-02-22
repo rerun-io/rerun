@@ -21,7 +21,6 @@ SCENARIO(
                 .with_colors({{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}})
                 .with_labels({"hello", "friend"})
                 .with_class_ids({126, 127})
-                .with_instance_keys({123ull, 124ull})
                 .with_draw_order(123);
 
         LineStrips2D from_manual;

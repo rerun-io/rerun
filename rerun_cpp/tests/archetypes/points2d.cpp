@@ -18,9 +18,8 @@ SCENARIO(
                                 .with_labels({"hello", "friend"})
                                 .with_class_ids({126, 127})
                                 .with_keypoint_ids({1, 2})
-                                .with_instance_keys({123ull, 124ull});
 
-        Points2D from_manual;
+                                    Points2D from_manual;
         from_manual.positions = {{1.0, 2.0}, {10.0, 20.0}};
         from_manual.radii = {1.0, 10.0};
         from_manual.colors = {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}};

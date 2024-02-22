@@ -14,6 +14,5 @@ int main(int, char** argv) {
             .with_radii({0.1f, 1.0f})
             .with_draw_order(300.0)
             .with_class_ids({126, 127})
-            .with_instance_keys({66, 666})
     );
 }

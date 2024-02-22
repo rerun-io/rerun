@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Mesh3D,
-    components::{ClassId, InstanceKey, Position3D, Texcoord2D, Vector3D},
+    components::{ClassId, Position3D, Texcoord2D, Vector3D},
     datatypes::{
         Material, MeshProperties, Rgba32, TensorBuffer, TensorData, TensorDimension, Vec2D, Vec3D,
     },
@@ -60,10 +60,6 @@ fn roundtrip() {
             ClassId::from(126), //
             ClassId::from(127), //
         ]),
-        instance_keys: Some(vec![
-            InstanceKey(u64::MAX - 1), //
-            InstanceKey(u64::MAX),
-        ]),
     };
 
     let arch = Mesh3D::new([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]])
@@ -76,7 +72,6 @@ fn roundtrip() {
         .with_vertex_texcoords([[0.0, 1.0], [2.0, 3.0]])
         .with_mesh_material(Material::from_albedo_factor(0xEE112233))
         .with_class_ids([126, 127])
-        .with_instance_keys([u64::MAX - 1, u64::MAX])
         .with_albedo_texture(tensor_data);
     similar_asserts::assert_eq!(expected, arch);
 

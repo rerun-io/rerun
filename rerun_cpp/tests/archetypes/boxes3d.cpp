@@ -23,9 +23,8 @@ SCENARIO(
                                 .with_labels({"hello", "friend"})
                                 .with_radii({0.1f, 1.0f})
                                 .with_class_ids({126, 127})
-                                .with_instance_keys({66, 666});
 
-        Boxes3D from_manual;
+                                    Boxes3D from_manual;
         from_manual.half_sizes = {{10.f, 9.f, 8.f}, {5.f, -5.f, 5.f}};
         from_manual.centers = {{0.f, 0.f, 0.f}, {-1.f, 1.f, -2.f}};
         from_manual.rotations = {

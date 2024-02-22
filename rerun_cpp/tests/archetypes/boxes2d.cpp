@@ -19,9 +19,8 @@ SCENARIO(
                                 .with_radii({0.1f, 1.0f})
                                 .with_draw_order(300.0f)
                                 .with_class_ids({126, 127})
-                                .with_instance_keys({66, 666});
 
-        Boxes2D from_manual;
+                                    Boxes2D from_manual;
         from_manual.half_sizes = {{10.f, 9.f}, {5.f, -5.f}};
         from_manual.centers = {{0.f, 0.f}, {-1.f, 1.f}};
         from_manual.colors = {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}};

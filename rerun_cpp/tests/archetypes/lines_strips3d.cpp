@@ -21,9 +21,8 @@ SCENARIO(
                 .with_colors({{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}})
                 .with_labels({"hello", "friend"})
                 .with_class_ids({126, 127})
-                .with_instance_keys({123ull, 124ull});
 
-        LineStrips3D from_manual;
+                    LineStrips3D from_manual;
         from_manual.strips = {
             rerun::components::LineStrip3D({{0.f, 0.f, 0.f}, {2.f, 1.f, -1.f}}),
             rerun::components::LineStrip3D({{4.f, -1.f, 3.f}, {6.f, 0.f, 1.5f}}),
