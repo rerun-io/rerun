@@ -96,6 +96,7 @@ impl ViewContextSystem for TransformContext {
 
         let entity_tree = ctx.entity_db.tree();
         let data_store = ctx.entity_db.data_store();
+        let query_caches = ctx.entity_db.query_caches();
 
         // TODO(jleibs): The need to do this hints at a problem with how we think about
         // the interaction between properties and "context-systems".
@@ -127,6 +128,7 @@ impl ViewContextSystem for TransformContext {
         // Child transforms of this space
         self.gather_descendants_transforms(
             current_tree,
+            query_caches,
             data_store,
             &time_query,
             &entity_prop_map,
@@ -152,6 +154,7 @@ impl ViewContextSystem for TransformContext {
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match transform_at(
                 &current_tree.path,
+                query_caches,
                 data_store,
                 &time_query,
                 // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
@@ -173,6 +176,7 @@ impl ViewContextSystem for TransformContext {
             // (skip over everything at and under `current_tree` automatically)
             self.gather_descendants_transforms(
                 parent_tree,
+                query_caches,
                 data_store,
                 &time_query,
                 &entity_prop_map,
@@ -190,9 +194,11 @@ impl ViewContextSystem for TransformContext {
 }
 
 impl TransformContext {
+    #[allow(clippy::too_many_arguments)]
     fn gather_descendants_transforms(
         &mut self,
         tree: &EntityTree,
+        query_caches: &re_query_cache::Caches,
         data_store: &re_data_store::DataStore,
         query: &LatestAtQuery,
         entity_properties: &EntityPropertyMap,
@@ -215,6 +221,7 @@ impl TransformContext {
             let mut encountered_pinhole = encountered_pinhole.clone();
             let reference_from_child = match transform_at(
                 &child_tree.path,
+                query_caches,
                 data_store,
                 query,
                 |p| *entity_properties.get(p).pinhole_image_plane_distance,
@@ -230,6 +237,7 @@ impl TransformContext {
             };
             self.gather_descendants_transforms(
                 child_tree,
+                query_caches,
                 data_store,
                 query,
                 entity_properties,
@@ -297,6 +305,7 @@ impl TransformContext {
 
 fn transform_at(
     entity_path: &EntityPath,
+    query_caches: &re_query_cache::Caches,
     store: &re_data_store::DataStore,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
@@ -313,9 +322,20 @@ fn transform_at(
         }
     }
 
-    let transform3d = store
-        .query_latest_component::<Transform3D>(entity_path, query)
-        .map(|transform| transform.value.into_parent_from_child_transform());
+    let mut transform3d = None;
+
+    query_caches
+        .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::Transform3D, Transform3D, _>(
+            store,
+            query,
+            entity_path,
+            |(_, _, transforms)| {
+                transform3d = transforms
+                    .first()
+                    .map(|transform| transform.clone().into_parent_from_child_transform());
+            },
+        )
+        .ok();
 
     let pinhole = pinhole.map(|pinhole| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
