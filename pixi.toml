@@ -44,16 +44,16 @@ rerun-release = "cargo run --package rerun-cli --no-default-features --features 
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun-web = """
-  cargo run -p re_build_web_viewer -- --debug   &&\
-  cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer
+     cargo run -p re_build_web_viewer -- --debug
+  && cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer
 """
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun-release-web = """
-  cargo run -p re_build_web_viewer -- --release   &&\
-  cargo run --package rerun-cli --no-default-features --features web_viewer --release -- --web-viewer
+     cargo run -p re_build_web_viewer -- --release
+  && cargo run --package rerun-cli --no-default-features --features web_viewer --release -- --web-viewer
 """
 
 build-examples = "cargo run -q --locked -p re_build_examples --"
