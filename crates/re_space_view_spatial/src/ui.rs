@@ -170,7 +170,7 @@ impl SpatialSpaceViewState {
                             );
                         });
 
-                        if let Some(eye) = &self.state_3d.orbit_eye {
+                        if let Some(eye) = &self.state_3d.view_eye {
                             if eye.eye_up != glam::Vec3::ZERO {
                                 ui.label(format!(
                                     "Current camera-eye up-axis is {}",
@@ -245,7 +245,7 @@ impl SpatialSpaceViewState {
             }
         }
 
-        if let Some(eye) = &mut self.state_3d.orbit_eye {
+        if let Some(eye) = &mut self.state_3d.view_eye {
             ui.horizontal(|ui| {
                 let mode = &mut eye.mode;
                 ui.label("Mode:");

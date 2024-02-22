@@ -149,7 +149,7 @@ impl Eye {
 
 // ----------------------------------------------------------------------------
 
-/// The mode of an [`OrbitEye`].
+/// The mode of an [`ViewEye`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum EyeMode {
     FirstPerson,
@@ -166,7 +166,7 @@ pub enum EyeMode {
 ///
 /// Note: we use "eye" so we don't confuse this with logged camera.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct OrbitEye {
+pub struct ViewEye {
     /// First person or orbital?
     pub mode: EyeMode,
 
@@ -197,7 +197,7 @@ pub struct OrbitEye {
     pub velocity: Vec3,
 }
 
-impl OrbitEye {
+impl ViewEye {
     /// Avoids zentith/nadir singularity.
     const MAX_PITCH: f32 = 0.99 * 0.25 * std::f32::consts::TAU;
 
@@ -207,7 +207,7 @@ impl OrbitEye {
         world_from_view_rot: Quat,
         eye_up: Vec3,
     ) -> Self {
-        OrbitEye {
+        ViewEye {
             mode: EyeMode::Orbital,
             center: orbit_center,
             orbit_radius,
@@ -238,7 +238,7 @@ impl OrbitEye {
         }
     }
 
-    /// Create an [`OrbitEye`] from a [`Eye`].
+    /// Create an [`ViewEye`] from a [`Eye`].
     pub fn copy_from_eye(&mut self, eye: &Eye) {
         match self.mode {
             EyeMode::FirstPerson => {
