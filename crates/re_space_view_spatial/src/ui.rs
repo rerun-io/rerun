@@ -146,7 +146,7 @@ impl SpatialSpaceViewState {
                     .on_hover_text("The virtual camera which controls what is shown on screen");
                 ui.vertical(|ui| {
                     if spatial_kind == SpatialSpaceViewKind::ThreeD {
-                        self.eye_3d_ui(re_ui, ui, scene_view_coordinates);
+                        self.view_eye_ui(re_ui, ui, scene_view_coordinates);
                     }
                 });
                 ui.end_row();
@@ -216,7 +216,8 @@ impl SpatialSpaceViewState {
             });
     }
 
-    fn eye_3d_ui(
+    // Say the name out loud. It is fun!
+    fn view_eye_ui(
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
