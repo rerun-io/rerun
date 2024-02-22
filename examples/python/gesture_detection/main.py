@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Use the MediaPipe Gesture detection and Gesture landmark detection solutions to track hands and recognise gestures
+Use the MediaPipe Gesture detection and Gesture landmark detection solutions to track hands and recognize gestures
 in images and videos.
 """
 from __future__ import annotations
@@ -277,7 +277,7 @@ def main() -> None:
 
     # Set up argument parser with description
     parser = argparse.ArgumentParser(
-        description="Uses the MediaPipe Gesture Recognition to track a hand and recognise gestures in image or video."
+        description="Uses the MediaPipe Gesture Recognition to track a hand and recognize gestures in image or video."
     )
 
     parser.add_argument(

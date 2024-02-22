@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Hand Tracking and Gesture Recognition"
 tags = ["mediapipe", "keypoint-detection", "2D", "3D"]
-description = "Use the MediaPipe Gesture Detection solution to track hand and recognise gestures in image/video."
+description = "Use the MediaPipe Gesture Detection solution to track hand and recognize gestures in image/video."
 thumbnail = "https://github.com/rerun-io/rerun/assets/49308613/6895d06c-b2f3-4aa3-9d7f-4e50fff3bf6e"
 thumbnail_dimensions = [480, 272]
 -->
@@ -27,7 +27,7 @@ usage: main.py [-h] [--demo-image] [--demo-video] [--image IMAGE]
                [--headless] [--connect] [--serve] [--addr ADDR] [--save SAVE]
                [-o]
 
-Uses the MediaPipe Gesture Recognition to track a hand and recognise gestures
+Uses the MediaPipe Gesture Recognition to track a hand and recognize gestures
 in image or video.
 
 optional arguments:
@@ -57,7 +57,7 @@ Here is an overview of the options specific to this example:
 
 # Overview
 
-Use the [MediaPipe](https://google.github.io/mediapipe/)  Gesture detection and Gesture landmark detection solutions to track hands and recognise gestures in images and videos.
+Use the [MediaPipe](https://google.github.io/mediapipe/)  Gesture detection and Gesture landmark detection solutions to track hands and recognize gestures in images and videos.
 
 Logging Details:
 
@@ -194,7 +194,7 @@ class GestureDetectorLogger:
 ```
 ## Hand Landmarks as 3D Points
 
-![gesture_recongition_3d_ponts](https://github.com/rerun-io/rerun/assets/49308613/b24bb0e5-57cc-43f0-948b-3480fe9073a2)
+![gesture_recognition_3d_points](https://github.com/rerun-io/rerun/assets/49308613/b24bb0e5-57cc-43f0-948b-3480fe9073a2)
 
 You can first define the connections between the points using keypoints from Annotation Context in the init function, and then log them as 3D points.
 
