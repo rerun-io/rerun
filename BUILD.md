@@ -21,6 +21,8 @@ git clone git@github.com:rerun-io/rerun.git
 cd rerun
 ```
 
+Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
+
 Finally, run the following script to install the dependencies and CLI tools needed for Rerun's build environment:
 
 ```sh
@@ -40,7 +42,7 @@ rustup set default-host aarch64-apple-darwin && rustup install 1.74.0
 Use this command for building and running the viewer:
 
 ```sh
-cargo rerun
+pixi run rerun
 ```
 
 This custom cargo command is enabled by an alias located in `.cargo/config.toml`.
@@ -119,7 +121,7 @@ If you want to build a standalone rerun executable that contains the web-viewer 
 you need to ensure the `web_viewer` feature flag is set when building rerun.
 This is automatically done by this shortcut which builds & runs the web viewer:
 ```
-cargo rerun-web
+pixi run rerun-web
 ```
 
 If you're on Windows you have to make sure that your git client creates symlinks,
