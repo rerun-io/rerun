@@ -375,6 +375,7 @@ impl App {
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint");
                 store_hub.clear_current_blueprint();
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 // We only want to update the blueprint if the "inspect blueprint timeline" mode is
