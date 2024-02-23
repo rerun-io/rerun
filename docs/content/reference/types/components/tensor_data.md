@@ -24,5 +24,6 @@ which stores a contiguous array of typed values.
 
 ## Used by
 
+* [`Audio`](../archetypes/audio.md)
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`Tensor`](../archetypes/tensor.md)

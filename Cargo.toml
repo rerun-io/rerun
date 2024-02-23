@@ -29,6 +29,7 @@ version = "0.20.0-alpha.1+dev"
 
 [workspace.dependencies]
 # When using alpha-release, always use exact version, e.g. `version = "=0.x.y-alpha.z"
+
 # This is because we treat alpha-releases as incompatible, but semver doesn't.
 # In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
@@ -89,6 +90,7 @@ re_renderer = { path = "crates/viewer/re_renderer", version = "=0.20.0-alpha.1",
 re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.20.0-alpha.1", default-features = false }
 re_selection_panel = { path = "crates/viewer/re_selection_panel", version = "=0.20.0-alpha.1", default-features = false }
 re_space_view = { path = "crates/viewer/re_space_view", version = "=0.20.0-alpha.1", default-features = false }
+re_space_view_audio = { path = "crates/viewer/re_space_view_audio", version = "=0.20.0-alpha.1", default-features = false }
 re_space_view_bar_chart = { path = "crates/viewer/re_space_view_bar_chart", version = "=0.20.0-alpha.1", default-features = false }
 re_space_view_dataframe = { path = "crates/viewer/re_space_view_dataframe", version = "=0.20.0-alpha.1", default-features = false }
 re_space_view_spatial = { path = "crates/viewer/re_space_view_spatial", version = "=0.20.0-alpha.1", default-features = false }
@@ -111,6 +113,8 @@ re_math = "0.20.0"
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # NOTE: we use `dav1d` as an alias for our own re_rav1d crate
 # See https://github.com/rerun-io/re_rav1d/pull/2
+
+
 dav1d = { package = "re_rav1d", version = "0.1.3", default-features = false }
 # dav1d = { version = "0.10.3" } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
 
@@ -262,6 +266,7 @@ time = { version = "0.3.36", default-features = false, features = [
   "wasm-bindgen",
 ] }
 tiny_http = { version = "0.12", default-features = false }
+tinyaudio = "0.1.2"
 tinystl = { version = "0.0.3", default-features = false }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
@@ -283,6 +288,7 @@ walkdir = "2.0"
 #       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
 #       Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
 #       version is released, even if they are not building the web viewer.
+
 wasm-bindgen = "0.2.93"
 wasm-bindgen-cli-support = "=0.2.93"
 wasm-bindgen-futures = "0.4.33"
@@ -290,6 +296,7 @@ web-sys = "0.3"
 web-time = "1.1.0"
 webbrowser = "1.0"
 winit = { version = "0.30.5", default-features = false }
+wav = "1.0"
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
 wgpu = { version = "22.1", default-features = false, features = [

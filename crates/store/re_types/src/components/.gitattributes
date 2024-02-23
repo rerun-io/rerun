@@ -4,6 +4,7 @@
 aggregation_policy.rs linguist-generated=true
 albedo_factor.rs linguist-generated=true
 annotation_context.rs linguist-generated=true
+audio_sample_rate.rs linguist-generated=true
 axis_length.rs linguist-generated=true
 blob.rs linguist-generated=true
 class_id.rs linguist-generated=true

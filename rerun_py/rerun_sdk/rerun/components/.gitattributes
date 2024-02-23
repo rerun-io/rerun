@@ -5,6 +5,7 @@ __init__.py linguist-generated=true
 aggregation_policy.py linguist-generated=true
 albedo_factor.py linguist-generated=true
 annotation_context.py linguist-generated=true
+audio_sample_rate.py linguist-generated=true
 axis_length.py linguist-generated=true
 blob.py linguist-generated=true
 class_id.py linguist-generated=true

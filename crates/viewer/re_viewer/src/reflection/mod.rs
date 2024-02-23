@@ -282,6 +282,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <AudioSampleRate as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Sample-rate of an PCM-encoded audio file, in Hz.\n\nCommonly 44100 Hz or 48000 Hz.\n\nNote that this is a slightly misleading name.\nAn audio file consists of audio frames, each consisting of multiple audio samples.\nIn a stereo audio file, each frame consists of two samples, one for the left channel and one for the right channel.\nSo this should more accurately be called the _frame rate_ of the audio,\nbut it is commonly known as the frame rate for historical reasons.",
+                custom_placeholder: None,
+            },
+        ),
+        (
             <AxisLength as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The length of an axis in local units of the space.",
@@ -831,6 +838,23 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.MediaType".into(), display_name : "Media type",
                     docstring_md :
                     "The Media Type of the asset.\n\nSupported values:\n* `video/mp4`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.Audio"),
+            ArchetypeReflection {
+                display_name: "Audio",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.TensorData".into(), display_name : "Data",
+                    docstring_md :
+                    "The audio data.\n\nEither a single-channel mono vector, or a 2xN matrix for stereo.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.AudioSampleRate".into(), display_name :
+                    "Sample rate", docstring_md :
+                    "Sample-rate of the audio data, in Hz.\n\nCommonly 44100 Hz (default) or 48000 Hz.",
                     is_required : false, },
                 ],
             },

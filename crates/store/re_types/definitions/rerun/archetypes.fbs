@@ -5,6 +5,7 @@ include "./archetypes/arrows2d.fbs";
 include "./archetypes/arrows3d.fbs";
 include "./archetypes/asset3d.fbs";
 include "./archetypes/asset_video.fbs";
+include "./archetypes/audio.fbs";
 include "./archetypes/bar_chart.fbs";
 include "./archetypes/boxes2d.fbs";
 include "./archetypes/boxes3d.fbs";

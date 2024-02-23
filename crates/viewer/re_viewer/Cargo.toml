@@ -64,6 +64,8 @@ re_renderer = { workspace = true, default-features = false }
 re_selection_panel.workspace = true
 re_sdk_comms.workspace = true
 re_smart_channel.workspace = true
+re_space_view.workspace = true
+re_space_view_audio.workspace = true
 re_space_view_bar_chart.workspace = true
 re_space_view_dataframe.workspace = true
 re_space_view_spatial.workspace = true

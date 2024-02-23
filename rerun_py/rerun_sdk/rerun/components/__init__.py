@@ -17,6 +17,13 @@ from .annotation_context import (
     AnnotationContextLike,
     AnnotationContextType,
 )
+from .audio_sample_rate import (
+    AudioSampleRate,
+    AudioSampleRateArrayLike,
+    AudioSampleRateBatch,
+    AudioSampleRateLike,
+    AudioSampleRateType,
+)
 from .axis_length import AxisLength, AxisLengthBatch, AxisLengthType
 from .blob import Blob, BlobBatch, BlobType
 from .class_id import ClassId, ClassIdBatch, ClassIdType
@@ -108,6 +115,11 @@ __all__ = [
     "AnnotationContextBatch",
     "AnnotationContextLike",
     "AnnotationContextType",
+    "AudioSampleRate",
+    "AudioSampleRateArrayLike",
+    "AudioSampleRateBatch",
+    "AudioSampleRateLike",
+    "AudioSampleRateType",
     "AxisLength",
     "AxisLengthBatch",
     "AxisLengthType",

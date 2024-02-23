@@ -39,6 +39,24 @@ impl TensorBuffer {
         }
     }
 
+    /// Number of elements, or `None` if unknown (compressed format).
+    #[allow(clippy::match_same_arms)]
+    pub fn num_elements(&self) -> usize {
+        match self {
+            Self::U8(buf) => buf.len(),
+            Self::U16(buf) => buf.len(),
+            Self::U32(buf) => buf.len(),
+            Self::U64(buf) => buf.len(),
+            Self::I8(buf) => buf.len(),
+            Self::I16(buf) => buf.len(),
+            Self::I32(buf) => buf.len(),
+            Self::I64(buf) => buf.len(),
+            Self::F16(buf) => buf.len(),
+            Self::F32(buf) => buf.len(),
+            Self::F64(buf) => buf.len(),
+        }
+    }
+
     /// Is this buffer empty?
     pub fn is_empty(&self) -> bool {
         self.size_in_bytes() == 0
