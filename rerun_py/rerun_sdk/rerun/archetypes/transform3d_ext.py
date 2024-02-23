@@ -24,7 +24,7 @@ class Transform3DExt:
         rotation: Rotation3DLike | None = None,
         scale: Scale3DLike | None = None,
         mat3x3: Mat3x3Like | None = None,
-        from_parent: bool = False,
+        from_parent: bool | None = None,
     ):
         """
         Create a new instance of the Transform3D archetype.
@@ -54,7 +54,13 @@ class Transform3DExt:
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if transform is not None:
-                if translation is not None or rotation is not None or scale is not None or mat3x3 is not None:
+                if (
+                    translation is not None
+                    or rotation is not None
+                    or scale is not None
+                    or mat3x3 is not None
+                    or from_parent is not None
+                ):
                     raise ValueError("If a transform is given, none of the other parameters can be set.")
                 self.__attrs_init__(transform=transform)
             else:
