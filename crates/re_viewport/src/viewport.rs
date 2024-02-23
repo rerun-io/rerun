@@ -22,7 +22,6 @@ use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
     add_space_view_or_container_modal::AddSpaceViewOrContainerModal, container::Contents,
     icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::default_created_space_views,
     system_execution::execute_systems_for_all_space_views, ViewportBlueprint,
 };
 
@@ -333,46 +332,68 @@ impl<'a, 'b> Viewport<'a, 'b> {
         }
 
         if self.blueprint.auto_space_views {
-            let mut new_space_views = vec![];
-            for space_view_candidate in default_created_space_views(ctx) {
-                if self.should_auto_add_space_view(&new_space_views, &space_view_candidate) {
-                    new_space_views.push(space_view_candidate);
-                }
-            }
-
-            self.blueprint
-                .add_space_views(new_space_views.into_iter(), ctx, None);
+            self.spawn_heuristic_space_views(ctx);
         }
     }
 
-    fn should_auto_add_space_view(
-        &self,
-        already_added: &[SpaceViewBlueprint],
-        space_view_candidate: &SpaceViewBlueprint,
-    ) -> bool {
+    fn spawn_heuristic_space_views(&mut self, ctx: &ViewerContext<'_>) {
         re_tracing::profile_function!();
 
-        for existing_view in self
-            .blueprint
-            .space_views
-            .values()
-            .chain(already_added.iter())
-        {
-            if existing_view.class_identifier() == space_view_candidate.class_identifier() {
-                if existing_view.entities_determined_by_user {
-                    // If the entities filter of any space view of the same type was edited,
-                    // we don't want to flicker in new space views into existence,
-                    // since there might be more edits on the way.
-                    return false;
-                }
-                if existing_view.entity_path_filter_is_superset_of(space_view_candidate) {
-                    // This space view wouldn't add anything we haven't already
-                    return false;
-                }
-            }
-        }
+        for entry in ctx.space_view_class_registry.iter_registry() {
+            let class_id = entry.class.identifier();
+            let spawn_heuristics = entry.class.spawn_heuristics(ctx);
 
-        true
+            re_tracing::profile_scope!("filter_recommendations_for", class_id);
+
+            // Remove all space views that we already have on screen.
+            let existing_path_filters = self
+                .blueprint
+                .space_views
+                .values()
+                .filter(|space_view| space_view.class_identifier() == &class_id)
+                .map(|space_view| space_view.entity_path_filter())
+                .collect::<Vec<_>>();
+            let recommended_space_views = spawn_heuristics
+                .recommended_space_views
+                .into_iter()
+                .filter(|recommended_view| {
+                    existing_path_filters.iter().all(|existing_filter| {
+                        !existing_filter.is_superset_of(&recommended_view.query_filter)
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            // Remove all space views that redundant within the remaining recommendation.
+            // This n^2 loop should only run ever for frames that add new space views.
+            let final_recommendations =
+                recommended_space_views
+                    .iter()
+                    .enumerate()
+                    .filter(|(j, candidate)| {
+                        recommended_space_views
+                            .iter()
+                            .enumerate()
+                            .all(|(i, other)| {
+                                i == *j
+                                    || !other.query_filter.is_superset_of(&candidate.query_filter)
+                            })
+                    });
+
+            self.blueprint.add_space_views(
+                final_recommendations.map(|(_, recommendation)| {
+                    SpaceViewBlueprint::new(
+                        class_id,
+                        &recommendation.root,
+                        re_space_view::DataQueryBlueprint::new(
+                            class_id,
+                            recommendation.query_filter.clone(),
+                        ),
+                    )
+                }),
+                ctx,
+                None,
+            );
+        }
     }
 
     /// Process any deferred `TreeActions` and then sync to blueprint
