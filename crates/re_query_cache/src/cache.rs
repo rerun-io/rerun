@@ -1,7 +1,10 @@
 use std::{
     collections::{BTreeMap, VecDeque},
     ops::Range,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicU64, Ordering::Relaxed},
+        Arc,
+    },
 };
 
 use ahash::{HashMap, HashSet};
@@ -50,6 +53,12 @@ pub struct Caches {
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<CachesPerArchetype>>>>,
+
+    // TODO
+    total_num_entries: AtomicU64,
+
+    /// Total size of the data stored all these caches in bytes.
+    total_size_bytes: AtomicU64,
 }
 
 impl std::fmt::Debug for Caches {
@@ -57,6 +66,8 @@ impl std::fmt::Debug for Caches {
         let Self {
             store_id,
             per_cache_key,
+            total_num_entries: _,
+            total_size_bytes: _,
         } = self;
 
         let mut strings = Vec::new();
@@ -102,6 +113,8 @@ impl Caches {
         Self {
             store_id: store.id().clone(),
             per_cache_key: Default::default(),
+            total_num_entries: AtomicU64::new(0),
+            total_size_bytes: AtomicU64::new(0),
         }
     }
 }
@@ -151,6 +164,12 @@ pub struct CachesPerArchetype {
     /// Invalidation is deferred to query time because it is far more efficient that way: the frame
     /// time effectively behaves as a natural micro-batching mechanism.
     pending_timeless_invalidation: bool,
+
+    /// Total number of rows of data stored across all these caches in bytes.
+    pub(crate) total_num_entries: AtomicU64,
+
+    /// Total size of the data stored all these caches in bytes.
+    pub(crate) total_size_bytes: AtomicU64,
 }
 
 impl std::fmt::Debug for CachesPerArchetype {
@@ -160,6 +179,8 @@ impl std::fmt::Debug for CachesPerArchetype {
             range_per_archetype,
             pending_timeful_invalidation: _,
             pending_timeless_invalidation: _,
+            total_num_entries: _,
+            total_size_bytes: _,
         } = self;
 
         let mut strings = Vec::new();
@@ -238,21 +259,32 @@ impl Caches {
             let caches_per_archetype = Arc::clone(self.write().entry(key.clone()).or_default());
             // Implicitly releasing top-level cache mappings -- concurrent queries can run once again.
 
-            let removed_bytes = caches_per_archetype.write().handle_pending_invalidation();
+            let (num_removed_entries, removed_bytes) =
+                caches_per_archetype.write().handle_pending_invalidation();
             // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
             // same `CacheKey` but a different `ArchetypeName` can run once again.
             if removed_bytes > 0 {
+                self.total_num_entries
+                    .fetch_sub(num_removed_entries, Relaxed);
+                self.total_size_bytes.fetch_sub(removed_bytes, Relaxed);
+
                 re_log::trace!(
                     store_id=%self.store_id,
                     entity_path = %key.entity_path,
-                    removed = removed_bytes,
+                    num_removed_entries,
+                    removed_bytes,
                     "invalidated latest-at caches"
                 );
             }
 
             let caches_per_archetype = caches_per_archetype.read();
             let mut latest_at_per_archetype = caches_per_archetype.latest_at_per_archetype.write();
-            Arc::clone(latest_at_per_archetype.entry(A::name()).or_default())
+            Arc::clone(latest_at_per_archetype.entry(A::name()).or_insert_with(|| {
+                let cache = LatestAtCache::default();
+                self.total_size_bytes
+                    .fetch_add(cache.total_size_bytes(), Relaxed);
+                Arc::new(RwLock::new(cache))
+            }))
             // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
             // can run once again.
         };
@@ -283,7 +315,13 @@ impl Caches {
         //
         // In the end, this is a edge-case inherent to our current "immediate query" model that we
         // already know we want -- and have to -- move away from; the extra complexity isn't worth it.
-        let r1 = cache.try_write().map(|mut cache| upsert(&mut cache));
+        let r1 = cache.try_write().map(|mut cache| {
+            let cur_size_bytes = cache.total_size_bytes();
+            let res = upsert(&mut cache);
+            self.total_size_bytes
+                .fetch_add(cache.total_size_bytes() - cur_size_bytes, Relaxed);
+            res
+        });
         // Implicitly releasing the write lock -- if any.
 
         // # Multithreading semantics
@@ -336,6 +374,7 @@ impl Caches {
             // Implicitly releasing archetype-level cache mappings -- concurrent queries using the
             // same `CacheKey` but a different `ArchetypeName` can run once again.
             if removed_bytes > 0 {
+                self.total_size_bytes.fetch_sub(removed_bytes, Relaxed);
                 re_log::trace!(
                     store_id=%self.store_id,
                     entity_path = %key.entity_path,
@@ -346,7 +385,12 @@ impl Caches {
 
             let caches_per_archetype = caches_per_archetype.read();
             let mut range_per_archetype = caches_per_archetype.range_per_archetype.write();
-            Arc::clone(range_per_archetype.entry(A::name()).or_default())
+            Arc::clone(range_per_archetype.entry(A::name()).or_insert_with(|| {
+                let cache = RangeCache::default();
+                self.total_size_bytes
+                    .fetch_add(cache.total_size_bytes(), Relaxed);
+                Arc::new(RwLock::new(cache))
+            }))
             // Implicitly releasing bottom-level cache mappings -- identical concurrent queries
             // can run once again.
         };
@@ -378,7 +422,13 @@ impl Caches {
         //
         // In the end, this is a edge-case inherent to our current "immediate query" model that we
         // already know we want -- and have to -- move away from; the extra complexity isn't worth it.
-        let r1 = cache.try_write().map(|mut cache| upsert(&mut cache));
+        let r1 = cache.try_write().map(|mut cache| {
+            let cur_size_bytes = cache.total_size_bytes();
+            let res = upsert(&mut cache);
+            self.total_size_bytes
+                .fetch_add(cache.total_size_bytes() - cur_size_bytes, Relaxed);
+            res
+        });
         // Implicitly releasing the write lock -- if any.
 
         // # Multithreading semantics
@@ -541,13 +591,13 @@ impl CachesPerArchetype {
     /// Invalidation is deferred to query time because it is far more efficient that way: the frame
     /// time effectively behaves as a natural micro-batching mechanism.
     ///
-    /// Returns the number of bytes removed.
-    fn handle_pending_invalidation(&mut self) -> u64 {
+    /// Returns `(number_removed_entries, number_removed_bytes)`.
+    fn handle_pending_invalidation(&mut self) -> (u64, u64) {
         let pending_timeless_invalidation = self.pending_timeless_invalidation;
         let pending_timeful_invalidation = self.pending_timeful_invalidation.is_some();
 
         if !pending_timeless_invalidation && !pending_timeful_invalidation {
-            return 0;
+            return (0, 0);
         }
 
         re_tracing::profile_function!();
@@ -562,41 +612,65 @@ impl CachesPerArchetype {
         if pending_timeless_invalidation {
             re_tracing::profile_scope!("timeless");
 
-            let latest_at_removed_bytes = self
-                .latest_at_per_archetype
-                .read()
-                .values()
-                .map(|latest_at_cache| latest_at_cache.read().total_size_bytes())
-                .sum::<u64>();
-            let range_removed_bytes = self
-                .range_per_archetype
-                .read()
-                .values()
-                .map(|range_cache| range_cache.read().total_size_bytes())
-                .sum::<u64>();
+            let (latest_at_num_removed_entries, latest_at_removed_bytes) = {
+                let latest_at_per_archetype = self.latest_at_per_archetype.read();
+                let latest_at_num_removed_entries = latest_at_per_archetype
+                    .values()
+                    .map(|latest_at_cache| latest_at_cache.read().num_entries())
+                    .sum::<u64>();
+                let latest_at_removed_bytes = latest_at_per_archetype
+                    .values()
+                    .map(|latest_at_cache| latest_at_cache.read().total_size_bytes())
+                    .sum::<u64>();
+                (latest_at_num_removed_entries, latest_at_removed_bytes)
+            };
+
+            let (range_num_removed_entries, range_removed_bytes) = {
+                let range_num_removed_entries = self
+                    .range_per_archetype
+                    .read()
+                    .values()
+                    .map(|range_cache| range_cache.read().num_entries())
+                    .sum::<u64>();
+                let range_removed_bytes = self
+                    .range_per_archetype
+                    .read()
+                    .values()
+                    .map(|range_cache| range_cache.read().total_size_bytes())
+                    .sum::<u64>();
+
+                (range_num_removed_entries, range_removed_bytes)
+            };
 
             *self = CachesPerArchetype::default();
 
-            return latest_at_removed_bytes + range_removed_bytes;
+            return (
+                latest_at_num_removed_entries + range_num_removed_entries,
+                latest_at_removed_bytes + range_removed_bytes,
+            );
         }
 
         re_tracing::profile_scope!("timeful");
 
-        let mut removed_bytes = 0u64;
+        let mut total_num_removed_entries = 0u64;
+        let mut total_removed_bytes = 0u64;
 
         for latest_at_cache in self.latest_at_per_archetype.read().values() {
             let mut latest_at_cache = latest_at_cache.write();
-            removed_bytes =
-                removed_bytes.saturating_add(latest_at_cache.truncate_at_time(time_threshold));
+            let (num_removed_entries, removed_bytes) =
+                latest_at_cache.truncate_at_time(time_threshold);
+            total_num_removed_entries = num_removed_entries.saturating_add(num_removed_entries);
+            total_removed_bytes = removed_bytes.saturating_add(removed_bytes);
         }
 
         for range_cache in self.range_per_archetype.read().values() {
             let mut range_cache = range_cache.write();
-            removed_bytes =
-                removed_bytes.saturating_add(range_cache.truncate_at_time(time_threshold));
+            let (num_removed_entries, removed_bytes) = range_cache.truncate_at_time(time_threshold);
+            total_num_removed_entries = num_removed_entries.saturating_add(num_removed_entries);
+            total_removed_bytes = removed_bytes.saturating_add(removed_bytes);
         }
 
-        removed_bytes
+        (total_num_removed_entries, total_removed_bytes)
     }
 }
 
@@ -709,8 +783,8 @@ impl CacheBucket {
 
     /// How many timestamps' worth of data is stored in this bucket?
     #[inline]
-    pub fn num_entries(&self) -> usize {
-        self.data_times.len()
+    pub fn num_entries(&self) -> u64 {
+        self.data_times.len() as _
     }
 
     #[inline]
@@ -846,9 +920,9 @@ impl CacheBucket {
     /// Removes everything from the bucket that corresponds to a time equal or greater than the
     /// specified `threshold`.
     ///
-    /// Returns the number of bytes removed.
+    /// Returns `(number_removed_entries, number_removed_bytes)`.
     #[inline]
-    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
+    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> (u64, u64) {
         self.sanity_check();
 
         let Self {
@@ -858,6 +932,7 @@ impl CacheBucket {
             total_size_bytes,
         } = self;
 
+        let mut num_removed_entries = 0u64;
         let mut removed_bytes = 0u64;
 
         let threshold_idx = data_times.partition_point(|(data_time, _)| data_time < &threshold);
@@ -893,7 +968,7 @@ impl CacheBucket {
 
         self.sanity_check();
 
-        removed_bytes
+        (num_removed_entries, removed_bytes)
     }
 }
 
@@ -1034,7 +1109,8 @@ impl CacheBucket {
                 std::iter::repeat(vec![]).take(
                     num_entries
                         .checked_sub(1)
-                        .expect("We should have been called AFTER inserting to data_times"),
+                        .expect("We should have been called AFTER inserting to data_times")
+                        as _,
                 ),
             ))
         });

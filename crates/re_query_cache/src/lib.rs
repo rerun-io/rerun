@@ -8,7 +8,9 @@ mod query;
 mod range;
 
 pub use self::cache::{AnyQuery, Caches};
-pub use self::cache_stats::{CachedComponentStats, CachedEntityStats, CachesStats};
+pub use self::cache_stats::{
+    CachedComponentStats, CachedEntityStats, CachesStats, CachesStatsKind,
+};
 pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
 pub use self::query::iter_or_repeat_opt;
 

@@ -96,15 +96,22 @@ impl SizeBytes for LatestAtCache {
 }
 
 impl LatestAtCache {
+    /// How many unique entries cached (i.e. timestamps)?
+    #[inline]
+    pub fn num_entries(&self) -> u64 {
+        // NOTE: buckets are guaranteed to be unit length for latest-at queries.
+        self.per_data_time.len() as u64 + self.timeless.is_some() as u64
+    }
+
     /// Removes everything from the cache that corresponds to a time equal or greater than the
     /// specified `threshold`.
     ///
     /// Reminder: invalidating timeless data is the same as invalidating everything, so just reset
     /// the `LatestAtCache` entirely in that case.
     ///
-    /// Returns the number of bytes removed.
+    /// Returns `(number_removed_entries, number_removed_bytes)`.
     #[inline]
-    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
+    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> (u64, u64) {
         let Self {
             per_query_time,
             per_data_time,
@@ -113,6 +120,7 @@ impl LatestAtCache {
             total_size_bytes,
         } = self;
 
+        let mut num_removed_entries = 0u64;
         let mut removed_bytes = 0u64;
 
         per_query_time.retain(|&query_time, _| query_time < threshold);
@@ -126,6 +134,7 @@ impl LatestAtCache {
 
             // Only if that bucket is about to be dropped.
             if Arc::strong_count(bucket) == 1 {
+                num_removed_entries += 1;
                 removed_bytes += bucket.total_size_bytes;
             }
 
@@ -143,7 +152,7 @@ impl LatestAtCache {
                 u64::MIN
             });
 
-        removed_bytes
+        (num_removed_entries, removed_bytes)
     }
 }
 

@@ -6,7 +6,7 @@ use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::EntityDb;
 use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_query_cache::CachesStats;
+use re_query_cache::{CachesStats, CachesStatsKind};
 use re_viewer_context::{AppOptions, StoreContext};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -411,7 +411,7 @@ impl StoreHub {
     //
     // TODO(jleibs): We probably want stats for all recordings, not just
     // the currently selected recording.
-    pub fn stats(&self, detailed_cache_stats: bool) -> StoreHubStats {
+    pub fn stats(&self, caches_stats_kind: CachesStatsKind) -> StoreHubStats {
         // If we have an app-id, then use it to look up the blueprint.
         let blueprint = self
             .selected_application_id
@@ -437,7 +437,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let recording_cached_stats = recording
-            .map(|entity_db| entity_db.query_caches().stats(detailed_cache_stats))
+            .map(|entity_db| entity_db.query_caches().stats(caches_stats_kind))
             .unwrap_or_default();
 
         let recording_config = recording

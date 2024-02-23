@@ -334,7 +334,12 @@ impl MemoryPanel {
             );
         self.prim_cache_show_empty.store(show_empty, Relaxed);
 
-        let CachesStats { latest_at, range } = caches_stats;
+        let CachesStats {
+            total_num_entries, // TODO
+            total_size_bytes,  // TODO
+            latest_at,
+            range,
+        } = caches_stats;
 
         if show_empty || !latest_at.is_empty() {
             ui.separator();
@@ -379,7 +384,7 @@ impl MemoryPanel {
                         .show(ui, |ui| {
                             ui.label(egui::RichText::new("Entity").underline());
                             ui.label(egui::RichText::new("Time range").underline());
-                            ui.label(egui::RichText::new("Rows").underline())
+                            ui.label(egui::RichText::new("Entries").underline())
                                 .on_hover_text(
                                     "How many distinct data timestamps have been cached?",
                                 );
@@ -413,7 +418,7 @@ impl MemoryPanel {
         ) {
             let CachedEntityStats {
                 total_size_bytes,
-                total_rows,
+                total_num_entries,
                 per_component,
             } = entity_stats;
 
@@ -423,14 +428,17 @@ impl MemoryPanel {
                         .num_columns(3)
                         .show(ui, |ui| {
                             ui.label(egui::RichText::new("Component").underline());
-                            ui.label(egui::RichText::new("Rows").underline());
+                            ui.label(egui::RichText::new("Entries").underline())
+                                .on_hover_text(
+                                    "How many distinct data timestamps have been cached?",
+                                );
                             ui.label(egui::RichText::new("Instances").underline());
                             ui.label(egui::RichText::new("Size").underline());
                             ui.end_row();
 
                             for (component_name, stats) in per_component {
                                 let &CachedComponentStats {
-                                    total_rows,
+                                    total_num_entries: total_rows,
                                     total_instances,
                                     total_size_bytes,
                                 } = stats;
@@ -445,7 +453,7 @@ impl MemoryPanel {
                 });
             }
 
-            ui.label(re_format::format_number(*total_rows as _));
+            ui.label(re_format::format_number(*total_num_entries as _));
             ui.label(re_format::format_bytes(*total_size_bytes as _));
         }
     }

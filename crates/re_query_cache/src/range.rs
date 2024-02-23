@@ -84,15 +84,21 @@ impl SizeBytes for RangeCache {
 }
 
 impl RangeCache {
+    /// How many unique entries cached (i.e. timestamps)?
+    #[inline]
+    pub fn num_entries(&self) -> u64 {
+        self.per_data_time.num_entries()
+    }
+
     /// Removes everything from the cache that corresponds to a time equal or greater than the
     /// specified `threshold`.
     ///
     /// Reminder: invalidating timeless data is the same as invalidating everything, so just reset
     /// the `RangeCache` entirely in that case.
     ///
-    /// Returns the number of bytes removed.
+    /// Returns `(number_removed_entries, number_removed_bytes)`.
     #[inline]
-    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
+    pub fn truncate_at_time(&mut self, threshold: TimeInt) -> (u64, u64) {
         let Self {
             per_data_time,
             timeless: _,

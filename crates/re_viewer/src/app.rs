@@ -1234,7 +1234,9 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        let store_stats = store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled());
+        // TODO
+        // let store_stats = store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled());
+        let store_stats = store_hub.stats(re_query_cache::CachesStatsKind::Overview);
 
         // do early, before doing too many allocations
         self.memory_panel.update(&gpu_resource_stats, &store_stats);
