@@ -1331,6 +1331,7 @@ fn populate_space_view_class_registry_with_builtin(
     app_options: &AppOptions,
 ) -> Result<(), SpaceViewClassRegistryError> {
     re_tracing::profile_function!();
+    space_view_class_registry.add_class::<re_space_view_audio::AudioSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView2D>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView3D>()?;

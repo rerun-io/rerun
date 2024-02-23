@@ -3,6 +3,8 @@
 .gitattributes linguist-generated=true
 annotation_context.cpp linguist-generated=true
 annotation_context.hpp linguist-generated=true
+audio_sample_rate.cpp linguist-generated=true
+audio_sample_rate.hpp linguist-generated=true
 blob.cpp linguist-generated=true
 blob.hpp linguist-generated=true
 class_id.cpp linguist-generated=true

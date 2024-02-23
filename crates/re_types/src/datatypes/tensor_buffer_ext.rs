@@ -3,8 +3,8 @@ use crate::tensor_data::TensorDataType;
 use super::TensorBuffer;
 
 impl TensorBuffer {
-    #[allow(clippy::match_same_arms)]
     pub fn dtype(&self) -> TensorDataType {
+        #![allow(clippy::match_same_arms)]
         match self {
             Self::U8(_) => TensorDataType::U8,
             Self::U16(_) => TensorDataType::U16,
@@ -23,8 +23,8 @@ impl TensorBuffer {
         }
     }
 
-    #[allow(clippy::match_same_arms)]
     pub fn size_in_bytes(&self) -> usize {
+        #![allow(clippy::match_same_arms)]
         match self {
             Self::U8(buf) => buf.size_in_bytes(),
             Self::U16(buf) => buf.size_in_bytes(),
@@ -40,6 +40,27 @@ impl TensorBuffer {
             Self::Jpeg(buf) => buf.size_in_bytes(),
             Self::Nv12(buf) => buf.size_in_bytes(),
             Self::Yuy2(buf) => buf.size_in_bytes(),
+        }
+    }
+
+    /// Number of elements, or `None` if unknown (compressed format).
+    pub fn num_elements(&self) -> Option<usize> {
+        #![allow(clippy::match_same_arms)]
+        match self {
+            Self::U8(buf) => Some(buf.len()),
+            Self::U16(buf) => Some(buf.len()),
+            Self::U32(buf) => Some(buf.len()),
+            Self::U64(buf) => Some(buf.len()),
+            Self::I8(buf) => Some(buf.len()),
+            Self::I16(buf) => Some(buf.len()),
+            Self::I32(buf) => Some(buf.len()),
+            Self::I64(buf) => Some(buf.len()),
+            Self::F16(buf) => Some(buf.len()),
+            Self::F32(buf) => Some(buf.len()),
+            Self::F64(buf) => Some(buf.len()),
+            Self::Jpeg(_) => None, // TODO: decode?
+            Self::Nv12(_) => None, // TODO: calculate
+            Self::Yuy2(_) => None, // TODO: calculate
         }
     }
 

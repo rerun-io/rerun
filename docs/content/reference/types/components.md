@@ -8,6 +8,7 @@ Archetypes are bundles of components
 ## Available components
 
 * [`AnnotationContext`](components/annotation_context.md)
+* [`AudioSampleRate`](components/audio_sample_rate.md)
 * [`Blob`](components/blob.md)
 * [`ClassId`](components/class_id.md)
 * [`ClearIsRecursive`](components/clear_is_recursive.md)

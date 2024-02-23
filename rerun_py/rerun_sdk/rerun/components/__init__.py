@@ -9,6 +9,13 @@ from .annotation_context import (
     AnnotationContextLike,
     AnnotationContextType,
 )
+from .audio_sample_rate import (
+    AudioSampleRate,
+    AudioSampleRateArrayLike,
+    AudioSampleRateBatch,
+    AudioSampleRateLike,
+    AudioSampleRateType,
+)
 from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike, BlobType
 from .class_id import ClassId, ClassIdBatch, ClassIdType
 from .clear_is_recursive import (
@@ -85,6 +92,11 @@ __all__ = [
     "AnnotationContextBatch",
     "AnnotationContextLike",
     "AnnotationContextType",
+    "AudioSampleRate",
+    "AudioSampleRateArrayLike",
+    "AudioSampleRateBatch",
+    "AudioSampleRateLike",
+    "AudioSampleRateType",
     "Blob",
     "BlobArrayLike",
     "BlobBatch",

@@ -28,6 +28,7 @@ the shape has to be the shape of the decoded image.
 
 ## Used by
 
+* [`Audio`](../archetypes/audio.md)
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`Image`](../archetypes/image.md)

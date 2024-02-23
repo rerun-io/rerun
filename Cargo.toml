@@ -28,9 +28,9 @@ version = "0.14.0-alpha.2"
 # In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
 re_analytics = { path = "crates/re_analytics", version = "=0.14.0-alpha.2", default-features = false }
-re_build_search_index = { path = "crates/re_build_search_index", version = "=0.14.0-alpha.2", default-features = false }
 re_build_examples = { path = "crates/re_build_examples", version = "=0.14.0-alpha.2", default-features = false }
 re_build_info = { path = "crates/re_build_info", version = "=0.14.0-alpha.2", default-features = false }
+re_build_search_index = { path = "crates/re_build_search_index", version = "=0.14.0-alpha.2", default-features = false }
 re_build_tools = { path = "crates/re_build_tools", version = "=0.14.0-alpha.2", default-features = false }
 re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "=0.14.0-alpha.2", default-features = false }
 re_crash_handler = { path = "crates/re_crash_handler", version = "=0.14.0-alpha.2", default-features = false }
@@ -52,6 +52,7 @@ re_sdk = { path = "crates/re_sdk", version = "=0.14.0-alpha.2", default-features
 re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.14.0-alpha.2", default-features = false }
 re_smart_channel = { path = "crates/re_smart_channel", version = "=0.14.0-alpha.2", default-features = false }
 re_space_view = { path = "crates/re_space_view", version = "=0.14.0-alpha.2", default-features = false }
+re_space_view_audio = { path = "crates/re_space_view_audio", version = "=0.14.0-alpha.2", default-features = false }
 re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "=0.14.0-alpha.2", default-features = false }
 re_space_view_dataframe = { path = "crates/re_space_view_dataframe", version = "=0.14.0-alpha.2", default-features = false }
 re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "=0.14.0-alpha.2", default-features = false }
@@ -212,6 +213,7 @@ thiserror = "1.0"
 time = { version = "0.3", default-features = false, features = [
   "wasm-bindgen",
 ] }
+tinyaudio = "0.1.2"
 tinystl = { version = "0.0.3", default-features = false }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
@@ -231,6 +233,7 @@ walkdir = "2.0"
 wasm-bindgen = "0.2.89"
 wasm-bindgen-cli-support = "0.2.89"
 wasm-bindgen-futures = "0.4.33"
+wav = "1.0"
 web-sys = "0.3.61"
 web-time = "0.2.0"
 webbrowser = "0.8"

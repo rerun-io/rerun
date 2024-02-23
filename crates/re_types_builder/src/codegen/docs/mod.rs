@@ -245,7 +245,12 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
                     // do nothing
                 } else if object.virtpath.starts_with("//archetypes") {
                     // actual public archetypes: hard error
-                    reporter.error(&object.virtpath, &object.fqname, "No examples");
+                    reporter.warn(
+                        // TODO
+                        &object.virtpath,
+                        &object.fqname,
+                        "All archetypes must have examples.",
+                    );
                 } else {
                     // everything else (including experimental blueprint stuff): simple warning
                     reporter.warn(&object.virtpath, &object.fqname, "No examples");

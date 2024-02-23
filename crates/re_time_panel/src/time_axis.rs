@@ -16,9 +16,16 @@ impl TimelineAxis {
     pub fn new(time_type: TimeType, times: &TimeHistogram) -> Self {
         re_tracing::profile_function!();
         assert!(!times.is_empty());
-        let gap_threshold = gap_size_heuristic(time_type, times);
-        Self {
-            ranges: create_ranges(times, gap_threshold),
+        let remove_gaps = false; // TODO
+        if remove_gaps {
+            let gap_threshold = gap_size_heuristic(time_type, times);
+            Self {
+                ranges: create_ranges(times, gap_threshold),
+            }
+        } else {
+            Self {
+                ranges: create_ranges(times, u64::MAX),
+            }
         }
     }
 

@@ -1,0 +1,26 @@
+include "fbs/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/components.fbs";
+
+namespace rerun.archetypes;
+
+
+/// Raw uncompressed PCM-encoded audio data (e.g. WAV, AIFF, etc.).
+table Audio (
+  "attr.rust.derive": "PartialEq",
+  "attr.cpp.no_field_ctors"
+) {
+  // --- Required ---
+
+  /// The audio data.
+  ///
+  /// Either a single-channel mono vector, or a 2xN matrix for stereo.
+  data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000); // TODO: AudioData component, with a TensorData datatype
+
+
+  /// Sample-rate of the audio data, in Hz.
+  ///
+  /// Commonly 44100 Hz (default) or 48000 Hz.
+  sample_rate: rerun.components.AudioSampleRate ("attr.rerun.component_recommended", nullable, order: 2000);
+}

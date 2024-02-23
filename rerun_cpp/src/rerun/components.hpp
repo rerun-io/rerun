@@ -3,6 +3,7 @@
 #pragma once
 
 #include "components/annotation_context.hpp"
+#include "components/audio_sample_rate.hpp"
 #include "components/blob.hpp"
 #include "components/class_id.hpp"
 #include "components/clear_is_recursive.hpp"

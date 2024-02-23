@@ -224,6 +224,10 @@ impl TimeControl {
         }
     }
 
+    pub fn is_playing(&self) -> bool {
+        self.playing
+    }
+
     pub fn looping(&self) -> Looping {
         if self.play_state() == PlayState::Following {
             Looping::Off

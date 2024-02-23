@@ -76,6 +76,7 @@ ply-rs.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
+wav.workspace = true
 
 # External (optional)
 ecolor = { workspace = true, optional = true }

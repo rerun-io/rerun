@@ -1,0 +1,28 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// Sample-rate of an PCM-encoded audio file, in Hz.
+///
+/// Commonly 44100 Hz or 48000 Hz.
+///
+/// Note that this is a slightly misleading name.
+/// An audio file consists of audio frames, each consisting of multiple audio samples.
+/// In a stereo audio file, each frame consists of two samples, one for the left channel and one for the right channel.
+/// So this should more accurately be called the _frame rate_ of the audio,
+/// but it is commonly known as the frame rate for historical reasons.
+table AudioSampleRate (
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "float, npt.NDArray[np.float32]",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  value: float (order: 100);
+}

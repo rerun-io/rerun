@@ -54,6 +54,7 @@ re_query_cache.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_smart_channel.workspace = true
 re_space_view.workspace = true
+re_space_view_audio.workspace = true
 re_space_view_bar_chart.workspace = true
 re_space_view_dataframe.workspace = true
 re_space_view_spatial.workspace = true

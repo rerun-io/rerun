@@ -1,0 +1,41 @@
+[package]
+authors.workspace = true
+description = "A simple Space View that shpws and plays audio data."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_space_view_audio"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+
+[dependencies]
+re_data_store.workspace = true
+re_format.workspace = true
+re_log.workspace = true
+re_query.workspace = true
+re_renderer.workspace = true
+re_space_view.workspace = true
+re_tracing.workspace = true
+re_types.workspace = true
+re_ui.workspace = true
+re_viewer_context.workspace = true
+
+egui.workspace = true
+itertools.workspace = true
+nohash-hasher.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
+tinyaudio.workspace = true
+web-time.workspace = true

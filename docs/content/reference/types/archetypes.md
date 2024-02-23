@@ -11,6 +11,7 @@ Archetypes are bundles of components
 * [`Arrows2D`](archetypes/arrows2d.md)
 * [`Arrows3D`](archetypes/arrows3d.md)
 * [`Asset3D`](archetypes/asset3d.md)
+* [`Audio`](archetypes/audio.md)
 * [`BarChart`](archetypes/bar_chart.md)
 * [`Boxes2D`](archetypes/boxes2d.md)
 * [`Boxes3D`](archetypes/boxes3d.md)
