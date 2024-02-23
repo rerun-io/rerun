@@ -16,6 +16,7 @@ README = """
     - Hide
     - Remove
     - Move to new container
+    - Clone
 * Check both work as expected.
 * Right-click on the viewport and check for context menu content:
     - Add Container

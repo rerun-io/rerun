@@ -408,7 +408,7 @@ impl CloneSpaceViewItem {
 
 impl ContextMenuItem for CloneSpaceViewItem {
     fn label(&self, _ctx: &ViewerContext<'_>, _viewport_blueprint: &ViewportBlueprint) -> String {
-        "Clone Space View".to_owned()
+        "Clone".to_owned()
     }
 
     fn run(&self, ctx: &ViewerContext<'_>, viewport_blueprint: &ViewportBlueprint) {
