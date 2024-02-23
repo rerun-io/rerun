@@ -239,7 +239,15 @@ impl ViewportBlueprint {
         let new_space_view = space_view.duplicate(ctx.store_context.blueprint, ctx.blueprint_query);
         let new_space_view_id = new_space_view.id;
 
-        self.add_space_views(std::iter::once(new_space_view), ctx, None);
+        let parent_and_pos =
+            self.find_parent_and_position_index(&Contents::SpaceView(*space_view_id));
+
+        self.add_space_views(
+            std::iter::once(new_space_view),
+            ctx,
+            parent_and_pos.map(|(parent, _)| parent),
+            parent_and_pos.map(|(_, pos)| pos),
+        );
 
         Some(new_space_view_id)
     }
@@ -294,6 +302,7 @@ impl ViewportBlueprint {
         space_views: impl Iterator<Item = SpaceViewBlueprint>,
         ctx: &ViewerContext<'_>,
         parent_container: Option<ContainerId>,
+        position_in_parent: Option<usize>,
     ) -> Vec<SpaceViewId> {
         let mut new_ids: Vec<_> = vec![];
 
@@ -309,7 +318,11 @@ impl ViewportBlueprint {
 
         if !new_ids.is_empty() {
             for id in &new_ids {
-                self.send_tree_action(TreeAction::AddSpaceView(*id, parent_container));
+                self.send_tree_action(TreeAction::AddSpaceView(
+                    *id,
+                    parent_container,
+                    position_in_parent,
+                ));
             }
 
             let updated_ids: Vec<_> = self.space_views.keys().chain(new_ids.iter()).collect();

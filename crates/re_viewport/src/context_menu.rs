@@ -4,7 +4,9 @@ use itertools::Itertools;
 
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_space_view::{DataQueryBlueprint, SpaceViewBlueprint};
-use re_viewer_context::{ContainerId, Item, Selection, SpaceViewClassIdentifier, ViewerContext};
+use re_viewer_context::{
+    ContainerId, Item, Selection, SpaceViewClassIdentifier, SpaceViewId, ViewerContext,
+};
 
 use crate::{Contents, ViewportBlueprint};
 
@@ -69,6 +71,19 @@ fn context_menu_items_for_selection_summary(
                         .map(|entry| AddSpaceView::item(container_id, entry.class.identifier())),
                 ),
             ]);
+
+            items
+        }
+        SelectionSummary::SingleSpaceView(space_view_id) => {
+            // We want all the actions available for collections of contents…
+            let mut items = context_menu_items_for_selection_summary(
+                ctx,
+                viewport_blueprint,
+                item,
+                SelectionSummary::ContentsItems(vec![Contents::SpaceView(space_view_id)]),
+            );
+
+            items.push(CloneSpaceViewItem::item(space_view_id));
 
             items
         }
@@ -211,6 +226,7 @@ fn possible_child_container_kind(
 #[derive(Debug, Clone)]
 pub enum SelectionSummary {
     SingleContainerItem(ContainerId),
+    SingleSpaceView(SpaceViewId),
     ContentsItems(Vec<Contents>),
     Heterogeneous,
     Empty,
@@ -224,6 +240,8 @@ fn summarize_selection(selection: &Selection) -> SelectionSummary {
     if selection.len() == 1 {
         if let Some(Item::Container(container_id)) = selection.first_item() {
             return SelectionSummary::SingleContainerItem(*container_id);
+        } else if let Some(Item::SpaceView(space_view_id)) = selection.first_item() {
+            return SelectionSummary::SingleSpaceView(*space_view_id);
         }
     }
 
@@ -374,6 +392,37 @@ impl ContextMenuItem for ContentRemove {
 }
 
 // ================================================================================================
+// Space view items
+// ================================================================================================
+
+/// Clone a space view
+struct CloneSpaceViewItem {
+    space_view_id: SpaceViewId,
+}
+
+impl CloneSpaceViewItem {
+    fn item(space_view_id: SpaceViewId) -> Box<dyn ContextMenuItem> {
+        Box::new(Self { space_view_id })
+    }
+}
+
+impl ContextMenuItem for CloneSpaceViewItem {
+    fn label(&self, _ctx: &ViewerContext<'_>, _viewport_blueprint: &ViewportBlueprint) -> String {
+        "Clone Space View".to_owned()
+    }
+
+    fn run(&self, ctx: &ViewerContext<'_>, viewport_blueprint: &ViewportBlueprint) {
+        if let Some(new_space_view_id) =
+            viewport_blueprint.duplicate_space_view(&self.space_view_id, ctx)
+        {
+            ctx.selection_state()
+                .set_selection(Item::SpaceView(new_space_view_id));
+            viewport_blueprint.mark_user_interaction(ctx);
+        }
+    }
+}
+
+// ================================================================================================
 // Container items
 // ================================================================================================
 
@@ -445,6 +494,7 @@ impl ContextMenuItem for AddSpaceView {
             std::iter::once(space_view),
             ctx,
             Some(self.target_container),
+            None,
         );
         viewport_blueprint.mark_user_interaction(ctx);
     }

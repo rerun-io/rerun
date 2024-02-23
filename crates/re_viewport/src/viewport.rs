@@ -91,7 +91,7 @@ impl ViewportState {
 #[derive(Clone)]
 pub enum TreeAction {
     /// Add a new space view to the provided container (or the root if `None`).
-    AddSpaceView(SpaceViewId, Option<ContainerId>),
+    AddSpaceView(SpaceViewId, Option<ContainerId>, Option<usize>),
 
     /// Add a new container of the provided kind to the provided container (or the root if `None`).
     AddContainer(egui_tiles::ContainerKind, Option<ContainerId>),
@@ -341,7 +341,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             }
 
             self.blueprint
-                .add_space_views(new_space_views.into_iter(), ctx, None);
+                .add_space_views(new_space_views.into_iter(), ctx, None, None);
         }
     }
 
@@ -387,7 +387,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
         for tree_action in self.tree_action_receiver.try_iter() {
             match tree_action {
-                TreeAction::AddSpaceView(space_view_id, parent_container) => {
+                TreeAction::AddSpaceView(space_view_id, parent_container, position_in_parent) => {
                     if self.blueprint.auto_layout {
                         // Re-run the auto-layout next frame:
                         re_log::trace!(
@@ -399,11 +399,20 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         parent_container.or(self.blueprint.root_container)
                     {
                         let tile_id = self.tree.tiles.insert_pane(space_view_id);
+                        let container_tile_id = blueprint_id_to_tile_id(&parent_id);
                         if let Some(egui_tiles::Tile::Container(container)) =
-                            self.tree.tiles.get_mut(blueprint_id_to_tile_id(&parent_id))
+                            self.tree.tiles.get_mut(container_tile_id)
                         {
                             re_log::trace!("Inserting new space view into root container");
                             container.add_child(tile_id);
+                            if let Some(position_in_parent) = position_in_parent {
+                                self.tree.move_tile_to_container(
+                                    tile_id,
+                                    container_tile_id,
+                                    position_in_parent,
+                                    true,
+                                );
+                            }
                         } else {
                             re_log::trace!("Root was not a container - will re-run auto-layout");
                             reset = true;
