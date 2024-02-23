@@ -43,16 +43,24 @@ rerun-release = "cargo run --package rerun-cli --no-default-features --features 
 # Compile and run the web-viewer via rerun-cli.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
+#
+# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
+# (this looks heavy but takes typically below 0.1s!)
 rerun-web = """
-     cargo run -p re_build_web_viewer -- --debug
+     rustup target add wasm32-unknown-unknown
+  && cargo run -p re_build_web_viewer -- --debug
   && cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer
 """
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
+#
+# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
+# (this looks heavy but takes typically below 0.1s!)
 rerun-release-web = """
-     cargo run -p re_build_web_viewer -- --release
+     rustup target add wasm32-unknown-unknown
+  && cargo run -p re_build_web_viewer -- --release
   && cargo run --package rerun-cli --no-default-features --features web_viewer --release -- --web-viewer
 """
 
