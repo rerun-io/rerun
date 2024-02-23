@@ -1219,22 +1219,31 @@ impl eframe::App for App {
             }
         }
 
-        // TODO(andreas): store the re_renderer somewhere else.
-        let gpu_resource_stats = {
-            let egui_renderer = {
-                let render_state = frame.wgpu_render_state().unwrap();
-                &mut render_state.renderer.read()
+        let (gpu_resource_stats, store_stats) = {
+            re_tracing::profile_scope!("gather_all_stats");
+
+            // TODO(andreas): store the re_renderer somewhere else.
+            let gpu_resource_stats = {
+                re_tracing::profile_scope!("renderer");
+
+                let egui_renderer = {
+                    let render_state = frame.wgpu_render_state().unwrap();
+                    &mut render_state.renderer.read()
+                };
+                let render_ctx = egui_renderer
+                    .callback_resources
+                    .get::<re_renderer::RenderContext>()
+                    .unwrap();
+
+                // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
+                render_ctx.gpu_resources.statistics()
             };
-            let render_ctx = egui_renderer
-                .callback_resources
-                .get::<re_renderer::RenderContext>()
-                .unwrap();
 
-            // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
-            render_ctx.gpu_resources.statistics()
+            let store_stats =
+                store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled());
+
+            (gpu_resource_stats, store_stats)
         };
-
-        let store_stats = store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled());
 
         // do early, before doing too many allocations
         self.memory_panel.update(&gpu_resource_stats, &store_stats);
