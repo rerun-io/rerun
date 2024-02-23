@@ -30,8 +30,6 @@ default = []
 ##
 ## However, when building from source in the repository, this feature adds quite a bit
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
-## You also need to install some additional tools, which you can do by running
-## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
 web_viewer = [
   "dep:re_smart_channel",
   "dep:re_web_viewer_server",

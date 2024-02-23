@@ -117,7 +117,12 @@ High-level documentation for rerun can be found at [http://rerun.io/docs](http:/
 
 ## Building for the Web
 
-If you want to build a standalone rerun executable that contains the web-viewer and a websocket server,
+First make sure your rust toolchain has the `wasm32-unknown-unknown` target:
+```
+rustup target add wasm32-unknown-unknown
+```
+
+Then, to build a standalone rerun executable that contains the web-viewer and a websocket server,
 you need to ensure the `web_viewer` feature flag is set when building rerun.
 This is automatically done by this shortcut which builds & runs the web viewer:
 ```
