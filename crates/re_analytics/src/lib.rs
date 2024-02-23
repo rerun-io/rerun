@@ -50,80 +50,55 @@ pub enum EventKind {
     /// Update the permanent state associated with this analytics ID.
     ///
     /// Used e.g. to associate an OS with a particular analytics ID upon its creation.
-    Update,
+    Identify,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct Event {
+pub struct AnalyticsEvent {
     // NOTE: serialized in a human-readable format as we want end users to be able to inspect the
     // data we send out.
     #[serde(with = "::time::serde::rfc3339")]
-    pub time_utc: OffsetDateTime,
-    pub kind: EventKind,
-    pub name: Cow<'static, str>,
-    pub props: HashMap<Cow<'static, str>, Property>,
+    time_utc: OffsetDateTime,
+    kind: EventKind,
+    name: Cow<'static, str>,
+    props: HashMap<Cow<'static, str>, Property>,
 }
 
-impl Event {
+impl AnalyticsEvent {
+    #[inline]
+    pub fn new(name: impl Into<Cow<'static, str>>, kind: EventKind) -> Self {
+        Self {
+            time_utc: OffsetDateTime::now_utc(),
+            kind,
+            name: name.into(),
+            props: Default::default(),
+        }
+    }
+
+    #[inline]
     pub fn append(name: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            time_utc: OffsetDateTime::now_utc(),
-            kind: EventKind::Append,
-            name: name.into(),
-            props: Default::default(),
-        }
+        Self::new(name, EventKind::Append)
     }
 
-    pub fn update(name: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            time_utc: OffsetDateTime::now_utc(),
-            kind: EventKind::Update,
-            name: name.into(),
-            props: Default::default(),
-        }
+    #[inline]
+    pub fn identify() -> Self {
+        Self::new("$identify", EventKind::Identify)
     }
 
-    /// NOTE: due to an earlier snafu, we filter out all properties called
-    /// `git_branch` and `location` on the server-end, so don't use those property names!
-    /// See <https://github.com/rerun-io/rerun/pull/1563> for details.
-    pub fn with_prop(
-        mut self,
+    #[inline]
+    pub fn insert(&mut self, name: impl Into<Cow<'static, str>>, value: impl Into<Property>) {
+        self.props.insert(name.into(), value.into());
+    }
+
+    #[inline]
+    pub fn insert_opt(
+        &mut self,
         name: impl Into<Cow<'static, str>>,
-        value: impl Into<Property>,
-    ) -> Self {
-        let name = name.into();
-        debug_assert!(
-            name != "git_branch" && name != "location",
-            "We filter out the property name {name:?} on the server-end. Pick a different name."
-        );
-        self.props.insert(name, value.into());
-        self
-    }
-
-    /// Adds Rerun version, git hash, build date and similar as properties to the event.
-    pub fn with_build_info(self, build_info: &re_build_info::BuildInfo) -> Event {
-        let re_build_info::BuildInfo {
-            crate_name: _,
-            version,
-            rustc_version,
-            llvm_version,
-            git_hash: _,
-            git_branch: _,
-            is_in_rerun_workspace,
-            target_triple,
-            datetime,
-        } = build_info;
-
-        // We intentionally don't include the branch name, because it can contain sensitive user-stuff.
-
-        self.with_prop("rerun_version", version.to_string())
-            .with_prop("rust_version", (*rustc_version).to_owned())
-            .with_prop("llvm_version", (*llvm_version).to_owned())
-            .with_prop("target", *target_triple)
-            .with_prop("git_hash", build_info.git_hash_or_tag())
-            .with_prop("build_date", *datetime)
-            .with_prop("debug", cfg!(debug_assertions)) // debug-build?
-            .with_prop("rerun_workspace", *is_in_rerun_workspace)
+        value: Option<impl Into<Property>>,
+    ) {
+        if let Some(value) = value {
+            self.props.insert(name.into(), value.into());
+        }
     }
 }
 
@@ -300,21 +275,22 @@ impl Analytics {
         &self.config
     }
 
-    /// Register a property that will be included in all [`EventKind::Append`].
-    pub fn register_append_property(&mut self, name: &'static str, prop: impl Into<Property>) {
-        self.default_append_props.insert(name.into(), prop.into());
-    }
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn record<E: Event>(&self, event: E) {
+        if self.pipeline.is_none() {
+            return;
+        }
 
-    /// Deregister a property.
-    pub fn deregister_append_property(&mut self, name: &'static str) {
-        self.default_append_props.remove(name);
+        let mut e = AnalyticsEvent::new(E::NAME, E::KIND);
+        event.serialize(&mut e);
+        self.record_raw(e);
     }
 
     /// Record an event.
     ///
     /// It will be extended with an `event_id` and, if this is an [`EventKind::Append`],
     /// any properties registered with [`Self::register_append_property`].
-    pub fn record(&self, mut event: Event) {
+    fn record_raw(&self, mut event: AnalyticsEvent) {
         if let Some(pipeline) = self.pipeline.as_ref() {
             if event.kind == EventKind::Append {
                 // Insert default props
@@ -329,5 +305,29 @@ impl Analytics {
 
             pipeline.record(event);
         }
+    }
+}
+
+pub trait Event: Properties {
+    const NAME: &'static str;
+    const KIND: EventKind = EventKind::Append;
+}
+
+pub trait Properties {
+    fn serialize(&self, event: &mut AnalyticsEvent) {
+        let _ = event;
+    }
+}
+
+impl Properties for re_build_info::BuildInfo {
+    fn serialize(&self, event: &mut AnalyticsEvent) {
+        event.insert("rerun_version", self.version.to_string());
+        event.insert("rust_version", self.rustc_version);
+        event.insert("llvm_version", self.llvm_version);
+        event.insert("target", self.target_triple);
+        event.insert("git_hash", self.git_hash_or_tag());
+        event.insert("build_date", self.datetime);
+        event.insert("debug", cfg!(debug_assertions)); // debug-build?
+        event.insert("rerun_workspace", self.is_in_rerun_workspace);
     }
 }

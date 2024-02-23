@@ -1,4 +1,4 @@
-use crate::{Event, Property};
+use crate::{AnalyticsEvent, Property};
 use std::collections::HashMap;
 
 use time::OffsetDateTime;
@@ -16,7 +16,11 @@ pub enum PostHogEvent<'a> {
 }
 
 impl<'a> PostHogEvent<'a> {
-    pub fn from_event(analytics_id: &'a str, session_id: &'a str, event: &'a Event) -> Self {
+    pub fn from_event(
+        analytics_id: &'a str,
+        session_id: &'a str,
+        event: &'a AnalyticsEvent,
+    ) -> Self {
         let properties = event.props.iter().map(|(name, value)| {
             (
                 name.as_ref(),
@@ -38,7 +42,7 @@ impl<'a> PostHogEvent<'a> {
                     .chain([("session_id", session_id.into())])
                     .collect(),
             }),
-            crate::EventKind::Update => Self::Identify(PostHogIdentifyEvent {
+            crate::EventKind::Identify => Self::Identify(PostHogIdentifyEvent {
                 timestamp: event.time_utc,
                 event: "$identify",
                 distinct_id: analytics_id,

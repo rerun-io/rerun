@@ -3,6 +3,8 @@
 //! This crate contains all the GUI code for the Rerun Viewer,
 //! including all 2D and 3D visualization code.
 
+#[cfg(feature = "analytics")]
+mod analytics;
 mod app;
 mod app_blueprint;
 mod app_state;
@@ -14,7 +16,6 @@ mod saving;
 mod screenshotter;
 mod store_hub;
 mod ui;
-mod viewer_analytics;
 
 /// Auto-generated blueprint-related types.
 ///
@@ -90,7 +91,7 @@ pub enum AppEnvironment {
     },
 
     /// We are a web-viewer running in a browser as Wasm.
-    Web,
+    Web { url: String },
 
     /// Some custom application wrapping re_viewer
     Custom(String),
@@ -126,6 +127,24 @@ impl AppEnvironment {
                     llvm_version: "unknown".into(),
                 }
             }
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            AppEnvironment::CSdk => "c_sdk",
+            AppEnvironment::PythonSdk(_) => "python_sdk",
+            AppEnvironment::RustSdk { .. } => "rust_sdk",
+            AppEnvironment::RerunCli { .. } => "rerun_cli",
+            AppEnvironment::Web { .. } => "web_viewer",
+            AppEnvironment::Custom(_) => "custom",
+        }
+    }
+
+    pub fn url(&self) -> Option<&String> {
+        match self {
+            AppEnvironment::Web { url } => Some(url),
+            _ => None,
         }
     }
 }

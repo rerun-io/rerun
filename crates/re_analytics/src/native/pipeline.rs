@@ -12,7 +12,7 @@ use crossbeam::{
 
 use super::sink::PostHogSink;
 use super::AbortSignal;
-use crate::{Config, Event};
+use crate::{AnalyticsEvent, Config};
 
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
@@ -28,7 +28,7 @@ pub enum PipelineError {
 /// Flushing of the WAL is entirely left up to the OS page cache, hance the -ish.
 #[derive(Debug)]
 pub struct Pipeline {
-    event_tx: channel::Sender<Result<Event, RecvError>>,
+    event_tx: channel::Sender<Result<AnalyticsEvent, RecvError>>,
 }
 
 impl Pipeline {
@@ -115,14 +115,17 @@ impl Pipeline {
         Ok(Some(Self { event_tx }))
     }
 
-    pub fn record(&self, event: Event) {
+    pub fn record(&self, event: AnalyticsEvent) {
         try_send_event(&self.event_tx, event);
     }
 }
 
 // ---
 
-fn try_send_event(event_tx: &channel::Sender<Result<Event, RecvError>>, event: Event) {
+fn try_send_event(
+    event_tx: &channel::Sender<Result<AnalyticsEvent, RecvError>>,
+    event: AnalyticsEvent,
+) {
     match event_tx.try_send(Ok(event)) {
         Ok(_) => {}
         Err(channel::TrySendError::Full(_)) => {
@@ -211,8 +214,8 @@ fn realtime_pipeline(
     sink: &PostHogSink,
     mut session_file: File,
     tick: Duration,
-    event_tx: &channel::Sender<Result<Event, RecvError>>,
-    event_rx: &channel::Receiver<Result<Event, RecvError>>,
+    event_tx: &channel::Sender<Result<AnalyticsEvent, RecvError>>,
+    event_rx: &channel::Receiver<Result<AnalyticsEvent, RecvError>>,
     abort_signal: &AbortSignal,
 ) {
     let analytics_id: Arc<str> = config.analytics_id.clone().into();
@@ -291,8 +294,8 @@ fn append_event(
     session_file: &mut File,
     analytics_id: &str,
     session_id: &str,
-    event: Event,
-) -> Result<(), Event> {
+    event: AnalyticsEvent,
+) -> Result<(), AnalyticsEvent> {
     let mut event_str = match serde_json::to_string(&event) {
         Ok(event_str) => event_str,
         Err(err) => {
@@ -335,7 +338,7 @@ fn flush_events(
         .lines()
         .filter_map(|event_str| match event_str {
             Ok(event_str) => {
-                match serde_json::from_str::<Event>(&event_str) {
+                match serde_json::from_str::<AnalyticsEvent>(&event_str) {
                     Ok(event) => Some(event),
                     Err(err) => {
                         // NOTE: This is effectively where we detect possible half-writes.

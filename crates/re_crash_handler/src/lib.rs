@@ -65,26 +65,38 @@ fn install_panic_hook(_build_info: BuildInfo) {
 
         #[cfg(feature = "analytics")]
         {
-            if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1))
-            {
-                let mut event = re_analytics::Event::append("crash-panic")
-                    .with_build_info(&_build_info)
-                    .with_prop("callstack", callstack);
+            struct CrashPanic {
+                build_info: BuildInfo,
+                callstack: String,
+                message: Option<String>,
+                file_line: Option<String>,
+            }
 
-                let include_panic_message = false; // Don't include it, because it can contain sensitive information (`panic!("Couldn't read {sensitive_file_path}")`)
-                if include_panic_message {
-                    // `panic_info.message` is unstable, so this is the recommended way of getting
-                    // the panic message out. We need both the `&str` and `String` variants.
-                    if let Some(msg) = msg {
-                        event = event.with_prop("message", msg);
+            impl re_analytics::Event for CrashPanic {
+                const NAME: &'static str = "crash-panic";
+            }
+
+            impl re_analytics::Properties for CrashPanic {
+                fn serialize(&self, event: &mut re_analytics::AnalyticsEvent) {
+                    self.build_info.serialize(event);
+                    event.insert("callstack", self.callstack.clone());
+                    if let Some(message) = &self.message {
+                        event.insert("message", message.clone());
+                    }
+                    if let Some(file_line) = &self.file_line {
+                        event.insert("file_line", file_line.clone());
                     }
                 }
+            }
 
-                if let Some(file_line) = file_line {
-                    event = event.with_prop("file_line", file_line);
-                }
-
-                analytics.record(event);
+            if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1))
+            {
+                analytics.record(CrashPanic {
+                    build_info: _build_info,
+                    callstack,
+                    message: None, // Don't include it, because it can contain sensitive information (`panic!("Couldn't read {sensitive_file_path}")`)
+                    file_line,
+                });
 
                 std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
             }
@@ -202,12 +214,30 @@ fn install_signal_handler(build_info: BuildInfo) {
 
     #[cfg(feature = "analytics")]
     fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
+        struct CrashSignal {
+            build_info: BuildInfo,
+            signal: String,
+            callstack: String,
+        }
+
+        impl re_analytics::Event for CrashSignal {
+            const NAME: &'static str = "crash-signal";
+        }
+
+        impl re_analytics::Properties for CrashSignal {
+            fn serialize(&self, event: &mut re_analytics::AnalyticsEvent) {
+                self.build_info.serialize(event);
+                event.insert("signal", self.signal.clone());
+                event.insert("callstack", self.callstack.clone());
+            }
+        }
+
         if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1)) {
-            let event = re_analytics::Event::append("crash-signal")
-                .with_build_info(&build_info)
-                .with_prop("signal", signal_name)
-                .with_prop("callstack", callstack);
-            analytics.record(event);
+            analytics.record(CrashSignal {
+                build_info,
+                signal: signal_name.to_owned(),
+                callstack,
+            });
 
             std::thread::sleep(std::time::Duration::from_secs(1)); // Give analytics time to send the event
         }
