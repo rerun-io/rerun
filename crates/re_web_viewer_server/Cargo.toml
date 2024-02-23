@@ -30,16 +30,6 @@ all-features = true
 
 
 [features]
-## ONLY FOR CI!
-##
-## When set: will skip building the Web Viewer Wasm.
-## This makes the CI much faster, but the resulting web server
-## will crash if you try to run it!
-##
-## BONUS: If you configure rust-analyzer to use `--all-features,
-## you will also have rust-analyzer opting-out of building wasm!
-__ci = []
-
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
@@ -62,9 +52,3 @@ webbrowser.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
-
-
-[build-dependencies]
-re_build_tools.workspace = true
-re_build_web_viewer.workspace = true
-re_error.workspace = true
