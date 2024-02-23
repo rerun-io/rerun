@@ -4541,6 +4541,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_query_cache2"
+version = "0.14.0-alpha.2"
+dependencies = [
+ "ahash",
+ "criterion",
+ "indent",
+ "itertools 0.12.0",
+ "mimalloc",
+ "parking_lot",
+ "paste",
+ "rand",
+ "re_data_store",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "seq-macro",
+ "similar-asserts",
+ "web-time",
+]
+
+[[package]]
 name = "re_renderer"
 version = "0.14.0-alpha.2"
 dependencies = [
