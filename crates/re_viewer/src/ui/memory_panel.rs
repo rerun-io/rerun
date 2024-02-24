@@ -28,7 +28,7 @@ impl MemoryPanel {
     pub fn update(
         &mut self,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_stats: &StoreHubStats,
+        store_stats: Option<&StoreHubStats>,
     ) {
         re_tracing::profile_function!();
         self.history.capture(
@@ -36,9 +36,9 @@ impl MemoryPanel {
                 (gpu_resource_stats.total_buffer_size_in_bytes
                     + gpu_resource_stats.total_texture_size_in_bytes) as _,
             ),
-            Some(store_stats.recording_stats.total.num_bytes as _),
-            Some(store_stats.recording_cached_stats.total_size_bytes() as _),
-            Some(store_stats.blueprint_stats.total.num_bytes as _),
+            store_stats.map(|stats| stats.recording_stats.total.num_bytes as _),
+            store_stats.map(|stats| stats.recording_cached_stats.total_size_bytes() as _),
+            store_stats.map(|stats| stats.blueprint_stats.total.num_bytes as _),
         );
     }
 
@@ -61,7 +61,7 @@ impl MemoryPanel {
         re_ui: &re_ui::ReUi,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_stats: &StoreHubStats,
+        store_stats: Option<&StoreHubStats>,
     ) {
         re_tracing::profile_function!();
 
@@ -88,7 +88,7 @@ impl MemoryPanel {
         re_ui: &re_ui::ReUi,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_stats: &StoreHubStats,
+        store_stats: Option<&StoreHubStats>,
     ) {
         ui.strong("Rerun Viewer resource usage");
 
@@ -102,28 +102,30 @@ impl MemoryPanel {
             Self::gpu_stats(ui, gpu_resource_stats);
         });
 
-        ui.separator();
-        ui.collapsing("Datastore Resources", |ui| {
-            Self::store_stats(
-                ui,
-                &store_stats.recording_config,
-                &store_stats.recording_stats,
-            );
-        });
+        if let Some(store_stats) = store_stats {
+            ui.separator();
+            ui.collapsing("Datastore Resources", |ui| {
+                Self::store_stats(
+                    ui,
+                    &store_stats.recording_config,
+                    &store_stats.recording_stats,
+                );
+            });
 
-        ui.separator();
-        ui.collapsing("Primary Cache Resources", |ui| {
-            self.caches_stats(ui, re_ui, &store_stats.recording_cached_stats);
-        });
+            ui.separator();
+            ui.collapsing("Primary Cache Resources", |ui| {
+                self.caches_stats(ui, re_ui, &store_stats.recording_cached_stats);
+            });
 
-        ui.separator();
-        ui.collapsing("Blueprint Resources", |ui| {
-            Self::store_stats(
-                ui,
-                &store_stats.blueprint_config,
-                &store_stats.blueprint_stats,
-            );
-        });
+            ui.separator();
+            ui.collapsing("Blueprint Resources", |ui| {
+                Self::store_stats(
+                    ui,
+                    &store_stats.blueprint_config,
+                    &store_stats.blueprint_stats,
+                );
+            });
+        }
     }
 
     fn cpu_stats(ui: &mut egui::Ui, re_ui: &re_ui::ReUi, limit: &MemoryLimit) {

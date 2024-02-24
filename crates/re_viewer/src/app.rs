@@ -749,7 +749,7 @@ impl App {
         &mut self,
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_stats: &StoreHubStats,
+        store_stats: Option<&StoreHubStats>,
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
@@ -806,7 +806,7 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
-        store_stats: &StoreHubStats,
+        store_stats: Option<&StoreHubStats>,
     ) {
         let mut main_panel_frame = egui::Frame::default();
         if re_ui::CUSTOM_WINDOW_DECORATIONS {
@@ -1219,34 +1219,33 @@ impl eframe::App for App {
             }
         }
 
-        let (gpu_resource_stats, store_stats) = {
-            re_tracing::profile_scope!("gather_all_stats");
+        // NOTE: GPU resource stats are cheap to compute so we always do.
+        // TODO(andreas): store the re_renderer somewhere else.
+        let gpu_resource_stats = {
+            re_tracing::profile_scope!("gpu_resource_stats");
 
-            // TODO(andreas): store the re_renderer somewhere else.
-            let gpu_resource_stats = {
-                re_tracing::profile_scope!("renderer");
-
-                let egui_renderer = {
-                    let render_state = frame.wgpu_render_state().unwrap();
-                    &mut render_state.renderer.read()
-                };
-                let render_ctx = egui_renderer
-                    .callback_resources
-                    .get::<re_renderer::RenderContext>()
-                    .unwrap();
-
-                // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
-                render_ctx.gpu_resources.statistics()
+            let egui_renderer = {
+                let render_state = frame.wgpu_render_state().unwrap();
+                &mut render_state.renderer.read()
             };
+            let render_ctx = egui_renderer
+                .callback_resources
+                .get::<re_renderer::RenderContext>()
+                .unwrap();
 
-            let store_stats =
-                store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled());
-
-            (gpu_resource_stats, store_stats)
+            // Query statistics before begin_frame as this might be more accurate if there's resources that we recreate every frame.
+            render_ctx.gpu_resources.statistics()
         };
 
+        // NOTE: Store and caching stats are very costly to compute: only do so if the memory panel
+        // is opened.
+        let store_stats = self
+            .memory_panel_open
+            .then(|| store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled()));
+
         // do early, before doing too many allocations
-        self.memory_panel.update(&gpu_resource_stats, &store_stats);
+        self.memory_panel
+            .update(&gpu_resource_stats, store_stats.as_ref());
 
         self.check_keyboard_shortcuts(egui_ctx);
 
@@ -1284,7 +1283,7 @@ impl eframe::App for App {
             &app_blueprint,
             &gpu_resource_stats,
             store_context.as_ref(),
-            &store_stats,
+            store_stats.as_ref(),
         );
 
         if re_ui::CUSTOM_WINDOW_DECORATIONS {
