@@ -103,7 +103,7 @@ impl Points3DVisualizer {
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let mut point_range_builder =
-                point_batch.add_points(&positions, &radii, &colors, &picking_instance_ids);
+                point_batch.add_points(positions, &radii, &colors, &picking_instance_ids);
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
@@ -151,7 +151,7 @@ impl Points3DVisualizer {
             if let Some(labels) = data.labels {
                 self.data.ui_labels.extend(Self::process_labels(
                     labels,
-                    &positions,
+                    positions,
                     &instance_path_hashes_for_picking,
                     &colors,
                     &annotation_infos,
@@ -275,10 +275,10 @@ impl VisualizerSystem for Points3DVisualizer {
 // ---
 
 #[doc(hidden)] // Public for benchmarks
-pub struct LoadedPoints {
+pub struct LoadedPoints<'a> {
     pub annotation_infos: ResolvedAnnotationInfos,
     pub keypoints: Keypoints,
-    pub positions: Vec<glam::Vec3>,
+    pub positions: &'a [glam::Vec3],
     pub radii: Vec<re_renderer::Size>,
     pub colors: Vec<re_renderer::Color32>,
     pub picking_instance_ids: Vec<PickingLayerInstanceId>,
@@ -295,10 +295,10 @@ pub struct Points3DComponentData<'a> {
     pub class_ids: Option<&'a [Option<ClassId>]>,
 }
 
-impl LoadedPoints {
+impl<'a> LoadedPoints<'a> {
     #[inline]
     pub fn load(
-        data: &Points3DComponentData<'_>,
+        data: &'a Points3DComponentData<'_>,
         ent_path: &EntityPath,
         latest_at: TimeInt,
         annotations: &Annotations,
@@ -330,13 +330,11 @@ impl LoadedPoints {
             picking_instance_ids,
         }
     }
-
     #[inline]
-    pub fn load_positions(
-        Points3DComponentData { positions, .. }: &Points3DComponentData<'_>,
-    ) -> Vec<glam::Vec3> {
-        re_tracing::profile_function!();
-        bytemuck::cast_slice(positions).to_vec()
+    pub fn load_positions<'b>(
+        &Points3DComponentData { positions, .. }: &'b Points3DComponentData<'_>,
+    ) -> &'b [glam::Vec3] {
+        bytemuck::cast_slice(positions)
     }
 
     #[inline]
