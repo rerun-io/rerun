@@ -134,18 +134,6 @@ fn bench_points(c: &mut criterion::Criterion) {
             }
 
             {
-                let mut group = c.benchmark_group("Points3D");
-                group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-                group.bench_function(bench_name(true, "load_positions"), |b| {
-                    b.iter(|| {
-                        let positions = LoadedPoints::load_positions(&data);
-                        assert_eq!(positions.len(), NUM_POINTS);
-                        positions
-                    });
-                });
-            }
-
-            {
                 let points = LoadedPoints::load(&data, &ent_path, at, &annotations);
 
                 let mut group = c.benchmark_group("Points3D");
@@ -172,18 +160,6 @@ fn bench_points(c: &mut criterion::Criterion) {
                         let radii = LoadedPoints::load_radii(&data, &ent_path);
                         assert_eq!(radii.len(), NUM_POINTS);
                         radii
-                    });
-                });
-            }
-
-            {
-                let mut group = c.benchmark_group("Points3D");
-                group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-                group.bench_function(bench_name(true, "load_picking_ids"), |b| {
-                    b.iter(|| {
-                        let picking_ids = LoadedPoints::load_picking_ids(&data);
-                        assert_eq!(picking_ids.len(), NUM_POINTS);
-                        picking_ids
                     });
                 });
             }
