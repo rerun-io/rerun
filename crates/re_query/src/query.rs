@@ -106,8 +106,6 @@ pub fn query_archetype<A: Archetype>(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
 ) -> crate::Result<ArchetypeView<A>> {
-    re_tracing::profile_function!();
-
     let required_components: Vec<_> = A::required_components()
         .iter()
         .map(|component| get_component_with_instances(store, query, ent_path, *component))
