@@ -3,15 +3,12 @@ use nohash_hasher::IntMap;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityPropertyMap, EntityTree};
 use re_types::{
-    components::{DisconnectedSpace, PinholeProjection, Transform3D, ViewCoordinates},
+    components::{DisconnectedSpace, PinholeProjection, Resolution, Transform3D, ViewCoordinates},
     ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
 
-use crate::{
-    query_pinhole,
-    visualizers::{image_view_coordinates, CamerasVisualizer},
-};
+use crate::visualizers::{image_view_coordinates, CamerasVisualizer};
 
 #[derive(Clone)]
 struct TransformInfo {
@@ -321,6 +318,27 @@ fn get_cached_transform(
     transform3d
 }
 
+fn get_cached_pinhole(
+    store: &re_data_store::DataStore,
+    query_caches: &re_query_cache::Caches,
+    query: &re_data_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+) -> Option<(PinholeProjection, ViewCoordinates)> {
+    let mut result = None;
+    query_caches
+        .query_archetype_latest_at_pov1_comp2::<re_types::archetypes::Pinhole, PinholeProjection, Resolution, ViewCoordinates, _>(
+            store,
+            query,
+            entity_path,
+            |(_, _, image_from_camera, _resolution, camera_xyz)|  {
+                result = image_from_camera.first().map(|image_from_camera|
+                (*image_from_camera, camera_xyz.and_then(|c| c.first()).cloned().flatten().unwrap_or(ViewCoordinates::RDF)));
+            }
+        )
+        .ok();
+    result
+}
+
 fn transform_at(
     entity_tree: &EntityTree,
     query_caches: &re_query_cache::Caches,
@@ -333,7 +351,7 @@ fn transform_at(
 
     let entity_path = &entity_tree.path;
 
-    let pinhole = query_pinhole(store, query, entity_path);
+    let pinhole = get_cached_pinhole(store, query_caches, query, entity_path);
     if pinhole.is_some() {
         if encountered_pinhole.is_some() {
             return Err(UnreachableTransformReason::NestedPinholeCameras);
@@ -345,16 +363,16 @@ fn transform_at(
     let transform3d = get_cached_transform(entity_path, query_caches, store, query)
         .map(|transform| transform.clone().into_parent_from_child_transform());
 
-    let pinhole = pinhole.map(|pinhole| {
+    let pinhole = pinhole.map(|(image_from_camera, camera_xyz)| {
         // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
         // Our visualization interprets this as looking at a 2D image plane from a single point (the pinhole).
 
         // Center the image plane and move it along z, scaling the further the image plane is.
         let distance = pinhole_image_plane_distance(entity_path);
-        let focal_length = pinhole.focal_length_in_pixels();
+        let focal_length = image_from_camera.focal_length_in_pixels();
         let focal_length = glam::vec2(focal_length.x(), focal_length.y());
         let scale = distance / focal_length;
-        let translation = (-pinhole.principal_point() * scale).extend(distance);
+        let translation = (-image_from_camera.principal_point() * scale).extend(distance);
 
         let image_plane3d_from_2d_content = glam::Affine3A::from_translation(translation)
             // We want to preserve any depth that might be on the pinhole image.
@@ -366,10 +384,7 @@ fn transform_at(
         // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
         // determine how the image plane is oriented.
         // (see also `CamerasPart` where the frustum lines are set up)
-        let world_from_image_plane3d = pinhole
-            .camera_xyz
-            .unwrap_or(ViewCoordinates::RDF)
-            .from_other(&image_view_coordinates());
+        let world_from_image_plane3d = camera_xyz.from_other(&image_view_coordinates());
 
         glam::Affine3A::from_mat3(world_from_image_plane3d) * image_plane3d_from_2d_content
 
