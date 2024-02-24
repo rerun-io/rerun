@@ -68,6 +68,8 @@ class Transform3DExt:
                     raise ValueError("Rotation and mat3x3 parameters are mutually exclusive.")
                 if scale is not None and mat3x3 is not None:
                     raise ValueError("Scale and mat3x3 parameters are mutually exclusive.")
+                if from_parent is None:
+                    from_parent = False
 
                 if mat3x3 is not None:
                     self.__attrs_init__(
