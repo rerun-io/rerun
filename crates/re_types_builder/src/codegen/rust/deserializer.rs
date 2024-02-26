@@ -208,7 +208,45 @@ pub fn quote_arrow_deserializer(
                 // We use sparse unions for enums, which means only 8 bits is required for each field,
                 // and nulls are are encoded with a special 0-index `_null_markers` variant.
 
-                quote!(unimplemented!("Sparse unions are not yet supported")) // TODO
+                let data_src_types = format_ident!("{data_src}_types");
+
+                let obj_fqname = obj.fqname.as_str();
+                let quoted_obj_name = format_ident!("{}", obj.name);
+                let quoted_branches = obj.fields.iter().enumerate().map(|(typ, obj_field)| {
+                    let typ = typ as i8 + 1; // NOTE: +1 to account for `nulls` virtual arm
+                    let quoted_obj_field_type = format_ident!("{}", obj_field.pascal_case_name());
+                    quote! {
+                        #typ => Ok(Some(#quoted_obj_name::#quoted_obj_field_type))
+                    }
+                });
+
+                let quoted_downcast = {
+                    let cast_as = quote!(arrow2::array::UnionArray);
+                    quote_array_downcast_quoted(obj_fqname, &data_src, &cast_as, &quoted_datatype)
+                };
+
+                quote! {{
+                    let #data_src = #quoted_downcast?;
+                    let #data_src_types = #data_src.types();
+
+                    #data_src_types
+                        .iter()
+                        .map(|typ| {
+                            match typ {
+                                0 => Ok(None),
+
+                                // The actual enum variants
+                                #(#quoted_branches,)*
+
+                                _ => Err(DeserializationError::missing_union_arm(
+                                    #quoted_datatype, "<invalid>", *typ as _,
+                                )),
+                            }
+                        })
+                        // NOTE: implicit Vec<Result> to Result<Vec>
+                        .collect::<DeserializationResult<Vec<_>>>()
+                        .with_context(#obj_fqname)?
+                }}
             }
 
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
