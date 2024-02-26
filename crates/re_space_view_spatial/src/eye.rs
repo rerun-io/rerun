@@ -359,7 +359,7 @@ impl ViewEye {
         bounding_boxes: &SceneBoundingBoxes,
     ) -> bool {
         let mut speed = match self.mode {
-            EyeMode::FirstPerson => 0.1 * bounding_boxes.accumulated.size().length(), // TODO(emilk): user controlled speed
+            EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(), // TODO(emilk): user controlled speed
             EyeMode::Orbital => self.orbit_radius,
         };
 
