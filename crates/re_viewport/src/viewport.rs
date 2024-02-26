@@ -363,7 +363,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 })
                 .collect::<Vec<_>>();
 
-            // Remove all space views that redundant within the remaining recommendation.
+            // Remove all space views that are redundant within the remaining recommendation.
             // This n^2 loop should only run ever for frames that add new space views.
             let final_recommendations =
                 recommended_space_views
