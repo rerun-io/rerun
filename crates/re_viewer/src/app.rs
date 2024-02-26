@@ -170,6 +170,9 @@ impl App {
             }
         };
 
+        #[cfg(not(feature = "analytics"))]
+        let _ = app_env;
+
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         if re_log::add_boxed_logger(Box::new(logger)).is_err() {
             // This can happen when `rerun` crate users call `spawn`. TODO(emilk): make `spawn` spawn a new process.
