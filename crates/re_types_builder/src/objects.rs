@@ -561,9 +561,11 @@ impl Object {
             .iter()
             // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
             .filter(|val| {
-                val.union_type()
-                    .filter(|utype| utype.base_type() != FbsBaseType::None)
-                    .is_some()
+                utype.is_some()
+                    || val
+                        .union_type()
+                        .filter(|utype| utype.base_type() != FbsBaseType::None)
+                        .is_some()
             })
             .map(|val| ObjectField::from_raw_enum_value(include_dir_path, enums, objs, enm, &val))
             .collect();
@@ -945,6 +947,13 @@ pub enum FieldKind {
 /// The underlying type of an [`ObjectField`].
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Type {
+    /// This is the unit type, used for `enum` variants.
+    ///
+    /// In `arrow`, this corresponds to the `null` type`.
+    ///
+    /// In rust this would be `()`, and in C++ this would be `void`.
+    Unit,
+
     UInt8,
     UInt16,
     UInt32,
@@ -1012,6 +1021,9 @@ impl Type {
         }
 
         match typ {
+            // Enum variant
+            FbsBaseType::None => Self::Unit,
+
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
             FbsBaseType::UByte => Self::UInt8,
@@ -1051,8 +1063,8 @@ impl Type {
                     attrs,
                 ),
             },
-            FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
-                unimplemented!("{typ:#?}")
+            FbsBaseType::UType | FbsBaseType::Vector64 => {
+                unimplemented!("FbsBaseType::{typ:#?}")
             }
             // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{typ:#?}"),
@@ -1072,7 +1084,9 @@ impl Type {
                 elem_type,
                 length: _,
             } => Some(elem_type),
-            Self::UInt8
+
+            Self::Unit
+            | Self::UInt8
             | Self::UInt16
             | Self::UInt32
             | Self::UInt64
@@ -1110,7 +1124,8 @@ impl Type {
     /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
     pub fn has_default_destructor(&self, objects: &Objects) -> bool {
         match self {
-            Self::UInt8
+            Self::Unit
+            | Self::UInt8
             | Self::UInt16
             | Self::UInt32
             | Self::UInt64

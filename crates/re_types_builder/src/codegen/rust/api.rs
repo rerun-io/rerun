@@ -731,6 +731,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self { typ, unwrap } = self;
         match typ {
+            Type::Unit => quote!(()),
             Type::UInt8 => quote!(u8),
             Type::UInt16 => quote!(u16),
             Type::UInt32 => quote!(u32),
