@@ -2398,8 +2398,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
-                                    ))
-                                    .with_context("rerun.datatypes.TensorBuffer");
+                                    ));
                                 }
                             }))
                         }

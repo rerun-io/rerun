@@ -681,13 +681,12 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                         }
                                         _ => {
                                             return Err(
-                                                    DeserializationError::missing_union_arm(
-                                                        Self::arrow_datatype(),
-                                                        "<invalid>",
-                                                        *typ as _,
-                                                    ),
-                                                )
-                                                .with_context("rerun.testing.datatypes.AffixFuzzer3");
+                                                DeserializationError::missing_union_arm(
+                                                    Self::arrow_datatype(),
+                                                    "<invalid>",
+                                                    *typ as _,
+                                                ),
+                                            );
                                         }
                                     },
                                 ),

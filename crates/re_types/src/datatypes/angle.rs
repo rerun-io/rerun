@@ -311,8 +311,7 @@ impl ::re_types_core::Loggable for Angle {
                                         Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
-                                    ))
-                                    .with_context("rerun.datatypes.Angle");
+                                    ));
                                 }
                             }))
                         }

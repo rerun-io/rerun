@@ -343,7 +343,7 @@ pub fn quote_arrow_deserializer(
                                         _ => {
                                             return Err(DeserializationError::missing_union_arm(
                                                 #quoted_datatype, "<invalid>", *typ as _,
-                                            )).with_context(#obj_fqname);
+                                            ));
                                         }
                                     }))
                                 }

@@ -406,8 +406,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                                         Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
-                                    ))
-                                    .with_context("rerun.datatypes.Rotation3D");
+                                    ));
                                 }
                             }))
                         }

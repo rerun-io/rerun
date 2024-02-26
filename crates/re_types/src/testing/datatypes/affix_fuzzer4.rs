@@ -557,8 +557,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                         Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
-                                    ))
-                                    .with_context("rerun.testing.datatypes.AffixFuzzer4");
+                                    ));
                                 }
                             }))
                         }
