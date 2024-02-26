@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use egui_tiles::{SimplificationOptions, Tile, TileId};
+use egui_tiles::{SimplificationOptions, TileId};
 use parking_lot::Mutex;
 
 use re_data_store::LatestAtQuery;
@@ -44,9 +44,12 @@ pub struct ViewportBlueprint {
     /// Whether the viewport layout is determined automatically.
     ///
     /// Set to `false` the first time the user messes around with the viewport blueprint.
+    /// Note: we use a mutex here because writes needs to be effective immediately during the frame.
     auto_layout: Mutex<bool>,
 
-    /// Whether or not space views should be created automatically.
+    /// Whether space views should be created automatically.
+    ///
+    /// Note: we use a mutex here because writes needs to be effective immediately during the frame.
     auto_space_views: Mutex<bool>,
 
     /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
