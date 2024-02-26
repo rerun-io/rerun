@@ -187,7 +187,57 @@ pub fn quote_arrow_serializer(
                 // We use sparse unions for enums, which means only 8 bits is required for each field,
                 // and nulls are are encoded with a special 0-index `_null_markers` variant.
 
-                quote!(unimplemented!("Sparse unions are not yet supported")) // TODO
+                let quoted_types = {
+                    let quoted_obj_name = format_ident!("{}", obj.name);
+                    let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
+                        let i = 1 + i as i8; // NOTE: +1 to account for `nulls` virtual arm
+                        let quoted_obj_field_name =
+                            format_ident!("{}", obj_field.pascal_case_name());
+
+                        quote!(Some(#quoted_obj_name::#quoted_obj_field_name) => #i)
+                    });
+
+                    quote! {
+                        #data_src
+                            .iter()
+                            .map(|a| match a.as_deref() {
+                                None => 0,
+                                #(#quoted_branches,)*
+                            })
+                            .collect()
+                    }
+                };
+
+                let num_variants = obj.fields.len();
+
+                quote! {{
+                    let num_variants = #num_variants;
+
+                    let #data_src: Vec<_> = #data_src
+                        .into_iter()
+                        .map(|datum| {
+                            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                            datum
+                        })
+                        .collect();
+
+                    let types = #quoted_types;
+
+                    let fields: Vec<_> = std::iter::repeat(
+                            NullArray::new(
+                                DataType::Null,
+                                #data_src.len(),
+                            ).boxed()
+                        ).take(1 + num_variants)
+                        .collect();
+
+                    UnionArray::new(
+                        #quoted_datatype,
+                        types,
+                        fields,
+                        None,
+                    ).boxed()
+                }}
             }
 
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
@@ -239,7 +289,7 @@ pub fn quote_arrow_serializer(
                 let quoted_types = {
                     let quoted_obj_name = format_ident!("{}", obj.name);
                     let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                        let i = i as i8 + 1; // NOTE: +1 to account for `nulls` virtual arm
+                        let i = 1 + i as i8; // NOTE: +1 to account for `nulls` virtual arm
                         let quoted_obj_field_name =
                             format_ident!("{}", obj_field.pascal_case_name());
 
