@@ -143,7 +143,6 @@ fn context_menu_items_for_selection_summary(
             }
         }
         SelectionSummary::Heterogeneous | SelectionSummary::Empty => vec![],
-        //SelectionSummary::DataItems(_) => vec![], //TODO
     }
 }
 
@@ -236,7 +235,6 @@ enum SelectionSummary {
     SingleContainerItem(ContainerId),
     SingleSpaceView(SpaceViewId),
     ContentsItems(Vec<Contents>),
-    //DataItems(Vec<SpaceViewData>),
     Heterogeneous,
     Empty,
 }
@@ -266,16 +264,6 @@ fn summarize_selection(selection: &Selection) -> SelectionSummary {
     if let Some(contents) = only_space_view_or_container {
         return SelectionSummary::ContentsItems(contents);
     }
-
-    // check if we have only data items
-    // let only_data_items: Option<Vec<_>> = selection
-    //     .iter()
-    //     .map(|(item, _)| SpaceViewData::try_from(item.clone()).ok())
-    //     .collect();
-    //
-    // if let Some(data_items) = only_data_items {
-    //     return SelectionSummary::DataItems(data_items);
-    // }
 
     SelectionSummary::Heterogeneous
 }
