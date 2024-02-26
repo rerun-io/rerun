@@ -231,6 +231,10 @@ def spawn(
 
     """
 
+    if not bindings.is_enabled():
+        logging.warning("Rerun is disabled - spawn() call ignored.")
+        return
+
     import os
     import subprocess
     import sys

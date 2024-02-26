@@ -432,6 +432,11 @@ impl RecordingStreamBuilder {
         opts: &crate::SpawnOptions,
         flush_timeout: Option<std::time::Duration>,
     ) -> RecordingStreamResult<RecordingStream> {
+        if !self.is_enabled() {
+            re_log::debug!("Rerun disabled - call to spawn() ignored");
+            return Ok(RecordingStream::disabled());
+        }
+
         let connect_addr = opts.connect_addr();
 
         // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
@@ -517,18 +522,19 @@ impl RecordingStreamBuilder {
     /// This can be used to then construct a [`RecordingStream`] manually using
     /// [`RecordingStream::new`].
     pub fn into_args(self) -> (bool, StoreInfo, DataTableBatcherConfig) {
+        let enabled = self.is_enabled();
+
         let Self {
             application_id,
             store_kind,
             store_id,
             store_source,
-            default_enabled,
-            enabled,
+            default_enabled: _,
+            enabled: _,
             batcher_config,
             is_official_example,
         } = self;
 
-        let enabled = enabled.unwrap_or_else(|| crate::decide_logging_enabled(default_enabled));
         let store_id = store_id.unwrap_or(StoreId::random(store_kind));
         let store_source = store_source.unwrap_or_else(|| StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
@@ -554,6 +560,12 @@ impl RecordingStreamBuilder {
             });
 
         (enabled, store_info, batcher_config)
+    }
+
+    /// Internal check for whether or not logging is enabled using explicit/default settings & env var.
+    fn is_enabled(&self) -> bool {
+        self.enabled
+            .unwrap_or_else(|| crate::decide_logging_enabled(self.default_enabled))
     }
 }
 
@@ -1350,6 +1362,10 @@ impl RecordingStream {
         opts: &crate::SpawnOptions,
         flush_timeout: Option<std::time::Duration>,
     ) -> RecordingStreamResult<()> {
+        if !self.is_enabled() {
+            re_log::debug!("Rerun disabled - call to spawn() ignored");
+            return Ok(());
+        }
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
             return Ok(());
