@@ -14,8 +14,6 @@ impl TensorStatsCache {
     /// NOTE: `TensorData` is never batched (they are mono-components),
     /// so we don't need the instance id here.
     pub fn entry(&mut self, key: RowId, tensor: &TensorData) -> TensorStats {
-        re_tracing::profile_function!();
-
         *self
             .0
             .entry(key)

@@ -175,7 +175,8 @@ macro_rules! impl_query_archetype_latest_at {
             ),
         {
             let iter_results = |timeless: bool, bucket: &crate::CacheBucket, f: &mut F| -> crate::Result<()> {
-                re_tracing::profile_scope!("iter");
+                // Profiling this in isolation can be useful, but adds a lot of noise for small queries.
+                //re_tracing::profile_scope!("iter");
 
                 let it = itertools::izip!(
                     bucket.iter_data_times(),
