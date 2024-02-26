@@ -47,6 +47,7 @@ class Arrows3D(Arrows3DExt, Archetype):
       <img src="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in arrows3d_ext.py

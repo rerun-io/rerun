@@ -47,6 +47,7 @@ class Points2D(Points2DExt, Archetype):
       <img src="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in points2d_ext.py

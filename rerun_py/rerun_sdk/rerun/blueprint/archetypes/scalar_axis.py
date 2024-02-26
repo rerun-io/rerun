@@ -37,6 +37,7 @@ class ScalarAxis(Archetype):
             If unset, the range well be automatically determined based on the queried data.
         lock_range_during_zoom:
             Whether to lock the range of the axis during zoom.
+
         """
 
         # You can define your own __init__ function as a member of ScalarAxisExt in scalar_axis_ext.py

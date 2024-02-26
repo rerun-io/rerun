@@ -47,6 +47,7 @@ class Asset3D(Asset3DExt, Archetype):
       <img src="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in asset3d_ext.py

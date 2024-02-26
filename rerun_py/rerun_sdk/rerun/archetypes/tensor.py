@@ -42,6 +42,7 @@ class Tensor(TensorExt, Archetype):
       <img src="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in tensor_ext.py

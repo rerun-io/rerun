@@ -38,6 +38,7 @@ class TensorDimension:
             The length of this dimension.
         name:
             The name of this dimension, e.g. "width", "height", "channel", "batch', ….
+
         """
 
         # You can define your own __init__ function as a member of TensorDimensionExt in tensor_dimension_ext.py

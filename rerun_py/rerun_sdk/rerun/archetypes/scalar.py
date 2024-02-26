@@ -55,6 +55,7 @@ class Scalar(Archetype):
       <img src="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(self: Any, scalar: components.ScalarLike):
@@ -65,6 +66,7 @@ class Scalar(Archetype):
         ----------
         scalar:
             The scalar value to log.
+
         """
 
         # You can define your own __init__ function as a member of ScalarExt in scalar_ext.py

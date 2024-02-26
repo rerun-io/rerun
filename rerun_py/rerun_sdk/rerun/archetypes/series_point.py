@@ -77,6 +77,7 @@ class SeriesPoint(Archetype):
       <img src="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(
@@ -102,6 +103,7 @@ class SeriesPoint(Archetype):
             Used in the legend.
         marker_size:
             Size of the marker.
+
         """
 
         # You can define your own __init__ function as a member of SeriesPointExt in series_point_ext.py

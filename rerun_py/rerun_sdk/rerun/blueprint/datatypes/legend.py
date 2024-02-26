@@ -38,6 +38,7 @@ class Legend:
              - RightTop = 2,
              - LeftBottom = 3,
              - RightBottom = 4
+
         """
 
         # You can define your own __init__ function as a member of LegendExt in legend_ext.py

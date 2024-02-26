@@ -48,6 +48,7 @@ class TextLog(Archetype):
       <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(
@@ -70,6 +71,7 @@ class TextLog(Archetype):
             This can be used to filter the log messages in the Rerun Viewer.
         color:
             Optional color to use for the log line in the Rerun Viewer.
+
         """
 
         # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py

@@ -232,6 +232,7 @@ def download_data(
     should_download_laser_scanner_point_cloud: whether to download the laser scanner point cloud data, if available
 
     Returns: None
+
     """
     metadata = get_metadata(dataset, download_dir)
     if None is metadata:
@@ -323,6 +324,7 @@ def ensure_recording_available(video_id: str, include_highres: bool) -> Path:
     ------
     AssertionError:
         If the recording path does not exist.
+
     """
     recording_path = ensure_recording_downloaded(video_id, include_highres)
     assert recording_path.exists(), f"Recording path {recording_path} does not exist."

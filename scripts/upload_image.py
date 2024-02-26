@@ -152,6 +152,7 @@ class Uploader:
         -------
         str
             The name of the uploaded file.
+
         """
 
         self._check_aspect_ratio(path)
@@ -180,6 +181,7 @@ class Uploader:
         -------
         str
             The `<picture>` tag for the image stack.
+
         """
         image = PIL.Image.open(image_path)
         self._check_aspect_ratio(image)
@@ -207,6 +209,7 @@ class Uploader:
         -------
         str
             The `<picture>` tag for the image stack.
+
         """
 
         clipboard = image_from_clipboard()
@@ -249,6 +252,7 @@ class Uploader:
         -------
         str
             The `<picture>` HTML tag for the image stack.
+
         """
 
         logging.info(f"Base image width: {image.width}px")
@@ -305,6 +309,7 @@ class Uploader:
             The content type of the object.
         content_encoding : str, optional
             The content encoding of the object.
+
         """
 
         logging.info(f"Uploading {path} (size: {len(data)}, type: {content_type}, encoding: {content_encoding})")

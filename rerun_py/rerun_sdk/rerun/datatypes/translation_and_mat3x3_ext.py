@@ -29,6 +29,7 @@ class TranslationAndMat3x3Ext:
         from_parent:
              If true, the transform maps from the parent space to the space where the transform was logged.
              Otherwise, the transform maps from the space to its parent.
+
         """
 
         self.__attrs_init__(  # pyright: ignore[reportGeneralTypeIssues]

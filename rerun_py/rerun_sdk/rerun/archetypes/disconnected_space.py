@@ -49,6 +49,7 @@ class DisconnectedSpace(DisconnectedSpaceExt, Archetype):
       <img src="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in disconnected_space_ext.py

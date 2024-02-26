@@ -44,6 +44,7 @@ class Points3D(Points3DExt, Archetype):
       <img src="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in points3d_ext.py

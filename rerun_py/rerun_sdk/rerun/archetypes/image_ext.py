@@ -35,6 +35,7 @@ class ImageExt:
         jpeg_quality:
             Higher quality = larger file size. A quality of 95 still saves a lot
             of space, but is visually very similar.
+
         """
 
         from PIL import Image as PILImage
