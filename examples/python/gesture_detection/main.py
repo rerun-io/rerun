@@ -18,6 +18,7 @@ import rerun as rr  # pip install rerun-sdk
 import tqdm
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+from mediapipe.tasks.python.components.containers import NormalizedLandmark
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "hand_gestures"
@@ -90,14 +91,16 @@ class GestureDetectorLogger:
         rr.log("Hand3D", rr.ViewCoordinates.LEFT_HAND_Y_DOWN, timeless=True)
 
     @staticmethod
-    def convert_landmarks_to_image_coordinates(hand_landmarks, width, height):
+    def convert_landmarks_to_image_coordinates(
+        hand_landmarks: list[list[NormalizedLandmark]], width: int, height: int
+    ) -> list[tuple[int, int]]:
         return [(int(lm.x * width), int(lm.y * height)) for hand_landmark in hand_landmarks for lm in hand_landmark]
 
     @staticmethod
-    def convert_landmarks_to_3d(hand_landmarks):
+    def convert_landmarks_to_3d(hand_landmarks: list[list[NormalizedLandmark]]) -> list[tuple[float, float, float]]:
         return [(lm.x, lm.y, lm.y) for hand_landmark in hand_landmarks for lm in hand_landmark]
 
-    def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int | None) -> None:
+    def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
         # Recognize gestures in the image
         height, width, _ = image.shape
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
@@ -147,7 +150,7 @@ class GestureDetectorLogger:
             for log_key in ["Media/Connections", "Hand/Connections"]:
                 rr.log(log_key, rr.LineStrips2D(np.stack((points1, points2), axis=1), colors=[255, 165, 0]))
 
-    def present_detected_gesture(self, category):
+    def present_detected_gesture(self, category: str) -> None:
         # Get the corresponding ulr of the picture for the detected gesture category
         gesture_pic = GESTURE_PICTURES.get(
             category,
@@ -187,7 +190,7 @@ def resize_image(image: npt.NDArray[np.uint8], max_dim: int | None) -> npt.NDArr
     return image
 
 
-def run_from_sample_image(path) -> None:
+def run_from_sample_image(path: Path | str) -> None:
     """Run the gesture recognition on a single image."""
     image = cv2.imread(str(path))
     # image = resize_image(image, max_dim)
