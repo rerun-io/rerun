@@ -192,7 +192,7 @@ fn generate_object_file(
     let quoted_obj = match obj.typ() {
         crate::objects::ObjectType::Struct => quote_struct(reporter, arrow_registry, objects, obj),
         crate::objects::ObjectType::Union => quote_union(reporter, arrow_registry, objects, obj),
-        crate::objects::ObjectType::Enum => anyhow::bail!("Enums are not implemented in Rust"),
+        crate::objects::ObjectType::Enum => quote_enum(reporter, arrow_registry, objects, obj),
     };
 
     let mut tokens = quoted_obj.into_iter();
@@ -547,6 +547,61 @@ fn quote_union(
         }
 
         #quoted_heap_size_bytes
+
+        #quoted_trait_impls
+    };
+
+    tokens
+}
+
+// Pure C-style enum
+fn quote_enum(
+    reporter: &Reporter,
+    arrow_registry: &ArrowRegistry,
+    objects: &Objects,
+    obj: &Object,
+) -> TokenStream {
+    assert_eq!(obj.typ(), ObjectType::Enum);
+
+    let Object { name, fields, .. } = obj;
+
+    let name = format_ident!("{name}");
+
+    let quoted_doc = quote_obj_docs(reporter, obj);
+    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
+
+    let quoted_fields = fields.iter().map(|obj_field| {
+        let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
+
+        let quoted_doc = quote_field_docs(reporter, obj_field);
+
+        quote! {
+            #quoted_doc
+            #name
+        }
+    });
+
+    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+
+    let tokens = quote! {
+        #quoted_doc
+        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        #quoted_custom_clause
+        pub enum #name {
+            #(#quoted_fields,)*
+        }
+
+        impl ::re_types_core::SizeBytes for #name {
+            #[inline]
+            fn heap_size_bytes(&self) -> u64 {
+                0
+            }
+
+            #[inline]
+            fn is_pod() -> bool {
+                true
+            }
+        }
 
         #quoted_trait_impls
     };

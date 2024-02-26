@@ -204,6 +204,13 @@ pub fn quote_arrow_deserializer(
                 }}
             }
 
+            DataType::Union(_, _, arrow2::datatypes::UnionMode::Sparse) => {
+                // We use sparse unions for enums, which means only 8 bits is required for each field,
+                // and nulls are are encoded with a special 0-index `_null_markers` variant.
+
+                quote!(unimplemented!("Sparse unions are not yet supported")) // TODO
+            }
+
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
                 let data_src_types = format_ident!("{data_src}_types");
                 let data_src_arrays = format_ident!("{data_src}_arrays");

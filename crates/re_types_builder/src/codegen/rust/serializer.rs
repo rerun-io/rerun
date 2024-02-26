@@ -183,6 +183,13 @@ pub fn quote_arrow_serializer(
                 }}
             }
 
+            DataType::Union(_, _, arrow2::datatypes::UnionMode::Sparse) => {
+                // We use sparse unions for enums, which means only 8 bits is required for each field,
+                // and nulls are are encoded with a special 0-index `_null_markers` variant.
+
+                quote!(unimplemented!("Sparse unions are not yet supported")) // TODO
+            }
+
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
                     let data_dst = format_ident!("{}", obj_field.snake_case_name());
@@ -314,6 +321,7 @@ pub fn quote_arrow_serializer(
                     ).boxed()
                 }}
             }
+
             _ => unimplemented!("{datatype:#?}"),
         }
     }

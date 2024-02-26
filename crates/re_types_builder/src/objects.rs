@@ -556,19 +556,37 @@ impl Object {
             }
         };
 
-        let fields: Vec<_> = enm
+        let is_enum = utype.is_some();
+
+        let mut fields: Vec<_> = enm
             .values()
             .iter()
             // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
             .filter(|val| {
-                utype.is_some()
+                is_enum
                     || val
                         .union_type()
                         .filter(|utype| utype.base_type() != FbsBaseType::None)
                         .is_some()
             })
-            .map(|val| ObjectField::from_raw_enum_value(include_dir_path, enums, objs, enm, &val))
+            .map(|val| {
+                ObjectField::from_raw_enum_value(include_dir_path, enums, objs, enm, &val, is_enum)
+            })
             .collect();
+
+        if !is_enum {
+            fields.sort_by_key(|field| field.order);
+
+            // Make sure no two fields have the same order:
+            for (a, b) in fields.iter().tuple_windows() {
+                assert!(
+                    a.order != b.order,
+                    "{name:?}: Fields {:?} and {:?} have the same order",
+                    a.name,
+                    b.name
+                );
+            }
+        }
 
         if kind == ObjectKind::Component {
             assert!(
@@ -836,6 +854,7 @@ impl ObjectField {
         objs: &[FbsObject<'_>],
         enm: &FbsEnum<'_>,
         val: &FbsEnumVal<'_>,
+        is_enum: bool,
     ) -> Self {
         let fqname = format!("{}#{}", enm.name(), val.name());
         let (pkg_name, name) = fqname
@@ -863,7 +882,11 @@ impl ObjectField {
             &attrs,
         );
 
-        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
+        let order = if is_enum {
+            0 // enum variants don't have/need order
+        } else {
+            attrs.get::<u32>(&fqname, crate::ATTR_ORDER)
+        };
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
         // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
