@@ -106,7 +106,8 @@ pub fn query_archetype<A: Archetype>(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
 ) -> crate::Result<ArchetypeView<A>> {
-    re_tracing::profile_function!();
+    // Profiling this can be useful, but we have many queries of very small archetypes, adding a lot of profiling overhead.
+    //re_tracing::profile_function!();
 
     let required_components: Vec<_> = A::required_components()
         .iter()

@@ -272,6 +272,8 @@ def test_transform3d_invalid_parameter_combinations() -> None:
     with pytest.raises(ValueError):
         rr.Transform3D(transform=TranslationRotationScale3D(translation=[1, 2, 3]), scale=2)
     with pytest.raises(ValueError):
+        rr.Transform3D(transform=TranslationRotationScale3D(translation=[1, 2, 3]), from_parent=True)
+    with pytest.raises(ValueError):
         rr.Transform3D(
             transform=TranslationRotationScale3D(translation=[1, 2, 3]), rotation=rr.Quaternion(xyzw=[1, 2, 3, 4])
         )

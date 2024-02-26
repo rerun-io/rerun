@@ -92,7 +92,19 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Logging functions",
-        func_list=["log", "set_time_sequence", "set_time_seconds", "set_time_nanos"],
+        func_list=[
+            "log",
+        ],
+    ),
+    Section(
+        title="Timeline functions",
+        func_list=[
+            "set_time_sequence",
+            "set_time_seconds",
+            "set_time_nanos",
+            "disable_timeline",
+            "reset_time",
+        ],
     ),
     ################################################################################
     # These sections don't have tables, but generate pages containing all the archetypes, components, datatypes
