@@ -50,8 +50,7 @@ where
             } else {
                 transforms.reference_from_entity_ignoring_pinhole(
                     &data_result.entity_path,
-                    ctx.entity_db.query_caches(),
-                    ctx.entity_db.store(),
+                    ctx.entity_db,
                     &query.latest_at_query(),
                 )
             };
@@ -159,8 +158,7 @@ macro_rules! impl_process_archetype {
                 } else {
                     transforms.reference_from_entity_ignoring_pinhole(
                         &data_result.entity_path,
-                        ctx.entity_db.query_caches(),
-                        ctx.entity_db.store(),
+                        ctx.entity_db,
                         &query.latest_at_query(),
                     )
                 };

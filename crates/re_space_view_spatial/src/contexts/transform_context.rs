@@ -1,7 +1,7 @@
 use nohash_hasher::IntMap;
 
 use re_data_store::LatestAtQuery;
-use re_entity_db::{EntityPath, EntityPropertyMap, EntityTree};
+use re_entity_db::{EntityDb, EntityPath, EntityPropertyMap, EntityTree};
 use re_types::{
     components::{DisconnectedSpace, PinholeProjection, Resolution, Transform3D, ViewCoordinates},
     ComponentNameSet, Loggable as _,
@@ -92,8 +92,6 @@ impl ViewContextSystem for TransformContext {
         re_tracing::profile_function!();
 
         let entity_tree = ctx.entity_db.tree();
-        let data_store = ctx.entity_db.data_store();
-        let query_caches = ctx.entity_db.query_caches();
 
         // TODO(jleibs): The need to do this hints at a problem with how we think about
         // the interaction between properties and "context-systems".
@@ -125,8 +123,7 @@ impl ViewContextSystem for TransformContext {
         // Child transforms of this space
         self.gather_descendants_transforms(
             current_tree,
-            query_caches,
-            data_store,
+            ctx.entity_db,
             &time_query,
             &entity_prop_map,
             glam::Affine3A::IDENTITY,
@@ -151,8 +148,7 @@ impl ViewContextSystem for TransformContext {
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match transform_at(
                 current_tree,
-                query_caches,
-                data_store,
+                ctx.entity_db,
                 &time_query,
                 // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
@@ -173,8 +169,7 @@ impl ViewContextSystem for TransformContext {
             // (skip over everything at and under `current_tree` automatically)
             self.gather_descendants_transforms(
                 parent_tree,
-                query_caches,
-                data_store,
+                ctx.entity_db,
                 &time_query,
                 &entity_prop_map,
                 reference_from_ancestor,
@@ -194,15 +189,14 @@ impl TransformContext {
     #[allow(clippy::too_many_arguments)]
     fn gather_descendants_transforms(
         &mut self,
-        tree: &EntityTree,
-        query_caches: &re_query_cache::Caches,
-        data_store: &re_data_store::DataStore,
+        subtree: &EntityTree,
+        entity_db: &EntityDb,
         query: &LatestAtQuery,
         entity_properties: &EntityPropertyMap,
         reference_from_entity: glam::Affine3A,
         encountered_pinhole: &Option<EntityPath>,
     ) {
-        match self.transform_per_entity.entry(tree.path.clone()) {
+        match self.transform_per_entity.entry(subtree.path.clone()) {
             std::collections::hash_map::Entry::Occupied(_) => {
                 return;
             }
@@ -214,12 +208,11 @@ impl TransformContext {
             }
         }
 
-        for child_tree in tree.children.values() {
+        for child_tree in subtree.children.values() {
             let mut encountered_pinhole = encountered_pinhole.clone();
             let reference_from_child = match transform_at(
                 child_tree,
-                query_caches,
-                data_store,
+                entity_db,
                 query,
                 |p| *entity_properties.get(p).pinhole_image_plane_distance,
                 &mut encountered_pinhole,
@@ -234,8 +227,7 @@ impl TransformContext {
             };
             self.gather_descendants_transforms(
                 child_tree,
-                query_caches,
-                data_store,
+                entity_db,
                 query,
                 entity_properties,
                 reference_from_child,
@@ -269,8 +261,7 @@ impl TransformContext {
     pub fn reference_from_entity_ignoring_pinhole(
         &self,
         ent_path: &EntityPath,
-        query_caches: &re_query_cache::Caches,
-        store: &re_data_store::DataStore,
+        entity_db: &EntityDb,
         query: &LatestAtQuery,
     ) -> Option<glam::Affine3A> {
         let transform_info = self.transform_per_entity.get(ent_path)?;
@@ -279,7 +270,7 @@ impl TransformContext {
             ent_path.parent(),
         ) {
             self.reference_from_entity(&parent).map(|t| {
-                t * get_cached_transform(ent_path, query_caches, store, query)
+                t * get_cached_transform(ent_path, entity_db, query)
                     .map_or(glam::Affine3A::IDENTITY, |transform| {
                         transform.into_parent_from_child_transform()
                     })
@@ -302,14 +293,14 @@ impl TransformContext {
 
 fn get_cached_transform(
     entity_path: &EntityPath,
-    query_caches: &re_query_cache::Caches,
-    store: &re_data_store::DataStore,
+    entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Option<Transform3D> {
     let mut transform3d = None;
-    query_caches
+    entity_db
+        .query_caches()
         .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::Transform3D, Transform3D, _>(
-            store,
+            entity_db.store(),
             query,
             entity_path,
             |(_, _, transforms)| transform3d = transforms.first().cloned(),
@@ -319,15 +310,14 @@ fn get_cached_transform(
 }
 
 fn get_cached_pinhole(
-    store: &re_data_store::DataStore,
-    query_caches: &re_query_cache::Caches,
-    query: &re_data_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
+    entity_db: &EntityDb,
+    query: &re_data_store::LatestAtQuery,
 ) -> Option<(PinholeProjection, ViewCoordinates)> {
     let mut result = None;
-    query_caches
+    entity_db.query_caches()
         .query_archetype_latest_at_pov1_comp2::<re_types::archetypes::Pinhole, PinholeProjection, Resolution, ViewCoordinates, _>(
-            store,
+            entity_db.store(),
             query,
             entity_path,
             |(_, _, image_from_camera, _resolution, camera_xyz)|  {
@@ -340,18 +330,17 @@ fn get_cached_pinhole(
 }
 
 fn transform_at(
-    entity_tree: &EntityTree,
-    query_caches: &re_query_cache::Caches,
-    store: &re_data_store::DataStore,
+    subtree: &EntityTree,
+    entity_db: &EntityDb,
     query: &LatestAtQuery,
     pinhole_image_plane_distance: impl Fn(&EntityPath) -> f32,
     encountered_pinhole: &mut Option<EntityPath>,
 ) -> Result<Option<glam::Affine3A>, UnreachableTransformReason> {
     re_tracing::profile_function!();
 
-    let entity_path = &entity_tree.path;
+    let entity_path = &subtree.path;
 
-    let pinhole = get_cached_pinhole(store, query_caches, query, entity_path);
+    let pinhole = get_cached_pinhole(entity_path, entity_db, query);
     if pinhole.is_some() {
         if encountered_pinhole.is_some() {
             return Err(UnreachableTransformReason::NestedPinholeCameras);
@@ -360,7 +349,7 @@ fn transform_at(
         }
     }
 
-    let transform3d = get_cached_transform(entity_path, query_caches, store, query)
+    let transform3d = get_cached_transform(entity_path, entity_db, query)
         .map(|transform| transform.clone().into_parent_from_child_transform());
 
     let pinhole = pinhole.map(|(image_from_camera, camera_xyz)| {
@@ -402,9 +391,9 @@ fn transform_at(
 
     let is_disconnect_space = || {
         let mut disconnected_space = false;
-        query_caches
+        entity_db.query_caches()
             .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::DisconnectedSpace, DisconnectedSpace, _>(
-                store,
+                entity_db.store(),
                 query,
                 entity_path,
                 |(_, _, disconnected_spaces)| {
