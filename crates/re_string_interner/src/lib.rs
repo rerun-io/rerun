@@ -107,6 +107,7 @@ impl AsRef<str> for InternedString {
 
 impl std::ops::Deref for InternedString {
     type Target = str;
+
     #[inline]
     fn deref(&self) -> &str {
         self.as_str()
@@ -249,6 +250,7 @@ macro_rules! declare_new_type {
 
         impl std::ops::Deref for $StructName {
             type Target = str;
+
             #[inline]
             fn deref(&self) -> &str {
                 self.as_str()

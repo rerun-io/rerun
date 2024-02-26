@@ -44,6 +44,7 @@ impl std::borrow::Borrow<str> for Utf8 {
 
 impl std::ops::Deref for Utf8 {
     type Target = str;
+
     #[inline]
     fn deref(&self) -> &str {
         self.as_str()
