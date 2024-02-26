@@ -186,6 +186,7 @@ class BaseBatch(Generic[T]):
         Returns
         -------
         The Arrow array encapsulating the data.
+
         """
         if data is not None:
             with catch_and_log_exceptions(self.__class__.__name__, strict=strict):
@@ -229,6 +230,7 @@ class BaseBatch(Generic[T]):
         Returns
         -------
         The Arrow array encapsulating the data.
+
         """
         if data is None:
             return None
@@ -271,6 +273,7 @@ class BaseBatch(Generic[T]):
         Returns
         -------
         The Arrow array encapsulating the data.
+
         """
         raise NotImplementedError
 

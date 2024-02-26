@@ -67,6 +67,7 @@ class Asset3DExt:
             An out-of-tree transform.
 
             Applies a transformation to the asset itself without impacting its children.
+
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):

@@ -29,6 +29,7 @@ class LoggingHandler(logging.Handler):
         path_prefix:
             A common prefix for all logged entity paths.
             Defaults to no prefix.
+
         """
         logging.Handler.__init__(self)
         self.path_prefix = path_prefix
