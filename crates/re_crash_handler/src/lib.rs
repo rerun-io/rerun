@@ -65,36 +65,14 @@ fn install_panic_hook(_build_info: BuildInfo) {
 
         #[cfg(feature = "analytics")]
         {
-            struct CrashPanic {
-                build_info: BuildInfo,
-                callstack: String,
-                message: Option<String>,
-                file_line: Option<String>,
-            }
-
-            impl re_analytics::Event for CrashPanic {
-                const NAME: &'static str = "crash-panic";
-            }
-
-            impl re_analytics::Properties for CrashPanic {
-                fn serialize(&self, event: &mut re_analytics::AnalyticsEvent) {
-                    self.build_info.serialize(event);
-                    event.insert("callstack", self.callstack.clone());
-                    if let Some(message) = &self.message {
-                        event.insert("message", message.clone());
-                    }
-                    if let Some(file_line) = &self.file_line {
-                        event.insert("file_line", file_line.clone());
-                    }
-                }
-            }
-
             if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1))
             {
-                analytics.record(CrashPanic {
+                analytics.record(re_analytics::event::CrashPanic {
                     build_info: _build_info,
                     callstack,
-                    message: None, // Don't include it, because it can contain sensitive information (`panic!("Couldn't read {sensitive_file_path}")`)
+                    // Don't include it, because it can contain sensitive information,
+                    // e.g. `panic!("Couldn't read {sensitive_file_path}")`.
+                    message: None,
                     file_line,
                 });
 

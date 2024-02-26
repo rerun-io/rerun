@@ -70,16 +70,8 @@ impl Svc {
 
     #[cfg(feature = "analytics")]
     fn on_serve_wasm(&self) {
-        struct ServeWasm;
-
-        impl re_analytics::Event for ServeWasm {
-            const NAME: &'static str = "serve_wasm";
-        }
-
-        impl re_analytics::Properties for ServeWasm {}
-
         if let Some(analytics) = &self.analytics {
-            analytics.record(ServeWasm);
+            analytics.record(re_analytics::event::ServeWasm);
         }
     }
 }

@@ -1,92 +1,225 @@
-use crate::{AnalyticsEvent, Property};
-use std::collections::HashMap;
-
-use time::OffsetDateTime;
-
-/// The "public" API key can be obtained at <https://eu.posthog.com/project/settings#project-api-key>.
-/// Make sure you are logged in to the right organization and have the correct project open.
-/// Unfortunately that stuff is client-side routed, and there's no way to link directly to the right place.
-pub const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_sgKidIE4WYYFSJHd8LEYY1UZqASpnfQKeMqlJfSXwqg";
-
-#[derive(Debug, serde::Serialize)]
-#[serde(untagged)]
-pub enum PostHogEvent<'a> {
-    Capture(PostHogCaptureEvent<'a>),
-    Identify(PostHogIdentifyEvent<'a>),
+/// Records a crash caused by a panic.
+///
+/// Used in `re_crash_handler`.
+pub struct CrashPanic {
+    pub build_info: BuildInfo,
+    pub callstack: String,
+    pub message: Option<String>,
+    pub file_line: Option<String>,
 }
 
-impl<'a> PostHogEvent<'a> {
-    pub fn from_event(
-        analytics_id: &'a str,
-        session_id: &'a str,
-        event: &'a AnalyticsEvent,
-    ) -> Self {
-        let properties = event.props.iter().map(|(name, value)| {
-            (
-                name.as_ref(),
-                match value {
-                    &Property::Integer(v) => v.into(),
-                    &Property::Float(v) => v.into(),
-                    Property::String(v) => v.as_str().into(),
-                    &Property::Bool(v) => v.into(),
-                },
-            )
-        });
+/// Holds information about the user's environment.
+///
+/// Used in `re_viewer`.
+pub struct Identify {
+    /// Info on how the `re_viewer` crate was built.
+    pub build_info: re_build_info::BuildInfo,
 
-        match event.kind {
-            crate::EventKind::Append => Self::Capture(PostHogCaptureEvent {
-                timestamp: event.time_utc,
-                event: event.name.as_ref(),
-                distinct_id: analytics_id,
-                properties: properties
-                    .chain([("session_id", session_id.into())])
-                    .collect(),
-            }),
-            crate::EventKind::Update => Self::Identify(PostHogIdentifyEvent {
-                timestamp: event.time_utc,
-                event: "$identify",
-                distinct_id: analytics_id,
-                properties: [("session_id", session_id.into())].into(),
-                set: properties.collect(),
-            }),
+    // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
+    // machine running the viewer, then override the versions from `build_info`.
+    //
+    // The Python/Rust versions appearing in user profiles always apply to the host
+    // environment, _not_ the environment in which the data logging is taking place!
+    pub rust_version: Option<String>,
+    pub llvm_version: Option<String>,
+    pub python_version: Option<String>,
+
+    /// Opt-in meta-data you can set via `rerun analytics`.
+    ///
+    /// For instance, Rerun employees are encouraged to set `rerun analytics email`.
+    /// For real users, this is usually empty.
+    pub opt_in_metadata: HashMap<String, Property>,
+}
+
+/// Sent when the viewer is first started.
+///
+/// Used in `re_viewer`.
+pub struct ViewerStarted {
+    /// The URL on which the web viewer is running.
+    ///
+    /// We _only_ collect this on `rerun.io` domains.
+    pub url: Option<String>,
+
+    /// The environment in which the viewer is running.
+    pub app_env: &'static str,
+}
+
+/// Sent when a new recording is opened.
+///
+/// Used in `re_viewer`.
+pub struct OpenRecording {
+    /// The URL on which the web viewer is running.
+    ///
+    /// We _only_ collect this on `rerun.io` domains.
+    pub url: Option<String>,
+
+    /// The environment in which the viewer is running.
+    pub app_env: &'static str,
+
+    pub store_info: Option<StoreInfo>,
+
+    /// How data is being loaded into the viewer.
+    pub data_source: Option<&'static str>,
+}
+
+/// Basic information about a recording's data store.
+pub struct StoreInfo {
+    /// Name of the application.
+    ///
+    /// In case the recording does not come from an official example, the id is hashed.
+    pub application_id: Id,
+
+    /// Name of the recording.
+    ///
+    /// In case the recording does not come from an official example, the id is hashed.
+    pub recording_id: Id,
+
+    /// Where data is being logged.
+    pub store_source: String,
+
+    // Various versions of the host environment.
+    pub rust_version: Option<String>,
+    pub llvm_version: Option<String>,
+    pub python_version: Option<String>,
+
+    // Whether or not the data is coming from one of the Rerun example applications.
+    pub is_official_example: bool,
+    pub app_id_starts_with_rerun_example: bool,
+}
+
+#[derive(Clone)]
+pub enum Id {
+    /// When running an example application we record the full id.
+    Official(String),
+
+    /// For user applications we hash the id.
+    Hashed(Property),
+}
+
+/// Sent when a Wasm file is served.
+///
+/// Used in `re_web_viewer_server`.
+pub struct ServeWasm;
+
+impl Event for ServeWasm {
+    const NAME: &'static str = "serve_wasm";
+}
+
+impl Properties for ServeWasm {
+    // No properties.
+}
+
+// ----------------------------------------------------------------------------
+
+use std::collections::HashMap;
+
+use re_build_info::BuildInfo;
+
+use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
+
+impl From<Id> for Property {
+    fn from(val: Id) -> Self {
+        match val {
+            Id::Official(id) => Property::String(id),
+            Id::Hashed(id) => id,
         }
     }
 }
 
-// See https://posthog.com/docs/api/post-only-endpoints#capture.
-#[derive(Debug, serde::Serialize)]
-pub struct PostHogCaptureEvent<'a> {
-    #[serde(with = "::time::serde::rfc3339")]
-    timestamp: OffsetDateTime,
-    event: &'a str,
-    distinct_id: &'a str,
-    properties: HashMap<&'a str, serde_json::Value>,
+impl Event for Identify {
+    const NAME: &'static str = "$identify";
+
+    const KIND: EventKind = EventKind::Update;
 }
 
-// See https://posthog.com/docs/api/post-only-endpoints#identify.
-#[derive(Debug, serde::Serialize)]
-pub struct PostHogIdentifyEvent<'a> {
-    #[serde(with = "::time::serde::rfc3339")]
-    timestamp: OffsetDateTime,
-    event: &'a str,
-    distinct_id: &'a str,
-    properties: HashMap<&'a str, serde_json::Value>,
-    #[serde(rename = "$set")]
-    set: HashMap<&'a str, serde_json::Value>,
+impl Properties for Identify {
+    fn serialize(&self, event: &mut AnalyticsEvent) {
+        let Self {
+            build_info,
+            rust_version,
+            llvm_version,
+            python_version,
+            opt_in_metadata,
+        } = self;
+
+        build_info.serialize(event);
+        event.insert_opt("rust_version", rust_version.clone());
+        event.insert_opt("llvm_version", llvm_version.clone());
+        event.insert_opt("python_version", python_version.clone());
+        for (name, value) in opt_in_metadata {
+            event.insert(name.clone(), value.clone());
+        }
+    }
 }
 
-// See https://posthog.com/docs/api/post-only-endpoints#batch-events.
-#[derive(Debug, serde::Serialize)]
-pub struct PostHogBatch<'a> {
-    api_key: &'static str,
-    batch: &'a [PostHogEvent<'a>],
+impl Event for ViewerStarted {
+    const NAME: &'static str = "viewer_started";
 }
 
-impl<'a> PostHogBatch<'a> {
-    pub fn from_events(events: &'a [PostHogEvent<'a>]) -> Self {
-        Self {
-            api_key: PUBLIC_POSTHOG_PROJECT_KEY,
-            batch: events,
+impl Properties for ViewerStarted {
+    fn serialize(&self, event: &mut AnalyticsEvent) {
+        let Self { url, app_env } = self;
+        event.insert("app_env", *app_env);
+        event.insert_opt("url", url.clone());
+    }
+}
+
+impl Event for OpenRecording {
+    const NAME: &'static str = "open_recording";
+}
+
+impl Properties for OpenRecording {
+    fn serialize(&self, event: &mut AnalyticsEvent) {
+        let Self {
+            url,
+            app_env,
+            store_info,
+            data_source,
+        } = self;
+
+        event.insert_opt("url", url.clone());
+        event.insert("app_env", *app_env);
+
+        if let Some(store_info) = store_info {
+            event.insert("application_id", store_info.application_id.clone());
+            event.insert("recording_id", store_info.recording_id.clone());
+            event.insert("store_source", store_info.store_source.clone());
+            event.insert_opt("rust_version", store_info.rust_version.clone());
+            event.insert_opt("llvm_version", store_info.llvm_version.clone());
+            event.insert_opt("python_version", store_info.python_version.clone());
+            event.insert("is_official_example", store_info.is_official_example);
+            event.insert(
+                "app_id_starts_with_rerun_example",
+                store_info.app_id_starts_with_rerun_example,
+            );
+        }
+
+        if let Some(data_source) = *data_source {
+            event.insert("data_source", data_source);
+        }
+    }
+}
+
+impl Event for CrashPanic {
+    const NAME: &'static str = "crash-panic";
+}
+
+impl Properties for CrashPanic {
+    fn serialize(&self, event: &mut AnalyticsEvent) {
+        let Self {
+            build_info,
+            callstack,
+            message,
+            file_line,
+        } = self;
+
+        build_info.serialize(event);
+        event.insert("callstack", callstack.clone());
+        if let Some(message) = &message {
+            event.insert("message", message.clone());
+        }
+        if let Some(file_line) = &file_line {
+            event.insert("file_line", file_line.clone());
         }
     }
 }

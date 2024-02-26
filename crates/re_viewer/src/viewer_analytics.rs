@@ -1,13 +1,9 @@
-//! All telemetry analytics collected by the Rerun Viewer are defined in this file for easy auditing.
+//! Most analytics events collected by the Rerun Viewer are defined in this file.
 //!
-//! There are two exceptions:
-//! * `crates/rerun/src/crash_handler.rs` sends anonymized callstacks on crashes
-//! * `crates/re_web_viewer_server/src/lib.rs` sends an anonymous event when a `.wasm` web-viewer is served.
+//! All events are defined in the `re_analytics` crate.
 //!
 //! Analytics can be completely disabled with `rerun analytics disable`,
 //! or by compiling rerun without the `analytics` feature flag.
-//!
-//! DO NOT MOVE THIS FILE without updating all the docs pointing to it!
 
 mod event;
 
@@ -30,22 +26,17 @@ impl ViewerAnalytics {
 
         Ok(Self { app_env, analytics })
     }
-}
 
-// ----------------------------------------------------------------------------
-
-impl ViewerAnalytics {
     /// When the viewer is first started
     pub fn on_viewer_started(&self, build_info: re_build_info::BuildInfo) {
         re_tracing::profile_function!();
 
-        self.analytics.record(event::Identify::new(
+        self.analytics.record(event::identify(
             self.analytics.config(),
             build_info,
             &self.app_env,
         ));
-        self.analytics
-            .record(event::ViewerStarted::new(&self.app_env));
+        self.analytics.record(event::viewer_started(&self.app_env));
     }
 
     /// When we have loaded the start of a new recording.
@@ -55,6 +46,6 @@ impl ViewerAnalytics {
         }
 
         self.analytics
-            .record(event::OpenRecording::new(&self.app_env, entity_db));
+            .record(event::open_recording(&self.app_env, entity_db));
     }
 }

@@ -25,8 +25,10 @@ use web::{Pipeline, PipelineError};
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cli;
 
-mod event;
-use event::{PostHogBatch, PostHogEvent};
+mod posthog;
+use posthog::{PostHogBatch, PostHogEvent};
+
+pub mod event;
 
 // ----------------------------------------------------------------------------
 
