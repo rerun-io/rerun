@@ -542,9 +542,10 @@ impl Object {
 
         let utype = {
             if enm.underlying_type().base_type() == FbsBaseType::UType {
-                // This is a union.
+                // This is a union (sum type).
                 None
             } else {
+                // A C-style enum.
                 Some(ElementType::from_raw_base_type(
                     enums,
                     objs,
@@ -726,7 +727,7 @@ pub enum ObjectType {
     /// A proper union sum type
     Union,
 
-    /// An enumeration of alternatives
+    /// An enumeration of alternatives, C-style.
     Enum,
 }
 
