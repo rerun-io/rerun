@@ -155,6 +155,7 @@ allow = [
   "clippy::let_underscore_untyped",
   "clippy::missing_assert_message",
   "clippy::missing_errors_doc",
+  "clippy::use_self",
   "trivial_casts",
   "unused_qualifications",
 

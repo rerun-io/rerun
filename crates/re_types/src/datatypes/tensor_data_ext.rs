@@ -625,17 +625,17 @@ impl TensorData {
     pub fn from_jpeg_bytes(jpeg_bytes: Vec<u8>) -> Result<Self, TensorImageLoadError> {
         re_tracing::profile_function!();
 
-        use zune_jpeg::JpegDecoder;
-
-        let mut decoder = JpegDecoder::new(&jpeg_bytes);
-        decoder.decode_headers()?;
-        let (w, h) = decoder.dimensions().unwrap(); // Can't fail after a successful decode_headers
+        // Parse JPEG header:
+        use image::ImageDecoder as _;
+        let jpeg = image::codecs::jpeg::JpegDecoder::new(std::io::Cursor::new(&jpeg_bytes))?;
+        let (w, h) = jpeg.dimensions();
+        let depth = jpeg.color_type().channel_count();
 
         Ok(Self {
             shape: vec![
                 TensorDimension::height(h as _),
                 TensorDimension::width(w as _),
-                TensorDimension::depth(3),
+                TensorDimension::depth(depth as _),
             ],
             buffer: TensorBuffer::Jpeg(jpeg_bytes.into()),
         })

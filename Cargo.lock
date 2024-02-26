@@ -4939,8 +4939,6 @@ dependencies = [
  "smallvec",
  "thiserror",
  "uuid",
- "zune-core",
- "zune-jpeg",
 ]
 
 [[package]]
@@ -7734,21 +7732,6 @@ dependencies = [
  "crc32fast",
  "crossbeam-utils",
  "flate2",
-]
-
-[[package]]
-name = "zune-core"
-version = "0.4.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aae122f32a8e2a653acb430c9af5e79e7056c519fa8bac46e51e670868e5c0f2"
-
-[[package]]
-name = "zune-jpeg"
-version = "0.4.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec866b44a2a1fd6133d363f073ca1b179f438f99e7e5bfb1e33f7181facfe448"
-dependencies = [
- "zune-core",
 ]
 
 [[package]]
