@@ -2,11 +2,18 @@
 title = "Hand Tracking and Gesture Recognition"
 tags = ["mediapipe", "keypoint-detection", "2D", "3D"]
 description = "Use the MediaPipe Gesture Detection solution to track hand and recognize gestures in image/video."
-thumbnail = "https://github.com/rerun-io/rerun/assets/49308613/6895d06c-b2f3-4aa3-9d7f-4e50fff3bf6e"
-thumbnail_dimensions = [480, 272]
+thumbnail = "https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/480w.png"
+thumbnail_dimensions = [480, 259]
 -->
 
-<img width="1372" alt="gesture_detection_cover" src="https://github.com/rerun-io/rerun/assets/49308613/6895d06c-b2f3-4aa3-9d7f-4e50fff3bf6e">
+
+<picture>
+  <img src="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/1200w.png">
+</picture>
 
 # Run
 
