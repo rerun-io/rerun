@@ -1,3 +1,10 @@
+//! Analytics events sent from the viewer.
+//!
+//! Note that this file does not contain everything we track,
+//! there are a few events defined in other crates.
+//!
+//! To find all of them,
+
 use crate::AppEnvironment;
 use re_analytics::Config;
 use re_analytics::Properties;
@@ -6,7 +13,6 @@ use re_analytics::{Event, EventKind};
 use std::collections::HashMap;
 
 pub struct Identify {
-    /// The build information of the Viewer.
     build_info: re_build_info::BuildInfo,
 
     // If we happen to know the Python or Rust version used on the _host machine_, i.e. the
@@ -120,7 +126,7 @@ impl Identify {
 impl Event for Identify {
     const NAME: &'static str = "$identify";
 
-    const KIND: EventKind = EventKind::Identify;
+    const KIND: EventKind = EventKind::Update;
 }
 
 impl Properties for Identify {

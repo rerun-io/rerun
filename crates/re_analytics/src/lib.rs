@@ -50,7 +50,7 @@ pub enum EventKind {
     /// Update the permanent state associated with this analytics ID.
     ///
     /// Used e.g. to associate an OS with a particular analytics ID upon its creation.
-    Identify,
+    Update,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -82,7 +82,7 @@ impl AnalyticsEvent {
 
     #[inline]
     pub fn identify() -> Self {
-        Self::new("$identify", EventKind::Identify)
+        Self::new("$identify", EventKind::Update)
     }
 
     #[inline]
@@ -258,6 +258,7 @@ fn load_config() -> Result<Config, ConfigError> {
 }
 
 impl Analytics {
+    /// Initialize an analytics pipeline which flushes events every `tick`.
     pub fn new(tick: Duration) -> Result<Self, AnalyticsError> {
         let config = load_config()?;
         let pipeline = Pipeline::new(&config, tick)?;
@@ -275,6 +276,10 @@ impl Analytics {
         &self.config
     }
 
+    /// Record a single event.
+    ///
+    /// The event is constructed using the implementations of [`Event`] and [`Properties`].
+    /// The event's properties will be extended with an `event_id`.
     #[allow(clippy::needless_pass_by_value)]
     pub fn record<E: Event>(&self, event: E) {
         if self.pipeline.is_none() {
@@ -288,8 +293,7 @@ impl Analytics {
 
     /// Record an event.
     ///
-    /// It will be extended with an `event_id` and, if this is an [`EventKind::Append`],
-    /// any properties registered with [`Self::register_append_property`].
+    /// It will be extended with an `event_id`.
     fn record_raw(&self, mut event: AnalyticsEvent) {
         if let Some(pipeline) = self.pipeline.as_ref() {
             if event.kind == EventKind::Append {
@@ -308,11 +312,29 @@ impl Analytics {
     }
 }
 
+/// An analytics event.
+///
+/// This trait requires an implementation of [`Properties`].
 pub trait Event: Properties {
+    /// The name of the event.
+    ///
+    /// We prefer `snake_case` when naming events.
     const NAME: &'static str;
+
+    /// What kind of event this is.
+    ///
+    /// Most events do not update state, so the default here is [`EventKind::Append`].
     const KIND: EventKind = EventKind::Append;
 }
 
+/// Trait representing the properties of an analytics event.
+///
+/// This is separate from [`Event`] to faciliate code re-use.
+///
+/// For example, [`re_build_info::BuildInfo`] has an implementation of this trait,
+/// so that any event which wants to include build info in its properties
+/// may include that struct in its own definition, and then call `build_info.serialize`
+/// in its own `serialize` implementation.
 pub trait Properties {
     fn serialize(&self, event: &mut AnalyticsEvent) {
         let _ = event;
