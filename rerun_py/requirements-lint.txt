@@ -1,6 +1,6 @@
 attrs>=23.1.0  # for mypy to work
 blackdoc==0.3.8
-mypy==1.4.1
+mypy==1.8.0
 numpy>=1.23,<2 # For mypy plugin
 #TODO(#4704): clean that up when pytorch is available for 3.12
 torch>=2.0.1 ; python_version < "3.12"
