@@ -329,7 +329,7 @@ pub trait Event: Properties {
 
 /// Trait representing the properties of an analytics event.
 ///
-/// This is separate from [`Event`] to faciliate code re-use.
+/// This is separate from [`Event`] to facilitate code re-use.
 ///
 /// For example, [`re_build_info::BuildInfo`] has an implementation of this trait,
 /// so that any event which wants to include build info in its properties
