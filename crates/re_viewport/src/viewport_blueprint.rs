@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
-use parking_lot::Mutex;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
@@ -45,12 +45,12 @@ pub struct ViewportBlueprint {
     ///
     /// Set to `false` the first time the user messes around with the viewport blueprint.
     /// Note: we use a mutex here because writes needs to be effective immediately during the frame.
-    auto_layout: Mutex<bool>,
+    auto_layout: AtomicBool,
 
     /// Whether space views should be created automatically.
     ///
     /// Note: we use a mutex here because writes needs to be effective immediately during the frame.
-    auto_space_views: Mutex<bool>,
+    auto_space_views: AtomicBool,
 
     /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
@@ -144,8 +144,8 @@ impl ViewportBlueprint {
             root_container,
             tree,
             maximized,
-            auto_layout: Mutex::new(auto_layout),
-            auto_space_views: Mutex::new(auto_space_views),
+            auto_layout: auto_layout.into(),
+            auto_space_views: auto_space_views.into(),
             tree_action_sender,
         }
 
@@ -637,32 +637,32 @@ impl ViewportBlueprint {
 
     #[inline]
     pub fn set_auto_layout(&self, value: bool, ctx: &ViewerContext<'_>) {
-        if self.auto_layout() != value {
+        let old_value = self.auto_layout.swap(value, Ordering::SeqCst);
+
+        if old_value != value {
             let component = AutoLayout(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
-
-            *self.auto_layout.lock() = value;
         }
     }
 
     #[inline]
     pub fn auto_layout(&self) -> bool {
-        *self.auto_layout.lock()
+        self.auto_layout.load(Ordering::SeqCst)
     }
 
     #[inline]
     pub fn set_auto_space_views(&self, value: bool, ctx: &ViewerContext<'_>) {
-        if self.auto_space_views() != value {
+        let old_value = self.auto_space_views.swap(value, Ordering::SeqCst);
+
+        if old_value != value {
             let component = AutoSpaceViews(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
-
-            *self.auto_space_views.lock() = value;
         }
     }
 
     #[inline]
     pub fn auto_space_views(&self) -> bool {
-        *self.auto_space_views.lock()
+        self.auto_space_views.load(Ordering::SeqCst)
     }
 
     #[inline]
