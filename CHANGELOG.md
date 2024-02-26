@@ -2,6 +2,86 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.14.0](https://github.com/rerun-io/rerun/compare/0.13.0...0.14.0) - "Unlimited" point clouds & lines, Quality of life improvements, bugfixes
+
+### Overview & Highlights
+
+Originally, we planned to do only a bugfix release, but we got an unexpected amount of goodies amassed already.
+We're still ramping up for programmable blueprints (soon!), but meanwhile enjoy these improvements in 0.14!
+
+- 📈 Limits for number of points & lines per space view lifted.
+- 🖱️ Added context menu actions for items on the Blueprint panel. (Only getting started on this, more options future releases!)
+- 🚀 Faster on scenes with many transforms, speed improvements for large point clouds.
+- 🔺 Built-in STL mesh support.
+- 🎥 First person camera.
+- 🐛 Fixes regressions in Space View spawn heuristics from 0.13 and many more bugfixes.
+
+### Details
+
+#### 🪵 Log API
+- Add helpers for perspective cameras [#5238](https://github.com/rerun-io/rerun/pull/5238)
+- Fix `spawn` starting the viewer even if logging is disabled [#5284](https://github.com/rerun-io/rerun/pull/5284)
+
+#### 🐍 Python API
+- Add missing python docs for `disable_timeline` & `reset_time` [#5269](https://github.com/rerun-io/rerun/pull/5269)
+- Fix missing error message when passing `from_parent` + rerun transform type to `rerun.Transform3D` [#5270](https://github.com/rerun-io/rerun/pull/5270)
+
+#### 🦀 Rust API
+- Fix using `rerun` crate as a dependency on CI [#5170](https://github.com/rerun-io/rerun/pull/5170)
+
+#### 🪳 Bug Fixes
+- Enforce the rule: heuristics should never add a new view that would be completely covered by an existing view [#5164](https://github.com/rerun-io/rerun/pull/5164)
+- Fix (log only) error on quickly resizing the viewer [#5189](https://github.com/rerun-io/rerun/pull/5189)
+- Fix incorrect minimum supported rust version mentioned in docs and examples [#5195](https://github.com/rerun-io/rerun/pull/5195)
+- Less restrictive visualizability constraints of 2d entities, improved space view generation heuristics [#5188](https://github.com/rerun-io/rerun/pull/5188)
+- Fix ugly UI for some arrow data [#5235](https://github.com/rerun-io/rerun/pull/5235)
+- Fix missing redraw upon resetting blueprint [#5262](https://github.com/rerun-io/rerun/pull/5262)
+- Fix non-deterministic redundancy check for space view spawning heuristic [#5266](https://github.com/rerun-io/rerun/pull/5266)
+- Fix resetting vertical axis when using non-uniform zoom on Time Series [#5287](https://github.com/rerun-io/rerun/pull/5287)
+
+#### 🌁 Viewer Improvements
+- Clear all blueprints in RAM and on disk when clicking "Reset Viewer" [#5199](https://github.com/rerun-io/rerun/pull/5199)
+- Improve the orbit eye to always maintain an up-axis [#5193](https://github.com/rerun-io/rerun/pull/5193)
+- Focus on current bounding-box when resetting camera-eye on a 3D space view (double click it) [#5209](https://github.com/rerun-io/rerun/pull/5209)
+- Add STL mesh support [#5244](https://github.com/rerun-io/rerun/pull/5244)
+- Add first person 3D eye-camera [#5249](https://github.com/rerun-io/rerun/pull/5249)
+
+#### 🚀 Performance Improvements
+- More robust handling of maximum texture size for non-color data, slight perf improvements for large point clouds [#5229](https://github.com/rerun-io/rerun/pull/5229)
+- Cached transforms & disconnected spaces for faster scenes with many transforms [#5221](https://github.com/rerun-io/rerun/pull/5221)
+- Optimized cpu time for 3D point clouds (once again!) [#5273](https://github.com/rerun-io/rerun/pull/5273)
+- Only compute store/caching stats when the memory panel is opened [#5274](https://github.com/rerun-io/rerun/pull/5274)
+
+#### 🧑‍🏫 Examples
+- Add Gesture Recognition example [#5241](https://github.com/rerun-io/rerun/pull/5241) (thanks [@andreasnaoum](https://github.com/andreasnaoum)!)
+
+#### 📚 Docs
+- Fix broken link in the installing-viewer documentation [#5236](https://github.com/rerun-io/rerun/pull/5236) (thanks [@BirgerMoell](https://github.com/BirgerMoell)!)
+
+#### 🖼 UI Improvements
+- Context Menu 1: Basic scaffolding and simple actions [#5163](https://github.com/rerun-io/rerun/pull/5163)
+- Context menu 2: add support for multiple selection [#5205](https://github.com/rerun-io/rerun/pull/5205)
+- Context menu 3: add "Move to new container" context menu action [#5210](https://github.com/rerun-io/rerun/pull/5210)
+- Context menu 4: add "Clone space view" action [#5265](https://github.com/rerun-io/rerun/pull/5265)
+- Clickable path parts in selection-panel [#5220](https://github.com/rerun-io/rerun/pull/5220)
+- Don't show the blueprint section when selecting recordings [#5245](https://github.com/rerun-io/rerun/pull/5245)
+- Use the same icon for recordings everywhere [#5246](https://github.com/rerun-io/rerun/pull/5246)
+
+#### 🎨 Renderer Improvements
+- Lift point cloud size limitations [#5192](https://github.com/rerun-io/rerun/pull/5192)
+- Lift line vertex/strip count limitations [#5207](https://github.com/rerun-io/rerun/pull/5207)
+- Fix banding artifacts of 3D space view's skybox [#5279](https://github.com/rerun-io/rerun/pull/5279)
+
+#### 🗣 Refactors
+- Context menu 5: refactor into multiple files [#5289](https://github.com/rerun-io/rerun/pull/5289)
+
+#### 📦 Dependencies
+- Bump maturin to 1.14.0 [#5197](https://github.com/rerun-io/rerun/pull/5197)
+- Update `tungstenite` to remove RUSTSEC warning [#5200](https://github.com/rerun-io/rerun/pull/5200)
+- Lock the web-sys version to 0.3.67 [#5211](https://github.com/rerun-io/rerun/pull/5211)
+- Increase the max WebSocket frame limit for the native client [#5282](https://github.com/rerun-io/rerun/pull/5282)
+
+
 ## [0.13.0](https://github.com/rerun-io/rerun/compare/0.12.1...0.13.0) - Fast time series, improved layout editing & UI overrides - 2024-02-12
 
 ### Overview & Highlights
