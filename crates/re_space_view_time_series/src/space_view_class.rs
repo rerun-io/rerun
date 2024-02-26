@@ -42,7 +42,7 @@ pub struct TimeSeriesSpaceViewState {
     saved_y_axis_range: [f64; 2],
 
     /// To track when the range has been edited
-    last_range: Option<Range1D>,
+    last_y_range: Option<Range1D>,
 }
 
 impl Default for TimeSeriesSpaceViewState {
@@ -52,7 +52,7 @@ impl Default for TimeSeriesSpaceViewState {
             was_dragging_time_cursor: false,
             saved_auto_bounds: Default::default(),
             saved_y_axis_range: [0.0, 1.0],
-            last_range: None,
+            last_y_range: None,
         }
     }
 }
@@ -444,8 +444,8 @@ It can greatly improve performance (and readability) in such situations as it pr
                 time_ctrl_write.pause();
             }
 
-            let range_was_edited = state.last_range != y_range;
-            state.last_range = y_range;
+            let range_was_edited = state.last_y_range != y_range;
+            state.last_y_range = y_range;
             is_resetting = plot_ui.response().double_clicked();
             let current_auto = plot_ui.auto_bounds();
 
@@ -459,9 +459,11 @@ It can greatly improve performance (and readability) in such situations as it pr
                     let mut min = current_bounds.min();
                     let mut max = current_bounds.max();
 
-                    // Pad the range by 5% on each side.
-                    min[1] = y_range.0[0];
-                    max[1] = y_range.0[1];
+                    if range_was_edited || is_resetting {
+                        min[1] = y_range.0[0];
+                        max[1] = y_range.0[1];
+                    }
+
                     let new_bounds = egui_plot::PlotBounds::from_min_max(min, max);
                     plot_ui.set_plot_bounds(new_bounds);
                     // If we are resetting, we still want the X value to be auto for
@@ -469,9 +471,7 @@ It can greatly improve performance (and readability) in such situations as it pr
                     plot_ui.set_auto_bounds([current_auto[0] || is_resetting, false].into());
                 }
             } else if lock_y_during_zoom || range_was_edited {
-                // If we are using auto range, but the range is locked, always
-                // force the y-bounds to be auto to prevent scrolling / zooming in y.
-                plot_ui.set_auto_bounds([current_auto[0] || is_resetting, true].into());
+                plot_ui.set_auto_bounds([current_auto[0] || is_resetting, is_resetting].into());
             }
 
             for series in all_plot_series {
