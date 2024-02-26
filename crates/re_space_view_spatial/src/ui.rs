@@ -249,7 +249,6 @@ impl SpatialSpaceViewState {
         if let Some(eye) = &mut self.state_3d.view_eye {
             ui.horizontal(|ui| {
                 let mut mode = eye.mode();
-                ui.label("Mode:");
                 ui.selectable_value(&mut mode, EyeMode::FirstPerson, "First Person");
                 ui.selectable_value(&mut mode, EyeMode::Orbital, "Orbital");
                 eye.set_mode(mode);
