@@ -1952,9 +1952,9 @@ dependencies = [
 
 [[package]]
 name = "ewebsock"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7340666282406cb008c4d7206e6d7e157a82486afddd26deaad3ce9ebff3f238"
+checksum = "6177769715c6ec5a324acee995183b22721ea23c58e49af14a828eadec85d120"
 dependencies = [
  "document-features",
  "js-sys",
