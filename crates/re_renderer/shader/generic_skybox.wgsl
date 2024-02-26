@@ -19,6 +19,9 @@ fn skybox_light_srgb(dir: vec3f) -> vec3f {
 // https://www.shadertoy.com/view/llVGzG
 // Originally presented in:
 // Jimenez 2014, "Next Generation Post-Processing in Call of Duty"
+//
+// A good overview can be found in
+// https://blog.demofox.org/2022/01/01/interleaved-gradient-noise-a-different-kind-of-low-discrepancy-sequence/
 
 fn interleaved_gradient_noise(n: vec2f) -> f32 {
     let f = 0.06711056 * n.x + 0.00583715 * n.y;
