@@ -129,7 +129,7 @@ document-features = "0.2.8"
 ehttp = "0.4.0"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
-ewebsock = "0.4.0"
+ewebsock = "0.5.0"
 fixed = { version = "1.17", default-features = false }
 flatbuffers = "23.0"
 futures-channel = "0.3"
