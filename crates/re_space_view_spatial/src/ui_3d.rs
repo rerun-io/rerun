@@ -648,7 +648,7 @@ pub fn view_3d(
             });
     }
 
-    show_view_eye_center(
+    show_orbit_eye_center(
         ui.ctx(),
         &mut state.state_3d,
         &mut line_builder,
@@ -681,7 +681,7 @@ pub fn view_3d(
 }
 
 /// Show center of orbit camera when interacting with camera (it's quite helpful).
-fn show_view_eye_center(
+fn show_orbit_eye_center(
     egui_ctx: &egui::Context,
     state_3d: &mut View3DState,
     line_builder: &mut LineDrawableBuilder<'_>,
