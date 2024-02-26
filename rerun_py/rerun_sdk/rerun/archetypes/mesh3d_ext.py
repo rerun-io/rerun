@@ -59,6 +59,7 @@ class Mesh3DExt:
             The class ID provides colors and labels if not specified explicitly.
         instance_keys:
             Unique identifiers for each individual vertex in the mesh.
+
         """
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if indices is not None:

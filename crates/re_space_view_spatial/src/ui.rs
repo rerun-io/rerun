@@ -16,7 +16,6 @@ use re_viewer_context::{
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
-use crate::heuristics::auto_size_world_heuristic;
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
     contexts::{AnnotationSceneContext, NonInteractiveEntities},
@@ -24,6 +23,7 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
     visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
 };
+use crate::{eye::EyeMode, heuristics::auto_size_world_heuristic};
 
 /// Default auto point radius in UI points.
 const AUTO_POINT_RADIUS: f32 = 1.5;
@@ -103,110 +103,157 @@ impl SpatialSpaceViewState {
             .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
             .map(|c| c.value);
 
-        ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
+        ctx.re_ui
+            .selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
-            let auto_size_world = auto_size_world_heuristic(&self.bounding_boxes.accumulated, self.scene_num_primitives);
+                let auto_size_world = auto_size_world_heuristic(
+                    &self.bounding_boxes.accumulated,
+                    self.scene_num_primitives,
+                );
 
-            ctx.re_ui.grid_left_hand_label(ui, "Default size");
-            ui.vertical(|ui| {
-                ui.horizontal(|ui| {
-                    ui.push_id("points", |ui| {
-                        size_ui(
-                            ui,
-                            2.0,
-                            auto_size_world,
-                            &mut self.auto_size_config.point_radius,
-                        );
+                ctx.re_ui.grid_left_hand_label(ui, "Default size");
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.push_id("points", |ui| {
+                            size_ui(
+                                ui,
+                                2.0,
+                                auto_size_world,
+                                &mut self.auto_size_config.point_radius,
+                            );
+                        });
+                        ui.label("Point radius")
+                            .on_hover_text("Point radius used whenever not explicitly specified");
                     });
-                    ui.label("Point radius")
-                    .on_hover_text("Point radius used whenever not explicitly specified");
-                });
-                ui.horizontal(|ui| {
-                    ui.push_id("lines", |ui| {
-                        size_ui(
-                            ui,
-                            1.5,
-                            auto_size_world,
-                            &mut self.auto_size_config.line_radius,
-                        );
-                        ui.label("Line radius")
-                            .on_hover_text("Line radius used whenever not explicitly specified");
+                    ui.horizontal(|ui| {
+                        ui.push_id("lines", |ui| {
+                            size_ui(
+                                ui,
+                                1.5,
+                                auto_size_world,
+                                &mut self.auto_size_config.line_radius,
+                            );
+                            ui.label("Line radius").on_hover_text(
+                                "Line radius used whenever not explicitly specified",
+                            );
+                        });
                     });
-                });
-            });
-            ui.end_row();
-
-            ctx.re_ui.grid_left_hand_label(ui, "Camera")
-                .on_hover_text("The virtual camera which controls what is shown on screen");
-            ui.vertical(|ui| {
-                if spatial_kind == SpatialSpaceViewKind::ThreeD {
-                    if ui.button("Reset").on_hover_text(
-                        "Resets camera position & orientation.\nYou can also double-click the 3D view.")
-                        .clicked()
-                    {
-                        self.bounding_boxes.accumulated = self.bounding_boxes.current;
-                        self.state_3d.reset_camera(&self.bounding_boxes, scene_view_coordinates);
-                    }
-                    let mut spin = self.state_3d.spin();
-                    if re_ui.checkbox(ui, &mut spin, "Spin")
-                        .on_hover_text("Spin camera around the orbit center").changed() {
-                        self.state_3d.set_spin(spin);
-                    }
-                }
-            });
-            ui.end_row();
-
-            if spatial_kind == SpatialSpaceViewKind::ThreeD {
-                ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
-                    .on_hover_text("The world coordinate system used for this view");
-                ui.vertical(|ui|{
-                    let up_description = if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
-                        format!("Scene up is {scene_up}")
-                    } else {
-                        "Scene up is unspecified".to_owned()
-                    };
-                    ui.label(up_description).on_hover_ui(|ui| {
-                        re_ui::markdown_ui(ui, egui::Id::new("view_coordinates_tooltip"), "Set with `rerun.ViewCoordinates`.");
-                    });
-
-                    if let Some(eye) = &self.state_3d.orbit_eye {
-                        if eye.eye_up != glam::Vec3::ZERO {
-                            ui.label(format!("Current camera-eye up-axis is {}", format_vector(eye.eye_up)));
-                        }
-                    }
-
-                    re_ui.checkbox(ui, &mut self.state_3d.show_axes, "Show origin axes").on_hover_text("Show X-Y-Z axes");
-                    re_ui.checkbox(ui, &mut self.state_3d.show_bbox, "Show bounding box").on_hover_text("Show the current scene bounding box");
-                    re_ui.checkbox(ui, &mut self.state_3d.show_accumulated_bbox, "Show accumulated bounding box").on_hover_text("Show bounding box accumulated over all rendered frames");
                 });
                 ui.end_row();
-            }
 
-            ctx.re_ui.grid_left_hand_label(ui, "Bounding box")
-                .on_hover_text("The bounding box encompassing all Entities in the view right now");
-            ui.vertical(|ui| {
-                ui.style_mut().wrap = Some(false);
-                let BoundingBox { min, max } = self.bounding_boxes.current;
-                ui.label(format!(
-                    "x [{} - {}]",
-                    format_f32(min.x),
-                    format_f32(max.x),
-                ));
-                ui.label(format!(
-                    "y [{} - {}]",
-                    format_f32(min.y),
-                    format_f32(max.y),
-                ));
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Camera")
+                    .on_hover_text("The virtual camera which controls what is shown on screen");
+                ui.vertical(|ui| {
+                    if spatial_kind == SpatialSpaceViewKind::ThreeD {
+                        self.view_eye_ui(re_ui, ui, scene_view_coordinates);
+                    }
+                });
+                ui.end_row();
+
                 if spatial_kind == SpatialSpaceViewKind::ThreeD {
-                    ui.label(format!(
-                        "z [{} - {}]",
-                        format_f32(min.z),
-                        format_f32(max.z),
-                    ));
+                    ctx.re_ui
+                        .grid_left_hand_label(ui, "Coordinates")
+                        .on_hover_text("The world coordinate system used for this view");
+                    ui.vertical(|ui| {
+                        let up_description =
+                            if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
+                                format!("Scene up is {scene_up}")
+                            } else {
+                                "Scene up is unspecified".to_owned()
+                            };
+                        ui.label(up_description).on_hover_ui(|ui| {
+                            re_ui::markdown_ui(
+                                ui,
+                                egui::Id::new("view_coordinates_tooltip"),
+                                "Set with `rerun.ViewCoordinates`.",
+                            );
+                        });
+
+                        if let Some(eye) = &self.state_3d.view_eye {
+                            if let Some(eye_up) = eye.eye_up() {
+                                ui.label(format!(
+                                    "Current camera-eye up-axis is {}",
+                                    format_vector(eye_up)
+                                ));
+                            }
+                        }
+
+                        re_ui
+                            .checkbox(ui, &mut self.state_3d.show_axes, "Show origin axes")
+                            .on_hover_text("Show X-Y-Z axes");
+                        re_ui
+                            .checkbox(ui, &mut self.state_3d.show_bbox, "Show bounding box")
+                            .on_hover_text("Show the current scene bounding box");
+                        re_ui
+                            .checkbox(
+                                ui,
+                                &mut self.state_3d.show_accumulated_bbox,
+                                "Show accumulated bounding box",
+                            )
+                            .on_hover_text(
+                                "Show bounding box accumulated over all rendered frames",
+                            );
+                    });
+                    ui.end_row();
                 }
+
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Bounding box")
+                    .on_hover_text(
+                        "The bounding box encompassing all Entities in the view right now",
+                    );
+                ui.vertical(|ui| {
+                    ui.style_mut().wrap = Some(false);
+                    let BoundingBox { min, max } = self.bounding_boxes.current;
+                    ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
+                    ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
+                    if spatial_kind == SpatialSpaceViewKind::ThreeD {
+                        ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
+                    }
+                });
+                ui.end_row();
             });
-            ui.end_row();
-        });
+    }
+
+    // Say the name out loud. It is fun!
+    fn view_eye_ui(
+        &mut self,
+        re_ui: &re_ui::ReUi,
+        ui: &mut egui::Ui,
+        scene_view_coordinates: Option<ViewCoordinates>,
+    ) {
+        if ui
+            .button("Reset")
+            .on_hover_text(
+                "Resets camera position & orientation.\nYou can also double-click the 3D view.",
+            )
+            .clicked()
+        {
+            self.bounding_boxes.accumulated = self.bounding_boxes.current;
+            self.state_3d
+                .reset_camera(&self.bounding_boxes, scene_view_coordinates);
+        }
+
+        {
+            let mut spin = self.state_3d.spin();
+            if re_ui
+                .checkbox(ui, &mut spin, "Spin")
+                .on_hover_text("Spin camera around the orbit center")
+                .changed()
+            {
+                self.state_3d.set_spin(spin);
+            }
+        }
+
+        if let Some(eye) = &mut self.state_3d.view_eye {
+            ui.horizontal(|ui| {
+                let mut mode = eye.mode();
+                ui.selectable_value(&mut mode, EyeMode::FirstPerson, "First Person");
+                ui.selectable_value(&mut mode, EyeMode::Orbital, "Orbital");
+                eye.set_mode(mode);
+            });
+        }
     }
 }
 

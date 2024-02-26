@@ -17,7 +17,7 @@ __all__ = ["AffixFuzzer20", "AffixFuzzer20ArrayLike", "AffixFuzzer20Batch", "Aff
 
 
 def _affix_fuzzer20__p__special_field_converter_override(
-    x: datatypes.PrimitiveComponentLike
+    x: datatypes.PrimitiveComponentLike,
 ) -> datatypes.PrimitiveComponent:
     if isinstance(x, datatypes.PrimitiveComponent):
         return x

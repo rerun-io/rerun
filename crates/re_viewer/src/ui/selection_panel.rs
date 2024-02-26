@@ -793,7 +793,7 @@ fn show_list_item_for_container_child(
 
 fn has_blueprint_section(item: &Item) -> bool {
     match item {
-        Item::ComponentPath(_) | Item::Container(_) => false,
+        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) => false,
         Item::InstancePath(space_view_id, instance_path) => {
             space_view_id.is_some() && instance_path.instance_key.is_splat()
         }
@@ -1314,12 +1314,12 @@ fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue
     let mut value = *property.get();
     let speed = (value * 0.05).at_least(0.01);
     let response = ui
-    .add(
-        egui::DragValue::new(&mut value)
-            .clamp_range(0.0..=1.0e8)
-            .speed(speed),
-    )
-    .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
+        .add(
+            egui::DragValue::new(&mut value)
+                .clamp_range(0.0..=1.0e8)
+                .speed(speed),
+        )
+        .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
                     Double-click to reset.");
     if response.double_clicked() {
         // reset to auto - the exact value will be restored somewhere else

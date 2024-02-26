@@ -1,5 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
+use re_renderer::{LineDrawableBuilder, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text},
@@ -74,7 +74,7 @@ impl Points2DVisualizer {
 
     fn process_data(
         &mut self,
-        point_builder: &mut PointCloudBuilder,
+        point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         data: &Points2DComponentData<'_>,
@@ -95,7 +95,7 @@ impl Points2DVisualizer {
         let positions = Self::load_positions(data);
         let colors = Self::load_colors(data, ent_path, &annotation_infos);
         let radii = Self::load_radii(data, ent_path);
-        let picking_instance_ids = Self::load_picking_ids(data);
+        let picking_instance_ids = bytemuck::cast_slice(data.instance_keys);
 
         {
             re_tracing::profile_scope!("to_gpu");
@@ -112,7 +112,7 @@ impl Points2DVisualizer {
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let mut point_range_builder =
-                point_batch.add_points_2d(&positions, &radii, &colors, &picking_instance_ids);
+                point_batch.add_points_2d(&positions, &radii, &colors, picking_instance_ids);
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
@@ -200,14 +200,6 @@ impl Points2DVisualizer {
     ) -> Vec<re_renderer::Color32> {
         crate::visualizers::process_color_slice(colors, ent_path, annotation_infos)
     }
-
-    #[inline]
-    pub fn load_picking_ids(
-        &Points2DComponentData { instance_keys, .. }: &Points2DComponentData<'_>,
-    ) -> Vec<PickingLayerInstanceId> {
-        re_tracing::profile_function!();
-        bytemuck::cast_slice(instance_keys).to_vec()
-    }
 }
 
 // ---
@@ -259,7 +251,8 @@ impl VisualizerSystem for Points2DVisualizer {
             return Ok(Vec::new());
         }
 
-        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx, num_points)
+        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx);
+        point_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
         // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll go with the dynamic allocation approach.
@@ -315,7 +308,7 @@ impl VisualizerSystem for Points2DVisualizer {
         )?;
 
         Ok(vec![
-            point_builder.into_draw_data(ctx.render_ctx)?.into(),
+            point_builder.into_draw_data()?.into(),
             line_builder.into_draw_data()?.into(),
         ])
     }

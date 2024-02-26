@@ -59,6 +59,7 @@ class SeriesLine(Archetype):
       <img src="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(
@@ -81,6 +82,7 @@ class SeriesLine(Archetype):
             Display name of the series.
 
             Used in the legend.
+
         """
 
         # You can define your own __init__ function as a member of SeriesLineExt in series_line_ext.py

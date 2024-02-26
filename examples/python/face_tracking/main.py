@@ -325,6 +325,7 @@ def run_from_video_capture(vid: int | str, max_dim: int | None, max_frame_count:
         The maximum number of frames to process. If None, process all frames.
     num_faces:
         The number of faces to track. If set to 1, temporal smoothing will be applied.
+
     """
 
     cap = cv2.VideoCapture(vid)

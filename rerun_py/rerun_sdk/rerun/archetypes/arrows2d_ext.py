@@ -46,6 +46,7 @@ class Arrows2DExt:
             The class ID provides colors and labels if not specified explicitly.
         instance_keys:
             Unique identifiers for each individual point in the batch.
+
         """
 
         # Custom constructor to remove positional arguments and force use of keyword arguments

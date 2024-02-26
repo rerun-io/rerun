@@ -43,6 +43,7 @@ class AnnotationContext(AnnotationContextExt):
         ----------
         class_map:
             List of class descriptions, mapping class indices to class names, colors etc.
+
         """
 
         # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py

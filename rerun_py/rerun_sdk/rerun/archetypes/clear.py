@@ -58,6 +58,7 @@ class Clear(ClearExt, Archetype):
       <img src="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in clear_ext.py

@@ -99,12 +99,11 @@ impl RenderDepthClouds {
                 })
                 .multiunzip();
 
-            let mut builder = PointCloudBuilder::new(re_ctx, points.len());
+            let mut builder = PointCloudBuilder::new(re_ctx);
             builder
                 .batch("backprojected point cloud")
                 .add_points(&points, &radii, &colors, &[]);
-
-            builder.into_draw_data(re_ctx).unwrap()
+            builder.into_draw_data().unwrap()
         };
 
         let mut view_builder = ViewBuilder::new(

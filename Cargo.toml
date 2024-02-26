@@ -212,6 +212,7 @@ thiserror = "1.0"
 time = { version = "0.3", default-features = false, features = [
   "wasm-bindgen",
 ] }
+tinystl = { version = "0.0.3", default-features = false }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
 tokio = { version = "1.24", default-features = false }
@@ -230,7 +231,8 @@ walkdir = "2.0"
 wasm-bindgen = "0.2.89"
 wasm-bindgen-cli-support = "0.2.89"
 wasm-bindgen-futures = "0.4.33"
-web-sys = "0.3.61"
+# web-sys 0.3.68 contains breaking API changes in an unstable API used by wgpu
+web-sys = "=0.3.67"
 web-time = "0.2.0"
 webbrowser = "0.8"
 winit = { version = "0.29.9", default-features = false }

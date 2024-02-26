@@ -34,6 +34,8 @@ pub struct InternedString {
     string: &'static str,
 }
 
+static_assertions::assert_not_impl_any!(InternedString: std::borrow::Borrow<str>);
+
 impl InternedString {
     #[inline]
     pub fn new(string: &str) -> Self {
@@ -100,13 +102,6 @@ impl AsRef<str> for InternedString {
     #[inline]
     fn as_ref(&self) -> &str {
         self.string
-    }
-}
-
-impl std::borrow::Borrow<str> for InternedString {
-    #[inline]
-    fn borrow(&self) -> &str {
-        self.as_str()
     }
 }
 
@@ -252,13 +247,6 @@ macro_rules! declare_new_type {
             }
         }
 
-        impl std::borrow::Borrow<str> for $StructName {
-            #[inline]
-            fn borrow(&self) -> &str {
-                self.as_str()
-            }
-        }
-
         impl std::ops::Deref for $StructName {
             type Target = str;
             #[inline]
@@ -354,4 +342,15 @@ fn test_newtype_macro() {
     let b = MyString::new("test");
     assert_eq!(a, b);
     assert_eq!(a.as_str(), "test");
+}
+
+// This should never implement `Borrow`.
+// See <https://github.com/rerun-io/rerun/pull/5243> for more information.
+#[test]
+fn do_not_implement_borrow() {
+    declare_new_type!(
+        /// My typesafe string
+        pub struct MyString;
+    );
+    static_assertions::assert_not_impl_any!(MyString: std::borrow::Borrow<str>);
 }

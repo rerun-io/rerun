@@ -85,38 +85,45 @@ fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array
     if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i32>>() {
         if utf8.len() == 1 {
             let string = utf8.value(0);
-            text_ui(string, ui, verbosity);
+            text_ui(ui, verbosity, string);
             return;
         }
     }
     if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i64>>() {
         if utf8.len() == 1 {
             let string = utf8.value(0);
-            text_ui(string, ui, verbosity);
+            text_ui(ui, verbosity, string);
             return;
         }
     }
 
     let num_bytes = array.total_size_bytes();
-    if num_bytes < 256 {
+    if num_bytes < 3000 {
         // Print small items:
         let mut string = String::new();
         let display = arrow2::array::get_display(array, "null");
         if display(&mut string, 0).is_ok() {
-            ui.label(string);
+            text_ui(ui, verbosity, &string);
             return;
         }
     }
 
     // Fallback:
-    ui.label(format!(
-        "{} of {:?}",
-        re_format::format_bytes(num_bytes as _),
-        array.data_type()
-    ));
+    let bytes = re_format::format_bytes(num_bytes as _);
+
+    // TODO(emilk): pretty-print data type
+    let data_type_formatted = format!("{:?}", array.data_type());
+
+    if data_type_formatted.len() < 20 {
+        // e.g. "4.2 KiB of Float32"
+        text_ui(ui, verbosity, &format!("{bytes} of {data_type_formatted}"));
+    } else {
+        // Huge datatype, probably a union horror show
+        ui.label(format!("{bytes} of data"));
+    }
 }
 
-fn text_ui(string: &str, ui: &mut egui::Ui, verbosity: UiVerbosity) {
+fn text_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, string: &str) {
     let font_id = egui::TextStyle::Monospace.resolve(ui.style());
     let color = ui.visuals().text_color();
     let wrap_width = ui.available_width();
@@ -143,11 +150,13 @@ fn text_ui(string: &str, ui: &mut egui::Ui, verbosity: UiVerbosity) {
         }
     }
 
+    let galley = ui.fonts(|f| f.layout_job(layout_job)); // We control the text layout; not the label
+
     if needs_scroll_area {
         egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.label(layout_job);
+            ui.label(galley);
         });
     } else {
-        ui.label(layout_job);
+        ui.label(galley);
     }
 }

@@ -212,6 +212,12 @@ where
         Ok(())
     }
 
+    /// True if no elements have been pushed into the buffer so far.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.unwritten_element_range.start == 0
+    }
+
     /// The number of elements pushed into the buffer so far.
     #[inline]
     pub fn num_written(&self) -> usize {
@@ -235,6 +241,7 @@ where
     /// (taking into account required padding as specified by [`wgpu::COPY_BYTES_PER_ROW_ALIGNMENT`])
     ///
     /// Fails if the buffer size is not sufficient to fill the entire texture.
+    #[allow(unused)]
     pub fn copy_to_texture2d_entire_first_layer(
         self,
         encoder: &mut wgpu::CommandEncoder,

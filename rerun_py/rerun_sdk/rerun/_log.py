@@ -34,6 +34,7 @@ class IndicatorComponentBatch:
         ----------
         archetype_name:
             The fully qualified name of the Archetype.
+
         """
         self.data = pa.nulls(1, type=pa.null())
         self._archetype_name = archetype_name
@@ -127,6 +128,7 @@ def log(
         If True, raise exceptions on non-loggable data.
         If False, warn on non-loggable data.
         if None, use the global default from `rerun.strict_mode()`
+
     """
     # TODO(jleibs): Profile is_instance with runtime_checkable vs has_attr
     # Note from: https://docs.python.org/3/library/typing.html#typing.runtime_checkable
@@ -217,6 +219,7 @@ def log_components(
         If True, raise exceptions on non-loggable data.
         If False, warn on non-loggable data.
         if None, use the global default from `rerun.strict_mode()`
+
     """
     instanced: dict[str, pa.Array] = {}
     splats: dict[str, pa.Array] = {}
@@ -296,6 +299,7 @@ def escape_entity_path_part(part: str) -> str:
     -------
     str:
         The escaped entity path.
+
     """
     return str(bindings.escape_entity_path_part(part))
 
@@ -319,5 +323,6 @@ def new_entity_path(entity_path: list[Any]) -> str:
     -------
     str:
         The escaped entity path.
+
     """
     return str(bindings.new_entity_path([str(part) for part in entity_path]))

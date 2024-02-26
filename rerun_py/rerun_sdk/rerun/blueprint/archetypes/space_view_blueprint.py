@@ -55,6 +55,7 @@ class SpaceViewBlueprint(Archetype):
             Whether this space view is visible.
 
             Defaults to true if not specified.
+
         """
 
         # You can define your own __init__ function as a member of SpaceViewBlueprintExt in space_view_blueprint_ext.py

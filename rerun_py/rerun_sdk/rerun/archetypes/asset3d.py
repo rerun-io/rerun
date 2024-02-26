@@ -17,7 +17,7 @@ __all__ = ["Asset3D"]
 @define(str=False, repr=False, init=False)
 class Asset3D(Asset3DExt, Archetype):
     """
-    **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
+    **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 
     See also [`Mesh3D`][rerun.archetypes.Mesh3D].
 
@@ -30,7 +30,7 @@ class Asset3D(Asset3DExt, Archetype):
     import rerun as rr
 
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <path_to_asset.[gltf|glb|obj]>")
+        print(f"Usage: {sys.argv[0]} <path_to_asset.[gltf|glb|obj|stl]>")
         sys.exit(1)
 
     rr.init("rerun_example_asset3d", spawn=True)
@@ -47,6 +47,7 @@ class Asset3D(Asset3DExt, Archetype):
       <img src="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in asset3d_ext.py
@@ -83,7 +84,9 @@ class Asset3D(Asset3DExt, Archetype):
     #
     # Supported values:
     # * `model/gltf-binary`
+    # * `model/gltf+json`
     # * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+    # * `model/stl`
     #
     # If omitted, the viewer will try to guess from the data blob.
     # If it cannot guess, it won't be able to render the asset.
