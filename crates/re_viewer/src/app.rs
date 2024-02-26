@@ -159,6 +159,8 @@ impl App {
 
         #[cfg(feature = "analytics")]
         let analytics = if startup_options.is_in_notebook {
+            None
+        } else {
             match crate::analytics::ViewerAnalytics::new(app_env.clone()) {
                 Ok(analytics) => Some(analytics),
                 Err(err) => {
@@ -166,8 +168,6 @@ impl App {
                     None
                 }
             }
-        } else {
-            None
         };
 
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
