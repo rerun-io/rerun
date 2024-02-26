@@ -18,7 +18,7 @@ python examples/python/gesture_detection/main.py
 
 # Usage
 
-CLI usage help is available using the `--help` option:
+CLI usage help is available using the `--help` option:
 
 ```bash
 $ python examples/python/gesture_detection/main.py --help
@@ -52,22 +52,27 @@ optional arguments:
 
 Here is an overview of the options specific to this example:
 
-- ***Running modes*:** By default, this example streams images from the default webcam. Another webcam can be used by providing a camera index with the `--camera` option. Alternatively, images can be read from a video file (using `--video PATH`) or a single image file (using `-image PATH`). Also, a demo image can be automatically downloaded and used with `--demo-image`. Also, a demo video can be automatically downloaded and used with `--demo-video`.
-- ***Limiting frame count*:** When running from a webcam or a video file, this example can be set to stop after a given number of frames using `--max-frame MAX_FRAME`.
+- ***Running modes*:** By default, this example streams images from the default webcam. Another webcam can be used by
+  providing a camera index with the `--camera` option. Alternatively, images can be read from a video file (
+  using `--video PATH`) or a single image file (using `-image PATH`). Also, a demo image can be automatically downloaded
+  and used with `--demo-image`. Also, a demo video can be automatically downloaded and used with `--demo-video`.
+- ***Limiting frame count*:** When running from a webcam or a video file, this example can be set to stop after a given
+  number of frames using `--max-frame MAX_FRAME`.
 
 # Overview
 
-Use the [MediaPipe](https://google.github.io/mediapipe/)  Gesture detection and Gesture landmark detection solutions to track hands and recognize gestures in images and videos.
+Use the [MediaPipe](https://google.github.io/mediapipe/)  Gesture detection and Gesture landmark detection solutions to
+track hands and recognize gestures in images and videos.
 
 Logging Details:
 
 1. Hand Landmarks as 2D Points:
 
-   - Extracts hand landmark points as normalized 2D coordinates.
+    - Extracts hand landmark points as normalized 2D coordinates.
 
-   - Utilizes image width and height for conversion into image coordinates.
+    - Utilizes image width and height for conversion into image coordinates.
 
-   - Logs the 2D points to the Rerun SDK.
+    - Logs the 2D points to the Rerun SDK.
 
 
 2. Hand Landmarks as 3D Points:
@@ -89,10 +94,10 @@ Logging Details:
 
 ## Timelines for Video
 
-You can utilize Rerun timelines' functions to associate data with one or more timelines. As a result, each frame of the video can be linked with its corresponding timestamp.
+You can utilize Rerun timelines' functions to associate data with one or more timelines. As a result, each frame of the
+video can be linked with its corresponding timestamp.
 
 ```python
-
 def run_from_video_capture(vid: int | str, max_frame_count: int | None) -> None:
     """
     Run the detector on a video stream.
@@ -139,14 +144,15 @@ def run_from_video_capture(vid: int | str, max_frame_count: int | None) -> None:
 
     cap.release()
     cv2.destroyAllWindows()
-
 ```
 
 ## Hand Landmarks as 2D Points
 
 ![gesture_recognition_2d_points](https://github.com/rerun-io/rerun/assets/49308613/7e5dd809-be06-4f62-93a8-4fc03e5dfa0e)
 
-You can extract hand landmark points as normalized values, utilizing the image's width and height for conversion into image coordinates. These coordinates are then logged as 2D points to the Rerun SDK. Additionally, you can identify connections between the landmarks and log them as 2D linestrips.
+You can extract hand landmark points as normalized values, utilizing the image's width and height for conversion into
+image coordinates. These coordinates are then logged as 2D points to the Rerun SDK. Additionally, you can identify
+connections between the landmarks and log them as 2D linestrips.
 
 ```python
 class GestureDetectorLogger:
@@ -174,7 +180,7 @@ class GestureDetectorLogger:
 
             # Log points to the image and Hand Entity
             rr.log(
-               "Media/Points",
+                "Media/Points",
                 rr.Points2D(points, radii=10, colors=[255, 0, 0])
             )
 
@@ -185,26 +191,28 @@ class GestureDetectorLogger:
 
             # Log connections to the image and Hand Entity
             rr.log(
-               "Media/Connections",
+                "Media/Connections",
                 rr.LineStrips2D(
-                   np.stack((points1, points2), axis=1),
-                   colors=[255, 165, 0]
+                    np.stack((points1, points2), axis=1),
+                    colors=[255, 165, 0]
                 )
-             )
+            )
 ```
+
 ## Hand Landmarks as 3D Points
 
 ![gesture_recognition_3d_points](https://github.com/rerun-io/rerun/assets/49308613/b24bb0e5-57cc-43f0-948b-3480fe9073a2)
 
-You can first define the connections between the points using keypoints from Annotation Context in the init function, and then log them as 3D points.
+You can first define the connections between the points using keypoints from Annotation Context in the init function,
+and then log them as 3D points.
 
 ```python
 
 class GestureDetectorLogger:
 
-  def __init__(self, video_mode: bool = False):
-      # … existing code …
-      rr.log(
+    def __init__(self, video_mode: bool = False):
+        # … existing code …
+        rr.log(
             "/",
             rr.AnnotationContext(
                 rr.ClassDescription(
@@ -214,33 +222,32 @@ class GestureDetectorLogger:
             ),
             timeless=True,
         )
-       rr.log("Hand3D", rr.ViewCoordinates.RIGHT_HAND_X_DOWN, timeless=True)
+        rr.log("Hand3D", rr.ViewCoordinates.RIGHT_HAND_X_DOWN, timeless=True)
 
-   def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int | None) -> None:
-      # … existing code …
 
-      if recognition_result.hand_landmarks:
-         hand_landmarks = recognition_result.hand_landmarks
+def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int | None) -> None:
+    # … existing code …
 
-         landmark_positions_3d = self.convert_landmarks_to_3d(hand_landmarks)
-         if landmark_positions_3d is not None:
-              rr.log(
-                 "Hand3D/Points",
-                 rr.Points3D(landmark_positions_3d, radii=20, class_ids=0, keypoint_ids=[i for i in range(len(landmark_positions_3d))]),
-              )
+    if recognition_result.hand_landmarks:
+        hand_landmarks = recognition_result.hand_landmarks
 
-      # … existing code …
+        landmark_positions_3d = self.convert_landmarks_to_3d(hand_landmarks)
+        if landmark_positions_3d is not None:
+            rr.log(
+                "Hand3D/Points",
+                rr.Points3D(landmark_positions_3d, radii=20, class_ids=0,
+                            keypoint_ids=[i for i in range(len(landmark_positions_3d))]),
+            )
 
+    # … existing code …
 ```
-
-
 
 ## Gesture Detection Presentation
 
 ![Gesture Detection Presentation](https://github.com/rerun-io/rerun/assets/49308613/32cc44f4-28e5-4ed1-b283-f7351a087535)
 
-One effective method to present these results to the viewer is by utilizing a TextDocument along with emojis for enhanced visual communication.
-
+One effective method to present these results to the viewer is by utilizing a TextDocument along with emojis for
+enhanced visual communication.
 
 ```python
 
@@ -258,6 +265,7 @@ GESTURE_PICTURES = {
     "Victory": "emoji_u270c.png",
     "ILoveYou": "emoji_u1f91f.png"
 }
+
 
 class GestureDetectorLogger:
 
@@ -299,6 +307,7 @@ class GestureDetectorLogger:
 ```
 
 # Gesture Detector Logger
+
 ```python
 
 class GestureDetectorLogger:
