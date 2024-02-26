@@ -293,29 +293,28 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![
-                            Field {
-                                name: "translation".to_owned(),
-                                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "mat3x3".to_owned(),
-                                data_type: <crate::datatypes::Mat3x3>::arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "from_parent".to_owned(),
-                                data_type: DataType::Boolean,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::Struct(std::sync::Arc::new(vec![
+                        Field {
+                            name: "translation".to_owned(),
+                            data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
+                            is_nullable: true,
+                            metadata: [].into(),
+                        },
+                        Field {
+                            name: "mat3x3".to_owned(),
+                            data_type: <crate::datatypes::Mat3x3>::arrow_datatype(),
+                            is_nullable: true,
+                            metadata: [].into(),
+                        },
+                        Field {
+                            name: "from_parent".to_owned(),
+                            data_type: DataType::Boolean,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        },
+                    ]));
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.TranslationAndMat3x3")?;
             if arrow_data.is_empty() {
@@ -342,18 +341,17 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        std::sync::Arc::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::FixedSizeList(
+                                    std::sync::Arc::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    3usize,
+                                );
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TranslationAndMat3x3#translation")?;
                         if arrow_data.is_empty() {
@@ -368,10 +366,9 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Float32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context(
                                         "rerun.datatypes.TranslationAndMat3x3#translation",
@@ -428,18 +425,17 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        std::sync::Arc::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        9usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::FixedSizeList(
+                                    std::sync::Arc::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    9usize,
+                                );
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TranslationAndMat3x3#mat3x3")?;
                         if arrow_data.is_empty() {
@@ -454,10 +450,9 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Float32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TranslationAndMat3x3#mat3x3")?
                                     .into_iter()
@@ -511,10 +506,9 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         .as_any()
                         .downcast_ref::<BooleanArray>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Boolean,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Boolean;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.TranslationAndMat3x3#from_parent")?
                         .into_iter()

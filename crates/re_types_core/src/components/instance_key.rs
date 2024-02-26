@@ -119,10 +119,9 @@ impl crate::Loggable for InstanceKey {
             .as_any()
             .downcast_ref::<UInt64Array>()
             .ok_or_else(|| {
-                DeserializationError::datatype_mismatch(
-                    DataType::UInt64,
-                    arrow_data.data_type().clone(),
-                )
+                let expected = DataType::UInt64;
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
             })
             .with_context("rerun.components.InstanceKey#value")?
             .into_iter()
@@ -152,10 +151,9 @@ impl crate::Loggable for InstanceKey {
                 .as_any()
                 .downcast_ref::<UInt64Array>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::UInt64,
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::UInt64;
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.components.InstanceKey#value")?
                 .values()

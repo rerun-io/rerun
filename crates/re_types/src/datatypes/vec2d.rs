@@ -155,18 +155,17 @@ impl ::re_types_core::Loggable for Vec2D {
                 .as_any()
                 .downcast_ref::<arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::FixedSizeList(
-                            std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }),
-                            2usize,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::FixedSizeList(
+                        std::sync::Arc::new(Field {
+                            name: "item".to_owned(),
+                            data_type: DataType::Float32,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        }),
+                        2usize,
+                    );
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.Vec2D#xy")?;
             if arrow_data.is_empty() {
@@ -181,10 +180,9 @@ impl ::re_types_core::Loggable for Vec2D {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data_inner.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data_inner.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.Vec2D#xy")?
                         .into_iter()

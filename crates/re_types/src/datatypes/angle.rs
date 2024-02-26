@@ -206,33 +206,32 @@ impl ::re_types_core::Loggable for Angle {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Union(
-                            std::sync::Arc::new(vec![
-                                Field {
-                                    name: "_null_markers".to_owned(),
-                                    data_type: DataType::Null,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "Radians".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "Degrees".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
-                            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
-                            UnionMode::Dense,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::Union(
+                        std::sync::Arc::new(vec![
+                            Field {
+                                name: "_null_markers".to_owned(),
+                                data_type: DataType::Null,
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "Radians".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "Degrees".to_owned(),
+                                data_type: DataType::Float32,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ]),
+                        Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
+                        UnionMode::Dense,
+                    );
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.Angle")?;
             if arrow_data.is_empty() {
@@ -243,10 +242,9 @@ impl ::re_types_core::Loggable for Angle {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        DeserializationError::datatype_mismatch(
-                            Self::arrow_datatype(),
-                            arrow_data.data_type().clone(),
-                        )
+                        let expected = Self::arrow_datatype();
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.Angle")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
@@ -265,10 +263,9 @@ impl ::re_types_core::Loggable for Angle {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.Angle#Radians")?
                         .into_iter()
@@ -284,10 +281,9 @@ impl ::re_types_core::Loggable for Angle {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.Angle#Degrees")?
                         .into_iter()

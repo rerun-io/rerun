@@ -143,15 +143,14 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::List(std::sync::Arc::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        })),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::List(std::sync::Arc::new(Field {
+                        name: "item".to_owned(),
+                        data_type: DataType::Float32,
+                        is_nullable: false,
+                        metadata: [].into(),
+                    }));
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.testing.components.AffixFuzzer11#many_floats_optional")?;
             if arrow_data.is_empty() {
@@ -163,10 +162,9 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data_inner.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data_inner.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context(
                             "rerun.testing.components.AffixFuzzer11#many_floats_optional",

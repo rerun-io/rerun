@@ -139,15 +139,14 @@ impl ::re_types_core::Loggable for FlattenedScalar {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![Field {
-                            name: "value".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::Struct(std::sync::Arc::new(vec![Field {
+                        name: "value".to_owned(),
+                        data_type: DataType::Float32,
+                        is_nullable: false,
+                        metadata: [].into(),
+                    }]));
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.testing.datatypes.FlattenedScalar")?;
             if arrow_data.is_empty() {
@@ -173,10 +172,9 @@ impl ::re_types_core::Loggable for FlattenedScalar {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.testing.datatypes.FlattenedScalar#value")?
                         .into_iter()

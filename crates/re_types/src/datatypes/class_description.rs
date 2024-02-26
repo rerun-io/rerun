@@ -284,39 +284,38 @@ impl ::re_types_core::Loggable for ClassDescription {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![
-                            Field {
-                                name: "info".to_owned(),
+                    let expected = DataType::Struct(std::sync::Arc::new(vec![
+                        Field {
+                            name: "info".to_owned(),
+                            data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
+                            is_nullable: false,
+                            metadata: [].into(),
+                        },
+                        Field {
+                            name: "keypoint_annotations".to_owned(),
+                            data_type: DataType::List(std::sync::Arc::new(Field {
+                                name: "item".to_owned(),
                                 data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
-                            },
-                            Field {
-                                name: "keypoint_annotations".to_owned(),
-                                data_type: DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
+                            })),
+                            is_nullable: false,
+                            metadata: [].into(),
+                        },
+                        Field {
+                            name: "keypoint_connections".to_owned(),
+                            data_type: DataType::List(std::sync::Arc::new(Field {
+                                name: "item".to_owned(),
+                                data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
                                 is_nullable: false,
                                 metadata: [].into(),
-                            },
-                            Field {
-                                name: "keypoint_connections".to_owned(),
-                                data_type: DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        arrow_data.data_type().clone(),
-                    )
+                            })),
+                            is_nullable: false,
+                            metadata: [].into(),
+                        },
+                    ]));
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.ClassDescription")?;
             if arrow_data.is_empty() {
@@ -356,16 +355,14 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type:
-                                            <crate::datatypes::AnnotationInfo>::arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context(
                                 "rerun.datatypes.ClassDescription#keypoint_annotations",
@@ -430,16 +427,14 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: <crate::datatypes::KeypointPair>::arrow_datatype(
-                                        ),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context(
                                 "rerun.datatypes.ClassDescription#keypoint_connections",

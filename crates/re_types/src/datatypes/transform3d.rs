@@ -217,7 +217,7 @@ impl ::re_types_core::Loggable for Transform3D {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
+                    let expected =
                         DataType::Union(
                             std::sync::Arc::new(vec![
                                 Field { name : "_null_markers".to_owned(), data_type :
@@ -233,9 +233,9 @@ impl ::re_types_core::Loggable for Transform3D {
                             ]),
                             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
                             UnionMode::Dense,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                        );
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.Transform3D")?;
             if arrow_data.is_empty() {
@@ -246,10 +246,9 @@ impl ::re_types_core::Loggable for Transform3D {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        DeserializationError::datatype_mismatch(
-                            Self::arrow_datatype(),
-                            arrow_data.data_type().clone(),
-                        )
+                        let expected = Self::arrow_datatype();
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.Transform3D")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {

@@ -180,23 +180,22 @@ impl ::re_types_core::Loggable for TensorDimension {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![
-                            Field {
-                                name: "size".to_owned(),
-                                data_type: DataType::UInt64,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "name".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::Struct(std::sync::Arc::new(vec![
+                        Field {
+                            name: "size".to_owned(),
+                            data_type: DataType::UInt64,
+                            is_nullable: false,
+                            metadata: [].into(),
+                        },
+                        Field {
+                            name: "name".to_owned(),
+                            data_type: DataType::Utf8,
+                            is_nullable: true,
+                            metadata: [].into(),
+                        },
+                    ]));
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.TensorDimension")?;
             if arrow_data.is_empty() {
@@ -222,10 +221,9 @@ impl ::re_types_core::Loggable for TensorDimension {
                         .as_any()
                         .downcast_ref::<UInt64Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt64,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::UInt64;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.TensorDimension#size")?
                         .into_iter()
@@ -245,10 +243,9 @@ impl ::re_types_core::Loggable for TensorDimension {
                             .as_any()
                             .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::Utf8,
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::Utf8;
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorDimension#name")?;
                         let arrow_data_buf = arrow_data.values();

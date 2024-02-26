@@ -116,10 +116,9 @@ impl ::re_types_core::Loggable for AffixFuzzer2 {
             .as_any()
             .downcast_ref::<Float32Array>()
             .ok_or_else(|| {
-                DeserializationError::datatype_mismatch(
-                    DataType::Float32,
-                    arrow_data.data_type().clone(),
-                )
+                let expected = DataType::Float32;
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
             })
             .with_context("rerun.testing.datatypes.AffixFuzzer2#single_float_optional")?
             .into_iter()

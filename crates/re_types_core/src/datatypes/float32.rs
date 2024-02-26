@@ -115,10 +115,9 @@ impl crate::Loggable for Float32 {
             .as_any()
             .downcast_ref::<Float32Array>()
             .ok_or_else(|| {
-                DeserializationError::datatype_mismatch(
-                    DataType::Float32,
-                    arrow_data.data_type().clone(),
-                )
+                let expected = DataType::Float32;
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
             })
             .with_context("rerun.datatypes.Float32#value")?
             .into_iter()

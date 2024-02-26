@@ -372,7 +372,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
+                    let expected =
                         DataType::Union(
                             std::sync::Arc::new(vec![
                                 Field { name : "_null_markers".to_owned(), data_type :
@@ -395,9 +395,9 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             ]),
                             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
                             UnionMode::Dense,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                        );
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.testing.datatypes.AffixFuzzer3")?;
             if arrow_data.is_empty() {
@@ -408,10 +408,9 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        DeserializationError::datatype_mismatch(
-                            Self::arrow_datatype(),
-                            arrow_data.data_type().clone(),
-                        )
+                        let expected = Self::arrow_datatype();
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.testing.datatypes.AffixFuzzer3")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
@@ -430,10 +429,9 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer3#degrees")?
                         .into_iter()
@@ -449,10 +447,9 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer3#radians")?
                         .into_iter()
@@ -468,71 +465,64 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
-                            .with_context(
-                                "rerun.testing.datatypes.AffixFuzzer3#craziness",
-                            )?;
+                            .ok_or_else(|| {
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type:
+                                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
+                            })
+                            .with_context("rerun.testing.datatypes.AffixFuzzer3#craziness")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 crate::testing::datatypes::AffixFuzzer1::from_arrow_opt(
-                                        arrow_data_inner,
-                                    )
-                                    .with_context(
-                                        "rerun.testing.datatypes.AffixFuzzer3#craziness",
-                                    )?
-                                    .into_iter()
-                                    .collect::<Vec<_>>()
+                                    arrow_data_inner,
+                                )
+                                .with_context("rerun.testing.datatypes.AffixFuzzer3#craziness")?
+                                .into_iter()
+                                .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                            };
-                                            let data = data
-                                                .iter()
-                                                .cloned()
-                                                .map(Option::unwrap_or_default)
-                                                .collect();
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                    };
+                                    let data = data
+                                        .iter()
+                                        .cloned()
+                                        .map(Option::unwrap_or_default)
+                                        .collect();
+                                    Ok(data)
                                 })
-                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                                .transpose()
+                            })
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let fixed_size_shenanigans = {
                     if 4usize >= arrow_data_arrays.len() {
@@ -543,8 +533,8 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| DeserializationError::datatype_mismatch(
-                                DataType::FixedSizeList(
+                            .ok_or_else(|| {
+                                let expected = DataType::FixedSizeList(
                                     std::sync::Arc::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float32,
@@ -552,9 +542,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                         metadata: [].into(),
                                     }),
                                     3usize,
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                );
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
+                            })
                             .with_context(
                                 "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
                             )?;
@@ -569,10 +560,11 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| DeserializationError::datatype_mismatch(
-                                        DataType::Float32,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        let expected = DataType::Float32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
+                                    })
                                     .with_context(
                                         "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
                                     )?

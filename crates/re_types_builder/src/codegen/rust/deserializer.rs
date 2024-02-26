@@ -313,9 +313,11 @@ pub fn quote_arrow_deserializer(
 
                         let #data_src_offsets = #data_src.offsets()
                             // NOTE: expected dense union, got a sparse one instead
-                            .ok_or_else(|| DeserializationError::datatype_mismatch(
-                                #quoted_datatype, #data_src.data_type().clone(),
-                            )).with_context(#obj_fqname)?;
+                            .ok_or_else(|| {
+                                let expected = #quoted_datatype;
+                                let actual = #data_src.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
+                            }).with_context(#obj_fqname)?;
 
                         if #data_src_types.len() != #data_src_offsets.len() {
                             // NOTE: need one offset array per union arm!
@@ -752,7 +754,11 @@ fn quote_array_downcast(
         #arr
             .as_any()
             .downcast_ref::<#cast_as>()
-            .ok_or_else(|| DeserializationError::datatype_mismatch(#expected, #arr.data_type().clone()))
+            .ok_or_else(|| {
+                let expected = #expected;
+                let actual = #arr.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
+            })
             .with_context(#location)
     }
 }

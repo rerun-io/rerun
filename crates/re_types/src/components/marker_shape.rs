@@ -116,10 +116,9 @@ impl ::re_types_core::Loggable for MarkerShape {
             .as_any()
             .downcast_ref::<UInt8Array>()
             .ok_or_else(|| {
-                DeserializationError::datatype_mismatch(
-                    DataType::UInt8,
-                    arrow_data.data_type().clone(),
-                )
+                let expected = DataType::UInt8;
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
             })
             .with_context("rerun.components.MarkerShape#shape")?
             .into_iter()
@@ -149,10 +148,9 @@ impl ::re_types_core::Loggable for MarkerShape {
                 .as_any()
                 .downcast_ref::<UInt8Array>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::UInt8,
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::UInt8;
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.components.MarkerShape#shape")?
                 .values()

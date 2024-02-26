@@ -159,10 +159,9 @@ impl ::re_types_core::Loggable for TextLogLevel {
                 .as_any()
                 .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Utf8,
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::Utf8;
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.components.TextLogLevel#value")?;
             let arrow_data_buf = arrow_data.values();

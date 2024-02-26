@@ -1183,178 +1183,177 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Union(
-                            std::sync::Arc::new(vec![
-                                Field {
-                                    name: "_null_markers".to_owned(),
-                                    data_type: DataType::Null,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "U8".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                    let expected = DataType::Union(
+                        std::sync::Arc::new(vec![
+                            Field {
+                                name: "_null_markers".to_owned(),
+                                data_type: DataType::Null,
+                                is_nullable: true,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "U8".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "U16".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "U16".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt16,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "U32".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "U32".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt32,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "U64".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "U64".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt64,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "I8".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "I8".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int8,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "I16".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "I16".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int16,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "I32".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "I32".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int32,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "I64".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "I64".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int64,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "F16".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "F16".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float16,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "F32".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "F32".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "F64".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "F64".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float64,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "JPEG".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "JPEG".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "NV12".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "NV12".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                                Field {
-                                    name: "YUY2".to_owned(),
-                                    data_type: DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                            Field {
+                                name: "YUY2".to_owned(),
+                                data_type: DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
                                     is_nullable: false,
                                     metadata: [].into(),
-                                },
-                            ]),
-                            Some(std::sync::Arc::new(vec![
-                                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32,
-                                11i32, 12i32, 13i32, 14i32,
-                            ])),
-                            UnionMode::Dense,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ]),
+                        Some(std::sync::Arc::new(vec![
+                            0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32,
+                            11i32, 12i32, 13i32, 14i32,
+                        ])),
+                        UnionMode::Dense,
+                    );
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.TensorBuffer")?;
             if arrow_data.is_empty() {
@@ -1365,10 +1364,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        DeserializationError::datatype_mismatch(
-                            Self::arrow_datatype(),
-                            arrow_data.data_type().clone(),
-                        )
+                        let expected = Self::arrow_datatype();
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.TensorBuffer")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
@@ -1388,15 +1386,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#U8")?;
                         if arrow_data.is_empty() {
@@ -1408,10 +1405,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::UInt8,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::UInt8;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#U8")?
                                     .values()
@@ -1459,15 +1455,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#U16")?;
                         if arrow_data.is_empty() {
@@ -1479,10 +1474,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt16Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::UInt16,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::UInt16;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#U16")?
                                     .values()
@@ -1530,15 +1524,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#U32")?;
                         if arrow_data.is_empty() {
@@ -1550,10 +1543,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt32Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::UInt32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::UInt32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#U32")?
                                     .values()
@@ -1601,15 +1593,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt64,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#U64")?;
                         if arrow_data.is_empty() {
@@ -1621,10 +1612,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt64Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::UInt64,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::UInt64;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#U64")?
                                     .values()
@@ -1672,15 +1662,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#I8")?;
                         if arrow_data.is_empty() {
@@ -1692,10 +1681,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Int8Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Int8,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Int8;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#I8")?
                                     .values()
@@ -1743,15 +1731,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#I16")?;
                         if arrow_data.is_empty() {
@@ -1763,10 +1750,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Int16Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Int16,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Int16;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#I16")?
                                     .values()
@@ -1814,15 +1800,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#I32")?;
                         if arrow_data.is_empty() {
@@ -1834,10 +1819,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Int32Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Int32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Int32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#I32")?
                                     .values()
@@ -1885,15 +1869,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Int64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int64,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#I64")?;
                         if arrow_data.is_empty() {
@@ -1905,10 +1888,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Int64Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Int64,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Int64;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#I64")?
                                     .values()
@@ -1956,15 +1938,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#F16")?;
                         if arrow_data.is_empty() {
@@ -1976,10 +1957,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Float16Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Float16,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Float16;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#F16")?
                                     .values()
@@ -2027,15 +2007,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#F32")?;
                         if arrow_data.is_empty() {
@@ -2047,10 +2026,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Float32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#F32")?
                                     .values()
@@ -2098,15 +2076,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float64,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float64,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#F64")?;
                         if arrow_data.is_empty() {
@@ -2118,10 +2095,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Float64Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Float64,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Float64;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#F64")?
                                     .values()
@@ -2169,15 +2145,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#JPEG")?;
                         if arrow_data.is_empty() {
@@ -2189,10 +2164,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::UInt8,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::UInt8;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#JPEG")?
                                     .values()
@@ -2240,15 +2214,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#NV12")?;
                         if arrow_data.is_empty() {
@@ -2260,10 +2233,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::UInt8,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::UInt8;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#NV12")?
                                     .values()
@@ -2311,15 +2283,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.TensorBuffer#YUY2")?;
                         if arrow_data.is_empty() {
@@ -2331,10 +2302,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::UInt8,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::UInt8;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.TensorBuffer#YUY2")?
                                     .values()

@@ -199,7 +199,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                     .as_any()
                     .downcast_ref::<arrow2::array::StructArray>()
                     .ok_or_else(|| {
-                        DeserializationError::datatype_mismatch(
+                        let expected =
                             DataType::Struct(std::sync::Arc::new(vec![
                                 Field { name : "p".to_owned(), data_type : < crate
                                 ::testing::datatypes::PrimitiveComponent >
@@ -208,9 +208,9 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                                 crate ::testing::datatypes::StringComponent >
                                 ::arrow_datatype(), is_nullable : false, metadata : []
                                 .into(), },
-                            ])),
-                            arrow_data.data_type().clone(),
-                        )
+                            ]));
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.testing.datatypes.AffixFuzzer20")?;
             if arrow_data.is_empty() {
@@ -236,10 +236,9 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         .as_any()
                         .downcast_ref::<UInt32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt32,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::UInt32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer20#p")?
                         .into_iter()
@@ -262,10 +261,9 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             .as_any()
                             .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::Utf8,
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::Utf8;
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?;
                         let arrow_data_buf = arrow_data.values();
