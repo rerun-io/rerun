@@ -41,8 +41,6 @@ use super::{
 
 // ---
 
-type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
-
 pub struct RustCodeGenerator {
     pub workspace_path: Utf8PathBuf,
 }
@@ -110,13 +108,7 @@ impl RustCodeGenerator {
 
             let filepath = module_path.join(filename);
 
-            let mut code = match generate_object_file(reporter, objects, arrow_registry, obj) {
-                Ok(code) => code,
-                Err(err) => {
-                    reporter.error(&obj.virtpath, &obj.fqname, err);
-                    continue;
-                }
-            };
+            let mut code = generate_object_file(reporter, objects, arrow_registry, obj);
 
             if crate_name == "re_types_core" {
                 code = code.replace("::re_types_core", "crate");
@@ -151,7 +143,7 @@ fn generate_object_file(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
     obj: &Object,
-) -> Result<String> {
+) -> String {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = obj.relative_filepath() {
@@ -215,7 +207,7 @@ fn generate_object_file(
 
     code.push_text(string_from_quoted(&acc), 1, 0);
 
-    Ok(replace_doc_attrb_with_doc_comment(&code))
+    replace_doc_attrb_with_doc_comment(&code)
 }
 
 fn generate_mod_file(
