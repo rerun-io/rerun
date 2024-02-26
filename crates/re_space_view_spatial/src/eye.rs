@@ -391,7 +391,10 @@ impl ViewEye {
             } else if response.dragged_by(ROTATE3D_BUTTON) {
                 self.rotate(response.drag_delta());
             } else if response.dragged_by(DRAG_PAN3D_BUTTON) {
-                let delta_in_view = 0.001 * speed * response.drag_delta(); // TODO(emilk): take fov and screen size into account?
+                // The pan speed is selected to make the panning feel natural for orbit mode,
+                // but it should probably take FOV and screen size into account
+                let pan_speed = 0.001 * speed;
+                let delta_in_view = pan_speed * response.drag_delta();
 
                 self.translate(delta_in_view);
             }
