@@ -120,184 +120,187 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     datum
                 })
                 .collect();
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(AffixFuzzer4::SingleRequired(_)) => 1i8,
+                    Some(AffixFuzzer4::ManyRequired(_)) => 2i8,
+                    Some(AffixFuzzer4::ManyOptional(_)) => 3i8,
+                })
+                .collect();
+            let fields = vec![
+                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
+                {
+                    let (somes, single_required): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| {
+                            matches!(datum.as_deref(), Some(AffixFuzzer4::SingleRequired(_)))
+                        })
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(AffixFuzzer4::SingleRequired(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let single_required_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        _ = single_required_bitmap;
+                        crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(single_required)?
+                    }
+                },
+                {
+                    let (somes, many_required): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| {
+                            matches!(datum.as_deref(), Some(AffixFuzzer4::ManyRequired(_)))
+                        })
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(AffixFuzzer4::ManyRequired(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let many_required_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let many_required_inner_data: Vec<_> = many_required
+                            .iter()
+                            .flatten()
+                            .flatten()
+                            .cloned()
+                            .map(Some)
+                            .collect();
+                        let many_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            many_required.iter().map(|opt| {
+                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                            }),
+                        )
+                        .unwrap()
+                        .into();
+                        ListArray::new(
+                            DataType::List(std::sync::Arc::new(Field {
+                                name: "item".to_owned(),
+                                data_type:
+                                    <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            })),
+                            offsets,
+                            {
+                                _ = many_required_inner_bitmap;
+                                crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(
+                                    many_required_inner_data,
+                                )?
+                            },
+                            many_required_bitmap,
+                        )
+                        .boxed()
+                    }
+                },
+                {
+                    let (somes, many_optional): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| {
+                            matches!(datum.as_deref(), Some(AffixFuzzer4::ManyOptional(_)))
+                        })
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(AffixFuzzer4::ManyOptional(v)) => Some(v.clone()),
+                                _ => None,
+                            }
+                            .flatten();
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let many_optional_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let many_optional_inner_data: Vec<_> = many_optional
+                            .iter()
+                            .flatten()
+                            .flatten()
+                            .cloned()
+                            .map(Some)
+                            .collect();
+                        let many_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            many_optional.iter().map(|opt| {
+                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                            }),
+                        )
+                        .unwrap()
+                        .into();
+                        ListArray::new(
+                            DataType::List(std::sync::Arc::new(Field {
+                                name: "item".to_owned(),
+                                data_type:
+                                    <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            })),
+                            offsets,
+                            {
+                                _ = many_optional_inner_bitmap;
+                                crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(
+                                    many_optional_inner_data,
+                                )?
+                            },
+                            many_optional_bitmap,
+                        )
+                        .boxed()
+                    }
+                },
+            ];
+            let offsets = Some({
+                let mut single_required_offset = 0;
+                let mut many_required_offset = 0;
+                let mut many_optional_offset = 0;
+                let mut nulls_offset = 0;
+                data.iter()
+                    .map(|v| match v.as_deref() {
+                        None => {
+                            let offset = nulls_offset;
+                            nulls_offset += 1;
+                            offset
+                        }
+                        Some(AffixFuzzer4::SingleRequired(_)) => {
+                            let offset = single_required_offset;
+                            single_required_offset += 1;
+                            offset
+                        }
+                        Some(AffixFuzzer4::ManyRequired(_)) => {
+                            let offset = many_required_offset;
+                            many_required_offset += 1;
+                            offset
+                        }
+                        Some(AffixFuzzer4::ManyOptional(_)) => {
+                            let offset = many_optional_offset;
+                            many_optional_offset += 1;
+                            offset
+                        }
+                    })
+                    .collect()
+            });
             UnionArray::new(
                 <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
-                data.iter()
-                    .map(|a| match a.as_deref() {
-                        None => 0,
-                        Some(AffixFuzzer4::SingleRequired(_)) => 1i8,
-                        Some(AffixFuzzer4::ManyRequired(_)) => 2i8,
-                        Some(AffixFuzzer4::ManyOptional(_)) => 3i8,
-                    })
-                    .collect(),
-                vec![
-                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
-                        .boxed(),
-                    {
-                        let (somes, single_required): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer4::SingleRequired(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer4::SingleRequired(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let single_required_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            _ = single_required_bitmap;
-                            crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(single_required)?
-                        }
-                    },
-                    {
-                        let (somes, many_required): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer4::ManyRequired(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer4::ManyRequired(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let many_required_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_required_inner_data: Vec<_> = many_required
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
-                            let many_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_required.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type:
-                                        <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
-                                offsets,
-                                {
-                                    _ = many_required_inner_bitmap;
-                                    crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(
-                                        many_required_inner_data,
-                                    )?
-                                },
-                                many_required_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, many_optional): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer4::ManyOptional(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer4::ManyOptional(v)) => Some(v.clone()),
-                                    _ => None,
-                                }
-                                .flatten();
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let many_optional_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_optional_inner_data: Vec<_> = many_optional
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
-                            let many_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
-                            ListArray::new(
-                                DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type:
-                                        <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
-                                offsets,
-                                {
-                                    _ = many_optional_inner_bitmap;
-                                    crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(
-                                        many_optional_inner_data,
-                                    )?
-                                },
-                                many_optional_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                ],
-                Some({
-                    let mut single_required_offset = 0;
-                    let mut many_required_offset = 0;
-                    let mut many_optional_offset = 0;
-                    let mut nulls_offset = 0;
-                    data.iter()
-                        .map(|v| match v.as_deref() {
-                            None => {
-                                let offset = nulls_offset;
-                                nulls_offset += 1;
-                                offset
-                            }
-                            Some(AffixFuzzer4::SingleRequired(_)) => {
-                                let offset = single_required_offset;
-                                single_required_offset += 1;
-                                offset
-                            }
-                            Some(AffixFuzzer4::ManyRequired(_)) => {
-                                let offset = many_required_offset;
-                                many_required_offset += 1;
-                                offset
-                            }
-                            Some(AffixFuzzer4::ManyOptional(_)) => {
-                                let offset = many_optional_offset;
-                                many_optional_offset += 1;
-                                offset
-                            }
-                        })
-                        .collect()
-                }),
+                types,
+                fields,
+                offsets,
             )
             .boxed()
         })

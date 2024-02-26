@@ -104,132 +104,131 @@ impl ::re_types_core::Loggable for Rotation3D {
                     datum
                 })
                 .collect();
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(Rotation3D::Quaternion(_)) => 1i8,
+                    Some(Rotation3D::AxisAngle(_)) => 2i8,
+                })
+                .collect();
+            let fields = vec![
+                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
+                {
+                    let (somes, quaternion): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(Rotation3D::Quaternion(_))))
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(Rotation3D::Quaternion(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let quaternion_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let quaternion_inner_data: Vec<_> = quaternion
+                            .iter()
+                            .map(|datum| {
+                                datum
+                                    .map(|datum| {
+                                        let crate::datatypes::Quaternion(data0) = datum;
+                                        data0
+                                    })
+                                    .unwrap_or_default()
+                            })
+                            .flatten()
+                            .map(Some)
+                            .collect();
+                        let quaternion_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                            quaternion_bitmap.as_ref().map(|bitmap| {
+                                bitmap
+                                    .iter()
+                                    .map(|i| std::iter::repeat(i).take(4usize))
+                                    .flatten()
+                                    .collect::<Vec<_>>()
+                                    .into()
+                            });
+                        FixedSizeListArray::new(
+                            DataType::FixedSizeList(
+                                std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }),
+                                4usize,
+                            ),
+                            PrimitiveArray::new(
+                                DataType::Float32,
+                                quaternion_inner_data
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect(),
+                                quaternion_inner_bitmap,
+                            )
+                            .boxed(),
+                            quaternion_bitmap,
+                        )
+                        .boxed()
+                    }
+                },
+                {
+                    let (somes, axis_angle): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(Rotation3D::AxisAngle(_))))
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(Rotation3D::AxisAngle(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let axis_angle_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        _ = axis_angle_bitmap;
+                        crate::datatypes::RotationAxisAngle::to_arrow_opt(axis_angle)?
+                    }
+                },
+            ];
+            let offsets = Some({
+                let mut quaternion_offset = 0;
+                let mut axis_angle_offset = 0;
+                let mut nulls_offset = 0;
+                data.iter()
+                    .map(|v| match v.as_deref() {
+                        None => {
+                            let offset = nulls_offset;
+                            nulls_offset += 1;
+                            offset
+                        }
+                        Some(Rotation3D::Quaternion(_)) => {
+                            let offset = quaternion_offset;
+                            quaternion_offset += 1;
+                            offset
+                        }
+                        Some(Rotation3D::AxisAngle(_)) => {
+                            let offset = axis_angle_offset;
+                            axis_angle_offset += 1;
+                            offset
+                        }
+                    })
+                    .collect()
+            });
             UnionArray::new(
                 <crate::datatypes::Rotation3D>::arrow_datatype(),
-                data.iter()
-                    .map(|a| match a.as_deref() {
-                        None => 0,
-                        Some(Rotation3D::Quaternion(_)) => 1i8,
-                        Some(Rotation3D::AxisAngle(_)) => 2i8,
-                    })
-                    .collect(),
-                vec![
-                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
-                        .boxed(),
-                    {
-                        let (somes, quaternion): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(Rotation3D::Quaternion(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(Rotation3D::Quaternion(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let quaternion_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let quaternion_inner_data: Vec<_> = quaternion
-                                .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Quaternion(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
-                                .flatten()
-                                .map(Some)
-                                .collect();
-                            let quaternion_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                quaternion_bitmap.as_ref().map(|bitmap| {
-                                    bitmap
-                                        .iter()
-                                        .map(|i| std::iter::repeat(i).take(4usize))
-                                        .flatten()
-                                        .collect::<Vec<_>>()
-                                        .into()
-                                });
-                            FixedSizeListArray::new(
-                                DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
-                                    4usize,
-                                ),
-                                PrimitiveArray::new(
-                                    DataType::Float32,
-                                    quaternion_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
-                                    quaternion_inner_bitmap,
-                                )
-                                .boxed(),
-                                quaternion_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, axis_angle): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(Rotation3D::AxisAngle(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(Rotation3D::AxisAngle(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let axis_angle_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            _ = axis_angle_bitmap;
-                            crate::datatypes::RotationAxisAngle::to_arrow_opt(axis_angle)?
-                        }
-                    },
-                ],
-                Some({
-                    let mut quaternion_offset = 0;
-                    let mut axis_angle_offset = 0;
-                    let mut nulls_offset = 0;
-                    data.iter()
-                        .map(|v| match v.as_deref() {
-                            None => {
-                                let offset = nulls_offset;
-                                nulls_offset += 1;
-                                offset
-                            }
-                            Some(Rotation3D::Quaternion(_)) => {
-                                let offset = quaternion_offset;
-                                quaternion_offset += 1;
-                                offset
-                            }
-                            Some(Rotation3D::AxisAngle(_)) => {
-                                let offset = axis_angle_offset;
-                                axis_angle_offset += 1;
-                                offset
-                            }
-                        })
-                        .collect()
-                }),
+                types,
+                fields,
+                offsets,
             )
             .boxed()
         })

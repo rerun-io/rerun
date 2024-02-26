@@ -132,162 +132,154 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     datum
                 })
                 .collect();
-            UnionArray::new(
-                <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                data.iter()
-                    .map(|a| match a.as_deref() {
-                        None => 0,
-                        Some(AffixFuzzer3::Degrees(_)) => 1i8,
-                        Some(AffixFuzzer3::Radians(_)) => 2i8,
-                        Some(AffixFuzzer3::Craziness(_)) => 3i8,
-                        Some(AffixFuzzer3::FixedSizeShenanigans(_)) => 4i8,
-                    })
-                    .collect(),
-                vec![
-                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
-                        .boxed(),
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(AffixFuzzer3::Degrees(_)) => 1i8,
+                    Some(AffixFuzzer3::Radians(_)) => 2i8,
+                    Some(AffixFuzzer3::Craziness(_)) => 3i8,
+                    Some(AffixFuzzer3::FixedSizeShenanigans(_)) => 4i8,
+                })
+                .collect();
+            let fields = vec![
+                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
+                {
+                    let (somes, degrees): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(AffixFuzzer3::Degrees(_))))
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(AffixFuzzer3::Degrees(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    PrimitiveArray::new(
+                        DataType::Float32,
+                        degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                        degrees_bitmap,
+                    )
+                    .boxed()
+                },
+                {
+                    let (somes, radians): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(AffixFuzzer3::Radians(_))))
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(AffixFuzzer3::Radians(v)) => Some(v.clone()),
+                                _ => None,
+                            }
+                            .flatten();
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let radians_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    PrimitiveArray::new(
+                        DataType::Float32,
+                        radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                        radians_bitmap,
+                    )
+                    .boxed()
+                },
+                {
+                    let (somes, craziness): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| {
+                            matches!(datum.as_deref(), Some(AffixFuzzer3::Craziness(_)))
+                        })
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(AffixFuzzer3::Craziness(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let craziness_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
                     {
-                        let (somes, degrees): (Vec<_>, Vec<_>) = data
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let craziness_inner_data: Vec<_> = craziness
                             .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer3::Degrees(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer3::Degrees(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            DataType::Float32,
-                            degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            degrees_bitmap,
-                        )
-                        .boxed()
-                    },
-                    {
-                        let (somes, radians): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer3::Radians(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer3::Radians(v)) => Some(v.clone()),
-                                    _ => None,
-                                }
-                                .flatten();
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let radians_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            DataType::Float32,
-                            radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            radians_bitmap,
-                        )
-                        .boxed()
-                    },
-                    {
-                        let (somes, craziness): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(AffixFuzzer3::Craziness(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer3::Craziness(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let craziness_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let craziness_inner_data: Vec<_> = craziness
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
-                            let craziness_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                craziness.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
+                            .flatten()
+                            .flatten()
+                            .cloned()
+                            .map(Some)
+                            .collect();
+                        let craziness_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                        let offsets =
+                            arrow2::offset::Offsets::<i32>::try_from_lengths(craziness.iter().map(
+                                |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
+                            ))
                             .unwrap()
                             .into();
-                            ListArray::new(
-                                DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type:
-                                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
-                                offsets,
-                                {
-                                    _ = craziness_inner_bitmap;
-                                    crate::testing::datatypes::AffixFuzzer1::to_arrow_opt(
-                                        craziness_inner_data,
-                                    )?
-                                },
-                                craziness_bitmap,
+                        ListArray::new(
+                            DataType::List(std::sync::Arc::new(Field {
+                                name: "item".to_owned(),
+                                data_type:
+                                    <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            })),
+                            offsets,
+                            {
+                                _ = craziness_inner_bitmap;
+                                crate::testing::datatypes::AffixFuzzer1::to_arrow_opt(
+                                    craziness_inner_data,
+                                )?
+                            },
+                            craziness_bitmap,
+                        )
+                        .boxed()
+                    }
+                },
+                {
+                    let (somes, fixed_size_shenanigans): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| {
+                            matches!(
+                                datum.as_deref(),
+                                Some(AffixFuzzer3::FixedSizeShenanigans(_))
                             )
-                            .boxed()
-                        }
-                    },
+                        })
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(AffixFuzzer3::FixedSizeShenanigans(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let fixed_size_shenanigans_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
                     {
-                        let (somes, fixed_size_shenanigans): (Vec<_>, Vec<_>) = data
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let fixed_size_shenanigans_inner_data: Vec<_> = fixed_size_shenanigans
                             .iter()
-                            .filter(|datum| {
-                                matches!(
-                                    datum.as_deref(),
-                                    Some(AffixFuzzer3::FixedSizeShenanigans(_))
-                                )
+                            .flat_map(|v| match v {
+                                Some(v) => itertools::Either::Left(v.iter().cloned()),
+                                None => itertools::Either::Right(
+                                    std::iter::repeat(Default::default()).take(3usize),
+                                ),
                             })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(AffixFuzzer3::FixedSizeShenanigans(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let fixed_size_shenanigans_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let fixed_size_shenanigans_inner_data: Vec<_> = fixed_size_shenanigans
-                                .iter()
-                                .flat_map(|v| match v {
-                                    Some(v) => itertools::Either::Left(v.iter().cloned()),
-                                    None => itertools::Either::Right(
-                                        std::iter::repeat(Default::default()).take(3usize),
-                                    ),
-                                })
-                                .map(Some)
-                                .collect();
-                            let fixed_size_shenanigans_inner_bitmap: Option<
-                                arrow2::bitmap::Bitmap,
-                            > = fixed_size_shenanigans_bitmap.as_ref().map(|bitmap| {
+                            .map(Some)
+                            .collect();
+                        let fixed_size_shenanigans_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                            fixed_size_shenanigans_bitmap.as_ref().map(|bitmap| {
                                 bitmap
                                     .iter()
                                     .map(|i| std::iter::repeat(i).take(3usize))
@@ -295,67 +287,72 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                     .collect::<Vec<_>>()
                                     .into()
                             });
-                            FixedSizeListArray::new(
-                                DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
-                                    3usize,
-                                ),
-                                PrimitiveArray::new(
-                                    DataType::Float32,
-                                    fixed_size_shenanigans_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
-                                    fixed_size_shenanigans_inner_bitmap,
-                                )
-                                .boxed(),
-                                fixed_size_shenanigans_bitmap,
+                        FixedSizeListArray::new(
+                            DataType::FixedSizeList(
+                                std::sync::Arc::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                }),
+                                3usize,
+                            ),
+                            PrimitiveArray::new(
+                                DataType::Float32,
+                                fixed_size_shenanigans_inner_data
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect(),
+                                fixed_size_shenanigans_inner_bitmap,
                             )
-                            .boxed()
+                            .boxed(),
+                            fixed_size_shenanigans_bitmap,
+                        )
+                        .boxed()
+                    }
+                },
+            ];
+            let offsets = Some({
+                let mut degrees_offset = 0;
+                let mut radians_offset = 0;
+                let mut craziness_offset = 0;
+                let mut fixed_size_shenanigans_offset = 0;
+                let mut nulls_offset = 0;
+                data.iter()
+                    .map(|v| match v.as_deref() {
+                        None => {
+                            let offset = nulls_offset;
+                            nulls_offset += 1;
+                            offset
                         }
-                    },
-                ],
-                Some({
-                    let mut degrees_offset = 0;
-                    let mut radians_offset = 0;
-                    let mut craziness_offset = 0;
-                    let mut fixed_size_shenanigans_offset = 0;
-                    let mut nulls_offset = 0;
-                    data.iter()
-                        .map(|v| match v.as_deref() {
-                            None => {
-                                let offset = nulls_offset;
-                                nulls_offset += 1;
-                                offset
-                            }
-                            Some(AffixFuzzer3::Degrees(_)) => {
-                                let offset = degrees_offset;
-                                degrees_offset += 1;
-                                offset
-                            }
-                            Some(AffixFuzzer3::Radians(_)) => {
-                                let offset = radians_offset;
-                                radians_offset += 1;
-                                offset
-                            }
-                            Some(AffixFuzzer3::Craziness(_)) => {
-                                let offset = craziness_offset;
-                                craziness_offset += 1;
-                                offset
-                            }
-                            Some(AffixFuzzer3::FixedSizeShenanigans(_)) => {
-                                let offset = fixed_size_shenanigans_offset;
-                                fixed_size_shenanigans_offset += 1;
-                                offset
-                            }
-                        })
-                        .collect()
-                }),
+                        Some(AffixFuzzer3::Degrees(_)) => {
+                            let offset = degrees_offset;
+                            degrees_offset += 1;
+                            offset
+                        }
+                        Some(AffixFuzzer3::Radians(_)) => {
+                            let offset = radians_offset;
+                            radians_offset += 1;
+                            offset
+                        }
+                        Some(AffixFuzzer3::Craziness(_)) => {
+                            let offset = craziness_offset;
+                            craziness_offset += 1;
+                            offset
+                        }
+                        Some(AffixFuzzer3::FixedSizeShenanigans(_)) => {
+                            let offset = fixed_size_shenanigans_offset;
+                            fixed_size_shenanigans_offset += 1;
+                            offset
+                        }
+                    })
+                    .collect()
+            });
+            UnionArray::new(
+                <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
+                types,
+                fields,
+                offsets,
             )
             .boxed()
         })
