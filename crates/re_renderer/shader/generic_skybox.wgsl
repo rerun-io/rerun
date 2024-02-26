@@ -39,7 +39,7 @@ fn main(in: FragmentInput, @builtin(position) frag_coord: vec4<f32>) -> @locatio
     // Messing with direction a bit so it looks like in our old three-d based renderer (for easier comparison)
     let rgb = skybox_dark_srgb(camera_dir); // TODO(andreas): Allow switching to skybox_light
 
-    // Apply dithering in sRGB.
+    // Apply dithering in gamma space.
     // TODO(andreas): Once we switch to HDR outputs, this can be removed.
     //                As of writing, the render target itself is (s)RGB8, so we need to dither while we still have maximum precision.
     let rgb_dithered = dither_interleaved(rgb, 256.0, frag_coord);
