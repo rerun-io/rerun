@@ -282,32 +282,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::Struct(std::sync::Arc::new(vec![
-                        Field {
-                            name: "translation".to_owned(),
-                            data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "rotation".to_owned(),
-                            data_type: <crate::datatypes::Rotation3D>::arrow_datatype(),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "scale".to_owned(),
-                            data_type: <crate::datatypes::Scale3D>::arrow_datatype(),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "from_parent".to_owned(),
-                            data_type: DataType::Boolean,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ]));
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

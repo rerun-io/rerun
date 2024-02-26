@@ -206,30 +206,7 @@ impl ::re_types_core::Loggable for Angle {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::Union(
-                        std::sync::Arc::new(vec![
-                            Field {
-                                name: "_null_markers".to_owned(),
-                                data_type: DataType::Null,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "Radians".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "Degrees".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                        ]),
-                        Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
-                        UnionMode::Dense,
-                    );
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

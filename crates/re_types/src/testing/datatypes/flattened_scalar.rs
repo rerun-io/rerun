@@ -139,12 +139,7 @@ impl ::re_types_core::Loggable for FlattenedScalar {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::Struct(std::sync::Arc::new(vec![Field {
-                        name: "value".to_owned(),
-                        data_type: DataType::Float32,
-                        is_nullable: false,
-                        metadata: [].into(),
-                    }]));
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

@@ -320,30 +320,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    let expected =
-                        DataType::Union(
-                            std::sync::Arc::new(vec![
-                                Field { name : "_null_markers".to_owned(), data_type :
-                                DataType::Null, is_nullable : true, metadata : [].into(), },
-                                Field { name : "single_required".to_owned(), data_type : <
-                                crate ::testing::datatypes::AffixFuzzer3 >
-                                ::arrow_datatype(), is_nullable : false, metadata : []
-                                .into(), }, Field { name : "many_required".to_owned(),
-                                data_type : DataType::List(std::sync::Arc::new(Field { name
-                                : "item".to_owned(), data_type : < crate
-                                ::testing::datatypes::AffixFuzzer3 > ::arrow_datatype(),
-                                is_nullable : false, metadata : [].into(), })), is_nullable
-                                : false, metadata : [].into(), }, Field { name :
-                                "many_optional".to_owned(), data_type :
-                                DataType::List(std::sync::Arc::new(Field { name : "item"
-                                .to_owned(), data_type : < crate
-                                ::testing::datatypes::AffixFuzzer3 > ::arrow_datatype(),
-                                is_nullable : false, metadata : [].into(), })), is_nullable
-                                : false, metadata : [].into(), },
-                            ]),
-                            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32])),
-                            UnionMode::Dense,
-                        );
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

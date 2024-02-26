@@ -194,25 +194,15 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
-            let arrow_data =
-                arrow_data
-                    .as_any()
-                    .downcast_ref::<arrow2::array::StructArray>()
-                    .ok_or_else(|| {
-                        let expected =
-                            DataType::Struct(std::sync::Arc::new(vec![
-                                Field { name : "p".to_owned(), data_type : < crate
-                                ::testing::datatypes::PrimitiveComponent >
-                                ::arrow_datatype(), is_nullable : false, metadata : []
-                                .into(), }, Field { name : "s".to_owned(), data_type : <
-                                crate ::testing::datatypes::StringComponent >
-                                ::arrow_datatype(), is_nullable : false, metadata : []
-                                .into(), },
-                            ]));
-                        let actual = arrow_data.data_type().clone();
-                        DeserializationError::datatype_mismatch(expected, actual)
-                    })
-                    .with_context("rerun.testing.datatypes.AffixFuzzer20")?;
+            let arrow_data = arrow_data
+                .as_any()
+                .downcast_ref::<arrow2::array::StructArray>()
+                .ok_or_else(|| {
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
+                })
+                .with_context("rerun.testing.datatypes.AffixFuzzer20")?;
             if arrow_data.is_empty() {
                 Vec::new()
             } else {

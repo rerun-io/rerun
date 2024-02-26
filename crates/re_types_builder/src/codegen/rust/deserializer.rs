@@ -171,7 +171,7 @@ pub fn quote_arrow_deserializer(
 
                 let quoted_downcast = {
                     let cast_as = quote!(arrow2::array::StructArray);
-                    quote_array_downcast(obj_fqname, &data_src, cast_as, datatype)
+                    quote_array_downcast_quoted(obj_fqname, &data_src, cast_as, &quoted_datatype)
                 };
                 quote! {{
                     let #data_src = #quoted_downcast?;
@@ -297,7 +297,7 @@ pub fn quote_arrow_deserializer(
 
                 let quoted_downcast = {
                     let cast_as = quote!(arrow2::array::UnionArray);
-                    quote_array_downcast(obj_fqname, &data_src, &cast_as, datatype)
+                    quote_array_downcast_quoted(obj_fqname, &data_src, &cast_as, &quoted_datatype)
                 };
 
                 quote! {{
@@ -747,15 +747,28 @@ fn quote_array_downcast(
     cast_as: impl quote::ToTokens,
     expected_datatype: &DataType,
 ) -> TokenStream {
+    let expected = ArrowDataTypeTokenizer(expected_datatype, false);
+    let quoted_expected_datatype = quote! { #expected };
+
+    quote_array_downcast_quoted(location, arr, cast_as, &quoted_expected_datatype)
+}
+
+/// Generates tokens that downcast the runtime Arrow array identifier by `arr` as `cast_as`, making sure
+/// to inject proper error handling.
+fn quote_array_downcast_quoted(
+    location: impl AsRef<str>,
+    arr: &syn::Ident,
+    cast_as: impl quote::ToTokens,
+    quoted_expected_datatype: &TokenStream,
+) -> TokenStream {
     let location = location.as_ref();
     let cast_as = cast_as.to_token_stream();
-    let expected = ArrowDataTypeTokenizer(expected_datatype, false);
     quote! {
         #arr
             .as_any()
             .downcast_ref::<#cast_as>()
             .ok_or_else(|| {
-                let expected = #expected;
+                let expected = #quoted_expected_datatype;
                 let actual = #arr.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })

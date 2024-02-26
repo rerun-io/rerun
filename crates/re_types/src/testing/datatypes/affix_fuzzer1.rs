@@ -609,78 +609,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::Struct(std::sync::Arc::new(vec![
-                        Field {
-                            name: "single_float_optional".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "single_string_required".to_owned(),
-                            data_type: DataType::Utf8,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "single_string_optional".to_owned(),
-                            data_type: DataType::Utf8,
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "many_floats_optional".to_owned(),
-                            data_type: DataType::List(std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "many_strings_required".to_owned(),
-                            data_type: DataType::List(std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "many_strings_optional".to_owned(),
-                            data_type: DataType::List(std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "flattened_scalar".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "almost_flattened_scalar".to_owned(),
-                            data_type: <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(
-                            ),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "from_parent".to_owned(),
-                            data_type: DataType::Boolean,
-                            is_nullable: true,
-                            metadata: [].into(),
-                        },
-                    ]));
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

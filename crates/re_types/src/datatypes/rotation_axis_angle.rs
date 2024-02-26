@@ -205,20 +205,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::Struct(std::sync::Arc::new(vec![
-                        Field {
-                            name: "axis".to_owned(),
-                            data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "angle".to_owned(),
-                            data_type: <crate::datatypes::Angle>::arrow_datatype(),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ]));
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

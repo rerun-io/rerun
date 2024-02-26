@@ -164,12 +164,7 @@ impl ::re_types_core::Loggable for Material {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::Struct(std::sync::Arc::new(vec![Field {
-                        name: "albedo_factor".to_owned(),
-                        data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
-                        is_nullable: true,
-                        metadata: [].into(),
-                    }]));
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

@@ -284,36 +284,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::Struct(std::sync::Arc::new(vec![
-                        Field {
-                            name: "info".to_owned(),
-                            data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "keypoint_annotations".to_owned(),
-                            data_type: DataType::List(std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "keypoint_connections".to_owned(),
-                            data_type: DataType::List(std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ]));
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

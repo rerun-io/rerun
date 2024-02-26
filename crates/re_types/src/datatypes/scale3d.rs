@@ -250,30 +250,7 @@ impl ::re_types_core::Loggable for Scale3D {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::Union(
-                        std::sync::Arc::new(vec![
-                            Field {
-                                name: "_null_markers".to_owned(),
-                                data_type: DataType::Null,
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "ThreeD".to_owned(),
-                                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "Uniform".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                        ]),
-                        Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
-                        UnionMode::Dense,
-                    );
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

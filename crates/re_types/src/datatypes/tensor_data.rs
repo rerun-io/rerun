@@ -204,25 +204,7 @@ impl ::re_types_core::Loggable for TensorData {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::Struct(std::sync::Arc::new(vec![
-                        Field {
-                            name: "shape".to_owned(),
-                            data_type: DataType::List(std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: <crate::datatypes::TensorDimension>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                        Field {
-                            name: "buffer".to_owned(),
-                            data_type: <crate::datatypes::TensorBuffer>::arrow_datatype(),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        },
-                    ]));
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
