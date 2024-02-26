@@ -51,7 +51,9 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let transforms = view_ctx.get::<TransformContext>()?;
 
+        let query_caches = ctx.entity_db.query_caches();
         let store = ctx.entity_db.store();
+
         let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
         // Counting all transforms ahead of time is a bit wasteful, but we also don't expect a huge amount,
@@ -60,20 +62,28 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            if store
-                .query_latest_component::<Transform3D>(&data_result.entity_path, &latest_at_query)
-                .is_none()
-            {
+            if !*data_result.accumulated_properties().transform_3d_visible {
                 continue;
             }
 
-            if !*data_result.accumulated_properties().transform_3d_visible {
+            if query_caches
+                .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::Transform3D, Transform3D, _>(
+                    store,
+                    &latest_at_query,
+                    &data_result.entity_path,
+                    |_| {},
+                )
+                // NOTE: Can only fail if the primary component is missing, which is what we
+                // want to check here (i.e.: there's no transform for this entity!).
+                .is_err()
+            {
                 continue;
             }
 
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let Some(world_from_obj) = transforms.reference_from_entity_ignoring_pinhole(
                 &data_result.entity_path,
+                query_caches,
                 store,
                 &latest_at_query,
             ) else {

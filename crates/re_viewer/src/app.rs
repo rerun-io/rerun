@@ -393,6 +393,7 @@ impl App {
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint");
                 store_hub.clear_current_blueprint();
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 // We only want to update the blueprint if the "inspect blueprint timeline" mode is
@@ -767,7 +768,7 @@ impl App {
         &mut self,
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_stats: &StoreHubStats,
+        store_stats: Option<&StoreHubStats>,
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
@@ -824,7 +825,7 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
-        store_stats: &StoreHubStats,
+        store_stats: Option<&StoreHubStats>,
     ) {
         let mut main_panel_frame = egui::Frame::default();
         if re_ui::CUSTOM_WINDOW_DECORATIONS {
@@ -1240,8 +1241,11 @@ impl eframe::App for App {
             }
         }
 
+        // NOTE: GPU resource stats are cheap to compute so we always do.
         // TODO(andreas): store the re_renderer somewhere else.
         let gpu_resource_stats = {
+            re_tracing::profile_scope!("gpu_resource_stats");
+
             let egui_renderer = {
                 let render_state = frame.wgpu_render_state().unwrap();
                 &mut render_state.renderer.read()
@@ -1255,10 +1259,15 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        let store_stats = store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled());
+        // NOTE: Store and caching stats are very costly to compute: only do so if the memory panel
+        // is opened.
+        let store_stats = self
+            .memory_panel_open
+            .then(|| store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled()));
 
         // do early, before doing too many allocations
-        self.memory_panel.update(&gpu_resource_stats, &store_stats);
+        self.memory_panel
+            .update(&gpu_resource_stats, store_stats.as_ref());
 
         self.check_keyboard_shortcuts(egui_ctx);
 
@@ -1296,7 +1305,7 @@ impl eframe::App for App {
             &app_blueprint,
             &gpu_resource_stats,
             store_context.as_ref(),
-            &store_stats,
+            store_stats.as_ref(),
         );
 
         if re_ui::CUSTOM_WINDOW_DECORATIONS {

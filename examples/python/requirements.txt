@@ -27,6 +27,7 @@
 -r raw_mesh/requirements.txt
 -r rgbd/requirements.txt
 -r ros_node/requirements.txt
+-r rrt-star/requirements.txt
 -r segment_anything_model/requirements.txt
 -r shared_recording/requirements.txt
 -r signed_distance_fields/requirements.txt
