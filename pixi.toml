@@ -84,6 +84,7 @@ lint-typos = "typos"
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 toml-fmt = "taplo fmt"
+py-fmt = "ruff format --config rerun_py/pyproject.toml"
 
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
