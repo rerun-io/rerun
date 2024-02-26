@@ -959,8 +959,6 @@ impl App {
 
             let store_id = msg.store_id();
 
-            let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
-
             let entity_db = store_hub.entity_db_mut(store_id);
 
             if entity_db.data_source.is_none() {
@@ -970,16 +968,6 @@ impl App {
             if let Err(err) = entity_db.add(&msg) {
                 re_log::error_once!("Failed to add incoming msg: {err}");
             };
-
-            #[cfg(feature = "analytics")]
-            if let Some(analytics) = &mut self.analytics {
-                if is_new_store && entity_db.store_kind() == StoreKind::Recording {
-                    // Do analytics after ingesting the new message,
-                    // because thats when the `entity_db.store_info` is set,
-                    // which we use in the analytics call.
-                    analytics.on_open_recording(entity_db);
-                }
-            }
 
             // Set the recording-id after potentially creating the store in the
             // hub. This ordering is important because the `StoreHub` internally
@@ -998,6 +986,18 @@ impl App {
                             msg.info.application_id.clone(),
                         );
                     }
+                }
+            }
+
+            // Do analytics after ingesting the new message,
+            // because thats when the `entity_db.store_info` is set,
+            // which we use in the analytics call.
+            #[cfg(feature = "analytics")]
+            if let Some(analytics) = &mut self.analytics {
+                let entity_db = store_hub.entity_db_mut(store_id);
+                let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
+                if is_new_store && entity_db.store_kind() == StoreKind::Recording {
+                    analytics.on_open_recording(entity_db);
                 }
             }
 
