@@ -41,6 +41,7 @@ class Boxes2D(Boxes2DExt, Archetype):
       <img src="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in boxes2d_ext.py

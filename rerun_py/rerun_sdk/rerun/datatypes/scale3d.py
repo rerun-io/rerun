@@ -32,6 +32,7 @@ class Scale3D(Scale3DExt):
     scale = rr.datatypes.Scale3D([1, 1, -1])
     scale = rr.datatypes.Scale3D(rr.datatypes.Vec3D([1, 1, -1]))
     ```
+
     """
 
     # You can define your own __init__ function as a member of Scale3DExt in scale3d_ext.py

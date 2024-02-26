@@ -240,6 +240,7 @@ def project_3d_bboxes_to_2d_keypoints(
     bboxes_2d_filtered:
         A numpy array of shape (nObjects, 8, 2), representing the 2D keypoints of the 3D bounding boxes. That
         are within the image frame.
+
     """
 
     translation, rotation_q = camera_from_world.translation, camera_from_world.rotation
@@ -336,6 +337,7 @@ def read_camera_from_world(traj_string: str) -> tuple[str, rr.TranslationRotatio
     ------
     AssertionError:
         If the input string does not contain 7 tokens.
+
     """
     tokens = traj_string.split()  # Split the input string into tokens
     assert len(tokens) == 7, f"Input string must have 7 tokens, but found {len(tokens)}."
@@ -378,6 +380,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     Returns
     -------
     None
+
     """
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
 

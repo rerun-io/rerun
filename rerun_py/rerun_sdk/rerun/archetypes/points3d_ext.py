@@ -51,6 +51,7 @@ class Points3DExt:
              detected skeleton.
         instance_keys:
              Unique identifiers for each individual point in the batch.
+
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):

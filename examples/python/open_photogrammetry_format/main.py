@@ -77,6 +77,7 @@ class OPFProject:
             Path to the project file.
         log_as_frames : bool, optional
             Whether to log the cameras as individual frames, by default True
+
         """
         import os
 
@@ -98,6 +99,7 @@ class OPFProject:
             Name of the dataset to download.
         log_as_frames : bool, optional
             Whether to log the cameras as individual frames, by default True
+
         """
         spec = DATASETS[dataset]
         if not (DATASET_DIR / spec.dir_name).exists():

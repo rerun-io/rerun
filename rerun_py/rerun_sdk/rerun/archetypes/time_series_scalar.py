@@ -57,6 +57,7 @@ class TimeSeriesScalar(Archetype):
       <img src="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(
@@ -113,6 +114,7 @@ class TimeSeriesScalar(Archetype):
             Points within a single line do not have to all share the same scatteredness:
             the line will switch between a scattered and a continuous representation as
             required.
+
         """
 
         # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py

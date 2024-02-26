@@ -212,6 +212,7 @@ def get_data_recording(
     -------
     Optional[RecordingStream]
         The most appropriate recording to log data to, in the current context, if any.
+
     """
     result = bindings.get_data_recording(recording=recording)
     return RecordingStream(result) if result is not None else None
@@ -225,6 +226,7 @@ def get_global_data_recording() -> RecordingStream | None:
     -------
     Optional[RecordingStream]
         The currently active global recording, if any.
+
     """
     result = bindings.get_global_data_recording()
     return RecordingStream(result) if result is not None else None
@@ -238,6 +240,7 @@ def set_global_data_recording(recording: RecordingStream) -> RecordingStream | N
     ----------
     recording:
         The newly active global recording.
+
     """
     result = bindings.set_global_data_recording(RecordingStream.to_native(recording))
     return RecordingStream(result) if result is not None else None
@@ -251,6 +254,7 @@ def get_thread_local_data_recording() -> RecordingStream | None:
     -------
     Optional[RecordingStream]
         The currently active thread-local recording, if any.
+
     """
     result = bindings.get_thread_local_data_recording()
     return RecordingStream(result) if result is not None else None
@@ -264,6 +268,7 @@ def set_thread_local_data_recording(recording: RecordingStream) -> RecordingStre
     ----------
     recording:
         The newly active thread-local recording.
+
     """
     result = bindings.set_thread_local_data_recording(recording=RecordingStream.to_native(recording))
     return RecordingStream(result) if result is not None else None

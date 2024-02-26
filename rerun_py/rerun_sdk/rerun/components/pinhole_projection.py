@@ -25,6 +25,7 @@ class PinholeProjection(datatypes.Mat3x3):
        0.0  1496.1  744.5
        0.0     0.0    1.0
     ```
+
     """
 
     # You can define your own __init__ function as a member of PinholeProjectionExt in pinhole_projection_ext.py

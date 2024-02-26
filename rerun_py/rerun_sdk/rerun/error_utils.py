@@ -155,6 +155,7 @@ class catch_and_log_exceptions:
     exception_return_value:
         If an exception is caught, this value will be returned instead of
         the function's return value.
+
     """
 
     def __init__(

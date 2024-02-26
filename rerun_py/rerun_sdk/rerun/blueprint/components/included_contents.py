@@ -37,6 +37,7 @@ class IncludedContents:
 
             This must be a path in the blueprint store.
             Typically structure as `<blueprint_registry>/<uuid>`.
+
         """
 
         # You can define your own __init__ function as a member of IncludedContentsExt in included_contents_ext.py

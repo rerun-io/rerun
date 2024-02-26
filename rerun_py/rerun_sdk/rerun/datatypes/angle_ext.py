@@ -21,6 +21,7 @@ class AngleExt:
             Angle in radians, specify either `rad` or `deg`.
         deg:
             Angle in degrees, specify either `rad` or `deg`.
+
         """
 
         if rad is not None:

@@ -53,6 +53,7 @@ class ViewCoordinates(ViewCoordinatesExt):
         ----------
         coordinates:
             The directions of the [x, y, z] axes.
+
         """
 
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py

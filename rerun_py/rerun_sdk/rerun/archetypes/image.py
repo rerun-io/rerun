@@ -57,6 +57,7 @@ class Image(ImageExt, Archetype):
       <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
@@ -71,6 +72,7 @@ class Image(ImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+
         """
 
         # You can define your own __init__ function as a member of ImageExt in image_ext.py
