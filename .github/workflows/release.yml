@@ -274,7 +274,7 @@ jobs:
     needs: [version]
     uses: ./.github/workflows/reusable_publish_js.yml
     with:
-      release-commit: ${{ needs.version.outputs.current }}
+      release-commit: ${{ needs.version.outputs.release-commit }}
       concurrency: ${{ github.ref_name }}
     secrets: inherit
 
