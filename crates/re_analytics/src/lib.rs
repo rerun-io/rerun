@@ -1,9 +1,12 @@
 //! Rerun's analytics SDK.
 //!
-//! We never collect any personal identifiable information, and you can always opt-out with `rerun analytics disable`.
+//! We never collect any personal identifiable information.
+//! You can always opt-out with `rerun analytics disable`.
 //!
-//! All the data we collect can be found in
-//! <https://github.com/rerun-io/rerun/blob/latest/crates/re_viewer/src/viewer_analytics.rs>.
+//! No analytics will be collected the first time you start the Rerun viewer,
+//! giving you an opportunity to opt-out first if you wish.
+//!
+//! All the data we collect can be found in [`event`].
 
 // We never use any log levels other than `trace` and `debug` because analytics is not important
 // enough to require the attention of our users.

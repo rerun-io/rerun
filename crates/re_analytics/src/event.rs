@@ -1,3 +1,10 @@
+// This file is linked to in a number of places, do not move/rename it without updating all the links!
+
+//! All analytics events collected by the Rerun viewer are defined in this file.
+//!
+//! Analytics can be completely disabled with `rerun analytics disable`,
+//! or by compiling rerun without the `analytics` feature flag.
+
 /// Records a crash caused by a panic.
 ///
 /// Used in `re_crash_handler`.
