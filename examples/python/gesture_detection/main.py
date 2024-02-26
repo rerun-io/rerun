@@ -207,6 +207,7 @@ def run_from_video_capture(vid: int | str, max_frame_count: int | None) -> None:
         The video stream to run the detector on. Use 0/1 for the default camera or a path to a video file.
     max_frame_count:
         The maximum number of frames to process. If None, process all frames.
+
     """
     cap = cv2.VideoCapture(vid)
     fps = cap.get(cv2.CAP_PROP_FPS)
