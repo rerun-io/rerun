@@ -185,7 +185,7 @@ pub fn quote_arrow_serializer(
 
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Sparse) => {
                 // We use sparse unions for enums, which means only 8 bits is required for each field,
-                // and nulls are are encoded with a special 0-index `_null_markers` variant.
+                // and nulls are encoded with a special 0-index `_null_markers` variant.
 
                 let quoted_data_collect = quote! {
                     let #data_src: Vec<_> = #data_src
