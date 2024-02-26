@@ -3,8 +3,6 @@
 //! This crate contains all the GUI code for the Rerun Viewer,
 //! including all 2D and 3D visualization code.
 
-#[cfg(feature = "analytics")]
-mod analytics;
 mod app;
 mod app_blueprint;
 mod app_state;
@@ -16,6 +14,8 @@ mod saving;
 mod screenshotter;
 mod store_hub;
 mod ui;
+#[cfg(feature = "analytics")]
+mod viewer_analytics;
 
 /// Auto-generated blueprint-related types.
 ///

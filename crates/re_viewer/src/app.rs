@@ -140,7 +140,7 @@ pub struct App {
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
     // while at the same time opting-out of analytics at run-time.
     #[cfg(feature = "analytics")]
-    analytics: Option<crate::analytics::ViewerAnalytics>,
+    analytics: Option<crate::viewer_analytics::ViewerAnalytics>,
 
     /// All known space view types.
     space_view_class_registry: SpaceViewClassRegistry,
@@ -161,7 +161,7 @@ impl App {
         let analytics = if startup_options.is_in_notebook {
             None
         } else {
-            match crate::analytics::ViewerAnalytics::new(app_env.clone()) {
+            match crate::viewer_analytics::ViewerAnalytics::new(app_env.clone()) {
                 Ok(analytics) => Some(analytics),
                 Err(err) => {
                     re_log::error!(%err, "failed to initialize analytics SDK");
