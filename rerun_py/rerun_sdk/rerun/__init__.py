@@ -573,6 +573,7 @@ def start_web_viewer_server(port: int = 0) -> None:
     ----------
     port
         Port to serve assets on. Defaults to 0 (random port).
+
     """
 
     if not bindings.is_enabled():

@@ -29,6 +29,7 @@ class GridColumns:
         ----------
         columns:
             The number of columns.
+
         """
 
         # You can define your own __init__ function as a member of GridColumnsExt in grid_columns_ext.py

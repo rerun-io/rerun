@@ -35,6 +35,7 @@ class ContainerKind:
              - Horizontal = 2
              - Vertical = 3
              - Grid = 4
+
         """
 
         # You can define your own __init__ function as a member of ContainerKindExt in container_kind_ext.py

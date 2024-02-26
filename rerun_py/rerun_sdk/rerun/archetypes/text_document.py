@@ -84,6 +84,7 @@ class TextDocument(Archetype):
       <img src="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(self: Any, text: datatypes.Utf8Like, *, media_type: datatypes.Utf8Like | None = None):
@@ -102,6 +103,7 @@ class TextDocument(Archetype):
             * `text/markdown`
 
             If omitted, `text/plain` is assumed.
+
         """
 
         # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py

@@ -109,6 +109,7 @@ def add_space_view(
         The entities to be shown in the space view. If not provided, this will default to [origin]
     blueprint : Optional[RecordingStream]
         The blueprint to add the space view to. If None, the default global blueprint is used.
+
     """
     if name is None:
         name = origin
@@ -141,6 +142,7 @@ def set_panels(
         Expand or collapse the timeline view panel.
     blueprint : Optional[RecordingStream]
         The blueprint to add the space view to. If None, the default global blueprint is used.
+
     """
     blueprint = RecordingStream.to_native(blueprint)
     bindings.set_panels(
@@ -164,6 +166,7 @@ def set_auto_space_views(
         Whether or not to automatically add space views for all entities.
     blueprint : Optional[RecordingStream]
         The blueprint to add the space view to. If None, the default global blueprint is used.
+
     """
     blueprint = RecordingStream.to_native(blueprint)
     bindings.set_auto_space_views(enabled, blueprint)

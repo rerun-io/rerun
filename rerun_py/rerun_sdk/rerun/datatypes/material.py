@@ -18,7 +18,7 @@ __all__ = ["Material", "MaterialArrayLike", "MaterialBatch", "MaterialLike", "Ma
 
 
 def _material__albedo_factor__special_field_converter_override(
-    x: datatypes.Rgba32Like | None
+    x: datatypes.Rgba32Like | None,
 ) -> datatypes.Rgba32 | None:
     if x is None:
         return None
@@ -40,6 +40,7 @@ class Material(MaterialExt):
         ----------
         albedo_factor:
             Optional color multiplier.
+
         """
 
         # You can define your own __init__ function as a member of MaterialExt in material_ext.py

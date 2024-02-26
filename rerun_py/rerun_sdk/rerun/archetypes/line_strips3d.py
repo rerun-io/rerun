@@ -65,6 +65,7 @@ class LineStrips3D(Archetype):
       <img src="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(
@@ -96,6 +97,7 @@ class LineStrips3D(Archetype):
             The class ID provides colors and labels if not specified explicitly.
         instance_keys:
             Unique identifiers for each individual line strip in the batch.
+
         """
 
         # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py

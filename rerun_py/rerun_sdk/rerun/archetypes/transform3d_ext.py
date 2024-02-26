@@ -50,6 +50,7 @@ class Transform3DExt:
         from_parent:
              If true, the transform maps from the parent space to the space where the transform was logged.
              Otherwise, the transform maps from the space to its parent.
+
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):

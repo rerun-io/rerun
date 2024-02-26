@@ -42,6 +42,7 @@ class BarChart(BarChartExt, Archetype):
       <img src="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(self: Any, values: datatypes.TensorDataLike, *, color: datatypes.Rgba32Like | None = None):
@@ -54,6 +55,7 @@ class BarChart(BarChartExt, Archetype):
             The values. Should always be a rank-1 tensor.
         color:
             The color of the bar chart
+
         """
 
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py

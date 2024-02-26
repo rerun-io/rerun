@@ -134,6 +134,7 @@ def memory_recording(recording: RecordingStream | None = None) -> MemoryRecordin
     -------
     MemoryRecording
         A memory recording object that can be used to read the data.
+
     """
 
     recording = RecordingStream.to_native(recording)
@@ -175,6 +176,7 @@ def serve(
     server_memory_limit:
         Maximum amount of memory to use for buffering log data for clients that connect late.
         This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
+
     """
 
     recording = RecordingStream.to_native(recording)
@@ -226,7 +228,12 @@ def spawn(
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
     """
+
+    if not bindings.is_enabled():
+        logging.warning("Rerun is disabled - spawn() call ignored.")
+        return
 
     import os
     import subprocess

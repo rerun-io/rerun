@@ -39,6 +39,7 @@ class PlotLegend(Archetype):
             Whether the legend is shown at all.
 
             True by default.
+
         """
 
         # You can define your own __init__ function as a member of PlotLegendExt in plot_legend_ext.py

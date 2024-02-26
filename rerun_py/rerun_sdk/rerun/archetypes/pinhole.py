@@ -62,6 +62,7 @@ class Pinhole(PinholeExt, Archetype):
       <img src="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in pinhole_ext.py

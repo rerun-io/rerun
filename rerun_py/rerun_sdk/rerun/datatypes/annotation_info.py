@@ -33,7 +33,7 @@ def _annotation_info__label__special_field_converter_override(x: datatypes.Utf8L
 
 
 def _annotation_info__color__special_field_converter_override(
-    x: datatypes.Rgba32Like | None
+    x: datatypes.Rgba32Like | None,
 ) -> datatypes.Rgba32 | None:
     if x is None:
         return None
@@ -66,6 +66,7 @@ class AnnotationInfo(AnnotationInfoExt):
             The label that will be shown in the UI.
         color:
             The color that will be applied to the annotated entity.
+
         """
 
         # You can define your own __init__ function as a member of AnnotationInfoExt in annotation_info_ext.py

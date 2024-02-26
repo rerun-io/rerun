@@ -84,6 +84,7 @@ class NV12(ImageFormat):
         ----------
         size_hint:
             A tuple of (height, width), specifying the RGB size of the image
+
         """
         self.size_hint = size_hint
 
@@ -104,6 +105,7 @@ class YUY2(ImageFormat):
         ----------
         size_hint:
             A tuple of (height, width), specifying the RGB size of the image
+
         """
         self.size_hint = size_hint
 
@@ -156,6 +158,7 @@ class ImageEncoded(AsComponents):
             An optional floating point value that specifies the 2D drawing
             order. Objects with higher values are drawn on top of those with
             lower values.
+
         """
         if (path is None) == (contents is None):
             raise ValueError("Must provide exactly one of 'path' or 'contents'")

@@ -49,6 +49,7 @@ class ViewportBlueprint(Archetype):
             Set to `false` the first time the user messes around with the viewport blueprint.
         auto_space_views:
             Whether or not space views should be created automatically.
+
         """
 
         # You can define your own __init__ function as a member of ViewportBlueprintExt in viewport_blueprint_ext.py

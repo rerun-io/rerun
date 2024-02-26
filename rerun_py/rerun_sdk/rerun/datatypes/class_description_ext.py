@@ -52,6 +52,7 @@ class ClassDescriptionExt:
             The `AnnotationInfo` for all the keypoints.
         keypoint_connections:
             The connections between keypoints.
+
         """
 
         # Always convert None to empty list
