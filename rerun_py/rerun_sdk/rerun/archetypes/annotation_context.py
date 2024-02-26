@@ -57,6 +57,7 @@ class AnnotationContext(Archetype):
       <img src="https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(self: Any, context: components.AnnotationContextLike):
@@ -67,6 +68,7 @@ class AnnotationContext(Archetype):
         ----------
         context:
             List of class descriptions, mapping class indices to class names, colors etc.
+
         """
 
         # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py

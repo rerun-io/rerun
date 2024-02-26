@@ -32,6 +32,7 @@ class RowShares:
         ----------
         shares:
             The layout shares of each row in the container.
+
         """
 
         # You can define your own __init__ function as a member of RowSharesExt in row_shares_ext.py

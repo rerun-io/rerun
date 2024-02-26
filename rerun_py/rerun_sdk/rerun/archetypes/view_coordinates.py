@@ -55,6 +55,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
       <img src="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(self: Any, xyz: components.ViewCoordinatesLike):

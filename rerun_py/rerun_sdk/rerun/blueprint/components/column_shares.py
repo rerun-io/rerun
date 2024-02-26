@@ -32,6 +32,7 @@ class ColumnShares:
         ----------
         shares:
             The layout shares of each column in the container.
+
         """
 
         # You can define your own __init__ function as a member of ColumnSharesExt in column_shares_ext.py

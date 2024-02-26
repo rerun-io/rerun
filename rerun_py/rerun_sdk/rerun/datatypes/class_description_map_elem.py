@@ -24,7 +24,7 @@ __all__ = [
 
 
 def _class_description_map_elem__class_id__special_field_converter_override(
-    x: datatypes.ClassIdLike
+    x: datatypes.ClassIdLike,
 ) -> datatypes.ClassId:
     if isinstance(x, datatypes.ClassId):
         return x
@@ -50,6 +50,7 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
             The key: the class ID.
         class_description:
             The value: class name, color, etc.
+
         """
 
         # You can define your own __init__ function as a member of ClassDescriptionMapElemExt in class_description_map_elem_ext.py

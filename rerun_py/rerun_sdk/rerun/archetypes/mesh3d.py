@@ -48,6 +48,7 @@ class Mesh3D(Mesh3DExt, Archetype):
       <img src="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in mesh3d_ext.py

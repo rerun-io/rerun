@@ -69,6 +69,7 @@ class ContainerBlueprint(Archetype):
             If unset, the grid layout will be auto.
 
             Ignored for `Horizontal`/`Vertical` containers.
+
         """
 
         # You can define your own __init__ function as a member of ContainerBlueprintExt in container_blueprint_ext.py

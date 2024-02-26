@@ -47,6 +47,7 @@ class Arrows2D(Arrows2DExt, Archetype):
       <img src="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/full.png" width="640">
     </picture>
     </center>
+
     """
 
     # __init__ can be found in arrows2d_ext.py

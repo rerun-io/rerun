@@ -60,6 +60,7 @@ class DepthImage(DepthImageExt, Archetype):
       <img src="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(
@@ -85,6 +86,7 @@ class DepthImage(DepthImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+
         """
 
         # You can define your own __init__ function as a member of DepthImageExt in depth_image_ext.py

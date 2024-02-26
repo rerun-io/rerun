@@ -61,6 +61,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
       <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png" width="640">
     </picture>
     </center>
+
     """
 
     def __init__(self: Any, data: datatypes.TensorDataLike, *, draw_order: components.DrawOrderLike | None = None):
@@ -75,6 +76,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+
         """
 
         # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py
