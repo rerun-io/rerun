@@ -88,7 +88,7 @@ impl ViewportState {
 
 /// Mutation actions to perform on the tree at the end of the frame. These messages are sent by the mutation APIs from
 /// [`crate::ViewportBlueprint`].
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum TreeAction {
     /// Add a new space view to the provided container (or the root if `None`).
     AddSpaceView(SpaceViewId, Option<ContainerId>, Option<usize>),
@@ -289,7 +289,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             // If so we can no longer automatically change the layout without discarding user edits.
             let is_dragging_a_tile = tree.dragged_id(ui.ctx()).is_some();
             if tab_viewer.edited || is_dragging_a_tile {
-                if blueprint.auto_layout {
+                if blueprint.auto_layout() {
                     re_log::trace!(
                         "The user is manipulating the egui_tiles tree - will no longer auto-layout"
                     );
@@ -332,7 +332,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
         }
 
-        if self.blueprint.auto_space_views {
+        if self.blueprint.auto_space_views() {
             let mut new_space_views = vec![];
             for space_view_candidate in default_created_space_views(ctx) {
                 if self.should_auto_add_space_view(&new_space_views, &space_view_candidate) {
@@ -386,9 +386,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
         for tree_action in self.tree_action_receiver.try_iter() {
+            re_log::trace!("Processing tree action: {tree_action:?}");
             match tree_action {
                 TreeAction::AddSpaceView(space_view_id, parent_container, position_in_parent) => {
-                    if self.blueprint.auto_layout {
+                    if self.blueprint.auto_layout() {
                         // Re-run the auto-layout next frame:
                         re_log::trace!(
                             "Added a space view with no user edits yet - will re-run auto-layout"

@@ -23,10 +23,10 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_query.workspace = true
 re_renderer = { workspace = true, default-features = false, features = [
-  "arrow",
-  "import-gltf",
-  "import-obj",
-  "serde",
+    "arrow",
+    "import-gltf",
+    "import-obj",
+    "serde",
 ] }
 re_space_view.workspace = true
 re_space_view_time_series.workspace = true
@@ -45,5 +45,6 @@ image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
+parking_lot.workspace = true
 rayon.workspace = true
 rmp-serde.workspace = true

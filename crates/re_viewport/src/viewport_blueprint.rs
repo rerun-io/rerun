@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use egui_tiles::{SimplificationOptions, TileId};
+use egui_tiles::{SimplificationOptions, Tile, TileId};
+use parking_lot::Mutex;
+
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_query::query_archetype;
@@ -42,10 +44,10 @@ pub struct ViewportBlueprint {
     /// Whether the viewport layout is determined automatically.
     ///
     /// Set to `false` the first time the user messes around with the viewport blueprint.
-    pub auto_layout: bool,
+    auto_layout: Mutex<bool>,
 
     /// Whether or not space views should be created automatically.
-    pub auto_space_views: bool,
+    auto_space_views: Mutex<bool>,
 
     /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
@@ -139,8 +141,8 @@ impl ViewportBlueprint {
             root_container,
             tree,
             maximized,
-            auto_layout,
-            auto_space_views,
+            auto_layout: Mutex::new(auto_layout),
+            auto_space_views: Mutex::new(auto_space_views),
             tree_action_sender,
         }
 
@@ -249,6 +251,8 @@ impl ViewportBlueprint {
             parent_and_pos.map(|(_, pos)| pos),
         );
 
+        self.mark_user_interaction(ctx);
+
         Some(new_space_view_id)
     }
 
@@ -275,7 +279,7 @@ impl ViewportBlueprint {
     }
 
     pub fn mark_user_interaction(&self, ctx: &ViewerContext<'_>) {
-        if self.auto_layout {
+        if self.auto_layout() {
             re_log::trace!("User edits - will no longer auto-layout");
         }
 
@@ -569,7 +573,7 @@ impl ViewportBlueprint {
             Contents::Container(container_id) => {
                 if let Some(container) = self.container(container_id) {
                     if visible != container.visible {
-                        if self.auto_layout {
+                        if self.auto_layout() {
                             re_log::trace!(
                                 "Container visibility changed - will no longer auto-layout"
                             );
@@ -587,7 +591,7 @@ impl ViewportBlueprint {
             Contents::SpaceView(space_view_id) => {
                 if let Some(space_view) = self.space_view(space_view_id) {
                     if visible != space_view.visible {
-                        if self.auto_layout {
+                        if self.auto_layout() {
                             re_log::trace!(
                                 "Space-view visibility changed - will no longer auto-layout"
                             );
@@ -630,18 +634,32 @@ impl ViewportBlueprint {
 
     #[inline]
     pub fn set_auto_layout(&self, value: bool, ctx: &ViewerContext<'_>) {
-        if self.auto_layout != value {
+        if self.auto_layout() != value {
             let component = AutoLayout(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
+
+            *self.auto_layout.lock() = value;
         }
     }
 
     #[inline]
+    pub fn auto_layout(&self) -> bool {
+        *self.auto_layout.lock()
+    }
+
+    #[inline]
     pub fn set_auto_space_views(&self, value: bool, ctx: &ViewerContext<'_>) {
-        if self.auto_space_views != value {
+        if self.auto_space_views() != value {
             let component = AutoSpaceViews(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
+
+            *self.auto_space_views.lock() = value;
         }
+    }
+
+    #[inline]
+    pub fn auto_space_views(&self) -> bool {
+        *self.auto_space_views.lock()
     }
 
     #[inline]
