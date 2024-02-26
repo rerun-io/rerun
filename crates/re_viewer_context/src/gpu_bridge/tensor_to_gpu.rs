@@ -89,6 +89,7 @@ pub fn color_tensor_to_gpu(
     let [height, width, depth] = texture_height_width_channels(tensor)?;
 
     let texture_handle = try_get_or_create_texture(render_ctx, texture_key, || {
+        // Profile creation of the texture, but not cache hits (those take close to no time, which would just add profiler overhead).
         re_tracing::profile_function!();
 
         let (data, format) = match (depth, &tensor.buffer) {
