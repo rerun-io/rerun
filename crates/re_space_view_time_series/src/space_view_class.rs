@@ -380,6 +380,7 @@ It can greatly improve performance (and readability) in such situations as it pr
             .id(crate::plot_id(query.space_view_id))
             .auto_bounds([true, auto_y].into())
             .allow_zoom([true, !lock_y_during_zoom])
+            .allow_drag([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
