@@ -14,7 +14,7 @@ We're still ramping up for programmable blueprints (soon!), but meanwhile enjoy 
 - 🚀 Speed improvements for scenes with many transforms and large point clouds.
 - 🔺 Built-in STL mesh support.
 - 🎥 First-person camera.
-- 🐛 Fixes regressions in Space View spawn heuristics from 0.13, and many more bugfixes.  
+- 🐛 Fixes regressions in Space View spawn heuristics from 0.13, and many more bugfixes.
 
 ### Details
 
