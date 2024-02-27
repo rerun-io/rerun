@@ -1,8 +1,9 @@
 use ahash::HashMap;
 use once_cell::sync::Lazy;
-use re_log_types::EntityPath;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
+
+use re_log_types::{EntityPath, EntityPathHash};
 
 use crate::{DataQueryId, DataResult, ViewerContext};
 
@@ -29,14 +30,14 @@ impl DataQueryResult {
     #[inline]
     pub fn contains_entity(&self, path: &EntityPath) -> bool {
         self.tree
-            .lookup_result_by_path_and_group(path, false)
+            .lookup_result_by_path(path)
             .map_or(false, |result| result.direct_included)
     }
 
     #[inline]
     pub fn contains_group(&self, path: &EntityPath) -> bool {
         self.tree
-            .lookup_result_by_path_and_group(path, true)
+            .lookup_result_by_path(path)
             .map_or(false, |result| result.direct_included)
     }
 
@@ -73,7 +74,7 @@ pub struct DataResultTree {
     // at the moment we only look up a single path per frame for the selection panel. It's probably
     // less over-head to just walk the tree once instead of pre-computing an entire map we use for
     // a single lookup.
-    data_results_by_path: HashMap<(EntityPath, bool), DataResultHandle>,
+    data_results_by_path: HashMap<EntityPathHash, DataResultHandle>,
     root_handle: Option<DataResultHandle>,
 }
 
@@ -92,15 +93,7 @@ impl DataResultTree {
         re_tracing::profile_function!();
         let data_results_by_path = data_results
             .iter()
-            .map(|(handle, node)| {
-                (
-                    (
-                        node.data_result.entity_path.clone(),
-                        node.data_result.is_group,
-                    ),
-                    handle,
-                )
-            })
+            .map(|(handle, node)| (node.data_result.entity_path.hash(), handle))
             .collect();
 
         Self {
@@ -119,45 +112,10 @@ impl DataResultTree {
             .and_then(|handle| self.data_results.get(handle))
     }
 
-    pub fn first_interesting_root(&self) -> Option<&DataResultNode> {
-        let mut next_node = self.root_node();
-
-        while let Some(node) = next_node {
-            // If both this node is trivial we can skip it.
-            // A trivial node is a node which is a group, with a single child,
-            // where that child still has children.
-            if node.data_result.is_group && node.children.len() == 1 {
-                if let Some(child_handle) = node.children.first() {
-                    if let Some(child) = self.data_results.get(*child_handle) {
-                        if !child.children.is_empty() {
-                            next_node = Some(child);
-                            continue;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        next_node
-    }
-
     /// Depth-first traversal of the tree, calling `visitor` on each result.
     pub fn visit(&self, visitor: &mut impl FnMut(DataResultHandle)) {
         if let Some(root_handle) = self.root_handle {
             self.visit_recursive(root_handle, visitor);
-        }
-    }
-
-    /// Depth-first traversal of a subtree, starting with the given group entity-path, calling `visitor` on each result.
-    pub fn visit_group(
-        &self,
-        entity_path: &EntityPath,
-        visitor: &mut impl FnMut(DataResultHandle),
-    ) {
-        if let Some(subtree_handle) = self.data_results_by_path.get(&(entity_path.clone(), true)) {
-            self.visit_recursive(*subtree_handle, visitor);
         }
     }
 
@@ -177,13 +135,9 @@ impl DataResultTree {
     }
 
     /// Look up a [`DataResultNode`] in the tree based on an [`EntityPath`].
-    pub fn lookup_result_by_path_and_group(
-        &self,
-        path: &EntityPath,
-        is_group: bool,
-    ) -> Option<&DataResult> {
+    pub fn lookup_result_by_path(&self, path: &EntityPath) -> Option<&DataResult> {
         self.data_results_by_path
-            .get(&(path.clone(), is_group))
+            .get(&path.hash())
             .and_then(|handle| self.lookup_result(*handle))
     }
 

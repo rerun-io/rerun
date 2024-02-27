@@ -907,7 +907,7 @@ fn blueprint_ui_for_space_view(
                 &mut props,
             );
 
-        root_data_result.save_override(Some(props), ctx);
+        root_data_result.save_recursive_override(Some(props), ctx);
     }
 }
 
@@ -924,12 +924,11 @@ fn blueprint_ui_for_instance_path(
                 // splat - the whole entity
                 let space_view_class = *space_view.class_identifier();
                 let entity_path = &instance_path.entity_path;
-                let as_group = false;
 
                 let query_result = ctx.lookup_query_result(space_view.query_id());
                 if let Some(data_result) = query_result
                     .tree
-                    .lookup_result_by_path_and_group(entity_path, as_group)
+                    .lookup_result_by_path(entity_path)
                     .cloned()
                 {
                     let mut props = data_result
@@ -944,7 +943,7 @@ fn blueprint_ui_for_instance_path(
                         &mut props,
                         data_result.accumulated_properties(),
                     );
-                    data_result.save_override(Some(props), ctx);
+                    data_result.save_recursive_override(Some(props), ctx);
                 }
             }
         }

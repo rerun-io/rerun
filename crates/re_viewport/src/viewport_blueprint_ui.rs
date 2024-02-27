@@ -1,9 +1,10 @@
 use egui::{Response, Ui};
 
+use itertools::Itertools;
+
 use re_entity_db::InstancePath;
 use re_log_types::EntityPathRule;
-use re_space_view::SpaceViewBlueprint;
-use re_space_view::SpaceViewName;
+use re_space_view::{SpaceViewBlueprint, SpaceViewName};
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
@@ -205,7 +206,7 @@ impl Viewport<'_, '_> {
         let space_view_visible = visible && container_visible;
         let item = Item::SpaceView(space_view.id);
 
-        let root_node = result_tree.first_interesting_root();
+        let root_node = result_tree.root_node();
 
         // empty space views should display as open by default to highlight the fact that they are empty
         let default_open = root_node.map_or(true, Self::default_open_for_data_result);
@@ -289,26 +290,12 @@ impl Viewport<'_, '_> {
         let query = ctx.current_query();
         let store = ctx.entity_db.store();
 
-        let group_is_visible =
-            top_node.data_result.accumulated_properties().visible && space_view_visible;
-
-        // Always real children ahead of groups
-        for child in top_node
-            .children
-            .iter()
-            .filter(|c| {
-                query_result
-                    .tree
-                    .lookup_result(**c)
-                    .map_or(false, |c| !c.is_group)
-            })
-            .chain(top_node.children.iter().filter(|c| {
-                query_result
-                    .tree
-                    .lookup_result(**c)
-                    .map_or(false, |c| c.is_group)
-            }))
-        {
+        for child in top_node.children.iter().sorted_by_key(|c| {
+            query_result
+                .tree
+                .lookup_result(**c)
+                .map_or(&space_view.space_origin, |c| &c.entity_path)
+        }) {
             let Some(child_node) = query_result.tree.lookup_node(*child) else {
                 debug_assert!(false, "DataResultNode {top_node:?} has an invalid child");
                 continue;
@@ -327,87 +314,56 @@ impl Viewport<'_, '_> {
             let is_item_hovered =
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-            let mut properties = data_result
-                .individual_properties()
-                .cloned()
-                .unwrap_or_default();
+            let mut properties = data_result.accumulated_properties().clone();
 
             let name = entity_path
                 .iter()
                 .last()
                 .map_or("unknown".to_owned(), |e| e.ui_string());
 
+            let subdued = !space_view_visible
+                || !properties.visible
+                || (data_result.visualizers.is_empty() && child_node.children.is_empty());
+
+            let mut remove_entity = false;
+            let buttons = |re_ui: &_, ui: &mut egui::Ui| {
+                let vis_response =
+                    visibility_button_ui(re_ui, ui, space_view_visible, &mut properties.visible);
+
+                let response = remove_button_ui(
+                    re_ui,
+                    ui,
+                    "Remove Group and all its children from the Space View",
+                );
+                remove_entity = response.clicked();
+
+                response | vis_response
+            };
+
             let response = if child_node.children.is_empty() {
                 ListItem::new(ctx.re_ui, name)
                     .selected(is_selected)
                     .with_icon(&re_ui::icons::ENTITY)
-                    .subdued(
-                        !group_is_visible
-                            || !properties.visible
-                            || data_result.visualizers.is_empty(),
-                    )
+                    .subdued(subdued)
                     .force_hovered(is_item_hovered)
-                    .with_buttons(|re_ui, ui| {
-                        let vis_response = visibility_button_ui(
-                            re_ui,
-                            ui,
-                            group_is_visible,
-                            &mut properties.visible,
-                        );
-
-                        let response =
-                            remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
-                        if response.clicked() {
-                            space_view.add_entity_exclusion(
-                                ctx,
-                                EntityPathRule::exact(entity_path.clone()),
-                            );
-                        }
-
-                        response | vis_response
-                    })
+                    .with_buttons(buttons)
                     .show(ui)
                     .on_hover_ui(|ui| {
-                        if data_result.is_group {
-                            ui.label("Group");
-                        } else {
-                            re_data_ui::item_ui::entity_hover_card_ui(
-                                ui,
-                                ctx,
-                                &query,
-                                store,
-                                entity_path,
-                            );
-                        }
+                        re_data_ui::item_ui::entity_hover_card_ui(
+                            ui,
+                            ctx,
+                            &query,
+                            store,
+                            entity_path,
+                        );
                     })
             } else {
                 let default_open = Self::default_open_for_data_result(child_node);
-                let mut remove_group = false;
-
                 let response = ListItem::new(ctx.re_ui, name)
                     .selected(is_selected)
-                    .subdued(!properties.visible || !group_is_visible)
+                    .subdued(subdued)
                     .force_hovered(is_item_hovered)
-                    .with_icon(&re_ui::icons::GROUP)
-                    .with_buttons(|re_ui, ui| {
-                        let vis_response = visibility_button_ui(
-                            re_ui,
-                            ui,
-                            group_is_visible,
-                            &mut properties.visible,
-                        );
-
-                        let response = remove_button_ui(
-                            re_ui,
-                            ui,
-                            "Remove Group and all its children from the Space View",
-                        );
-                        if response.clicked() {
-                            remove_group = true;
-                        }
-
-                        response | vis_response
-                    })
+                    .with_buttons(buttons)
                     .show_collapsing(
                         ui,
                         ui.id().with(&child_node.data_result.entity_path),
@@ -425,29 +381,26 @@ impl Viewport<'_, '_> {
                     )
                     .item_response
                     .on_hover_ui(|ui| {
-                        if data_result.is_group {
-                            ui.label("Group");
-                        } else {
-                            re_data_ui::item_ui::entity_hover_card_ui(
-                                ui,
-                                ctx,
-                                &query,
-                                store,
-                                entity_path,
-                            );
-                        }
+                        re_data_ui::item_ui::entity_hover_card_ui(
+                            ui,
+                            ctx,
+                            &query,
+                            store,
+                            entity_path,
+                        );
                     });
-
-                if remove_group {
-                    space_view.add_entity_exclusion(
-                        ctx,
-                        EntityPathRule::including_subtree(entity_path.clone()),
-                    );
-                }
 
                 response
             };
-            data_result.save_override(Some(properties), ctx);
+
+            if remove_entity {
+                space_view.add_entity_exclusion(
+                    ctx,
+                    EntityPathRule::including_subtree(entity_path.clone()),
+                );
+            }
+
+            data_result.save_recursive_override(Some(properties), ctx);
 
             ctx.select_hovered_on_click(&response, item);
         }

@@ -315,76 +315,41 @@ impl<'a> QueryExpressionEvaluator<'a> {
 
         let entity_path = &tree.path;
 
-        // Pre-compute our matches
-        let any_match = self.entity_path_filter.is_included(entity_path);
-
-        // Check for visualizers if this is a match.
-        // Note that allowed prefixes that aren't matches can still create groups.
-        let visualizable = any_match
-            && self
-                .visualizable_entities_for_visualizer_systems
-                .values()
-                .any(|ents| ents.contains(entity_path));
-
-        let self_leaf = if visualizable || self.entity_path_filter.is_exact_included(entity_path) {
-            // TODO(#5067): For now, we always start by setting visualizers to the full list of available visualizers.
-            // This is currently important for evaluating auto-properties during the space-view `on_frame_start`, which
-            // is called before the property-overrider has a chance to update this list.
-            // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
-            // on the space view.
-            let available_visualizers = self
-                .visualizable_entities_for_visualizer_systems
-                .iter()
-                .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
-                        Some(*visualizer)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
-            Some(data_results.insert(DataResultNode {
-                data_result: DataResult {
-                    entity_path: entity_path.clone(),
-                    visualizers: available_visualizers,
-                    is_group: false,
-                    direct_included: any_match,
-                    property_overrides: None,
-                },
-                children: Default::default(),
-            }))
-        } else {
-            None
-        };
-
-        let maybe_self_iter = if let Some(self_leaf) = self_leaf {
-            itertools::Either::Left(std::iter::once(self_leaf))
-        } else {
-            itertools::Either::Right(std::iter::empty())
-        };
-
-        let children: SmallVec<_> = maybe_self_iter
-            .chain(tree.children.values().filter_map(|subtree| {
-                self.add_entity_tree_to_data_results_recursive(subtree, data_results)
-            }))
+        // TODO(#5067): For now, we always start by setting visualizers to the full list of available visualizers.
+        // This is currently important for evaluating auto-properties during the space-view `on_frame_start`, which
+        // is called before the property-overrider has a chance to update this list.
+        // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
+        // on the space view.
+        let visualizers: SmallVec<[_; 4]> = self
+            .visualizable_entities_for_visualizer_systems
+            .iter()
+            .filter_map(|(visualizer, ents)| ents.contains(entity_path).then_some(*visualizer))
             .collect();
 
-        // If the only child is the self-leaf, then we don't need to create a group
-        if children.is_empty() || children.len() == 1 && self_leaf.is_some() {
-            self_leaf
-        } else {
-            // The 'individual' properties of a group are the group overrides
+        let children: SmallVec<[_; 4]> = tree
+            .children
+            .values()
+            .filter_map(|subtree| {
+                self.add_entity_tree_to_data_results_recursive(subtree, data_results)
+            })
+            .collect();
+
+        // Ignore empty nodes.
+        // Since we recurse downwards, this prunes any branches that don't have anything to contribute to the scene
+        // and aren't directly included.
+        let direct_included = self.entity_path_filter.is_exact_included(entity_path);
+        if direct_included || !children.is_empty() || !visualizers.is_empty() {
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
-                    visualizers: Default::default(),
-                    is_group: true,
-                    direct_included: any_match,
+                    visualizers,
+                    direct_included,
                     property_overrides: None,
                 },
                 children,
             }))
+        } else {
+            None
         }
     }
 }
@@ -407,7 +372,7 @@ impl DataQueryPropertyResolver<'_> {
     ///  - The root properties are build by merging a stack of paths from the Blueprint Tree. This
     ///  may include properties from the `SpaceView` or `DataQuery`.
     ///  - The individual overrides are found by walking an override subtree under the `data_query/<id>/individual_overrides`
-    ///  - The group overrides are found by walking an override subtree under the `data_query/<id>/group_overrides`
+    ///  - The recursive overrides are found by walking an override subtree under the `data_query/<id>/recursive_overrides`
     fn build_override_context(
         &self,
         ctx: &StoreContext<'_>,
@@ -444,7 +409,7 @@ impl DataQueryPropertyResolver<'_> {
                 query,
                 &self.individual_override_root,
             ),
-            group: self.resolve_entity_overrides_for_path(
+            recursive: self.resolve_entity_overrides_for_path(
                 ctx,
                 query,
                 &self.recursive_override_root,
@@ -486,8 +451,8 @@ impl DataQueryPropertyResolver<'_> {
 
     /// Recursively walk the [`DataResultTree`] and update the [`PropertyOverrides`] for each node.
     ///
-    /// This will accumulate the group properties at each step down the tree, and then finally merge
-    /// with individual overrides at the leaves.
+    /// This will accumulate the recursive properties at each step down the tree, and then merge
+    /// with individual overrides on each step.
     fn update_overrides_recursive(
         &self,
         ctx: &StoreContext<'_>,
@@ -498,97 +463,94 @@ impl DataQueryPropertyResolver<'_> {
         handle: DataResultHandle,
     ) {
         if let Some((child_handles, accumulated)) =
-            query_result.tree.lookup_node_mut(handle).and_then(|node| {
-                if node.data_result.is_group {
-                    let overridden_properties = override_context
-                        .group
-                        .get_opt(&node.data_result.entity_path);
-
-                    let accumulated_properties = if let Some(overridden) = overridden_properties {
+            query_result.tree.lookup_node_mut(handle).map(|node| {
+                let recursive_properties = override_context
+                    .recursive
+                    .get_opt(&node.data_result.entity_path);
+                let accumulated_recursive_properties =
+                    if let Some(overridden) = recursive_properties {
                         accumulated.with_child(overridden)
                     } else {
                         accumulated.clone()
                     };
 
-                    node.data_result.property_overrides = Some(PropertyOverrides {
-                        individual_properties: overridden_properties.cloned(),
-                        accumulated_properties: accumulated_properties.clone(),
-                        component_overrides: Default::default(),
-                        override_path: self
-                            .recursive_override_root
-                            .join(&node.data_result.entity_path),
-                    });
+                let individual_properties = override_context
+                    .individual
+                    .get_opt(&node.data_result.entity_path);
 
-                    Some((node.children.clone(), accumulated_properties))
-                } else {
-                    let overridden_properties = override_context
-                        .individual
-                        .get_opt(&node.data_result.entity_path);
-
-                    let accumulated_properties = if let Some(overridden) = overridden_properties {
-                        accumulated.with_child(overridden)
+                let accumulated_properties =
+                    if let Some(individual_override) = individual_properties {
+                        accumulated_recursive_properties.with_child(individual_override)
                     } else {
-                        accumulated.clone()
+                        accumulated_recursive_properties.clone()
                     };
 
-                    let override_path = self
-                        .individual_override_root
-                        .join(&node.data_result.entity_path);
+                let individual_override_path = self
+                    .individual_override_root
+                    .join(&node.data_result.entity_path);
+                let recursive_override_path = self
+                    .recursive_override_root
+                    .join(&node.data_result.entity_path);
 
+                if !node.data_result.visualizers.is_empty() {
+                    re_tracing::profile_scope!("Update visualizers from overrides");
+
+                    // If the user has overridden the visualizers, update which visualizers are used.
+                    if let Some(viz_override) = ctx
+                        .blueprint
+                        .store()
+                        .query_latest_component::<VisualizerOverrides>(
+                            &individual_override_path,
+                            query,
+                        )
+                        .map(|c| c.value)
                     {
-                        re_tracing::profile_scope!("Update visualizers from overrides");
+                        node.data_result.visualizers =
+                            viz_override.0.iter().map(|v| v.as_str().into()).collect();
+                    } else {
+                        // Otherwise ask the `SpaceViewClass` to choose.
+                        node.data_result.visualizers = self
+                            .space_view
+                            .class(self.space_view_class_registry)
+                            .choose_default_visualizers(
+                                &node.data_result.entity_path,
+                                self.visualizable_entities_per_visualizer,
+                                self.indicated_entities_per_visualizer,
+                            );
+                    }
+                }
+                let mut component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)> =
+                    Default::default();
 
-                        // If the user has overridden the visualizers, update which visualizers are used.
-                        if let Some(viz_override) = ctx
+                if let Some(override_subtree) =
+                    ctx.blueprint.tree().subtree(&individual_override_path)
+                {
+                    for component in override_subtree.entity.components.keys() {
+                        if let Some(component_data) = ctx
                             .blueprint
                             .store()
-                            .query_latest_component::<VisualizerOverrides>(&override_path, query)
-                            .map(|c| c.value)
+                            .latest_at(query, &individual_override_path, *component, &[*component])
+                            .and_then(|(_, _, cells)| cells[0].clone())
                         {
-                            node.data_result.visualizers =
-                                viz_override.0.iter().map(|v| v.as_str().into()).collect();
-                        } else {
-                            // Otherwise ask the `SpaceViewClass` to choose.
-                            node.data_result.visualizers = self
-                                .space_view
-                                .class(self.space_view_class_registry)
-                                .choose_default_visualizers(
-                                    &node.data_result.entity_path,
-                                    self.visualizable_entities_per_visualizer,
-                                    self.indicated_entities_per_visualizer,
+                            if !component_data.is_empty() {
+                                component_overrides.insert(
+                                    *component,
+                                    (StoreKind::Blueprint, individual_override_path.clone()),
                                 );
-                        }
-                    }
-                    let mut component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)> =
-                        Default::default();
-
-                    if let Some(override_subtree) = ctx.blueprint.tree().subtree(&override_path) {
-                        for component in override_subtree.entity.components.keys() {
-                            if let Some(component_data) = ctx
-                                .blueprint
-                                .store()
-                                .latest_at(query, &override_path, *component, &[*component])
-                                .and_then(|(_, _, cells)| cells[0].clone())
-                            {
-                                if !component_data.is_empty() {
-                                    component_overrides.insert(
-                                        *component,
-                                        (StoreKind::Blueprint, override_path.clone()),
-                                    );
-                                }
                             }
                         }
                     }
-
-                    node.data_result.property_overrides = Some(PropertyOverrides {
-                        individual_properties: overridden_properties.cloned(),
-                        accumulated_properties: accumulated_properties.clone(),
-                        component_overrides,
-                        override_path,
-                    });
-
-                    None
                 }
+
+                node.data_result.property_overrides = Some(PropertyOverrides {
+                    individual_properties: individual_properties.cloned(),
+                    accumulated_properties: accumulated_properties.clone(),
+                    component_overrides,
+                    recursive_override_path,
+                    individual_override_path,
+                });
+
+                (node.children.clone(), accumulated_recursive_properties)
             })
         {
             for child in child_handles {

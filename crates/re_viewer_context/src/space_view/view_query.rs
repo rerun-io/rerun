@@ -30,8 +30,11 @@ pub struct PropertyOverrides {
     // TODO(jleibs): Consider something like `tinymap` for this.
     pub component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
 
-    /// `EntityPath` in the Blueprint store where updated overrides should be written back.
-    pub override_path: EntityPath,
+    /// `EntityPath` in the Blueprint store where updated overrides should be written back for properties that apply recursively.
+    pub recursive_override_path: EntityPath,
+
+    /// `EntityPath` in the Blueprint store where updated overrides should be written back for properties that apply recursively.
+    pub individual_override_path: EntityPath,
 }
 
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
@@ -53,11 +56,7 @@ pub struct DataResult {
     /// Which `ViewSystems`s to pass the `DataResult` to.
     pub visualizers: SmallVisualizerSet,
 
-    /// This DataResult represents a group
-    // TODO(jleibs): Maybe make this an enum instead?
-    pub is_group: bool,
-
-    // This result was actually in the query results, not just a group that
+    // This result was actually in the query results, not just a path that
     // exists due to a common prefix.
     pub direct_included: bool,
 
@@ -72,16 +71,33 @@ impl DataResult {
     pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
     #[inline]
-    pub fn override_path(&self) -> Option<&EntityPath> {
-        self.property_overrides.as_ref().map(|p| &p.override_path)
+    pub fn recursive_override_path(&self) -> Option<&EntityPath> {
+        self.property_overrides
+            .as_ref()
+            .map(|p| &p.recursive_override_path)
+    }
+
+    #[inline]
+    pub fn individual_override_path(&self) -> Option<&EntityPath> {
+        self.property_overrides
+            .as_ref()
+            .map(|p| &p.individual_override_path)
     }
 
     /// Write the [`EntityProperties`] for this result back to the Blueprint store.
-    pub fn save_override(&self, props: Option<EntityProperties>, ctx: &ViewerContext<'_>) {
+    ///
+    /// Writes only if the accumulated (!) properties aren't already the same value.
+    /// Changes will be applied recursively in subsequent frames, meaning this writes to the recursive override path.
+    /// TODO(andreas): This does NOT handle the case when individual properties need clearing to achieve the desired property result.
+    pub fn save_recursive_override(
+        &self,
+        props: Option<EntityProperties>,
+        ctx: &ViewerContext<'_>,
+    ) {
         // TODO(jleibs): Make it impossible for this to happen with different type structure
         // This should never happen unless we're doing something with a partially processed
         // query.
-        let Some(override_path) = self.override_path() else {
+        let Some(override_path) = self.recursive_override_path() else {
             re_log::warn!(
                 "Tried to save override for {:?} but it has no override path",
                 self.entity_path
@@ -104,15 +120,7 @@ impl DataResult {
                 ))
             }
             Some(props) => {
-                // A value of `None` in the data store means "use the default value", so if
-                // `self.individual_properties` is `None`, we only must save if `props` is different
-                // from the default.
-                if props.has_edits(
-                    property_overrides
-                        .individual_properties
-                        .as_ref()
-                        .unwrap_or(&EntityProperties::default()),
-                ) {
+                if props.has_edits(&property_overrides.accumulated_properties) {
                     re_log::debug!("Overriding {:?} with {:?}", override_path, props);
 
                     let component = EntityPropertiesComponent(props);
