@@ -12,6 +12,7 @@ use crate::AppEnvironment;
 use crate::StartupOptions;
 
 pub struct ViewerAnalytics {
+    #[cfg(feature = "analytics")]
     app_env: AppEnvironment,
 
     // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
@@ -25,11 +26,9 @@ impl ViewerAnalytics {
     pub fn new(startup_options: &StartupOptions, app_env: AppEnvironment) -> Self {
         re_tracing::profile_function!();
 
-        Self {
-            app_env,
-
-            #[cfg(feature = "analytics")]
-            analytics: {
+        #[cfg(feature = "analytics")]
+        {
+            let analytics = {
                 if startup_options.is_in_notebook {
                     None
                 } else {
@@ -41,7 +40,14 @@ impl ViewerAnalytics {
                         }
                     }
                 }
-            },
+            };
+            Self { app_env, analytics }
+        }
+
+        #[cfg(not(feature = "analytics"))]
+        {
+            let _ = (startup_options, app_env);
+            Self {}
         }
     }
 
@@ -62,6 +68,9 @@ impl ViewerAnalytics {
             ));
             analytics.record(event::viewer_started(&self.app_env));
         }
+
+        #[cfg(not(feature = "analytics"))]
+        let _ = build_info;
     }
 
     /// When we have loaded the start of a new recording.
@@ -78,5 +87,8 @@ impl ViewerAnalytics {
 
             analytics.record(event::open_recording(&self.app_env, entity_db));
         }
+
+        #[cfg(not(feature = "analytics"))]
+        let _ = entity_db;
     }
 }
