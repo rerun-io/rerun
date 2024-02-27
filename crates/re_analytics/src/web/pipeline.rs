@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::PostHogBatch;
-use crate::{Config, Event, PostHogEvent};
+use crate::{AnalyticsEvent, Config, PostHogEvent};
 
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {
@@ -39,7 +39,7 @@ impl Pipeline {
         }))
     }
 
-    pub fn record(&self, event: Event) {
+    pub fn record(&self, event: AnalyticsEvent) {
         // send all events immediately, ignore all errors
 
         let analytics_id = self.analytics_id.clone();

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::AbortSignal;
-use crate::{Event, PostHogBatch, PostHogEvent};
+use crate::{AnalyticsEvent, PostHogBatch, PostHogEvent};
 
 #[derive(Default, Debug, Clone)]
 pub(crate) struct PostHogSink {}
@@ -15,7 +15,7 @@ impl PostHogSink {
         &self,
         analytics_id: &Arc<str>,
         session_id: &Arc<str>,
-        events: &[Event],
+        events: &[AnalyticsEvent],
         abort_signal: &AbortSignal,
     ) {
         let num_events = events.len();
