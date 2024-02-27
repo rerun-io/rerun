@@ -197,25 +197,14 @@ pub fn quote_arrow_serializer(
                         .collect();
                 };
 
-                let quoted_types = {
-                    let quoted_obj_name = format_ident!("{}", obj.name);
-                    let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                        let i = 1 + i as i8; // NOTE: +1 to account for `nulls` virtual arm
-                        let quoted_obj_field_name =
-                            format_ident!("{}", obj_field.pascal_case_name());
-
-                        quote!(Some(#quoted_obj_name::#quoted_obj_field_name) => #i)
-                    });
-
-                    quote! {
-                        #data_src
-                            .iter()
-                            .map(|a| match a.as_deref() {
-                                None => 0,
-                                #(#quoted_branches,)*
-                            })
-                            .collect()
-                    }
+                let quoted_types = quote! {
+                    #data_src
+                        .iter()
+                        .map(|a| match a.as_deref() {
+                            None => 0,
+                            Some(value) => *value as i8,
+                        })
+                        .collect()
                 };
 
                 let num_variants = obj.fields.len();

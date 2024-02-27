@@ -562,14 +562,17 @@ fn quote_enum(
     let quoted_doc = quote_obj_docs(reporter, obj);
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
-    let quoted_fields = fields.iter().map(|obj_field| {
-        let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
+    let quoted_fields = fields.iter().enumerate().map(|(i, field)| {
+        let name = format_ident!("{}", crate::to_pascal_case(&field.name));
 
-        let quoted_doc = quote_field_docs(reporter, obj_field);
+        let quoted_doc = quote_field_docs(reporter, field);
+
+        // We assign the arrow type index to the enum fields to make encoding simpler and faster:
+        let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(1 + i); // 0 is reserved for `_null_markers`
 
         quote! {
             #quoted_doc
-            #name
+            #name = #arrow_type_index
         }
     });
 
