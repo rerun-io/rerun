@@ -21,8 +21,10 @@ use crate::container::blueprint_id_to_tile_id;
 use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
     add_space_view_or_container_modal::AddSpaceViewOrContainerModal, container::Contents,
-    icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
-    system_execution::execute_systems_for_all_space_views, ViewportBlueprint,
+    context_menu_ui_for_item, icon_for_container_kind,
+    space_view_entity_picker::SpaceViewEntityPicker,
+    system_execution::execute_systems_for_all_space_views, SelectionUpdateBehavior,
+    ViewportBlueprint,
 };
 
 // State for each `SpaceView` including both the auto properties and
@@ -273,6 +275,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             let mut tab_viewer = TabViewer {
                 viewport_state: state,
                 ctx,
+                viewport_blueprint: blueprint,
                 space_views: &blueprint.space_views,
                 maximized: &mut maximized,
                 edited: false,
@@ -614,6 +617,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
 struct TabViewer<'a, 'b> {
     viewport_state: &'a mut ViewportState,
     ctx: &'a ViewerContext<'b>,
+    viewport_blueprint: &'a ViewportBlueprint,
     space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
     root_container_id: Option<ContainerId>,
@@ -729,22 +733,29 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             tab_widget.paint(ui);
         }
 
-        match tiles.get(tile_id) {
-            Some(egui_tiles::Tile::Pane(space_view_id)) => {
-                self.ctx
-                    .select_hovered_on_click(&response, Item::SpaceView(*space_view_id));
-            }
+        let item = tiles.get(tile_id).and_then(|tile| match tile {
+            egui_tiles::Tile::Pane(space_view_id) => Some(Item::SpaceView(*space_view_id)),
 
-            Some(egui_tiles::Tile::Container(_)) => {
+            egui_tiles::Tile::Container(_) => {
                 if let Some(Contents::Container(container_id)) =
                     self.contents_per_tile_id.get(&tile_id)
                 {
-                    self.ctx
-                        .select_hovered_on_click(&response, Item::Container(*container_id));
+                    Some(Item::Container(*container_id))
+                } else {
+                    None
                 }
             }
+        });
 
-            None => {}
+        if let Some(item) = item {
+            context_menu_ui_for_item(
+                self.ctx,
+                self.viewport_blueprint,
+                &item,
+                &response,
+                SelectionUpdateBehavior::OverrideSelection,
+            );
+            self.ctx.select_hovered_on_click(&response, item);
         }
 
         response
