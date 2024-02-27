@@ -173,18 +173,9 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                 .as_any()
                 .downcast_ref::<arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::FixedSizeList(
-                            std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::UInt8,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }),
-                            3usize,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.components.ViewCoordinates#coordinates")?;
             if arrow_data.is_empty() {
@@ -199,10 +190,9 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                         .as_any()
                         .downcast_ref::<UInt8Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt8,
-                                arrow_data_inner.data_type().clone(),
-                            )
+                            let expected = DataType::UInt8;
+                            let actual = arrow_data_inner.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.components.ViewCoordinates#coordinates")?
                         .into_iter()
@@ -262,18 +252,17 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                     .as_any()
                     .downcast_ref::<arrow2::array::FixedSizeListArray>()
                     .ok_or_else(|| {
-                        DeserializationError::datatype_mismatch(
-                            DataType::FixedSizeList(
-                                std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::UInt8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
-                                3usize,
-                            ),
-                            arrow_data.data_type().clone(),
-                        )
+                        let expected = DataType::FixedSizeList(
+                            std::sync::Arc::new(Field {
+                                name: "item".to_owned(),
+                                data_type: DataType::UInt8,
+                                is_nullable: false,
+                                metadata: [].into(),
+                            }),
+                            3usize,
+                        );
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.components.ViewCoordinates#coordinates")?;
                 let arrow_data_inner = &**arrow_data.values();
@@ -282,10 +271,9 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                         .as_any()
                         .downcast_ref::<UInt8Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt8,
-                                arrow_data_inner.data_type().clone(),
-                            )
+                            let expected = DataType::UInt8;
+                            let actual = arrow_data_inner.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.components.ViewCoordinates#coordinates")?
                         .values()

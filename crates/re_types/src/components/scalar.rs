@@ -118,10 +118,9 @@ impl ::re_types_core::Loggable for Scalar {
             .as_any()
             .downcast_ref::<Float64Array>()
             .ok_or_else(|| {
-                DeserializationError::datatype_mismatch(
-                    DataType::Float64,
-                    arrow_data.data_type().clone(),
-                )
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
             })
             .with_context("rerun.components.Scalar#value")?
             .into_iter()
@@ -151,10 +150,9 @@ impl ::re_types_core::Loggable for Scalar {
                 .as_any()
                 .downcast_ref::<Float64Array>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Float64,
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::Float64;
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.components.Scalar#value")?
                 .values()

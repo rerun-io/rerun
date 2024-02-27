@@ -115,10 +115,9 @@ impl crate::Loggable for UInt32 {
             .as_any()
             .downcast_ref::<UInt32Array>()
             .ok_or_else(|| {
-                DeserializationError::datatype_mismatch(
-                    DataType::UInt32,
-                    arrow_data.data_type().clone(),
-                )
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
             })
             .with_context("rerun.datatypes.UInt32#value")?
             .into_iter()

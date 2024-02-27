@@ -1343,6 +1343,10 @@ fn quote_field_type_from_field(
 ) -> (String, bool) {
     let mut unwrapped = false;
     let typ = match &field.typ {
+        Type::Unit => {
+            panic!("Unit type should only occur for enum variants");
+        }
+
         Type::UInt8
         | Type::UInt16
         | Type::UInt32
@@ -1399,6 +1403,9 @@ fn quote_field_converter_from_field(
     let mut function = String::new();
 
     let converter = match &field.typ {
+        Type::Unit => {
+            panic!("Unit type should only occur for enum variants");
+        }
         Type::UInt8
         | Type::UInt16
         | Type::UInt32
@@ -1527,6 +1534,10 @@ fn fqname_to_type(fqname: &str) -> String {
 
 fn quote_type_from_type(typ: &Type) -> String {
     match typ {
+        Type::Unit => {
+            panic!("Unit type should only occur for enum variants");
+        }
+
         Type::UInt8
         | Type::UInt16
         | Type::UInt32
