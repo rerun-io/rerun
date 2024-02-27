@@ -280,7 +280,6 @@ impl Analytics {
     ///
     /// The event is constructed using the implementations of [`Event`] and [`Properties`].
     /// The event's properties will be extended with an `event_id`.
-    #[allow(clippy::needless_pass_by_value)]
     pub fn record<E: Event>(&self, event: E) {
         if self.pipeline.is_none() {
             return;
