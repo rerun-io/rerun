@@ -1,5 +1,5 @@
 use arrow2::datatypes::DataType;
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
 use crate::{
@@ -227,10 +227,11 @@ pub fn quote_arrow_deserializer(
                 let obj_fqname = obj.fqname.as_str();
                 let quoted_obj_name = format_ident!("{}", obj.name);
                 let quoted_branches = obj.fields.iter().enumerate().map(|(typ, obj_field)| {
-                    let typ = typ as i8 + 1; // NOTE: +1 to account for `_null_markers` virtual arm
+                    let arrow_type_index = Literal::i8_unsuffixed(typ as i8 + 1); // 0 is reserved for `_null_markers`
+
                     let quoted_obj_field_type = format_ident!("{}", obj_field.pascal_case_name());
                     quote! {
-                        #typ => Ok(Some(#quoted_obj_name::#quoted_obj_field_type))
+                        #arrow_type_index => Ok(Some(#quoted_obj_name::#quoted_obj_field_type))
                     }
                 });
 

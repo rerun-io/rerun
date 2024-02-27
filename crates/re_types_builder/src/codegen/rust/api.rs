@@ -22,7 +22,7 @@ use crate::{
         StringExt as _,
     },
     format_path,
-    objects::ObjectType,
+    objects::ObjectClass,
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
@@ -181,10 +181,10 @@ fn generate_object_file(
     // inject some of our own when writing to file… while making sure that don't inject
     // random spacing into doc comments that look like code!
 
-    let quoted_obj = match obj.typ() {
-        crate::objects::ObjectType::Struct => quote_struct(reporter, arrow_registry, objects, obj),
-        crate::objects::ObjectType::Union => quote_union(reporter, arrow_registry, objects, obj),
-        crate::objects::ObjectType::Enum => quote_enum(reporter, arrow_registry, objects, obj),
+    let quoted_obj = match obj.class {
+        crate::objects::ObjectClass::Struct => quote_struct(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectClass::Union => quote_union(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectClass::Enum => quote_enum(reporter, arrow_registry, objects, obj),
     };
 
     let mut tokens = quoted_obj.into_iter();
@@ -454,7 +454,7 @@ fn quote_union(
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
-    assert_eq!(obj.typ(), ObjectType::Union);
+    assert_eq!(obj.class, ObjectClass::Union);
 
     let Object { name, fields, .. } = obj;
 
@@ -553,7 +553,7 @@ fn quote_enum(
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
-    assert_eq!(obj.typ(), ObjectType::Enum);
+    assert_eq!(obj.class, ObjectClass::Enum);
 
     let Object { name, fields, .. } = obj;
 
@@ -562,14 +562,17 @@ fn quote_enum(
     let quoted_doc = quote_obj_docs(reporter, obj);
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
-    let quoted_fields = fields.iter().map(|obj_field| {
-        let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
+    let quoted_fields = fields.iter().enumerate().map(|(i, field)| {
+        let name = format_ident!("{}", crate::to_pascal_case(&field.name));
 
-        let quoted_doc = quote_field_docs(reporter, obj_field);
+        let quoted_doc = quote_field_docs(reporter, field);
+
+        // We assign the arrow type index to the enum fields to make encoding simpler and faster:
+        let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(1 + i); // 0 is reserved for `_null_markers`
 
         quote! {
             #quoted_doc
-            #name
+            #name = #arrow_type_index
         }
     });
 

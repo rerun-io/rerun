@@ -13,7 +13,7 @@ use crate::{
         StringExt as _,
     },
     format_path,
-    objects::ObjectType,
+    objects::ObjectClass,
     ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
     ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
@@ -427,14 +427,14 @@ impl PythonCodeGenerator {
                 code.push_unindented_text(format!("\n__all__ = [{manifest}]\n\n\n"), 0);
             }
 
-            let obj_code = match obj.typ() {
-                crate::objects::ObjectType::Struct => {
+            let obj_code = match obj.class {
+                crate::objects::ObjectClass::Struct => {
                     code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
                 }
-                crate::objects::ObjectType::Union => {
+                crate::objects::ObjectClass::Union => {
                     code_for_union(arrow_registry, &ext_class, objects, obj)
                 }
-                crate::objects::ObjectType::Enum => {
+                crate::objects::ObjectClass::Enum => {
                     reporter.error(
                         &obj.virtpath,
                         &obj.fqname,
@@ -761,7 +761,7 @@ fn code_for_union(
     objects: &Objects,
     obj: &Object,
 ) -> String {
-    assert_eq!(obj.typ(), ObjectType::Union);
+    assert_eq!(obj.class, ObjectClass::Union);
     assert_eq!(obj.kind, ObjectKind::Datatype);
 
     let Object {

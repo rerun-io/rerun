@@ -13,8 +13,8 @@ union Angle (
   "attr.rust.derive": "Copy, PartialEq"
 ) {
   /// \py 3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
-  Radians: rerun.datatypes.Float32 (order: 100, transparent),
+  Radians: rerun.datatypes.Float32 (transparent),
 
   /// \py 3D rotation angle in degrees. Only one of `degrees` or `radians` should be set.
-  Degrees: rerun.datatypes.Float32 (order: 200, transparent),
+  Degrees: rerun.datatypes.Float32 (transparent),
 }

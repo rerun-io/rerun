@@ -57,10 +57,10 @@ table AffixFuzzer2 (
 union AffixFuzzer3 (
   "attr.rust.derive": "PartialEq"
 ) {
-  degrees: FlattenedScalar (transparent, order: 100),
-  radians: FlattenedScalar (transparent, nullable, order: 101),
-  craziness: __AffixFuzzer1Vec (transparent, order: 102),
-  fixed_size_shenanigans: ArrayOfFloats (transparent, order: 103),
+  degrees: FlattenedScalar (transparent),
+  radians: FlattenedScalar (transparent, nullable),
+  craziness: __AffixFuzzer1Vec (transparent),
+  fixed_size_shenanigans: ArrayOfFloats (transparent),
 }
 
 table __AffixFuzzer3 (transparent, order: 0) {
@@ -74,9 +74,9 @@ table __AffixFuzzer3Vec (transparent, order: 0) {
 union AffixFuzzer4 (
   "attr.rust.derive": "PartialEq"
 ) {
-  single_required: __AffixFuzzer3 (transparent, order: 100),
-  many_required: __AffixFuzzer3Vec (transparent, order: 101),
-  many_optional: __AffixFuzzer3Vec (transparent, order: 102, nullable),
+  single_required: __AffixFuzzer3 (transparent),
+  many_required: __AffixFuzzer3Vec (transparent),
+  many_optional: __AffixFuzzer3Vec (transparent, nullable),
 }
 
 table AffixFuzzer5 (
