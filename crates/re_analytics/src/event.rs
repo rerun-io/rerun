@@ -4,6 +4,10 @@
 //!
 //! Analytics can be completely disabled with `rerun analytics disable`,
 //! or by compiling rerun without the `analytics` feature flag.
+//!
+//! All collected analytics data is anonymized, stripping all personal identifiable information
+//! as well as information about user data.
+//! Read more about our analytics policy at <https://github.com/rerun-io/rerun/tree/main/crates/re_analytics>.
 
 /// Records a crash caused by a panic.
 ///
