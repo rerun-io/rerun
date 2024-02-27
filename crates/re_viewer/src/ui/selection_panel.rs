@@ -881,10 +881,7 @@ fn blueprint_ui_for_space_view(
         // Space View don't inherit properties.
         let root_data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
 
-        let mut props = root_data_result
-            .individual_properties()
-            .cloned()
-            .unwrap_or_default();
+        let mut props = root_data_result.accumulated_properties().clone();
 
         visible_history_ui(
             ctx,
@@ -931,10 +928,7 @@ fn blueprint_ui_for_instance_path(
                     .lookup_result_by_path(entity_path)
                     .cloned()
                 {
-                    let mut props = data_result
-                        .individual_properties()
-                        .cloned()
-                        .unwrap_or_default();
+                    let mut props = data_result.accumulated_properties().clone();
                     entity_props_ui(
                         ctx,
                         ui,

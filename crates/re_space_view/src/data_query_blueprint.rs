@@ -477,7 +477,6 @@ impl DataQueryPropertyResolver<'_> {
                 let individual_properties = override_context
                     .individual
                     .get_opt(&node.data_result.entity_path);
-
                 let accumulated_properties =
                     if let Some(individual_override) = individual_properties {
                         accumulated_recursive_properties.with_child(individual_override)
@@ -519,6 +518,7 @@ impl DataQueryPropertyResolver<'_> {
                             );
                     }
                 }
+
                 let mut component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)> =
                     Default::default();
 
@@ -544,7 +544,7 @@ impl DataQueryPropertyResolver<'_> {
 
                 node.data_result.property_overrides = Some(PropertyOverrides {
                     individual_properties: individual_properties.cloned(),
-                    accumulated_properties: accumulated_properties.clone(),
+                    accumulated_properties,
                     component_overrides,
                     recursive_override_path,
                     individual_override_path,

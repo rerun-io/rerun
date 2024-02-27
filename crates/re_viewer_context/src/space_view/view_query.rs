@@ -30,10 +30,12 @@ pub struct PropertyOverrides {
     // TODO(jleibs): Consider something like `tinymap` for this.
     pub component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
 
-    /// `EntityPath` in the Blueprint store where updated overrides should be written back for properties that apply recursively.
+    /// `EntityPath` in the Blueprint store where updated overrides should be written back\
+    /// for properties that apply recursively.
     pub recursive_override_path: EntityPath,
 
-    /// `EntityPath` in the Blueprint store where updated overrides should be written back for properties that apply recursively.
+    /// `EntityPath` in the Blueprint store where updated overrides should be written back
+    /// for properties that apply to the individual entity only.
     pub individual_override_path: EntityPath,
 }
 
@@ -91,7 +93,7 @@ impl DataResult {
     /// TODO(andreas): This does NOT handle the case when individual properties need clearing to achieve the desired property result.
     pub fn save_recursive_override(
         &self,
-        props: Option<EntityProperties>,
+        new_accumulated_props: Option<EntityProperties>,
         ctx: &ViewerContext<'_>,
     ) {
         // TODO(jleibs): Make it impossible for this to happen with different type structure
@@ -110,7 +112,7 @@ impl DataResult {
             return;
         };
 
-        let cell = match props {
+        let cell = match new_accumulated_props {
             None => {
                 re_log::debug!("Clearing {:?}", override_path);
 
