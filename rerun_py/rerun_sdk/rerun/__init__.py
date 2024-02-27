@@ -63,6 +63,7 @@ __all__ = [
     "ViewCoordinates",
     "archetypes",
     "bindings",
+    "blueprint",
     "components",
     "connect",
     "datatypes",
@@ -181,7 +182,7 @@ from .time import (
 
 # Import experimental last
 from . import experimental  # isort: skip
-
+from . import blueprint
 
 # =====================================
 # UTILITIES
