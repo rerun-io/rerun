@@ -419,7 +419,7 @@ def parse_retry_delay_secs(error_message: str) -> float | None:
     end = error_message.find(RETRY_AFTER_END, start)
     if end == -1:
         return None
-    retry_after = datetime.strptime(error_message[start:end], "%a, %d %b %Y %H:%M:%S")
+    retry_after = datetime.strptime(error_message[start:end], "%a, %d %b %Y %H:%M:%S").replace(tzinfo=timezone.utc)
     return (retry_after - datetime.now(timezone.utc)).total_seconds() * MAX_PUBLISH_WORKERS
 
 
