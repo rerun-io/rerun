@@ -558,8 +558,8 @@ impl Object {
         let fields: Vec<_> = enm
             .values()
             .iter()
-            // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
             .filter(|val| {
+                // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
                 is_enum
                     || val
                         .union_type()
@@ -571,12 +571,8 @@ impl Object {
             })
             .collect();
 
-        if kind == ObjectKind::Component {
-            assert!(
-                fields.len() == 1,
-                "components must have exactly 1 field, but {fqname} has {}",
-                fields.len()
-            );
+        if kind == ObjectKind::Component && fields.len() != 1 {
+            reporter.error(&virtpath, &fqname, "components must have exactly 1 field");
         }
 
         Self {
@@ -908,6 +904,11 @@ impl ObjectField {
     /// The `snake_case` name of the field, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
         crate::to_snake_case(&self.name)
+    }
+
+    /// The `SCREAMING_SNAKE_CASE` name of the object, e.g. `TRANSLATION_AND_MAT3X3`.
+    pub fn screaming_snake_case_name(&self) -> String {
+        self.snake_case_name().to_uppercase()
     }
 
     /// The `PascalCase` name of the field, e.g. `TranslationAndMat3x3`.

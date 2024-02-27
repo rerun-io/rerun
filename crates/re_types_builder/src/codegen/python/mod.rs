@@ -431,16 +431,11 @@ impl PythonCodeGenerator {
                 crate::objects::ObjectClass::Struct => {
                     code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
                 }
+                crate::objects::ObjectClass::Enum => {
+                    code_for_enum(arrow_registry, &ext_class, objects, obj)
+                }
                 crate::objects::ObjectClass::Union => {
                     code_for_union(arrow_registry, &ext_class, objects, obj)
-                }
-                crate::objects::ObjectClass::Enum => {
-                    reporter.error(
-                        &obj.virtpath,
-                        &obj.fqname,
-                        "Enums are not implemented in Python",
-                    );
-                    continue;
                 }
             };
 
@@ -744,6 +739,84 @@ fn code_for_struct(
     match kind {
         ObjectKind::Archetype => (),
         ObjectKind::Datatype | ObjectKind::Component => {
+            code.push_text(
+                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
+                1,
+                0,
+            );
+        }
+    }
+
+    code
+}
+
+fn code_for_enum(
+    arrow_registry: &ArrowRegistry,
+    ext_class: &ExtensionClass,
+    objects: &Objects,
+    obj: &Object,
+) -> String {
+    assert_eq!(obj.class, ObjectClass::Enum);
+    assert_eq!(obj.kind, ObjectKind::Datatype);
+
+    let Object { name, .. } = obj;
+
+    let mut code = String::new();
+
+    code.push_unindented_text("from enum import Enum", 2);
+
+    if let Some(deprecation_notice) = obj.deprecation_notice() {
+        code.push_unindented_text(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+    }
+
+    code.push_str(&format!("class {name}(Enum):\n"));
+    code.push_text(quote_obj_docs(obj), 0, 4);
+
+    for (i, field) in obj.fields.iter().enumerate() {
+        let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
+        let field_name = field.screaming_snake_case_name();
+        code.push_text(format!("{field_name} = {arrow_type_index}"), 1, 4);
+
+        // Generating docs for all the fields creates A LOT of visual noise in the API docs.
+        let show_fields_in_docs = true;
+        let doc_lines = lines_from_docs(&field.docs);
+        if !doc_lines.is_empty() {
+            if show_fields_in_docs {
+                code.push_text(quote_doc_lines(doc_lines), 0, 4);
+            } else {
+                // Still include it for those that are reading the source file:
+                for line in doc_lines {
+                    code.push_text(format!("# {line}"), 1, 4);
+                }
+                code.push_text("#", 1, 4);
+                code.push_text(
+                    "# (Docstring intentionally commented out to hide this field from the docs)",
+                    2,
+                    4,
+                );
+            }
+        }
+    }
+
+    code.push_unindented_text(format!("{name}Like = {name}"), 1);
+    code.push_unindented_text(
+        format!(
+            r#"
+            {name}ArrayLike = Union[
+                {name},
+                Sequence[{name}Like]
+            ]
+            "#,
+        ),
+        2,
+    );
+
+    match obj.kind {
+        ObjectKind::Archetype => (),
+        ObjectKind::Component => {
+            unreachable!("component may not be a union")
+        }
+        ObjectKind::Datatype => {
             code.push_text(
                 quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
