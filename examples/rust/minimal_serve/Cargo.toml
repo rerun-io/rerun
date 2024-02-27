@@ -1,6 +1,6 @@
 [package]
 name = "minimal_serve"
-version = "0.14.0-rc.3"
+version = "0.14.0-rc.4"
 edition = "2021"
 rust-version = "1.74"
 license = "MIT OR Apache-2.0"
