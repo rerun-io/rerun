@@ -420,8 +420,8 @@ pub struct Object {
     /// These are pre-sorted, in ascending order, using their `order` attribute.
     pub fields: Vec<ObjectField>,
 
-    /// Properties that only apply to either structs or unions.
-    pub specifics: ObjectSpecifics,
+    /// struct, enum, or union?
+    pub class: ObjectClass,
 
     /// The Arrow datatype of this `Object`, or `None` if the object is Arrow-transparent.
     ///
@@ -508,7 +508,7 @@ impl Object {
             kind,
             attrs,
             fields,
-            specifics: ObjectSpecifics::Struct {},
+            class: ObjectClass::Struct {},
             datatype: None,
         }
     }
@@ -540,23 +540,7 @@ impl Object {
         let attrs = Attributes::from_raw_attrs(enm.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
-        let utype = {
-            if enm.underlying_type().base_type() == FbsBaseType::UType {
-                // This is a union (sum type).
-                None
-            } else {
-                // A C-style enum.
-                Some(ElementType::from_raw_base_type(
-                    enums,
-                    objs,
-                    enm.underlying_type(),
-                    enm.underlying_type().base_type(),
-                    &attrs,
-                ))
-            }
-        };
-
-        let is_enum = utype.is_some();
+        let is_enum = enm.underlying_type().base_type() != FbsBaseType::UType;
 
         let mut fields: Vec<_> = enm
             .values()
@@ -606,7 +590,11 @@ impl Object {
             kind,
             attrs,
             fields,
-            specifics: ObjectSpecifics::Union { utype },
+            class: if is_enum {
+                ObjectClass::Enum
+            } else {
+                ObjectClass::Union
+            },
             datatype: None,
         }
     }
@@ -631,29 +619,16 @@ impl Object {
         self.attrs.has(name)
     }
 
-    pub fn typ(&self) -> ObjectType {
-        self.specifics.typ()
-    }
-
     pub fn is_struct(&self) -> bool {
-        match &self.specifics {
-            ObjectSpecifics::Struct {} => true,
-            ObjectSpecifics::Union { utype: _ } => false,
-        }
+        self.class == ObjectClass::Struct
     }
 
     pub fn is_enum(&self) -> bool {
-        match &self.specifics {
-            ObjectSpecifics::Struct {} => false,
-            ObjectSpecifics::Union { utype } => utype.is_some(),
-        }
+        self.class == ObjectClass::Enum
     }
 
     pub fn is_union(&self) -> bool {
-        match &self.specifics {
-            ObjectSpecifics::Struct {} => false,
-            ObjectSpecifics::Union { utype } => utype.is_none(),
-        }
+        self.class == ObjectClass::Union
     }
 
     pub fn is_arrow_transparent(&self) -> bool {
@@ -718,37 +693,33 @@ pub fn is_testing_fqname(fqname: &str) -> bool {
     fqname.contains("rerun.testing")
 }
 
-/// Properties specific to either structs or unions, but not both.
-#[derive(Debug, Clone)]
-pub enum ObjectSpecifics {
-    Struct,
-    Union {
-        /// The underlying type of the union.
-        ///
-        /// `None` if this is a union, some value if this is an enum.
-        utype: Option<ElementType>,
-    },
-}
-
-impl ObjectSpecifics {
-    pub fn typ(&self) -> ObjectType {
-        match self {
-            ObjectSpecifics::Struct => ObjectType::Struct,
-            ObjectSpecifics::Union { utype: None } => ObjectType::Union,
-            ObjectSpecifics::Union { utype: Some(_) } => ObjectType::Enum,
-        }
-    }
-}
-
+/// Is this a struct, enum, or union?
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ObjectType {
+pub enum ObjectClass {
     Struct,
 
-    /// A proper union sum type
-    Union,
-
-    /// An enumeration of alternatives, C-style.
+    /// Dumn C-style enum.
+    ///
+    /// Encoded as a sparse arrow union.
+    ///
+    /// Arrow uses a `i8` to encode the variant, forbidding negatives,
+    /// so there are 127 possible states.
+    /// We reserve `0` for a special/implicit `__null_markers` variant,
+    /// which we use to encode null values.
+    /// This means we support at most 126 possible enum variants.
+    /// Therefore the enum can be backed by a simple `u8` in Rust and C++.
     Enum,
+
+    /// Proper sum-type union.
+    ///
+    /// Encoded as a dense arrow union.
+    ///
+    /// Arrow uses a `i8` to encode the variant, forbidding negatives,
+    /// so there are 127 possible states.
+    /// We reserve `0` for a special/implicit `__null_markers` variant,
+    /// which we use to encode null values.
+    /// This means we support at most 126 possible union variants.
+    Union,
 }
 
 /// A high-level representation of a flatbuffers field, which can be either a struct member or a

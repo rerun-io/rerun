@@ -153,7 +153,7 @@ pub use self::codegen::{
 };
 pub use self::format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter};
 pub use self::objects::{
-    Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
+    Attributes, Docs, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
 };
 pub use self::report::{Report, Reporter};
 

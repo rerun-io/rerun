@@ -14,9 +14,9 @@ use rayon::prelude::*;
 use crate::{
     codegen::{autogen_warning, common::collect_examples_for_api_docs},
     format_path,
-    objects::ObjectType,
-    ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind,
-    ObjectSpecifics, Objects, Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
+    objects::ObjectClass,
+    ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -387,8 +387,8 @@ impl QuotedObject {
         hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
     ) -> Result<Self> {
-        match obj.typ() {
-            ObjectType::Struct => match obj.kind {
+        match obj.class {
+            ObjectClass::Struct => match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => Ok(Self::from_struct(
                     objects,
                     obj,
@@ -399,13 +399,13 @@ impl QuotedObject {
                     Ok(Self::from_archetype(obj, hpp_includes, hpp_type_extensions))
                 }
             },
-            ObjectType::Union => Ok(Self::from_union(
+            ObjectClass::Union => Ok(Self::from_union(
                 objects,
                 obj,
                 hpp_includes,
                 hpp_type_extensions,
             )),
-            ObjectType::Enum => {
+            ObjectClass::Enum => {
                 anyhow::bail!("Enums are not implemented in C++")
             }
         }
@@ -1515,8 +1515,8 @@ fn quote_fill_arrow_array_builder(
             }
         }
     } else {
-        match obj.specifics {
-            ObjectSpecifics::Struct => {
+        match obj.class {
+            ObjectClass::Struct => {
                 let fill_fields = obj.fields.iter().enumerate().map(
                 |(field_index, field)| {
                     let field_index = quote_integer(field_index);
@@ -1539,7 +1539,10 @@ fn quote_fill_arrow_array_builder(
                     ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
                 }
             }
-            ObjectSpecifics::Union { .. } => {
+            ObjectClass::Enum => {
+                unimplemented!("enums in C++")
+            }
+            ObjectClass::Union => {
                 let variant_builder = format_ident!("variant_builder");
 
                 let tag_cases = obj.fields
@@ -2227,16 +2230,19 @@ fn quote_arrow_data_type(
                     .iter()
                     .map(|field| quote_arrow_field_type(field, objects, includes));
 
-                match &obj.specifics {
-                    ObjectSpecifics::Union { .. } => {
+                match &obj.class {
+                    ObjectClass::Struct => {
+                        quote!(arrow::struct_({ #(#quoted_fields,)* }))
+                    }
+                    ObjectClass::Enum => {
+                        unimplemented!("enums in C++")
+                    }
+                    ObjectClass::Union => {
                         quote! {
                             arrow::dense_union({
                                 arrow::field("_null_markers", arrow::null(), true, nullptr), #(#quoted_fields,)*
                             })
                         }
-                    }
-                    ObjectSpecifics::Struct => {
-                        quote!(arrow::struct_({ #(#quoted_fields,)* }))
                     }
                 }
             }
