@@ -332,16 +332,16 @@ impl PythonCodeGenerator {
             .extend(names.iter().cloned());
 
             let mut code = String::new();
-            code.push_text(&format!("# {}", autogen_warning!()), 1, 0);
+            code.push_indented(0, &format!("# {}", autogen_warning!()), 1);
             if let Some(source_path) = obj.relative_filepath() {
-                code.push_text(&format!("# Based on {:?}.", format_path(source_path)), 2, 0);
-                code.push_text(
+                code.push_indented(0, &format!("# Based on {:?}.", format_path(source_path)), 2);
+                code.push_indented(
+                    0,
                     &format!(
                         "# You can extend this class by creating a {:?} class in {:?}.",
                         ext_class.name, ext_class.file_name
                     ),
                     2,
-                    0,
                 );
             }
 
@@ -355,7 +355,7 @@ impl PythonCodeGenerator {
                 ".."
             };
 
-            code.push_unindented_text(
+            code.push_unindented(
                 format!(
                     "
             from __future__ import annotations
@@ -401,7 +401,7 @@ impl PythonCodeGenerator {
             );
 
             if ext_class.found {
-                code.push_unindented_text(
+                code.push_unindented(
                     format!("from .{} import {}", ext_class.module_name, ext_class.name,),
                     1,
                 );
@@ -420,11 +420,11 @@ impl PythonCodeGenerator {
                 }))
                 .collect();
             for clause in import_clauses {
-                code.push_text(&clause, 1, 0);
+                code.push_indented(0, &clause, 1);
             }
 
             if !manifest.is_empty() {
-                code.push_unindented_text(format!("\n__all__ = [{manifest}]\n\n\n"), 0);
+                code.push_unindented(format!("\n__all__ = [{manifest}]\n\n\n"), 0);
             }
 
             let obj_code = match obj.class {
@@ -439,10 +439,10 @@ impl PythonCodeGenerator {
                 }
             };
 
-            code.push_text(&obj_code, 1, 0);
+            code.push_indented(0, &obj_code, 1);
 
             if ext_class.has_deferred_patch_class {
-                code.push_unindented_text(
+                code.push_unindented(
                     format!("{}.deferred_patch_class({})", ext_class.name, obj.name),
                     1,
                 );
@@ -472,8 +472,8 @@ fn write_init_file(
     let path = kind_path.join("__init__.py");
     let mut code = String::new();
     let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
-    code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
-    code.push_unindented_text(
+    code.push_indented(0, &format!("# {}", autogen_warning!()), 2);
+    code.push_unindented(
         "
             from __future__ import annotations
 
@@ -482,10 +482,10 @@ fn write_init_file(
     );
     for (module, names) in mods {
         let names = names.join(", ");
-        code.push_text(&format!("from .{module} import {names}"), 1, 0);
+        code.push_indented(0, &format!("from .{module} import {names}"), 1);
     }
     if !manifest.is_empty() {
-        code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
+        code.push_unindented(format!("\n__all__ = [{manifest}]"), 0);
     }
     files_to_write.insert(path, code);
 }
@@ -555,7 +555,7 @@ fn code_for_struct(
                     format!("converter={typ_unwrapped}Batch._required, # type: ignore[misc]\n")
                 }
             } else if !default_converter.is_empty() {
-                code.push_text(&converter_function, 1, 0);
+                code.push_indented(0, &converter_function, 1);
                 format!("converter={default_converter}")
             } else {
                 String::new()
@@ -590,7 +590,7 @@ fn code_for_struct(
     }
 
     if let Some(deprecation_notice) = obj.deprecation_notice() {
-        code.push_unindented_text(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+        code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
     }
 
     if !obj.is_delegating_component() {
@@ -599,7 +599,7 @@ fn code_for_struct(
         } else {
             "init=False"
         };
-        code.push_unindented_text(format!("@define({define_args})"), 1);
+        code.push_unindented(format!("@define({define_args})"), 1);
     }
 
     let superclass_decl = if superclasses.is_empty() {
@@ -607,47 +607,47 @@ fn code_for_struct(
     } else {
         format!("({})", superclasses.join(","))
     };
-    code.push_unindented_text(format!("class {name}{superclass_decl}:"), 1);
+    code.push_unindented(format!("class {name}{superclass_decl}:"), 1);
 
-    code.push_text(quote_obj_docs(obj), 0, 4);
+    code.push_indented(1, quote_obj_docs(obj), 0);
 
     if ext_class.has_init {
-        code.push_text(
+        code.push_indented(
+            1,
             format!("# __init__ can be found in {}", ext_class.file_name),
             2,
-            4,
         );
     } else if obj.is_delegating_component() {
-        code.push_text(
+        code.push_indented(
+            1,
             format!(
                 "# You can define your own __init__ function as a member of {} in {}",
                 ext_class.name, ext_class.file_name
             ),
             2,
-            4,
         );
     } else {
         // In absence of a an extension class __init__ method, we don't *need* an __init__ method here.
         // But if we don't generate one, LSP will show the class's doc string instead of parameter documentation.
-        code.push_text(quote_init_method(reporter, obj, ext_class, objects), 2, 4);
+        code.push_indented(1, quote_init_method(reporter, obj, ext_class, objects), 2);
     }
 
     if obj.kind == ObjectKind::Archetype {
-        code.push_text(quote_clear_methods(obj), 2, 4);
+        code.push_indented(1, quote_clear_methods(obj), 2);
     }
 
     if obj.is_delegating_component() {
-        code.push_text(
+        code.push_indented(
+            1,
             format!(
                 "# Note: there are no fields here because {} delegates to datatypes.{}",
                 obj.name,
                 obj.delegate_datatype(objects).unwrap().name
             ),
             1,
-            4,
         );
 
-        code.push_text("pass", 2, 4);
+        code.push_indented(1, "pass", 2);
     } else {
         // NOTE: We need to add required fields first, and then optional ones, otherwise mypy
         // complains.
@@ -700,49 +700,45 @@ fn code_for_struct(
                 )
             };
 
-            code.push_text(format!("{name}: {typ}"), 1, 4);
+            code.push_indented(1, format!("{name}: {typ}"), 1);
 
             // Generating docs for all the fields creates A LOT of visual noise in the API docs.
             let show_fields_in_docs = false;
             let doc_lines = lines_from_docs(&field.docs);
             if !doc_lines.is_empty() {
                 if show_fields_in_docs {
-                    code.push_text(quote_doc_lines(doc_lines), 0, 4);
+                    code.push_indented(1, quote_doc_lines(doc_lines), 0);
                 } else {
                     // Still include it for those that are reading the source file:
                     for line in doc_lines {
-                        code.push_text(format!("# {line}"), 1, 4);
+                        code.push_indented(1, format!("# {line}"), 1);
                     }
-                    code.push_text("#", 1, 4);
-                    code.push_text(
-                    "# (Docstring intentionally commented out to hide this field from the docs)",
-                        2,
-                        4,
-                    );
+                    code.push_indented(1, "#", 1);
+                    code.push_indented(1, "# (Docstring intentionally commented out to hide this field from the docs)", 2);
                 }
             }
         }
 
         if *kind == ObjectKind::Archetype {
-            code.push_text("__str__ = Archetype.__str__", 1, 4);
-            code.push_text("__repr__ = Archetype.__repr__", 1, 4);
+            code.push_indented(1, "__str__ = Archetype.__str__", 1);
+            code.push_indented(1, "__repr__ = Archetype.__repr__", 1);
         }
 
-        code.push_text(quote_array_method_from_obj(ext_class, objects, obj), 1, 4);
-        code.push_text(quote_native_types_method_from_obj(objects, obj), 1, 4);
+        code.push_indented(1, quote_array_method_from_obj(ext_class, objects, obj), 1);
+        code.push_indented(1, quote_native_types_method_from_obj(objects, obj), 1);
 
         if *kind != ObjectKind::Archetype {
-            code.push_text(quote_aliases_from_object(obj), 1, 0);
+            code.push_indented(0, quote_aliases_from_object(obj), 1);
         }
     }
 
     match kind {
         ObjectKind::Archetype => (),
         ObjectKind::Datatype | ObjectKind::Component => {
-            code.push_text(
+            code.push_indented(
+                0,
                 quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
-                0,
             );
         }
     }
@@ -763,43 +759,43 @@ fn code_for_enum(
 
     let mut code = String::new();
 
-    code.push_unindented_text("from enum import Enum", 2);
+    code.push_unindented("from enum import Enum", 2);
 
     if let Some(deprecation_notice) = obj.deprecation_notice() {
-        code.push_unindented_text(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+        code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
     }
 
     code.push_str(&format!("class {name}(Enum):\n"));
-    code.push_text(quote_obj_docs(obj), 0, 4);
+    code.push_indented(1, quote_obj_docs(obj), 0);
 
     for (i, field) in obj.fields.iter().enumerate() {
         let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
         let field_name = field.screaming_snake_case_name();
-        code.push_text(format!("{field_name} = {arrow_type_index}"), 1, 4);
+        code.push_indented(1, format!("{field_name} = {arrow_type_index}"), 1);
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
         let show_fields_in_docs = true;
         let doc_lines = lines_from_docs(&field.docs);
         if !doc_lines.is_empty() {
             if show_fields_in_docs {
-                code.push_text(quote_doc_lines(doc_lines), 0, 4);
+                code.push_indented(1, quote_doc_lines(doc_lines), 0);
             } else {
                 // Still include it for those that are reading the source file:
                 for line in doc_lines {
-                    code.push_text(format!("# {line}"), 1, 4);
+                    code.push_indented(1, format!("# {line}"), 1);
                 }
-                code.push_text("#", 1, 4);
-                code.push_text(
+                code.push_indented(1, "#", 1);
+                code.push_indented(
+                    1,
                     "# (Docstring intentionally commented out to hide this field from the docs)",
                     2,
-                    4,
                 );
             }
         }
     }
 
-    code.push_unindented_text(format!("{name}Like = {name}"), 1);
-    code.push_unindented_text(
+    code.push_unindented(format!("{name}Like = {name}"), 1);
+    code.push_unindented(
         format!(
             r#"
             {name}ArrayLike = Union[
@@ -817,10 +813,10 @@ fn code_for_enum(
             unreachable!("component may not be a union")
         }
         ObjectKind::Datatype => {
-            code.push_text(
+            code.push_indented(
+                0,
                 quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
-                0,
             );
         }
     }
@@ -868,10 +864,10 @@ fn code_for_union(
     };
 
     if let Some(deprecation_notice) = obj.deprecation_notice() {
-        code.push_unindented_text(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+        code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
     }
 
-    code.push_unindented_text(
+    code.push_unindented(
         format!(
             r#"
 
@@ -882,22 +878,22 @@ fn code_for_union(
         0,
     );
 
-    code.push_text(quote_obj_docs(obj), 0, 4);
+    code.push_indented(1, quote_obj_docs(obj), 0);
 
     if ext_class.has_init {
-        code.push_text(
+        code.push_indented(
+            1,
             format!("# __init__ can be found in {}", ext_class.file_name),
             2,
-            4,
         );
     } else {
-        code.push_text(
+        code.push_indented(
+            1,
             format!(
                 "# You can define your own __init__ function as a member of {} in {}",
                 ext_class.name, ext_class.file_name
             ),
             2,
-            4,
         );
     }
 
@@ -941,12 +937,12 @@ fn code_for_union(
     };
 
     // Note: mypy gets confused using staticmethods for field-converters
-    code.push_text(
+    code.push_indented(
+        1,
         format!("inner: {inner_type} = field({converter} {type_ignore}\n)"),
         1,
-        4,
     );
-    code.push_text(quote_doc_from_fields(objects, fields), 0, 4);
+    code.push_indented(1, quote_doc_from_fields(objects, fields), 0);
 
     // if there are duplicate types, we need to add a `kind` field to disambiguate the union
     if has_duplicate_types {
@@ -956,16 +952,16 @@ fn code_for_union(
             .join(", ");
         let first_kind = &fields[0].snake_case_name();
 
-        code.push_text(
+        code.push_indented(
+            1,
             format!("kind: Literal[{kind_type}] = field(default={first_kind:?})"),
             1,
-            4,
         );
 
-        code.push_text(quote_union_kind_from_fields(fields), 0, 4);
+        code.push_indented(1, quote_union_kind_from_fields(fields), 0);
     }
 
-    code.push_unindented_text(quote_union_aliases_from_object(obj, field_types.iter()), 1);
+    code.push_unindented(quote_union_aliases_from_object(obj, field_types.iter()), 1);
 
     match kind {
         ObjectKind::Archetype => (),
@@ -973,10 +969,10 @@ fn code_for_union(
             unreachable!("component may not be a union")
         }
         ObjectKind::Datatype => {
-            code.push_text(
+            code.push_indented(
+                0,
                 quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
-                0,
             );
         }
     }
@@ -1264,7 +1260,7 @@ fn quote_aliases_from_object(obj: &Object) -> String {
 
     let mut code = String::new();
 
-    code.push_unindented_text(
+    code.push_unindented(
         &if let Some(aliases) = aliases {
             format!(
                 r#"
@@ -1283,7 +1279,7 @@ fn quote_aliases_from_object(obj: &Object) -> String {
         1,
     );
 
-    code.push_unindented_text(
+    code.push_unindented(
         format!(
             r#"
             {name}ArrayLike = Union[
@@ -1548,7 +1544,7 @@ fn quote_field_converter_from_field(
 
                 // generate the converter function
                 if field.is_nullable {
-                    function.push_unindented_text(
+                    function.push_unindented(
                         format!(
                             r#"
                             def {converter_name}(x: {typ}Like | None) -> {typ} | None:
@@ -1563,7 +1559,7 @@ fn quote_field_converter_from_field(
                         1,
                     );
                 } else {
-                    function.push_unindented_text(
+                    function.push_unindented(
                         format!(
                             r#"
                             def {converter_name}(x: {typ}Like) -> {typ}:
