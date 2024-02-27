@@ -41,8 +41,6 @@ use super::{
 
 // ---
 
-type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
-
 pub struct RustCodeGenerator {
     pub workspace_path: Utf8PathBuf,
 }
@@ -110,13 +108,7 @@ impl RustCodeGenerator {
 
             let filepath = module_path.join(filename);
 
-            let mut code = match generate_object_file(reporter, objects, arrow_registry, obj) {
-                Ok(code) => code,
-                Err(err) => {
-                    reporter.error(&obj.virtpath, &obj.fqname, err);
-                    continue;
-                }
-            };
+            let mut code = generate_object_file(reporter, objects, arrow_registry, obj);
 
             if crate_name == "re_types_core" {
                 code = code.replace("::re_types_core", "crate");
@@ -151,7 +143,7 @@ fn generate_object_file(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
     obj: &Object,
-) -> Result<String> {
+) -> String {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = obj.relative_filepath() {
@@ -192,7 +184,7 @@ fn generate_object_file(
     let quoted_obj = match obj.typ() {
         crate::objects::ObjectType::Struct => quote_struct(reporter, arrow_registry, objects, obj),
         crate::objects::ObjectType::Union => quote_union(reporter, arrow_registry, objects, obj),
-        crate::objects::ObjectType::Enum => anyhow::bail!("Enums are not implemented in Rust"),
+        crate::objects::ObjectType::Enum => quote_enum(reporter, arrow_registry, objects, obj),
     };
 
     let mut tokens = quoted_obj.into_iter();
@@ -215,7 +207,7 @@ fn generate_object_file(
 
     code.push_text(string_from_quoted(&acc), 1, 0);
 
-    Ok(replace_doc_attrb_with_doc_comment(&code))
+    replace_doc_attrb_with_doc_comment(&code)
 }
 
 fn generate_mod_file(
@@ -554,6 +546,61 @@ fn quote_union(
     tokens
 }
 
+// Pure C-style enum
+fn quote_enum(
+    reporter: &Reporter,
+    arrow_registry: &ArrowRegistry,
+    objects: &Objects,
+    obj: &Object,
+) -> TokenStream {
+    assert_eq!(obj.typ(), ObjectType::Enum);
+
+    let Object { name, fields, .. } = obj;
+
+    let name = format_ident!("{name}");
+
+    let quoted_doc = quote_obj_docs(reporter, obj);
+    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
+
+    let quoted_fields = fields.iter().map(|obj_field| {
+        let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
+
+        let quoted_doc = quote_field_docs(reporter, obj_field);
+
+        quote! {
+            #quoted_doc
+            #name
+        }
+    });
+
+    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+
+    let tokens = quote! {
+        #quoted_doc
+        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        #quoted_custom_clause
+        pub enum #name {
+            #(#quoted_fields,)*
+        }
+
+        impl ::re_types_core::SizeBytes for #name {
+            #[inline]
+            fn heap_size_bytes(&self) -> u64 {
+                0
+            }
+
+            #[inline]
+            fn is_pod() -> bool {
+                true
+            }
+        }
+
+        #quoted_trait_impls
+    };
+
+    tokens
+}
+
 // --- Code generators ---
 
 struct ObjectFieldTokenizer<'a>(&'a Reporter, &'a Object, &'a ObjectField);
@@ -731,6 +778,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self { typ, unwrap } = self;
         match typ {
+            Type::Unit => quote!(()),
             Type::UInt8 => quote!(u8),
             Type::UInt16 => quote!(u16),
             Type::UInt32 => quote!(u32),

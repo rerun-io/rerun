@@ -132,5 +132,27 @@
             "args": [],
             "cwd": "${workspaceFolder}"
         },
+        {
+            "name": "Debug 'codegen'",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--package=re_types_builder",
+                ],
+                "filter": {
+                    "name": "build_re_types",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--force" // always run codegen, even if hashes hasn't changed
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RAYON_NUM_THREADS": "1" // less confusing debugging experience
+            }
+        },
     ]
 }

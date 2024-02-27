@@ -542,9 +542,10 @@ impl Object {
 
         let utype = {
             if enm.underlying_type().base_type() == FbsBaseType::UType {
-                // This is a union.
+                // This is a union (sum type).
                 None
             } else {
+                // A C-style enum.
                 Some(ElementType::from_raw_base_type(
                     enums,
                     objs,
@@ -555,17 +556,37 @@ impl Object {
             }
         };
 
-        let fields: Vec<_> = enm
+        let is_enum = utype.is_some();
+
+        let mut fields: Vec<_> = enm
             .values()
             .iter()
             // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
             .filter(|val| {
-                val.union_type()
-                    .filter(|utype| utype.base_type() != FbsBaseType::None)
-                    .is_some()
+                is_enum
+                    || val
+                        .union_type()
+                        .filter(|utype| utype.base_type() != FbsBaseType::None)
+                        .is_some()
             })
-            .map(|val| ObjectField::from_raw_enum_value(include_dir_path, enums, objs, enm, &val))
+            .map(|val| {
+                ObjectField::from_raw_enum_value(include_dir_path, enums, objs, enm, &val, is_enum)
+            })
             .collect();
+
+        if !is_enum {
+            fields.sort_by_key(|field| field.order);
+
+            // Make sure no two fields have the same order:
+            for (a, b) in fields.iter().tuple_windows() {
+                assert!(
+                    a.order != b.order,
+                    "{name:?}: Fields {:?} and {:?} have the same order",
+                    a.name,
+                    b.name
+                );
+            }
+        }
 
         if kind == ObjectKind::Component {
             assert!(
@@ -726,7 +747,7 @@ pub enum ObjectType {
     /// A proper union sum type
     Union,
 
-    /// An enumeration of alternatives
+    /// An enumeration of alternatives, C-style.
     Enum,
 }
 
@@ -833,6 +854,7 @@ impl ObjectField {
         objs: &[FbsObject<'_>],
         enm: &FbsEnum<'_>,
         val: &FbsEnumVal<'_>,
+        is_enum: bool,
     ) -> Self {
         let fqname = format!("{}#{}", enm.name(), val.name());
         let (pkg_name, name) = fqname
@@ -860,7 +882,11 @@ impl ObjectField {
             &attrs,
         );
 
-        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
+        let order = if is_enum {
+            0 // enum variants don't have/need order
+        } else {
+            attrs.get::<u32>(&fqname, crate::ATTR_ORDER)
+        };
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
         // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
@@ -944,6 +970,13 @@ pub enum FieldKind {
 /// The underlying type of an [`ObjectField`].
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Type {
+    /// This is the unit type, used for `enum` variants.
+    ///
+    /// In `arrow`, this corresponds to the `null` type`.
+    ///
+    /// In rust this would be `()`, and in C++ this would be `void`.
+    Unit,
+
     UInt8,
     UInt16,
     UInt32,
@@ -1011,6 +1044,9 @@ impl Type {
         }
 
         match typ {
+            // Enum variant
+            FbsBaseType::None => Self::Unit,
+
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
             FbsBaseType::UByte => Self::UInt8,
@@ -1050,8 +1086,8 @@ impl Type {
                     attrs,
                 ),
             },
-            FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
-                unimplemented!("{typ:#?}")
+            FbsBaseType::UType | FbsBaseType::Vector64 => {
+                unimplemented!("FbsBaseType::{typ:#?}")
             }
             // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{typ:#?}"),
@@ -1071,7 +1107,9 @@ impl Type {
                 elem_type,
                 length: _,
             } => Some(elem_type),
-            Self::UInt8
+
+            Self::Unit
+            | Self::UInt8
             | Self::UInt16
             | Self::UInt32
             | Self::UInt64
@@ -1109,7 +1147,8 @@ impl Type {
     /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
     pub fn has_default_destructor(&self, objects: &Objects) -> bool {
         match self {
-            Self::UInt8
+            Self::Unit
+            | Self::UInt8
             | Self::UInt16
             | Self::UInt32
             | Self::UInt64

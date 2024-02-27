@@ -115,6 +115,7 @@ fn borrow_hash_is_self_hash() {
 
 impl std::ops::Deref for ArrowString {
     type Target = str;
+
     #[inline]
     fn deref(&self) -> &str {
         self.as_str()

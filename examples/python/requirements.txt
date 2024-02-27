@@ -9,6 +9,7 @@
 -r dna/requirements.txt
 -r external_data_loader/requirements.txt
 -r face_tracking/requirements.txt
+-r gesture_detection/requirements.txt
 -r human_pose_tracking/requirements.txt
 -r lidar/requirements.txt
 -r live_camera_edge_detection/requirements.txt

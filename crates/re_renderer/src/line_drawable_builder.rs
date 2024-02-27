@@ -168,10 +168,11 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
         Ok(())
     }
 
+    /// `num_vertices_added` excludes start sentinel.
     fn create_strip_builder(
         &mut self,
         mut num_strips_added: usize,
-        vertex_range: Range<usize>,
+        num_vertices_added: usize,
     ) -> LineStripBuilder<'_, 'ctx> {
         // Reserve space ahead of time to figure out whether we're hitting the data texture limit.
         let Some(num_available_strips) = self
@@ -189,6 +190,16 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
             );
             num_strips_added = num_available_strips;
         }
+
+        let vertex_range = if num_vertices_added == 0 {
+            0..0
+        } else {
+            let vertex_buffer_element_count = self.0.vertices_buffer.len();
+            // The vertex range works with "logical line vertices", meaning we don't want to include the start sentinel
+            // which at this point is already included in `vertices_buffer`, thus -1.
+            let total_vertex_count = vertex_buffer_element_count - 1;
+            (total_vertex_count - num_vertices_added)..(total_vertex_count)
+        };
 
         LineStripBuilder {
             builder: self.0,
@@ -253,15 +264,13 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
         &mut self,
         points: impl ExactSizeIterator<Item = glam::Vec3>,
     ) -> LineStripBuilder<'_, 'ctx> {
-        let old_strip_count = self.0.strips_buffer.len();
-        let old_vertex_count = self.0.vertices_buffer.len();
-        let strip_index = old_strip_count as _;
+        let strip_index = self.0.strips_buffer.len() as u32;
+        let num_vertices_added = points.len();
 
         self.add_vertices(points, strip_index)
             .ok_or_log_error_once();
-        let new_vertex_count = self.0.vertices_buffer.len();
 
-        self.create_strip_builder(1, old_vertex_count..new_vertex_count)
+        self.create_strip_builder(1, num_vertices_added)
     }
 
     /// Adds a single 3D line segment connecting two points.
@@ -273,13 +282,15 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
     /// Adds a series of unconnected 3D line segments.
     pub fn add_segments(
         &mut self,
-        segments: impl Iterator<Item = (glam::Vec3, glam::Vec3)>,
+        segments: impl ExactSizeIterator<Item = (glam::Vec3, glam::Vec3)>,
     ) -> LineStripBuilder<'_, 'ctx> {
         #![allow(clippy::tuple_array_conversions)] // false positive
 
         let old_strip_count = self.0.strips_buffer.len();
-        let old_vertex_count = self.0.vertices_buffer.len();
         let mut strip_index = old_strip_count as u32;
+
+        let num_strips_added = segments.len();
+        let num_vertices_added = num_strips_added * 2;
 
         // It's tempting to assign the same strip to all vertices, after all they share
         // color/radius/tag properties.
@@ -290,10 +301,8 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
                 .ok_or_log_error_once();
             strip_index += 1;
         }
-        let new_vertex_count = self.0.vertices_buffer.len();
-        let num_strips_added = strip_index as usize - old_strip_count;
 
-        self.create_strip_builder(num_strips_added, old_vertex_count..new_vertex_count)
+        self.create_strip_builder(num_strips_added, num_vertices_added)
     }
 
     /// Add box outlines from a unit cube transformed by `transform`.
@@ -433,7 +442,7 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
     #[inline]
     pub fn add_segments_2d(
         &mut self,
-        segments: impl Iterator<Item = (glam::Vec2, glam::Vec2)>,
+        segments: impl ExactSizeIterator<Item = (glam::Vec2, glam::Vec2)>,
     ) -> LineStripBuilder<'_, 'ctx> {
         self.add_segments(segments.map(|(a, b)| (a.extend(0.0), b.extend(0.0))))
             .flags(LineStripFlags::FLAG_FORCE_ORTHO_SPANNING)

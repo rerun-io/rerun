@@ -101,89 +101,92 @@ impl ::re_types_core::Loggable for Angle {
                     datum
                 })
                 .collect();
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(Angle::Radians(_)) => 1i8,
+                    Some(Angle::Degrees(_)) => 2i8,
+                })
+                .collect();
+            let fields = vec![
+                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
+                {
+                    let (somes, radians): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(Angle::Radians(_))))
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(Angle::Radians(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let radians_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    PrimitiveArray::new(
+                        DataType::Float32,
+                        radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                        radians_bitmap,
+                    )
+                    .boxed()
+                },
+                {
+                    let (somes, degrees): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(Angle::Degrees(_))))
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(Angle::Degrees(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    PrimitiveArray::new(
+                        DataType::Float32,
+                        degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                        degrees_bitmap,
+                    )
+                    .boxed()
+                },
+            ];
+            let offsets = Some({
+                let mut radians_offset = 0;
+                let mut degrees_offset = 0;
+                let mut nulls_offset = 0;
+                data.iter()
+                    .map(|v| match v.as_deref() {
+                        None => {
+                            let offset = nulls_offset;
+                            nulls_offset += 1;
+                            offset
+                        }
+                        Some(Angle::Radians(_)) => {
+                            let offset = radians_offset;
+                            radians_offset += 1;
+                            offset
+                        }
+                        Some(Angle::Degrees(_)) => {
+                            let offset = degrees_offset;
+                            degrees_offset += 1;
+                            offset
+                        }
+                    })
+                    .collect()
+            });
             UnionArray::new(
                 <crate::datatypes::Angle>::arrow_datatype(),
-                data.iter()
-                    .map(|a| match a.as_deref() {
-                        None => 0,
-                        Some(Angle::Radians(_)) => 1i8,
-                        Some(Angle::Degrees(_)) => 2i8,
-                    })
-                    .collect(),
-                vec![
-                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
-                        .boxed(),
-                    {
-                        let (somes, radians): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(Angle::Radians(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(Angle::Radians(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let radians_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            DataType::Float32,
-                            radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            radians_bitmap,
-                        )
-                        .boxed()
-                    },
-                    {
-                        let (somes, degrees): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(Angle::Degrees(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(Angle::Degrees(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            DataType::Float32,
-                            degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            degrees_bitmap,
-                        )
-                        .boxed()
-                    },
-                ],
-                Some({
-                    let mut radians_offset = 0;
-                    let mut degrees_offset = 0;
-                    let mut nulls_offset = 0;
-                    data.iter()
-                        .map(|v| match v.as_deref() {
-                            None => {
-                                let offset = nulls_offset;
-                                nulls_offset += 1;
-                                offset
-                            }
-                            Some(Angle::Radians(_)) => {
-                                let offset = radians_offset;
-                                radians_offset += 1;
-                                offset
-                            }
-                            Some(Angle::Degrees(_)) => {
-                                let offset = degrees_offset;
-                                degrees_offset += 1;
-                                offset
-                            }
-                        })
-                        .collect()
-                }),
+                types,
+                fields,
+                offsets,
             )
             .boxed()
         })
@@ -203,33 +206,9 @@ impl ::re_types_core::Loggable for Angle {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Union(
-                            std::sync::Arc::new(vec![
-                                Field {
-                                    name: "_null_markers".to_owned(),
-                                    data_type: DataType::Null,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "Radians".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "Degrees".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
-                            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
-                            UnionMode::Dense,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.Angle")?;
             if arrow_data.is_empty() {
@@ -240,10 +219,9 @@ impl ::re_types_core::Loggable for Angle {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        DeserializationError::datatype_mismatch(
-                            Self::arrow_datatype(),
-                            arrow_data.data_type().clone(),
-                        )
+                        let expected = Self::arrow_datatype();
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.Angle")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
@@ -262,10 +240,9 @@ impl ::re_types_core::Loggable for Angle {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.Angle#Radians")?
                         .into_iter()
@@ -281,10 +258,9 @@ impl ::re_types_core::Loggable for Angle {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.Angle#Degrees")?
                         .into_iter()
@@ -335,8 +311,7 @@ impl ::re_types_core::Loggable for Angle {
                                         Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
-                                    ))
-                                    .with_context("rerun.datatypes.Angle");
+                                    ));
                                 }
                             }))
                         }

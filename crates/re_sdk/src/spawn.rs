@@ -202,15 +202,16 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         }
     };
 
-    let viewer_version = {
-        let output = Command::new(&executable_path)
-            .arg("--version")
-            .output()
-            .map_err(map_err)?;
-
-        let output = String::from_utf8_lossy(&output.stdout);
-        re_build_info::CrateVersion::try_parse_from_build_info_string(output).ok()
-    };
+    // Try to check the version of the Viewer.
+    // Do not fail if we can't retrieve the version, it's not a critical error.
+    let viewer_version = Command::new(&executable_path)
+        .arg("--version")
+        .output()
+        .ok()
+        .and_then(|output| {
+            let output = String::from_utf8_lossy(&output.stdout);
+            re_build_info::CrateVersion::try_parse_from_build_info_string(output).ok()
+        });
 
     if let Some(viewer_version) = viewer_version {
         let sdk_version = re_build_info::build_info!().version;
@@ -239,12 +240,16 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     }
 
     let rerun_bin = Command::new(&executable_path)
+        // By default stdin is inherited which may cause issues in some debugger setups.
+        // Also, there's really no reason to forward stdin to the child process in this case.
+        // `stdout`/`stderr` we leave at default inheritance because it can be useful to see the Viewer's output.
+        .stdin(std::process::Stdio::null())
         .arg(format!("--port={port}"))
         .arg(format!("--memory-limit={memory_limit}"))
         .arg("--skip-welcome-screen")
         .args(opts.extra_args.clone())
         .spawn()
-        .map_err(map_err);
+        .map_err(map_err)?;
 
     // Simply forget about the child process, we want it to outlive the parent process if needed.
     _ = rerun_bin;

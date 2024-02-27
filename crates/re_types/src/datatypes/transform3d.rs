@@ -105,101 +105,99 @@ impl ::re_types_core::Loggable for Transform3D {
                     datum
                 })
                 .collect();
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(Transform3D::TranslationAndMat3x3(_)) => 1i8,
+                    Some(Transform3D::TranslationRotationScale(_)) => 2i8,
+                })
+                .collect();
+            let fields = vec![
+                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
+                {
+                    let (somes, translation_and_mat3x3): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| {
+                            matches!(datum.as_deref(), Some(Transform3D::TranslationAndMat3x3(_)))
+                        })
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(Transform3D::TranslationAndMat3x3(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let translation_and_mat3x3_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        _ = translation_and_mat3x3_bitmap;
+                        crate::datatypes::TranslationAndMat3x3::to_arrow_opt(
+                            translation_and_mat3x3,
+                        )?
+                    }
+                },
+                {
+                    let (somes, translation_rotation_scale): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| {
+                            matches!(
+                                datum.as_deref(),
+                                Some(Transform3D::TranslationRotationScale(_))
+                            )
+                        })
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(Transform3D::TranslationRotationScale(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let translation_rotation_scale_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        _ = translation_rotation_scale_bitmap;
+                        crate::datatypes::TranslationRotationScale3D::to_arrow_opt(
+                            translation_rotation_scale,
+                        )?
+                    }
+                },
+            ];
+            let offsets = Some({
+                let mut translation_and_mat3x3_offset = 0;
+                let mut translation_rotation_scale_offset = 0;
+                let mut nulls_offset = 0;
+                data.iter()
+                    .map(|v| match v.as_deref() {
+                        None => {
+                            let offset = nulls_offset;
+                            nulls_offset += 1;
+                            offset
+                        }
+                        Some(Transform3D::TranslationAndMat3x3(_)) => {
+                            let offset = translation_and_mat3x3_offset;
+                            translation_and_mat3x3_offset += 1;
+                            offset
+                        }
+                        Some(Transform3D::TranslationRotationScale(_)) => {
+                            let offset = translation_rotation_scale_offset;
+                            translation_rotation_scale_offset += 1;
+                            offset
+                        }
+                    })
+                    .collect()
+            });
             UnionArray::new(
                 <crate::datatypes::Transform3D>::arrow_datatype(),
-                data.iter()
-                    .map(|a| match a.as_deref() {
-                        None => 0,
-                        Some(Transform3D::TranslationAndMat3x3(_)) => 1i8,
-                        Some(Transform3D::TranslationRotationScale(_)) => 2i8,
-                    })
-                    .collect(),
-                vec![
-                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
-                        .boxed(),
-                    {
-                        let (somes, translation_and_mat3x3): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(
-                                    datum.as_deref(),
-                                    Some(Transform3D::TranslationAndMat3x3(_))
-                                )
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(Transform3D::TranslationAndMat3x3(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let translation_and_mat3x3_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            _ = translation_and_mat3x3_bitmap;
-                            crate::datatypes::TranslationAndMat3x3::to_arrow_opt(
-                                translation_and_mat3x3,
-                            )?
-                        }
-                    },
-                    {
-                        let (somes, translation_rotation_scale): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(
-                                    datum.as_deref(),
-                                    Some(Transform3D::TranslationRotationScale(_))
-                                )
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(Transform3D::TranslationRotationScale(v)) => {
-                                        Some(v.clone())
-                                    }
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let translation_rotation_scale_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            _ = translation_rotation_scale_bitmap;
-                            crate::datatypes::TranslationRotationScale3D::to_arrow_opt(
-                                translation_rotation_scale,
-                            )?
-                        }
-                    },
-                ],
-                Some({
-                    let mut translation_and_mat3x3_offset = 0;
-                    let mut translation_rotation_scale_offset = 0;
-                    let mut nulls_offset = 0;
-                    data.iter()
-                        .map(|v| match v.as_deref() {
-                            None => {
-                                let offset = nulls_offset;
-                                nulls_offset += 1;
-                                offset
-                            }
-                            Some(Transform3D::TranslationAndMat3x3(_)) => {
-                                let offset = translation_and_mat3x3_offset;
-                                translation_and_mat3x3_offset += 1;
-                                offset
-                            }
-                            Some(Transform3D::TranslationRotationScale(_)) => {
-                                let offset = translation_rotation_scale_offset;
-                                translation_rotation_scale_offset += 1;
-                                offset
-                            }
-                        })
-                        .collect()
-                }),
+                types,
+                fields,
+                offsets,
             )
             .boxed()
         })
@@ -219,25 +217,9 @@ impl ::re_types_core::Loggable for Transform3D {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Union(
-                            std::sync::Arc::new(vec![
-                                Field { name : "_null_markers".to_owned(), data_type :
-                                DataType::Null, is_nullable : true, metadata : [].into(), },
-                                Field { name : "TranslationAndMat3x3".to_owned(), data_type
-                                : < crate ::datatypes::TranslationAndMat3x3 >
-                                ::arrow_datatype(), is_nullable : false, metadata : []
-                                .into(), }, Field { name : "TranslationRotationScale"
-                                .to_owned(), data_type : < crate
-                                ::datatypes::TranslationRotationScale3D >
-                                ::arrow_datatype(), is_nullable : false, metadata : []
-                                .into(), },
-                            ]),
-                            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
-                            UnionMode::Dense,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.Transform3D")?;
             if arrow_data.is_empty() {
@@ -248,10 +230,9 @@ impl ::re_types_core::Loggable for Transform3D {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        DeserializationError::datatype_mismatch(
-                            Self::arrow_datatype(),
-                            arrow_data.data_type().clone(),
-                        )
+                        let expected = Self::arrow_datatype();
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.Transform3D")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
@@ -335,8 +316,7 @@ impl ::re_types_core::Loggable for Transform3D {
                                         Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
-                                    ))
-                                    .with_context("rerun.datatypes.Transform3D");
+                                    ));
                                 }
                             }))
                         }

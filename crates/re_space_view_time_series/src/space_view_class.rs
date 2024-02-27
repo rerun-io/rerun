@@ -38,11 +38,14 @@ pub struct TimeSeriesSpaceViewState {
     /// State of egui_plot's auto bounds before the user started dragging the time cursor.
     saved_auto_bounds: egui::Vec2b,
 
-    /// State of egui_plot's bounds
+    /// State of egui_plot's bounds.
     saved_y_axis_range: [f64; 2],
 
-    /// To track when the range has been edited
-    last_range: Option<Range1D>,
+    /// To track when the range has been edited.
+    last_y_range: Option<Range1D>,
+
+    /// To track when the range lock has been enabled/disabled.
+    last_y_lock_range_during_zoom: bool,
 }
 
 impl Default for TimeSeriesSpaceViewState {
@@ -52,7 +55,8 @@ impl Default for TimeSeriesSpaceViewState {
             was_dragging_time_cursor: false,
             saved_auto_bounds: Default::default(),
             saved_y_axis_range: [0.0, 1.0],
-            last_range: None,
+            last_y_range: None,
+            last_y_lock_range_during_zoom: false,
         }
     }
 }
@@ -361,7 +365,8 @@ It can greatly improve performance (and readability) in such situations as it pr
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let lock_y_during_zoom = y_lock_range_during_zoom.map_or(false, |v| v.0)
+        let y_lock_range_during_zoom = y_lock_range_during_zoom.map_or(false, |v| v.0);
+        let lock_y_during_zoom = y_lock_range_during_zoom
             || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
         let auto_y = y_range.is_none();
@@ -380,6 +385,7 @@ It can greatly improve performance (and readability) in such situations as it pr
             .id(crate::plot_id(query.space_view_id))
             .auto_bounds([true, auto_y].into())
             .allow_zoom([true, !lock_y_during_zoom])
+            .allow_drag([true, !lock_y_during_zoom])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
@@ -444,24 +450,36 @@ It can greatly improve performance (and readability) in such situations as it pr
                 time_ctrl_write.pause();
             }
 
-            let range_was_edited = state.last_range != y_range;
-            state.last_range = y_range;
+            let range_was_edited = state.last_y_range != y_range;
+            state.last_y_range = y_range;
+
+            let locked_y_range_was_enabled =
+                y_lock_range_during_zoom && !state.last_y_lock_range_during_zoom;
+            state.last_y_lock_range_during_zoom = y_lock_range_during_zoom;
+
             is_resetting = plot_ui.response().double_clicked();
             let current_auto = plot_ui.auto_bounds();
 
             if let Some(y_range) = y_range {
                 // If we have a y_range, there are a few cases where we want to adjust the bounds.
                 // - The range was just edited
+                // - The locking behavior was just set to true
                 // - The zoom behavior is in LockToRange
                 // - The user double-clicked
-                if range_was_edited || lock_y_during_zoom || is_resetting {
+                if range_was_edited
+                    || locked_y_range_was_enabled
+                    || lock_y_during_zoom
+                    || is_resetting
+                {
                     let current_bounds = plot_ui.plot_bounds();
                     let mut min = current_bounds.min();
                     let mut max = current_bounds.max();
 
-                    // Pad the range by 5% on each side.
-                    min[1] = y_range.0[0];
-                    max[1] = y_range.0[1];
+                    if range_was_edited || is_resetting || locked_y_range_was_enabled {
+                        min[1] = y_range.0[0];
+                        max[1] = y_range.0[1];
+                    }
+
                     let new_bounds = egui_plot::PlotBounds::from_min_max(min, max);
                     plot_ui.set_plot_bounds(new_bounds);
                     // If we are resetting, we still want the X value to be auto for
@@ -469,9 +487,7 @@ It can greatly improve performance (and readability) in such situations as it pr
                     plot_ui.set_auto_bounds([current_auto[0] || is_resetting, false].into());
                 }
             } else if lock_y_during_zoom || range_was_edited {
-                // If we are using auto range, but the range is locked, always
-                // force the y-bounds to be auto to prevent scrolling / zooming in y.
-                plot_ui.set_auto_bounds([current_auto[0] || is_resetting, true].into());
+                plot_ui.set_auto_bounds([current_auto[0] || is_resetting, is_resetting].into());
             }
 
             for series in all_plot_series {
