@@ -14,7 +14,6 @@ mod saving;
 mod screenshotter;
 mod store_hub;
 mod ui;
-#[cfg(feature = "analytics")]
 mod viewer_analytics;
 
 /// Auto-generated blueprint-related types.

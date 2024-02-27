@@ -137,10 +137,7 @@ pub struct App {
     command_receiver: CommandReceiver,
     cmd_palette: re_ui::CommandPalette,
 
-    // NOTE: Optional because it is possible to have the `analytics` feature flag enabled
-    // while at the same time opting-out of analytics at run-time.
-    #[cfg(feature = "analytics")]
-    analytics: Option<crate::viewer_analytics::ViewerAnalytics>,
+    analytics: crate::viewer_analytics::ViewerAnalytics,
 
     /// All known space view types.
     space_view_class_registry: SpaceViewClassRegistry,
@@ -157,21 +154,8 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
-        #[cfg(feature = "analytics")]
-        let analytics = if startup_options.is_in_notebook {
-            None
-        } else {
-            match crate::viewer_analytics::ViewerAnalytics::new(app_env.clone()) {
-                Ok(analytics) => Some(analytics),
-                Err(err) => {
-                    re_log::error!(%err, "failed to initialize analytics SDK");
-                    None
-                }
-            }
-        };
-
-        #[cfg(not(feature = "analytics"))]
-        let _ = app_env;
+        let analytics =
+            crate::viewer_analytics::ViewerAnalytics::new(&startup_options, app_env.clone());
 
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         if re_log::add_boxed_logger(Box::new(logger)).is_err() {
@@ -231,10 +215,7 @@ impl App {
             .checked_sub(web_time::Duration::from_secs(1_000_000_000))
             .unwrap_or(web_time::Instant::now());
 
-        #[cfg(feature = "analytics")]
-        if let Some(analytics) = &analytics {
-            analytics.on_viewer_started(build_info);
-        }
+        analytics.on_viewer_started(build_info);
 
         Self {
             build_info,
@@ -270,7 +251,6 @@ impl App {
 
             space_view_class_registry,
 
-            #[cfg(feature = "analytics")]
             analytics,
         }
     }
@@ -992,13 +972,10 @@ impl App {
             // Do analytics after ingesting the new message,
             // because thats when the `entity_db.store_info` is set,
             // which we use in the analytics call.
-            #[cfg(feature = "analytics")]
-            if let Some(analytics) = &mut self.analytics {
-                let entity_db = store_hub.entity_db_mut(store_id);
-                let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
-                if is_new_store && entity_db.store_kind() == StoreKind::Recording {
-                    analytics.on_open_recording(entity_db);
-                }
+            let entity_db = store_hub.entity_db_mut(store_id);
+            let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
+            if is_new_store && entity_db.store_kind() == StoreKind::Recording {
+                self.analytics.on_open_recording(entity_db);
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
