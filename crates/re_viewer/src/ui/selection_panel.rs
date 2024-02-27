@@ -15,8 +15,8 @@ use re_ui::list_item::ListItem;
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId,
-    DataQueryId, HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId,
-    SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
+    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand,
+    SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
 use re_viewport::{
     external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
@@ -287,7 +287,7 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
         Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
         Item::InstancePath(_, instance_path) => Some(Box::new(instance_path.clone())),
         // Skip data ui since we don't know yet what to show for these.
-        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => None,
+        Item::SpaceView(_) | Item::Container(_) => None,
     }
 }
 
@@ -482,25 +482,6 @@ fn what_is_selected_ui(
                 }
 
                 list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);
-            }
-        }
-        Item::DataBlueprintGroup(space_view_id, _query_id, entity_path) => {
-            if let Some(space_view) = viewport.space_view(space_view_id) {
-                item_title_ui(
-                    ctx.re_ui,
-                    ui,
-                    &entity_path.to_string(),
-                    Some(&re_ui::icons::GROUP),
-                    &format!(
-                        "Group {:?} as shown in Space View {:?}",
-                        entity_path, space_view.display_name
-                    ),
-                );
-
-                ui.horizontal(|ui| {
-                    ui.label("in");
-                    space_view_button(ctx, ui, space_view);
-                });
             }
         }
     }
@@ -803,7 +784,7 @@ fn has_blueprint_section(item: &Item) -> bool {
         Item::InstancePath(space_view_id, instance_path) => {
             space_view_id.is_some() && instance_path.instance_key.is_splat()
         }
-        _ => true,
+        Item::SpaceView(_) => true,
     }
 }
 
@@ -827,10 +808,6 @@ fn blueprint_ui(
                 space_view_id.as_ref(),
                 instance_path,
             );
-        }
-
-        Item::DataBlueprintGroup(space_view_id, query_id, group_path) => {
-            blueprint_ui_for_group(ui, ctx, viewport, space_view_id, query_id, group_path);
         }
 
         Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) => {}
@@ -971,44 +948,6 @@ fn blueprint_ui_for_instance_path(
                 }
             }
         }
-    }
-}
-
-fn blueprint_ui_for_group(
-    ui: &mut Ui,
-    ctx: &ViewerContext<'_>,
-    viewport: &Viewport<'_, '_>,
-    space_view_id: &SpaceViewId,
-    query_id: &DataQueryId,
-    group_path: &EntityPath,
-) {
-    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-        let as_group = true;
-
-        let query_result = ctx.lookup_query_result(*query_id);
-        if let Some(data_result) = query_result
-            .tree
-            .lookup_result_by_path_and_group(group_path, as_group)
-            .cloned()
-        {
-            let space_view_class = *space_view.class_identifier();
-            let mut props = data_result
-                .individual_properties()
-                .cloned()
-                .unwrap_or_default();
-
-            entity_props_ui(
-                ctx,
-                ui,
-                &space_view_class,
-                None,
-                &mut props,
-                data_result.accumulated_properties(),
-            );
-            data_result.save_override(Some(props), ctx);
-        }
-    } else {
-        ctx.selection_state().clear_current();
     }
 }
 

@@ -317,15 +317,10 @@ impl Viewport<'_, '_> {
             let data_result = &child_node.data_result;
             let entity_path = &child_node.data_result.entity_path;
 
-            let item = if data_result.is_group {
-                // If we can't find a group_handle for some reason, use the default, null handle.
-                Item::DataBlueprintGroup(space_view.id, query_result.id, entity_path.clone())
-            } else {
-                Item::InstancePath(
-                    Some(space_view.id),
-                    InstancePath::entity_splat(entity_path.clone()),
-                )
-            };
+            let item = Item::InstancePath(
+                Some(space_view.id),
+                InstancePath::entity_splat(entity_path.clone()),
+            );
 
             let is_selected = ctx.selection().contains_item(&item);
 

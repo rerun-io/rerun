@@ -1,7 +1,7 @@
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, DataPath, EntityPath};
 
-use crate::{ContainerId, DataQueryId, SpaceViewId};
+use crate::{ContainerId, SpaceViewId};
 
 /// One "thing" in the UI.
 ///
@@ -13,7 +13,6 @@ pub enum Item {
     ComponentPath(ComponentPath),
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
-    DataBlueprintGroup(SpaceViewId, DataQueryId, EntityPath),
     Container(ContainerId),
 }
 
@@ -23,7 +22,6 @@ impl Item {
             Item::ComponentPath(component_path) => Some(&component_path.entity_path),
             Item::SpaceView(_) | Item::Container(_) | Item::StoreId(_) => None,
             Item::InstancePath(_, instance_path) => Some(&instance_path.entity_path),
-            Item::DataBlueprintGroup(_, _, entity_path) => Some(entity_path),
         }
     }
 }
@@ -96,9 +94,6 @@ impl std::fmt::Debug for Item {
             Item::ComponentPath(s) => s.fmt(f),
             Item::SpaceView(s) => write!(f, "{s:?}"),
             Item::InstancePath(sid, path) => write!(f, "({sid:?}, {path})"),
-            Item::DataBlueprintGroup(sid, qid, entity_path) => {
-                write!(f, "({sid:?}, {qid:?}, {entity_path:?})")
-            }
             Item::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
         }
     }
@@ -124,7 +119,6 @@ impl Item {
             }
             Item::ComponentPath(_) => "Entity Component",
             Item::SpaceView(_) => "Space View",
-            Item::DataBlueprintGroup(_, _, _) => "Group",
             Item::Container(_) => "Container",
         }
     }
@@ -142,11 +136,9 @@ pub fn resolve_mono_instance_path_item(
             *space_view,
             resolve_mono_instance_path(query, store, instance),
         ),
-        Item::StoreId(_)
-        | Item::ComponentPath(_)
-        | Item::SpaceView(_)
-        | Item::DataBlueprintGroup(_, _, _)
-        | Item::Container(_) => item.clone(),
+        Item::StoreId(_) | Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {
+            item.clone()
+        }
     }
 }
 

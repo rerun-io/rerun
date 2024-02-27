@@ -267,10 +267,6 @@ impl ViewportBlueprint {
                 .map(|space_view_id| self.space_view(&space_view_id).is_some())
                 .unwrap_or(true),
             Item::SpaceView(space_view_id) => self.space_view(space_view_id).is_some(),
-            Item::DataBlueprintGroup(space_view_id, query_id, _entity_path) => self
-                .space_views
-                .get(space_view_id)
-                .map_or(false, |sv| sv.queries.iter().any(|q| q.id == *query_id)),
             Item::Container(container_id) => self.container(container_id).is_some(),
         }
     }
