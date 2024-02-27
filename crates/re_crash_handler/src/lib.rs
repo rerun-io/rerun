@@ -192,32 +192,8 @@ fn install_signal_handler(build_info: BuildInfo) {
 
     #[cfg(feature = "analytics")]
     fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
-        struct CrashSignal {
-            build_info: BuildInfo,
-            signal: String,
-            callstack: String,
-        }
-
-        impl re_analytics::Event for CrashSignal {
-            const NAME: &'static str = "crash-signal";
-        }
-
-        impl re_analytics::Properties for CrashSignal {
-            fn serialize(self, event: &mut re_analytics::AnalyticsEvent) {
-                let Self {
-                    build_info,
-                    signal,
-                    callstack,
-                } = self;
-
-                build_info.serialize(event);
-                event.insert("signal", signal.clone());
-                event.insert("callstack", callstack.clone());
-            }
-        }
-
         if let Ok(analytics) = re_analytics::Analytics::new(std::time::Duration::from_millis(1)) {
-            analytics.record(CrashSignal {
+            analytics.record(re_analytics::event::CrashSignal {
                 build_info,
                 signal: signal_name.to_owned(),
                 callstack,

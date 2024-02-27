@@ -231,3 +231,27 @@ impl Properties for CrashPanic {
         event.insert_opt("file_line", file_line);
     }
 }
+
+pub struct CrashSignal {
+    pub build_info: BuildInfo,
+    pub signal: String,
+    pub callstack: String,
+}
+
+impl Event for CrashSignal {
+    const NAME: &'static str = "crash-signal";
+}
+
+impl Properties for CrashSignal {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            build_info,
+            signal,
+            callstack,
+        } = self;
+
+        build_info.serialize(event);
+        event.insert("signal", signal.clone());
+        event.insert("callstack", callstack.clone());
+    }
+}
