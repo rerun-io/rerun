@@ -210,15 +210,18 @@ pub fn quote_arrow_deserializer(
             }
 
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Sparse) => {
-                // We use sparse unions for enums, which means only 8 bits is required for each field,
+                // We use sparse arrow unions for c-style enums, which means only 8 bits is required for each field,
                 // and nulls are encoded with a special 0-index `_null_markers` variant.
+                //
+                // TODO(emilk): verify that the incoming datatype has the same variant names
+                // in the same order as we expect.
 
                 let data_src_types = format_ident!("{data_src}_types");
 
                 let obj_fqname = obj.fqname.as_str();
                 let quoted_obj_name = format_ident!("{}", obj.name);
                 let quoted_branches = obj.fields.iter().enumerate().map(|(typ, obj_field)| {
-                    let typ = typ as i8 + 1; // NOTE: +1 to account for `nulls` virtual arm
+                    let typ = typ as i8 + 1; // NOTE: +1 to account for `_null_markers` virtual arm
                     let quoted_obj_field_type = format_ident!("{}", obj_field.pascal_case_name());
                     quote! {
                         #typ => Ok(Some(#quoted_obj_name::#quoted_obj_field_type))
@@ -255,6 +258,12 @@ pub fn quote_arrow_deserializer(
             }
 
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
+                // We use dense arrow unions for proper sum-type unions.
+                // Nulls are encoded with a special 0-index `_null_markers` variant.
+                //
+                // TODO(emilk): verify that the incoming datatype has the same variant names
+                // in the same order as we expect.
+
                 let data_src_types = format_ident!("{data_src}_types");
                 let data_src_arrays = format_ident!("{data_src}_arrays");
                 let data_src_offsets = format_ident!("{data_src}_offsets");
@@ -275,7 +284,7 @@ pub fn quote_arrow_deserializer(
                             InnerRepr::NativeIterable,
                         );
 
-                        let i = i + 1; // NOTE: +1 to account for `nulls` virtual arm
+                        let i = i + 1; // NOTE: +1 to account for `_null_markers` virtual arm
 
                         quote! {
                             let #data_dst = {
@@ -305,7 +314,7 @@ pub fn quote_arrow_deserializer(
                 let obj_fqname = obj.fqname.as_str();
                 let quoted_obj_name = format_ident!("{}", obj.name);
                 let quoted_branches = obj.fields.iter().enumerate().map(|(typ, obj_field)| {
-                    let typ = typ as i8 + 1; // NOTE: +1 to account for `nulls` virtual arm
+                    let typ = typ as i8 + 1; // NOTE: +1 to account for `_null_markers` virtual arm
 
                     let obj_field_fqname = obj_field.fqname.as_str();
                     let quoted_obj_field_name = format_ident!("{}", obj_field.snake_case_name());
