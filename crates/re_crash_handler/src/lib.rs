@@ -70,7 +70,7 @@ fn install_panic_hook(_build_info: BuildInfo) {
                 analytics.record(re_analytics::event::CrashPanic {
                     build_info: _build_info,
                     callstack,
-                    // Don't include it, because it can contain sensitive information,
+                    // Don't include panic message, because it can contain sensitive information,
                     // e.g. `panic!("Couldn't read {sensitive_file_path}")`.
                     message: None,
                     file_line,
