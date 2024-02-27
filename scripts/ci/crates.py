@@ -402,7 +402,7 @@ def is_already_published(version: str, crate: Crate) -> bool:
 
 
 def parse_retry_delay_secs(error_message: str) -> float | None:
-    """Parses the retry-after datetime from a `cargo publish` error message, and returns the seconds remaining until that time."""
+    """Parses the retry-after datetime from a `cargo publish` error 429 message, and returns the seconds remaining until that time."""
 
     # Example:
     #   the remote server responded with an error (status 429 Too Many Requests):
@@ -428,7 +428,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     name = package["name"]
 
     print(f"{G}Publishing{X} {B}{name}{X}…")
-    retry_attempts = 3
+    retry_attempts = 5
     while True:
         try:
             cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False, capture=True)
@@ -436,9 +436,13 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
             break
         except subprocess.CalledProcessError as e:
             error_message = e.stdout.decode("utf-8").strip()
-            if (retry_delay := parse_retry_delay_secs(error_message)) is not None and retry_attempts > 0:
+            # if we get a 429, parse the retry delay from it
+            # for any other error, retry after 6 seconds
+            retry_delay = 1 + parse_retry_delay_secs(error_message) or 5.0
+            if retry_attempts > 0:
                 print(f"{R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
                 retry_attempts -= 1
+                retry_delay *= 1.5  # some backoff
                 time.sleep(retry_delay + 1)
             else:
                 print(f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}")
