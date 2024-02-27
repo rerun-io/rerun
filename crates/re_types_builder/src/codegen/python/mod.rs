@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
+use unindent::unindent;
 
 use crate::{
     codegen::{
@@ -497,7 +498,7 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 
     let mut code = String::new();
 
-    code += &unindent::unindent(&format!(
+    code += &unindent(&format!(
         r#"
         # {autogen_warning}
 
@@ -737,7 +738,7 @@ fn code_for_struct(
         ObjectKind::Datatype | ObjectKind::Component => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj, None),
                 1,
             );
         }
@@ -768,14 +769,14 @@ fn code_for_enum(
     code.push_str(&format!("class {name}(Enum):\n"));
     code.push_indented(1, quote_obj_docs(obj), 0);
 
-    for (i, field) in obj.fields.iter().enumerate() {
+    for (i, variant) in obj.fields.iter().enumerate() {
         let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
-        let field_name = field.screaming_snake_case_name();
-        code.push_indented(1, format!("{field_name} = {arrow_type_index}"), 1);
+        let variant_name = variant.screaming_snake_case_name();
+        code.push_indented(1, format!("{variant_name} = {arrow_type_index}"), 1);
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
         let show_fields_in_docs = true;
-        let doc_lines = lines_from_docs(&field.docs);
+        let doc_lines = lines_from_docs(&variant.docs);
         if !doc_lines.is_empty() {
             if show_fields_in_docs {
                 code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -807,6 +808,36 @@ fn code_for_enum(
         2,
     );
 
+    let native_to_pa_array_impl = unindent(&format!(
+        r##"
+            if isinstance(data, {name}):
+                data = [data]
+
+            types: list[int] = []
+
+            for value in data:
+                if value is None:
+                    types.append(0)
+                elif isinstance(data, {name}):
+                    types.append(value.value) # Actual enum value
+                elif isinstance(data, int):
+                    types.append(data) # By number
+                elif isinstance(data, str):
+                    types.append({name}[data].value) # By name
+                else:
+                    raise ValueError(f"Unknown {name} kind: {{value}}")
+
+            return pa.UnionArray.from_buffers(
+                type=data_type,
+                length=len(data),
+                buffers=[
+                    None,
+                    pa.array(types, type=pa.int8()).buffers()[1],
+                ],
+            )
+        "##
+    ));
+
     match obj.kind {
         ObjectKind::Archetype => (),
         ObjectKind::Component => {
@@ -815,7 +846,13 @@ fn code_for_enum(
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(
+                    arrow_registry,
+                    ext_class,
+                    objects,
+                    obj,
+                    Some(native_to_pa_array_impl),
+                ),
                 1,
             );
         }
@@ -971,7 +1008,7 @@ fn code_for_union(
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj, None),
                 1,
             );
         }
@@ -1207,7 +1244,7 @@ fn quote_array_method_from_obj(
     }
 
     let field_name = &obj.fields[0].name;
-    unindent::unindent(&format!(
+    unindent(&format!(
         "
         def __array__(self, dtype: npt.DTypeLike=None) -> npt.NDArray[Any]:
             # You can define your own __array__ function as a member of {} in {}
@@ -1239,7 +1276,7 @@ fn quote_native_types_method_from_obj(objects: &Objects, obj: &Object) -> String
     }
 
     let field_name = &obj.fields[0].name;
-    unindent::unindent(&format!(
+    unindent(&format!(
         "
         def __{typ}__(self) -> {typ}:
             return {typ}(self.{field_name})
@@ -1317,7 +1354,7 @@ fn quote_union_aliases_from_object<'a>(
         String::new()
     };
 
-    unindent::unindent(&format!(
+    unindent(&format!(
         r#"
             if TYPE_CHECKING:
                 {name}Like = Union[
@@ -1641,6 +1678,7 @@ fn quote_arrow_support_from_obj(
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
+    native_to_pa_array_impl: Option<String>,
 ) -> String {
     let Object { fqname, name, .. } = obj;
 
@@ -1681,17 +1719,19 @@ fn quote_arrow_support_from_obj(
     let extension_batch = format!("{name}Batch");
     let extension_type = format!("{name}Type");
 
-    let override_ = if ext_class.has_native_to_pa_array {
-        format!(
-            "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
-            ext_class.name
-        )
-    } else {
-        format!(
-            "raise NotImplementedError # You need to implement {NATIVE_TO_PA_ARRAY_METHOD} in {}",
-            ext_class.file_name
-        )
-    };
+    let native_to_pa_array_impl = native_to_pa_array_impl.unwrap_or_else(|| {
+        if ext_class.has_native_to_pa_array {
+            format!(
+                "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
+                ext_class.name
+            )
+        } else {
+            format!(
+                "raise NotImplementedError # You need to implement {NATIVE_TO_PA_ARRAY_METHOD} in {}",
+                ext_class.file_name
+            )
+        }
+    });
 
     let type_superclass_decl = if type_superclasses.is_empty() {
         String::new()
@@ -1707,7 +1747,7 @@ fn quote_arrow_support_from_obj(
 
     if obj.kind == ObjectKind::Datatype || obj.is_non_delegating_component() {
         // Datatypes and non-delegating components declare init
-        unindent::unindent(&format!(
+        let mut code = unindent(&format!(
             r#"
             class {extension_type}{type_superclass_decl}:
                 _TYPE_NAME: str = "{fqname}"
@@ -1722,12 +1762,13 @@ fn quote_arrow_support_from_obj(
 
                 @staticmethod
                 def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
-                    {override_}
             "#
-        ))
+        ));
+        code.push_indented(2, native_to_pa_array_impl, 1);
+        code
     } else {
         // Delegating components are already inheriting from their base type
-        unindent::unindent(&format!(
+        unindent(&format!(
             r#"
             class {extension_type}{type_superclass_decl}:
                 _TYPE_NAME: str = "{fqname}"
@@ -1907,7 +1948,7 @@ fn quote_init_method(
 
     // Make sure Archetypes catch and log exceptions as a fallback
     let forwarding_call = if obj.kind == ObjectKind::Archetype {
-        unindent::unindent(&format!(
+        unindent(&format!(
             r#"
             with catch_and_log_exceptions(context=self.__class__.__name__):
                 {forwarding_call}
@@ -1937,7 +1978,7 @@ fn quote_clear_methods(obj: &Object) -> String {
 
     let classname = &obj.name;
 
-    unindent::unindent(&format!(
+    unindent(&format!(
         r#"
         def __attrs_clear__(self) -> None:
             """Convenience method for calling `__attrs_init__` with all `None`s."""
