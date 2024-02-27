@@ -381,6 +381,7 @@ struct QuotedObject {
 }
 
 impl QuotedObject {
+    #[allow(clippy::unnecessary_wraps)] // TODO(emilk): implement proper error handling instead of panicking
     pub fn new(
         objects: &Objects,
         obj: &Object,
@@ -399,15 +400,13 @@ impl QuotedObject {
                     Ok(Self::from_archetype(obj, hpp_includes, hpp_type_extensions))
                 }
             },
+            ObjectClass::Enum => Ok(Self::from_enum(objects, obj, hpp_includes)),
             ObjectClass::Union => Ok(Self::from_union(
                 objects,
                 obj,
                 hpp_includes,
                 hpp_type_extensions,
             )),
-            ObjectClass::Enum => {
-                anyhow::bail!("Enums are not implemented in C++")
-            }
         }
     }
 
@@ -1160,6 +1159,78 @@ impl QuotedObject {
 
         Self { hpp, cpp }
     }
+
+    // C-style enum
+    fn from_enum(objects: &Objects, obj: &Object, mut hpp_includes: Includes) -> QuotedObject {
+        // We use a simple `enum class`, which is a type-safe enum.
+        // They don't support methods, but we don't need them,
+        // since `Loggable` is implemented outside the type.
+
+        let namespace_ident = obj.namespace_ident();
+
+        let quoted_namespace = if let Some(scope) = obj.scope() {
+            let scope = format_ident!("{}", scope);
+            quote! { #scope::#namespace_ident}
+        } else {
+            quote! {#namespace_ident}
+        };
+
+        let type_ident = obj.ident();
+        let quoted_docs = quote_obj_docs(obj);
+        let deprecation_notice = quote_deprecation_notice(obj);
+
+        let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
+        let mut hpp_declarations = ForwardDecls::default();
+
+        let field_declarations = obj
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(i, obj_field)| {
+                let docstring = quote_field_docs(obj_field);
+                let field_name = format_ident!("{}", obj_field.name);
+
+                // We assign the arrow type index to the enum fields to make encoding simpler and faster:
+                let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(1 + i); // 0 is reserved for `_null_markers`
+
+                quote! {
+                    #NEWLINE_TOKEN
+                    #docstring
+                    #field_name = #arrow_type_index
+                }
+            })
+            .collect_vec();
+
+        let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
+            obj,
+            objects,
+            &mut hpp_includes,
+            &mut cpp_includes,
+            &mut hpp_declarations,
+        );
+
+        let hpp = quote! {
+            #hpp_includes
+
+            #hpp_declarations
+
+            namespace rerun::#quoted_namespace {
+                #quoted_docs
+                enum class #deprecation_notice #type_ident : uint8_t {
+                    #(#field_declarations,)*
+                };
+            }
+
+            #hpp_loggable
+        };
+        let cpp = quote! {
+            #cpp_includes
+
+            #cpp_loggable
+        };
+
+        Self { hpp, cpp }
+    }
 }
 
 fn single_field_constructor_methods(
@@ -1518,19 +1589,19 @@ fn quote_fill_arrow_array_builder(
         match obj.class {
             ObjectClass::Struct => {
                 let fill_fields = obj.fields.iter().enumerate().map(
-                |(field_index, field)| {
-                    let field_index = quote_integer(field_index);
-                    let field_builder = format_ident!("field_builder");
-                    let field_builder_type = arrow_array_builder_type(&field.typ, objects);
-                    let field_append = quote_append_field_to_builder(field, &field_builder, false, includes, objects);
-                    quote! {
-                        {
-                            auto #field_builder = static_cast<arrow::#field_builder_type*>(builder->field_builder(#field_index));
-                            #field_append
+                    |(field_index, field)| {
+                        let field_index = quote_integer(field_index);
+                        let field_builder = format_ident!("field_builder");
+                        let field_builder_type = arrow_array_builder_type(&field.typ, objects);
+                        let field_append = quote_append_field_to_builder(field, &field_builder, false, includes, objects);
+                        quote! {
+                            {
+                                auto #field_builder = static_cast<arrow::#field_builder_type*>(builder->field_builder(#field_index));
+                                #field_append
+                            }
                         }
-                    }
-                },
-            );
+                    },
+                );
 
                 quote! {
                     #parameter_check
@@ -1539,9 +1610,20 @@ fn quote_fill_arrow_array_builder(
                     ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
                 }
             }
+
+            // C-style enum, encoded as a sparse arrow union
             ObjectClass::Enum => {
-                unimplemented!("enums in C++")
+                quote! {
+                    #parameter_check
+                    ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
+                    for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                        const auto variant = elements[elem_idx];
+                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<int8_t>(variant)));
+                    }
+                }
             }
+
+            // sum-type union, encoded as a dense arrow union
             ObjectClass::Union => {
                 let variant_builder = format_ident!("variant_builder");
 
@@ -2235,12 +2317,18 @@ fn quote_arrow_data_type(
                         quote!(arrow::struct_({ #(#quoted_fields,)* }))
                     }
                     ObjectClass::Enum => {
-                        unimplemented!("enums in C++")
+                        quote! {
+                            arrow::sparse_union({
+                                arrow::field("_null_markers", arrow::null(), true, nullptr),
+                                #(#quoted_fields,)*
+                            })
+                        }
                     }
                     ObjectClass::Union => {
                         quote! {
                             arrow::dense_union({
-                                arrow::field("_null_markers", arrow::null(), true, nullptr), #(#quoted_fields,)*
+                                arrow::field("_null_markers", arrow::null(), true, nullptr),
+                                #(#quoted_fields,)*
                             })
                         }
                     }
