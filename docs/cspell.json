@@ -240,6 +240,7 @@
     "pacman",
     "parametrizations",
     "patchelf",
+    "pathfinding",
     "pathlib",
     "Pautrat",
     "Pavlakos",
