@@ -80,21 +80,16 @@ impl AnalyticsEvent {
         }
     }
 
-    #[inline]
-    pub fn append(name: impl Into<Cow<'static, str>>) -> Self {
-        Self::new(name, EventKind::Append)
-    }
-
-    #[inline]
-    pub fn identify() -> Self {
-        Self::new("$identify", EventKind::Update)
-    }
-
+    /// Insert a property into the event, overwriting any existing property with the same name.
     #[inline]
     pub fn insert(&mut self, name: impl Into<Cow<'static, str>>, value: impl Into<Property>) {
         self.props.insert(name.into(), value.into());
     }
 
+    /// Insert a property into the event, but only if its `value` is `Some`,
+    /// in which case any existing property with the same name will be overwritten.
+    ///
+    /// This has no effect if `value` is `None`.
     #[inline]
     pub fn insert_opt(
         &mut self,
