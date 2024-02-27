@@ -156,13 +156,10 @@ impl framework::Example for Picking {
             .schedule_picking_rect(re_ctx, picking_rect, READBACK_IDENTIFIER, (), false)
             .unwrap();
 
-        let mut point_builder = PointCloudBuilder::new(
-            re_ctx,
-            self.point_sets
-                .iter()
-                .map(|set| set.positions.len() as u32)
-                .sum(),
-        );
+        let mut point_builder = PointCloudBuilder::new(re_ctx);
+        point_builder
+            .reserve(self.point_sets.iter().map(|set| set.positions.len()).sum())
+            .unwrap();
         for (i, point_set) in self.point_sets.iter().enumerate() {
             point_builder
                 .batch(format!("Random Points {i}"))
@@ -174,7 +171,7 @@ impl framework::Example for Picking {
                     &point_set.picking_ids,
                 );
         }
-        view_builder.queue_draw(point_builder.into_draw_data(re_ctx).unwrap());
+        view_builder.queue_draw(point_builder.into_draw_data().unwrap());
 
         let instances = self
             .model_mesh_instances

@@ -4,7 +4,7 @@ import sys
 import rerun as rr
 
 if len(sys.argv) < 2:
-    print(f"Usage: {sys.argv[0]} <path_to_asset.[gltf|glb|obj]>")
+    print(f"Usage: {sys.argv[0]} <path_to_asset.[gltf|glb|obj|stl]>")
     sys.exit(1)
 
 rr.init("rerun_example_asset3d", spawn=True)

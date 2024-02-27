@@ -139,10 +139,9 @@ impl ::re_types_core::Loggable for ClassId {
             .as_any()
             .downcast_ref::<UInt16Array>()
             .ok_or_else(|| {
-                DeserializationError::datatype_mismatch(
-                    DataType::UInt16,
-                    arrow_data.data_type().clone(),
-                )
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
             })
             .with_context("rerun.components.ClassId#id")?
             .into_iter()
@@ -173,10 +172,9 @@ impl ::re_types_core::Loggable for ClassId {
                 .as_any()
                 .downcast_ref::<UInt16Array>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::UInt16,
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = DataType::UInt16;
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.components.ClassId#id")?
                 .values()

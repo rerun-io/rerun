@@ -332,7 +332,7 @@ def test_lint_line() -> None:
 # -----------------------------------------------------------------------------
 
 re_declaration = re.compile(r"^\s*((pub(\(\w*\))? )?(async )?((impl|fn|struct|enum|union|trait|type)\b))")
-re_attribute = re.compile(r"^\s*\#\[(error|derive)")
+re_attribute = re.compile(r"^\s*\#\[(error|derive|inline)")
 re_docstring = re.compile(r"^\s*///")
 
 

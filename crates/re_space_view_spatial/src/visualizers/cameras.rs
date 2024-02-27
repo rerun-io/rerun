@@ -13,10 +13,9 @@ use re_viewer_context::{
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
-    contexts::{SharedRenderBuilders, TransformContext},
-    instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    query_pinhole,
-    space_camera_3d::SpaceCamera3D,
+    contexts::TransformContext,
+    instance_hash_conversions::picking_layer_id_from_instance_path_hash, query_pinhole,
+    space_camera_3d::SpaceCamera3D, visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -47,8 +46,8 @@ impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
+        line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformContext,
-        shared_render_builders: &SharedRenderBuilders,
         ent_path: &EntityPath,
         props: &EntityProperties,
         pinhole: &Pinhole,
@@ -156,9 +155,8 @@ impl CamerasVisualizer {
             re_entity_db::InstancePathHash::instance(ent_path, instance_key);
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
-        let mut line_builder = shared_render_builders.lines();
         let mut batch = line_builder
-            .batch("camera frustum")
+            .batch(ent_path.to_string())
             // The frustum is setup as a RDF frustum, but if the view coordinates are not RDF,
             // we need to reorient the displayed frustum so that we indicate the correct orientation in the 3D world space.
             .world_from_obj(
@@ -208,9 +206,12 @@ impl VisualizerSystem for CamerasVisualizer {
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let transforms = view_ctx.get::<TransformContext>()?;
-        let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
-
         let store = ctx.entity_db.store();
+
+        // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
+        // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
+        let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.render_ctx);
+        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             let time_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
@@ -221,8 +222,8 @@ impl VisualizerSystem for CamerasVisualizer {
                     .entity_outline_mask(data_result.entity_path.hash());
 
                 self.visit_instance(
+                    &mut line_builder,
                     transforms,
-                    shared_render_builders,
                     &data_result.entity_path,
                     data_result.accumulated_properties(),
                     &pinhole,
@@ -238,7 +239,7 @@ impl VisualizerSystem for CamerasVisualizer {
             }
         }
 
-        Ok(Vec::new())
+        Ok(vec![(line_builder.into_draw_data()?.into())])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

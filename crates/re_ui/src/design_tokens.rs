@@ -185,6 +185,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.spacing.scroll.bar_width = 6.0;
     egui_style.spacing.scroll.bar_outer_margin = 2.0;
 
+    egui_style.spacing.tooltip_width = 720.0;
+
     // don't color hyperlinks #2733
     egui_style.visuals.hyperlink_color = default;
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Render benchmark graphs from data in GCS.
+Render benchmark graphs and other tracked metrics from data in GCS.
 
 To use this script, you must be authenticated with GCS,
 see https://cloud.google.com/docs/authentication/client-libraries for more information.
@@ -13,13 +13,11 @@ Use the script:
     python3 scripts/ci/render_bench.py --help
 
     python3 scripts/ci/render_bench.py \
-      crates \
-      --num-days 30 \
+      all \
       --output ./benchmarks
 
     python3 scripts/ci/render_bench.py \
       sizes \
-      --num-days $((30*6)) \
       --output gs://rerun-builds/graphs
 """
 from __future__ import annotations
@@ -195,11 +193,7 @@ def get_size_benchmark_data(gcs: storage.Client, commits: list[CommitWithDate]) 
 
 
 BYTE_UNITS = ["b", "kb", "kib", "mb", "mib", "gb", "gib", "tb", "tib"]
-VALID_CONVERSIONS = {
-    "ns/iter": ["ns/iter"],
-}
-for unit in BYTE_UNITS:
-    VALID_CONVERSIONS[unit] = BYTE_UNITS
+VALID_CONVERSIONS = {unit: BYTE_UNITS for unit in BYTE_UNITS}
 
 UNITS = {
     "b": 1,
@@ -211,12 +205,14 @@ UNITS = {
     "gib": 1024 * 1024,
     "tb": 1000,
     "tib": 1024 * 1024,
-    "ns/iter": 1,
 }
 
 
 def convert(base_unit: str, unit: str, value: float) -> float:
     """Convert `value` from `base_unit` to `unit`."""
+    if base_unit == unit:
+        return value
+
     base_unit = base_unit.lower()
     unit = unit.lower()
     if unit not in VALID_CONVERSIONS[base_unit]:
@@ -282,7 +278,7 @@ class Target(Enum):
 
     def render(self, gcs: storage.Client, after: datetime) -> dict[str, str]:
         commits = get_commits(after)
-        print("commits", commits)
+        # print("commits", commits)
         out: dict[str, str] = {}
 
         if self.includes(Target.CRATES):
@@ -372,7 +368,7 @@ def main() -> None:
 
     benchmarks = target.render(gcs, after)
 
-    print("benchmarks", benchmarks)
+    # print("benchmarks", benchmarks)
 
     if output_kind is Output.STDOUT:
         for benchmark in benchmarks.values():

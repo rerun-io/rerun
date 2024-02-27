@@ -65,6 +65,7 @@ class MemoryRecording:
             The number of milliseconds to wait for the Rerun web viewer to load.
         other: MemoryRecording
             An optional MemoryRecording to merge with this one.
+
         """
 
         if app_url is None:
@@ -141,6 +142,7 @@ class MemoryRecording:
             The number of milliseconds to wait for the Rerun web viewer to load.
         other: MemoryRecording
             An optional MemoryRecording to merge with this one.
+
         """
         html = self.as_html(width=width, height=height, app_url=app_url, timeout_ms=timeout_ms, other=other)
         try:

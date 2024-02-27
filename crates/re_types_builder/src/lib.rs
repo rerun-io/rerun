@@ -600,7 +600,9 @@ pub fn generate_docs(
 
 pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
     let workspace_root = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        let manifest_dir = camino::Utf8PathBuf::from(manifest_dir);
+        let manifest_dir = camino::Utf8PathBuf::from(manifest_dir)
+            .canonicalize_utf8()
+            .unwrap();
         manifest_dir
             .parent()
             .unwrap()
@@ -608,8 +610,12 @@ pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
             .unwrap()
             .to_path_buf()
     } else {
-        let file_path = camino::Utf8PathBuf::from(file!());
+        let file_path = camino::Utf8PathBuf::from(file!())
+            .canonicalize_utf8()
+            .unwrap();
         file_path
+            .parent()
+            .unwrap()
             .parent()
             .unwrap()
             .parent()

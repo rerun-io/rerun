@@ -117,10 +117,9 @@ impl ::re_types_core::Loggable for PanelView {
             .as_any()
             .downcast_ref::<BooleanArray>()
             .ok_or_else(|| {
-                DeserializationError::datatype_mismatch(
-                    DataType::Boolean,
-                    arrow_data.data_type().clone(),
-                )
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
             })
             .with_context("rerun.blueprint.components.PanelView#is_expanded")?
             .into_iter()

@@ -53,6 +53,7 @@ impl LoadedMesh {
                 ResourceLifeTime::LongLived,
                 render_ctx,
             )?,
+            MediaType::STL => re_renderer::importer::stl::load_stl_from_buffer(bytes, render_ctx)?,
             _ => anyhow::bail!("{media_type} files are not supported"),
         };
 

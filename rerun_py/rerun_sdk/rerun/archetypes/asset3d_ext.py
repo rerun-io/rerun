@@ -20,6 +20,8 @@ def guess_media_type(path: str | pathlib.Path) -> MediaType | None:
         return MediaType.GLTF
     elif ext == ".obj":
         return MediaType.OBJ
+    elif ext == ".stl":
+        return MediaType.STL
     else:
         return None
 
@@ -53,7 +55,9 @@ class Asset3DExt:
 
             For instance:
              * `model/gltf-binary`
+             * `model/gltf+json`
              * `model/obj`
+             * `model/stl`
 
             If omitted, it will be guessed from the `path` (if any),
             or the viewer will try to guess from the contents (magic header).
@@ -63,6 +67,7 @@ class Asset3DExt:
             An out-of-tree transform.
 
             Applies a transformation to the asset itself without impacting its children.
+
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):

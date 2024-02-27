@@ -12,8 +12,7 @@ use re_types::{
 };
 use re_types_core::components::InstanceKey;
 use re_ui::list_item::ListItem;
-use re_ui::ReUi;
-use re_ui::SyntaxHighlighting as _;
+use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
     blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId,
     DataQueryId, HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId,
@@ -186,7 +185,9 @@ impl SelectionPanel {
                             // TODO(jleibs): Overrides still require special handling inside the visualizers.
                             // For now, only show the override section for TimeSeries until support is implemented
                             // generically.
-                            if space_view.class_identifier() == TimeSeriesSpaceView::IDENTIFIER {
+                            if space_view.class_identifier() == TimeSeriesSpaceView::IDENTIFIER
+                                || ctx.app_options.experimental_visualizer_selection
+                            {
                                 ctx.re_ui
                                     .large_collapsing_header(ui, "Visualizers", true, |ui| {
                                         override_visualizer_ui(ctx, space_view, instance_path, ui);
@@ -408,13 +409,23 @@ fn what_is_selected_ui(
             }
         }
         Item::InstancePath(space_view_id, instance_path) => {
-            let typ = if instance_path.instance_key.is_splat() {
-                "Entity"
-            } else {
+            let is_instance = !instance_path.instance_key.is_splat();
+
+            let typ = if is_instance {
                 "Entity instance"
+            } else {
+                "Entity"
             };
 
+            let (query, store) =
+                guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
+
             let name = instance_path.syntax_highlighted(ui.style());
+            let parent = if is_instance {
+                Some(instance_path.entity_path.clone())
+            } else {
+                instance_path.entity_path.parent()
+            };
 
             if let Some(space_view_id) = space_view_id {
                 if let Some(space_view) = viewport.space_view(space_view_id) {
@@ -429,6 +440,20 @@ fn what_is_selected_ui(
                         ),
                     );
 
+                    if let Some(parent) = parent {
+                        ui.horizontal(|ui| {
+                            ui.label("path");
+                            item_ui::entity_path_parts_buttons(
+                                ctx,
+                                &query,
+                                store,
+                                ui,
+                                Some(*space_view_id),
+                                &parent,
+                            );
+                        });
+                    }
+
                     ui.horizontal(|ui| {
                         ui.label("in");
                         space_view_button(ctx, ui, space_view);
@@ -442,6 +467,13 @@ fn what_is_selected_ui(
                     None,
                     &format!("{typ} '{instance_path}'"),
                 );
+
+                if let Some(parent) = parent {
+                    ui.horizontal(|ui| {
+                        ui.label("path");
+                        item_ui::entity_path_parts_buttons(ctx, &query, store, ui, None, &parent);
+                    });
+                }
 
                 list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);
             }
@@ -761,8 +793,10 @@ fn show_list_item_for_container_child(
 
 fn has_blueprint_section(item: &Item) -> bool {
     match item {
-        Item::ComponentPath(_) | Item::Container(_) => false,
-        Item::InstancePath(space_view_id, _) => space_view_id.is_some(),
+        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) => false,
+        Item::InstancePath(space_view_id, instance_path) => {
+            space_view_id.is_some() && instance_path.instance_key.is_splat()
+        }
         _ => true,
     }
 }
@@ -913,22 +947,7 @@ fn blueprint_ui_for_instance_path(
 ) {
     if let Some(space_view_id) = space_view_id {
         if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-            if instance_path.instance_key.is_specific() {
-                let (query, store) =
-                    guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
-                ui.horizontal(|ui| {
-                    ui.label("Part of");
-                    item_ui::entity_path_button(
-                        ctx,
-                        &query,
-                        store,
-                        ui,
-                        Some(*space_view_id),
-                        &instance_path.entity_path,
-                    );
-                });
-                // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
-            } else {
+            if instance_path.instance_key.is_splat() {
                 // splat - the whole entity
                 let space_view_class = *space_view.class_identifier();
                 let entity_path = &instance_path.entity_path;
@@ -1295,12 +1314,12 @@ fn depth_from_world_scale_ui(ui: &mut egui::Ui, property: &mut EditableAutoValue
     let mut value = *property.get();
     let speed = (value * 0.05).at_least(0.01);
     let response = ui
-    .add(
-        egui::DragValue::new(&mut value)
-            .clamp_range(0.0..=1.0e8)
-            .speed(speed),
-    )
-    .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
+        .add(
+            egui::DragValue::new(&mut value)
+                .clamp_range(0.0..=1.0e8)
+                .speed(speed),
+        )
+        .on_hover_text("How many steps in the depth image correspond to one world-space unit. For instance, 1000 means millimeters.\n\
                     Double-click to reset.");
     if response.double_clicked() {
         // reset to auto - the exact value will be restored somewhere else

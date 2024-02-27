@@ -46,25 +46,33 @@ namespace rerun::components {
             return "text/markdown";
         }
 
-        /// `glTF`(https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
+        /// [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
         ///
         /// <https://www.iana.org/assignments/media-types/model/gltf+json>
         static MediaType gltf() {
             return "model/gltf+json";
         }
 
-        /// Binary `glTF`(https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
+        /// [Binary `glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
         ///
         /// <https://www.iana.org/assignments/media-types/model/gltf-binary>
         static MediaType glb() {
             return "model/gltf-binary";
         }
 
-        /// [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file): `model/obj`.
+        /// [Wavefront `obj`](https://en.wikipedia.org/wiki/Wavefront_.obj_file): `model/obj`.
         ///
         /// <https://www.iana.org/assignments/media-types/model/obj>
         static MediaType obj() {
             return "model/obj";
+        }
+
+        /// [Stereolithography Model `stl`](https://en.wikipedia.org/wiki/STL_(file_format)): `model/stl`.
+        ///
+        /// Either binary or ASCII.
+        /// <https://www.iana.org/assignments/media-types/model/stl>
+        static MediaType stl() {
+            return "model/stl";
         }
 
       public:

@@ -412,6 +412,8 @@ impl StoreHub {
     // TODO(jleibs): We probably want stats for all recordings, not just
     // the currently selected recording.
     pub fn stats(&self, detailed_cache_stats: bool) -> StoreHubStats {
+        re_tracing::profile_function!();
+
         // If we have an app-id, then use it to look up the blueprint.
         let blueprint = self
             .selected_application_id

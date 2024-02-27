@@ -15,6 +15,10 @@ fn arrow_array_builder_type_and_declaration(
     declarations: &mut ForwardDecls,
 ) -> Ident {
     match typ {
+        Type::Unit => {
+            panic!("Unit type should only occur for enum variants");
+        }
+
         Type::Int8
         | Type::Int16
         | Type::Int32

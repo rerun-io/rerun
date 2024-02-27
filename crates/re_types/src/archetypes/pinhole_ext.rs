@@ -27,6 +27,16 @@ impl Pinhole {
         .with_resolution(resolution)
     }
 
+    /// Creates a pinhole from the camera vertical field of view (in radians) and aspect ratio (width/height).
+    ///
+    /// Assumes the principal point to be in the middle of the sensor.
+    #[inline]
+    pub fn from_fov_and_aspect_ratio(fov_y: f32, aspect_ratio: f32) -> Self {
+        let focal_length_y = 0.5 / (fov_y * 0.5).max(f32::EPSILON).tan();
+        let focal_length = [focal_length_y, focal_length_y];
+        Self::from_focal_length_and_resolution(focal_length, [aspect_ratio, 1.0])
+    }
+
     /// Field of View on the Y axis, i.e. the angle between top and bottom (in radians).
     #[inline]
     pub fn fov_y(&self) -> Option<f32> {

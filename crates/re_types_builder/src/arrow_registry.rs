@@ -88,37 +88,39 @@ impl ArrowRegistry {
                 None,
             )
         } else {
-            let is_sparse = obj.is_attr_set(ATTR_ARROW_SPARSE_UNION);
+            let is_sparse = obj.is_enum() || obj.is_attr_set(ATTR_ARROW_SPARSE_UNION);
+            let union_mode = if is_sparse {
+                arrow2::datatypes::UnionMode::Sparse
+            } else {
+                arrow2::datatypes::UnionMode::Dense
+            };
+
+            // NOTE: Inject the null markers' field first and foremost! That way it is
+            // guaranteed to be stable and forward-compatible.
+            let fields = std::iter::once(LazyField {
+                name: "_null_markers".into(),
+                datatype: LazyDatatype::Null,
+                // NOTE: The spec doesn't allow a `Null` array to be non-nullable. Not that
+                // we care either way.
+                is_nullable: true,
+                metadata: Default::default(),
+            })
+            .chain(obj.fields.iter_mut().map(|field| LazyField {
+                name: field.name.clone(),
+                datatype: self.arrow_datatype_from_type(field.typ.clone(), field),
+                is_nullable: false,
+                metadata: Default::default(),
+            }))
+            .collect();
+
             LazyDatatype::Extension(
                 obj.fqname.clone(),
-                Box::new(
-                    // NOTE: Inject the null markers' field first and foremost! That way it is
-                    // guaranteed to be stable and forward-compatible.
-                    LazyDatatype::Union(
-                        std::iter::once(LazyField {
-                            name: "_null_markers".into(),
-                            datatype: LazyDatatype::Null,
-                            // NOTE: The spec doesn't allow a `Null` array to be non-nullable. Not that
-                            // we care either way.
-                            is_nullable: true,
-                            metadata: Default::default(),
-                        })
-                        .chain(obj.fields.iter_mut().map(|field| LazyField {
-                            name: field.name.clone(),
-                            datatype: self.arrow_datatype_from_type(field.typ.clone(), field),
-                            is_nullable: false,
-                            metadata: Default::default(),
-                        }))
-                        .collect(),
-                        // NOTE: +1 to account for virtual nullability arm
-                        Some((0..(obj.fields.len() + 1) as i32).collect()),
-                        if is_sparse {
-                            arrow2::datatypes::UnionMode::Sparse
-                        } else {
-                            arrow2::datatypes::UnionMode::Dense
-                        },
-                    ),
-                ),
+                Box::new(LazyDatatype::Union(
+                    fields,
+                    // NOTE: +1 to account for virtual nullability arm
+                    Some((0..(obj.fields.len() + 1) as i32).collect()),
+                    union_mode,
+                )),
                 None,
             )
         };
@@ -133,6 +135,7 @@ impl ArrowRegistry {
 
     fn arrow_datatype_from_type(&mut self, typ: Type, field: &mut ObjectField) -> LazyDatatype {
         let datatype = match typ {
+            Type::Unit => LazyDatatype::Null,
             Type::UInt8 => LazyDatatype::UInt8,
             Type::UInt16 => LazyDatatype::UInt16,
             Type::UInt32 => LazyDatatype::UInt32,

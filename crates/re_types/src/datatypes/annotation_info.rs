@@ -241,29 +241,9 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![
-                            Field {
-                                name: "id".to_owned(),
-                                data_type: DataType::UInt16,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "label".to_owned(),
-                                data_type: <crate::datatypes::Utf8>::arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "color".to_owned(),
-                                data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.AnnotationInfo")?;
             if arrow_data.is_empty() {
@@ -289,10 +269,9 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         .as_any()
                         .downcast_ref::<UInt16Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt16,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::UInt16;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.AnnotationInfo#id")?
                         .into_iter()
@@ -312,10 +291,9 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             .as_any()
                             .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::Utf8,
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::Utf8;
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.AnnotationInfo#label")?;
                         let arrow_data_buf = arrow_data.values();
@@ -367,10 +345,9 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         .as_any()
                         .downcast_ref::<UInt32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt32,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::UInt32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.AnnotationInfo#color")?
                         .into_iter()

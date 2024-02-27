@@ -164,11 +164,17 @@ impl SpaceViewClass for SpatialSpaceView3D {
                     } else {
                         // Creates space views at each view coordinates if there's any.
                         // (yes, we do so even if they're empty at the moment!)
+                        //
+                        // An exception to this rule is not to create a view there if this is already _also_ a subspace root.
+                        // (e.g. this also has a camera or a `disconnect` logged there)
                         let mut roots = subspace
                             .heuristic_hints
                             .iter()
-                            .filter(|(_, hint)| hint.contains(HeuristicHints::ViewCoordinates3d))
-                            .map(|(root, _)| root.clone())
+                            .filter(|(path, hint)| {
+                                hint.contains(HeuristicHints::ViewCoordinates3d)
+                                    && !subspace.child_spaces.contains(path)
+                            })
+                            .map(|(path, _)| path.clone())
                             .collect::<Vec<_>>();
 
                         // If there's no view coordinates or there are still some entities not covered,

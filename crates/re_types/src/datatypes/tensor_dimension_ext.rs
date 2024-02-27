@@ -27,6 +27,7 @@ impl TensorDimension {
             name: Some(name.into()),
         }
     }
+
     #[inline]
     pub fn unnamed(size: u64) -> Self {
         Self { size, name: None }

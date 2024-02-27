@@ -22,7 +22,6 @@ use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
     add_space_view_or_container_modal::AddSpaceViewOrContainerModal, container::Contents,
     icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
-    space_view_heuristics::default_created_space_views,
     system_execution::execute_systems_for_all_space_views, ViewportBlueprint,
 };
 
@@ -88,10 +87,10 @@ impl ViewportState {
 
 /// Mutation actions to perform on the tree at the end of the frame. These messages are sent by the mutation APIs from
 /// [`crate::ViewportBlueprint`].
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum TreeAction {
     /// Add a new space view to the provided container (or the root if `None`).
-    AddSpaceView(SpaceViewId, Option<ContainerId>),
+    AddSpaceView(SpaceViewId, Option<ContainerId>, Option<usize>),
 
     /// Add a new container of the provided kind to the provided container (or the root if `None`).
     AddContainer(egui_tiles::ContainerKind, Option<ContainerId>),
@@ -111,6 +110,14 @@ pub enum TreeAction {
     /// Move some contents to a different container
     MoveContents {
         contents_to_move: Contents,
+        target_container: ContainerId,
+        target_position_in_container: usize,
+    },
+
+    /// Move one or more [`Contents`] to a newly created container
+    MoveContentsToNewContainer {
+        contents_to_move: Vec<Contents>,
+        new_container_kind: egui_tiles::ContainerKind,
         target_container: ContainerId,
         target_position_in_container: usize,
     },
@@ -281,7 +288,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             // If so we can no longer automatically change the layout without discarding user edits.
             let is_dragging_a_tile = tree.dragged_id(ui.ctx()).is_some();
             if tab_viewer.edited || is_dragging_a_tile {
-                if blueprint.auto_layout {
+                if blueprint.auto_layout() {
                     re_log::trace!(
                         "The user is manipulating the egui_tiles tree - will no longer auto-layout"
                     );
@@ -324,47 +331,70 @@ impl<'a, 'b> Viewport<'a, 'b> {
             space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
         }
 
-        if self.blueprint.auto_space_views {
-            let mut new_space_views = vec![];
-            for space_view_candidate in default_created_space_views(ctx) {
-                if self.should_auto_add_space_view(&new_space_views, &space_view_candidate) {
-                    new_space_views.push(space_view_candidate);
-                }
-            }
-
-            self.blueprint
-                .add_space_views(new_space_views.into_iter(), ctx, None);
+        if self.blueprint.auto_space_views() {
+            self.spawn_heuristic_space_views(ctx);
         }
     }
 
-    fn should_auto_add_space_view(
-        &self,
-        already_added: &[SpaceViewBlueprint],
-        space_view_candidate: &SpaceViewBlueprint,
-    ) -> bool {
+    fn spawn_heuristic_space_views(&mut self, ctx: &ViewerContext<'_>) {
         re_tracing::profile_function!();
 
-        for existing_view in self
-            .blueprint
-            .space_views
-            .values()
-            .chain(already_added.iter())
-        {
-            if existing_view.class_identifier() == space_view_candidate.class_identifier() {
-                if existing_view.entities_determined_by_user {
-                    // If the entities filter of any space view of the same type was edited,
-                    // we don't want to flicker in new space views into existence,
-                    // since there might be more edits on the way.
-                    return false;
-                }
-                if existing_view.entity_path_filter_is_superset_of(space_view_candidate) {
-                    // This space view wouldn't add anything we haven't already
-                    return false;
-                }
-            }
-        }
+        for entry in ctx.space_view_class_registry.iter_registry() {
+            let class_id = entry.class.identifier();
+            let spawn_heuristics = entry.class.spawn_heuristics(ctx);
 
-        true
+            re_tracing::profile_scope!("filter_recommendations_for", class_id);
+
+            // Remove all space views that we already have on screen.
+            let existing_path_filters = self
+                .blueprint
+                .space_views
+                .values()
+                .filter(|space_view| space_view.class_identifier() == &class_id)
+                .map(|space_view| space_view.entity_path_filter())
+                .collect::<Vec<_>>();
+            let recommended_space_views = spawn_heuristics
+                .recommended_space_views
+                .into_iter()
+                .filter(|recommended_view| {
+                    existing_path_filters.iter().all(|existing_filter| {
+                        !existing_filter.is_superset_of(&recommended_view.query_filter)
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            // Remove all space views that are redundant within the remaining recommendation.
+            // This n^2 loop should only run ever for frames that add new space views.
+            let final_recommendations =
+                recommended_space_views
+                    .iter()
+                    .enumerate()
+                    .filter(|(j, candidate)| {
+                        recommended_space_views
+                            .iter()
+                            .enumerate()
+                            .all(|(i, other)| {
+                                i == *j
+                                    || !other.query_filter.is_superset_of(&candidate.query_filter)
+                            })
+                    });
+
+            self.blueprint.add_space_views(
+                final_recommendations.map(|(_, recommendation)| {
+                    SpaceViewBlueprint::new(
+                        class_id,
+                        &recommendation.root,
+                        re_space_view::DataQueryBlueprint::new(
+                            class_id,
+                            recommendation.query_filter.clone(),
+                        ),
+                    )
+                }),
+                ctx,
+                None,
+                None,
+            );
+        }
     }
 
     /// Process any deferred `TreeActions` and then sync to blueprint
@@ -378,9 +408,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
         for tree_action in self.tree_action_receiver.try_iter() {
+            re_log::trace!("Processing tree action: {tree_action:?}");
             match tree_action {
-                TreeAction::AddSpaceView(space_view_id, parent_container) => {
-                    if self.blueprint.auto_layout {
+                TreeAction::AddSpaceView(space_view_id, parent_container, position_in_parent) => {
+                    if self.blueprint.auto_layout() {
                         // Re-run the auto-layout next frame:
                         re_log::trace!(
                             "Added a space view with no user edits yet - will re-run auto-layout"
@@ -391,11 +422,20 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         parent_container.or(self.blueprint.root_container)
                     {
                         let tile_id = self.tree.tiles.insert_pane(space_view_id);
+                        let container_tile_id = blueprint_id_to_tile_id(&parent_id);
                         if let Some(egui_tiles::Tile::Container(container)) =
-                            self.tree.tiles.get_mut(blueprint_id_to_tile_id(&parent_id))
+                            self.tree.tiles.get_mut(container_tile_id)
                         {
                             re_log::trace!("Inserting new space view into root container");
                             container.add_child(tile_id);
+                            if let Some(position_in_parent) = position_in_parent {
+                                self.tree.move_tile_to_container(
+                                    tile_id,
+                                    container_tile_id,
+                                    position_in_parent,
+                                    true,
+                                );
+                            }
                         } else {
                             re_log::trace!("Root was not a container - will re-run auto-layout");
                             reset = true;
@@ -497,6 +537,36 @@ impl<'a, 'b> Viewport<'a, 'b> {
                         target_position_in_container,
                         true,
                     );
+                    self.tree_edited = true;
+                }
+                TreeAction::MoveContentsToNewContainer {
+                    contents_to_move,
+                    new_container_kind,
+                    target_container,
+                    target_position_in_container,
+                } => {
+                    let new_container_tile_id = self
+                        .tree
+                        .tiles
+                        .insert_container(egui_tiles::Container::new(new_container_kind, vec![]));
+
+                    let target_container_tile_id = blueprint_id_to_tile_id(&target_container);
+                    self.tree.move_tile_to_container(
+                        new_container_tile_id,
+                        target_container_tile_id,
+                        target_position_in_container,
+                        true, // reflow grid if needed
+                    );
+
+                    for (pos, content) in contents_to_move.into_iter().enumerate() {
+                        self.tree.move_tile_to_container(
+                            content.as_tile_id(),
+                            new_container_tile_id,
+                            pos,
+                            true, // reflow grid if needed
+                        );
+                    }
+
                     self.tree_edited = true;
                 }
                 TreeAction::SetDropTarget(container_id) => {

@@ -1,6 +1,6 @@
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_log_types::TimeInt;
-use re_renderer::{PickingLayerInstanceId, PointCloudBuilder};
+use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points3D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position3D, Radius, Text},
@@ -75,12 +75,13 @@ impl Points3DVisualizer {
 
     fn process_data(
         &mut self,
-        point_builder: &mut PointCloudBuilder,
+        point_builder: &mut PointCloudBuilder<'_>,
+        line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: &Points3DComponentData<'_>,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let LoadedPoints {
@@ -102,7 +103,7 @@ impl Points3DVisualizer {
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
 
             let mut point_range_builder =
-                point_batch.add_points(&positions, &radii, &colors, &picking_instance_ids);
+                point_batch.add_points(positions, &radii, &colors, picking_instance_ids);
 
             // Determine if there's any sub-ranges that need extra highlighting.
             {
@@ -130,7 +131,7 @@ impl Points3DVisualizer {
             ent_context.world_from_entity,
         );
 
-        load_keypoint_connections(ent_context, ent_path, &keypoints);
+        load_keypoint_connections(line_builder, ent_context, ent_path, &keypoints)?;
 
         if data.instance_keys.len() <= self.max_labels {
             re_tracing::profile_scope!("labels");
@@ -150,7 +151,7 @@ impl Points3DVisualizer {
             if let Some(labels) = data.labels {
                 self.data.ui_labels.extend(Self::process_labels(
                     labels,
-                    &positions,
+                    positions,
                     &instance_path_hashes_for_picking,
                     &colors,
                     &annotation_infos,
@@ -158,6 +159,8 @@ impl Points3DVisualizer {
                 ));
             }
         }
+
+        Ok(())
     }
 }
 
@@ -197,7 +200,14 @@ impl VisualizerSystem for Points3DVisualizer {
             return Ok(Vec::new());
         }
 
-        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx, num_points as u32)
+        let mut point_builder = PointCloudBuilder::new(ctx.render_ctx);
+        point_builder.reserve(num_points)?;
+        point_builder
+            .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
+
+        // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll go with the dynamic allocation approach.
+        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+        line_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
         super::entity_iterator::process_archetype_pov1_comp5::<
@@ -236,16 +246,21 @@ impl VisualizerSystem for Points3DVisualizer {
                     keypoint_ids,
                     class_ids,
                 };
-                self.process_data(&mut point_builder, query, ent_path, ent_context, &data);
-                Ok(())
+                self.process_data(
+                    &mut point_builder,
+                    &mut line_builder,
+                    query,
+                    ent_path,
+                    ent_context,
+                    &data,
+                )
             },
         )?;
 
-        let draw_data = point_builder
-            .into_draw_data(ctx.render_ctx)
-            .map_err(|err| SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(err)))?;
-
-        Ok(vec![draw_data.into()])
+        Ok(vec![
+            point_builder.into_draw_data()?.into(),
+            line_builder.into_draw_data()?.into(),
+        ])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -260,13 +275,13 @@ impl VisualizerSystem for Points3DVisualizer {
 // ---
 
 #[doc(hidden)] // Public for benchmarks
-pub struct LoadedPoints {
+pub struct LoadedPoints<'a> {
     pub annotation_infos: ResolvedAnnotationInfos,
     pub keypoints: Keypoints,
-    pub positions: Vec<glam::Vec3>,
+    pub positions: &'a [glam::Vec3],
     pub radii: Vec<re_renderer::Size>,
     pub colors: Vec<re_renderer::Color32>,
-    pub picking_instance_ids: Vec<PickingLayerInstanceId>,
+    pub picking_instance_ids: &'a [PickingLayerInstanceId],
 }
 
 #[doc(hidden)] // Public for benchmarks
@@ -280,10 +295,10 @@ pub struct Points3DComponentData<'a> {
     pub class_ids: Option<&'a [Option<ClassId>]>,
 }
 
-impl LoadedPoints {
+impl<'a> LoadedPoints<'a> {
     #[inline]
     pub fn load(
-        data: &Points3DComponentData<'_>,
+        data: &'a Points3DComponentData<'_>,
         ent_path: &EntityPath,
         latest_at: TimeInt,
         annotations: &Annotations,
@@ -299,11 +314,12 @@ impl LoadedPoints {
             annotations,
         );
 
-        let (positions, radii, colors, picking_instance_ids) = join4(
-            || Self::load_positions(data),
+        let positions = bytemuck::cast_slice(data.positions);
+        let picking_instance_ids = bytemuck::cast_slice(data.instance_keys);
+
+        let (radii, colors) = rayon::join(
             || Self::load_radii(data, ent_path),
             || Self::load_colors(data, ent_path, &annotation_infos),
-            || Self::load_picking_ids(data),
         );
 
         Self {
@@ -314,14 +330,6 @@ impl LoadedPoints {
             colors,
             picking_instance_ids,
         }
-    }
-
-    #[inline]
-    pub fn load_positions(
-        Points3DComponentData { positions, .. }: &Points3DComponentData<'_>,
-    ) -> Vec<glam::Vec3> {
-        re_tracing::profile_function!();
-        bytemuck::cast_slice(positions).to_vec()
     }
 
     #[inline]
@@ -341,33 +349,5 @@ impl LoadedPoints {
         annotation_infos: &ResolvedAnnotationInfos,
     ) -> Vec<re_renderer::Color32> {
         crate::visualizers::process_color_slice(colors, ent_path, annotation_infos)
-    }
-
-    #[inline]
-    pub fn load_picking_ids(
-        &Points3DComponentData { instance_keys, .. }: &Points3DComponentData<'_>,
-    ) -> Vec<PickingLayerInstanceId> {
-        re_tracing::profile_function!();
-        bytemuck::cast_slice(instance_keys).to_vec()
-    }
-}
-
-/// Run 4 things in parallel
-fn join4<A: Send, B: Send, C: Send, D: Send>(
-    a: impl FnOnce() -> A + Send,
-    b: impl FnOnce() -> B + Send,
-    c: impl FnOnce() -> C + Send,
-    d: impl FnOnce() -> D + Send,
-) -> (A, B, C, D) {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        re_tracing::profile_function!();
-        let ((a, b), (c, d)) = rayon::join(|| rayon::join(a, b), || rayon::join(c, d));
-        (a, b, c, d)
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    {
-        (a(), b(), c(), d())
     }
 }

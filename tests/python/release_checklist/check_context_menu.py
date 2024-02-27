@@ -15,6 +15,8 @@ README = """
 * Right-click on any space view and check for context menu content:
     - Hide
     - Remove
+    - Move to new container
+    - Clone
 * Check both work as expected.
 * Right-click on the viewport and check for context menu content:
     - Add Container
@@ -23,6 +25,7 @@ README = """
 * Right-click on the container and check for context menu content:
     - Hide
     - Remove
+    - Move to new container
     - Add Container
     - Add Space View
 
@@ -41,9 +44,17 @@ README = """
 * Select multiple space views, right-click, and check for context menu content:
     - Hide
     - Remove
+    - Move to new container
 * Same as above, but with only containers selected.
 * Same as above, but with both space views and containers selected.
 * Same as above, but with the viewport selected as well. The context menu should be identical, but none of its actions should apply to the viewport.
+
+### Invalid sub-container kind
+
+* Single-select a horizontal container, check that it disallow adding an horizontal container inside it.
+* Same for a vertical container.
+* Single select a space view inside a horizontal container, check that it disallow moving to a new horizontal container.
+* Same for a space view inside a vertical container.
 """
 
 
