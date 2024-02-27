@@ -485,7 +485,8 @@ impl Object {
                 })
                 .collect();
 
-            // The fields of a struct is completely arbitrary, so we use the `order` attribute to sort them.
+            // The fields of a struct are reported in arbitrary order by flatbuffers,
+            // so we use the `order` attribute to sort them:
             fields.sort_by_key(|field| field.order);
 
             // Make sure no two fields have the same order:
