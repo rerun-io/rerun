@@ -29,6 +29,15 @@ use crate::{
 /// - The runtime Arrow payload is always held in a variable `data`, identified as `data_src` below.
 /// - The returned `TokenStream` must always instantiates a `Vec<Option<Self>>`.
 ///
+/// ## Performance vs validation
+/// The deserializers are designed for maximum performance, assuming the incoming data is correct.
+/// If the data is not correct, the deserializers will return an error, but never panic or crash.
+///
+/// In the future we should add some basic arrow datatype validation during data ingestion,
+/// so that changing the datatype between versions of the SDK will produce some helpful warnings
+/// instead of just silent bugs.
+/// TODO(#5291): add basic arrow datatype validation during data ingestion
+///
 /// ## Understanding datatypes
 ///
 /// There are three (!) datatypes involved in the deserialization process:
@@ -212,9 +221,6 @@ pub fn quote_arrow_deserializer(
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Sparse) => {
                 // We use sparse arrow unions for c-style enums, which means only 8 bits is required for each field,
                 // and nulls are encoded with a special 0-index `_null_markers` variant.
-                //
-                // TODO(emilk): verify that the incoming datatype has the same variant names
-                // in the same order as we expect.
 
                 let data_src_types = format_ident!("{data_src}_types");
 
@@ -260,9 +266,6 @@ pub fn quote_arrow_deserializer(
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
                 // We use dense arrow unions for proper sum-type unions.
                 // Nulls are encoded with a special 0-index `_null_markers` variant.
-                //
-                // TODO(emilk): verify that the incoming datatype has the same variant names
-                // in the same order as we expect.
 
                 let data_src_types = format_ident!("{data_src}_types");
                 let data_src_arrays = format_ident!("{data_src}_arrays");
