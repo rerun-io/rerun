@@ -343,10 +343,9 @@ impl Viewport<'_, '_> {
                 .map_or("unknown".to_owned(), |e| e.ui_string());
 
             let response = if child_node.children.is_empty() {
-                let label = format!("🔹 {name}");
-
-                ListItem::new(ctx.re_ui, label)
+                ListItem::new(ctx.re_ui, name)
                     .selected(is_selected)
+                    .with_icon(&re_ui::icons::ENTITY)
                     .subdued(
                         !group_is_visible
                             || !properties.visible
