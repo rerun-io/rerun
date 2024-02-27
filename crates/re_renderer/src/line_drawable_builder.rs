@@ -191,9 +191,15 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
             num_strips_added = num_available_strips;
         }
 
-        let vertex_buffer_element_count = self.0.vertices_buffer.len();
-        let vertex_range =
-            (vertex_buffer_element_count - num_vertices_added)..(vertex_buffer_element_count);
+        let vertex_range = if num_vertices_added == 0 {
+            0..0
+        } else {
+            let vertex_buffer_element_count = self.0.vertices_buffer.len();
+            // The vertex range works with "logical line vertices", meaning we don't want to include the start sentinel
+            // which at this point is already included in `vertices_buffer`, thus -1.
+            let total_vertex_count = vertex_buffer_element_count - 1;
+            (total_vertex_count - num_vertices_added)..(total_vertex_count)
+        };
 
         LineStripBuilder {
             builder: self.0,
