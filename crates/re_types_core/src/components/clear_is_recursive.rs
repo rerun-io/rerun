@@ -118,7 +118,7 @@ impl crate::Loggable for ClearIsRecursive {
             .as_any()
             .downcast_ref::<BooleanArray>()
             .ok_or_else(|| {
-                let expected = DataType::Boolean;
+                let expected = Self::arrow_datatype();
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })

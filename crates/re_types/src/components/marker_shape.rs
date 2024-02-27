@@ -116,7 +116,7 @@ impl ::re_types_core::Loggable for MarkerShape {
             .as_any()
             .downcast_ref::<UInt8Array>()
             .ok_or_else(|| {
-                let expected = DataType::UInt8;
+                let expected = Self::arrow_datatype();
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })

@@ -133,7 +133,7 @@ impl crate::Loggable for EntityPath {
                 .as_any()
                 .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                 .ok_or_else(|| {
-                    let expected = DataType::Utf8;
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

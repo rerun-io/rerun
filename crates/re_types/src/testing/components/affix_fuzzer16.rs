@@ -136,12 +136,7 @@ impl ::re_types_core::Loggable for AffixFuzzer16 {
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    let expected = DataType::List(std::sync::Arc::new(Field {
-                        name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                        is_nullable: false,
-                        metadata: [].into(),
-                    }));
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

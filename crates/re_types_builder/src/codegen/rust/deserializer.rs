@@ -53,7 +53,7 @@ pub fn quote_arrow_deserializer(
     let data_src = format_ident!("arrow_data");
 
     let datatype = &arrow_registry.get(&obj.fqname);
-    let quoted_datatype = quote! { Self::arrow_datatype() };
+    let quoted_self_datatype = quote! { Self::arrow_datatype() };
 
     let obj_fqname = obj.fqname.as_str();
     let is_arrow_transparent = obj.datatype.is_none();
@@ -74,9 +74,12 @@ pub fn quote_arrow_deserializer(
             }
         );
 
+        let field_datatype = arrow_registry.get(&obj_field.fqname);
+
         let quoted_deserializer = quote_arrow_field_deserializer(
             objects,
-            &arrow_registry.get(&obj_field.fqname),
+            &field_datatype,
+            &quoted_self_datatype, // we are transparent, so the datatype of `Self` is the datatype of our contents
             obj_field.is_nullable,
             Some(obj_field),
             obj_field_fqname,
@@ -118,10 +121,12 @@ pub fn quote_arrow_deserializer(
                 let quoted_field_deserializers = obj.fields.iter().map(|obj_field| {
                     let field_name = &obj_field.name;
                     let data_dst = format_ident!("{}", obj_field.name);
+                    let field_datatype = &arrow_registry.get(&obj_field.fqname);
 
                     let quoted_deserializer = quote_arrow_field_deserializer(
                         objects,
-                        &arrow_registry.get(&obj_field.fqname),
+                        field_datatype,
+                        &quote_datatype(field_datatype),
                         obj_field.is_nullable,
                         Some(obj_field),
                         obj_field.fqname.as_str(),
@@ -137,7 +142,7 @@ pub fn quote_arrow_deserializer(
                             // runtime!
                             if !arrays_by_name.contains_key(#field_name) {
                                 return Err(DeserializationError::missing_struct_field(
-                                    #quoted_datatype, #field_name,
+                                    #quoted_self_datatype, #field_name,
                                 )).with_context(#obj_fqname);
                             }
 
@@ -171,7 +176,7 @@ pub fn quote_arrow_deserializer(
 
                 let quoted_downcast = {
                     let cast_as = quote!(arrow2::array::StructArray);
-                    quote_array_downcast_quoted(obj_fqname, &data_src, cast_as, &quoted_datatype)
+                    quote_array_downcast(obj_fqname, &data_src, cast_as, &quoted_self_datatype)
                 };
                 quote! {{
                     let #data_src = #quoted_downcast?;
@@ -222,7 +227,7 @@ pub fn quote_arrow_deserializer(
 
                 let quoted_downcast = {
                     let cast_as = quote!(arrow2::array::UnionArray);
-                    quote_array_downcast_quoted(obj_fqname, &data_src, &cast_as, &quoted_datatype)
+                    quote_array_downcast(obj_fqname, &data_src, &cast_as, &quoted_self_datatype)
                 };
 
                 quote! {{
@@ -239,7 +244,7 @@ pub fn quote_arrow_deserializer(
                                 #(#quoted_branches,)*
 
                                 _ => Err(DeserializationError::missing_union_arm(
-                                    #quoted_datatype, "<invalid>", *typ as _,
+                                    #quoted_self_datatype, "<invalid>", *typ as _,
                                 )),
                             }
                         })
@@ -258,9 +263,11 @@ pub fn quote_arrow_deserializer(
                     obj.fields.iter().enumerate().map(|(i, obj_field)| {
                         let data_dst = format_ident!("{}", obj_field.snake_case_name());
 
+                        let field_datatype = &arrow_registry.get(&obj_field.fqname);
                         let quoted_deserializer = quote_arrow_field_deserializer(
                             objects,
-                            &arrow_registry.get(&obj_field.fqname),
+                            field_datatype,
+                            &quote_datatype(field_datatype),
                             obj_field.is_nullable,
                             Some(obj_field),
                             obj_field.fqname.as_str(),
@@ -335,7 +342,7 @@ pub fn quote_arrow_deserializer(
 
                 let quoted_downcast = {
                     let cast_as = quote!(arrow2::array::UnionArray);
-                    quote_array_downcast_quoted(obj_fqname, &data_src, &cast_as, &quoted_datatype)
+                    quote_array_downcast(obj_fqname, &data_src, &cast_as, &quoted_self_datatype)
                 };
 
                 quote! {{
@@ -352,7 +359,7 @@ pub fn quote_arrow_deserializer(
                         let #data_src_offsets = #data_src.offsets()
                             // NOTE: expected dense union, got a sparse one instead
                             .ok_or_else(|| {
-                                let expected = #quoted_datatype;
+                                let expected = #quoted_self_datatype;
                                 let actual = #data_src.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             }).with_context(#obj_fqname)?;
@@ -380,7 +387,7 @@ pub fn quote_arrow_deserializer(
                                         #(#quoted_branches,)*
                                         _ => {
                                             return Err(DeserializationError::missing_union_arm(
-                                                #quoted_datatype, "<invalid>", *typ as _,
+                                                #quoted_self_datatype, "<invalid>", *typ as _,
                                             ));
                                         }
                                     }))
@@ -419,9 +426,11 @@ enum InnerRepr {
 ///
 /// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
 /// returns a `Result<_, DeserializationError>`!
+#[allow(clippy::too_many_arguments)]
 fn quote_arrow_field_deserializer(
     objects: &Objects,
     datatype: &DataType,
+    quoted_datatype: &TokenStream,
     is_nullable: bool,
     obj_field: Option<&ObjectField>,
     obj_field_fqname: &str,
@@ -454,7 +463,7 @@ fn quote_arrow_field_deserializer(
             let quoted_downcast = {
                 let cast_as = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
                 let cast_as = format_ident!("{cast_as}Array");
-                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, quoted_datatype)
             };
 
             match inner_repr {
@@ -473,7 +482,7 @@ fn quote_arrow_field_deserializer(
         DataType::Utf8 => {
             let quoted_downcast = {
                 let cast_as = quote!(arrow2::array::Utf8Array<i32>);
-                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, quoted_datatype)
             };
 
             let quoted_iter_transparency = quote_iterator_transparency(
@@ -530,6 +539,7 @@ fn quote_arrow_field_deserializer(
             let quoted_inner = quote_arrow_field_deserializer(
                 objects,
                 inner.data_type(),
+                &quote_datatype(inner.data_type()),
                 inner.is_nullable,
                 None,
                 obj_field_fqname,
@@ -539,7 +549,7 @@ fn quote_arrow_field_deserializer(
 
             let quoted_downcast = {
                 let cast_as = quote!(arrow2::array::FixedSizeListArray);
-                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, quoted_datatype)
             };
 
             let quoted_iter_transparency = quote_iterator_transparency(
@@ -642,6 +652,7 @@ fn quote_arrow_field_deserializer(
             let quoted_inner = quote_arrow_field_deserializer(
                 objects,
                 inner.data_type(),
+                &quote_datatype(inner.data_type()),
                 inner.is_nullable,
                 None,
                 obj_field_fqname,
@@ -651,7 +662,7 @@ fn quote_arrow_field_deserializer(
 
             let quoted_downcast = {
                 let cast_as = quote!(arrow2::array::ListArray<i32>);
-                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, quoted_datatype)
             };
 
             let serde_type = obj_field.and_then(|obj_field| {
@@ -777,23 +788,15 @@ fn quote_arrow_field_deserializer(
     }
 }
 
-/// Generates tokens that downcast the runtime Arrow array identifier by `arr` as `cast_as`, making sure
-/// to inject proper error handling.
-fn quote_array_downcast(
-    location: impl AsRef<str>,
-    arr: &proc_macro2::Ident,
-    cast_as: impl quote::ToTokens,
-    expected_datatype: &DataType,
-) -> TokenStream {
-    let expected = ArrowDataTypeTokenizer(expected_datatype, false);
-    let quoted_expected_datatype = quote! { #expected };
-
-    quote_array_downcast_quoted(location, arr, cast_as, &quoted_expected_datatype)
+fn quote_datatype(datatype: &DataType) -> TokenStream {
+    let is_recursive = false;
+    let expected = ArrowDataTypeTokenizer(datatype, is_recursive);
+    quote! { #expected }
 }
 
 /// Generates tokens that downcast the runtime Arrow array identifier by `arr` as `cast_as`, making sure
 /// to inject proper error handling.
-fn quote_array_downcast_quoted(
+fn quote_array_downcast(
     location: impl AsRef<str>,
     arr: &syn::Ident,
     cast_as: impl quote::ToTokens,
@@ -1023,7 +1026,12 @@ fn quote_arrow_field_deserializer_buffer_slice(
             let quoted_downcast = {
                 let cast_as = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
                 let cast_as = format_ident!("{cast_as}Array"); // e.g. `Uint32Array`
-                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+                quote_array_downcast(
+                    obj_field_fqname,
+                    data_src,
+                    cast_as,
+                    &quote_datatype(datatype),
+                )
             };
 
             quote! {
@@ -1044,7 +1052,12 @@ fn quote_arrow_field_deserializer_buffer_slice(
 
             let quoted_downcast = {
                 let cast_as = quote!(arrow2::array::FixedSizeListArray);
-                quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
+                quote_array_downcast(
+                    obj_field_fqname,
+                    data_src,
+                    cast_as,
+                    &quote_datatype(datatype),
+                )
             };
 
             quote! {{

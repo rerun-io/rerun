@@ -119,7 +119,7 @@ impl crate::Loggable for InstanceKey {
             .as_any()
             .downcast_ref::<UInt64Array>()
             .ok_or_else(|| {
-                let expected = DataType::UInt64;
+                let expected = Self::arrow_datatype();
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })
