@@ -144,7 +144,7 @@ impl Event for Identify {
 }
 
 impl Properties for Identify {
-    fn serialize(&self, event: &mut AnalyticsEvent) {
+    fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
             build_info,
             rust_version,
@@ -154,11 +154,11 @@ impl Properties for Identify {
         } = self;
 
         build_info.serialize(event);
-        event.insert_opt("rust_version", rust_version.clone());
-        event.insert_opt("llvm_version", llvm_version.clone());
-        event.insert_opt("python_version", python_version.clone());
+        event.insert_opt("rust_version", rust_version);
+        event.insert_opt("llvm_version", llvm_version);
+        event.insert_opt("python_version", python_version);
         for (name, value) in opt_in_metadata {
-            event.insert(name.clone(), value.clone());
+            event.insert(name, value);
         }
     }
 }
@@ -168,10 +168,11 @@ impl Event for ViewerStarted {
 }
 
 impl Properties for ViewerStarted {
-    fn serialize(&self, event: &mut AnalyticsEvent) {
+    fn serialize(self, event: &mut AnalyticsEvent) {
         let Self { url, app_env } = self;
-        event.insert("app_env", *app_env);
-        event.insert_opt("url", url.clone());
+
+        event.insert("app_env", app_env);
+        event.insert_opt("url", url);
     }
 }
 
@@ -180,7 +181,7 @@ impl Event for OpenRecording {
 }
 
 impl Properties for OpenRecording {
-    fn serialize(&self, event: &mut AnalyticsEvent) {
+    fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
             url,
             app_env,
@@ -188,16 +189,16 @@ impl Properties for OpenRecording {
             data_source,
         } = self;
 
-        event.insert_opt("url", url.clone());
-        event.insert("app_env", *app_env);
+        event.insert_opt("url", url);
+        event.insert("app_env", app_env);
 
         if let Some(store_info) = store_info {
-            event.insert("application_id", store_info.application_id.clone());
-            event.insert("recording_id", store_info.recording_id.clone());
-            event.insert("store_source", store_info.store_source.clone());
-            event.insert_opt("rust_version", store_info.rust_version.clone());
-            event.insert_opt("llvm_version", store_info.llvm_version.clone());
-            event.insert_opt("python_version", store_info.python_version.clone());
+            event.insert("application_id", store_info.application_id);
+            event.insert("recording_id", store_info.recording_id);
+            event.insert("store_source", store_info.store_source);
+            event.insert_opt("rust_version", store_info.rust_version);
+            event.insert_opt("llvm_version", store_info.llvm_version);
+            event.insert_opt("python_version", store_info.python_version);
             event.insert("is_official_example", store_info.is_official_example);
             event.insert(
                 "app_id_starts_with_rerun_example",
@@ -205,7 +206,7 @@ impl Properties for OpenRecording {
             );
         }
 
-        if let Some(data_source) = *data_source {
+        if let Some(data_source) = data_source {
             event.insert("data_source", data_source);
         }
     }
@@ -216,7 +217,7 @@ impl Event for CrashPanic {
 }
 
 impl Properties for CrashPanic {
-    fn serialize(&self, event: &mut AnalyticsEvent) {
+    fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
             build_info,
             callstack,
@@ -225,12 +226,8 @@ impl Properties for CrashPanic {
         } = self;
 
         build_info.serialize(event);
-        event.insert("callstack", callstack.clone());
-        if let Some(message) = &message {
-            event.insert("message", message.clone());
-        }
-        if let Some(file_line) = &file_line {
-            event.insert("file_line", file_line.clone());
-        }
+        event.insert("callstack", callstack);
+        event.insert_opt("message", message);
+        event.insert_opt("file_line", file_line);
     }
 }

@@ -38,9 +38,15 @@ impl Event for InputFilled {
 }
 
 impl Properties for InputFilled {
-    fn serialize(&self, event: &mut AnalyticsEvent) {
-        event.insert("application_id", self.application_id.clone());
-        event.insert("recording_id", self.recording_id.clone());
-        event.insert("body", self.body.clone());
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            application_id,
+            recording_id,
+            body,
+        } = self;
+
+        event.insert("application_id", application_id);
+        event.insert("recording_id", recording_id);
+        event.insert("body", body);
     }
 }

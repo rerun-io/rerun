@@ -340,21 +340,34 @@ pub trait Event: Properties {
 /// so that any event which wants to include build info in its properties
 /// may include that struct in its own definition, and then call `build_info.serialize`
 /// in its own `serialize` implementation.
-pub trait Properties {
-    fn serialize(&self, event: &mut AnalyticsEvent) {
+pub trait Properties: Sized {
+    fn serialize(self, event: &mut AnalyticsEvent) {
         let _ = event;
     }
 }
 
 impl Properties for re_build_info::BuildInfo {
-    fn serialize(&self, event: &mut AnalyticsEvent) {
-        event.insert("rerun_version", self.version.to_string());
-        event.insert("rust_version", self.rustc_version);
-        event.insert("llvm_version", self.llvm_version);
-        event.insert("target", self.target_triple);
-        event.insert("git_hash", self.git_hash_or_tag());
-        event.insert("build_date", self.datetime);
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let git_hash = self.git_hash_or_tag();
+        let Self {
+            crate_name: _,
+            version,
+            rustc_version,
+            llvm_version,
+            git_hash: _,
+            git_branch: _,
+            is_in_rerun_workspace,
+            target_triple,
+            datetime,
+        } = self;
+
+        event.insert("git_hash", git_hash);
+        event.insert("rerun_version", version.to_string());
+        event.insert("rust_version", rustc_version);
+        event.insert("llvm_version", llvm_version);
+        event.insert("target", target_triple);
+        event.insert("build_date", datetime);
         event.insert("debug", cfg!(debug_assertions)); // debug-build?
-        event.insert("rerun_workspace", self.is_in_rerun_workspace);
+        event.insert("rerun_workspace", is_in_rerun_workspace);
     }
 }

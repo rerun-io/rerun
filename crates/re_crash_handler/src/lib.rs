@@ -203,10 +203,16 @@ fn install_signal_handler(build_info: BuildInfo) {
         }
 
         impl re_analytics::Properties for CrashSignal {
-            fn serialize(&self, event: &mut re_analytics::AnalyticsEvent) {
-                self.build_info.serialize(event);
-                event.insert("signal", self.signal.clone());
-                event.insert("callstack", self.callstack.clone());
+            fn serialize(self, event: &mut re_analytics::AnalyticsEvent) {
+                let Self {
+                    build_info,
+                    signal,
+                    callstack,
+                } = self;
+
+                build_info.serialize(event);
+                event.insert("signal", signal.clone());
+                event.insert("callstack", callstack.clone());
             }
         }
 
