@@ -697,7 +697,7 @@ pub fn is_testing_fqname(fqname: &str) -> bool {
 pub enum ObjectClass {
     Struct,
 
-    /// Dumn C-style enum.
+    /// Dumb C-style enum.
     ///
     /// Encoded as a sparse arrow union.
     ///
