@@ -322,8 +322,12 @@ impl<'a> ListItem<'a> {
             state.toggle(ui);
         }
 
-        let body_response =
-            state.show_body_indented(&response.response, ui, |ui| add_body(re_ui, ui));
+        let body_response = ui
+            .scope(|ui| {
+                ui.spacing_mut().indent = ReUi::small_icon_size().x + ReUi::text_to_icon_padding();
+                state.show_body_indented(&response.response, ui, |ui| add_body(re_ui, ui))
+            })
+            .inner;
 
         ShowCollapsingResponse {
             item_response: response.response,

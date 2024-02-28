@@ -848,7 +848,8 @@ impl ReUi {
     ///
     /// See [`ReUi::paint_collapsing_triangle`] for actually drawing the triangle.
     pub fn collapsing_triangle_size() -> egui::Vec2 {
-        egui::Vec2::splat(8.0)
+        // Required for the hierarchical lists to appear less busy by virtue of a better alignment
+        Self::small_icon_size()
     }
 
     /// Paint a collapsing triangle with rounded corners.
@@ -862,7 +863,7 @@ impl ReUi {
     ) {
         let visuals = ui.style().interact(response);
 
-        let extent = rect.size().min_elem();
+        static TRIANGLE_SIZE: f32 = 8.0;
 
         // Normalized in [0, 1]^2 space.
         // Note on how these coords have been computed: https://github.com/rerun-io/rerun/pull/2920
@@ -885,7 +886,7 @@ impl ReUi {
         use std::f32::consts::TAU;
         let rotation = Rot2::from_angle(egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0));
         for p in &mut points {
-            *p = rect.center() + rotation * (*p - pos2(0.5, 0.5)) * extent;
+            *p = rect.center() + rotation * (*p - pos2(0.5, 0.5)) * TRIANGLE_SIZE;
         }
 
         ui.painter().add(Shape::convex_polygon(
