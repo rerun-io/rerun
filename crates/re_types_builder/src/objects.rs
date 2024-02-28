@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType, Reporter, ATTR_RERUN_OVERRIDE_TYPE,
+    FbsType, Reporter, ATTR_ENUM_TYPE, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
@@ -88,7 +88,7 @@ impl Objects {
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
                     assert!(obj.kind != ObjectKind::Archetype,
-                        "{virtpath}: Field {:?} is a primitive field of type {:?}. Only Components are allowed on Archetypes.",
+                        "{virtpath}: Field {:?} is a primitive field of type {:?}. Only Components are allowed on Archetypes. If this field is an enum, you need to set the {ATTR_ENUM_TYPE:?} attribute on the field to the enum's name.",
                         field.fqname, field.typ);
                 }
             }
@@ -425,9 +425,10 @@ pub struct Object {
     /// The object's attributes.
     pub attrs: Attributes,
 
-    /// The object's inner fields, which can be either struct members or union values.
+    /// The object's inner fields, which can be either struct members or union/emum variants.
     ///
-    /// These are pre-sorted, in ascending order, using their `order` attribute.
+    /// These are ordered using their `order` attribute (structs),
+    /// or in the same order that they appeared in the .fbs (enum/union).
     pub fields: Vec<ObjectField>,
 
     /// struct, enum, or union?
@@ -521,7 +522,7 @@ impl Object {
             kind,
             attrs,
             fields,
-            class: ObjectClass::Struct {},
+            class: ObjectClass::Struct,
             datatype: None,
         }
     }
@@ -571,10 +572,6 @@ impl Object {
                 ObjectField::from_raw_enum_value(reporter, include_dir_path, enums, objs, enm, &val)
             })
             .collect();
-
-        if kind == ObjectKind::Component && fields.len() != 1 {
-            reporter.error(&virtpath, &fqname, "components must have exactly 1 field");
-        }
 
         Self {
             virtpath,
@@ -797,7 +794,13 @@ impl ObjectField {
         let docs = Docs::from_raw_docs(&filepath, field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
-        let typ = Type::from_raw_type(enums, objs, field.type_(), &attrs);
+
+        let typ = if let Some(enum_type) = attrs.try_get(&fqname, crate::ATTR_ENUM_TYPE) {
+            // Hack needed because flattbuffers report fields of enum types as integers.
+            Type::Object(enum_type)
+        } else {
+            Type::from_raw_type(enums, objs, field.type_(), &attrs)
+        };
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
