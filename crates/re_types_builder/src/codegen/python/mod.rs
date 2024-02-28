@@ -776,7 +776,7 @@ fn code_for_enum(
     for (i, variant) in obj.fields.iter().enumerate() {
         let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
 
-        // NOTE: we use PascalCase for the the enum variants for consistency across:
+        // NOTE: we use PascalCase for the enum variants for consistency across:
         // * all languages (C++, Python, Rust)
         // * the arrow datatype
         // * the GUI
