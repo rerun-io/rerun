@@ -5,6 +5,7 @@ use std::sync::{atomic::AtomicI64, Arc};
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 
+use parking_lot::Mutex;
 use re_log_types::{
     ApplicationId, ArrowChunkReleaseCallback, DataCell, DataCellError, DataRow, DataTable,
     DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId,
@@ -61,7 +62,7 @@ pub enum RecordingStreamError {
     #[error("Failed to spawn background thread '{name}': {err}")]
     SpawnThread {
         /// Name of the thread
-        name: &'static str,
+        name: String,
 
         /// Inner error explaining why the thread failed to spawn.
         err: std::io::Error,
@@ -79,6 +80,10 @@ pub enum RecordingStreamError {
     /// An error that can occur because a row in the store has inconsistent columns.
     #[error(transparent)]
     DataReadError(#[from] re_log_types::DataReadError),
+
+    /// An error occurred when attempting to used a [`re_data_source::DataLoader`].
+    #[error(transparent)]
+    DataLoaderError(#[from] re_data_source::DataLoaderError),
 }
 
 /// Results that can occur when creating/manipulating a [`RecordingStream`].
@@ -623,6 +628,12 @@ struct RecordingStreamInner {
     batcher: DataTableBatcher,
     batcher_to_sink_handle: Option<std::thread::JoinHandle<()>>,
 
+    /// Keeps track of the top-level threads that were spawned in order to execute the `DataLoader`
+    /// machinery in the context of this `RecordingStream`.
+    ///
+    /// See [`RecordingStream::log_file_from_path`] and [`RecordingStream::log_file_from_contents`].
+    dataloader_handles: Mutex<Vec<std::thread::JoinHandle<()>>>,
+
     pid_at_creation: u32,
 }
 
@@ -631,6 +642,16 @@ impl Drop for RecordingStreamInner {
         if self.is_forked_child() {
             re_log::error_once!("Fork detected while dropping RecordingStreamInner. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
             return;
+        }
+
+        // Run all pending top-level `DataLoader` threads that were started from the SDK to completion.
+        //
+        // TODO(cmc): At some point we might want to make it configurable, though I cannot really
+        // think of a use case where you'd want to drop those threads immediately upon
+        // disconnection.
+        let dataloader_handles = std::mem::take(&mut *self.dataloader_handles.lock());
+        for handle in dataloader_handles {
+            handle.join().ok();
         }
 
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
@@ -679,7 +700,10 @@ impl RecordingStreamInner {
                     let batcher = batcher.clone();
                     move || forwarding_thread(info, sink, cmds_rx, batcher.tables(), on_release)
                 })
-                .map_err(|err| RecordingStreamError::SpawnThread { name: NAME, err })?
+                .map_err(|err| RecordingStreamError::SpawnThread {
+                    name: NAME.into(),
+                    err,
+                })?
         };
 
         Ok(RecordingStreamInner {
@@ -688,6 +712,7 @@ impl RecordingStreamInner {
             cmds_tx,
             batcher,
             batcher_to_sink_handle: Some(batcher_to_sink_handle),
+            dataloader_handles: Mutex::new(Vec::new()),
             pid_at_creation: std::process::id(),
         })
     }
@@ -985,6 +1010,100 @@ impl RecordingStream {
         // Since the primary component can't be splatted it must be in here, see(#1215).
         if let Some(instanced) = instanced {
             self.record_row(instanced, !timeless);
+        }
+
+        Ok(())
+    }
+
+    /// Logs the file at the given `path` using all [`re_data_source::DataLoader`]s available.
+    ///
+    /// A single `path` might be handled by more than one loader.
+    ///
+    /// This method blocks until either at least one [`re_data_source::DataLoader`] starts
+    /// streaming data in or all of them fail.
+    ///
+    /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+    pub fn log_file_from_path(
+        &self,
+        filepath: impl AsRef<std::path::Path>,
+    ) -> RecordingStreamResult<()> {
+        self.log_file(filepath, None)
+    }
+
+    /// Logs the given `contents` using all [`re_data_source::DataLoader`]s available.
+    ///
+    /// A single `path` might be handled by more than one loader.
+    ///
+    /// This method blocks until either at least one [`re_data_source::DataLoader`] starts
+    /// streaming data in or all of them fail.
+    ///
+    /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+    pub fn log_file_from_contents(
+        &self,
+        filepath: impl AsRef<std::path::Path>,
+        contents: std::borrow::Cow<'_, [u8]>,
+    ) -> RecordingStreamResult<()> {
+        self.log_file(filepath, Some(contents))
+    }
+
+    fn log_file(
+        &self,
+        filepath: impl AsRef<std::path::Path>,
+        contents: Option<std::borrow::Cow<'_, [u8]>>,
+    ) -> RecordingStreamResult<()> {
+        let filepath = filepath.as_ref();
+        let has_contents = contents.is_some();
+
+        let (tx, rx) = re_smart_channel::smart_channel(
+            re_smart_channel::SmartMessageSource::Sdk,
+            re_smart_channel::SmartChannelSource::File(filepath.into()),
+        );
+
+        let Some(store_id) = &self.store_info().map(|info| info.store_id.clone()) else {
+            // There's no recording.
+            return Ok(());
+        };
+        if let Some(contents) = contents {
+            re_data_source::load_from_file_contents(
+                store_id,
+                re_log_types::FileSource::Sdk,
+                filepath,
+                contents,
+                &tx,
+            )?;
+        } else {
+            re_data_source::load_from_path(store_id, re_log_types::FileSource::Sdk, filepath, &tx)?;
+        }
+        drop(tx);
+
+        // We can safely ignore the error on `recv()` as we're in complete control of both ends of
+        // the channel.
+        let thread_name = if has_contents {
+            format!("log_file_from_contents({filepath:?})")
+        } else {
+            format!("log_file_from_path({filepath:?})")
+        };
+        let handle = std::thread::Builder::new()
+            .name(thread_name.clone())
+            .spawn({
+                let this = self.clone();
+                move || {
+                    while let Some(msg) = rx.recv().ok().and_then(|msg| msg.into_data()) {
+                        this.record_msg(msg);
+                    }
+                }
+            })
+            .map_err(|err| RecordingStreamError::SpawnThread {
+                name: thread_name,
+                err,
+            })?;
+
+        debug_assert!(
+            self.inner.is_some(),
+            "recording should always be fully init at this stage"
+        );
+        if let Some(inner) = self.inner.as_ref() {
+            inner.dataloader_handles.lock().push(handle);
         }
 
         Ok(())
@@ -1450,6 +1569,22 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn disconnect(&self) {
+        let Some(this) = &*self.inner else {
+            re_log::warn_once!("Recording disabled - call to disconnect() ignored");
+            return;
+        };
+
+        // When disconnecting, we need to make sure that pending top-level `DataLoader` threads that
+        // were started from the SDK run to completion.
+        //
+        // TODO(cmc): At some point we might want to make it configurable, though I cannot really
+        // think of a use case where you'd want to drop those threads immediately upon
+        // disconnection.
+        let dataloader_handles = std::mem::take(&mut *this.dataloader_handles.lock());
+        for handle in dataloader_handles {
+            handle.join().ok();
+        }
+
         self.set_sink(Box::new(crate::sink::BufferedSink::new()));
     }
 }
@@ -1465,11 +1600,13 @@ impl fmt::Debug for RecordingStream {
                 cmds_tx: _,
                 batcher: _,
                 batcher_to_sink_handle: _,
+                dataloader_handles,
                 pid_at_creation,
             }) => f
                 .debug_struct("RecordingStream")
                 .field("info", &info)
                 .field("tick", &tick)
+                .field("pending_dataloaders", &dataloader_handles.lock().len())
                 .field("pid_at_creation", &pid_at_creation)
                 .finish_non_exhaustive(),
             None => write!(f, "RecordingStream {{ disabled }}"),

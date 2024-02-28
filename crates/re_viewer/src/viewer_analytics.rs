@@ -180,6 +180,7 @@ impl ViewerAnalytics {
                     re_log_types::FileSource::Cli => "file_cli".to_owned(),
                     re_log_types::FileSource::DragAndDrop => "file_drag_and_drop".to_owned(),
                     re_log_types::FileSource::FileDialog => "file_dialog".to_owned(),
+                    re_log_types::FileSource::Sdk => "file_sdk".to_owned(),
                 },
                 StoreSource::Viewer => "viewer".to_owned(),
                 StoreSource::Other(other) => other.clone(),
