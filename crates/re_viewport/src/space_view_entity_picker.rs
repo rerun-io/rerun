@@ -161,7 +161,7 @@ fn add_entities_line_ui(
 
         let add_info = entities_add_info.get(entity_path).unwrap();
 
-        let is_explicitly_excluded = entity_path_filter.is_explicitly_excluded(entity_path);
+        let is_explicitly_excluded = entity_path_filter.is_included(entity_path);
         let is_explicitly_included = entity_path_filter.is_explicitly_included(entity_path);
         let is_included = entity_path_filter.is_included(entity_path);
 

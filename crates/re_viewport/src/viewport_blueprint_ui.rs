@@ -290,13 +290,15 @@ impl Viewport<'_, '_> {
                     space_view_visible,
                 );
 
-                // Show 'projections' if there's any items that weren't part of the tree under origin.
+                // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
+                // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
                 let mut projections = Vec::new();
                 result_tree.visit(&mut |node| {
                     if !node
                         .data_result
                         .entity_path
                         .starts_with(&space_view.space_origin)
+                        && node.data_result.direct_included
                     {
                         projections.push(node);
                         false
