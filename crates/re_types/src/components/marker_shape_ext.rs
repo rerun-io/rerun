@@ -1,3 +1,4 @@
+#[cfg(feature = "egui_plot")]
 use super::MarkerShape;
 
 #[cfg(feature = "egui_plot")]
