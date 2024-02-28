@@ -37,6 +37,7 @@
     "Bazel",
     "Bgra",
     "Bhat",
+    "bibtex",
     "bindgen",
     "bindgroup",
     "binsearch",
