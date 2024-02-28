@@ -54,7 +54,7 @@ class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin)
 
     @staticmethod
     def _native_to_pa_array(data: ContainerKindArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, ContainerKind):
+        if isinstance(data, (ContainerKind, int, str)):
             data = [data]
 
         types: list[int] = []
@@ -67,7 +67,18 @@ class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin)
             elif isinstance(value, int):
                 types.append(value)  # By number
             elif isinstance(value, str):
-                types.append(ContainerKind[value].value)  # By name
+                if hasattr(ContainerKind, value):
+                    types.append(ContainerKind[value].value)  # fast path
+                elif value.lower() == "tabs":
+                    types.append(ContainerKind.Tabs.value)
+                elif value.lower() == "horizontal":
+                    types.append(ContainerKind.Horizontal.value)
+                elif value.lower() == "vertical":
+                    types.append(ContainerKind.Vertical.value)
+                elif value.lower() == "grid":
+                    types.append(ContainerKind.Grid.value)
+                else:
+                    raise ValueError(f"Unknown ContainerKind kind: {value}")
             else:
                 raise ValueError(f"Unknown ContainerKind kind: {value}")
 

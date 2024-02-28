@@ -68,7 +68,7 @@ class EnumTestBatch(BaseBatch[EnumTestArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: EnumTestArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, EnumTest):
+        if isinstance(data, (EnumTest, int, str)):
             data = [data]
 
         types: list[int] = []
@@ -81,7 +81,22 @@ class EnumTestBatch(BaseBatch[EnumTestArrayLike], ComponentBatchMixin):
             elif isinstance(value, int):
                 types.append(value)  # By number
             elif isinstance(value, str):
-                types.append(EnumTest[value].value)  # By name
+                if hasattr(EnumTest, value):
+                    types.append(EnumTest[value].value)  # fast path
+                elif value.lower() == "up":
+                    types.append(EnumTest.Up.value)
+                elif value.lower() == "down":
+                    types.append(EnumTest.Down.value)
+                elif value.lower() == "right":
+                    types.append(EnumTest.Right.value)
+                elif value.lower() == "left":
+                    types.append(EnumTest.Left.value)
+                elif value.lower() == "forward":
+                    types.append(EnumTest.Forward.value)
+                elif value.lower() == "back":
+                    types.append(EnumTest.Back.value)
+                else:
+                    raise ValueError(f"Unknown EnumTest kind: {value}")
             else:
                 raise ValueError(f"Unknown EnumTest kind: {value}")
 

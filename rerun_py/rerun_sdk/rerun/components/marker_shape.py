@@ -66,7 +66,7 @@ class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: MarkerShapeArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, MarkerShape):
+        if isinstance(data, (MarkerShape, int, str)):
             data = [data]
 
         types: list[int] = []
@@ -79,7 +79,30 @@ class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
             elif isinstance(value, int):
                 types.append(value)  # By number
             elif isinstance(value, str):
-                types.append(MarkerShape[value].value)  # By name
+                if hasattr(MarkerShape, value):
+                    types.append(MarkerShape[value].value)  # fast path
+                elif value.lower() == "circle":
+                    types.append(MarkerShape.Circle.value)
+                elif value.lower() == "diamond":
+                    types.append(MarkerShape.Diamond.value)
+                elif value.lower() == "square":
+                    types.append(MarkerShape.Square.value)
+                elif value.lower() == "cross":
+                    types.append(MarkerShape.Cross.value)
+                elif value.lower() == "plus":
+                    types.append(MarkerShape.Plus.value)
+                elif value.lower() == "up":
+                    types.append(MarkerShape.Up.value)
+                elif value.lower() == "down":
+                    types.append(MarkerShape.Down.value)
+                elif value.lower() == "left":
+                    types.append(MarkerShape.Left.value)
+                elif value.lower() == "right":
+                    types.append(MarkerShape.Right.value)
+                elif value.lower() == "asterisk":
+                    types.append(MarkerShape.Asterisk.value)
+                else:
+                    raise ValueError(f"Unknown MarkerShape kind: {value}")
             else:
                 raise ValueError(f"Unknown MarkerShape kind: {value}")
 

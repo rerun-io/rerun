@@ -817,39 +817,60 @@ fn code_for_enum(
         2,
     );
 
+    // Generate case-insentivie string-to-enum conversion:
+    let match_names = obj
+        .fields
+        .iter()
+        .map(|f| {
+            let newline = '\n';
+            let variant = f.pascal_case_name();
+            let lowercase_variant = variant.to_lowercase();
+            format!(
+                r#"elif value.lower() == "{lowercase_variant}":{newline}    types.append({name}.{variant}.value)"#
+            )
+        })
+        .format("\n")
+        .to_string();
+
+    let match_names = indent::indent_all_by(8, match_names);
+
     let num_variants = obj.fields.len();
 
     let native_to_pa_array_impl = unindent(&format!(
         r##"
-            if isinstance(data, {name}):
-                data = [data]
+if isinstance(data, ({name}, int, str)):
+    data = [data]
 
-            types: list[int] = []
+types: list[int] = []
 
-            for value in data:
-                if value is None:
-                    types.append(0)
-                elif isinstance(value, {name}):
-                    types.append(value.value) # Actual enum value
-                elif isinstance(value, int):
-                    types.append(value) # By number
-                elif isinstance(value, str):
-                    types.append({name}[value].value) # By name
-                else:
-                    raise ValueError(f"Unknown {name} kind: {{value}}")
+for value in data:
+    if value is None:
+        types.append(0)
+    elif isinstance(value, {name}):
+        types.append(value.value) # Actual enum value
+    elif isinstance(value, int):
+        types.append(value) # By number
+    elif isinstance(value, str):
+        if hasattr({name}, value):
+            types.append({name}[value].value) # fast path
+{match_names}
+        else:
+            raise ValueError(f"Unknown {name} kind: {{value}}")
+    else:
+        raise ValueError(f"Unknown {name} kind: {{value}}")
 
-            buffers = [
-                None,
-                pa.array(types, type=pa.int8()).buffers()[1],
-            ]
-            children = (1 + {num_variants}) * [pa.nulls(len(data))]
+buffers = [
+    None,
+    pa.array(types, type=pa.int8()).buffers()[1],
+]
+children = (1 + {num_variants}) * [pa.nulls(len(data))]
 
-            return pa.UnionArray.from_buffers(
-                type=data_type,
-                length=len(data),
-                buffers=buffers,
-                children=children,
-            )
+return pa.UnionArray.from_buffers(
+    type=data_type,
+    length=len(data),
+    buffers=buffers,
+    children=children,
+)
         "##
     ));
 

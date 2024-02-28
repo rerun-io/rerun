@@ -54,7 +54,7 @@ class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: Corner2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, Corner2D):
+        if isinstance(data, (Corner2D, int, str)):
             data = [data]
 
         types: list[int] = []
@@ -67,7 +67,18 @@ class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):
             elif isinstance(value, int):
                 types.append(value)  # By number
             elif isinstance(value, str):
-                types.append(Corner2D[value].value)  # By name
+                if hasattr(Corner2D, value):
+                    types.append(Corner2D[value].value)  # fast path
+                elif value.lower() == "lefttop":
+                    types.append(Corner2D.LeftTop.value)
+                elif value.lower() == "righttop":
+                    types.append(Corner2D.RightTop.value)
+                elif value.lower() == "leftbottom":
+                    types.append(Corner2D.LeftBottom.value)
+                elif value.lower() == "rightbottom":
+                    types.append(Corner2D.RightBottom.value)
+                else:
+                    raise ValueError(f"Unknown Corner2D kind: {value}")
             else:
                 raise ValueError(f"Unknown Corner2D kind: {value}")
 
