@@ -322,8 +322,6 @@ impl ExamplePage {
                                         size,
                                         example.hovered(ui, self.id),
                                     );
-
-                                    ui.add_space(THUMBNAIL_TO_DESCRIPTION_VSPACE);
                                 });
                             }
 
@@ -408,23 +406,24 @@ fn example_thumbnail(
     let clip_width = thumbnail_size.x;
     let clip_height = thumbnail_size.x / ASPECT_RATIO;
     let padding = thumbnail_size.x * PADDING_PCT;
-    let image_size = thumbnail_size - vec2(padding * 2.0, 0.0);
 
+    let clip_top_left = ui.cursor().left_top();
+    let bottom_right = clip_top_left + vec2(clip_width, clip_height);
+    let clip_rect = egui::Rect::from_min_max(clip_top_left, bottom_right);
+
+    let thumbnail_top_left = clip_top_left + vec2(padding, 0.0);
+    let thumbnail_rect = egui::Rect::from_min_max(
+        thumbnail_top_left,
+        thumbnail_top_left + thumbnail_size - vec2(padding * 2.0, padding * 2.0 / ASPECT_RATIO),
+    );
+
+    // manually clip the rect and paint the image
     let orig_clip_rect = ui.clip_rect();
-    let top_left = ui.cursor().left_top();
-    let bottom_right = top_left + vec2(clip_width, clip_height);
-    let thumbnail_clip_rect = egui::Rect::from_min_max(top_left, bottom_right);
-    ui.set_clip_rect(thumbnail_clip_rect);
-    let response = ui
-        .horizontal(|ui| {
-            ui.add_space(padding);
-            ui.add(
-                egui::Image::new(&example.thumbnail.url)
-                    .rounding(rounding)
-                    .fit_to_exact_size(image_size),
-            )
-        })
-        .inner;
+    ui.set_clip_rect(orig_clip_rect.intersect(clip_rect));
+    egui::Image::new(&example.thumbnail.url)
+        .rounding(rounding)
+        .paint_at(ui, thumbnail_rect);
+    ui.advance_cursor_after_rect(clip_rect.expand2(vec2(0.0, THUMBNAIL_TO_DESCRIPTION_VSPACE)));
     ui.set_clip_rect(orig_clip_rect);
 
     // TODO(ab): use design tokens
@@ -436,29 +435,26 @@ fn example_thumbnail(
 
     // paint border
     ui.painter().rect_stroke(
-        response.rect.with_max_y(thumbnail_clip_rect.bottom()),
+        clip_rect.intersect(thumbnail_rect),
         rounding,
         (1.0, border_color),
     );
     ui.painter().line_segment(
-        [
-            thumbnail_clip_rect.left_bottom(),
-            thumbnail_clip_rect.right_bottom(),
-        ],
+        [clip_rect.left_bottom(), clip_rect.right_bottom()],
         (1.0, border_color),
     );
 
     // Show spinner overlay while loading the example:
     if is_loading(rx, example) {
         ui.painter().rect_filled(
-            response.rect,
+            clip_rect,
             rounding,
             egui::Color32::BLACK.gamma_multiply(0.75),
         );
 
-        let spinner_size = response.rect.size().min_elem().at_most(72.0);
+        let spinner_size = clip_rect.size().min_elem().at_most(72.0);
         let spinner_rect =
-            egui::Rect::from_center_size(response.rect.center(), egui::Vec2::splat(spinner_size));
+            egui::Rect::from_center_size(clip_rect.center(), egui::Vec2::splat(spinner_size));
         ui.allocate_ui_at_rect(spinner_rect, |ui| {
             ui.add(egui::Spinner::new().size(spinner_size));
         });
