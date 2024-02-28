@@ -90,7 +90,7 @@ fn add_entities_tree_ui(
         add_entities_line_ui(
             ctx,
             ui,
-            &format!("🔹 {name}"),
+            name,
             tree,
             space_view,
             query_result,

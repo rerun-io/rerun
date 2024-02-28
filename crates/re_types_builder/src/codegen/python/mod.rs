@@ -1406,17 +1406,17 @@ fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) ->
         if from.starts_with("rerun.datatypes") {
             "from ... import datatypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.datatypes").as_str()) {
-            format!("from ... import {scope}")
+            format!("from ...{scope} import datatypes as {scope}_datatypes")
         } else if from.starts_with("rerun.components") {
             "from ... import components".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.components").as_str()) {
-            format!("from ... import {scope}")
+            format!("from ...{scope} import components as {scope}_components")
         } else if from.starts_with("rerun.archetypes") {
             // NOTE: This is assuming importing other archetypes is legal… which whether it is or
             // isn't for this code generator to say.
             "from ... import archetypes".to_owned() // NOLINT
         } else if from.starts_with(format!("rerun.{scope}.archetytpes").as_str()) {
-            "from .. import {scope}".to_owned()
+            format!("from ...{scope} import archetypes as {scope}_archetypes")
         } else if from.is_empty() {
             format!("from . import {class}")
         } else {
@@ -1629,9 +1629,9 @@ fn fqname_to_type(fqname: &str) -> String {
         ["rerun", "datatypes", name] => format!("datatypes.{name}"),
         ["rerun", "components", name] => format!("components.{name}"),
         ["rerun", "archetypes", name] => format!("archetypes.{name}"),
-        ["rerun", scope, "datatypes", name] => format!("{scope}.datatypes.{name}"),
-        ["rerun", scope, "components", name] => format!("{scope}.components.{name}"),
-        ["rerun", scope, "archetypes", name] => format!("{scope}.archetypes.{name}"),
+        ["rerun", scope, "datatypes", name] => format!("{scope}_datatypes.{name}"),
+        ["rerun", scope, "components", name] => format!("{scope}_components.{name}"),
+        ["rerun", scope, "archetypes", name] => format!("{scope}_archetypes.{name}"),
         _ => {
             panic!("Unexpected fqname: {fqname}");
         }
@@ -1701,7 +1701,7 @@ fn quote_arrow_support_from_obj(
     } else if obj.kind == ObjectKind::Component {
         if let Some(data_type) = obj.delegate_datatype(objects) {
             let scope = match data_type.scope() {
-                Some(scope) => format!("{scope}."),
+                Some(scope) => format!("{scope}_"),
                 None => String::new(),
             };
             let data_extension_type = format!("{scope}datatypes.{}Type", data_type.name);
