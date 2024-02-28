@@ -4616,6 +4616,7 @@ dependencies = [
  "rand",
  "re_build_info",
  "re_build_tools",
+ "re_data_source",
  "re_data_store",
  "re_log",
  "re_log_encoding",

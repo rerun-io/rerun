@@ -27,7 +27,7 @@ pub fn load_from_path(
     if !path.exists() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            "path does not exist: {path:?}",
+            format!("path does not exist: {path:?}"),
         )
         .into());
     }
