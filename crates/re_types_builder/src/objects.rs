@@ -88,8 +88,8 @@ impl Objects {
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
                     assert!(obj.kind != ObjectKind::Archetype,
-                        "{virtpath}: Field {:?} is a primitive field which is part of an Archetype. Only Components are allowed on Archetypes.",
-                        field.fqname);
+                        "{virtpath}: Field {:?} is a primitive field of type {:?}. Only Components are allowed on Archetypes.",
+                        field.fqname, field.typ);
                 }
             }
         }
