@@ -1274,7 +1274,7 @@ fn time_marker_ui(
     let time_drag_id = ui.id().with("time_drag_id");
     let timeline_cursor_icon = CursorIcon::ResizeHorizontal;
     let is_hovering_the_loop_selection = ui.output(|o| o.cursor_icon) != CursorIcon::Default; // A kind of hacky proxy
-    let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
+    let is_anything_being_dragged = ui.ctx().dragged_id().is_some();
     let interact_radius = ui.style().interaction.resize_grab_radius_side;
 
     let mut is_hovering_time_cursor = false;
@@ -1344,7 +1344,7 @@ fn time_marker_ui(
                 let time = time_ranges_ui.clamp_time(time);
                 time_ctrl.set_time(time);
                 time_ctrl.pause();
-                ui.memory_mut(|mem| mem.set_dragged_id(time_drag_id));
+                ui.ctx().set_dragged_id(time_drag_id); // act as if the user grabbed the time marker cursor
             }
         }
     }

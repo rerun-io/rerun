@@ -428,10 +428,6 @@ fn egui_debug_options_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
         )
         .on_hover_text("Show an overlay on all interactive widgets")
         .changed();
-    any_clicked |= re_ui
-        .checkbox(ui, &mut debug.show_blocking_widget, "Show blocking widgets")
-        .on_hover_text("Show what widget blocks the interaction of another widget")
-        .changed();
 
     if any_clicked {
         let mut style = (*ui.ctx().style()).clone();

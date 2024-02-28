@@ -4,7 +4,6 @@ mod command;
 mod command_palette;
 mod design_tokens;
 pub mod drag_and_drop;
-pub mod egui_helpers;
 pub mod icons;
 mod layout_job_builder;
 pub mod list_item;
