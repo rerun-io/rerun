@@ -433,7 +433,7 @@ impl PythonCodeGenerator {
                     code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
                 }
                 crate::objects::ObjectClass::Enum => {
-                    code_for_enum(arrow_registry, &ext_class, objects, obj)
+                    code_for_enum(reporter, arrow_registry, &ext_class, objects, obj)
                 }
                 crate::objects::ObjectClass::Union => {
                     code_for_union(arrow_registry, &ext_class, objects, obj)
@@ -748,6 +748,7 @@ fn code_for_struct(
 }
 
 fn code_for_enum(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
@@ -839,11 +840,10 @@ fn code_for_enum(
     ));
 
     match obj.kind {
-        ObjectKind::Archetype => (),
-        ObjectKind::Component => {
-            unreachable!("component may not be a union")
+        ObjectKind::Archetype => {
+            reporter.error(&obj.virtpath, &obj.fqname, "An archetype cannot be an enum");
         }
-        ObjectKind::Datatype => {
+        ObjectKind::Component | ObjectKind::Datatype => {
             code.push_indented(
                 0,
                 quote_arrow_support_from_obj(
@@ -2065,6 +2065,9 @@ fn quote_arrow_field(field: &Field) -> String {
         is_nullable,
         metadata,
     } = field;
+
+    // The python Arrow API requires that all null-fields are marked as nullable:
+    let is_nullable = *is_nullable || *data_type == DataType::Null;
 
     let datatype = quote_arrow_datatype(data_type);
     let is_nullable = is_nullable.then_some("True").unwrap_or("False");
