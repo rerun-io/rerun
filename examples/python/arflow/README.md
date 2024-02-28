@@ -22,7 +22,7 @@ Watch our demo video:
 
 ## Get Started
 
-Please check our [project repo](https://github.com/cake-lab/ARFlow/blob/main/README.md), and refer to the individual [server](./python/README.md) and [client](./unity/README.md) installation guides.
+Please check our [project repo](https://github.com/cake-lab/ARFlow/blob/main/README.md), and refer to the individual [server](https://github.com/cake-lab/ARFlow/blob/main/python/README.md) and [client](https://github.com/cake-lab/ARFlow/blob/main/unity/README.md) installation guides.
 
 ## Citation
 
