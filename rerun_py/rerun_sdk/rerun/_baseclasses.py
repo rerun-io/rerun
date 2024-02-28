@@ -297,21 +297,36 @@ class ComponentBatchMixin(ComponentBatchLike):
 
 @catch_and_log_exceptions(context="creating empty array")
 def _empty_pa_array(type: pa.DataType) -> pa.Array:
+    if type == pa.null():
+        return pa.nulls(0)
+
     if isinstance(type, pa.ExtensionType):
         return type.wrap_array(_empty_pa_array(type.storage_type))
 
     # Creation of empty arrays of dense unions aren't implemented in pyarrow yet.
     if isinstance(type, pa.UnionType):
-        return pa.UnionArray.from_buffers(
-            type=type,
-            length=0,
-            buffers=[
-                None,
-                pa.array([], type=pa.int8()).buffers()[1],
-                pa.array([], type=pa.int32()).buffers()[1],
-            ],
-            children=[_empty_pa_array(field_type.type) for field_type in type],
-        )
+        if type.mode == "dense":
+            return pa.UnionArray.from_buffers(
+                type=type,
+                length=0,
+                buffers=[
+                    None,
+                    pa.array([], type=pa.int8()).buffers()[1],  # types
+                    pa.array([], type=pa.int32()).buffers()[1],  # offsets
+                ],
+                children=[_empty_pa_array(field_type.type) for field_type in type],
+            )
+        else:
+            return pa.UnionArray.from_buffers(
+                type=type,
+                length=0,
+                buffers=[
+                    None,
+                    pa.array([], type=pa.int8()).buffers()[1],  # types
+                ],
+                children=[_empty_pa_array(field_type.type) for field_type in type],
+            )
+
     # This also affects structs *containing* dense unions.
     if isinstance(type, pa.StructType):
         return pa.StructArray.from_arrays([_empty_pa_array(field_type.type) for field_type in type], fields=list(type))
