@@ -755,7 +755,10 @@ fn code_for_enum(
     obj: &Object,
 ) -> String {
     assert_eq!(obj.class, ObjectClass::Enum);
-    assert_eq!(obj.kind, ObjectKind::Datatype);
+    assert!(matches!(
+        obj.kind,
+        ObjectKind::Datatype | ObjectKind::Component
+    ));
 
     let Object { name, .. } = obj;
 

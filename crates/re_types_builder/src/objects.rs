@@ -628,6 +628,9 @@ impl Object {
     }
 
     pub fn is_arrow_transparent(&self) -> bool {
+        if self.is_enum() {
+            return false; // Enums are encoded as sparse unions
+        }
         self.kind == ObjectKind::Component || self.attrs.has(crate::ATTR_ARROW_TRANSPARENT)
     }
 

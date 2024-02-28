@@ -7,6 +7,10 @@ use crate::{ElementType, Object, ObjectKind, Type, ATTR_RUST_TUPLE_STRUCT};
 // ---
 
 pub fn is_tuple_struct_from_obj(obj: &Object) -> bool {
+    if !obj.is_struct() {
+        return false;
+    }
+
     let is_tuple_struct = obj.kind == ObjectKind::Component
         || (obj.is_struct() && obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some());
 
