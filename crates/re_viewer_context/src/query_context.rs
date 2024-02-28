@@ -113,28 +113,42 @@ impl DataResultTree {
     }
 
     /// Depth-first traversal of the tree, calling `visitor` on each result.
-    pub fn visit(&self, visitor: &mut impl FnMut(DataResultHandle)) {
+    ///
+    /// Stops traversing a branch if `visitor` returns `false`.
+    pub fn visit<'a>(&'a self, visitor: &mut impl FnMut(&'a DataResultNode) -> bool) {
         if let Some(root_handle) = self.root_handle {
             self.visit_recursive(root_handle, visitor);
         }
     }
 
     /// Look up a [`DataResult`] in the tree based on its handle.
+    #[inline]
     pub fn lookup_result(&self, handle: DataResultHandle) -> Option<&DataResult> {
         self.data_results.get(handle).map(|node| &node.data_result)
     }
 
     /// Look up a [`DataResultNode`] in the tree based on its handle.
+    #[inline]
     pub fn lookup_node(&self, handle: DataResultHandle) -> Option<&DataResultNode> {
         self.data_results.get(handle)
     }
 
     /// Look up a [`DataResultNode`] in the tree based on its handle.
+    #[inline]
     pub fn lookup_node_mut(&mut self, handle: DataResultHandle) -> Option<&mut DataResultNode> {
         self.data_results.get_mut(handle)
     }
 
     /// Look up a [`DataResultNode`] in the tree based on an [`EntityPath`].
+    #[inline]
+    pub fn lookup_node_by_path(&self, path: &EntityPath) -> Option<&DataResultNode> {
+        self.data_results_by_path
+            .get(&path.hash())
+            .and_then(|handle| self.lookup_node(*handle))
+    }
+
+    /// Look up a [`DataResult`] in the tree based on an [`EntityPath`].
+    #[inline]
     pub fn lookup_result_by_path(&self, path: &EntityPath) -> Option<&DataResult> {
         self.data_results_by_path
             .get(&path.hash())
@@ -146,16 +160,16 @@ impl DataResultTree {
         self.data_results_by_path.is_empty()
     }
 
-    fn visit_recursive(
-        &self,
+    fn visit_recursive<'a>(
+        &'a self,
         handle: DataResultHandle,
-        visitor: &mut impl FnMut(DataResultHandle),
+        visitor: &mut impl FnMut(&'a DataResultNode) -> bool,
     ) {
         if let Some(result) = self.data_results.get(handle) {
-            visitor(handle);
-
-            for child in &result.children {
-                self.visit_recursive(*child, visitor);
+            if visitor(result) {
+                for child in &result.children {
+                    self.visit_recursive(*child, visitor);
+                }
             }
         }
     }
