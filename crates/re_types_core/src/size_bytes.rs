@@ -544,11 +544,14 @@ fn estimated_bytes_size(array: &dyn Array) -> usize {
                 // - Equal-length arrays can be interpreted as a union by only defining the types
                 //   array.
 
+                // Rerun uses sparse unions to encode C-style enums.
+                // In that case, each field type is `null`, and the arrays are empty.
+
                 let num_elems = array.types().len();
                 let fields_size = array
                     .fields()
                     .iter()
-                    .map(|x| estimated_bytes_size(x.sliced(0, num_elems).as_ref()))
+                    .map(|x| estimated_bytes_size(x.sliced(0, num_elems.min(x.len())).as_ref()))
                     .sum::<usize>();
                 types_size + fields_size
             }
