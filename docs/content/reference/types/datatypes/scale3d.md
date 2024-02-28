@@ -4,7 +4,7 @@ title: "Scale3D"
 
 3D scaling factor, part of a transform representation.
 
-## Fields
+## Variants
 
 * ThreeD: [`Vec3D`](../datatypes/vec3d.md)
 

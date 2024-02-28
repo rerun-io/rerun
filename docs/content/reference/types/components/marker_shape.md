@@ -4,6 +4,18 @@ title: "MarkerShape"
 
 Shape of a marker.
 
+## Variants
+
+* Circle
+* Diamond
+* Square
+* Cross
+* Plus
+* Up
+* Down
+* Left
+* Right
+* Asterisk
 
 ## Links
  * 🌊 [C++ API docs for `MarkerShape`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1MarkerShape.html)

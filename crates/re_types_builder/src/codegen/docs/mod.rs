@@ -274,23 +274,31 @@ fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
 
     let mut fields = Vec::new();
     for field in &object.fields {
-        let Some(fqname) = field.typ.fqname() else {
-            continue;
-        };
-        let Some(ty) = object_map.get(fqname) else {
-            continue;
-        };
-        fields.push(format!(
-            "* {}: [`{}`](../{}/{}.md)",
-            field.name,
-            ty.name,
-            ty.kind.plural_snake_case(),
-            ty.snake_case_name()
-        ));
+        if object.is_enum() {
+            fields.push(format!("* {}", field.name));
+        } else {
+            let Some(fqname) = field.typ.fqname() else {
+                continue;
+            };
+            let Some(ty) = object_map.get(fqname) else {
+                continue;
+            };
+            fields.push(format!(
+                "* {}: [`{}`](../{}/{}.md)",
+                field.name,
+                ty.name,
+                ty.kind.plural_snake_case(),
+                ty.snake_case_name()
+            ));
+        }
     }
 
     if !fields.is_empty() {
-        putln!(o, "## Fields");
+        let heading = match object.class {
+            crate::ObjectClass::Struct => "## Fields",
+            crate::ObjectClass::Enum | crate::ObjectClass::Union => "## Variants",
+        };
+        putln!(o, "{heading}");
         putln!(o);
         for field in fields {
             putln!(o, "{field}");
