@@ -1677,7 +1677,7 @@ version = "0.26.2"
 source = "git+https://github.com/emilk/egui.git?rev=e8af6f38fcebcc889963e86c4a3ccebe97db1908#e8af6f38fcebcc889963e86c4a3ccebe97db1908"
 dependencies = [
  "egui",
- "ehttp 0.5.0",
+ "ehttp",
  "enum-map",
  "image",
  "log",
@@ -1725,9 +1725,9 @@ dependencies = [
 
 [[package]]
 name = "ehttp"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e598cc2bfc28612f26426259ed99a978270e9433d63ae6d2843e30fb0974cd02"
+checksum = "59a81c221a1e4dad06cb9c9deb19aea1193a5eea084e8cd42d869068132bf876"
 dependencies = [
  "document-features",
  "futures-util",
@@ -1736,20 +1736,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-streams",
- "web-sys",
-]
-
-[[package]]
-name = "ehttp"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59a81c221a1e4dad06cb9c9deb19aea1193a5eea084e8cd42d869068132bf876"
-dependencies = [
- "document-features",
- "js-sys",
- "ureq",
- "wasm-bindgen",
- "wasm-bindgen-futures",
  "web-sys",
 ]
 
@@ -4140,7 +4126,7 @@ version = "0.14.0-alpha.2"
 dependencies = [
  "crossbeam",
  "directories-next",
- "ehttp 0.4.0",
+ "ehttp",
  "re_build_info",
  "re_build_tools",
  "re_log",
@@ -4415,7 +4401,7 @@ name = "re_log_encoding"
 version = "0.14.0-alpha.2"
 dependencies = [
  "criterion",
- "ehttp 0.4.0",
+ "ehttp",
  "js-sys",
  "lz4_flex",
  "mimalloc",
@@ -5024,7 +5010,7 @@ dependencies = [
  "egui_extras",
  "egui_plot",
  "egui_tiles",
- "ehttp 0.4.0",
+ "ehttp",
  "image",
  "itertools 0.12.0",
  "once_cell",
