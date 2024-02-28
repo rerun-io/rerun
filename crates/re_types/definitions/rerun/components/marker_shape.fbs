@@ -8,7 +8,9 @@ include "rerun/attributes.fbs";
 namespace rerun.components;
 
 /// Shape of a marker.
-enum MarkerShape: byte {
+enum MarkerShape: byte (
+    "attr.docs.unreleased"
+) {
     Circle (default),
     Diamond,
     Square,
