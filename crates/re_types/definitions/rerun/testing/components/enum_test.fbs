@@ -1,4 +1,4 @@
-namespace rerun.testing.datatypes;
+namespace rerun.testing.components;
 
 /// A test of the enum type.
 enum EnumTest: byte {
