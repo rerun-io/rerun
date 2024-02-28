@@ -3,6 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_entity_db::{EntityTree, InstancePath};
+use re_log_types::external::re_types_core::components::InstanceKey;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::SyntaxHighlighting;
 use re_viewer_context::{
@@ -129,6 +130,25 @@ pub fn instance_path_button(
     )
 }
 
+pub fn instance_path_icon(
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
+    instance_path: &InstancePath,
+) -> &'static re_ui::icons::Icon {
+    if instance_path.instance_key != InstanceKey::SPLAT {
+        return &re_ui::icons::ENTITY;
+    }
+
+    if store
+        .all_components(&query.timeline, &instance_path.entity_path)
+        .is_some()
+    {
+        &re_ui::icons::ENTITY
+    } else {
+        &re_ui::icons::ENTITY_EMPTY
+    }
+}
+
 /// Show an instance id and make it selectable.
 pub fn instance_path_button_to(
     ctx: &ViewerContext<'_>,
@@ -145,7 +165,7 @@ pub fn instance_path_button_to(
         .re_ui
         .selectable_label_with_icon(
             ui,
-            &re_ui::icons::ENTITY,
+            instance_path_icon(query, store, instance_path),
             text,
             ctx.selection().contains_item(&item),
             re_ui::LabelStyle::Normal,

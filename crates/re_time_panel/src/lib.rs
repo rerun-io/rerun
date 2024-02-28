@@ -574,7 +574,11 @@ impl TimePanel {
             item_response: response,
             body_response,
         } = ListItem::new(ctx.re_ui, text)
-            .with_icon(&re_ui::icons::ENTITY)
+            .with_icon(if tree.entity.components.is_empty() {
+                &re_ui::icons::ENTITY_EMPTY
+            } else {
+                &re_ui::icons::ENTITY
+            })
             .width_allocation_mode(WidthAllocationMode::Compact)
             .selected(is_selected)
             .force_hovered(is_item_hovered)

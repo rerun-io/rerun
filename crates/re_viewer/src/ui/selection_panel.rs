@@ -1,5 +1,6 @@
 use egui::{NumExt as _, Ui};
 
+use re_data_ui::item_ui::instance_path_icon;
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
@@ -60,6 +61,14 @@ fn guess_query_and_store_for_selected_entity<'a>(
             ctx.entity_db.store(),
         )
     }
+}
+
+fn guess_instance_path_icon(
+    ctx: &ViewerContext<'_>,
+    instance_path: &InstancePath,
+) -> &'static re_ui::icons::Icon {
+    let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
+    instance_path_icon(&query, store, instance_path)
 }
 
 impl SelectionPanel {
@@ -433,7 +442,7 @@ fn what_is_selected_ui(
                         ctx.re_ui,
                         ui,
                         name,
-                        Some(&re_ui::icons::ENTITY),
+                        Some(guess_instance_path_icon(ctx, instance_path)),
                         &format!(
                             "{typ} '{instance_path}' as shown in Space View {:?}",
                             space_view.display_name
@@ -466,7 +475,7 @@ fn what_is_selected_ui(
                     ctx.re_ui,
                     ui,
                     name,
-                    Some(&re_ui::icons::ENTITY),
+                    Some(guess_instance_path_icon(ctx, instance_path)),
                     &format!("{typ} '{instance_path}'"),
                 );
 
