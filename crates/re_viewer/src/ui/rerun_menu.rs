@@ -378,14 +378,6 @@ fn experimental_feature_ui(
     re_ui
         .checkbox(
             ui,
-            &mut app_options.experimental_entity_filter_editor,
-            "Entity filter DSL",
-        )
-        .on_hover_text("Show an entity filter DSL when selecting a space-view.");
-
-    re_ui
-        .checkbox(
-            ui,
             &mut app_options.experimental_plot_query_clamping,
             "Plots: query clamping",
         )
