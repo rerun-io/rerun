@@ -180,6 +180,8 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // log any
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
+    m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
+    m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -956,6 +958,54 @@ fn log_arrow_msg(
     )?;
 
     recording.record_row(row, !timeless);
+
+    py.allow_threads(flush_garbage_queue);
+
+    Ok(())
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    file_path,
+    recording=None,
+))]
+fn log_file_from_path(
+    py: Python<'_>,
+    file_path: std::path::PathBuf,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
+    recording
+        .log_file_from_path(file_path)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    py.allow_threads(flush_garbage_queue);
+
+    Ok(())
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    file_path,
+    file_contents,
+    recording=None,
+))]
+fn log_file_from_contents(
+    py: Python<'_>,
+    file_path: std::path::PathBuf,
+    file_contents: &[u8],
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
+    recording
+        .log_file_from_contents(file_path, std::borrow::Cow::Borrowed(file_contents))
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     py.allow_threads(flush_garbage_queue);
 
