@@ -111,7 +111,9 @@ fn create_app(
     manifest_url: &Option<String>,
 ) -> crate::App {
     let build_info = re_build_info::build_info!();
-    let app_env = crate::AppEnvironment::Web;
+    let app_env = crate::AppEnvironment::Web {
+        url: cc.integration_info.web_info.location.url.clone(),
+    };
     let startup_options = crate::StartupOptions {
         memory_limit: re_memory::MemoryLimit {
             // On wasm32 we only have 4GB of memory to play around with.

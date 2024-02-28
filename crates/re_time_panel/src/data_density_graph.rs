@@ -490,7 +490,7 @@ pub fn data_density_graph_ui(
             ctx.selection_state().set_selection(item.to_item());
             time_ctrl.set_time(hovered_time_range.min);
             time_ctrl.pause();
-        } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
+        } else if ui.ctx().dragged_id().is_none() {
             show_row_ids_tooltip(
                 ctx,
                 time_ctrl,

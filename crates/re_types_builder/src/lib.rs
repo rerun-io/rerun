@@ -153,7 +153,7 @@ pub use self::codegen::{
 };
 pub use self::format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter};
 pub use self::objects::{
-    Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
+    Attributes, Docs, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
 };
 pub use self::report::{Report, Reporter};
 
@@ -243,6 +243,7 @@ pub fn compile_binary_schemas(
 /// - `include_dir_path`: path to the root directory of the fbs definition tree.
 /// - `entrypoint_path`: path to the root file of the fbs definition tree.
 pub fn generate_lang_agnostic(
+    reporter: &Reporter,
     include_dir_path: impl AsRef<Utf8Path>,
     entrypoint_path: impl AsRef<Utf8Path>,
 ) -> (Objects, ArrowRegistry) {
@@ -271,6 +272,7 @@ pub fn generate_lang_agnostic(
 
     // semantic pass: high level objects from low-level reflection data
     let mut objects = Objects::from_buf(
+        reporter,
         include_dir_path,
         sh.read_binary_file(tmp_path.join(binary_entrypoint_path))
             .unwrap()

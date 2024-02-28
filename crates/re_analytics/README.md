@@ -19,7 +19,7 @@ Find out its location by running `rerun analytics config`.
 Run `rerun analytics disable` to opt out of all usage data collection.
 
 ### What data is collected?
-The exact set of analytics events and parameters can be found here: <https://github.com/rerun-io/rerun/blob/main/crates/re_viewer/src/viewer_analytics.rs>
+The exact set of analytics events and parameters can be found here: <https://github.com/rerun-io/rerun/blob/main/crates/re_analytics/src/event.rs>
 
 - We collect high level events about the usage of the Rerun Viewer. For example:
     - The event 'Viewer Opened' helps us estimate how often Rerun is used.

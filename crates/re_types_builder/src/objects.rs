@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType, ATTR_RERUN_OVERRIDE_TYPE,
+    FbsType, Reporter, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
@@ -28,13 +28,21 @@ impl Objects {
     /// Runs the semantic pass on a serialized flatbuffers schema.
     ///
     /// The buffer must be a serialized [`FbsSchema`] (i.e. `.bfbs` data).
-    pub fn from_buf(include_dir_path: impl AsRef<Utf8Path>, buf: &[u8]) -> Self {
+    pub fn from_buf(
+        reporter: &Reporter,
+        include_dir_path: impl AsRef<Utf8Path>,
+        buf: &[u8],
+    ) -> Self {
         let schema = root_as_schema(buf).unwrap();
-        Self::from_raw_schema(include_dir_path, &schema)
+        Self::from_raw_schema(reporter, include_dir_path, &schema)
     }
 
     /// Runs the semantic pass on a deserialized flatbuffers [`FbsSchema`].
-    pub fn from_raw_schema(include_dir_path: impl AsRef<Utf8Path>, schema: &FbsSchema<'_>) -> Self {
+    pub fn from_raw_schema(
+        reporter: &Reporter,
+        include_dir_path: impl AsRef<Utf8Path>,
+        schema: &FbsSchema<'_>,
+    ) -> Self {
         let mut resolved_objs = BTreeMap::new();
         let mut resolved_enums = BTreeMap::new();
 
@@ -45,7 +53,8 @@ impl Objects {
 
         // resolve enums
         for enm in schema.enums() {
-            let resolved_enum = Object::from_raw_enum(include_dir_path, &enums, &objs, &enm);
+            let resolved_enum =
+                Object::from_raw_enum(reporter, include_dir_path, &enums, &objs, &enm);
             resolved_enums.insert(resolved_enum.fqname.clone(), resolved_enum);
         }
 
@@ -62,23 +71,24 @@ impl Objects {
         // Validate fields types: Archetype consist of components, everything else consists of datatypes.
         for obj in this.objects.values() {
             for field in &obj.fields {
+                let virtpath = &field.virtpath;
                 if let Some(field_type_fqname) = field.typ.fqname() {
                     let field_obj = &this[field_type_fqname];
                     if obj.kind == ObjectKind::Archetype {
                         assert!(field_obj.kind == ObjectKind::Component,
-                            "Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
+                            "{virtpath}: Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
                             field.fqname, field_type_fqname
                         );
                     } else {
                         assert!(field_obj.kind == ObjectKind::Datatype,
-                            "Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
+                            "{virtpath}: Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
                             field.fqname, field_type_fqname
                         );
                     }
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
                     assert!(obj.kind != ObjectKind::Archetype,
-                        "Field {:?} is a primitive field which is part of an Archetype. Only Components are allowed on Archetypes.",
+                        "{virtpath}: Field {:?} is a primitive field which is part of an Archetype. Only Components are allowed on Archetypes.",
                         field.fqname);
                 }
             }
@@ -420,8 +430,8 @@ pub struct Object {
     /// These are pre-sorted, in ascending order, using their `order` attribute.
     pub fields: Vec<ObjectField>,
 
-    /// Properties that only apply to either structs or unions.
-    pub specifics: ObjectSpecifics,
+    /// struct, enum, or union?
+    pub class: ObjectClass,
 
     /// The Arrow datatype of this `Object`, or `None` if the object is Arrow-transparent.
     ///
@@ -475,6 +485,9 @@ impl Object {
                     ObjectField::from_raw_object_field(include_dir_path, enums, objs, obj, &field)
                 })
                 .collect();
+
+            // The fields of a struct are reported in arbitrary order by flatbuffers,
+            // so we use the `order` attribute to sort them:
             fields.sort_by_key(|field| field.order);
 
             // Make sure no two fields have the same order:
@@ -508,7 +521,7 @@ impl Object {
             kind,
             attrs,
             fields,
-            specifics: ObjectSpecifics::Struct {},
+            class: ObjectClass::Struct {},
             datatype: None,
         }
     }
@@ -516,6 +529,7 @@ impl Object {
     /// Resolves a raw [`FbsEnum`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
     pub fn from_raw_enum(
+        reporter: &Reporter,
         include_dir_path: impl AsRef<Utf8Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
@@ -540,29 +554,13 @@ impl Object {
         let attrs = Attributes::from_raw_attrs(enm.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
-        let utype = {
-            if enm.underlying_type().base_type() == FbsBaseType::UType {
-                // This is a union (sum type).
-                None
-            } else {
-                // A C-style enum.
-                Some(ElementType::from_raw_base_type(
-                    enums,
-                    objs,
-                    enm.underlying_type(),
-                    enm.underlying_type().base_type(),
-                    &attrs,
-                ))
-            }
-        };
+        let is_enum = enm.underlying_type().base_type() != FbsBaseType::UType;
 
-        let is_enum = utype.is_some();
-
-        let mut fields: Vec<_> = enm
+        let fields: Vec<_> = enm
             .values()
             .iter()
-            // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
             .filter(|val| {
+                // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
                 is_enum
                     || val
                         .union_type()
@@ -570,30 +568,12 @@ impl Object {
                         .is_some()
             })
             .map(|val| {
-                ObjectField::from_raw_enum_value(include_dir_path, enums, objs, enm, &val, is_enum)
+                ObjectField::from_raw_enum_value(reporter, include_dir_path, enums, objs, enm, &val)
             })
             .collect();
 
-        if !is_enum {
-            fields.sort_by_key(|field| field.order);
-
-            // Make sure no two fields have the same order:
-            for (a, b) in fields.iter().tuple_windows() {
-                assert!(
-                    a.order != b.order,
-                    "{name:?}: Fields {:?} and {:?} have the same order",
-                    a.name,
-                    b.name
-                );
-            }
-        }
-
-        if kind == ObjectKind::Component {
-            assert!(
-                fields.len() == 1,
-                "components must have exactly 1 field, but {fqname} has {}",
-                fields.len()
-            );
+        if kind == ObjectKind::Component && fields.len() != 1 {
+            reporter.error(&virtpath, &fqname, "components must have exactly 1 field");
         }
 
         Self {
@@ -606,7 +586,11 @@ impl Object {
             kind,
             attrs,
             fields,
-            specifics: ObjectSpecifics::Union { utype },
+            class: if is_enum {
+                ObjectClass::Enum
+            } else {
+                ObjectClass::Union
+            },
             datatype: None,
         }
     }
@@ -631,29 +615,16 @@ impl Object {
         self.attrs.has(name)
     }
 
-    pub fn typ(&self) -> ObjectType {
-        self.specifics.typ()
-    }
-
     pub fn is_struct(&self) -> bool {
-        match &self.specifics {
-            ObjectSpecifics::Struct {} => true,
-            ObjectSpecifics::Union { utype: _ } => false,
-        }
+        self.class == ObjectClass::Struct
     }
 
     pub fn is_enum(&self) -> bool {
-        match &self.specifics {
-            ObjectSpecifics::Struct {} => false,
-            ObjectSpecifics::Union { utype } => utype.is_some(),
-        }
+        self.class == ObjectClass::Enum
     }
 
     pub fn is_union(&self) -> bool {
-        match &self.specifics {
-            ObjectSpecifics::Struct {} => false,
-            ObjectSpecifics::Union { utype } => utype.is_none(),
-        }
+        self.class == ObjectClass::Union
     }
 
     pub fn is_arrow_transparent(&self) -> bool {
@@ -718,37 +689,33 @@ pub fn is_testing_fqname(fqname: &str) -> bool {
     fqname.contains("rerun.testing")
 }
 
-/// Properties specific to either structs or unions, but not both.
-#[derive(Debug, Clone)]
-pub enum ObjectSpecifics {
-    Struct,
-    Union {
-        /// The underlying type of the union.
-        ///
-        /// `None` if this is a union, some value if this is an enum.
-        utype: Option<ElementType>,
-    },
-}
-
-impl ObjectSpecifics {
-    pub fn typ(&self) -> ObjectType {
-        match self {
-            ObjectSpecifics::Struct => ObjectType::Struct,
-            ObjectSpecifics::Union { utype: None } => ObjectType::Union,
-            ObjectSpecifics::Union { utype: Some(_) } => ObjectType::Enum,
-        }
-    }
-}
-
+/// Is this a struct, enum, or union?
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ObjectType {
+pub enum ObjectClass {
     Struct,
 
-    /// A proper union sum type
-    Union,
-
-    /// An enumeration of alternatives, C-style.
+    /// Dumb C-style enum.
+    ///
+    /// Encoded as a sparse arrow union.
+    ///
+    /// Arrow uses a `i8` to encode the variant, forbidding negatives,
+    /// so there are 127 possible states.
+    /// We reserve `0` for a special/implicit `__null_markers` variant,
+    /// which we use to encode null values.
+    /// This means we support at most 126 possible enum variants.
+    /// Therefore the enum can be backed by a simple `u8` in Rust and C++.
     Enum,
+
+    /// Proper sum-type union.
+    ///
+    /// Encoded as a dense arrow union.
+    ///
+    /// Arrow uses a `i8` to encode the variant, forbidding negatives,
+    /// so there are 127 possible states.
+    /// We reserve `0` for a special/implicit `__null_markers` variant,
+    /// which we use to encode null values.
+    /// This means we support at most 126 possible union variants.
+    Union,
 }
 
 /// A high-level representation of a flatbuffers field, which can be either a struct member or a
@@ -782,7 +749,8 @@ pub struct ObjectField {
     /// The field's attributes.
     pub attrs: Attributes,
 
-    /// The field's `order` attribute's value, which is always mandatory.
+    /// The struct field's `order` attribute's value, which is mandatory for struct fields
+    /// (otherwise their order is undefined).
     pub order: u32,
 
     /// Whether the field is nullable.
@@ -849,12 +817,12 @@ impl ObjectField {
     }
 
     pub fn from_raw_enum_value(
+        reporter: &Reporter,
         include_dir_path: impl AsRef<Utf8Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         enm: &FbsEnum<'_>,
         val: &FbsEnumVal<'_>,
-        is_enum: bool,
     ) -> Self {
         let fqname = format!("{}#{}", enm.name(), val.name());
         let (pkg_name, name) = fqname
@@ -882,15 +850,17 @@ impl ObjectField {
             &attrs,
         );
 
-        let order = if is_enum {
-            0 // enum variants don't have/need order
-        } else {
-            attrs.get::<u32>(&fqname, crate::ATTR_ORDER)
-        };
-
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
         // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
         let is_deprecated = false;
+
+        if attrs.has(crate::ATTR_ORDER) {
+            reporter.warn(
+                &virtpath,
+                &fqname,
+                "There is no need for an `order` attribute on enum/union variants",
+            );
+        }
 
         Self {
             virtpath,
@@ -901,7 +871,7 @@ impl ObjectField {
             docs,
             typ,
             attrs,
-            order,
+            order: 0, // no needed for enums
             is_nullable,
             is_deprecated,
             datatype: None,
@@ -935,6 +905,11 @@ impl ObjectField {
     /// The `snake_case` name of the field, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
         crate::to_snake_case(&self.name)
+    }
+
+    /// The `SCREAMING_SNAKE_CASE` name of the object, e.g. `TRANSLATION_AND_MAT3X3`.
+    pub fn screaming_snake_case_name(&self) -> String {
+        self.snake_case_name().to_uppercase()
     }
 
     /// The `PascalCase` name of the field, e.g. `TranslationAndMat3x3`.

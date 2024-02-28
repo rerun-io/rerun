@@ -75,6 +75,7 @@ examples = [
   "slahmr",
   "tapir",
   "widebaseline",
+  "arflow",
 ]
 
 [categories.setup]

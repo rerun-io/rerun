@@ -85,6 +85,7 @@ function(rerun_strict_warning_settings target)
                 -Wno-unreachable-code-return # TODO(emilk): remove this exception - we only need this because of codegen
                 -Wno-unused-macros
                 -Wno-unsafe-buffer-usage # There's a few helper ctors that run into this.
+                -Wno-unknown-warning-option # Otherwise older clang will complain about `-Wno-unsafe-buffer-usage`
             )
         endif()
 

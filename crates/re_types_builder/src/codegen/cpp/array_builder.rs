@@ -1,7 +1,7 @@
 use proc_macro2::Ident;
 use quote::{format_ident, quote};
 
-use crate::{Object, ObjectSpecifics, Objects, Type};
+use crate::{Object, ObjectClass, Objects, Type};
 
 use super::forward_decl::{ForwardDecl, ForwardDecls};
 
@@ -98,9 +98,10 @@ pub fn arrow_array_builder_type_object(
     if obj.is_arrow_transparent() {
         arrow_array_builder_type_and_declaration(&obj.fields[0].typ, objects, declarations)
     } else {
-        let class_ident = match obj.specifics {
-            ObjectSpecifics::Struct => format_ident!("StructBuilder"),
-            ObjectSpecifics::Union { .. } => format_ident!("DenseUnionBuilder"),
+        let class_ident = match obj.class {
+            ObjectClass::Struct => format_ident!("StructBuilder"),
+            ObjectClass::Enum => format_ident!("SparseUnionBuilder"),
+            ObjectClass::Union => format_ident!("DenseUnionBuilder"),
         };
 
         declarations.insert("arrow", ForwardDecl::Class(class_ident.clone()));

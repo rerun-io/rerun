@@ -12,8 +12,8 @@ union Rotation3D (
   "attr.python.aliases": "Sequence[SupportsFloat]"
 ) {
   /// Rotation defined by a quaternion.
-  Quaternion: Quaternion (order: 100),
+  Quaternion: Quaternion,
 
   /// Rotation defined with an axis and an angle.
-  AxisAngle: RotationAxisAngle (order: 200),
+  AxisAngle: RotationAxisAngle,
 }
