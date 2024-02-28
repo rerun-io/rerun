@@ -32,7 +32,7 @@ test = false
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
-re_sdk.workspace = true
+re_sdk = { workspace = true, features = ["data_loaders"] }
 
 ahash.workspace = true
 arrow2.workspace = true
