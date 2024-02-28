@@ -20,8 +20,8 @@ colored as described by the class's `AnnotationInfo`.
 ## Fields
 
 * info: [`AnnotationInfo`](../datatypes/annotation_info.md)
-* keypoint_annotations: [`AnnotationInfo`](../datatypes/annotation_info.md)
-* keypoint_connections: [`KeypointPair`](../datatypes/keypoint_pair.md)
+* keypoint_annotations: list of [`AnnotationInfo`](../datatypes/annotation_info.md)
+* keypoint_connections: list of [`KeypointPair`](../datatypes/keypoint_pair.md)
 
 ## Links
  * 🌊 [C++ API docs for `ClassDescription`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ClassDescription.html)

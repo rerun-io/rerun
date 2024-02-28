@@ -13,6 +13,9 @@ row 1 | flat_columns[1] flat_columns[4] flat_columns[7]
 row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 ```
 
+## Fields
+
+* flat_columns: 9x `f32`
 
 ## Links
  * 🌊 [C++ API docs for `Mat3x3`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Mat3x3.html)
