@@ -1,3 +1,4 @@
+use egui::vec2;
 use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
 use poll_promise::Promise;
@@ -302,64 +303,58 @@ impl ExamplePage {
                     .min_col_width(column_width)
                     .max_col_width(column_width)
                     .show(ui, |ui| {
-                        examples
-                            .chunks_mut(column_count)
-                            .for_each(|example_layouts| {
-                                for example in &mut *example_layouts {
-                                    // this is the beginning of the first cell for this example
-                                    example.set_top_left(ui.cursor().min);
+                        for example_layouts in examples.chunks_mut(column_count) {
+                            for example in &mut *example_layouts {
+                                // this is the beginning of the first cell for this example
+                                example.set_top_left(ui.cursor().min);
 
-                                    let thumbnail = &example.desc.thumbnail;
-                                    let width = thumbnail.width as f32;
-                                    let height = thumbnail.height as f32;
-                                    ui.vertical(|ui| {
-                                        let size =
-                                            egui::vec2(column_width, height * column_width / width);
+                                let thumbnail = &example.desc.thumbnail;
+                                let width = thumbnail.width as f32;
+                                let height = thumbnail.height as f32;
+                                ui.vertical(|ui| {
+                                    let size =
+                                        egui::vec2(column_width, height * column_width / width);
 
-                                        example_thumbnail(
-                                            ui,
-                                            rx,
-                                            &example.desc,
-                                            size,
-                                            example.hovered(ui, self.id),
-                                        );
+                                    example_thumbnail(
+                                        ui,
+                                        rx,
+                                        &example.desc,
+                                        size,
+                                        example.hovered(ui, self.id),
+                                    );
 
-                                        ui.add_space(THUMBNAIL_TO_DESCRIPTION_VSPACE);
-                                    });
-                                }
+                                    ui.add_space(THUMBNAIL_TO_DESCRIPTION_VSPACE);
+                                });
+                            }
 
-                                ui.end_row();
+                            ui.end_row();
 
-                                for example in &mut *example_layouts {
-                                    ui.vertical(|ui| {
-                                        example_description(
-                                            ui,
-                                            example,
-                                            example.hovered(ui, self.id),
-                                        );
+                            for example in &mut *example_layouts {
+                                ui.vertical(|ui| {
+                                    example_description(ui, example, example.hovered(ui, self.id));
 
-                                        ui.add_space(DESCRIPTION_TO_TAGS_VSPACE);
-                                    });
-                                }
+                                    ui.add_space(DESCRIPTION_TO_TAGS_VSPACE);
+                                });
+                            }
 
-                                ui.end_row();
+                            ui.end_row();
 
-                                for example in &mut *example_layouts {
-                                    ui.vertical(|ui| {
-                                        example_tags(ui, &example.desc);
+                            for example in &mut *example_layouts {
+                                ui.vertical(|ui| {
+                                    example_tags(ui, &example.desc);
 
-                                        // this is the end of the last cell for this example
-                                        example.set_bottom_right(egui::pos2(
-                                            ui.cursor().min.x + column_width,
-                                            ui.cursor().min.y,
-                                        ));
+                                    // this is the end of the last cell for this example
+                                    example.set_bottom_right(egui::pos2(
+                                        ui.cursor().min.x + column_width,
+                                        ui.cursor().min.y,
+                                    ));
 
-                                        ui.add_space(ROW_VSPACE);
-                                    });
-                                }
+                                    ui.add_space(ROW_VSPACE);
+                                });
+                            }
 
-                                ui.end_row();
-                            });
+                            ui.end_row();
+                        }
                     });
 
                 for example in examples {
@@ -397,16 +392,40 @@ fn example_thumbnail(
     ui: &mut Ui,
     rx: &ReceiveSet<LogMsg>,
     example: &ExampleDesc,
-    size: egui::Vec2,
+    thumbnail_size: egui::Vec2,
     hovered: bool,
 ) {
-    let rounding = egui::Rounding::same(THUMBNAIL_RADIUS);
+    const ASPECT_RATIO: f32 = 16.0 / 6.75; // same as `rerun.io/examples`
+    const PADDING_PCT: f32 = 0.07; // 7%
 
-    let response = ui.add(
-        egui::Image::new(&example.thumbnail.url)
-            .rounding(rounding)
-            .fit_to_exact_size(size),
-    );
+    let rounding = egui::Rounding {
+        nw: THUMBNAIL_RADIUS,
+        ne: THUMBNAIL_RADIUS,
+        sw: 0.0,
+        se: 0.0,
+    };
+
+    let clip_width = thumbnail_size.x;
+    let clip_height = thumbnail_size.x / ASPECT_RATIO;
+    let padding = thumbnail_size.x * PADDING_PCT;
+    let image_size = thumbnail_size - vec2(padding * 2.0, 0.0);
+
+    let orig_clip_rect = ui.clip_rect();
+    let top_left = ui.cursor().left_top();
+    let bottom_right = top_left + vec2(clip_width, clip_height);
+    let thumbnail_clip_rect = egui::Rect::from_min_max(top_left, bottom_right);
+    ui.set_clip_rect(thumbnail_clip_rect);
+    let response = ui
+        .horizontal(|ui| {
+            ui.add_space(padding);
+            ui.add(
+                egui::Image::new(&example.thumbnail.url)
+                    .rounding(rounding)
+                    .fit_to_exact_size(image_size),
+            )
+        })
+        .inner;
+    ui.set_clip_rect(orig_clip_rect);
 
     // TODO(ab): use design tokens
     let border_color = if hovered {
@@ -415,8 +434,19 @@ fn example_thumbnail(
         egui::Color32::from_gray(44)
     };
 
-    ui.painter()
-        .rect_stroke(response.rect, rounding, (1.0, border_color));
+    // paint border
+    ui.painter().rect_stroke(
+        response.rect.with_max_y(thumbnail_clip_rect.bottom()),
+        rounding,
+        (1.0, border_color),
+    );
+    ui.painter().line_segment(
+        [
+            thumbnail_clip_rect.left_bottom(),
+            thumbnail_clip_rect.right_bottom(),
+        ],
+        (1.0, border_color),
+    );
 
     // Show spinner overlay while loading the example:
     if is_loading(rx, example) {
