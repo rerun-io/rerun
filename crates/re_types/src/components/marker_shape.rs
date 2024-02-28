@@ -22,33 +22,63 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Shape of a marker.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Copy)]
-#[repr(transparent)]
-pub struct MarkerShape(pub u8);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum MarkerShape {
+    #[default]
+    Circle = 1,
+    Diamond = 2,
+    Square = 3,
+    Cross = 4,
+    Plus = 5,
+    Up = 6,
+    Down = 7,
+    Left = 8,
+    Right = 9,
+    Asterisk = 10,
+}
+
+impl MarkerShape {
+    /// All the different enum variants.
+    pub const ALL: [Self; 10] = [
+        Self::Circle,
+        Self::Diamond,
+        Self::Square,
+        Self::Cross,
+        Self::Plus,
+        Self::Up,
+        Self::Down,
+        Self::Left,
+        Self::Right,
+        Self::Asterisk,
+    ];
+}
 
 impl ::re_types_core::SizeBytes for MarkerShape {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
+        0
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <u8>::is_pod()
+        true
     }
 }
 
-impl From<u8> for MarkerShape {
-    #[inline]
-    fn from(shape: u8) -> Self {
-        Self(shape)
-    }
-}
-
-impl From<MarkerShape> for u8 {
-    #[inline]
-    fn from(value: MarkerShape) -> Self {
-        value.0
+impl std::fmt::Display for MarkerShape {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Circle => write!(f, "Circle"),
+            Self::Diamond => write!(f, "Diamond"),
+            Self::Square => write!(f, "Square"),
+            Self::Cross => write!(f, "Cross"),
+            Self::Plus => write!(f, "Plus"),
+            Self::Up => write!(f, "Up"),
+            Self::Down => write!(f, "Down"),
+            Self::Left => write!(f, "Left"),
+            Self::Right => write!(f, "Right"),
+            Self::Asterisk => write!(f, "Asterisk"),
+        }
     }
 }
 
@@ -66,7 +96,80 @@ impl ::re_types_core::Loggable for MarkerShape {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::UInt8
+        DataType::Union(
+            std::sync::Arc::new(vec![
+                Field {
+                    name: "_null_markers".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: true,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Circle".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Diamond".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Square".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Cross".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Plus".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Up".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Down".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Left".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Right".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+                Field {
+                    name: "Asterisk".to_owned(),
+                    data_type: DataType::Null,
+                    is_nullable: false,
+                    metadata: [].into(),
+                },
+            ]),
+            Some(std::sync::Arc::new(vec![
+                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32,
+            ])),
+            UnionMode::Sparse,
+        )
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -79,25 +182,30 @@ impl ::re_types_core::Loggable for MarkerShape {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            PrimitiveArray::new(
-                Self::arrow_datatype(),
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                data0_bitmap,
+                .collect();
+            let num_variants = 10usize;
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(value) => *value as i8,
+                })
+                .collect();
+            let fields: Vec<_> =
+                std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
+                    .take(1 + num_variants)
+                    .collect();
+            UnionArray::new(
+                <crate::components::MarkerShape>::arrow_datatype(),
+                types,
+                fields,
+                None,
             )
             .boxed()
         })
@@ -112,52 +220,39 @@ impl ::re_types_core::Loggable for MarkerShape {
     {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt8Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
-            .with_context("rerun.components.MarkerShape#shape")?
-            .into_iter()
-            .map(|opt| opt.copied())
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.MarkerShape#shape")
-            .with_context("rerun.components.MarkerShape")?)
-    }
-
-    #[allow(clippy::wildcard_imports)]
-    #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
         Ok({
-            let slice = arrow_data
+            let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<UInt8Array>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::UInt8;
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.components.MarkerShape#shape")?
-                .values()
-                .as_slice();
-            {
-                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
-            }
+                .with_context("rerun.components.MarkerShape")?;
+            let arrow_data_types = arrow_data.types();
+            arrow_data_types
+                .iter()
+                .map(|typ| match typ {
+                    0 => Ok(None),
+                    1 => Ok(Some(MarkerShape::Circle)),
+                    2 => Ok(Some(MarkerShape::Diamond)),
+                    3 => Ok(Some(MarkerShape::Square)),
+                    4 => Ok(Some(MarkerShape::Cross)),
+                    5 => Ok(Some(MarkerShape::Plus)),
+                    6 => Ok(Some(MarkerShape::Up)),
+                    7 => Ok(Some(MarkerShape::Down)),
+                    8 => Ok(Some(MarkerShape::Left)),
+                    9 => Ok(Some(MarkerShape::Right)),
+                    10 => Ok(Some(MarkerShape::Asterisk)),
+                    _ => Err(DeserializationError::missing_union_arm(
+                        Self::arrow_datatype(),
+                        "<invalid>",
+                        *typ as _,
+                    )),
+                })
+                .collect::<DeserializationResult<Vec<_>>>()
+                .with_context("rerun.components.MarkerShape")?
         })
     }
 }

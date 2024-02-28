@@ -5,54 +5,60 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import Sequence, Union
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
-from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .marker_shape_ext import MarkerShapeExt
 
 __all__ = ["MarkerShape", "MarkerShapeArrayLike", "MarkerShapeBatch", "MarkerShapeLike", "MarkerShapeType"]
 
 
-@define(init=False)
-class MarkerShape(MarkerShapeExt):
+from enum import Enum
+
+
+class MarkerShape(Enum):
     """**Component**: Shape of a marker."""
 
-    def __init__(self: Any, shape: MarkerShapeLike):
-        """Create a new instance of the MarkerShape component."""
-
-        # You can define your own __init__ function as a member of MarkerShapeExt in marker_shape_ext.py
-        self.__attrs_init__(shape=shape)
-
-    shape: int = field(
-        converter=MarkerShapeExt.shape__field_converter_override,  # type: ignore[misc]
-    )
-
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can define your own __array__ function as a member of MarkerShapeExt in marker_shape_ext.py
-        return np.asarray(self.shape, dtype=dtype)
-
-    def __int__(self) -> int:
-        return int(self.shape)
+    CIRCLE = 1
+    DIAMOND = 2
+    SQUARE = 3
+    CROSS = 4
+    PLUS = 5
+    UP = 6
+    DOWN = 7
+    LEFT = 8
+    RIGHT = 9
+    ASTERISK = 10
 
 
-if TYPE_CHECKING:
-    MarkerShapeLike = Union[MarkerShape, int, str]
-else:
-    MarkerShapeLike = Any
-
-MarkerShapeArrayLike = Union[MarkerShape, Sequence[MarkerShapeLike], int, str]
+MarkerShapeLike = MarkerShape
+MarkerShapeArrayLike = Union[MarkerShape, Sequence[MarkerShapeLike]]
 
 
 class MarkerShapeType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.MarkerShape"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
+        pa.ExtensionType.__init__(
+            self,
+            pa.sparse_union(
+                [
+                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                    pa.field("Circle", pa.null(), nullable=True, metadata={}),
+                    pa.field("Diamond", pa.null(), nullable=True, metadata={}),
+                    pa.field("Square", pa.null(), nullable=True, metadata={}),
+                    pa.field("Cross", pa.null(), nullable=True, metadata={}),
+                    pa.field("Plus", pa.null(), nullable=True, metadata={}),
+                    pa.field("Up", pa.null(), nullable=True, metadata={}),
+                    pa.field("Down", pa.null(), nullable=True, metadata={}),
+                    pa.field("Left", pa.null(), nullable=True, metadata={}),
+                    pa.field("Right", pa.null(), nullable=True, metadata={}),
+                    pa.field("Asterisk", pa.null(), nullable=True, metadata={}),
+                ]
+            ),
+            self._TYPE_NAME,
+        )
 
 
 class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
@@ -60,7 +66,28 @@ class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: MarkerShapeArrayLike, data_type: pa.DataType) -> pa.Array:
-        return MarkerShapeExt.native_to_pa_array_override(data, data_type)
+        if isinstance(data, MarkerShape):
+            data = [data]
 
+        types: list[int] = []
 
-MarkerShapeExt.deferred_patch_class(MarkerShape)
+        for value in data:
+            if value is None:
+                types.append(0)
+            elif isinstance(value, MarkerShape):
+                types.append(value.value)  # Actual enum value
+            elif isinstance(value, int):
+                types.append(value)  # By number
+            elif isinstance(value, str):
+                types.append(MarkerShape[value].value)  # By name
+            else:
+                raise ValueError(f"Unknown MarkerShape kind: {value}")
+
+        return pa.UnionArray.from_buffers(
+            type=data_type,
+            length=len(data),
+            buffers=[
+                None,
+                pa.array(types, type=pa.int8()).buffers()[1],
+            ],
+        )

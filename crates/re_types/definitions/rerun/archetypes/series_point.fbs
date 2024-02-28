@@ -28,7 +28,7 @@ table SeriesPoint {
     color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 1000);
 
     /// What shape to use to represent the point
-    marker: rerun.components.MarkerShape ("attr.rerun.component_optional", nullable, order: 2000);
+    marker: rerun.components.MarkerShape (enum_type: "rerun.components.MarkerShape", "attr.rerun.component_optional", nullable, order: 2000);
 
     /// Display name of the series.
     ///
