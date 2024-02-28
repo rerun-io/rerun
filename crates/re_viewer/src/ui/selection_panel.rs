@@ -364,7 +364,7 @@ fn what_is_selected_ui(
                 ctx.re_ui,
                 ui,
                 component_name.short_name(),
-                None,
+                Some(&re_ui::icons::COMPONENT),
                 &format!(
                     "Component {} of entity '{}'",
                     component_name.full_name(),
@@ -433,7 +433,7 @@ fn what_is_selected_ui(
                         ctx.re_ui,
                         ui,
                         name,
-                        None,
+                        Some(&re_ui::icons::ENTITY),
                         &format!(
                             "{typ} '{instance_path}' as shown in Space View {:?}",
                             space_view.display_name
@@ -441,17 +441,19 @@ fn what_is_selected_ui(
                     );
 
                     if let Some(parent) = parent {
-                        ui.horizontal(|ui| {
-                            ui.label("path");
-                            item_ui::entity_path_parts_buttons(
-                                ctx,
-                                &query,
-                                store,
-                                ui,
-                                Some(*space_view_id),
-                                &parent,
-                            );
-                        });
+                        if !parent.is_root() {
+                            ui.horizontal(|ui| {
+                                ui.label("path");
+                                item_ui::entity_path_parts_buttons(
+                                    ctx,
+                                    &query,
+                                    store,
+                                    ui,
+                                    Some(*space_view_id),
+                                    &parent,
+                                );
+                            });
+                        }
                     }
 
                     ui.horizontal(|ui| {
@@ -464,15 +466,19 @@ fn what_is_selected_ui(
                     ctx.re_ui,
                     ui,
                     name,
-                    None,
+                    Some(&re_ui::icons::ENTITY),
                     &format!("{typ} '{instance_path}'"),
                 );
 
                 if let Some(parent) = parent {
-                    ui.horizontal(|ui| {
-                        ui.label("path");
-                        item_ui::entity_path_parts_buttons(ctx, &query, store, ui, None, &parent);
-                    });
+                    if !parent.is_root() {
+                        ui.horizontal(|ui| {
+                            ui.label("path");
+                            item_ui::entity_path_parts_buttons(
+                                ctx, &query, store, ui, None, &parent,
+                            );
+                        });
+                    }
                 }
 
                 list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);

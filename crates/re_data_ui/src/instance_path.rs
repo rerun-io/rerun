@@ -66,42 +66,45 @@ impl DataUi for InstancePath {
         }
 
         // Now show the rest of the components:
-        egui::Grid::new("components").num_columns(2).show(ui, |ui| {
-            for component_name in normal_components {
-                let Some((_, _, component_data)) =
-                    get_component_with_instances(store, query, entity_path, component_name)
-                else {
-                    continue; // no need to show components that are unset at this point in time
-                };
+        egui::Grid::new("components")
+            .spacing(ui.spacing().item_spacing)
+            .num_columns(2)
+            .show(ui, |ui| {
+                for component_name in normal_components {
+                    let Some((_, _, component_data)) =
+                        get_component_with_instances(store, query, entity_path, component_name)
+                    else {
+                        continue; // no need to show components that are unset at this point in time
+                    };
 
-                item_ui::component_path_button(
-                    ctx,
-                    ui,
-                    &ComponentPath::new(entity_path.clone(), component_name),
-                );
-
-                if instance_key.is_splat() {
-                    super::component::EntityComponentWithInstances {
-                        entity_path: entity_path.clone(),
-                        component_data,
-                    }
-                    .data_ui(ctx, ui, UiVerbosity::Small, query, store);
-                } else {
-                    ctx.component_ui_registry.ui(
+                    item_ui::component_path_button(
                         ctx,
                         ui,
-                        UiVerbosity::Small,
-                        query,
-                        store,
-                        entity_path,
-                        &component_data,
-                        instance_key,
+                        &ComponentPath::new(entity_path.clone(), component_name),
                     );
-                }
 
-                ui.end_row();
-            }
-            Some(())
-        });
+                    if instance_key.is_splat() {
+                        super::component::EntityComponentWithInstances {
+                            entity_path: entity_path.clone(),
+                            component_data,
+                        }
+                        .data_ui(ctx, ui, UiVerbosity::Small, query, store);
+                    } else {
+                        ctx.component_ui_registry.ui(
+                            ctx,
+                            ui,
+                            UiVerbosity::Small,
+                            query,
+                            store,
+                            entity_path,
+                            &component_data,
+                            instance_key,
+                        );
+                    }
+
+                    ui.end_row();
+                }
+                Some(())
+            });
     }
 }
