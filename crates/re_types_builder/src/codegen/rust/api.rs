@@ -192,11 +192,11 @@ fn generate_object_file(
         match &token {
             // If this is a doc-comment block, be smart about it.
             proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
-                code.push_text(string_from_quoted(&acc), 1, 0);
+                code.push_indented(0, string_from_quoted(&acc), 1);
                 acc = TokenStream::new();
 
                 acc.extend([token, tokens.next().unwrap()]);
-                code.push_text(acc.to_string(), 1, 0);
+                code.push_indented(0, acc.to_string(), 1);
                 acc = TokenStream::new();
             }
             _ => {
@@ -205,7 +205,7 @@ fn generate_object_file(
         }
     }
 
-    code.push_text(string_from_quoted(&acc), 1, 0);
+    code.push_indented(0, string_from_quoted(&acc), 1);
 
     replace_doc_attrb_with_doc_comment(&code)
 }
