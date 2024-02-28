@@ -649,8 +649,26 @@ impl RecordingStream {
             },
         }
     }
+}
 
-    // pub fn inner()-> Arc<Option<RecordingStream>>
+// TODO(#5335): shutdown flushing behavior is too brittle.
+impl Drop for RecordingStream {
+    #[inline]
+    fn drop(&mut self) {
+        // If this holds the last strong handle to the recording, make sure that all pending
+        // `DataLoader` threads started from the SDK actually run to completion.
+        //
+        // NOTE: It's very important to do so from the `Drop` implmentation of `RecordingStream`
+        // itself, because the dataloader threads -- by definition -- will have to send data into
+        // this very recording, therefore we must make sure that at least one strong handle still lives
+        // on until they are all finished.
+        if let Either::Left(strong) = &mut self.inner {
+            if Arc::strong_count(strong) == 1 {
+                // Keep the recording alive until all dataloaders are finished.
+                self.with(|inner| inner.wait_for_dataloaders());
+            }
+        }
+    }
 }
 
 struct RecordingStreamInner {
@@ -674,6 +692,15 @@ struct RecordingStreamInner {
     pid_at_creation: u32,
 }
 
+impl fmt::Debug for RecordingStreamInner {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RecordingStreamInner")
+            .field("info", &self.info.store_id)
+            .finish()
+    }
+}
+
 impl Drop for RecordingStreamInner {
     fn drop(&mut self) {
         if self.is_forked_child() {
@@ -681,15 +708,7 @@ impl Drop for RecordingStreamInner {
             return;
         }
 
-        // Run all pending top-level `DataLoader` threads that were started from the SDK to completion.
-        //
-        // TODO(cmc): At some point we might want to make it configurable, though I cannot really
-        // think of a use case where you'd want to drop those threads immediately upon
-        // disconnection.
-        let dataloader_handles = std::mem::take(&mut *self.dataloader_handles.lock());
-        for handle in dataloader_handles {
-            handle.join().ok();
-        }
+        self.wait_for_dataloaders();
 
         // NOTE: The command channel is private, if we're here, nothing is currently capable of
         // sending data down the pipeline.
@@ -757,6 +776,18 @@ impl RecordingStreamInner {
     #[inline]
     pub fn is_forked_child(&self) -> bool {
         self.pid_at_creation != std::process::id()
+    }
+
+    /// Make sure all pending top-level `DataLoader` threads that were started from the SDK run to completion.
+    //
+    // TODO(cmc): At some point we might want to make it configurable, though I cannot really
+    // think of a use case where you'd want to drop those threads immediately upon
+    // disconnection.
+    fn wait_for_dataloaders(&self) {
+        let dataloader_handles = std::mem::take(&mut *self.dataloader_handles.lock());
+        for handle in dataloader_handles {
+            handle.join().ok();
+        }
     }
 }
 
@@ -1612,15 +1643,7 @@ impl RecordingStream {
         let f = move |inner: &RecordingStreamInner| {
             // When disconnecting, we need to make sure that pending top-level `DataLoader` threads that
             // were started from the SDK run to completion.
-            //
-            // TODO(cmc): At some point we might want to make it configurable, though I cannot really
-            // think of a use case where you'd want to drop those threads immediately upon
-            // disconnection.
-            let dataloader_handles = std::mem::take(&mut *inner.dataloader_handles.lock());
-            for handle in dataloader_handles {
-                handle.join().ok();
-            }
-
+            inner.wait_for_dataloaders();
             self.set_sink(Box::new(crate::sink::BufferedSink::new()));
         };
 
