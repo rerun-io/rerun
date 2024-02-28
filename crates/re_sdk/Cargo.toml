@@ -21,6 +21,12 @@ all-features = true
 [features]
 default = []
 
+## Support for using Rerun's data-loaders directly from the SDK.
+##
+## See our `log_file` example and <https://www.rerun.io/docs/howto/open-any-file>
+## for more information.
+data_loaders = ["dep:re_data_source", "dep:re_smart_channel"]
+
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.
@@ -31,6 +37,7 @@ default = []
 ## However, when building from source in the repository, this feature adds quite a bit
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
 web_viewer = [
+  "dep:re_smart_channel",
   "dep:re_web_viewer_server",
   "dep:re_ws_comms",
   "dep:anyhow",
@@ -41,13 +48,11 @@ web_viewer = [
 
 [dependencies]
 re_build_info.workspace = true
-re_data_source.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_memory.workspace = true
 re_sdk_comms = { workspace = true, features = ["client"] }
-re_smart_channel.workspace = true
 re_types_core.workspace = true
 
 ahash.workspace = true
@@ -59,6 +64,8 @@ thiserror.workspace = true
 
 # Optional dependencies
 
+re_data_source = { workspace = true, optional = true }
+re_smart_channel = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 

@@ -81,7 +81,8 @@ pub enum RecordingStreamError {
     #[error(transparent)]
     DataReadError(#[from] re_log_types::DataReadError),
 
-    /// An error occurred when attempting to used a [`re_data_source::DataLoader`].
+    /// An error occurred while attempting to use a [`re_data_source::DataLoader`].
+    #[cfg(feature = "data_loaders")]
     #[error(transparent)]
     DataLoaderError(#[from] re_data_source::DataLoaderError),
 }
@@ -1023,6 +1024,7 @@ impl RecordingStream {
     /// streaming data in or all of them fail.
     ///
     /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+    #[cfg(feature = "data_loaders")]
     pub fn log_file_from_path(
         &self,
         filepath: impl AsRef<std::path::Path>,
@@ -1038,6 +1040,7 @@ impl RecordingStream {
     /// streaming data in or all of them fail.
     ///
     /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+    #[cfg(feature = "data_loaders")]
     pub fn log_file_from_contents(
         &self,
         filepath: impl AsRef<std::path::Path>,
@@ -1046,6 +1049,7 @@ impl RecordingStream {
         self.log_file(filepath, Some(contents))
     }
 
+    #[cfg(feature = "data_loaders")]
     fn log_file(
         &self,
         filepath: impl AsRef<std::path::Path>,

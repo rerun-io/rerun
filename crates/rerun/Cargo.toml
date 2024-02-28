@@ -20,7 +20,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = ["analytics", "demo", "glam", "image", "log", "sdk", "server"]
+default = ["analytics", "data_loaders", "demo", "glam", "image", "log", "sdk", "server"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = [
@@ -32,6 +32,12 @@ analytics = [
 
 ## Integration with `clap`.
 clap = ["dep:clap", "dep:tokio"]
+
+## Support for using Rerun's data-loaders directly from the SDK.
+##
+## See our `log_file` example and <https://www.rerun.io/docs/howto/open-any-file>
+## for more information.
+data_loaders = ["re_sdk?/data_loaders"]
 
 ## Demo helpers for examples.
 demo = []
