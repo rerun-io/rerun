@@ -658,7 +658,7 @@ impl Drop for RecordingStream {
         // If this holds the last strong handle to the recording, make sure that all pending
         // `DataLoader` threads started from the SDK actually run to completion.
         //
-        // NOTE: It's very important to do so from the `Drop` implmentation of `RecordingStream`
+        // NOTE: It's very important to do so from the `Drop` implementation of `RecordingStream`
         // itself, because the dataloader threads -- by definition -- will have to send data into
         // this very recording, therefore we must make sure that at least one strong handle still lives
         // on until they are all finished.
