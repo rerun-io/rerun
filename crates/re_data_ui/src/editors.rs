@@ -270,7 +270,7 @@ fn edit_marker_shape_ui(
                     .with_max_x(ui.max_rect().max.x + ui.spacing().menu_margin.right),
             );
 
-            for marker in re_types::components::MarkerShape::ALL {
+            for marker in MarkerShape::ALL {
                 let list_item = re_ui::list_item::ListItem::new(ctx.re_ui, marker.to_string())
                     .with_icon_fn(|_re_ui, ui, rect, visuals| {
                         paint_marker(ui, marker.into(), rect, visuals.text_color());
