@@ -56,7 +56,7 @@ jobs:
 
   rust-checks:
     name: "Rust Checks"
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.cpp-paths-filter.outputs.rust_changes == 'true'
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.rust-paths-filter.outputs.rust_changes == 'true'
     # Wait for the rust-paths-filter to be completed before starting.
     needs: rust-paths-filter
     uses: ./.github/workflows/reusable_checks_rust.yml
