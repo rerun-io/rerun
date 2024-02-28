@@ -409,6 +409,11 @@ pub fn instance_hover_card_ui(
     store: &re_data_store::DataStore,
     instance_path: &InstancePath,
 ) {
+    if ctx.entity_db.is_known_entity(&instance_path.entity_path) {
+        ui.label("Unknown entity.");
+        return;
+    }
+
     let subtype_string = if instance_path.instance_key.is_splat() {
         "Entity"
     } else {
