@@ -21,6 +21,13 @@ jobs:
       FULL: "true"
     secrets: inherit
 
+  rust_checks:
+    name: Checks
+    uses: ./.github/workflows/reusable_checks_rust.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+    secrets: inherit
+
   # Check that a CLEAN container with just `cargo` on it can build rerun:
   clean-build:
     name: cargo build on clean container
