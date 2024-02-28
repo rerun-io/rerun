@@ -20,16 +20,16 @@ from enum import Enum
 class MarkerShape(Enum):
     """**Component**: Shape of a marker."""
 
-    CIRCLE = 1
-    DIAMOND = 2
-    SQUARE = 3
-    CROSS = 4
-    PLUS = 5
-    UP = 6
-    DOWN = 7
-    LEFT = 8
-    RIGHT = 9
-    ASTERISK = 10
+    Circle = 1
+    Diamond = 2
+    Square = 3
+    Cross = 4
+    Plus = 5
+    Up = 6
+    Down = 7
+    Left = 8
+    Right = 9
+    Asterisk = 10
 
 
 MarkerShapeLike = MarkerShape

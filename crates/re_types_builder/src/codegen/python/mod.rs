@@ -775,7 +775,12 @@ fn code_for_enum(
 
     for (i, variant) in obj.fields.iter().enumerate() {
         let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
-        let variant_name = variant.screaming_snake_case_name();
+
+        // NOTE: we use PascalCase for the the enum variants for consistency across:
+        // * all languages (C++, Python, Rust)
+        // * the arrow datatype
+        // * the GUI
+        let variant_name = variant.pascal_case_name();
         code.push_indented(1, format!("{variant_name} = {arrow_type_index}"), 1);
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.

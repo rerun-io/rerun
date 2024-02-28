@@ -19,22 +19,22 @@ from enum import Enum
 class EnumTest(Enum):
     """**Component**: A test of the enum type."""
 
-    UP = 1
+    Up = 1
     """Great film."""
 
-    DOWN = 2
+    Down = 2
     """Feeling blue."""
 
-    RIGHT = 3
+    Right = 3
     """Correct."""
 
-    LEFT = 4
+    Left = 4
     """It's what's remaining."""
 
-    FORWARD = 5
+    Forward = 5
     """It's the only way to go."""
 
-    BACK = 6
+    Back = 6
     """Baby's got it."""
 
 

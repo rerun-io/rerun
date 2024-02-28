@@ -913,11 +913,6 @@ impl ObjectField {
         crate::to_snake_case(&self.name)
     }
 
-    /// The `SCREAMING_SNAKE_CASE` name of the object, e.g. `TRANSLATION_AND_MAT3X3`.
-    pub fn screaming_snake_case_name(&self) -> String {
-        self.snake_case_name().to_uppercase()
-    }
-
     /// The `PascalCase` name of the field, e.g. `TranslationAndMat3x3`.
     pub fn pascal_case_name(&self) -> String {
         crate::to_pascal_case(&self.name)
