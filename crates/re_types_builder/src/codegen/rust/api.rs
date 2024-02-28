@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
 use crate::{
@@ -563,7 +563,7 @@ fn quote_enum(
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
     let quoted_fields = fields.iter().enumerate().map(|(i, field)| {
-        let name = format_ident!("{}", crate::to_pascal_case(&field.name));
+        let name = format_ident!("{}", field.pascal_case_name());
 
         let quoted_doc = quote_field_docs(reporter, field);
 
@@ -578,12 +578,32 @@ fn quote_enum(
 
     let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
 
+    let count = Literal::usize_unsuffixed(fields.len());
+    let all = fields.iter().map(|field| {
+        let name = format_ident!("{}", field.pascal_case_name());
+        quote!(Self::#name)
+    });
+    let declare_const_all = quote! {
+        /// All the different enum variants.
+        pub const ALL: [Self; #count] = [#(#all),*];
+    };
+
+    let display_match_arms = fields.iter().map(|field| {
+        let name = field.pascal_case_name();
+        let quoted_name = format_ident!("{name}");
+        quote!(Self::#quoted_name => write!(f, #name))
+    });
+
     let tokens = quote! {
         #quoted_doc
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         #quoted_custom_clause
         pub enum #name {
             #(#quoted_fields,)*
+        }
+
+        impl #name {
+            #declare_const_all
         }
 
         impl ::re_types_core::SizeBytes for #name {
@@ -595,6 +615,14 @@ fn quote_enum(
             #[inline]
             fn is_pod() -> bool {
                 true
+            }
+        }
+
+        impl std::fmt::Display for #name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    #(#display_match_arms,)*
+                }
             }
         }
 

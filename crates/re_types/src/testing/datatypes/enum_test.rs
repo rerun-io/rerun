@@ -43,6 +43,18 @@ pub enum EnumTest {
     Back = 6,
 }
 
+impl EnumTest {
+    /// All the different enum variants.
+    pub const ALL: [Self; 6] = [
+        Self::Up,
+        Self::Down,
+        Self::Right,
+        Self::Left,
+        Self::Forward,
+        Self::Back,
+    ];
+}
+
 impl ::re_types_core::SizeBytes for EnumTest {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
@@ -52,6 +64,19 @@ impl ::re_types_core::SizeBytes for EnumTest {
     #[inline]
     fn is_pod() -> bool {
         true
+    }
+}
+
+impl std::fmt::Display for EnumTest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Up => write!(f, "Up"),
+            Self::Down => write!(f, "Down"),
+            Self::Right => write!(f, "Right"),
+            Self::Left => write!(f, "Left"),
+            Self::Forward => write!(f, "Forward"),
+            Self::Back => write!(f, "Back"),
+        }
     }
 }
 
