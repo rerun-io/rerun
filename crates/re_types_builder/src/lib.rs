@@ -202,14 +202,6 @@ use camino::{Utf8Path, Utf8PathBuf};
 /// - `include_dir_path`: path to the root directory of the fbs definition tree.
 /// - `output_dir_path`: output directory, where the binary schemas will be stored.
 /// - `entrypoint_path`: path to the root file of the fbs definition tree.
-///
-/// E.g.:
-/// ```no_run
-/// re_types_builder::compile_binary_schemas(
-///     "definitions/",
-///     "out/",
-///     "definitions/rerun/archetypes.fbs",
-/// );
 /// ```
 pub fn compile_binary_schemas(
     include_dir_path: impl AsRef<Utf8Path>,
@@ -434,22 +426,6 @@ fn generate_code(
 /// Panics on error.
 ///
 /// - `output_path`: path to the root of the output.
-///
-/// E.g.:
-/// ```no_run
-/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
-///     "./definitions",
-///     "./definitions/rerun/archetypes.fbs",
-/// );
-/// # let reporter = re_types_builder::report::init().1;
-/// # let check = false;
-/// re_types_builder::generate_cpp_code(
-///     &reporter,
-///     ".",
-///     &objects,
-///     &arrow_registry,
-///     check,
-/// );
 /// ```
 pub fn generate_cpp_code(
     reporter: &Reporter,
@@ -484,22 +460,6 @@ pub fn generate_cpp_code(
 /// If `check` is true, this will run a comparison check instead of writing files to disk.
 ///
 /// Panics on error.
-///
-/// E.g.:
-/// ```no_run
-/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
-///     "./definitions",
-///     "./definitions/rerun/archetypes.fbs",
-/// );
-/// # let reporter = re_types_builder::report::init().1;
-/// # let check = false;
-/// re_types_builder::generate_rust_code(
-///     &reporter,
-///     ".",
-///     &objects,
-///     &arrow_registry,
-///     check,
-/// );
 /// ```
 pub fn generate_rust_code(
     reporter: &Reporter,
@@ -531,23 +491,6 @@ pub fn generate_rust_code(
 /// Panics on error.
 ///
 /// - `output_pkg_path`: path to the root of the output package.
-///
-/// E.g.:
-/// ```no_run
-/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
-///     "./definitions",
-///     "./definitions/rerun/archetypes.fbs",
-/// );
-/// # let reporter = re_types_builder::report::init().1;
-/// # let check = false;
-/// re_types_builder::generate_python_code(
-///     &reporter,
-///     "./rerun_py/rerun_sdk",
-///     "./rerun_py/tests",
-///     &objects,
-///     &arrow_registry,
-///     check,
-/// );
 /// ```
 pub fn generate_python_code(
     reporter: &Reporter,
