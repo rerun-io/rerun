@@ -881,7 +881,10 @@ fn blueprint_ui_for_space_view(
         // Space View don't inherit properties.
         let root_data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
 
-        let mut props = root_data_result.accumulated_properties().clone();
+        let mut props = root_data_result
+            .individual_properties()
+            .cloned()
+            .unwrap_or_default();
 
         visible_history_ui(
             ctx,
@@ -904,7 +907,7 @@ fn blueprint_ui_for_space_view(
                 &mut props,
             );
 
-        root_data_result.save_recursive_override(Some(props), ctx);
+        root_data_result.save_individual_override(Some(props), ctx);
     }
 }
 
@@ -928,7 +931,11 @@ fn blueprint_ui_for_instance_path(
                     .lookup_result_by_path(entity_path)
                     .cloned()
                 {
-                    let mut props = data_result.accumulated_properties().clone();
+                    let mut props = data_result
+                        .individual_properties()
+                        .cloned()
+                        .unwrap_or_default();
+
                     entity_props_ui(
                         ctx,
                         ui,
@@ -937,7 +944,7 @@ fn blueprint_ui_for_instance_path(
                         &mut props,
                         data_result.accumulated_properties(),
                     );
-                    data_result.save_recursive_override(Some(props), ctx);
+                    data_result.save_individual_override(Some(props), ctx);
                 }
             }
         }

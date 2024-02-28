@@ -285,7 +285,7 @@ impl Viewport<'_, '_> {
         query_result: &DataQueryResult,
         top_node: &DataResultNode,
         space_view: &SpaceViewBlueprint,
-        parent_visible: bool,
+        space_view_visible: bool,
     ) {
         let query = ctx.current_query();
         let store = ctx.entity_db.store();
@@ -314,15 +314,18 @@ impl Viewport<'_, '_> {
             let is_item_hovered =
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-            let mut accumulated_properties = data_result.accumulated_properties().clone();
-            let visible = accumulated_properties.visible;
+            let visible = data_result.accumulated_properties().visible;
+            let mut recursive_properties = data_result
+                .recursive_properties()
+                .cloned()
+                .unwrap_or_default();
 
             let name = entity_path
                 .iter()
                 .last()
                 .map_or("unknown".to_owned(), |e| e.ui_string());
 
-            let subdued = !parent_visible
+            let subdued = !space_view_visible
                 || !visible
                 || (data_result.visualizers.is_empty() && child_node.children.is_empty());
 
@@ -331,8 +334,8 @@ impl Viewport<'_, '_> {
                 let vis_response = visibility_button_ui(
                     re_ui,
                     ui,
-                    parent_visible,
-                    &mut accumulated_properties.visible,
+                    space_view_visible,
+                    &mut recursive_properties.visible,
                 );
 
                 let response = remove_button_ui(
@@ -380,7 +383,7 @@ impl Viewport<'_, '_> {
                                 query_result,
                                 child_node,
                                 space_view,
-                                visible,
+                                space_view_visible,
                             );
                         },
                     )
@@ -405,7 +408,7 @@ impl Viewport<'_, '_> {
                 );
             }
 
-            data_result.save_recursive_override(Some(accumulated_properties), ctx);
+            data_result.save_recursive_override(ctx, Some(recursive_properties));
 
             ctx.select_hovered_on_click(&response, item);
         }

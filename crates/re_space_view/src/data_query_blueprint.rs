@@ -543,8 +543,9 @@ impl DataQueryPropertyResolver<'_> {
                 }
 
                 node.data_result.property_overrides = Some(PropertyOverrides {
-                    individual_properties: individual_properties.cloned(),
                     accumulated_properties,
+                    individual_properties: individual_properties.cloned(),
+                    recursive_properties: recursive_properties.cloned(),
                     component_overrides,
                     recursive_override_path,
                     individual_override_path,

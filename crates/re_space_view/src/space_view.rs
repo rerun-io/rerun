@@ -479,6 +479,7 @@ impl SpaceViewBlueprint {
             property_overrides: Some(PropertyOverrides {
                 accumulated_properties,
                 individual_properties,
+                recursive_properties: Default::default(),
                 component_overrides: Default::default(),
                 recursive_override_path: entity_path.clone(),
                 individual_override_path: entity_path,
