@@ -76,12 +76,12 @@ class EnumTestBatch(BaseBatch[EnumTestArrayLike]):
         for value in data:
             if value is None:
                 types.append(0)
-            elif isinstance(data, EnumTest):
+            elif isinstance(value, EnumTest):
                 types.append(value.value)  # Actual enum value
-            elif isinstance(data, int):
-                types.append(data)  # By number
-            elif isinstance(data, str):
-                types.append(EnumTest[data].value)  # By name
+            elif isinstance(value, int):
+                types.append(value)  # By number
+            elif isinstance(value, str):
+                types.append(EnumTest[value].value)  # By name
             else:
                 raise ValueError(f"Unknown EnumTest kind: {value}")
 

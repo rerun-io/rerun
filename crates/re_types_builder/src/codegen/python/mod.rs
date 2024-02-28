@@ -819,12 +819,12 @@ fn code_for_enum(
             for value in data:
                 if value is None:
                     types.append(0)
-                elif isinstance(data, {name}):
+                elif isinstance(value, {name}):
                     types.append(value.value) # Actual enum value
-                elif isinstance(data, int):
-                    types.append(data) # By number
-                elif isinstance(data, str):
-                    types.append({name}[data].value) # By name
+                elif isinstance(value, int):
+                    types.append(value) # By number
+                elif isinstance(value, str):
+                    types.append({name}[value].value) # By name
                 else:
                     raise ValueError(f"Unknown {name} kind: {{value}}")
 
