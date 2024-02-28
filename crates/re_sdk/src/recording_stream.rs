@@ -1,10 +1,12 @@
 use std::fmt;
 use std::io::IsTerminal;
+use std::sync::Weak;
 use std::sync::{atomic::AtomicI64, Arc};
 
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 
+use itertools::Either;
 use parking_lot::Mutex;
 use re_log_types::{
     ApplicationId, ArrowChunkReleaseCallback, DataCell, DataCellError, DataRow, DataTable,
@@ -614,7 +616,41 @@ impl RecordingStreamBuilder {
 /// Shutting down cannot ever block.
 #[derive(Clone)]
 pub struct RecordingStream {
-    inner: Arc<Option<RecordingStreamInner>>,
+    inner: Either<Arc<Option<RecordingStreamInner>>, Weak<Option<RecordingStreamInner>>>,
+}
+
+impl RecordingStream {
+    /// Passes a reference to the [`RecordingStreamInner`], if it exists.
+    ///
+    /// This works whether the underlying stream is strong or weak.
+    #[inline]
+    fn with<F: FnOnce(&RecordingStreamInner) -> R, R>(&self, f: F) -> Option<R> {
+        use std::ops::Deref as _;
+        match &self.inner {
+            Either::Left(strong) => strong.deref().as_ref().map(f),
+            Either::Right(weak) => weak
+                .upgrade()
+                .and_then(|strong| strong.deref().as_ref().map(f)),
+        }
+    }
+
+    /// Clones the [`RecordingStream`] without incrementing the refcount.
+    ///
+    /// Useful e.g. if you want to make sure that a detached thread won't prevent the [`RecordingStream`]
+    /// from flushing during shutdown.
+    //
+    // TODO(#5335): shutdown flushing behavior is too brittle.
+    #[inline]
+    pub fn clone_weak(&self) -> Self {
+        Self {
+            inner: match &self.inner {
+                Either::Left(strong) => Either::Right(Arc::downgrade(strong)),
+                Either::Right(weak) => Either::Right(Weak::clone(weak)),
+            },
+        }
+    }
+
+    // pub fn inner()-> Arc<Option<RecordingStream>>
 }
 
 struct RecordingStreamInner {
@@ -762,7 +798,7 @@ impl RecordingStream {
             Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
         });
         RecordingStreamInner::new(info, batcher_config, sink).map(|inner| Self {
-            inner: Arc::new(Some(inner)),
+            inner: Either::Left(Arc::new(Some(inner))),
         })
     }
 
@@ -772,7 +808,7 @@ impl RecordingStream {
     /// [`Self::is_enabled`] will return `false`.
     pub fn disabled() -> Self {
         Self {
-            inner: Arc::new(None),
+            inner: Either::Left(Arc::new(None)),
         }
     }
 }
@@ -1090,7 +1126,7 @@ impl RecordingStream {
         let handle = std::thread::Builder::new()
             .name(thread_name.clone())
             .spawn({
-                let this = self.clone();
+                let this = self.clone_weak();
                 move || {
                     while let Some(msg) = rx.recv().ok().and_then(|msg| msg.into_data()) {
                         this.record_msg(msg);
@@ -1102,13 +1138,7 @@ impl RecordingStream {
                 err,
             })?;
 
-        debug_assert!(
-            self.inner.is_some(),
-            "recording should always be fully init at this stage"
-        );
-        if let Some(inner) = self.inner.as_ref() {
-            inner.dataloader_handles.lock().push(handle);
-        }
+        self.with(|inner| inner.dataloader_handles.lock().push(handle));
 
         Ok(())
     }
@@ -1238,13 +1268,13 @@ impl RecordingStream {
     /// If not, all recording calls will be ignored.
     #[inline]
     pub fn is_enabled(&self) -> bool {
-        self.inner.is_some()
+        self.with(|_| true).unwrap_or(false)
     }
 
     /// The [`StoreInfo`] associated with this `RecordingStream`.
     #[inline]
-    pub fn store_info(&self) -> Option<&StoreInfo> {
-        (*self.inner).as_ref().map(|inner| &inner.info)
+    pub fn store_info(&self) -> Option<StoreInfo> {
+        self.with(|inner| inner.info.clone())
     }
 
     /// Determine whether a fork has happened since creating this `RecordingStream`. In general, this means our
@@ -1254,9 +1284,7 @@ impl RecordingStream {
     /// should do this during their initialization phase.
     #[inline]
     pub fn is_forked_child(&self) -> bool {
-        (*self.inner)
-            .as_ref()
-            .map_or(false, |inner| inner.is_forked_child())
+        self.with(|inner| inner.is_forked_child()).unwrap_or(false)
     }
 }
 
@@ -1264,16 +1292,18 @@ impl RecordingStream {
     /// Records an arbitrary [`LogMsg`].
     #[inline]
     pub fn record_msg(&self, msg: LogMsg) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to record_msg() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            // NOTE: Internal channels can never be closed outside of the `Drop` impl, this send cannot
+            // fail.
+            inner.cmds_tx.send(Command::RecordMsg(msg)).ok();
+            inner
+                .tick
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         };
 
-        // NOTE: Internal channels can never be closed outside of the `Drop` impl, this send cannot
-        // fail.
-
-        this.cmds_tx.send(Command::RecordMsg(msg)).ok();
-        this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to record_msg() ignored");
+        }
     }
 
     /// Records a single [`DataRow`].
@@ -1285,30 +1315,33 @@ impl RecordingStream {
     /// optimize for transport.
     #[inline]
     pub fn record_row(&self, mut row: DataRow, inject_time: bool) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to record_row() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            // TODO(#2074): Adding a timeline to something timeless would suddenly make it not
+            // timeless… so for now it cannot even have a tick :/
+            //
+            // NOTE: We're incrementing the current tick still.
+            let tick = inner
+                .tick
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if inject_time {
+                // Get the current time on all timelines, for the current recording, on the current
+                // thread…
+                let mut now = self.now();
+                // …and then also inject the current recording tick into it.
+                now.insert(Timeline::log_tick(), tick.into());
+
+                // Inject all these times into the row, overriding conflicting times, if any.
+                for (timeline, time) in now {
+                    row.timepoint.insert(timeline, time);
+                }
+            }
+
+            inner.batcher.push_row(row);
         };
 
-        // TODO(#2074): Adding a timeline to something timeless would suddenly make it not
-        // timeless… so for now it cannot even have a tick :/
-        //
-        // NOTE: We're incrementing the current tick still.
-        let tick = this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        if inject_time {
-            // Get the current time on all timelines, for the current recording, on the current
-            // thread…
-            let mut now = self.now();
-            // …and then also inject the current recording tick into it.
-            now.insert(Timeline::log_tick(), tick.into());
-
-            // Inject all these times into the row, overriding conflicting times, if any.
-            for (timeline, time) in now {
-                row.timepoint.insert(timeline, time);
-            }
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to record_row() ignored");
         }
-
-        this.batcher.push_row(row);
     }
 
     /// Swaps the underlying sink for a new one.
@@ -1326,30 +1359,31 @@ impl RecordingStream {
     /// If the current sink is in a broken state (e.g. a TCP sink with a broken connection that
     /// cannot be repaired), all pending data in its buffers will be dropped.
     pub fn set_sink(&self, sink: Box<dyn LogSink>) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to set_sink() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
+            // are safe.
+
+            // 1. Flush the batcher down the table channel
+            inner.batcher.flush_blocking();
+
+            // 2. Receive pending tables from the batcher's channel
+            inner.cmds_tx.send(Command::PopPendingTables).ok();
+
+            // 3. Swap the sink, which will internally make sure to re-ingest the backlog if needed
+            inner.cmds_tx.send(Command::SwapSink(sink)).ok();
+
+            // 4. Before we give control back to the caller, we need to make sure that the swap has
+            //    taken place: we don't want the user to send data to the old sink!
+            re_log::trace!("Waiting for sink swap to complete…");
+            let (cmd, oneshot) = Command::flush();
+            inner.cmds_tx.send(cmd).ok();
+            oneshot.recv().ok();
+            re_log::trace!("Sink swap completed.");
         };
 
-        // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
-        // are safe.
-
-        // 1. Flush the batcher down the table channel
-        this.batcher.flush_blocking();
-
-        // 2. Receive pending tables from the batcher's channel
-        this.cmds_tx.send(Command::PopPendingTables).ok();
-
-        // 3. Swap the sink, which will internally make sure to re-ingest the backlog if needed
-        this.cmds_tx.send(Command::SwapSink(sink)).ok();
-
-        // 4. Before we give control back to the caller, we need to make sure that the swap has
-        //    taken place: we don't want the user to send data to the old sink!
-        re_log::trace!("Waiting for sink swap to complete…");
-        let (cmd, oneshot) = Command::flush();
-        this.cmds_tx.send(cmd).ok();
-        oneshot.recv().ok();
-        re_log::trace!("Sink swap completed.");
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_sink() ignored");
+        }
     }
 
     /// Initiates a flush of the pipeline and returns immediately.
@@ -1357,27 +1391,28 @@ impl RecordingStream {
     /// This does **not** wait for the flush to propagate (see [`Self::flush_blocking`]).
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_async(&self) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to flush_async() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
+            // are safe.
+
+            // 1. Synchronously flush the batcher down the table channel
+            //
+            // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all tables
+            // are ready to be drained by the time this call returns.
+            // It cannot block indefinitely and is fairly fast as it only requires compute (no I/O).
+            inner.batcher.flush_blocking();
+
+            // 2. Drain all pending tables from the batcher's channel _before_ any other future command
+            inner.cmds_tx.send(Command::PopPendingTables).ok();
+
+            // 3. Asynchronously flush everything down the sink
+            let (cmd, _) = Command::flush();
+            inner.cmds_tx.send(cmd).ok();
         };
 
-        // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
-        // are safe.
-
-        // 1. Synchronously flush the batcher down the table channel
-        //
-        // NOTE: This _has_ to be done synchronously as we need to be guaranteed that all tables
-        // are ready to be drained by the time this call returns.
-        // It cannot block indefinitely and is fairly fast as it only requires compute (no I/O).
-        this.batcher.flush_blocking();
-
-        // 2. Drain all pending tables from the batcher's channel _before_ any other future command
-        this.cmds_tx.send(Command::PopPendingTables).ok();
-
-        // 3. Asynchronously flush everything down the sink
-        let (cmd, _) = Command::flush();
-        this.cmds_tx.send(cmd).ok();
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to flush_async() ignored");
+        }
     }
 
     /// Initiates a flush the batching pipeline and waits for it to propagate.
@@ -1389,24 +1424,25 @@ impl RecordingStream {
             return;
         }
 
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to flush_blocking() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
+            // are safe.
+
+            // 1. Flush the batcher down the table channel
+            inner.batcher.flush_blocking();
+
+            // 2. Drain all pending tables from the batcher's channel _before_ any other future command
+            inner.cmds_tx.send(Command::PopPendingTables).ok();
+
+            // 3. Wait for all tables to have been forwarded down the sink
+            let (cmd, oneshot) = Command::flush();
+            inner.cmds_tx.send(cmd).ok();
+            oneshot.recv().ok();
         };
 
-        // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
-        // are safe.
-
-        // 1. Flush the batcher down the table channel
-        this.batcher.flush_blocking();
-
-        // 2. Drain all pending tables from the batcher's channel _before_ any other future command
-        this.cmds_tx.send(Command::PopPendingTables).ok();
-
-        // 3. Wait for all tables to have been forwarded down the sink
-        let (cmd, oneshot) = Command::flush();
-        this.cmds_tx.send(cmd).ok();
-        oneshot.recv().ok();
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to flush_blocking() ignored");
+        }
     }
 }
 
@@ -1573,30 +1609,31 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn disconnect(&self) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to disconnect() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            // When disconnecting, we need to make sure that pending top-level `DataLoader` threads that
+            // were started from the SDK run to completion.
+            //
+            // TODO(cmc): At some point we might want to make it configurable, though I cannot really
+            // think of a use case where you'd want to drop those threads immediately upon
+            // disconnection.
+            let dataloader_handles = std::mem::take(&mut *inner.dataloader_handles.lock());
+            for handle in dataloader_handles {
+                handle.join().ok();
+            }
+
+            self.set_sink(Box::new(crate::sink::BufferedSink::new()));
         };
 
-        // When disconnecting, we need to make sure that pending top-level `DataLoader` threads that
-        // were started from the SDK run to completion.
-        //
-        // TODO(cmc): At some point we might want to make it configurable, though I cannot really
-        // think of a use case where you'd want to drop those threads immediately upon
-        // disconnection.
-        let dataloader_handles = std::mem::take(&mut *this.dataloader_handles.lock());
-        for handle in dataloader_handles {
-            handle.join().ok();
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to disconnect() ignored");
         }
-
-        self.set_sink(Box::new(crate::sink::BufferedSink::new()));
     }
 }
 
 impl fmt::Debug for RecordingStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &*self.inner {
-            Some(RecordingStreamInner {
+        let with = |inner: &RecordingStreamInner| {
+            let RecordingStreamInner {
                 // This pattern match prevents _accidentally_ omitting data from the debug output
                 // when new fields are added.
                 info,
@@ -1606,13 +1643,18 @@ impl fmt::Debug for RecordingStream {
                 batcher_to_sink_handle: _,
                 dataloader_handles,
                 pid_at_creation,
-            }) => f
-                .debug_struct("RecordingStream")
+            } = inner;
+
+            f.debug_struct("RecordingStream")
                 .field("info", &info)
                 .field("tick", &tick)
                 .field("pending_dataloaders", &dataloader_handles.lock().len())
                 .field("pid_at_creation", &pid_at_creation)
-                .finish_non_exhaustive(),
+                .finish_non_exhaustive()
+        };
+
+        match self.with(with) {
+            Some(res) => res,
             None => write!(f, "RecordingStream {{ disabled }}"),
         }
     }
@@ -1718,12 +1760,13 @@ impl ThreadInfo {
 impl RecordingStream {
     /// Returns the current time of the recording on the current thread.
     pub fn now(&self) -> TimePoint {
-        let Some(this) = &*self.inner else {
+        let f = move |inner: &RecordingStreamInner| ThreadInfo::thread_now(&inner.info.store_id);
+        if let Some(res) = self.with(f) {
+            res
+        } else {
             re_log::warn_once!("Recording disabled - call to now() ignored");
-            return TimePoint::default();
-        };
-
-        ThreadInfo::thread_now(&this.info.store_id)
+            TimePoint::default()
+        }
     }
 
     /// Set the current time of the recording, for the current calling thread.
@@ -1740,15 +1783,15 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            let timepoint = timepoint.into();
+            for (timeline, time) in timepoint {
+                ThreadInfo::set_thread_time(&inner.info.store_id, timeline, time);
+            }
         };
 
-        let timepoint = timepoint.into();
-
-        for (timeline, time) in timepoint {
-            ThreadInfo::set_thread_time(&this.info.store_id, timeline, time);
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
         }
     }
 
@@ -1769,16 +1812,17 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            ThreadInfo::set_thread_time(
+                &inner.info.store_id,
+                Timeline::new(timeline, TimeType::Sequence),
+                sequence.into().into(),
+            );
         };
 
-        ThreadInfo::set_thread_time(
-            &this.info.store_id,
-            Timeline::new(timeline, TimeType::Sequence),
-            sequence.into().into(),
-        );
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
+        }
     }
 
     /// Set the current time of the recording, for the current calling thread.
@@ -1798,16 +1842,17 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            ThreadInfo::set_thread_time(
+                &inner.info.store_id,
+                Timeline::new(timeline, TimeType::Time),
+                Time::from_seconds_since_epoch(seconds.into()).into(),
+            );
         };
 
-        ThreadInfo::set_thread_time(
-            &this.info.store_id,
-            Timeline::new(timeline, TimeType::Time),
-            Time::from_seconds_since_epoch(seconds.into()).into(),
-        );
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
+        }
     }
 
     /// Set the current time of the recording, for the current calling thread.
@@ -1827,16 +1872,17 @@ impl RecordingStream {
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_time_nanos(&self, timeline: impl Into<TimelineName>, ns: impl Into<i64>) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            ThreadInfo::set_thread_time(
+                &inner.info.store_id,
+                Timeline::new(timeline, TimeType::Time),
+                Time::from_ns_since_epoch(ns.into()).into(),
+            );
         };
 
-        ThreadInfo::set_thread_time(
-            &this.info.store_id,
-            Timeline::new(timeline, TimeType::Time),
-            Time::from_ns_since_epoch(ns.into()).into(),
-        );
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
+        }
     }
 
     /// Clears out the current time of the recording for the specified timeline, for the
@@ -1851,14 +1897,15 @@ impl RecordingStream {
     /// - [`Self::set_time_nanos`]
     /// - [`Self::reset_time`]
     pub fn disable_timeline(&self, timeline: impl Into<TimelineName>) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to disable_timeline() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            let timeline = timeline.into();
+            ThreadInfo::unset_thread_time(&inner.info.store_id, Timeline::new_sequence(timeline));
+            ThreadInfo::unset_thread_time(&inner.info.store_id, Timeline::new_temporal(timeline));
         };
 
-        let timeline = timeline.into();
-        ThreadInfo::unset_thread_time(&this.info.store_id, Timeline::new_sequence(timeline));
-        ThreadInfo::unset_thread_time(&this.info.store_id, Timeline::new_temporal(timeline));
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to disable_timeline() ignored");
+        }
     }
 
     /// Clears out the current time of the recording, for the current calling thread.
@@ -1875,12 +1922,13 @@ impl RecordingStream {
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     pub fn reset_time(&self) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to reset_time() ignored");
-            return;
+        let f = move |inner: &RecordingStreamInner| {
+            ThreadInfo::reset_thread_time(&inner.info.store_id);
         };
 
-        ThreadInfo::reset_thread_time(&this.info.store_id);
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to reset_time() ignored");
+        }
     }
 }
 
@@ -1906,7 +1954,7 @@ mod tests {
             .buffered()
             .unwrap();
 
-        let store_info = rec.store_info().cloned().unwrap();
+        let store_info = rec.store_info().unwrap();
 
         let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
@@ -1973,7 +2021,7 @@ mod tests {
             .buffered()
             .unwrap();
 
-        let store_info = rec.store_info().cloned().unwrap();
+        let store_info = rec.store_info().unwrap();
 
         let mut table = DataTable::example(false);
         table.compute_all_size_bytes();
@@ -2053,7 +2101,7 @@ mod tests {
             .memory()
             .unwrap();
 
-        let store_info = rec.store_info().cloned().unwrap();
+        let store_info = rec.store_info().unwrap();
 
         let mut table = DataTable::example(false);
         table.compute_all_size_bytes();

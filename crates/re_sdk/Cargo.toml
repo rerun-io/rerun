@@ -58,6 +58,7 @@ re_types_core.workspace = true
 ahash.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
+itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
@@ -76,7 +77,6 @@ webbrowser = { workspace = true, optional = true }
 [dev-dependencies]
 re_data_store.workspace = true
 
-itertools.workspace = true
 ndarray-rand.workspace = true
 ndarray.workspace = true
 rand.workspace = true
