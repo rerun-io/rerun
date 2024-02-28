@@ -10,13 +10,16 @@ namespace rerun.blueprint.archetypes;
 /// The top-level description of the Viewport.
 table ContainerBlueprint (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default",
     "attr.rust.override_crate": "re_viewport"
 ) {
     // --- Required ---
 
     /// The class of the view.
-    container_kind: rerun.blueprint.components.ContainerKind ("attr.rerun.component_required", order: 100);
+    container_kind: rerun.blueprint.components.ContainerKind (
+        enum_type: "rerun.blueprint.components.ContainerKind",
+        "attr.rerun.component_required",
+        order: 100
+    );
 
     // --- Optional ---
 
