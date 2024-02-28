@@ -80,24 +80,17 @@ impl ::re_types_core::Loggable for OutOfTreeTransform3D {
         use arrow2::datatypes::*;
         DataType::Union(
             std::sync::Arc::new(vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "TranslationAndMat3x3".to_owned(),
-                    data_type: <crate::datatypes::TranslationAndMat3x3>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "TranslationRotationScale".to_owned(),
-                    data_type: <crate::datatypes::TranslationRotationScale3D>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new(
+                    "TranslationAndMat3x3",
+                    <crate::datatypes::TranslationAndMat3x3>::arrow_datatype(),
+                    false,
+                ),
+                Field::new(
+                    "TranslationRotationScale",
+                    <crate::datatypes::TranslationRotationScale3D>::arrow_datatype(),
+                    false,
+                ),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
             UnionMode::Dense,

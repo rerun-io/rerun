@@ -98,72 +98,17 @@ impl ::re_types_core::Loggable for MarkerShape {
         use arrow2::datatypes::*;
         DataType::Union(
             std::sync::Arc::new(vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Circle".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Diamond".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Square".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Cross".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Plus".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Up".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Down".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Left".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Right".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Asterisk".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new("Circle", DataType::Null, false),
+                Field::new("Diamond", DataType::Null, false),
+                Field::new("Square", DataType::Null, false),
+                Field::new("Cross", DataType::Null, false),
+                Field::new("Plus", DataType::Null, false),
+                Field::new("Up", DataType::Null, false),
+                Field::new("Down", DataType::Null, false),
+                Field::new("Left", DataType::Null, false),
+                Field::new("Right", DataType::Null, false),
+                Field::new("Asterisk", DataType::Null, false),
             ]),
             Some(std::sync::Arc::new(vec![
                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32,

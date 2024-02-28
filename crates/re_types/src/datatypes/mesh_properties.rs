@@ -70,17 +70,15 @@ impl ::re_types_core::Loggable for MeshProperties {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field {
-            name: "indices".to_owned(),
-            data_type: DataType::List(std::sync::Arc::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::UInt32,
-                is_nullable: false,
-                metadata: [].into(),
-            })),
-            is_nullable: true,
-            metadata: [].into(),
-        }]))
+        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+            "indices",
+            DataType::List(std::sync::Arc::new(Field::new(
+                "item",
+                DataType::UInt32,
+                false,
+            ))),
+            true,
+        )]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -144,12 +142,11 @@ impl ::re_types_core::Loggable for MeshProperties {
                         .unwrap()
                         .into();
                         ListArray::new(
-                            DataType::List(std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::UInt32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
+                            DataType::List(std::sync::Arc::new(Field::new(
+                                "item",
+                                DataType::UInt32,
+                                false,
+                            ))),
                             offsets,
                             PrimitiveArray::new(
                                 DataType::UInt32,
@@ -211,12 +208,11 @@ impl ::re_types_core::Loggable for MeshProperties {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::UInt32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }));
+                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    DataType::UInt32,
+                                    false,
+                                )));
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })

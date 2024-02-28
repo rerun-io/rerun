@@ -79,12 +79,7 @@ impl ::re_types_core::Loggable for Mat4x4 {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::FixedSizeList(
-            std::sync::Arc::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            }),
+            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
             16usize,
         )
     }

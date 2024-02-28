@@ -66,20 +66,14 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field {
-            name: "fixed_sized_native".to_owned(),
-            data_type: DataType::FixedSizeList(
-                std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::UInt8,
-                    is_nullable: false,
-                    metadata: [].into(),
-                }),
+        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+            "fixed_sized_native",
+            DataType::FixedSizeList(
+                std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                 4usize,
             ),
-            is_nullable: false,
-            metadata: [].into(),
-        }]))
+            false,
+        )]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -145,12 +139,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                             });
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
-                                std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::UInt8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
+                                std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                                 4usize,
                             ),
                             PrimitiveArray::new(
@@ -217,12 +206,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt8,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                                     4usize,
                                 );
                                 let actual = arrow_data.data_type().clone();

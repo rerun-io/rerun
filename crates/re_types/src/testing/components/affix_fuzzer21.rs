@@ -73,23 +73,16 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "single_half".to_owned(),
-                data_type: DataType::Float16,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "many_halves".to_owned(),
-                data_type: DataType::List(std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Float16,
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new("single_half", DataType::Float16, false),
+            Field::new(
+                "many_halves",
+                DataType::List(std::sync::Arc::new(Field::new(
+                    "item",
+                    DataType::Float16,
+                    false,
+                ))),
+                false,
+            ),
         ]))
     }
 

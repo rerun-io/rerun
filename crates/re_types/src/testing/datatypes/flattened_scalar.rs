@@ -66,12 +66,11 @@ impl ::re_types_core::Loggable for FlattenedScalar {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field {
-            name: "value".to_owned(),
-            data_type: DataType::Float32,
-            is_nullable: false,
-            metadata: [].into(),
-        }]))
+        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+            "value",
+            DataType::Float32,
+            false,
+        )]))
     }
 
     #[allow(clippy::wildcard_imports)]

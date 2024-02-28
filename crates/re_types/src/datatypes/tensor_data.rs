@@ -68,23 +68,20 @@ impl ::re_types_core::Loggable for TensorData {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "shape".to_owned(),
-                data_type: DataType::List(std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: <crate::datatypes::TensorDimension>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "buffer".to_owned(),
-                data_type: <crate::datatypes::TensorBuffer>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new(
+                "shape",
+                DataType::List(std::sync::Arc::new(Field::new(
+                    "item",
+                    <crate::datatypes::TensorDimension>::arrow_datatype(),
+                    false,
+                ))),
+                false,
+            ),
+            Field::new(
+                "buffer",
+                <crate::datatypes::TensorBuffer>::arrow_datatype(),
+                false,
+            ),
         ]))
     }
 
@@ -144,13 +141,11 @@ impl ::re_types_core::Loggable for TensorData {
                                 .unwrap()
                                 .into();
                             ListArray::new(
-                                DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: <crate::datatypes::TensorDimension>::arrow_datatype(
-                                    ),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
+                                DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    <crate::datatypes::TensorDimension>::arrow_datatype(),
+                                    false,
+                                ))),
                                 offsets,
                                 {
                                     _ = shape_inner_bitmap;
@@ -233,13 +228,11 @@ impl ::re_types_core::Loggable for TensorData {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: <crate::datatypes::TensorDimension>::arrow_datatype(
-                                    ),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }));
+                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    <crate::datatypes::TensorDimension>::arrow_datatype(),
+                                    false,
+                                )));
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })

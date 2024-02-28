@@ -97,48 +97,13 @@ impl ::re_types_core::Loggable for EnumTest {
         use arrow2::datatypes::*;
         DataType::Union(
             std::sync::Arc::new(vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Up".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Down".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Right".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Left".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Forward".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Back".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new("Up", DataType::Null, false),
+                Field::new("Down", DataType::Null, false),
+                Field::new("Right", DataType::Null, false),
+                Field::new("Left", DataType::Null, false),
+                Field::new("Forward", DataType::Null, false),
+                Field::new("Back", DataType::Null, false),
             ]),
             Some(std::sync::Arc::new(vec![
                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32,

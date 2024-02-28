@@ -58,12 +58,11 @@ impl ::re_types_core::Loggable for AffixFuzzer18 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::List(std::sync::Arc::new(Field {
-            name: "item".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
-            is_nullable: false,
-            metadata: [].into(),
-        }))
+        DataType::List(std::sync::Arc::new(Field::new(
+            "item",
+            <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
+            false,
+        )))
     }
 
     #[allow(clippy::wildcard_imports)]

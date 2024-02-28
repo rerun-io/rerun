@@ -85,12 +85,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::FixedSizeList(
-            std::sync::Arc::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::UInt8,
-                is_nullable: false,
-                metadata: [].into(),
-            }),
+            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
             3usize,
         )
     }
@@ -253,12 +248,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                     .downcast_ref::<arrow2::array::FixedSizeListArray>()
                     .ok_or_else(|| {
                         let expected = DataType::FixedSizeList(
-                            std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::UInt8,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }),
+                            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                             3usize,
                         );
                         let actual = arrow_data.data_type().clone();
