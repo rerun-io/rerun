@@ -427,7 +427,10 @@ impl Viewport<'_, '_> {
         // If there's any children on the data result nodes, show them, otherwise we're good with this list item as is.
         let has_children = data_result_node.map_or(false, |n| !n.children.is_empty());
         let response = if let (true, Some(node)) = (has_children, data_result_node) {
-            let default_open = Self::default_open_for_data_result(node);
+            // Don't default open projections.
+            let default_open = entity_path.starts_with(&space_view.space_origin)
+                && Self::default_open_for_data_result(node);
+
             let response = list_item
                 .show_collapsing(
                     ui,
