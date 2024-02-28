@@ -41,12 +41,13 @@ jobs:
 
   cpp-tests:
     name: "C++ tests"
+    if: needs.cpp-paths-filter.outputs.cpp_changes == 'true'
     # Wait for the cpp-paths-filter to be completed before starting.
     needs: cpp-paths-filter
     uses: ./.github/workflows/reusable_checks_cpp.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      FULL: "${{ needs.cpp-paths-filter.outputs.cpp_changes }}"
+      FULL: "true"
     secrets: inherit
 
   min-wheel-build:
