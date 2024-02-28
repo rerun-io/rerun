@@ -804,12 +804,12 @@ fn code_for_enum(
         }
     }
 
-    code.push_unindented(format!("{name}Like = {name}"), 1);
+    code.push_unindented(format!("{name}Like = Union[{name}, str]"), 1);
     code.push_unindented(
         format!(
             r#"
             {name}ArrayLike = Union[
-                {name},
+                {name}Like,
                 Sequence[{name}Like]
             ]
             "#,

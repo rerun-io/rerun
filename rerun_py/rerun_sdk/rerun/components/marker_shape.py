@@ -32,8 +32,8 @@ class MarkerShape(Enum):
     Asterisk = 10
 
 
-MarkerShapeLike = MarkerShape
-MarkerShapeArrayLike = Union[MarkerShape, Sequence[MarkerShapeLike]]
+MarkerShapeLike = Union[MarkerShape, str]
+MarkerShapeArrayLike = Union[MarkerShapeLike, Sequence[MarkerShapeLike]]
 
 
 class MarkerShapeType(BaseExtensionType):

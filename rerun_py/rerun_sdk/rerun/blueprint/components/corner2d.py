@@ -26,8 +26,8 @@ class Corner2D(Enum):
     RightBottom = 4
 
 
-Corner2DLike = Corner2D
-Corner2DArrayLike = Union[Corner2D, Sequence[Corner2DLike]]
+Corner2DLike = Union[Corner2D, str]
+Corner2DArrayLike = Union[Corner2DLike, Sequence[Corner2DLike]]
 
 
 class Corner2DType(BaseExtensionType):

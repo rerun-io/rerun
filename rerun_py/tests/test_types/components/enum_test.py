@@ -38,8 +38,8 @@ class EnumTest(Enum):
     """Baby's got it."""
 
 
-EnumTestLike = EnumTest
-EnumTestArrayLike = Union[EnumTest, Sequence[EnumTestLike]]
+EnumTestLike = Union[EnumTest, str]
+EnumTestArrayLike = Union[EnumTestLike, Sequence[EnumTestLike]]
 
 
 class EnumTestType(BaseExtensionType):

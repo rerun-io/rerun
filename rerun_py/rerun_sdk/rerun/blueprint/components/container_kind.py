@@ -26,8 +26,8 @@ class ContainerKind(Enum):
     Grid = 4
 
 
-ContainerKindLike = ContainerKind
-ContainerKindArrayLike = Union[ContainerKind, Sequence[ContainerKindLike]]
+ContainerKindLike = Union[ContainerKind, str]
+ContainerKindArrayLike = Union[ContainerKindLike, Sequence[ContainerKindLike]]
 
 
 class ContainerKindType(BaseExtensionType):
