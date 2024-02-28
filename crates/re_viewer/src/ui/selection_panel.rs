@@ -784,7 +784,7 @@ fn show_list_item_for_container_child(
 
     context_menu_ui_for_item(
         ctx,
-        &viewport.blueprint,
+        viewport.blueprint,
         &item,
         &response,
         SelectionUpdateBehavior::Ignore,

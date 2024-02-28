@@ -2,8 +2,6 @@
 //!
 //! Contains all space views.
 
-use std::collections::BTreeMap;
-
 use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
 use once_cell::sync::Lazy;
@@ -276,7 +274,6 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 viewport_state: state,
                 ctx,
                 viewport_blueprint: blueprint,
-                space_views: &blueprint.space_views,
                 maximized: &mut maximized,
                 edited: false,
                 executed_systems_per_space_view,
@@ -618,7 +615,6 @@ struct TabViewer<'a, 'b> {
     viewport_state: &'a mut ViewportState,
     ctx: &'a ViewerContext<'b>,
     viewport_blueprint: &'a ViewportBlueprint,
-    space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
     root_container_id: Option<ContainerId>,
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
@@ -642,7 +638,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     ) -> egui_tiles::UiResponse {
         re_tracing::profile_function!();
 
-        let Some(space_view_blueprint) = self.space_views.get(space_view_id) else {
+        let Some(space_view_blueprint) = self.viewport_blueprint.space_views.get(space_view_id)
+        else {
             return Default::default();
         };
 
@@ -704,7 +701,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     }
 
     fn tab_title_for_pane(&mut self, space_view_id: &SpaceViewId) -> egui::WidgetText {
-        if let Some(space_view) = self.space_views.get(space_view_id) {
+        if let Some(space_view) = self.viewport_blueprint.space_views.get(space_view_id) {
             // Note: the formatting for unnamed space views is handled by `TabWidget::new()`
             space_view.display_name_or_default().as_ref().into()
         } else {
@@ -784,7 +781,9 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
     }
 
     fn retain_pane(&mut self, space_view_id: &SpaceViewId) -> bool {
-        self.space_views.contains_key(space_view_id)
+        self.viewport_blueprint
+            .space_views
+            .contains_key(space_view_id)
     }
 
     fn top_bar_right_ui(
@@ -803,7 +802,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         };
         let space_view_id = *space_view_id;
 
-        let Some(space_view) = self.space_views.get(&space_view_id) else {
+        let Some(space_view) = self.viewport_blueprint.space_views.get(&space_view_id) else {
             return;
         };
         let num_space_views = tiles.tiles().filter(|tile| tile.is_pane()).count();
@@ -956,7 +955,9 @@ impl TabWidget {
 
         let tab_desc = match tiles.get(tile_id) {
             Some(egui_tiles::Tile::Pane(space_view_id)) => {
-                if let Some(space_view) = tab_viewer.space_views.get(space_view_id) {
+                if let Some(space_view) =
+                    tab_viewer.viewport_blueprint.space_views.get(space_view_id)
+                {
                     TabDesc {
                         label: tab_viewer.tab_title_for_pane(space_view_id),
                         user_named: space_view.display_name.is_some(),
