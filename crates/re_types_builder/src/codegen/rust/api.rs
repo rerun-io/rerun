@@ -24,7 +24,7 @@ use crate::{
     format_path,
     objects::ObjectClass,
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    Reporter, Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
     ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
@@ -562,6 +562,30 @@ fn quote_enum(
     let quoted_doc = quote_obj_docs(reporter, obj);
     let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
+    let mut derives = vec!["Clone", "Copy", "Debug", "PartialEq", "Eq"];
+
+    match fields
+        .iter()
+        .filter(|field| field.attrs.has(ATTR_DEFAULT))
+        .count()
+    {
+        0 => {}
+        1 => {
+            derives.push("Default");
+        }
+        _ => {
+            reporter.error(
+                &obj.virtpath,
+                &obj.fqname,
+                "Enums can only have one default value",
+            );
+        }
+    };
+    let derives = derives.iter().map(|&derive| {
+        let derive = format_ident!("{derive}");
+        quote!(#derive)
+    });
+
     let quoted_fields = fields.iter().enumerate().map(|(i, field)| {
         let name = format_ident!("{}", field.pascal_case_name());
 
@@ -570,8 +594,15 @@ fn quote_enum(
         // We assign the arrow type index to the enum fields to make encoding simpler and faster:
         let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(1 + i); // 0 is reserved for `_null_markers`
 
+        let default_attr = if field.attrs.has(ATTR_DEFAULT) {
+            quote!(#[default])
+        } else {
+            quote!()
+        };
+
         quote! {
             #quoted_doc
+            #default_attr
             #name = #arrow_type_index
         }
     });
@@ -596,7 +627,7 @@ fn quote_enum(
 
     let tokens = quote! {
         #quoted_doc
-        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        #[derive( #(#derives,)* )]
         #quoted_custom_clause
         pub enum #name {
             #(#quoted_fields,)*

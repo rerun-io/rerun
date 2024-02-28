@@ -22,7 +22,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A test of the enum type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum EnumTest {
     /// Great film.
     Up = 1,
@@ -31,6 +31,7 @@ pub enum EnumTest {
     Down = 2,
 
     /// Correct.
+    #[default]
     Right = 3,
 
     /// It's what's remaining.

@@ -9,7 +9,7 @@ enum EnumTest: byte {
     Down,
 
     /// Correct.
-    Right,
+    Right (default),
 
     /// It's what's remaining.
     Left,
