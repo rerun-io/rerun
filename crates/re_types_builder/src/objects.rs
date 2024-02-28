@@ -71,23 +71,24 @@ impl Objects {
         // Validate fields types: Archetype consist of components, everything else consists of datatypes.
         for obj in this.objects.values() {
             for field in &obj.fields {
+                let virtpath = &field.virtpath;
                 if let Some(field_type_fqname) = field.typ.fqname() {
                     let field_obj = &this[field_type_fqname];
                     if obj.kind == ObjectKind::Archetype {
                         assert!(field_obj.kind == ObjectKind::Component,
-                            "Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
+                            "{virtpath}: Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
                             field.fqname, field_type_fqname
                         );
                     } else {
                         assert!(field_obj.kind == ObjectKind::Datatype,
-                            "Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
+                            "{virtpath}: Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
                             field.fqname, field_type_fqname
                         );
                     }
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
                     assert!(obj.kind != ObjectKind::Archetype,
-                        "Field {:?} is a primitive field which is part of an Archetype. Only Components are allowed on Archetypes.",
+                        "{virtpath}: Field {:?} is a primitive field which is part of an Archetype. Only Components are allowed on Archetypes.",
                         field.fqname);
                 }
             }
