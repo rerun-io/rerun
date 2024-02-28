@@ -85,6 +85,31 @@ In the future, Rerun will offer a commercial product that builds on top of the c
 The Rerun open source project targets the needs of individual developers.
 The commercial product targets the needs specific to teams that build and run computer vision and robotics products.
 
+## How to Cite Rerun
+
+When using Rerun in your research, please cite it to acknowledge its contribution to your work. This can be done by
+including a reference to Rerun in the software or methods section of your paper.
+
+Suggested citation format:
+
+```bibtex
+@software{RerunSDK,
+  title = {Rerun: A Visualization SDK for Multimodal Data},
+  author = {{Rerun Development Team}},
+  url = {https://www.rerun.io},
+  version = {insert version number},
+  date = {insert date of usage},
+  year = {2024},
+  publisher = {{Rerun Technologies AB}},
+  address = {Online},
+  note = {Available from https://www.rerun.io/ and https://github.com/rerun-io/rerun}
+}
+```
+
+Please replace "insert version number" with the version of Rerun you used and "insert date of usage" with the date(s)
+you used the tool in your research.
+This citation format helps ensure that Rerun's development team receives appropriate credit for their work and
+facilitates the tool's discovery by other researchers.
 
 # Development
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
