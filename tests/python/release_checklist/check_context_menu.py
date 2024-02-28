@@ -17,8 +17,11 @@ README = """
     - Remove
     - Move to new container
     - Clone
-* Check both work as expected.
-* Right-click on the viewport and check for context menu content:
+* Check all work as expected.
+* Right-click on a space view's tab title widget and check:
+    - It should show the same actions are above.
+    - It should set the selection to that space view, regardless of the previous selection state.
+* Right-click on the top-level container ("Viewport") and check for context menu content:
     - Add Container
     - Add Space View
 * Add a container via the context menu, check the container appears at then end of the list.
@@ -28,7 +31,9 @@ README = """
     - Move to new container
     - Add Container
     - Add Space View
-
+* Select a container and, in the Selection Panel, right click on either space view or container children:
+    - The context menu action should be the same as before.
+    - The selection state is not affected by the right-click.
 
 ### Selection behavior
 
