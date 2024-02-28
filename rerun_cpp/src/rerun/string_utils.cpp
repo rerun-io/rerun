@@ -27,5 +27,12 @@ namespace rerun {
                 return result;
             }
         }
+
+        rr_bytes to_rr_bytes(std::string_view bytes) {
+            rr_bytes result;
+            result.bytes = bytes.data();
+            result.length = static_cast<uint32_t>(bytes.length());
+            return result;
+        }
     } // namespace detail
 } // namespace rerun

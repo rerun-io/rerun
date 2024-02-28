@@ -256,4 +256,33 @@ namespace rerun {
 
         return status;
     }
+
+    Error RecordingStream::try_log_file_from_path(std::string_view filepath) const {
+        if (!is_enabled()) {
+            return Error::ok();
+        }
+
+        rr_error status = {};
+        rr_recording_stream_log_file_from_path(_id, detail::to_rr_string(filepath), &status);
+
+        return status;
+    }
+
+    Error RecordingStream::try_log_file_from_contents(
+        std::string_view filepath, std::string_view contents
+    ) const {
+        if (!is_enabled()) {
+            return Error::ok();
+        }
+
+        rr_error status = {};
+        rr_recording_stream_log_file_from_contents(
+            _id,
+            detail::to_rr_string(filepath),
+            detail::to_rr_bytes(contents),
+            &status
+        );
+
+        return status;
+    }
 } // namespace rerun
