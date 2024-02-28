@@ -41,7 +41,13 @@ re_error.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_memory.workspace = true
-rerun = { workspace = true, features = ["analytics", "data_loaders", "run", "server", "sdk"] }
+rerun = { workspace = true, features = [
+  "analytics",
+  "data_loaders",
+  "run",
+  "server",
+  "sdk",
+] }
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
 
