@@ -13,6 +13,21 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     with:
       CONCURRENCY: nightly
+    secrets: inherit
+
+  checks-cpp:
+    name: Checks
+    uses: ./.github/workflows/reusable_checks_cpp.yml
+    with:
+      CONCURRENCY: nightly
+      FULL: "true"
+    secrets: inherit
+
+  checks-rust:
+    name: Checks
+    uses: ./.github/workflows/reusable_checks_rust.yml
+    with:
+      CONCURRENCY: nightly
       ALL_CHECKS: true
     secrets: inherit
 

@@ -19,8 +19,23 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
+
+  rust-paths-filter:
+    runs-on: ubuntu-latest
+    outputs:
+      rust_changes: ${{ steps.filter.outputs.rust_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            rust_changes:
+              - "**/*.rs"
+              - "**/*.toml"
 
   cpp-paths-filter:
     runs-on: ubuntu-latest
@@ -36,8 +51,18 @@ jobs:
           filters: |
             cpp_changes:
               - '**/*.hpp'
-              - '**/.cpp'
+              - '**/*.cpp'
               - '**/CMakeLists.txt'
+
+  rust-checks:
+    name: "Rust Checks"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.cpp-paths-filter.outputs.rust_changes == 'true'
+    # Wait for the rust-paths-filter to be completed before starting.
+    needs: rust-paths-filter
+    uses: ./.github/workflows/reusable_checks_rust.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+    secrets: inherit
 
   cpp-tests:
     name: "C++ tests"

@@ -1,4 +1,4 @@
-name: "Checks: Lints, Tests, Docs"
+name: "General checks: Lints, Tests, Docs"
 
 on:
   workflow_call:
@@ -6,26 +6,6 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      SAVE_PY_DOCS:
-        required: false
-        type: boolean
-        default: false
-      SAVE_PY_DOCS_AS:
-        required: false
-        type: string
-        default: ""
-      SAVE_RUST_DOCS:
-        required: false
-        type: boolean
-        default: false
-      PR_NUMBER:
-        required: false
-        type: string
-        default: ""
-      ALL_CHECKS:
-        required: false
-        type: boolean
-        default: false
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks
@@ -154,100 +134,6 @@ jobs:
         run: |
           pixi run codegen --force --check
 
-  rs-lints:
-    name: Rust lints (fmt, check, cranky, tests, doc)
-    runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.11.0
-    env:
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-linux"
-          save_cache: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-
-      # We need to build the web viewer for `rust_checks.py` to succeed.
-      - name: Build web-viewer (release)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          # We build in release so that we can reuse the results for actual publishing, if necessary
-          args: --locked -p re_build_web_viewer -- --release
-
-      - name: Rust checks & tests
-        if: ${{ !inputs.ALL_CHECKS }}
-        run: ./scripts/ci/rust_checks.py --skip-check-individual-crates
-
-      - name: Rust all checks & tests
-        if: inputs.ALL_CHECKS
-        run: ./scripts/ci/rust_checks.py
-
-  # ---------------------------------------------------------------------------
-
-  rs-check-wasm:
-    name: Check Rust web build (wasm32 + wasm-bindgen)
-    runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.11.0
-    env:
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-web"
-          save_cache: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-
-      - name: clippy check re_viewer wasm32
-        shell: bash
-        run: ./scripts/clippy_wasm.sh
-
-      - name: Check re_renderer examples wasm32
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
-
-      - name: Build web-viewer (release)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          # We build in release so that we can reuse the results for actual publishing, if necessary
-          args: --locked -p re_build_web_viewer -- --release
-
-  # ---------------------------------------------------------------------------
-
-  toml-lints:
-    name: Lint TOML files
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.13.0
-
-      - name: Taplo check
-        shell: bash
-        run: |
-          pixi run lint-taplo
-
   # ---------------------------------------------------------------------------
 
   misc-rerun-lints:
@@ -309,23 +195,6 @@ jobs:
 
       - name: Check spelling of entire workspace
         uses: crate-ci/typos@v1.18.0
-
-  # ---------------------------------------------------------------------------
-
-  rs-cargo-deny:
-    name: Cargo Deny
-    runs-on: ubuntu-latest
-    container:
-      image: rerunio/ci_docker:0.11.0
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - name: Cargo Deny
-        shell: bash
-        id: expected_version
-        run: ./scripts/ci/cargo_deny.sh
 
   # ---------------------------------------------------------------------------
 
