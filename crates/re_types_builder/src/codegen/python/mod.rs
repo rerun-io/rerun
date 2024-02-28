@@ -2070,7 +2070,7 @@ fn quote_arrow_field(field: &Field) -> String {
     let is_nullable = *is_nullable || *data_type == DataType::Null;
 
     let datatype = quote_arrow_datatype(data_type);
-    let is_nullable = is_nullable.then_some("True").unwrap_or("False");
+    let is_nullable = if is_nullable { "True" } else { "False" };
     let metadata = quote_metadata_map(metadata);
 
     format!(r#"pa.field("{name}", {datatype}, nullable={is_nullable}, metadata={metadata})"#)
