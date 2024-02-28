@@ -51,12 +51,12 @@ class EnumTestType(BaseExtensionType):
             pa.sparse_union(
                 [
                     pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field("Up", pa.null(), nullable=False, metadata={}),
-                    pa.field("Down", pa.null(), nullable=False, metadata={}),
-                    pa.field("Right", pa.null(), nullable=False, metadata={}),
-                    pa.field("Left", pa.null(), nullable=False, metadata={}),
-                    pa.field("Forward", pa.null(), nullable=False, metadata={}),
-                    pa.field("Back", pa.null(), nullable=False, metadata={}),
+                    pa.field("Up", pa.null(), nullable=True, metadata={}),
+                    pa.field("Down", pa.null(), nullable=True, metadata={}),
+                    pa.field("Right", pa.null(), nullable=True, metadata={}),
+                    pa.field("Left", pa.null(), nullable=True, metadata={}),
+                    pa.field("Forward", pa.null(), nullable=True, metadata={}),
+                    pa.field("Back", pa.null(), nullable=True, metadata={}),
                 ]
             ),
             self._TYPE_NAME,
