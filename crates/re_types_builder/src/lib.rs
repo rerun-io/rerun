@@ -202,7 +202,6 @@ use camino::{Utf8Path, Utf8PathBuf};
 /// - `include_dir_path`: path to the root directory of the fbs definition tree.
 /// - `output_dir_path`: output directory, where the binary schemas will be stored.
 /// - `entrypoint_path`: path to the root file of the fbs definition tree.
-/// ```
 pub fn compile_binary_schemas(
     include_dir_path: impl AsRef<Utf8Path>,
     output_dir_path: impl AsRef<Utf8Path>,
@@ -426,7 +425,6 @@ fn generate_code(
 /// Panics on error.
 ///
 /// - `output_path`: path to the root of the output.
-/// ```
 pub fn generate_cpp_code(
     reporter: &Reporter,
     output_path: impl AsRef<Utf8Path>,
@@ -460,7 +458,6 @@ pub fn generate_cpp_code(
 /// If `check` is true, this will run a comparison check instead of writing files to disk.
 ///
 /// Panics on error.
-/// ```
 pub fn generate_rust_code(
     reporter: &Reporter,
     workspace_path: impl Into<Utf8PathBuf>,
@@ -491,7 +488,6 @@ pub fn generate_rust_code(
 /// Panics on error.
 ///
 /// - `output_pkg_path`: path to the root of the output package.
-/// ```
 pub fn generate_python_code(
     reporter: &Reporter,
     output_pkg_path: impl AsRef<Utf8Path>,
