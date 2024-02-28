@@ -71,11 +71,15 @@ class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin)
             else:
                 raise ValueError(f"Unknown ContainerKind kind: {value}")
 
+        buffers = [
+            None,
+            pa.array(types, type=pa.int8()).buffers()[1],
+        ]
+        children = (1 + 4) * [pa.nulls(len(data))]
+
         return pa.UnionArray.from_buffers(
             type=data_type,
             length=len(data),
-            buffers=[
-                None,
-                pa.array(types, type=pa.int8()).buffers()[1],
-            ],
+            buffers=buffers,
+            children=children,
         )

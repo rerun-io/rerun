@@ -817,6 +817,8 @@ fn code_for_enum(
         2,
     );
 
+    let num_variants = obj.fields.len();
+
     let native_to_pa_array_impl = unindent(&format!(
         r##"
             if isinstance(data, {name}):
@@ -836,13 +838,17 @@ fn code_for_enum(
                 else:
                     raise ValueError(f"Unknown {name} kind: {{value}}")
 
+            buffers = [
+                None,
+                pa.array(types, type=pa.int8()).buffers()[1],
+            ]
+            children = (1 + {num_variants}) * [pa.nulls(len(data))]
+
             return pa.UnionArray.from_buffers(
                 type=data_type,
                 length=len(data),
-                buffers=[
-                    None,
-                    pa.array(types, type=pa.int8()).buffers()[1],
-                ],
+                buffers=buffers,
+                children=children,
             )
         "##
     ));

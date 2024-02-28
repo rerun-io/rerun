@@ -196,9 +196,8 @@ class BaseBatch(Generic[T]):
                 elif isinstance(data, pa.Array) and data.type == self._ARROW_TYPE.storage_type:
                     self.pa_array = self._ARROW_TYPE.wrap_array(data)
                 else:
-                    self.pa_array = self._ARROW_TYPE.wrap_array(
-                        self._native_to_pa_array(data, self._ARROW_TYPE.storage_type)
-                    )
+                    array = self._native_to_pa_array(data, self._ARROW_TYPE.storage_type)
+                    self.pa_array = self._ARROW_TYPE.wrap_array(array)
                 return
 
         # If we didn't return above, default to the empty array
