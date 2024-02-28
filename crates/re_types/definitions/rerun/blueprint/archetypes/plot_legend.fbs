@@ -20,7 +20,12 @@ table PlotLegend (
     /// To what corner the legend is aligned.
     ///
     /// Defaults to the right bottom corner.
-    corner: rerun.blueprint.components.Corner2D ("attr.rerun.component_optional", nullable, order: 2100);
+    corner: rerun.blueprint.components.Corner2D (
+        enum_type: "rerun.blueprint.components.Corner2D",
+        "attr.rerun.component_optional",
+        nullable,
+        order: 2100
+    );
 
     /// Whether the legend is shown at all.
     ///
