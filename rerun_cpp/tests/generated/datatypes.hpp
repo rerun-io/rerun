@@ -10,6 +10,7 @@
 #include "datatypes/affix_fuzzer3.hpp"
 #include "datatypes/affix_fuzzer4.hpp"
 #include "datatypes/affix_fuzzer5.hpp"
+#include "datatypes/enum_test.hpp"
 #include "datatypes/flattened_scalar.hpp"
 #include "datatypes/primitive_component.hpp"
 #include "datatypes/string_component.hpp"

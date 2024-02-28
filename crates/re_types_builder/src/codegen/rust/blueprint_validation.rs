@@ -53,7 +53,7 @@ pub(crate) fn generate_blueprint_validation(
         }
     };
 
-    code.push_text(string_from_quoted(&is_valid_blueprint), 1, 0);
+    code.push_indented(0, string_from_quoted(&is_valid_blueprint), 1);
 
     files_to_write.insert(
         Utf8PathBuf::from("crates/re_viewer/src/blueprint/validation_gen/mod.rs"),

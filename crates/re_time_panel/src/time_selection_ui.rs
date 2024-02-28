@@ -134,7 +134,7 @@ pub fn loop_selection_ui(
             }
         }
 
-        if selected_range.is_empty() && !ui.memory(|mem| mem.is_anything_being_dragged()) {
+        if selected_range.is_empty() && ui.ctx().dragged_id().is_none() {
             // A zero-sized loop selection is confusing (and invisible), so remove it
             // (unless we are in the process of dragging right now):
             time_ctrl.remove_loop_selection();
@@ -146,7 +146,7 @@ pub fn loop_selection_ui(
 
     // Start new selection?
     if let Some(pointer_pos) = pointer_pos {
-        let is_anything_being_dragged = ui.memory(|mem| mem.is_anything_being_dragged());
+        let is_anything_being_dragged = ui.ctx().dragged_id().is_some();
         if is_pointer_in_timeline
             && !is_anything_being_dragged
             && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
@@ -154,7 +154,7 @@ pub fn loop_selection_ui(
             if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
                 time_ctrl.set_loop_selection(TimeRangeF::point(time));
                 time_ctrl.set_looping(Looping::Selection);
-                ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
+                ui.ctx().set_dragged_id(right_edge_id);
             }
         }
     }
@@ -226,7 +226,7 @@ fn drag_right_loop_selection_edge(
 
     if selected_range.min > selected_range.max {
         std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-        ui.memory_mut(|mem| mem.set_dragged_id(right_edge_id));
+        ui.ctx().set_dragged_id(right_edge_id);
     }
 
     Some(())
@@ -254,7 +254,7 @@ fn drag_left_loop_selection_edge(
 
     if selected_range.min > selected_range.max {
         std::mem::swap(&mut selected_range.min, &mut selected_range.max);
-        ui.memory_mut(|mem| mem.set_dragged_id(left_edge_id));
+        ui.ctx().set_dragged_id(left_edge_id);
     }
 
     Some(())

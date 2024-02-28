@@ -126,7 +126,7 @@ criterion = "0.5"
 crossbeam = "0.8"
 directories-next = "2"
 document-features = "0.2.8"
-ehttp = "0.4.0"
+ehttp = "0.5.0"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
 ewebsock = "0.5.0"
@@ -284,13 +284,13 @@ debug = true
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }      # egui master 2024-02-05
-# eframe = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }      # egui master 2024-02-05
-# egui = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }        # egui master 2024-02-05
-# egui_extras = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" } # egui master 2024-02-05
-# egui_plot = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }   # egui master 2024-02-05
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }   # egui master 2024-02-05
-# emath = { git = "https://github.com/emilk/egui.git", rev = "74f00f9017781d193bca6142ce764b6dd32a0e6f" }       # egui master 2024-02-05
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "e8af6f38fcebcc889963e86c4a3ccebe97db1908" }      # egui master 2024-02-27
+eframe = { git = "https://github.com/emilk/egui.git", rev = "e8af6f38fcebcc889963e86c4a3ccebe97db1908" }      # egui master 2024-02-27
+egui = { git = "https://github.com/emilk/egui.git", rev = "e8af6f38fcebcc889963e86c4a3ccebe97db1908" }        # egui master 2024-02-27
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "e8af6f38fcebcc889963e86c4a3ccebe97db1908" } # egui master 2024-02-27
+egui_plot = { git = "https://github.com/emilk/egui.git", rev = "e8af6f38fcebcc889963e86c4a3ccebe97db1908" }   # egui master 2024-02-27
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "e8af6f38fcebcc889963e86c4a3ccebe97db1908" }   # egui master 2024-02-27
+emath = { git = "https://github.com/emilk/egui.git", rev = "e8af6f38fcebcc889963e86c4a3ccebe97db1908" }       # egui master 2024-02-27
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -301,6 +301,6 @@ debug = true
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "50732cf58528b7060844915bdbcb47a3b0d4d07e" } # master 2024-02-06
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "6147feb6f9e6a60e8f12872398d449baa6e0b2ec" } # main 2024-02-27, which works with egui master
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "3d83a92f995a1d18ab1172d0b129d496e0eedaae" } # Update to egui 0.25 https://github.com/lampsitter/egui_commonmark/pull/27

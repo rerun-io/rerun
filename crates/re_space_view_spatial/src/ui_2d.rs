@@ -324,7 +324,7 @@ pub fn view_2d(
             SpatialSpaceViewKind::TwoD,
         );
 
-        if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
+        if ui.ctx().dragged_id().is_none() {
             response = picking(
                 ctx,
                 response,

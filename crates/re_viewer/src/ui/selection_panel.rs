@@ -365,7 +365,7 @@ fn what_is_selected_ui(
                 ctx.re_ui,
                 ui,
                 component_name.short_name(),
-                None,
+                Some(&re_ui::icons::COMPONENT),
                 &format!(
                     "Component {} of entity '{}'",
                     component_name.full_name(),
@@ -434,7 +434,7 @@ fn what_is_selected_ui(
                         ctx.re_ui,
                         ui,
                         name,
-                        None,
+                        Some(&re_ui::icons::ENTITY),
                         &format!(
                             "{typ} '{instance_path}' as shown in Space View {:?}",
                             space_view.display_name
@@ -442,17 +442,19 @@ fn what_is_selected_ui(
                     );
 
                     if let Some(parent) = parent {
-                        ui.horizontal(|ui| {
-                            ui.label("path");
-                            item_ui::entity_path_parts_buttons(
-                                ctx,
-                                &query,
-                                store,
-                                ui,
-                                Some(*space_view_id),
-                                &parent,
-                            );
-                        });
+                        if !parent.is_root() {
+                            ui.horizontal(|ui| {
+                                ui.label("path");
+                                item_ui::entity_path_parts_buttons(
+                                    ctx,
+                                    &query,
+                                    store,
+                                    ui,
+                                    Some(*space_view_id),
+                                    &parent,
+                                );
+                            });
+                        }
                     }
 
                     ui.horizontal(|ui| {
@@ -465,15 +467,19 @@ fn what_is_selected_ui(
                     ctx.re_ui,
                     ui,
                     name,
-                    None,
+                    Some(&re_ui::icons::ENTITY),
                     &format!("{typ} '{instance_path}'"),
                 );
 
                 if let Some(parent) = parent {
-                    ui.horizontal(|ui| {
-                        ui.label("path");
-                        item_ui::entity_path_parts_buttons(ctx, &query, store, ui, None, &parent);
-                    });
+                    if !parent.is_root() {
+                        ui.horizontal(|ui| {
+                            ui.label("path");
+                            item_ui::entity_path_parts_buttons(
+                                ctx, &query, store, ui, None, &parent,
+                            );
+                        });
+                    }
                 }
 
                 list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);
@@ -845,43 +851,33 @@ fn blueprint_ui_for_space_view(
     viewport: &mut Viewport<'_, '_>,
     space_view_id: &SpaceViewId,
 ) {
-    if ctx.app_options.experimental_entity_filter_editor {
-        if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-            if let Some(query) = space_view.queries.first() {
-                if let Some(new_entity_path_filter) =
-                    entity_path_filter_ui(ui, viewport, space_view_id, &query.entity_path_filter)
-                {
-                    let timepoint = blueprint_timepoint_for_writes();
-                    let expressions_component = QueryExpressions::from(&new_entity_path_filter);
+    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+        if let Some(query) = space_view.queries.first() {
+            if let Some(new_entity_path_filter) =
+                entity_path_filter_ui(ui, viewport, space_view_id, &query.entity_path_filter)
+            {
+                let timepoint = blueprint_timepoint_for_writes();
+                let expressions_component = QueryExpressions::from(&new_entity_path_filter);
 
-                    let row = DataRow::from_cells1_sized(
-                        RowId::new(),
-                        query.id.as_entity_path(),
-                        timepoint,
-                        1,
-                        [expressions_component],
-                    )
-                    .unwrap();
+                let row = DataRow::from_cells1_sized(
+                    RowId::new(),
+                    query.id.as_entity_path(),
+                    timepoint,
+                    1,
+                    [expressions_component],
+                )
+                .unwrap();
 
-                    ctx.command_sender
-                        .send_system(SystemCommand::UpdateBlueprint(
-                            ctx.store_context.blueprint.store_id().clone(),
-                            vec![row],
-                        ));
+                ctx.command_sender
+                    .send_system(SystemCommand::UpdateBlueprint(
+                        ctx.store_context.blueprint.store_id().clone(),
+                        vec![row],
+                    ));
 
-                    space_view.set_entity_determined_by_user(ctx);
-                }
-
-                ui.add_space(ui.spacing().item_spacing.y);
+                space_view.set_entity_determined_by_user(ctx);
             }
-        }
-    } else {
-        let response = ui.button("Add/remove Entity").on_hover_text(
-            "Adjust the query expressions to add or remove Entities from the Space View",
-        );
 
-        if response.clicked() {
-            viewport.show_add_remove_entities_modal(*space_view_id);
+            ui.add_space(ui.spacing().item_spacing.y);
         }
     }
 

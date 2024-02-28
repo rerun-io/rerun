@@ -141,8 +141,15 @@ pub fn instance_path_button_to(
 ) -> egui::Response {
     let item = Item::InstancePath(space_view_id, instance_path.clone());
 
-    let response = ui
-        .selectable_label(ctx.selection().contains_item(&item), text)
+    let response = ctx
+        .re_ui
+        .selectable_label_with_icon(
+            ui,
+            &re_ui::icons::ENTITY,
+            text,
+            ctx.selection().contains_item(&item),
+            re_ui::LabelStyle::Normal,
+        )
         .on_hover_ui(|ui| {
             instance_hover_card_ui(ui, ctx, query, store, instance_path);
         });
@@ -294,7 +301,13 @@ pub fn component_path_button_to(
     component_path: &ComponentPath,
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
-    let response = ui.selectable_label(ctx.selection().contains_item(&item), text);
+    let response = ctx.re_ui.selectable_label_with_icon(
+        ui,
+        &re_ui::icons::COMPONENT,
+        text,
+        ctx.selection().contains_item(&item),
+        re_ui::LabelStyle::Normal,
+    );
     cursor_interact_with_selectable(ctx, response, item)
 }
 

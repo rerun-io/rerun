@@ -3,15 +3,15 @@
 mod command;
 mod command_palette;
 mod design_tokens;
-pub mod drag_and_drop;
-pub mod egui_helpers;
-pub mod icons;
 mod layout_job_builder;
+mod syntax_highlighting;
+mod toggle_switch;
+
+pub mod drag_and_drop;
+pub mod icons;
 pub mod list_item;
 pub mod modal;
-mod syntax_highlighting;
 pub mod toasts;
-mod toggle_switch;
 
 pub use command::{UICommand, UICommandSender};
 pub use command_palette::CommandPalette;

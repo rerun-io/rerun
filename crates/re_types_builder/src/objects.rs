@@ -71,23 +71,24 @@ impl Objects {
         // Validate fields types: Archetype consist of components, everything else consists of datatypes.
         for obj in this.objects.values() {
             for field in &obj.fields {
+                let virtpath = &field.virtpath;
                 if let Some(field_type_fqname) = field.typ.fqname() {
                     let field_obj = &this[field_type_fqname];
                     if obj.kind == ObjectKind::Archetype {
                         assert!(field_obj.kind == ObjectKind::Component,
-                            "Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
+                            "{virtpath}: Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
                             field.fqname, field_type_fqname
                         );
                     } else {
                         assert!(field_obj.kind == ObjectKind::Datatype,
-                            "Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
+                            "{virtpath}: Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
                             field.fqname, field_type_fqname
                         );
                     }
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
                     assert!(obj.kind != ObjectKind::Archetype,
-                        "Field {:?} is a primitive field which is part of an Archetype. Only Components are allowed on Archetypes.",
+                        "{virtpath}: Field {:?} is a primitive field which is part of an Archetype. Only Components are allowed on Archetypes.",
                         field.fqname);
                 }
             }
@@ -558,8 +559,8 @@ impl Object {
         let fields: Vec<_> = enm
             .values()
             .iter()
-            // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
             .filter(|val| {
+                // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
                 is_enum
                     || val
                         .union_type()
@@ -571,12 +572,8 @@ impl Object {
             })
             .collect();
 
-        if kind == ObjectKind::Component {
-            assert!(
-                fields.len() == 1,
-                "components must have exactly 1 field, but {fqname} has {}",
-                fields.len()
-            );
+        if kind == ObjectKind::Component && fields.len() != 1 {
+            reporter.error(&virtpath, &fqname, "components must have exactly 1 field");
         }
 
         Self {
@@ -908,6 +905,11 @@ impl ObjectField {
     /// The `snake_case` name of the field, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
         crate::to_snake_case(&self.name)
+    }
+
+    /// The `SCREAMING_SNAKE_CASE` name of the object, e.g. `TRANSLATION_AND_MAT3X3`.
+    pub fn screaming_snake_case_name(&self) -> String {
+        self.snake_case_name().to_uppercase()
     }
 
     /// The `PascalCase` name of the field, e.g. `TranslationAndMat3x3`.

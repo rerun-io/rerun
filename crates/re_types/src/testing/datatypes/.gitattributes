@@ -9,6 +9,7 @@ affix_fuzzer22.rs linguist-generated=true
 affix_fuzzer3.rs linguist-generated=true
 affix_fuzzer4.rs linguist-generated=true
 affix_fuzzer5.rs linguist-generated=true
+enum_test.rs linguist-generated=true
 flattened_scalar.rs linguist-generated=true
 mod.rs linguist-generated=true
 primitive_component.rs linguist-generated=true
