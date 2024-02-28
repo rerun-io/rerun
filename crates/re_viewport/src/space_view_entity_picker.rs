@@ -31,16 +31,10 @@ impl SpaceViewEntityPicker {
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
     ) {
-        let title = if ctx.app_options.experimental_entity_filter_editor {
-            "Edit entity path query"
-        } else {
-            "Add/remove Entities"
-        };
-
         self.modal_handler.ui(
             ctx.re_ui,
             egui_ctx,
-            || re_ui::modal::Modal::new(title).default_height(640.0),
+            || re_ui::modal::Modal::new("Add/remove Entities").default_height(640.0),
             |_, ui, open| {
                 let Some(space_view_id) = &self.space_view_id else {
                     *open = false;
