@@ -19,8 +19,9 @@ use re_viewer_context::{
     SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
 use re_viewport::{
-    external::re_space_view::blueprint::components::QueryExpressions, icon_for_container_kind,
-    space_view_name_style, Contents, Viewport, ViewportBlueprint,
+    context_menu_ui_for_item, external::re_space_view::blueprint::components::QueryExpressions,
+    icon_for_container_kind, space_view_name_style, Contents, SelectionUpdateBehavior, Viewport,
+    ViewportBlueprint,
 };
 
 use crate::ui::override_ui::override_ui;
@@ -787,6 +788,13 @@ fn show_list_item_for_container_child(
 
     let response = list_item.show(ui);
 
+    context_menu_ui_for_item(
+        ctx,
+        viewport.blueprint,
+        &item,
+        &response,
+        SelectionUpdateBehavior::Ignore,
+    );
     ctx.select_hovered_on_click(&response, std::iter::once(item));
 
     if remove_contents {
