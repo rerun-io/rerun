@@ -1,4 +1,4 @@
-use super::{large_text_button, url_large_text_button, WelcomeScreenResponse};
+use super::{large_text_button, url_large_text_button};
 use egui::{NumExt, Ui};
 use re_entity_db::EntityDb;
 use re_log_types::{
@@ -43,12 +43,11 @@ pub(super) fn welcome_page_ui(
     ui: &mut egui::Ui,
     rx: &ReceiveSet<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
-) -> WelcomeScreenResponse {
+) {
     ui.vertical(|ui| {
         let accepts_connections = rx.accepts_tcp_connections();
-        onboarding_content_ui(ui, command_sender, accepts_connections)
-    })
-    .inner
+        onboarding_content_ui(ui, command_sender, accepts_connections);
+    });
 }
 
 struct WelcomePagePanel<'a> {
@@ -62,7 +61,7 @@ fn onboarding_content_ui(
     ui: &mut Ui,
     command_sender: &re_viewer_context::CommandSender,
     accepts_connections: bool,
-) -> WelcomeScreenResponse {
+) {
     // The panel data is stored in this ad hoc structure such that it can easily be iterated over
     // in chunks, to make the layout grid code simpler.
     let panels = [
@@ -248,16 +247,9 @@ fn onboarding_content_ui(
 
                     ui.end_row();
                 }
-
-                WelcomeScreenResponse {
-                    go_to_example_page: show_example,
-                }
-            })
-            .inner
-        })
-        .inner
-    })
-    .inner
+            });
+        });
+    });
 }
 
 fn image_banner(ui: &mut egui::Ui, icon: &re_ui::Icon, column_width: f32, max_image_height: f32) {

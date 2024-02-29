@@ -6,8 +6,6 @@ use poll_promise::Promise;
 
 use re_viewer_context::SystemCommandSender;
 
-use super::WelcomeScreenResponse;
-
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
     url: String,
@@ -233,27 +231,27 @@ impl ExamplePage {
         ui: &mut egui::Ui,
         re_ui: &re_ui::ReUi,
         command_sender: &re_viewer_context::CommandSender,
-    ) -> WelcomeScreenResponse {
+    ) {
         let examples = self
             .examples
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
 
         let Some(examples) = examples.ready_mut() else {
             ui.spinner();
-            return WelcomeScreenResponse::default();
+            return;
         };
 
         let examples = match examples {
             Ok(examples) => examples,
             Err(err) => {
                 ui.label(re_ui.error_text(format!("Failed to load examples: {err}")));
-                return WelcomeScreenResponse::default();
+                return;
             }
         };
 
         if examples.is_empty() {
             ui.label("No examples found.");
-            return WelcomeScreenResponse::default();
+            return;
         }
 
         // vertical spacing isn't homogeneous so it's handled manually
@@ -266,6 +264,10 @@ impl ExamplePage {
             - grid_spacing.x)
             .floor()
             .at_most(MAX_COLUMN_WIDTH);
+
+        // draw "see examples" indicator
+        let examples_page_rect = ui.cursor();
+        let examples_visible = ui.is_rect_visible(ui.cursor().translate(vec2(0.0, 16.0)));
 
         ui.horizontal(|ui| {
             ui.vertical_centered(|ui| {
@@ -362,7 +364,41 @@ impl ExamplePage {
             });
         });
 
-        WelcomeScreenResponse::default()
+        if !examples_visible {
+            let inner_window_rect = ui.input(|i| {
+                let viewport_rect_in_monitor_space =
+                    i.viewport().inner_rect.unwrap_or(egui::Rect::ZERO);
+                viewport_rect_in_monitor_space
+                    .translate(-viewport_rect_in_monitor_space.left_top().to_vec2())
+            });
+
+            // TODO: `See examples` indicator
+            // if inner_window_rect.bottom() < 125.0 {}
+
+            let indicator_rect = examples_page_rect
+                .with_min_y(inner_window_rect.bottom() - 125.0)
+                .with_max_y(inner_window_rect.bottom());
+            ui.painter()
+                .debug_rect(indicator_rect, Color32::DARK_RED, "INDICATOR");
+
+            let mut ui = ui.child_ui(
+                indicator_rect,
+                egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+            );
+            ui.vertical_centered(|ui| {
+                ui.add(
+                    egui::Button::new("See examples")
+                        .sense(egui::Sense::hover())
+                        .rounding(6.0)
+                        .fill(egui::Color32::from_rgb(26, 29, 30))
+                        .stroke(egui::Stroke::new(
+                            1.0,
+                            egui::Color32::WHITE.gamma_multiply(0.086),
+                        ))
+                        .wrap(false),
+                );
+            });
+        }
     }
 }
 
