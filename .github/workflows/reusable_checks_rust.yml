@@ -12,7 +12,7 @@ on:
         default: false
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-checks
+  group: ${{ inputs.CONCURRENCY }}-checks_rust
   cancel-in-progress: true
 
 env:
