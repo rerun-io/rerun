@@ -1,6 +1,7 @@
 use egui::{Response, Ui};
 
 use itertools::Itertools;
+use re_data_ui::item_ui::guess_instance_path_icon;
 
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
@@ -400,7 +401,10 @@ impl Viewport<'_, '_> {
 
         let list_item = ListItem::new(ctx.re_ui, item_label)
             .selected(is_selected)
-            .with_icon(&re_ui::icons::ENTITY)
+            .with_icon(guess_instance_path_icon(
+                ctx,
+                &InstancePath::from(entity_path.clone()),
+            ))
             .subdued(subdued)
             .force_hovered(is_item_hovered)
             .with_buttons(|re_ui: &_, ui: &mut egui::Ui| {

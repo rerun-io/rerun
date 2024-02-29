@@ -1,7 +1,10 @@
 use egui::{NumExt as _, Ui};
 
-use re_data_ui::item_ui::instance_path_icon;
-use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
+use re_data_ui::{
+    image_meaning_for_entity, item_ui,
+    item_ui::{guess_instance_path_icon, guess_query_and_store_for_selected_entity},
+    DataUi,
+};
 use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
 };
@@ -37,39 +40,6 @@ use super::selection_history_ui::SelectionHistoryUi;
 #[serde(default)]
 pub(crate) struct SelectionPanel {
     selection_state_ui: SelectionHistoryUi,
-}
-
-/// The current time query, based on the current time control and an `entity_path`
-///
-/// If the user is inspecting the blueprint, and the `entity_path` is on the blueprint
-/// timeline, then use the blueprint. Otherwise use the recording.
-// TODO(jleibs): Ideally this wouldn't be necessary and we could make the assessment
-// directly from the entity_path.
-fn guess_query_and_store_for_selected_entity<'a>(
-    ctx: &'a ViewerContext<'_>,
-    entity_path: &EntityPath,
-) -> (re_data_store::LatestAtQuery, &'a re_data_store::DataStore) {
-    if ctx.app_options.inspect_blueprint_timeline
-        && ctx.store_context.blueprint.is_logged_entity(entity_path)
-    {
-        (
-            ctx.blueprint_cfg.time_ctrl.read().current_query(),
-            ctx.store_context.blueprint.store(),
-        )
-    } else {
-        (
-            ctx.rec_cfg.time_ctrl.read().current_query(),
-            ctx.entity_db.store(),
-        )
-    }
-}
-
-fn guess_instance_path_icon(
-    ctx: &ViewerContext<'_>,
-    instance_path: &InstancePath,
-) -> &'static re_ui::icons::Icon {
-    let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
-    instance_path_icon(&query, store, instance_path)
 }
 
 impl SelectionPanel {
