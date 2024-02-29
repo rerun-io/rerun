@@ -351,6 +351,29 @@ impl ViewportBlueprint {
             )
     }
 
+    /// Walk the subtree defined by the provided container id and call `visitor` for each
+    /// [`Contents`].
+    ///
+    /// Note: `visitor` is first called for the container passed in argument.
+    pub fn visit_contents_in_container(
+        &self,
+        container_id: &ContainerId,
+        visitor: &mut impl FnMut(&Contents),
+    ) {
+        visitor(&Contents::Container(*container_id));
+        if let Some(container) = self.container(container_id) {
+            for contents in &container.contents {
+                visitor(contents);
+                match contents {
+                    Contents::Container(container_id) => {
+                        self.visit_contents_in_container(container_id, visitor);
+                    }
+                    Contents::SpaceView(_) => {}
+                }
+            }
+        }
+    }
+
     /// Given a predicate, finds the (first) matching contents by recursively walking from the root
     /// container.
     pub fn find_contents_by(&self, predicate: &impl Fn(&Contents) -> bool) -> Option<Contents> {
