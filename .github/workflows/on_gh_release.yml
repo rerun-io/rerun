@@ -1,8 +1,17 @@
 name: "GitHub Release"
 
 on:
+  # Triggers when the `Publish release` button is pressed
   release:
-    types: [released]
+    types: [published]
+
+  # Manual trigger with `tag` input
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag"
+        type: string
+        required: true
 
 concurrency:
   group: "release-${{ github.event.release.tag_name }}"
@@ -18,6 +27,6 @@ jobs:
     name: "Sync Release Assets"
     uses: ./.github/workflows/reusable_sync_release_assets.yml
     with:
-      CONCURRENCY: "${{ github.event.release.tag_name }}"
-      RELEASE_VERSION: "${{ github.event.release.tag_name }}"
+      CONCURRENCY: "${{ github.event.release.tag_name || inputs.tag_name }}"
+      RELEASE_VERSION: "${{ github.event.release.tag_name || inputs.tag_name }}"
     secrets: inherit
