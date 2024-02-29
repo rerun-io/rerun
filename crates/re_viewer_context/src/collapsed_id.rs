@@ -66,7 +66,7 @@ impl<Scope: CollapsedIdScope> CollapsedId<Scope> {
     }
 
     /// Set the collapsed state for the given ID.
-    pub fn set_open(&self, ctx: &mut egui::Context, open: bool) {
+    pub fn set_open(&self, ctx: &egui::Context, open: bool) {
         let mut collapsing_state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ctx,
             self.egui_id(),
