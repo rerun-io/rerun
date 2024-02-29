@@ -281,7 +281,7 @@ namespace rerun {
 
         rr_bytes data = {};
         data.bytes = reinterpret_cast<const uint8_t*>(contents);
-        data.length = contents_size;
+        data.length = static_cast<uint32_t>(contents_size);
 
         rr_error status = {};
         rr_recording_stream_log_file_from_contents(
