@@ -507,7 +507,7 @@ namespace rerun {
         /// \param filepath Path to the file to be logged.
         ///
         /// \see `try_log_file_from_path`
-        void log_file_from_path(std::filesystem::path filepath) const {
+        void log_file_from_path(const std::filesystem::path& filepath) const {
             try_log_file_from_path(filepath).handle();
         }
 
@@ -523,7 +523,7 @@ namespace rerun {
         /// \param filepath Path to the file to be logged.
         ///
         /// \see `log_file_from_path`
-        Error try_log_file_from_path(std::filesystem::path filepath) const;
+        Error try_log_file_from_path(const std::filesystem::path& filepath) const;
 
         /// Logs the given `contents` using all `DataLoader`s available.
         ///
@@ -534,12 +534,13 @@ namespace rerun {
         ///
         /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
         ///
-        /// \param filepath Path to the file that the `file_contents` belong to.
+        /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
+        /// \param contents_size Size in bytes of the `contents`.
         ///
         /// \see `try_log_file_from_contents`
         void log_file_from_contents(
-            std::filesystem::path filepath, const std::byte* contents, size_t contents_size
+            const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size
         ) const {
             try_log_file_from_contents(filepath, contents, contents_size).handle();
         }
@@ -553,12 +554,13 @@ namespace rerun {
         ///
         /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
         ///
-        /// \param filepath Path to the file that the `file_contents` belong to.
+        /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
+        /// \param contents_size Size in bytes of the `contents`.
         ///
         /// \see `log_file_from_contents`
         Error try_log_file_from_contents(
-            std::filesystem::path filepath, const std::byte* contents, size_t contents_size
+            const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size
         ) const;
 
         /// @}

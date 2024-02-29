@@ -257,7 +257,7 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::try_log_file_from_path(std::filesystem::path filepath) const {
+    Error RecordingStream::try_log_file_from_path(const std::filesystem::path& filepath) const {
         if (!is_enabled()) {
             return Error::ok();
         }
@@ -273,7 +273,7 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_file_from_contents(
-        std::filesystem::path filepath, const std::byte* contents, size_t contents_size
+        const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size
     ) const {
         if (!is_enabled()) {
             return Error::ok();
