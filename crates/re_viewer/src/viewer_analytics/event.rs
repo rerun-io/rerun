@@ -66,6 +66,7 @@ pub fn open_recording(
                 re_log_types::FileSource::Cli => "file_cli".to_owned(),
                 re_log_types::FileSource::DragAndDrop => "file_drag_and_drop".to_owned(),
                 re_log_types::FileSource::FileDialog => "file_dialog".to_owned(),
+                re_log_types::FileSource::Sdk => "file_sdk".to_owned(),
             },
             S::Viewer => "viewer".to_owned(),
             S::Other(other) => other.clone(),
