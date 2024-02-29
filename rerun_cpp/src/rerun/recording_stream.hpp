@@ -2,12 +2,11 @@
 
 #include <chrono>
 #include <cstdint> // uint32_t etc.
-#include <optional>
+#include <filesystem>
 #include <string_view>
 #include <vector>
 
 #include "as_components.hpp"
-#include "collection.hpp"
 #include "error.hpp"
 #include "spawn_options.hpp"
 
@@ -508,7 +507,7 @@ namespace rerun {
         /// \param filepath Path to the file to be logged.
         ///
         /// \see `try_log_file_from_path`
-        void log_file_from_path(std::string_view filepath) const {
+        void log_file_from_path(std::filesystem::path filepath) const {
             try_log_file_from_path(filepath).handle();
         }
 
@@ -524,7 +523,7 @@ namespace rerun {
         /// \param filepath Path to the file to be logged.
         ///
         /// \see `log_file_from_path`
-        Error try_log_file_from_path(std::string_view filepath) const;
+        Error try_log_file_from_path(std::filesystem::path filepath) const;
 
         /// Logs the given `contents` using all `DataLoader`s available.
         ///
@@ -539,8 +538,10 @@ namespace rerun {
         /// \param contents Contents to be logged.
         ///
         /// \see `try_log_file_from_contents`
-        void log_file_from_contents(std::string_view filepath, std::string_view contents) const {
-            try_log_file_from_contents(filepath, contents).handle();
+        void log_file_from_contents(
+            std::filesystem::path filepath, const std::byte* contents, size_t contents_size
+        ) const {
+            try_log_file_from_contents(filepath, contents, contents_size).handle();
         }
 
         /// Logs the given `contents` using all `DataLoader`s available.
@@ -556,8 +557,9 @@ namespace rerun {
         /// \param contents Contents to be logged.
         ///
         /// \see `log_file_from_contents`
-        Error try_log_file_from_contents(std::string_view filepath, std::string_view contents)
-            const;
+        Error try_log_file_from_contents(
+            std::filesystem::path filepath, const std::byte* contents, size_t contents_size
+        ) const;
 
         /// @}
 

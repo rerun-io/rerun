@@ -65,7 +65,13 @@ int main(int argc, char** argv) {
                     std::ifstream file(filepath);
                     std::stringstream contents;
                     contents << file.rdbuf();
-                    rec.log_file_from_contents(filepath, contents.str());
+
+                    const auto data = contents.str();
+                    rec.log_file_from_contents(
+                        filepath,
+                        reinterpret_cast<const std::byte*>(data.c_str()),
+                        data.size()
+                    );
                 }
             }
         }

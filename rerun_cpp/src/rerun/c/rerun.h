@@ -37,8 +37,8 @@ typedef struct rr_string {
 typedef struct rr_bytes {
     /// Pointer to the bytes.
     ///
-    /// Rerun is guaranteed to not read beyond utf8[length-1].
-    const char* bytes;
+    /// Rerun is guaranteed to not read beyond bytes[length-1].
+    const uint8_t* bytes;
 
     /// The length of the data in bytes.
     uint32_t length;
@@ -244,7 +244,7 @@ typedef struct rr_error {
 ///
 /// This should match the string returned by `rr_version_string`.
 /// If not, the SDK's binary and the C header are out of sync.
-#define RERUN_SDK_HEADER_VERSION "0.14.0"
+#define RERUN_SDK_HEADER_VERSION "0.15.0-alpha.1+dev"
 
 /// Returns a human-readable version string of the Rerun C SDK.
 ///
