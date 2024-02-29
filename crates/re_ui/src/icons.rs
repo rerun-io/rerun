@@ -133,6 +133,12 @@ pub const SPACE_VIEW_UNKNOWN: Icon = Icon::new(
 );
 
 pub const GROUP: Icon = Icon::new("group", include_bytes!("../data/icons/group.png"));
+pub const ENTITY: Icon = Icon::new("entity", include_bytes!("../data/icons/entity.png"));
+pub const ENTITY_EMPTY: Icon = Icon::new(
+    "entity_empty",
+    include_bytes!("../data/icons/entity_empty.png"),
+);
+pub const COMPONENT: Icon = Icon::new("component", include_bytes!("../data/icons/component.png"));
 
 pub const STORE: Icon = Icon::new("store", include_bytes!("../data/icons/store.png"));
 

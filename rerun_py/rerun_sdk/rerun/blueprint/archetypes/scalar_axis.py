@@ -9,8 +9,9 @@ from typing import Any
 
 from attrs import define, field
 
-from ... import blueprint, components
+from ... import components
 from ..._baseclasses import Archetype
+from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
 
 __all__ = ["ScalarAxis"]
@@ -24,7 +25,7 @@ class ScalarAxis(Archetype):
         self: Any,
         *,
         range: components.Range1DLike | None = None,
-        lock_range_during_zoom: blueprint.components.LockRangeDuringZoomLike | None = None,
+        lock_range_during_zoom: blueprint_components.LockRangeDuringZoomLike | None = None,
     ):
         """
         Create a new instance of the ScalarAxis archetype.
@@ -71,10 +72,10 @@ class ScalarAxis(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    lock_range_during_zoom: blueprint.components.LockRangeDuringZoomBatch | None = field(
+    lock_range_during_zoom: blueprint_components.LockRangeDuringZoomBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint.components.LockRangeDuringZoomBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.LockRangeDuringZoomBatch._optional,  # type: ignore[misc]
     )
     # Whether to lock the range of the axis during zoom.
     #

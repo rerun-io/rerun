@@ -91,3 +91,18 @@ jobs:
           ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-build-all
           ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-test
           ${{ matrix.additional_commands }}
+
+  cpp-formatting:
+    name: C++ formatting check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - name: Run clang format on all relevant files
+        uses: jidicula/clang-format-action@v4.11.0
+        with:
+          clang-format-version: "16"
+          # Only check c/cpp/h/hpp (default checks also .proto and others)
+          include-regex: ^.*\.(c|cpp|h|hpp)$

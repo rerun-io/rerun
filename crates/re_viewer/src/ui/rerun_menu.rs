@@ -378,14 +378,6 @@ fn experimental_feature_ui(
     re_ui
         .checkbox(
             ui,
-            &mut app_options.experimental_entity_filter_editor,
-            "Entity filter DSL",
-        )
-        .on_hover_text("Show an entity filter DSL when selecting a space-view.");
-
-    re_ui
-        .checkbox(
-            ui,
             &mut app_options.experimental_plot_query_clamping,
             "Plots: query clamping",
         )
@@ -427,10 +419,6 @@ fn egui_debug_options_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
             "Show interactive widgets",
         )
         .on_hover_text("Show an overlay on all interactive widgets")
-        .changed();
-    any_clicked |= re_ui
-        .checkbox(ui, &mut debug.show_blocking_widget, "Show blocking widgets")
-        .on_hover_text("Show what widget blocks the interaction of another widget")
         .changed();
 
     if any_clicked {

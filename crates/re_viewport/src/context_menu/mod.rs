@@ -17,6 +17,88 @@ use container_and_space_view_actions::{
 //use space_view_data::SpaceViewData;
 use utils::{Separator, SubMenu};
 
+/// Controls how [`context_menu_ui_for_item`] should handle the current selection state.
+#[derive(Debug, Clone, Copy)]
+pub enum SelectionUpdateBehavior {
+    /// If part of the current selection, use it. Otherwise, set selection to clicked item.
+    UseSelection,
+
+    /// Discard the current selection state and set the selection to the clicked item.
+    OverrideSelection,
+
+    /// Ignore the current selection and consider only the clicked item.
+    Ignore,
+}
+
+/// Display a context menu for the provided [`Item`]
+pub fn context_menu_ui_for_item(
+    ctx: &ViewerContext<'_>,
+    viewport_blueprint: &ViewportBlueprint,
+    item: &Item,
+    item_response: &egui::Response,
+    selection_update_behavior: SelectionUpdateBehavior,
+) {
+    item_response.context_menu(|ui| {
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+            ui.close_menu();
+            return;
+        }
+
+        // handle selection
+        let selection_summary = match selection_update_behavior {
+            SelectionUpdateBehavior::UseSelection => {
+                if !ctx.selection().contains_item(item) {
+                    // When the context menu is triggered open, we check if we're part of the selection,
+                    // and, if not, we update the selection to include only the item that was clicked.
+                    if item_response.hovered() && item_response.secondary_clicked() {
+                        ctx.selection_state()
+                            .set_selection(std::iter::once(item.clone()));
+
+                        summarize_selection(&Selection::from(item.clone()))
+                    } else {
+                        summarize_selection(ctx.selection())
+                    }
+                } else {
+                    summarize_selection(ctx.selection())
+                }
+            }
+
+            SelectionUpdateBehavior::OverrideSelection => {
+                if item_response.secondary_clicked() {
+                    ctx.selection_state()
+                        .set_selection(std::iter::once(item.clone()));
+                }
+
+                summarize_selection(&Selection::from(item.clone()))
+            }
+
+            SelectionUpdateBehavior::Ignore => summarize_selection(&Selection::from(item.clone())),
+        };
+
+        let actions = context_menu_items_for_selection_summary(
+            ctx,
+            viewport_blueprint,
+            item,
+            selection_summary,
+        );
+
+        if actions.is_empty() {
+            ui.label(
+                egui::RichText::from("No action available for the current selection").italics(),
+            );
+        }
+
+        for action in actions {
+            let response = action.ui(ctx, viewport_blueprint, ui);
+            if response.clicked() {
+                ui.close_menu();
+            }
+        }
+    });
+}
+
+// ---
+
 /// Trait for things that can populate a context menu
 trait ContextMenuItem {
     // TODO(ab): return a `ListItem` to make those context menu nice to look at. This requires
@@ -144,57 +226,6 @@ fn context_menu_items_for_selection_summary(
         }
         SelectionSummary::Heterogeneous | SelectionSummary::Empty => vec![],
     }
-}
-
-/// Display a context menu for the provided [`Item`]
-pub fn context_menu_ui_for_item(
-    ctx: &ViewerContext<'_>,
-    viewport_blueprint: &ViewportBlueprint,
-    item: &Item,
-    item_response: &egui::Response,
-) {
-    item_response.context_menu(|ui| {
-        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-            ui.close_menu();
-            return;
-        }
-
-        // handle selection
-        let selection_summary = if !ctx.selection().contains_item(item) {
-            // When the context menu is triggered open, we check if we're part of the selection,
-            // and, if not, we update the selection to include only the item that was clicked.
-            if item_response.hovered() && item_response.secondary_clicked() {
-                ctx.selection_state()
-                    .set_selection(std::iter::once(item.clone()));
-
-                summarize_selection(&Selection::from(item.clone()))
-            } else {
-                summarize_selection(ctx.selection())
-            }
-        } else {
-            summarize_selection(ctx.selection())
-        };
-
-        let actions = context_menu_items_for_selection_summary(
-            ctx,
-            viewport_blueprint,
-            item,
-            selection_summary,
-        );
-
-        if actions.is_empty() {
-            ui.label(
-                egui::RichText::from("No action available for the current selection").italics(),
-            );
-        }
-
-        for action in actions {
-            let response = action.ui(ctx, viewport_blueprint, ui);
-            if response.clicked() {
-                ui.close_menu();
-            }
-        }
-    });
 }
 
 /// Helper that returns the allowable containers

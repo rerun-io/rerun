@@ -17,8 +17,6 @@ pub struct AppOptions {
     /// Enable experimental dataframe space views.
     pub experimental_dataframe_space_view: bool,
 
-    pub experimental_entity_filter_editor: bool,
-
     /// Toggle query clamping for the plot visualizers.
     pub experimental_plot_query_clamping: bool,
 
@@ -51,8 +49,6 @@ impl Default for AppOptions {
             experimental_space_view_screenshots: false,
 
             experimental_dataframe_space_view: false,
-
-            experimental_entity_filter_editor: false,
 
             experimental_plot_query_clamping: false,
 

@@ -9,7 +9,7 @@ use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::{container::Contents, context_menu_ui_for_item, Viewport};
+use crate::{container::Contents, context_menu_ui_for_item, SelectionUpdateBehavior, Viewport};
 
 /// The style to use for displaying this space view name in the UI.
 pub fn space_view_name_style(name: &SpaceViewName) -> re_ui::LabelStyle {
@@ -105,7 +105,13 @@ impl Viewport<'_, '_> {
             self.contents_ui(ctx, ui, child, true);
         }
 
-        context_menu_ui_for_item(ctx, self.blueprint, &item, &item_response);
+        context_menu_ui_for_item(
+            ctx,
+            self.blueprint,
+            &item,
+            &item_response,
+            SelectionUpdateBehavior::UseSelection,
+        );
         ctx.select_hovered_on_click(&item_response, item);
 
         self.handle_root_container_drag_and_drop_interaction(
@@ -167,7 +173,13 @@ impl Viewport<'_, '_> {
             }
         });
 
-        context_menu_ui_for_item(ctx, self.blueprint, &item, &response);
+        context_menu_ui_for_item(
+            ctx,
+            self.blueprint,
+            &item,
+            &response,
+            SelectionUpdateBehavior::UseSelection,
+        );
         ctx.select_hovered_on_click(&response, item);
 
         self.blueprint
@@ -262,7 +274,13 @@ impl Viewport<'_, '_> {
             self.blueprint.focus_tab(space_view.id);
         }
 
-        context_menu_ui_for_item(ctx, self.blueprint, &item, &response);
+        context_menu_ui_for_item(
+            ctx,
+            self.blueprint,
+            &item,
+            &response,
+            SelectionUpdateBehavior::UseSelection,
+        );
         ctx.select_hovered_on_click(&response, item);
 
         let content = Contents::SpaceView(*space_view_id);
@@ -343,10 +361,9 @@ impl Viewport<'_, '_> {
                 .map_or("unknown".to_owned(), |e| e.ui_string());
 
             let response = if child_node.children.is_empty() {
-                let label = format!("🔹 {name}");
-
-                ListItem::new(ctx.re_ui, label)
+                ListItem::new(ctx.re_ui, name)
                     .selected(is_selected)
+                    .with_icon(&re_ui::icons::ENTITY)
                     .subdued(
                         !group_is_visible
                             || !properties.visible
