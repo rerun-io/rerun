@@ -58,28 +58,6 @@ impl WelcomeScreen {
         rx: &ReceiveSet<LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) {
-        // tab bar
-        egui::Frame {
-            inner_margin: egui::Margin::symmetric(12.0, 8.0),
-            ..Default::default()
-        }
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ReUi::welcome_screen_tab_bar_style(ui);
-
-                ui.selectable_value(
-                    &mut self.current_page,
-                    WelcomeScreenPage::Welcome,
-                    "Welcome",
-                );
-                ui.selectable_value(
-                    &mut self.current_page,
-                    WelcomeScreenPage::Examples,
-                    "Examples",
-                );
-            });
-        });
-
         // This is needed otherwise `example_page_ui` bleeds by a few pixels over the timeline panel
         // TODO(ab): figure out why that happens
         ui.set_clip_rect(ui.available_rect_before_wrap());
@@ -91,7 +69,7 @@ impl WelcomeScreen {
                 let margin = egui::Margin {
                     left: 40.0,
                     right: 40.0,
-                    top: 16.0,
+                    top: 24.0,
                     bottom: 8.0,
                 };
                 egui::Frame {
