@@ -20,7 +20,7 @@ use re_log_types::{
 };
 use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{
-    HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, ViewerContext,
+    HoverHighlight, Item, RecordingConfig, StreamsCollapsedId, TimeControl, TimeView, ViewerContext,
 };
 
 use time_axis::TimelineAxis;
@@ -555,7 +555,6 @@ impl TimePanel {
             show_root_as.to_owned()
         };
 
-        let collapsing_header_id = ui.make_persistent_id(&tree.path);
         let default_open = tree.path.len() <= 1 && !tree.is_leaf();
 
         let item = TimePanelItem::entity_path(tree.path.clone());
@@ -578,17 +577,22 @@ impl TimePanel {
             .width_allocation_mode(WidthAllocationMode::Compact)
             .selected(is_selected)
             .force_hovered(is_item_hovered)
-            .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                self.show_children(
-                    ctx,
-                    time_ctrl,
-                    time_area_response,
-                    time_area_painter,
-                    tree_max_y,
-                    tree,
-                    ui,
-                );
-            });
+            .show_collapsing(
+                ui,
+                StreamsCollapsedId::Entity(tree.path.clone()),
+                default_open,
+                |_, ui| {
+                    self.show_children(
+                        ctx,
+                        time_ctrl,
+                        time_area_response,
+                        time_area_painter,
+                        tree_max_y,
+                        tree,
+                        ui,
+                    );
+                },
+            );
 
         ui.set_clip_rect(clip_rect_save);
 

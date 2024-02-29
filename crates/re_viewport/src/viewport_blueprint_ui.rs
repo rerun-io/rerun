@@ -7,7 +7,8 @@ use re_log_types::EntityPathRule;
 use re_space_view::{SpaceViewBlueprint, SpaceViewName};
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
 use re_viewer_context::{
-    ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
+    BlueprintCollapsedId, ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item,
+    SpaceViewId, ViewerContext,
 };
 
 use crate::{container::Contents, context_menu_ui_for_item, SelectionUpdateBehavior, Viewport};
@@ -168,11 +169,16 @@ impl Viewport<'_, '_> {
 
             remove_response | vis_response
         })
-        .show_collapsing(ui, ui.id().with(container_id), default_open, |_, ui| {
-            for child in &container_blueprint.contents {
-                self.contents_ui(ctx, ui, child, container_visible);
-            }
-        });
+        .show_collapsing(
+            ui,
+            BlueprintCollapsedId::Container(*container_id),
+            default_open,
+            |_, ui| {
+                for child in &container_blueprint.contents {
+                    self.contents_ui(ctx, ui, child, container_visible);
+                }
+            },
+        );
 
         context_menu_ui_for_item(
             ctx,
@@ -223,7 +229,6 @@ impl Viewport<'_, '_> {
         // empty space views should display as open by default to highlight the fact that they are empty
         let default_open = root_node.map_or(true, Self::default_open_for_data_result);
 
-        let collapsing_header_id = ui.id().with(space_view.id);
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
@@ -251,23 +256,28 @@ impl Viewport<'_, '_> {
 
                 response | vis_response
             })
-            .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                if let Some(result_node) = root_node {
-                    // TODO(jleibs): handle the case where the only result
-                    // in the tree is a single path (no groups). This should never
-                    // happen for a SpaceViewContents.
-                    Self::space_view_blueprint_ui(
-                        ctx,
-                        ui,
-                        &query_result,
-                        result_node,
-                        space_view,
-                        space_view_visible,
-                    );
-                } else {
-                    ui.label("No data");
-                }
-            });
+            .show_collapsing(
+                ui,
+                BlueprintCollapsedId::SpaceView(*space_view_id),
+                default_open,
+                |_, ui| {
+                    if let Some(result_node) = root_node {
+                        // TODO(jleibs): handle the case where the only result
+                        // in the tree is a single path (no groups). This should never
+                        // happen for a SpaceViewContents.
+                        Self::space_view_blueprint_ui(
+                            ctx,
+                            ui,
+                            &query_result,
+                            result_node,
+                            space_view,
+                            space_view_visible,
+                        );
+                    } else {
+                        ui.label("No data");
+                    }
+                },
+            );
 
         response = response.on_hover_text("Space View");
 
@@ -392,7 +402,10 @@ impl Viewport<'_, '_> {
                     .with_buttons(buttons)
                     .show_collapsing(
                         ui,
-                        ui.id().with(&child_node.data_result.entity_path),
+                        BlueprintCollapsedId::DataResult(
+                            space_view.id,
+                            child_node.data_result.entity_path.clone(),
+                        ),
                         default_open,
                         |_, ui| {
                             Self::space_view_blueprint_ui(
