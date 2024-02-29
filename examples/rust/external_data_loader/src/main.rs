@@ -2,13 +2,16 @@
 
 use rerun::{MediaType, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE};
 
-// The Rerun Viewer will always pass these two pieces of information:
+// The Rerun Viewer will always pass at least these two pieces of information:
 // 1. The path to be loaded, as a positional arg.
 // 2. A shared recording ID, via the `--recording-id` flag.
 //
 // It is up to you whether you make use of that shared recording ID or not.
 // If you use it, the data will end up in the same recording as all other plugins interested in
 // that file, otherwise you can just create a dedicated recording for it. Or both.
+//
+// Check out `re_data_source::RecommendedLoadSettings` documentation for an exhaustive listing of
+// the available CLI parameters.
 
 /// This is an example executable data-loader plugin for the Rerun Viewer.
 /// Any executable on your `$PATH` with a name that starts with [`rerun-loader-`] will be
@@ -21,14 +24,30 @@ use rerun::{MediaType, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE};
 /// Rust source file with Rerun (`rerun file.rs`).
 ///
 /// [`rerun-loader-`]: `rerun::EXTERNAL_DATA_LOADER_PREFIX`
-#[derive(argh::FromArgs)]
+#[derive(argh::FromArgs, Debug)]
 struct Args {
     #[argh(positional)]
     filepath: std::path::PathBuf,
 
-    /// optional ID of the shared recording
+    /// optional recommended ID for the recording
     #[argh(option)]
     recording_id: Option<String>,
+
+    /// optional prefix for all entity paths
+    #[argh(option)]
+    entity_path_prefix: Option<String>,
+
+    /// optional mark data to be logged as timeless
+    #[argh(switch)]
+    timeless: bool,
+
+    /// optional timestamps to log at (e.g. `--time sim_time=1709203426`) [repeatable]
+    #[argh(option)]
+    time: Vec<String>,
+
+    /// optional sequences to log at (e.g. `--sequence sim_frame=42`) [repeatable]
+    #[argh(option)]
+    sequence: Vec<String>,
 }
 
 fn extension(path: &std::path::Path) -> String {
@@ -56,7 +75,7 @@ fn main() -> anyhow::Result<()> {
 
     let rec = {
         let mut rec = rerun::RecordingStreamBuilder::new("rerun_example_external_data_loader");
-        if let Some(recording_id) = args.recording_id {
+        if let Some(recording_id) = args.recording_id.as_ref() {
             rec = rec.recording_id(recording_id);
         };
 
@@ -64,10 +83,44 @@ fn main() -> anyhow::Result<()> {
         rec.stdout()?
     };
 
-    rec.log_timeless(
-        rerun::EntityPath::from_file_path(&args.filepath),
+    // TODO: send APIs
+    rec.set_timepoint(timepoint_from_args(&args)?);
+
+    let entity_path_prefix = args
+        .entity_path_prefix
+        .map_or_else(|| rerun::EntityPath::new(vec![]), rerun::EntityPath::from);
+
+    rec.log_with_timeless(
+        entity_path_prefix.join(&rerun::EntityPath::from_file_path(&args.filepath)),
+        args.timeless,
         &rerun::TextDocument::new(text).with_media_type(MediaType::MARKDOWN),
     )?;
 
     Ok::<_, anyhow::Error>(())
+}
+
+fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
+    let mut timepoint = rerun::TimePoint::default();
+    {
+        for time_str in &args.time {
+            let Some((timeline_name, time)) = time_str.split_once('=') else {
+                continue;
+            };
+            timepoint.insert(
+                rerun::Timeline::new_temporal(timeline_name),
+                time.parse::<i64>()?.into(),
+            );
+        }
+
+        for seq_str in &args.sequence {
+            let Some((seqline_name, seq)) = seq_str.split_once('=') else {
+                continue;
+            };
+            timepoint.insert(
+                rerun::Timeline::new_sequence(seqline_name),
+                seq.parse::<i64>()?.into(),
+            );
+        }
+    }
+    Ok(timepoint)
 }
