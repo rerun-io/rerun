@@ -795,7 +795,7 @@ impl ObjectField {
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
 
-        let typ = Type::from_raw_type(enums, objs, field.type_(), &attrs);
+        let typ = Type::from_raw_type(&virtpath, enums, objs, field.type_(), &attrs);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
@@ -844,6 +844,7 @@ impl ObjectField {
         let attrs = Attributes::from_raw_attrs(val.attributes());
 
         let typ = Type::from_raw_type(
+            &virtpath,
             enums,
             objs,
             // NOTE: Unwrapping is safe, we never resolve enums without union types.
@@ -994,6 +995,7 @@ impl From<ElementType> for Type {
 
 impl Type {
     pub fn from_raw_type(
+        virtpath: &str,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         field_type: FbsType<'_>,
@@ -1030,6 +1032,12 @@ impl Type {
             // or whatever integer type the enum was assigned to.
             let enum_index = field_type.index() as usize;
             if enum_index < enums.len() {
+                // It is an enum.
+                assert!(
+                    typ == FbsBaseType::Byte,
+                    "{virtpath}: For consistency, enums must be declared as the `byte` type"
+                );
+
                 let enum_ = &enums[field_type.index() as usize];
                 return Self::Object(enum_.name().to_owned());
             }
