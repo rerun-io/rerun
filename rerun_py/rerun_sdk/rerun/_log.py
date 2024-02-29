@@ -290,11 +290,11 @@ def log_file_from_path(
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
-    Logs the file at the given `path` using all `re_data_source::DataLoader`s available.
+    Logs the file at the given `path` using all `DataLoader`s available.
 
     A single `path` might be handled by more than one loader.
 
-    This method blocks until either at least one `re_data_source::DataLoader` starts
+    This method blocks until either at least one `DataLoader` starts
     streaming data in or all of them fail.
 
     See <https://www.rerun.io/docs/howto/open-any-file> for more information.
@@ -322,11 +322,11 @@ def log_file_from_contents(
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
-    Logs the given `file_contents` using all `crate::DataLoader`s available.
+    Logs the given `file_contents` using all `DataLoader`s available.
 
     A single `path` might be handled by more than one loader.
 
-    This method blocks until either at least one `re_data_source::DataLoader` starts
+    This method blocks until either at least one `DataLoader` starts
     streaming data in or all of them fail.
 
     See <https://www.rerun.io/docs/howto/open-any-file> for more information.
