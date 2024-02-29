@@ -271,16 +271,19 @@ impl ExamplePage {
         let examples_page_rect = ui.cursor();
         let examples_visible = ui.is_rect_visible(ui.cursor().translate(vec2(0.0, 16.0)));
 
-        ui.horizontal(|ui| {
-            ui.vertical_centered(|ui| {
-                ui.add(egui::Label::new(
-                    egui::RichText::new("Examples")
-                        .strong()
-                        .line_height(Some(32.0))
-                        .text_style(re_ui::ReUi::welcome_screen_h1()),
-                ));
-            });
-        });
+        let title_response = ui
+            .horizontal(|ui| {
+                ui.vertical_centered(|ui| {
+                    ui.add(egui::Label::new(
+                        egui::RichText::new("Examples")
+                            .strong()
+                            .line_height(Some(32.0))
+                            .text_style(re_ui::ReUi::welcome_screen_h1()),
+                    ))
+                })
+                .inner
+            })
+            .inner;
         ui.end_row();
 
         ui.horizontal(|ui| {
@@ -367,15 +370,10 @@ impl ExamplePage {
         });
 
         if !examples_visible {
-            let inner_window_rect = ui.input(|i| {
-                let viewport_rect_in_monitor_space =
-                    i.viewport().inner_rect.unwrap_or(egui::Rect::ZERO);
-                viewport_rect_in_monitor_space
-                    .translate(-viewport_rect_in_monitor_space.left_top().to_vec2())
-            });
+            let screen_rect = ui.ctx().screen_rect();
             let indicator_rect = examples_page_rect
-                .with_min_y(inner_window_rect.bottom() - 125.0)
-                .with_max_y(inner_window_rect.bottom());
+                .with_min_y(screen_rect.bottom() - 125.0)
+                .with_max_y(screen_rect.bottom());
 
             let mut ui = ui.child_ui(
                 indicator_rect,
@@ -387,9 +385,7 @@ impl ExamplePage {
 
                 ui.scope(|ui| {
                     ui.spacing_mut().button_padding = vec2(16.0, 8.0);
-                    ui.visuals_mut().widgets.hovered.bg_stroke = egui::Stroke::NONE;
-                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                    ui.add(
+                    let response = ui.add(
                         egui::Button::image_and_text(
                             ARROW_DOWN
                                 .as_image()
@@ -400,6 +396,9 @@ impl ExamplePage {
                         .rounding(16.0)
                         .fill(egui::Color32::from_gray(0xfa)),
                     );
+                    if response.clicked() {
+                        title_response.scroll_to_me(Some(egui::Align::Min));
+                    }
                 })
             });
         }
