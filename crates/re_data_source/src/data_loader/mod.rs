@@ -10,7 +10,7 @@ use re_log_types::{ArrowMsg, DataRow, EntityPath, LogMsg, TimePoint};
 ///
 /// The loader is free to ignore some or all of these.
 ///
-/// External [`DataLoader`]s will be passed the the following CLI parameters:
+/// External [`DataLoader`]s will be passed the following CLI parameters:
 /// * `--recording-id <store_id>`
 /// * `--opened-recording-id <opened_store_id>` (if set)
 /// * `--entity-path-prefix <entity_path_prefix>` (if set)
@@ -27,7 +27,7 @@ pub struct RecommendedLoadSettings {
     /// Log data to this recording if you want it to appear in a new recording shared by all
     /// data-loaders for the current loading session.
     //
-    // TODO: issue
+    // TODO(#5350): actually support this
     pub opened_store_id: Option<re_log_types::StoreId>,
 
     /// What should the entity paths be prefixed with?

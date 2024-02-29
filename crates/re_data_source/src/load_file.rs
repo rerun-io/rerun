@@ -36,7 +36,7 @@ pub fn load_from_path(
 
     let data = load(settings, path, None)?;
 
-    // TODO: there's probably gonna be issues with this though... maybe?
+    // TODO(cmc): should we always unconditionally set store info though?
     // If we reach this point, then at least one compatible `DataLoader` has been found.
     let store_info = prepare_store_info(&settings.store_id, file_source, path);
     if let Some(store_info) = store_info {
@@ -45,7 +45,6 @@ pub fn load_from_path(
         }
     }
 
-    // TODO: should we be using this one here?
     send(&settings.store_id, data, tx);
 
     Ok(())
@@ -73,6 +72,7 @@ pub fn load_from_file_contents(
 
     let data = load(settings, filepath, Some(contents))?;
 
+    // TODO(cmc): should we always unconditionally set store info though?
     // If we reach this point, then at least one compatible `DataLoader` has been found.
     let store_info = prepare_store_info(&settings.store_id, file_source, filepath);
     if let Some(store_info) = store_info {
@@ -81,7 +81,6 @@ pub fn load_from_file_contents(
         }
     }
 
-    // TODO: should we be using this one here?
     send(&settings.store_id, data, tx);
 
     Ok(())

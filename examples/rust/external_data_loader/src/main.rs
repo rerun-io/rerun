@@ -83,7 +83,7 @@ fn main() -> anyhow::Result<()> {
         rec.stdout()?
     };
 
-    // TODO: send APIs
+    // TODO(#3841): really need those send APIs
     rec.set_timepoint(timepoint_from_args(&args)?);
 
     let entity_path_prefix = args
