@@ -33,36 +33,6 @@ pub fn highlights_for_space_view(
         match current_selection {
             Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => {}
 
-            Item::DataBlueprintGroup(group_space_view_id, query_id, group_entity_path) => {
-                // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
-                // since they are truly local to a space view.
-                if *group_space_view_id == space_view_id {
-                    // Everything in the same group should receive the same selection outline.
-                    // (Due to the way outline masks work in re_renderer, we can't leave the hover channel empty)
-                    let selection_mask = next_selection_mask();
-
-                    let query_result = ctx.lookup_query_result(*query_id).clone();
-
-                    query_result
-                        .tree
-                        .visit_group(group_entity_path, &mut |handle| {
-                            if let Some(result) = query_result.tree.lookup_result(handle) {
-                                let entity_hash = result.entity_path.hash();
-                                let instance = result.entity_path.clone().into();
-
-                                highlighted_entity_paths
-                                    .entry(entity_hash)
-                                    .or_default()
-                                    .add_selection(&instance, SelectionHighlight::SiblingSelection);
-                                outlines_masks
-                                    .entry(entity_hash)
-                                    .or_default()
-                                    .add(&instance, selection_mask);
-                            }
-                        });
-                }
-            }
-
             Item::ComponentPath(component_path) => {
                 let entity_hash = component_path.entity_path.hash();
                 let instance = component_path.entity_path.clone().into();
@@ -107,33 +77,6 @@ pub fn highlights_for_space_view(
     for current_hover in ctx.selection_state().hovered().iter_items() {
         match current_hover {
             Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => {}
-
-            Item::DataBlueprintGroup(group_space_view_id, query_id, group_entity_path) => {
-                // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
-                // since they are truly local to a space view.
-                if *group_space_view_id == space_view_id {
-                    // Everything in the same group should receive the same hover outline.
-                    let hover_mask = next_hover_mask();
-
-                    let query_result = ctx.lookup_query_result(*query_id).clone();
-
-                    query_result
-                        .tree
-                        .visit_group(group_entity_path, &mut |handle| {
-                            if let Some(result) = query_result.tree.lookup_result(handle) {
-                                let instance = result.entity_path.clone().into();
-                                highlighted_entity_paths
-                                    .entry(result.entity_path.hash())
-                                    .or_default()
-                                    .add_hover(&instance, HoverHighlight::Hovered);
-                                outlines_masks
-                                    .entry(result.entity_path.hash())
-                                    .or_default()
-                                    .add(&instance, hover_mask);
-                            }
-                        });
-                }
-            }
 
             Item::ComponentPath(component_path) => {
                 let entity_hash = component_path.entity_path.hash();

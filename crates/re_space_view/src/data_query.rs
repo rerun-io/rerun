@@ -4,7 +4,7 @@ use re_viewer_context::{DataQueryResult, PerVisualizer, StoreContext, Visualizab
 pub struct EntityOverrideContext {
     pub root: EntityProperties,
     pub individual: EntityPropertyMap,
-    pub group: EntityPropertyMap,
+    pub recursive: EntityPropertyMap,
 }
 
 /// Trait for resolving properties needed by most implementations of [`DataQuery`]

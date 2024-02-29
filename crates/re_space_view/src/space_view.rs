@@ -475,13 +475,14 @@ impl SpaceViewBlueprint {
         DataResult {
             entity_path: entity_path.clone(),
             visualizers: Default::default(),
-            is_group: true,
             direct_included: true,
             property_overrides: Some(PropertyOverrides {
                 accumulated_properties,
                 individual_properties,
+                recursive_properties: Default::default(),
                 component_overrides: Default::default(),
-                override_path: entity_path,
+                recursive_override_path: entity_path.clone(),
+                individual_override_path: entity_path,
             }),
         }
     }
@@ -642,15 +643,15 @@ mod tests {
 
             let parent = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .lookup_result_by_path(&EntityPath::from("parent"))
                 .unwrap();
             let child1 = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .lookup_result_by_path(&EntityPath::from("parent/skip/child1"))
                 .unwrap();
             let child2 = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
                 .unwrap();
 
             for result in [parent, child1, child2] {
@@ -660,11 +661,15 @@ mod tests {
                 );
             }
 
-            // Now, override visibility on parent but not group
+            // Now, override visibility on parent individually.
             let mut overrides = parent.individual_properties().cloned().unwrap_or_default();
             overrides.visible = false;
 
-            save_override(overrides, parent.override_path().unwrap(), &mut blueprint);
+            save_override(
+                overrides,
+                parent.individual_override_path().unwrap(),
+                &mut blueprint,
+            );
         }
 
         // Parent is not visible, but children are
@@ -680,19 +685,19 @@ mod tests {
 
             let parent_group = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent"), true)
+                .lookup_result_by_path(&EntityPath::from("parent"))
                 .unwrap();
             let parent = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .lookup_result_by_path(&EntityPath::from("parent"))
                 .unwrap();
             let child1 = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .lookup_result_by_path(&EntityPath::from("parent/skip/child1"))
                 .unwrap();
             let child2 = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
                 .unwrap();
 
             assert!(!parent.accumulated_properties().visible);
@@ -701,7 +706,7 @@ mod tests {
                 assert!(result.accumulated_properties().visible);
             }
 
-            // Override visibility on parent group
+            // Override visibility on parent recursively.
             let mut overrides = parent_group
                 .individual_properties()
                 .cloned()
@@ -710,7 +715,7 @@ mod tests {
 
             save_override(
                 overrides,
-                parent_group.override_path().unwrap(),
+                parent_group.recursive_override_path().unwrap(),
                 &mut blueprint,
             );
         }
@@ -728,15 +733,15 @@ mod tests {
 
             let parent = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .lookup_result_by_path(&EntityPath::from("parent"))
                 .unwrap();
             let child1 = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .lookup_result_by_path(&EntityPath::from("parent/skip/child1"))
                 .unwrap();
             let child2 = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
                 .unwrap();
 
             for result in [parent, child1, child2] {
@@ -758,7 +763,11 @@ mod tests {
             overrides.visible_history.enabled = true;
             overrides.visible_history.nanos = VisibleHistory::ALL;
 
-            save_override(overrides, root.override_path().unwrap(), &mut blueprint);
+            save_override(
+                overrides,
+                root.recursive_override_path().unwrap(),
+                &mut blueprint,
+            );
         }
 
         // Everyone has visible history
@@ -773,15 +782,15 @@ mod tests {
 
             let parent = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .lookup_result_by_path(&EntityPath::from("parent"))
                 .unwrap();
             let child1 = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .lookup_result_by_path(&EntityPath::from("parent/skip/child1"))
                 .unwrap();
             let child2 = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
                 .unwrap();
 
             for result in [parent, child1, child2] {
@@ -795,7 +804,11 @@ mod tests {
             let mut overrides = child2.individual_properties().cloned().unwrap_or_default();
             overrides.visible_history.enabled = true;
 
-            save_override(overrides, child2.override_path().unwrap(), &mut blueprint);
+            save_override(
+                overrides,
+                child2.individual_override_path().unwrap(),
+                &mut blueprint,
+            );
         }
 
         // Child2 has its own visible history
@@ -811,15 +824,15 @@ mod tests {
 
             let parent = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .lookup_result_by_path(&EntityPath::from("parent"))
                 .unwrap();
             let child1 = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .lookup_result_by_path(&EntityPath::from("parent/skip/child1"))
                 .unwrap();
             let child2 = query_result
                 .tree
-                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
                 .unwrap();
 
             for result in [parent, child1] {

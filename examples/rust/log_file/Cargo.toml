@@ -1,11 +1,10 @@
 [package]
-name = "objectron"
-version = "0.15.0-alpha.1+dev"
+name = "log_file"
+version = "0.14.0-alpha.2"
 edition = "2021"
 rust-version = "1.74"
 license = "MIT OR Apache-2.0"
 publish = false
-
 
 [dependencies]
 rerun = { path = "../../../crates/rerun", features = ["web_viewer", "clap"] }
@@ -13,10 +12,3 @@ rerun = { path = "../../../crates/rerun", features = ["web_viewer", "clap"] }
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 glam = "0.22"
-prost = "0.12"
-
-
-[build-dependencies]
-re_build_tools = { path = "../../../crates/re_build_tools" }
-prost-build = "0.12"
-protoc-prebuilt = "0.2"

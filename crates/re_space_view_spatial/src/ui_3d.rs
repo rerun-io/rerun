@@ -550,7 +550,7 @@ pub fn view_3d(
     // Track focused entity if any.
     if let Some(focused_item) = ctx.focused_item {
         let focused_entity = match focused_item {
-            Item::StoreId(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => None,
+            Item::StoreId(_) | Item::Container(_) => None,
 
             Item::SpaceView(space_view_id) => {
                 if space_view_id == &query.space_view_id {
