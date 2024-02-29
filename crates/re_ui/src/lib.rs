@@ -705,7 +705,7 @@ impl ReUi {
                 );
 
                 let icon_response = header_response.clone().with_new_rect(icon_rect);
-                Self::paint_collapsing_triangle(ui, openness, icon_rect, &icon_response);
+                Self::paint_collapsing_triangle(ui, openness, icon_rect.center(), &icon_response);
             }
 
             ui.painter().galley(text_pos, galley, visuals.text_color());
@@ -810,7 +810,7 @@ impl ReUi {
                     egui::Vec2::splat(icon_width),
                 );
                 let icon_response = header_response.clone().with_new_rect(icon_rect);
-                Self::paint_collapsing_triangle(ui, openness, icon_rect, &icon_response);
+                Self::paint_collapsing_triangle(ui, openness, icon_rect.center(), &icon_response);
 
                 let visuals = ui.style().interact(&header_response);
 
@@ -844,25 +844,30 @@ impl ReUi {
         });
     }
 
-    /// Size for the collapsing triangle icon.
+    /// Layout area to allocate for the collapsing triangle.
     ///
-    /// See [`ReUi::paint_collapsing_triangle`] for actually drawing the triangle.
-    pub fn collapsing_triangle_size() -> egui::Vec2 {
-        // Required for the hierarchical lists to appear less busy by virtue of a better alignment
+    /// Note that this is not the _size_ of the collapsing triangle (which is defined by
+    /// [`ReUi::paint_collapsing_triangle`]), but how much screen real-estate should be allocated
+    /// for it. It's set to the same size as the small icon size so that everything is properly
+    /// aligned in [`list_item::ListItem`].
+    pub fn collapsing_triangle_area() -> egui::Vec2 {
         Self::small_icon_size()
     }
 
     /// Paint a collapsing triangle with rounded corners.
     ///
-    /// Alternative to [`egui::collapsing_header::paint_default_icon`].
+    /// Alternative to [`egui::collapsing_header::paint_default_icon`]. Note that the triangle is
+    /// painted with a fixed size.
     pub fn paint_collapsing_triangle(
         ui: &egui::Ui,
         openness: f32,
-        rect: Rect,
+        center: egui::Pos2,
         response: &egui::Response,
     ) {
         let visuals = ui.style().interact(response);
 
+        // This value is hard coded because, from a UI perspective, the size of the triangle is
+        // given and fixed, and shouldn't vary based on the area it's in.
         static TRIANGLE_SIZE: f32 = 8.0;
 
         // Normalized in [0, 1]^2 space.
@@ -886,7 +891,7 @@ impl ReUi {
         use std::f32::consts::TAU;
         let rotation = Rot2::from_angle(egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0));
         for p in &mut points {
-            *p = rect.center() + rotation * (*p - pos2(0.5, 0.5)) * TRIANGLE_SIZE;
+            *p = center + rotation * (*p - pos2(0.5, 0.5)) * TRIANGLE_SIZE;
         }
 
         ui.painter().add(Shape::convex_polygon(
