@@ -16,7 +16,7 @@ mod load_stdin;
 
 pub use self::data_loader::{
     iter_loaders, register_custom_data_loader, ArchetypeLoader, DataLoader, DataLoaderError,
-    DirectoryLoader, LoadedData, RrdLoader,
+    DirectoryLoader, LoadedData, RecommendedLoadSettings, RrdLoader,
 };
 pub use self::data_source::DataSource;
 pub use self::load_file::{extension, load_from_file_contents};
@@ -24,8 +24,8 @@ pub use self::web_sockets::connect_to_ws_url;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::data_loader::{
-    iter_external_loaders, ExternalLoader, RecommendedLoadSettings,
-    EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE, EXTERNAL_DATA_LOADER_PREFIX,
+    iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE,
+    EXTERNAL_DATA_LOADER_PREFIX,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
