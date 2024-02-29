@@ -120,6 +120,11 @@ impl ReUi {
     }
 
     #[inline]
+    pub fn welcome_screen_example_title() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-example-title".into())
+    }
+
+    #[inline]
     pub fn welcome_screen_body() -> egui::TextStyle {
         egui::TextStyle::Name("welcome-screen-body".into())
     }

@@ -1,40 +1,17 @@
-mod example_page;
-mod welcome_page;
-
-use std::hash::Hash;
+mod example_section;
+mod welcome_section;
 
 use egui::Widget;
-use welcome_page::welcome_page_ui;
+use example_section::ExampleSection;
+use welcome_section::welcome_section_ui;
 
 use re_log_types::LogMsg;
 use re_smart_channel::ReceiveSet;
 use re_ui::ReUi;
 
-#[derive(Debug, Default, PartialEq, Hash)]
-enum WelcomeScreenPage {
-    #[default]
-    Welcome,
-    Examples,
-}
-
-pub struct WelcomeScreen {
-    current_page: WelcomeScreenPage,
-    example_page: example_page::ExamplePage,
-}
-
 #[derive(Default)]
-#[must_use]
-pub(super) struct WelcomeScreenResponse {
-    pub go_to_example_page: bool,
-}
-
-impl Default for WelcomeScreen {
-    fn default() -> Self {
-        Self {
-            current_page: WelcomeScreenPage::Welcome,
-            example_page: example_page::ExamplePage::default(),
-        }
-    }
+pub struct WelcomeScreen {
+    example_page: ExampleSection,
 }
 
 impl WelcomeScreen {
@@ -50,59 +27,29 @@ impl WelcomeScreen {
         rx: &ReceiveSet<LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) {
-        // tab bar
-        egui::Frame {
-            inner_margin: egui::Margin::symmetric(12.0, 8.0),
-            ..Default::default()
-        }
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ReUi::welcome_screen_tab_bar_style(ui);
-
-                ui.selectable_value(
-                    &mut self.current_page,
-                    WelcomeScreenPage::Welcome,
-                    "Welcome",
-                );
-                ui.selectable_value(
-                    &mut self.current_page,
-                    WelcomeScreenPage::Examples,
-                    "Examples",
-                );
-            });
-        });
-
         // This is needed otherwise `example_page_ui` bleeds by a few pixels over the timeline panel
         // TODO(ab): figure out why that happens
         ui.set_clip_rect(ui.available_rect_before_wrap());
 
-        let response: WelcomeScreenResponse = egui::ScrollArea::vertical()
-            .id_source(("welcome_screen_page", &self.current_page))
+        egui::ScrollArea::vertical()
+            .id_source("welcome_screen_page")
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                let margin = egui::Margin {
-                    left: 40.0,
-                    right: 40.0,
-                    top: 16.0,
-                    bottom: 8.0,
-                };
                 egui::Frame {
-                    inner_margin: margin,
+                    inner_margin: egui::Margin {
+                        left: 40.0,
+                        right: 40.0,
+                        top: 32.0,
+                        bottom: 8.0,
+                    },
                     ..Default::default()
                 }
-                .show(ui, |ui| match self.current_page {
-                    WelcomeScreenPage::Welcome => welcome_page_ui(ui, rx, command_sender),
-                    WelcomeScreenPage::Examples => {
-                        self.example_page.ui(ui, re_ui, rx, command_sender)
-                    }
-                })
-                .inner
-            })
-            .inner;
-
-        if response.go_to_example_page {
-            self.current_page = WelcomeScreenPage::Examples;
-        }
+                .show(ui, |ui| {
+                    welcome_section_ui(ui, rx, command_sender);
+                    ui.add_space(80.0);
+                    self.example_page.ui(ui, re_ui, command_sender);
+                });
+            });
     }
 }
 
