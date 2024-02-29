@@ -168,7 +168,7 @@ jobs:
   save-pr-summary:
     name: "Save PR Summary"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [upload-web, run-notebook, build-rerun_c-and-upload]
+    needs: [upload-web, run-notebook]
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
