@@ -50,6 +50,11 @@ def flat_np_float_array_from_array_like(data: Any, dimension: int) -> npt.NDArra
     """Converts to a flat float numpy array from an arbitrary vector, validating for an expected dimensionality."""
 
     array = to_np_float32(data)
+    return flat_np_array_from_array_like(array, dimension)
+
+
+def flat_np_array_from_array_like(array: npt.NDArray[Any], dimension: int) -> npt.NDArray[Any]:
+    """Converts to a flat numpy array from an arbitrary vector, validating for an expected dimensionality."""
 
     valid = True
     if len(array.shape) == 1:

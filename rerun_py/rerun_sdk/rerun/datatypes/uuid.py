@@ -16,12 +16,13 @@ from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_uint8,
 )
+from .uuid_ext import UuidExt
 
 __all__ = ["Uuid", "UuidArrayLike", "UuidBatch", "UuidLike", "UuidType"]
 
 
 @define(init=False)
-class Uuid:
+class Uuid(UuidExt):
     """**Datatype**: A 16-byte uuid."""
 
     def __init__(self: Any, bytes: UuidLike):
@@ -62,4 +63,4 @@ class UuidBatch(BaseBatch[UuidArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: UuidArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in uuid_ext.py
+        return UuidExt.native_to_pa_array_override(data, data_type)
