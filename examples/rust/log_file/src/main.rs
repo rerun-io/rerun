@@ -51,9 +51,5 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         }
     }
 
-    // TODO(cmc): This is required because the way we handle RecordingStream clones in subtly
-    // broken. That's outside the scope of this PR, I'll fix this in a follow-up.
-    rec.disconnect();
-
     Ok(())
 }
