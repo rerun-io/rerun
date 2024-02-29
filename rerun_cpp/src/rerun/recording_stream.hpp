@@ -2,12 +2,11 @@
 
 #include <chrono>
 #include <cstdint> // uint32_t etc.
-#include <optional>
+#include <filesystem>
 #include <string_view>
 #include <vector>
 
 #include "as_components.hpp"
-#include "collection.hpp"
 #include "error.hpp"
 #include "spawn_options.hpp"
 
@@ -494,6 +493,74 @@ namespace rerun {
         Error try_log_data_row(
             std::string_view entity_path, size_t num_instances, size_t num_data_cells,
             const DataCell* data_cells, bool inject_time
+        ) const;
+
+        /// Logs the file at the given `path` using all `DataLoader`s available.
+        ///
+        /// A single `path` might be handled by more than one loader.
+        ///
+        /// This method blocks until either at least one `DataLoader` starts streaming data in
+        /// or all of them fail.
+        ///
+        /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+        ///
+        /// \param filepath Path to the file to be logged.
+        ///
+        /// \see `try_log_file_from_path`
+        void log_file_from_path(const std::filesystem::path& filepath) const {
+            try_log_file_from_path(filepath).handle();
+        }
+
+        /// Logs the file at the given `path` using all `DataLoader`s available.
+        ///
+        /// A single `path` might be handled by more than one loader.
+        ///
+        /// This method blocks until either at least one `DataLoader` starts streaming data in
+        /// or all of them fail.
+        ///
+        /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+        ///
+        /// \param filepath Path to the file to be logged.
+        ///
+        /// \see `log_file_from_path`
+        Error try_log_file_from_path(const std::filesystem::path& filepath) const;
+
+        /// Logs the given `contents` using all `DataLoader`s available.
+        ///
+        /// A single `path` might be handled by more than one loader.
+        ///
+        /// This method blocks until either at least one `DataLoader` starts streaming data in
+        /// or all of them fail.
+        ///
+        /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+        ///
+        /// \param filepath Path to the file that the `contents` belong to.
+        /// \param contents Contents to be logged.
+        /// \param contents_size Size in bytes of the `contents`.
+        ///
+        /// \see `try_log_file_from_contents`
+        void log_file_from_contents(
+            const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size
+        ) const {
+            try_log_file_from_contents(filepath, contents, contents_size).handle();
+        }
+
+        /// Logs the given `contents` using all `DataLoader`s available.
+        ///
+        /// A single `path` might be handled by more than one loader.
+        ///
+        /// This method blocks until either at least one `DataLoader` starts streaming data in
+        /// or all of them fail.
+        ///
+        /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+        ///
+        /// \param filepath Path to the file that the `contents` belong to.
+        /// \param contents Contents to be logged.
+        /// \param contents_size Size in bytes of the `contents`.
+        ///
+        /// \see `log_file_from_contents`
+        Error try_log_file_from_contents(
+            const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size
         ) const;
 
         /// @}
