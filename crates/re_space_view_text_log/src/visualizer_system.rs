@@ -84,6 +84,12 @@ impl VisualizerSystem for TextLogSystem {
             )?;
         }
 
+        {
+            // Sort by currently selected tiemeline
+            re_tracing::profile_scope!("sort");
+            self.entries.sort_by_key(|e| e.time);
+        }
+
         Ok(Vec::new())
     }
 
