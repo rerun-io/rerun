@@ -37,7 +37,7 @@ typedef struct rr_string {
 typedef struct rr_bytes {
     /// Pointer to the bytes.
     ///
-    /// Rerun is guaranteed to not read beyond utf8[length-1].
+    /// Rerun is guaranteed to not read beyond bytes[length-1].
     const char* bytes;
 
     /// The length of the data in bytes.
