@@ -113,8 +113,46 @@ impl ::re_types_core::Loggable for IncludedSpaceViews {
                     Self::arrow_datatype(),
                     offsets,
                     {
-                        _ = data0_inner_bitmap;
-                        crate::datatypes::Uuid::to_arrow_opt(data0_inner_data)?
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let data0_inner_data_inner_data: Vec<_> = data0_inner_data
+                            .iter()
+                            .map(|datum| {
+                                datum
+                                    .map(|datum| {
+                                        let crate::datatypes::Uuid { bytes } = datum;
+                                        bytes
+                                    })
+                                    .unwrap_or_default()
+                            })
+                            .flatten()
+                            .map(Some)
+                            .collect();
+                        let data0_inner_data_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                            data0_inner_bitmap.as_ref().map(|bitmap| {
+                                bitmap
+                                    .iter()
+                                    .map(|i| std::iter::repeat(i).take(16usize))
+                                    .flatten()
+                                    .collect::<Vec<_>>()
+                                    .into()
+                            });
+                        FixedSizeListArray::new(
+                            DataType::FixedSizeList(
+                                std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
+                                16usize,
+                            ),
+                            PrimitiveArray::new(
+                                DataType::UInt8,
+                                data0_inner_data_inner_data
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect(),
+                                data0_inner_data_inner_bitmap,
+                            )
+                            .boxed(),
+                            data0_inner_bitmap,
+                        )
+                        .boxed()
                     },
                     data0_bitmap,
                 )
@@ -132,64 +170,152 @@ impl ::re_types_core::Loggable for IncludedSpaceViews {
     {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow2::array::ListArray<i32>>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.blueprint.components.IncludedSpaceViews#space_view_ids")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let arrow_data_inner = {
-                    let arrow_data_inner = &**arrow_data.values();
-                    crate::datatypes::Uuid::from_arrow_opt(arrow_data_inner)
-                        .with_context(
-                            "rerun.blueprint.components.IncludedSpaceViews#space_view_ids",
-                        )?
-                        .into_iter()
-                        .collect::<Vec<_>>()
-                };
-                let offsets = arrow_data.offsets();
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets.iter().zip(offsets.lengths()),
-                    arrow_data.validity(),
-                )
-                .map(|elem| {
-                    elem.map(|(start, len)| {
-                        let start = *start as usize;
-                        let end = start + len;
-                        if end as usize > arrow_data_inner.len() {
-                            return Err(DeserializationError::offset_slice_oob(
-                                (start, end),
-                                arrow_data_inner.len(),
-                            ));
-                        }
-
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data =
-                            unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
-                        let data = data
-                            .iter()
-                            .cloned()
-                            .map(Option::unwrap_or_default)
-                            .collect();
-                        Ok(data)
+        Ok(
+            {
+                let arrow_data = arrow_data
+                    .as_any()
+                    .downcast_ref::<arrow2::array::ListArray<i32>>()
+                    .ok_or_else(|| {
+                        let expected = Self::arrow_datatype();
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                    .with_context(
+                        "rerun.blueprint.components.IncludedSpaceViews#space_view_ids",
+                    )?;
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let arrow_data_inner = {
+                        let arrow_data_inner = &**arrow_data.values();
+                        {
+                            let arrow_data_inner = arrow_data_inner
+                                .as_any()
+                                .downcast_ref::<arrow2::array::FixedSizeListArray>()
+                                .ok_or_else(|| {
+                                    let expected = DataType::FixedSizeList(
+                                        std::sync::Arc::new(
+                                            Field::new("item", DataType::UInt8, false),
+                                        ),
+                                        16usize,
+                                    );
+                                    let actual = arrow_data_inner.data_type().clone();
+                                    DeserializationError::datatype_mismatch(expected, actual)
+                                })
+                                .with_context(
+                                    "rerun.blueprint.components.IncludedSpaceViews#space_view_ids",
+                                )?;
+                            if arrow_data_inner.is_empty() {
+                                Vec::new()
+                            } else {
+                                let offsets = (0..)
+                                    .step_by(16usize)
+                                    .zip(
+                                        (16usize..).step_by(16usize).take(arrow_data_inner.len()),
+                                    );
+                                let arrow_data_inner_inner = {
+                                    let arrow_data_inner_inner = &**arrow_data_inner.values();
+                                    arrow_data_inner_inner
+                                        .as_any()
+                                        .downcast_ref::<UInt8Array>()
+                                        .ok_or_else(|| {
+                                            let expected = DataType::UInt8;
+                                            let actual = arrow_data_inner_inner.data_type().clone();
+                                            DeserializationError::datatype_mismatch(expected, actual)
+                                        })
+                                        .with_context(
+                                            "rerun.blueprint.components.IncludedSpaceViews#space_view_ids",
+                                        )?
+                                        .into_iter()
+                                        .map(|opt| opt.copied())
+                                        .collect::<Vec<_>>()
+                                };
+                                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                        offsets,
+                                        arrow_data_inner.validity(),
+                                    )
+                                    .map(|elem| {
+                                        elem
+                                            .map(|(start, end)| {
+                                                debug_assert!(end - start == 16usize);
+                                                if end as usize > arrow_data_inner_inner.len() {
+                                                    return Err(
+                                                        DeserializationError::offset_slice_oob(
+                                                            (start, end),
+                                                            arrow_data_inner_inner.len(),
+                                                        ),
+                                                    );
+                                                }
+
+                                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                                let data = unsafe {
+                                                    arrow_data_inner_inner
+                                                        .get_unchecked(start as usize..end as usize)
+                                                };
+                                                let data = data
+                                                    .iter()
+                                                    .cloned()
+                                                    .map(Option::unwrap_or_default);
+                                                let arr = array_init::from_iter(data).unwrap();
+                                                Ok(arr)
+                                            })
+                                            .transpose()
+                                    })
+                                    .map(|res_or_opt| {
+                                        res_or_opt
+                                            .map(|res_or_opt| {
+                                                res_or_opt.map(|bytes| crate::datatypes::Uuid { bytes })
+                                            })
+                                    })
+                                    .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                            }
+                                .into_iter()
+                        }
+                            .collect::<Vec<_>>()
+                    };
+                    let offsets = arrow_data.offsets();
+                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            arrow_data.validity(),
+                        )
+                        .map(|elem| {
+                            elem
+                                .map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                    };
+                                    let data = data
+                                        .iter()
+                                        .cloned()
+                                        .map(Option::unwrap_or_default)
+                                        .collect();
+                                    Ok(data)
+                                })
+                                .transpose()
+                        })
+                        .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                }
+                    .into_iter()
             }
-            .into_iter()
-        }
-        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.blueprint.components.IncludedSpaceViews#space_view_ids")
-        .with_context("rerun.blueprint.components.IncludedSpaceViews")?)
+                .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<DeserializationResult<Vec<Option<_>>>>()
+                .with_context(
+                    "rerun.blueprint.components.IncludedSpaceViews#space_view_ids",
+                )
+                .with_context("rerun.blueprint.components.IncludedSpaceViews")?,
+        )
     }
 }

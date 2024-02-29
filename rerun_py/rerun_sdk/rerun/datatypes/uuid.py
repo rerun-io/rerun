@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -37,7 +37,11 @@ class Uuid:
         return np.asarray(self.bytes, dtype=dtype)
 
 
-UuidLike = Uuid
+if TYPE_CHECKING:
+    UuidLike = Union[Uuid, npt.NDArray[np.uint8], npt.ArrayLike, Sequence[int]]
+else:
+    UuidLike = Any
+
 UuidArrayLike = Union[
     Uuid,
     Sequence[UuidLike],
@@ -49,18 +53,7 @@ class UuidType(BaseExtensionType):
 
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self,
-            pa.struct(
-                [
-                    pa.field(
-                        "bytes",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16),
-                        nullable=False,
-                        metadata={},
-                    )
-                ]
-            ),
-            self._TYPE_NAME,
+            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16), self._TYPE_NAME
         )
 
 

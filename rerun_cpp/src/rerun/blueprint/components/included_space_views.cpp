@@ -33,7 +33,7 @@ namespace rerun {
             );
         }
 
-        auto value_builder = static_cast<arrow::StructBuilder*>(builder->value_builder());
+        auto value_builder = static_cast<arrow::FixedSizeListBuilder*>(builder->value_builder());
         ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
         ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 

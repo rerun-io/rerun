@@ -12,9 +12,8 @@ namespace rerun.datatypes;
 
 /// A 16-byte uuid.
 struct Uuid  (
-  // TODO(jleibs): Figure out why we can't make this transparent.
-  // The deserializer barfs on list of fixed-sized-list.
-  //"attr.arrow.transparent",
+  "attr.arrow.transparent",
+  "attr.python.aliases": "npt.NDArray[np.uint8], npt.ArrayLike, Sequence[int]",
   "attr.rust.derive": "Default, Copy, PartialEq, Eq",
   "attr.rust.repr": "transparent"
 ) {

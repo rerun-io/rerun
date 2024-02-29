@@ -55,16 +55,7 @@ class IncludedSpaceViewsType(BaseExtensionType):
             pa.list_(
                 pa.field(
                     "item",
-                    pa.struct(
-                        [
-                            pa.field(
-                                "bytes",
-                                pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16),
-                                nullable=False,
-                                metadata={},
-                            )
-                        ]
-                    ),
+                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16),
                     nullable=False,
                     metadata={},
                 )

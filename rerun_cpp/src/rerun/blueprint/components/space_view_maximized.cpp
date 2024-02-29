@@ -18,8 +18,8 @@ namespace rerun {
     }
 
     rerun::Error Loggable<blueprint::components::SpaceViewMaximized>::fill_arrow_array_builder(
-        arrow::StructBuilder* builder, const blueprint::components::SpaceViewMaximized* elements,
-        size_t num_elements
+        arrow::FixedSizeListBuilder* builder,
+        const blueprint::components::SpaceViewMaximized* elements, size_t num_elements
     ) {
         (void)builder;
         (void)elements;
@@ -46,7 +46,7 @@ namespace rerun {
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(
                 Loggable<blueprint::components::SpaceViewMaximized>::fill_arrow_array_builder(
-                    static_cast<arrow::StructBuilder*>(builder.get()),
+                    static_cast<arrow::FixedSizeListBuilder*>(builder.get()),
                     instances,
                     num_instances
                 )

@@ -14,7 +14,7 @@
 namespace arrow {
     class Array;
     class DataType;
-    class StructBuilder;
+    class FixedSizeListBuilder;
 } // namespace arrow
 
 namespace rerun::blueprint::components {
@@ -63,7 +63,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder,
+            arrow::FixedSizeListBuilder* builder,
             const blueprint::components::SpaceViewMaximized* elements, size_t num_elements
         );
 
