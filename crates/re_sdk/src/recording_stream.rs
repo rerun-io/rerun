@@ -656,7 +656,8 @@ impl Drop for RecordingStream {
     #[inline]
     fn drop(&mut self) {
         // If this holds the last strong handle to the recording, make sure that all pending
-        // `DataLoader` threads started from the SDK actually run to completion.
+        // `DataLoader` threads that were started from the SDK actually run to completion (they
+        // all hold a weak handle to this very recording!).
         //
         // NOTE: It's very important to do so from the `Drop` implementation of `RecordingStream`
         // itself, because the dataloader threads -- by definition -- will have to send data into
