@@ -158,22 +158,10 @@ fn onboarding_content_ui(
                 false
             }),
         },
-        WelcomePagePanel {
-            title: "Start with an example",
-            body: "Load pre-built examples to explore what you can build with Rerun. Each example \
-                comes with easy to run code so you can see how it's done.",
-            image: &re_ui::icons::WELCOME_SCREEN_EXAMPLES,
-            add_buttons: Box::new(|ui: &mut egui::Ui| {
-                large_text_button(ui, "View Examples").clicked()
-            }),
-        },
     ];
 
     // Shrink images if needed so user can see all the content buttons
     let max_image_height = ui.available_height() - 300.0;
-
-    let centering_vspace = (ui.available_height() - 650.0) / 2.0;
-    ui.add_space(centering_vspace.at_least(0.0));
 
     let panel_count = panels.len();
 
@@ -182,20 +170,27 @@ fn onboarding_content_ui(
 
     let grid_spacing = egui::vec2(12.0, 16.0);
 
-    let mut column_count = (((ui.available_width() + grid_spacing.x)
+    let column_count = (((ui.available_width() + grid_spacing.x)
         / (MIN_COLUMN_WIDTH + grid_spacing.x))
         .floor() as usize)
         .clamp(1, panels.len());
-
-    // we either display 4, 2, or a single column, because 3 columns is ugly with 4 panels.
-    if column_count == 3 {
-        column_count = 2;
-    }
 
     let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
         - grid_spacing.x)
         .floor()
         .at_most(MAX_COLUMN_WIDTH);
+
+    ui.horizontal(|ui| {
+        ui.vertical_centered(|ui| {
+            ui.add(egui::Label::new(
+                egui::RichText::new("Welcome")
+                    .strong()
+                    .line_height(Some(32.0))
+                    .text_style(re_ui::ReUi::welcome_screen_h1()),
+            ))
+        });
+    });
+    ui.end_row();
 
     ui.horizontal(|ui| {
         // this space is added on the left so that the grid is centered
@@ -206,21 +201,6 @@ fn onboarding_content_ui(
         ui.add_space(centering_hspace.at_least(0.0));
 
         ui.vertical(|ui| {
-            ui.horizontal_wrapped(|ui| {
-                ui.add(egui::Label::new(
-                    egui::RichText::new("Welcome.")
-                        .strong()
-                        .line_height(Some(32.0))
-                        .text_style(re_ui::ReUi::welcome_screen_h1()),
-                ));
-
-                ui.add(egui::Label::new(
-                    egui::RichText::new("Visualize multimodal data.")
-                        .line_height(Some(32.0))
-                        .text_style(re_ui::ReUi::welcome_screen_h1()),
-                ));
-            });
-
             ui.add_space(32.0);
 
             let grid = egui::Grid::new("welcome_screen_grid")
@@ -257,17 +237,12 @@ fn onboarding_content_ui(
                                     .text_style(re_ui::ReUi::welcome_screen_h3()),
                             );
                             ui.label(egui::RichText::new(panel.body).line_height(Some(19.0)));
-                        });
-                    }
-
-                    ui.end_row();
-
-                    for panel in panels {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 4.0;
-                            if (panel.add_buttons)(ui) {
-                                show_example = true;
-                            }
+                            ui.horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 4.0;
+                                if (panel.add_buttons)(ui) {
+                                    show_example = true;
+                                }
+                            });
                         });
                     }
 

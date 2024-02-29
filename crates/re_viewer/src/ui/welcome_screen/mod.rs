@@ -22,10 +22,18 @@ pub struct WelcomeScreen {
     example_page: example_page::ExamplePage,
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 #[must_use]
 pub(super) struct WelcomeScreenResponse {
     pub go_to_example_page: bool,
+}
+
+impl WelcomeScreenResponse {
+    fn merge_with(self, other: WelcomeScreenResponse) -> Self {
+        Self {
+            go_to_example_page: self.go_to_example_page || other.go_to_example_page,
+        }
+    }
 }
 
 impl Default for WelcomeScreen {
@@ -90,9 +98,13 @@ impl WelcomeScreen {
                     inner_margin: margin,
                     ..Default::default()
                 }
-                .show(ui, |ui| match self.current_page {
-                    WelcomeScreenPage::Welcome => welcome_page_ui(ui, rx, command_sender),
-                    WelcomeScreenPage::Examples => self.example_page.ui(ui, re_ui, command_sender),
+                .show(ui, |ui| {
+                    ui.add_space(8.0);
+                    let response = welcome_page_ui(ui, rx, command_sender);
+                    ui.add_space(80.0);
+                    self.example_page
+                        .ui(ui, re_ui, command_sender)
+                        .merge_with(response)
                 })
                 .inner
             })

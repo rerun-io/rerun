@@ -267,32 +267,28 @@ impl ExamplePage {
             .floor()
             .at_most(MAX_COLUMN_WIDTH);
 
-        // this space is added on the left so that the grid is centered
-        let centering_hspace = (ui.available_width()
-            - column_count as f32 * column_width
-            - (column_count - 1) as f32 * grid_spacing.x)
-            .max(0.0)
-            / 2.0;
+        ui.horizontal(|ui| {
+            ui.vertical_centered(|ui| {
+                ui.add(egui::Label::new(
+                    egui::RichText::new("Examples")
+                        .strong()
+                        .line_height(Some(32.0))
+                        .text_style(re_ui::ReUi::welcome_screen_h1()),
+                ));
+            });
+        });
+        ui.end_row();
 
         ui.horizontal(|ui| {
+            // this space is added on the left so that the grid is centered
+            let centering_hspace = (ui.available_width()
+                - column_count as f32 * column_width
+                - (column_count - 1) as f32 * grid_spacing.x)
+                .max(0.0)
+                / 2.0;
             ui.add_space(centering_hspace);
 
             ui.vertical(|ui| {
-                ui.horizontal_wrapped(|ui| {
-                    ui.add(egui::Label::new(
-                        egui::RichText::new("Examples.")
-                            .strong()
-                            .line_height(Some(32.0))
-                            .text_style(re_ui::ReUi::welcome_screen_h1()),
-                    ));
-
-                    ui.add(egui::Label::new(
-                        egui::RichText::new("Explore what you can build.")
-                            .line_height(Some(32.0))
-                            .text_style(re_ui::ReUi::welcome_screen_h1()),
-                    ));
-                });
-
                 ui.add_space(TITLE_TO_GRID_VSPACE);
 
                 egui::Grid::new("example_page_grid")
