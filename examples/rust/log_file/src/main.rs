@@ -36,17 +36,24 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
+    let mut settings = rerun::DataLoaderSettings::recommended(rec.store_info().unwrap().store_id);
+    settings.entity_path_prefix = Some("log_file_example".into());
+
     for filepath in &args.filepaths {
         let filepath = filepath.as_path();
 
         if !args.from_contents {
             // Either log the file using its path…
-            rec.log_file_from_path(filepath)?;
+            rec.log_file_from_path(&settings, filepath)?;
         } else {
             // …or using its contents if you already have them loaded for some reason.
             if filepath.is_file() {
                 let contents = std::fs::read(filepath)?;
-                rec.log_file_from_contents(filepath, std::borrow::Cow::Borrowed(&contents))?;
+                rec.log_file_from_contents(
+                    &settings,
+                    filepath,
+                    std::borrow::Cow::Borrowed(&contents),
+                )?;
             }
         }
     }

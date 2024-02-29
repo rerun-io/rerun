@@ -734,13 +734,26 @@ fn rr_log_file_from_path_impl(
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
+    let recording_id = stream
+        .store_info()
+        .ok_or_else(|| {
+            CError::new(
+                CErrorCode::RecordingStreamRuntimeFailure,
+                &format!("Couldn't load file {filepath:?}: no recording available"),
+            )
+        })?
+        .store_id;
+    let settings = re_sdk::DataLoaderSettings::recommended(recording_id);
+
     let filepath = filepath.as_str("filepath")?;
-    stream.log_file_from_path(filepath).map_err(|err| {
-        CError::new(
-            CErrorCode::RecordingStreamRuntimeFailure,
-            &format!("Couldn't load file {filepath:?}: {err}"),
-        )
-    })?;
+    stream
+        .log_file_from_path(&settings, filepath)
+        .map_err(|err| {
+            CError::new(
+                CErrorCode::RecordingStreamRuntimeFailure,
+                &format!("Couldn't load file {filepath:?}: {err}"),
+            )
+        })?;
 
     Ok(())
 }
@@ -766,11 +779,22 @@ fn rr_log_file_from_contents_impl(
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
+    let recording_id = stream
+        .store_info()
+        .ok_or_else(|| {
+            CError::new(
+                CErrorCode::RecordingStreamRuntimeFailure,
+                &format!("Couldn't load file {filepath:?}: no recording available"),
+            )
+        })?
+        .store_id;
+    let settings = re_sdk::DataLoaderSettings::recommended(recording_id);
+
     let filepath = filepath.as_str("filepath")?;
     let contents = contents.as_bytes("contents")?;
 
     stream
-        .log_file_from_contents(filepath, std::borrow::Cow::Borrowed(contents))
+        .log_file_from_contents(&settings, filepath, std::borrow::Cow::Borrowed(contents))
         .map_err(|err| {
             CError::new(
                 CErrorCode::RecordingStreamRuntimeFailure,

@@ -2,9 +2,105 @@ use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 
-use re_log_types::{ArrowMsg, DataRow, LogMsg};
+use re_log_types::{ArrowMsg, DataRow, EntityPath, LogMsg, TimePoint};
 
 // ---
+
+/// Recommended settings for the [`DataLoader`].
+///
+/// The loader is free to ignore some or all of these.
+///
+/// External [`DataLoader`]s will be passed the following CLI parameters:
+/// * `--recording-id <store_id>`
+/// * `--opened-recording-id <opened_store_id>` (if set)
+/// * `--entity-path-prefix <entity_path_prefix>` (if set)
+/// * `--timeless` (if `timepoint` is set to the timeless timepoint)
+/// * `--time <timeline1>=<time1> <timeline2>=<time2> ...` (if `timepoint` contains temporal data)
+/// * `--sequence <timeline1>=<seq1> <timeline2>=<seq2> ...` (if `timepoint` contains sequence data)
+#[derive(Debug, Clone)]
+pub struct DataLoaderSettings {
+    /// The recommended [`re_log_types::StoreId`] to log the data to, based on the surrounding context.
+    pub store_id: re_log_types::StoreId,
+
+    /// The [`re_log_types::StoreId`] that is currently opened in the viewer, if any.
+    ///
+    /// Log data to this recording if you want it to appear in a new recording shared by all
+    /// data-loaders for the current loading session.
+    //
+    // TODO(#5350): actually support this
+    pub opened_store_id: Option<re_log_types::StoreId>,
+
+    /// What should the entity paths be prefixed with?
+    pub entity_path_prefix: Option<EntityPath>,
+
+    /// At what time(s) should the data be logged to?
+    pub timepoint: Option<TimePoint>,
+}
+
+impl DataLoaderSettings {
+    #[inline]
+    pub fn recommended(store_id: impl Into<re_log_types::StoreId>) -> Self {
+        Self {
+            store_id: store_id.into(),
+            opened_store_id: Default::default(),
+            entity_path_prefix: Default::default(),
+            timepoint: Default::default(),
+        }
+    }
+
+    /// Generates CLI flags from these settings, for external data loaders.
+    pub fn to_cli_args(&self) -> Vec<String> {
+        let Self {
+            store_id,
+            opened_store_id,
+            entity_path_prefix,
+            timepoint,
+        } = self;
+
+        let mut args = Vec::new();
+
+        args.extend(["--recording-id".to_owned(), format!("{store_id}")]);
+
+        if let Some(opened_store_id) = opened_store_id {
+            args.extend([
+                "--opened-recording-id".to_owned(),
+                format!("{opened_store_id}"),
+            ]);
+        }
+
+        if let Some(entity_path_prefix) = entity_path_prefix {
+            args.extend([
+                "--entity-path-prefix".to_owned(),
+                format!("{entity_path_prefix}"),
+            ]);
+        }
+
+        if let Some(timepoint) = timepoint {
+            if timepoint.is_timeless() {
+                args.push("--timeless".to_owned());
+            }
+
+            for (timeline, time) in timepoint.iter() {
+                match timeline.typ() {
+                    re_log_types::TimeType::Time => {
+                        args.extend([
+                            "--time".to_owned(),
+                            format!("{}={}", timeline.name(), time.as_i64()),
+                        ]);
+                    }
+                    re_log_types::TimeType::Sequence => {
+                        args.extend([
+                            "--sequence".to_owned(),
+                            format!("{}={}", timeline.name(), time.as_i64()),
+                        ]);
+                    }
+                }
+            }
+        }
+
+        args
+    }
+}
 
 /// A [`DataLoader`] loads data from a file path and/or a file's contents.
 ///
@@ -90,7 +186,7 @@ pub trait DataLoader: Send + Sync {
     #[cfg(not(target_arch = "wasm32"))]
     fn load_from_path(
         &self,
-        store_id: re_log_types::StoreId,
+        settings: &DataLoaderSettings,
         path: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError>;
@@ -122,7 +218,7 @@ pub trait DataLoader: Send + Sync {
     /// with a [`DataLoaderError::Incompatible`] error.
     fn load_from_file_contents(
         &self,
-        store_id: re_log_types::StoreId,
+        settings: &DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<LoadedData>,
