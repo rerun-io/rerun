@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Iterable
 
 import pyarrow as pa
@@ -280,6 +281,72 @@ def log_components(
         timeless=timeless,
         recording=recording,
     )
+
+
+@catch_and_log_exceptions()
+def log_file_from_path(
+    file_path: str | Path,
+    *,
+    recording: RecordingStream | None = None,
+) -> None:
+    r"""
+    Logs the file at the given `path` using all `DataLoader`s available.
+
+    A single `path` might be handled by more than one loader.
+
+    This method blocks until either at least one `DataLoader` starts
+    streaming data in or all of them fail.
+
+    See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+
+    Parameters
+    ----------
+    file_path:
+        Path to the file to be logged.
+
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
+        defaults to the current active data recording, if there is one. See
+        also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+
+    bindings.log_file_from_path(Path(file_path), recording=recording)
+
+
+@catch_and_log_exceptions()
+def log_file_from_contents(
+    file_path: str | Path,
+    file_contents: bytes,
+    *,
+    recording: RecordingStream | None = None,
+) -> None:
+    r"""
+    Logs the given `file_contents` using all `DataLoader`s available.
+
+    A single `path` might be handled by more than one loader.
+
+    This method blocks until either at least one `DataLoader` starts
+    streaming data in or all of them fail.
+
+    See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+
+    Parameters
+    ----------
+    file_path:
+        Path to the file that the `file_contents` belong to.
+
+    file_contents:
+        Contents to be logged.
+
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
+        defaults to the current active data recording, if there is one. See
+        also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+
+    bindings.log_file_from_contents(Path(file_path), file_contents, recording=recording)
 
 
 def escape_entity_path_part(part: str) -> str:

@@ -14,6 +14,9 @@ row 2 | flat_columns[2]  flat_columns[6]  flat_columns[10] flat_columns[14]
 row 3 | flat_columns[3]  flat_columns[7]  flat_columns[11] flat_columns[15]
 ```
 
+## Fields
+
+* flat_columns: 16x `f32`
 
 ## Links
  * 🌊 [C++ API docs for `Mat4x4`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Mat4x4.html)

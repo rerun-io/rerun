@@ -77,12 +77,7 @@ impl ::re_types_core::Loggable for HalfSizes3D {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::FixedSizeList(
-            std::sync::Arc::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            }),
+            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
             3usize,
         )
     }
@@ -251,12 +246,7 @@ impl ::re_types_core::Loggable for HalfSizes3D {
                     .downcast_ref::<arrow2::array::FixedSizeListArray>()
                     .ok_or_else(|| {
                         let expected = DataType::FixedSizeList(
-                            std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Float32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }),
+                            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                             3usize,
                         );
                         let actual = arrow_data.data_type().clone();

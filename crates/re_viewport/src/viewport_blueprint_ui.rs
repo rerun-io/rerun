@@ -1,10 +1,13 @@
 use egui::{Response, Ui};
 
+use itertools::Itertools;
+
 use re_entity_db::InstancePath;
+use re_log_types::EntityPath;
 use re_log_types::EntityPathRule;
-use re_space_view::SpaceViewBlueprint;
-use re_space_view::SpaceViewName;
+use re_space_view::{SpaceViewBlueprint, SpaceViewName};
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
+use re_viewer_context::DataResultTree;
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
@@ -16,6 +19,35 @@ pub fn space_view_name_style(name: &SpaceViewName) -> re_ui::LabelStyle {
     match name {
         SpaceViewName::Named(_) => re_ui::LabelStyle::Normal,
         SpaceViewName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
+    }
+}
+
+enum DataResultNodeOrPath<'a> {
+    Path(&'a EntityPath),
+    DataResultNode(&'a DataResultNode),
+}
+
+impl<'a> DataResultNodeOrPath<'a> {
+    fn from_path_lookup(result_tree: &'a DataResultTree, path: &'a EntityPath) -> Self {
+        result_tree
+            .lookup_node_by_path(path)
+            .map_or(DataResultNodeOrPath::Path(path), |node| {
+                DataResultNodeOrPath::DataResultNode(node)
+            })
+    }
+
+    fn path(&self) -> &'a EntityPath {
+        match self {
+            DataResultNodeOrPath::Path(path) => path,
+            DataResultNodeOrPath::DataResultNode(node) => &node.data_result.entity_path,
+        }
+    }
+
+    fn data_result_node(&self) -> Option<&'a DataResultNode> {
+        match self {
+            DataResultNodeOrPath::Path(_) => None,
+            DataResultNodeOrPath::DataResultNode(node) => Some(node),
+        }
     }
 }
 
@@ -207,17 +239,14 @@ impl Viewport<'_, '_> {
         };
         debug_assert_eq!(space_view.id, *space_view_id);
 
-        // TODO(jleibs): Sort out borrow-checker to avoid the need to clone here
-        // while still being able to pass &ViewerContext down the chain.
-        let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
-
+        let query_result = ctx.lookup_query_result(space_view.query_id());
         let result_tree = &query_result.tree;
 
         let mut visible = space_view.visible;
         let space_view_visible = visible && container_visible;
         let item = Item::SpaceView(space_view.id);
 
-        let root_node = result_tree.first_interesting_root();
+        let root_node = result_tree.root_node();
 
         // empty space views should display as open by default to highlight the fact that they are empty
         let default_open = root_node.map_or(true, Self::default_open_for_data_result);
@@ -251,20 +280,45 @@ impl Viewport<'_, '_> {
                 response | vis_response
             })
             .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                if let Some(result_node) = root_node {
-                    // TODO(jleibs): handle the case where the only result
-                    // in the tree is a single path (no groups). This should never
-                    // happen for a SpaceViewContents.
-                    Self::space_view_blueprint_ui(
-                        ctx,
-                        ui,
-                        &query_result,
-                        result_node,
-                        space_view,
-                        space_view_visible,
-                    );
-                } else {
-                    ui.label("No data");
+                // Always show the origin hierarchy first.
+                Self::space_view_entity_hierarchy_ui(
+                    ctx,
+                    ui,
+                    query_result,
+                    &DataResultNodeOrPath::from_path_lookup(result_tree, &space_view.space_origin),
+                    space_view,
+                    space_view_visible,
+                );
+
+                // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
+                // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
+                let mut projections = Vec::new();
+                result_tree.visit(&mut |node| {
+                    if !node
+                        .data_result
+                        .entity_path
+                        .starts_with(&space_view.space_origin)
+                        && node.data_result.direct_included
+                    {
+                        projections.push(node);
+                        false
+                    } else {
+                        true
+                    }
+                });
+                if !projections.is_empty() {
+                    ui.label(egui::RichText::new("Projections:").italics());
+
+                    for projection in projections {
+                        Self::space_view_entity_hierarchy_ui(
+                            ctx,
+                            ui,
+                            query_result,
+                            &DataResultNodeOrPath::DataResultNode(projection),
+                            space_view,
+                            space_view_visible,
+                        );
+                    }
                 }
             });
 
@@ -296,184 +350,135 @@ impl Viewport<'_, '_> {
         );
     }
 
-    fn space_view_blueprint_ui(
+    fn space_view_entity_hierarchy_ui(
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         query_result: &DataQueryResult,
-        top_node: &DataResultNode,
+        node_or_path: &DataResultNodeOrPath<'_>,
         space_view: &SpaceViewBlueprint,
         space_view_visible: bool,
     ) {
-        let query = ctx.current_query();
         let store = ctx.entity_db.store();
 
-        let group_is_visible =
-            top_node.data_result.accumulated_properties().visible && space_view_visible;
+        let entity_path = node_or_path.path();
+        let data_result_node = node_or_path.data_result_node();
 
-        // Always real children ahead of groups
-        for child in top_node
-            .children
-            .iter()
-            .filter(|c| {
-                query_result
-                    .tree
-                    .lookup_result(**c)
-                    .map_or(false, |c| !c.is_group)
-            })
-            .chain(top_node.children.iter().filter(|c| {
-                query_result
-                    .tree
-                    .lookup_result(**c)
-                    .map_or(false, |c| c.is_group)
-            }))
-        {
-            let Some(child_node) = query_result.tree.lookup_node(*child) else {
-                debug_assert!(false, "DataResultNode {top_node:?} has an invalid child");
-                continue;
-            };
+        let item = Item::InstancePath(
+            Some(space_view.id),
+            InstancePath::entity_splat(entity_path.clone()),
+        );
+        let is_selected = ctx.selection().contains_item(&item);
+        let is_item_hovered =
+            ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-            let data_result = &child_node.data_result;
-            let entity_path = &child_node.data_result.entity_path;
+        let visible =
+            data_result_node.map_or(false, |n| n.data_result.accumulated_properties().visible);
+        let mut recursive_properties = data_result_node
+            .and_then(|n| n.data_result.recursive_properties())
+            .cloned()
+            .unwrap_or_default();
 
-            let item = if data_result.is_group {
-                // If we can't find a group_handle for some reason, use the default, null handle.
-                Item::DataBlueprintGroup(space_view.id, query_result.id, entity_path.clone())
-            } else {
-                Item::InstancePath(
-                    Some(space_view.id),
-                    InstancePath::entity_splat(entity_path.clone()),
-                )
-            };
-
-            let is_selected = ctx.selection().contains_item(&item);
-
-            let is_item_hovered =
-                ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
-
-            let mut properties = data_result
-                .individual_properties()
-                .cloned()
-                .unwrap_or_default();
-
-            let name = entity_path
+        let item_label = if entity_path.is_root() {
+            "/ (root)".to_owned()
+        } else {
+            entity_path
                 .iter()
                 .last()
-                .map_or("unknown".to_owned(), |e| e.ui_string());
+                .map_or("unknown".to_owned(), |e| e.ui_string())
+        };
+        let item_label = if ctx.entity_db.is_known_entity(entity_path) {
+            egui::RichText::new(item_label)
+        } else {
+            ctx.re_ui.warning_text(item_label)
+        };
 
-            let response = if child_node.children.is_empty() {
-                ListItem::new(ctx.re_ui, name)
-                    .selected(is_selected)
-                    .with_icon(&re_ui::icons::ENTITY)
-                    .subdued(
-                        !group_is_visible
-                            || !properties.visible
-                            || data_result.visualizers.is_empty(),
-                    )
-                    .force_hovered(is_item_hovered)
-                    .with_buttons(|re_ui, ui| {
-                        let vis_response = visibility_button_ui(
-                            re_ui,
-                            ui,
-                            group_is_visible,
-                            &mut properties.visible,
-                        );
+        let subdued = !space_view_visible
+            || !visible
+            || data_result_node.map_or(true, |n| {
+                n.data_result.visualizers.is_empty() && n.children.is_empty()
+            });
 
-                        let response =
-                            remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
-                        if response.clicked() {
-                            space_view.add_entity_exclusion(
-                                ctx,
-                                EntityPathRule::exact(entity_path.clone()),
-                            );
-                        }
+        let list_item = ListItem::new(ctx.re_ui, item_label)
+            .selected(is_selected)
+            .with_icon(&re_ui::icons::ENTITY)
+            .subdued(subdued)
+            .force_hovered(is_item_hovered)
+            .with_buttons(|re_ui: &_, ui: &mut egui::Ui| {
+                let vis_response = visibility_button_ui(
+                    re_ui,
+                    ui,
+                    space_view_visible,
+                    &mut recursive_properties.visible,
+                );
 
-                        response | vis_response
-                    })
-                    .show(ui)
-                    .on_hover_ui(|ui| {
-                        if data_result.is_group {
-                            ui.label("Group");
-                        } else {
-                            re_data_ui::item_ui::entity_hover_card_ui(
-                                ui,
-                                ctx,
-                                &query,
-                                store,
-                                entity_path,
-                            );
-                        }
-                    })
-            } else {
-                let default_open = Self::default_open_for_data_result(child_node);
-                let mut remove_group = false;
-
-                let response = ListItem::new(ctx.re_ui, name)
-                    .selected(is_selected)
-                    .subdued(!properties.visible || !group_is_visible)
-                    .force_hovered(is_item_hovered)
-                    .with_icon(&re_ui::icons::GROUP)
-                    .with_buttons(|re_ui, ui| {
-                        let vis_response = visibility_button_ui(
-                            re_ui,
-                            ui,
-                            group_is_visible,
-                            &mut properties.visible,
-                        );
-
-                        let response = remove_button_ui(
-                            re_ui,
-                            ui,
-                            "Remove Group and all its children from the Space View",
-                        );
-                        if response.clicked() {
-                            remove_group = true;
-                        }
-
-                        response | vis_response
-                    })
-                    .show_collapsing(
-                        ui,
-                        ui.id().with(&child_node.data_result.entity_path),
-                        default_open,
-                        |_, ui| {
-                            Self::space_view_blueprint_ui(
-                                ctx,
-                                ui,
-                                query_result,
-                                child_node,
-                                space_view,
-                                space_view_visible,
-                            );
-                        },
-                    )
-                    .item_response
-                    .on_hover_ui(|ui| {
-                        if data_result.is_group {
-                            ui.label("Group");
-                        } else {
-                            re_data_ui::item_ui::entity_hover_card_ui(
-                                ui,
-                                ctx,
-                                &query,
-                                store,
-                                entity_path,
-                            );
-                        }
-                    });
-
-                if remove_group {
+                let response = remove_button_ui(
+                    re_ui,
+                    ui,
+                    "Remove Group and all its children from the Space View",
+                );
+                if response.clicked() {
                     space_view.add_entity_exclusion(
                         ctx,
                         EntityPathRule::including_subtree(entity_path.clone()),
                     );
                 }
 
-                response
-            };
-            data_result.save_override(Some(properties), ctx);
+                response | vis_response
+            });
 
-            ctx.select_hovered_on_click(&response, item);
-        }
+        // If there's any children on the data result nodes, show them, otherwise we're good with this list item as is.
+        let has_children = data_result_node.map_or(false, |n| !n.children.is_empty());
+        let response = if let (true, Some(node)) = (has_children, data_result_node) {
+            // Don't default open projections.
+            let default_open = entity_path.starts_with(&space_view.space_origin)
+                && Self::default_open_for_data_result(node);
+
+            let response = list_item
+                .show_collapsing(
+                    ui,
+                    ui.id().with(&node.data_result.entity_path),
+                    default_open,
+                    |_, ui| {
+                        for child in node.children.iter().sorted_by_key(|c| {
+                            query_result
+                                .tree
+                                .lookup_result(**c)
+                                .map_or(&space_view.space_origin, |c| &c.entity_path)
+                        }) {
+                            let Some(child_node) = query_result.tree.lookup_node(*child) else {
+                                debug_assert!(
+                                    false,
+                                    "DataResultNode {node:?} has an invalid child"
+                                );
+                                continue;
+                            };
+
+                            Self::space_view_entity_hierarchy_ui(
+                                ctx,
+                                ui,
+                                query_result,
+                                &DataResultNodeOrPath::DataResultNode(child_node),
+                                space_view,
+                                space_view_visible,
+                            );
+                        }
+                    },
+                )
+                .item_response;
+
+            node.data_result
+                .save_recursive_override(ctx, Some(recursive_properties));
+
+            response
+        } else {
+            list_item.show(ui)
+        };
+
+        let response = response.on_hover_ui(|ui| {
+            let query = ctx.current_query();
+            re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, &query, store, entity_path);
+        });
+        ctx.select_hovered_on_click(&response, item);
     }
 
     pub fn add_new_spaceview_button_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {

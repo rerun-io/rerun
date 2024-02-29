@@ -4,7 +4,7 @@ title: "Rotation3D"
 
 A 3D rotation.
 
-## Fields
+## Variants
 
 * Quaternion: [`Quaternion`](../datatypes/quaternion.md)
 * AxisAngle: [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)

@@ -10,7 +10,7 @@ mod error;
 mod ptr;
 mod recording_streams;
 
-use std::ffi::{c_char, CString};
+use std::ffi::{c_char, c_uchar, CString};
 
 use component_type_registry::COMPONENT_TYPES;
 use once_cell::sync::Lazy;
@@ -41,6 +41,29 @@ impl CStringView {
 
     pub fn is_null(&self) -> bool {
         self.string.is_null()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
+    }
+}
+
+/// This is called `rr_bytes` in the C API.
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CBytesView {
+    pub bytes: *const c_uchar,
+    pub length: u32,
+}
+
+impl CBytesView {
+    #[allow(clippy::result_large_err)]
+    pub fn as_bytes<'a>(&self, argument_name: &'a str) -> Result<&'a [u8], CError> {
+        ptr::try_ptr_as_slice(self.bytes, self.length, argument_name)
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.bytes.is_null()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -159,10 +182,10 @@ pub enum CErrorCode {
     InvalidComponentTypeHandle,
 
     _CategoryRecordingStream = 0x0000_00100,
+    RecordingStreamRuntimeFailure,
     RecordingStreamCreationFailure,
     RecordingStreamSaveFailure,
     RecordingStreamStdoutFailure,
-    // TODO(cmc): Really this should be its own category…
     RecordingStreamSpawnFailure,
 
     _CategoryArrow = 0x0000_1000,
@@ -699,6 +722,98 @@ pub unsafe extern "C" fn rr_recording_stream_log(
     error: *mut CError,
 ) {
     if let Err(err) = rr_log_impl(stream, data_row, inject_time) {
+        err.write_error(error);
+    }
+}
+
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+fn rr_log_file_from_path_impl(
+    stream: CRecordingStream,
+    filepath: CStringView,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let recording_id = stream
+        .store_info()
+        .ok_or_else(|| {
+            CError::new(
+                CErrorCode::RecordingStreamRuntimeFailure,
+                &format!("Couldn't load file {filepath:?}: no recording available"),
+            )
+        })?
+        .store_id;
+    let settings = re_sdk::DataLoaderSettings::recommended(recording_id);
+
+    let filepath = filepath.as_str("filepath")?;
+    stream
+        .log_file_from_path(&settings, filepath)
+        .map_err(|err| {
+            CError::new(
+                CErrorCode::RecordingStreamRuntimeFailure,
+                &format!("Couldn't load file {filepath:?}: {err}"),
+            )
+        })?;
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn rr_recording_stream_log_file_from_path(
+    stream: CRecordingStream,
+    filepath: CStringView,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_log_file_from_path_impl(stream, filepath) {
+        err.write_error(error);
+    }
+}
+
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+fn rr_log_file_from_contents_impl(
+    stream: CRecordingStream,
+    filepath: CStringView,
+    contents: CBytesView,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let recording_id = stream
+        .store_info()
+        .ok_or_else(|| {
+            CError::new(
+                CErrorCode::RecordingStreamRuntimeFailure,
+                &format!("Couldn't load file {filepath:?}: no recording available"),
+            )
+        })?
+        .store_id;
+    let settings = re_sdk::DataLoaderSettings::recommended(recording_id);
+
+    let filepath = filepath.as_str("filepath")?;
+    let contents = contents.as_bytes("contents")?;
+
+    stream
+        .log_file_from_contents(&settings, filepath, std::borrow::Cow::Borrowed(contents))
+        .map_err(|err| {
+            CError::new(
+                CErrorCode::RecordingStreamRuntimeFailure,
+                &format!("Couldn't load file {filepath:?}: {err}"),
+            )
+        })?;
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
+    stream: CRecordingStream,
+    filepath: CStringView,
+    contents: CBytesView,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_log_file_from_contents_impl(stream, filepath, contents) {
         err.write_error(error);
     }
 }

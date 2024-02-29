@@ -58,18 +58,16 @@ impl ::re_types_core::Loggable for KeypointPair {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "keypoint0".to_owned(),
-                data_type: <crate::datatypes::KeypointId>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "keypoint1".to_owned(),
-                data_type: <crate::datatypes::KeypointId>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new(
+                "keypoint0",
+                <crate::datatypes::KeypointId>::arrow_datatype(),
+                false,
+            ),
+            Field::new(
+                "keypoint1",
+                <crate::datatypes::KeypointId>::arrow_datatype(),
+                false,
+            ),
         ]))
     }
 

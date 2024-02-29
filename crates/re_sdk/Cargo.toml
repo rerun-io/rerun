@@ -21,6 +21,12 @@ all-features = true
 [features]
 default = []
 
+## Support for using Rerun's data-loaders directly from the SDK.
+##
+## See our `log_file` example and <https://www.rerun.io/docs/howto/open-any-file>
+## for more information.
+data_loaders = ["dep:re_data_source", "dep:re_smart_channel"]
+
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.
@@ -52,12 +58,14 @@ re_types_core.workspace = true
 ahash.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
+itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
 
 # Optional dependencies
 
+re_data_source = { workspace = true, optional = true }
 re_smart_channel = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
@@ -69,7 +77,6 @@ webbrowser = { workspace = true, optional = true }
 [dev-dependencies]
 re_data_store.workspace = true
 
-itertools.workspace = true
 ndarray-rand.workspace = true
 ndarray.workspace = true
 rand.workspace = true

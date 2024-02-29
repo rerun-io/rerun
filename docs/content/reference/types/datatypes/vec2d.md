@@ -4,6 +4,9 @@ title: "Vec2D"
 
 A vector in 2D space.
 
+## Fields
+
+* xy: 2x `f32`
 
 ## Links
  * 🌊 [C++ API docs for `Vec2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Vec2D.html)

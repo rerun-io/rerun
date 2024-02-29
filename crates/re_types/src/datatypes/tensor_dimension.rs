@@ -58,18 +58,8 @@ impl ::re_types_core::Loggable for TensorDimension {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "size".to_owned(),
-                data_type: DataType::UInt64,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "name".to_owned(),
-                data_type: DataType::Utf8,
-                is_nullable: true,
-                metadata: [].into(),
-            },
+            Field::new("size", DataType::UInt64, false),
+            Field::new("name", DataType::Utf8, true),
         ]))
     }
 

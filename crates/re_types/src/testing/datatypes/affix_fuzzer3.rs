@@ -66,49 +66,26 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
         use arrow2::datatypes::*;
         DataType::Union(
             std::sync::Arc::new(vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "degrees".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "radians".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "craziness".to_owned(),
-                    data_type: DataType::List(std::sync::Arc::new(Field {
-                        name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "fixed_size_shenanigans".to_owned(),
-                    data_type: DataType::FixedSizeList(
-                        std::sync::Arc::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }),
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new("degrees", DataType::Float32, false),
+                Field::new("radians", DataType::Float32, false),
+                Field::new(
+                    "craziness",
+                    DataType::List(std::sync::Arc::new(Field::new(
+                        "item",
+                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                        false,
+                    ))),
+                    false,
+                ),
+                Field::new(
+                    "fixed_size_shenanigans",
+                    DataType::FixedSizeList(
+                        std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                         3usize,
                     ),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
+                    false,
+                ),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
             UnionMode::Dense,
@@ -226,13 +203,11 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             .unwrap()
                             .into();
                         ListArray::new(
-                            DataType::List(std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type:
-                                    <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
+                            DataType::List(std::sync::Arc::new(Field::new(
+                                "item",
+                                <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                                false,
+                            ))),
                             offsets,
                             {
                                 _ = craziness_inner_bitmap;
@@ -289,12 +264,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             });
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
-                                std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
+                                std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                                 3usize,
                             ),
                             PrimitiveArray::new(
@@ -443,13 +413,11 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type:
-                                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }));
+                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                                    false,
+                                )));
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })
@@ -512,12 +480,9 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(
+                                        Field::new("item", DataType::Float32, false),
+                                    ),
                                     3usize,
                                 );
                                 let actual = arrow_data.data_type().clone();

@@ -4,6 +4,9 @@ title: "Float32"
 
 A single-precision 32-bit IEEE 754 floating point number.
 
+## Fields
+
+* value: `f32`
 
 ## Links
  * 🌊 [C++ API docs for `Float32`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Float32.html)

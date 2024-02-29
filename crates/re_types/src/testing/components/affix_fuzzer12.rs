@@ -64,12 +64,11 @@ impl ::re_types_core::Loggable for AffixFuzzer12 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::List(std::sync::Arc::new(Field {
-            name: "item".to_owned(),
-            data_type: DataType::Utf8,
-            is_nullable: false,
-            metadata: [].into(),
-        }))
+        DataType::List(std::sync::Arc::new(Field::new(
+            "item",
+            DataType::Utf8,
+            false,
+        )))
     }
 
     #[allow(clippy::wildcard_imports)]

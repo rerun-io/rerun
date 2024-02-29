@@ -321,16 +321,10 @@ impl ApplicationSelectionState {
             .hovered_previous_frame
             .iter_items()
             .any(|current| match current {
-                Item::StoreId(_)
-                | Item::SpaceView(_)
-                | Item::DataBlueprintGroup(_, _, _)
-                | Item::Container(_) => current == test,
+                Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
-                    Item::StoreId(_)
-                    | Item::SpaceView(_)
-                    | Item::DataBlueprintGroup(_, _, _)
-                    | Item::Container(_) => false,
+                    Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
                         test_component_path == component_path

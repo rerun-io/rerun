@@ -85,6 +85,9 @@ pub use re_types_core::{
     MaybeOwnedComponentBatch, NamedIndicatorComponent, SizeBytes,
 };
 
+#[cfg(feature = "data_loaders")]
+pub use re_data_source::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
+
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]
 pub mod web_viewer;
@@ -97,6 +100,9 @@ pub mod external {
 
     pub use re_log::external::*;
     pub use re_log_types::external::*;
+
+    #[cfg(feature = "data_loaders")]
+    pub use re_data_source;
 
     #[cfg(feature = "log")]
     pub use log;

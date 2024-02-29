@@ -74,11 +74,6 @@ pub mod external {
 
 // ---------------------------------------------------------------------------
 
-slotmap::new_key_type! {
-    /// Identifier for a blueprint group.
-    pub struct DataBlueprintGroupHandle;
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum NeedsRepaint {
     Yes,

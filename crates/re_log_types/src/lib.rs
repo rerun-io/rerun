@@ -312,6 +312,7 @@ pub enum FileSource {
     Cli,
     DragAndDrop,
     FileDialog,
+    Sdk,
 }
 
 /// The source of a recording or blueprint.
@@ -358,6 +359,7 @@ impl std::fmt::Display for StoreSource {
                 FileSource::Cli => write!(f, "File via CLI"),
                 FileSource::DragAndDrop => write!(f, "File via drag-and-drop"),
                 FileSource::FileDialog => write!(f, "File via file dialog"),
+                FileSource::Sdk => write!(f, "File via SDK"),
             },
             Self::Viewer => write!(f, "Viewer-generated"),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes

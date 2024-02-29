@@ -8,30 +8,14 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.components;
 
 
-// TODO(#3384)
-/*
-enum ContainerKind: byte {
-    Tabs = 1
-    Horizontal = 2,
-    Vertical = 3,
-    Grid = 4
-}
-*/
-
-// ---
-
-/// The kind of a blueprint container.
-table ContainerKind (
+/// The kind of a blueprint container (tabs, grid, …).
+enum ContainerKind: byte (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
-    "attr.rust.override_crate": "re_viewport"
+    "attr.rust.override_crate": "re_viewport",
+    "attr.docs.unreleased"
 ) {
-    /// Which kind of container this is.
-    ///
-    /// Allowed values:
-    ///  - Tabs = 1
-    ///  - Horizontal = 2
-    ///  - Vertical = 3
-    ///  - Grid = 4
-    kind: ubyte (order: 100);
+    Tabs,
+    Horizontal,
+    Vertical,
+    Grid,
 }

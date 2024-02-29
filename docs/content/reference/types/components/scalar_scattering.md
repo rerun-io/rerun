@@ -4,6 +4,9 @@ title: "ScalarScattering"
 
 If true, a scalar will be shown as individual point in a scatter plot.
 
+## Fields
+
+* scattered: `bool`
 
 ## Links
  * 🌊 [C++ API docs for `ScalarScattering`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ScalarScattering.html)

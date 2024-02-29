@@ -6,9 +6,7 @@ use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::external::re_types_core::components::InstanceKey;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::SyntaxHighlighting;
-use re_viewer_context::{
-    DataQueryId, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
-};
+use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext};
 
 use super::DataUi;
 
@@ -31,9 +29,6 @@ use super::DataUi;
 //         }
 //         Item::InstancePath(space_view_id, instance_path) => {
 //             instance_path_button_to(ctx, ui, *space_view_id, instance_path, text)
-//         }
-//         Item::DataBlueprintGroup(space_view_id, group_handle) => {
-//             data_blueprint_group_button_to(ctx, ui, text, *space_view_id, *group_handle)
 //         }
 //     }
 // }
@@ -331,28 +326,6 @@ pub fn component_path_button_to(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
-pub fn data_blueprint_group_button_to(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    text: impl Into<egui::WidgetText>,
-    space_view_id: SpaceViewId,
-    query_id: DataQueryId,
-    entity_path: EntityPath,
-) -> egui::Response {
-    let item = Item::DataBlueprintGroup(space_view_id, query_id, entity_path);
-    let response = ctx
-        .re_ui
-        .selectable_label_with_icon(
-            ui,
-            &re_ui::icons::GROUP,
-            text,
-            ctx.selection().contains_item(&item),
-            re_ui::LabelStyle::Normal,
-        )
-        .on_hover_text("Group");
-    cursor_interact_with_selectable(ctx, response, item)
-}
-
 pub fn data_blueprint_button_to(
     ctx: &ViewerContext<'_>,
     query: &re_data_store::LatestAtQuery,
@@ -456,6 +429,11 @@ pub fn instance_hover_card_ui(
     store: &re_data_store::DataStore,
     instance_path: &InstancePath,
 ) {
+    if !ctx.entity_db.is_known_entity(&instance_path.entity_path) {
+        ui.label("Unknown entity.");
+        return;
+    }
+
     let subtype_string = if instance_path.instance_key.is_splat() {
         "Entity"
     } else {

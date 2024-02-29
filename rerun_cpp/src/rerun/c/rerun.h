@@ -33,6 +33,17 @@ typedef struct rr_string {
     uint32_t length_in_bytes;
 } rr_string;
 
+/// A byte slice.
+typedef struct rr_bytes {
+    /// Pointer to the bytes.
+    ///
+    /// Rerun is guaranteed to not read beyond bytes[length-1].
+    const uint8_t* bytes;
+
+    /// The length of the data in bytes.
+    uint32_t length;
+} rr_bytes;
+
 #ifndef __cplusplus
 
 #include <string.h> // For strlen
@@ -233,7 +244,7 @@ typedef struct rr_error {
 ///
 /// This should match the string returned by `rr_version_string`.
 /// If not, the SDK's binary and the C header are out of sync.
-#define RERUN_SDK_HEADER_VERSION "0.14.0-alpha.2"
+#define RERUN_SDK_HEADER_VERSION "0.15.0-alpha.1+dev"
 
 /// Returns a human-readable version string of the Rerun C SDK.
 ///
@@ -410,6 +421,30 @@ extern void rr_recording_stream_reset_time(rr_recording_stream stream);
 /// Any pointers passed via `rr_string` can be safely freed after this call.
 extern void rr_recording_stream_log(
     rr_recording_stream stream, rr_data_row data_row, bool inject_time, rr_error* error
+);
+
+/// Logs the file at the given `path` using all `DataLoader`s available.
+///
+/// A single `path` might be handled by more than one loader.
+///
+/// This method blocks until either at least one `DataLoader` starts streaming data in
+/// or all of them fail.
+///
+/// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+extern void rr_recording_stream_log_file_from_path(
+    rr_recording_stream stream, rr_string path, rr_error* error
+);
+
+/// Logs the given `contents` using all `DataLoader`s available.
+///
+/// A single `path` might be handled by more than one loader.
+///
+/// This method blocks until either at least one `DataLoader` starts streaming data in
+/// or all of them fail.
+///
+/// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+extern void rr_recording_stream_log_file_from_contents(
+    rr_recording_stream stream, rr_string path, rr_bytes contents, rr_error* error
 );
 
 // ----------------------------------------------------------------------------

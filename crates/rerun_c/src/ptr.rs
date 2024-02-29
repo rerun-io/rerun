@@ -2,6 +2,8 @@ use std::ffi::c_char;
 
 use crate::{CError, CErrorCode};
 
+// ---
+
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
 pub fn try_ptr_as_ref<T>(ptr: *const T, argument_name: &str) -> Result<&T, CError> {
@@ -11,6 +13,17 @@ pub fn try_ptr_as_ref<T>(ptr: *const T, argument_name: &str) -> Result<&T, CErro
     } else {
         Err(CError::unexpected_null(argument_name))
     }
+}
+
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+pub fn try_ptr_as_slice<T>(
+    ptr: *const T,
+    length: u32,
+    argument_name: &str,
+) -> Result<&[T], CError> {
+    try_ptr_as_ref(ptr, argument_name)?;
+    Ok(unsafe { std::slice::from_raw_parts(ptr.cast::<T>(), length as usize) })
 }
 
 /// Tries to convert a [`c_char`] pointer to a string, raises an error if the pointer is null or it can't be converted to a string.

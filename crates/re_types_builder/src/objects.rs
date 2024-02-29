@@ -88,8 +88,8 @@ impl Objects {
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
                     assert!(obj.kind != ObjectKind::Archetype,
-                        "{virtpath}: Field {:?} is a primitive field which is part of an Archetype. Only Components are allowed on Archetypes.",
-                        field.fqname);
+                        "{virtpath}: Field {:?} is a primitive field of type {:?}. Only Components are allowed on Archetypes.",
+                        field.fqname, field.typ);
                 }
             }
         }
@@ -425,9 +425,10 @@ pub struct Object {
     /// The object's attributes.
     pub attrs: Attributes,
 
-    /// The object's inner fields, which can be either struct members or union values.
+    /// The object's inner fields, which can be either struct members or union/emum variants.
     ///
-    /// These are pre-sorted, in ascending order, using their `order` attribute.
+    /// These are ordered using their `order` attribute (structs),
+    /// or in the same order that they appeared in the .fbs (enum/union).
     pub fields: Vec<ObjectField>,
 
     /// struct, enum, or union?
@@ -521,7 +522,7 @@ impl Object {
             kind,
             attrs,
             fields,
-            class: ObjectClass::Struct {},
+            class: ObjectClass::Struct,
             datatype: None,
         }
     }
@@ -571,10 +572,6 @@ impl Object {
                 ObjectField::from_raw_enum_value(reporter, include_dir_path, enums, objs, enm, &val)
             })
             .collect();
-
-        if kind == ObjectKind::Component && fields.len() != 1 {
-            reporter.error(&virtpath, &fqname, "components must have exactly 1 field");
-        }
 
         Self {
             virtpath,
@@ -628,6 +625,9 @@ impl Object {
     }
 
     pub fn is_arrow_transparent(&self) -> bool {
+        if self.is_enum() {
+            return false; // Enums are encoded as sparse unions
+        }
         self.kind == ObjectKind::Component || self.attrs.has(crate::ATTR_ARROW_TRANSPARENT)
     }
 
@@ -794,7 +794,8 @@ impl ObjectField {
         let docs = Docs::from_raw_docs(&filepath, field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
-        let typ = Type::from_raw_type(enums, objs, field.type_(), &attrs);
+
+        let typ = Type::from_raw_type(&virtpath, enums, objs, field.type_(), &attrs);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
@@ -843,6 +844,7 @@ impl ObjectField {
         let attrs = Attributes::from_raw_attrs(val.attributes());
 
         let typ = Type::from_raw_type(
+            &virtpath,
             enums,
             objs,
             // NOTE: Unwrapping is safe, we never resolve enums without union types.
@@ -905,11 +907,6 @@ impl ObjectField {
     /// The `snake_case` name of the field, e.g. `translation_and_mat3x3`.
     pub fn snake_case_name(&self) -> String {
         crate::to_snake_case(&self.name)
-    }
-
-    /// The `SCREAMING_SNAKE_CASE` name of the object, e.g. `TRANSLATION_AND_MAT3X3`.
-    pub fn screaming_snake_case_name(&self) -> String {
-        self.snake_case_name().to_uppercase()
     }
 
     /// The `PascalCase` name of the field, e.g. `TranslationAndMat3x3`.
@@ -998,6 +995,7 @@ impl From<ElementType> for Type {
 
 impl Type {
     pub fn from_raw_type(
+        virtpath: &str,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
         field_type: FbsType<'_>,
@@ -1018,9 +1016,35 @@ impl Type {
             }
         }
 
+        let is_int = matches!(
+            typ,
+            FbsBaseType::Byte
+                | FbsBaseType::UByte
+                | FbsBaseType::Short
+                | FbsBaseType::UShort
+                | FbsBaseType::Int
+                | FbsBaseType::UInt
+                | FbsBaseType::Long
+                | FbsBaseType::ULong
+        );
+        if is_int {
+            // Hack needed because enums get `typ == FbsBaseType::Byte`,
+            // or whatever integer type the enum was assigned to.
+            let enum_index = field_type.index() as usize;
+            if enum_index < enums.len() {
+                // It is an enum.
+                assert!(
+                    typ == FbsBaseType::Byte,
+                    "{virtpath}: For consistency, enums must be declared as the `byte` type"
+                );
+
+                let enum_ = &enums[field_type.index() as usize];
+                return Self::Object(enum_.name().to_owned());
+            }
+        }
+
         match typ {
-            // Enum variant
-            FbsBaseType::None => Self::Unit,
+            FbsBaseType::None => Self::Unit, // Enum variant
 
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
@@ -1064,6 +1088,7 @@ impl Type {
             FbsBaseType::UType | FbsBaseType::Vector64 => {
                 unimplemented!("FbsBaseType::{typ:#?}")
             }
+
             // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{typ:#?}"),
         }

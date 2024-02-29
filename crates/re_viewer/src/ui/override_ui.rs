@@ -38,7 +38,7 @@ pub fn override_ui(
     let query_result = ctx.lookup_query_result(space_view.query_id());
     let Some(data_result) = query_result
         .tree
-        .lookup_result_by_path_and_group(entity_path, false)
+        .lookup_result_by_path(entity_path)
         .cloned()
     else {
         ui.label(ctx.re_ui.error_text("Entity not found in view."));
@@ -125,7 +125,7 @@ pub fn override_ui(
                             // not exist in the recording store.
                             ctx.save_empty_blueprint_component_name(
                                 ctx.store_context.blueprint.store(),
-                                &overrides.override_path,
+                                &overrides.individual_override_path,
                                 *component_name,
                             );
                         }
@@ -166,7 +166,7 @@ pub fn override_ui(
                                 &query,
                                 store,
                                 entity_path,
-                                &overrides.override_path,
+                                &overrides.individual_override_path,
                                 &component_data,
                                 instance_key,
                             );
@@ -214,7 +214,7 @@ pub fn add_new_override(
                     }
                     // If we don't have an override_path we can't set up an initial override
                     // this shouldn't happen if the `DataResult` is valid.
-                    let Some(override_path) = data_result.override_path() else {
+                    let Some(override_path) = data_result.individual_override_path() else {
                         if cfg!(debug_assertions) {
                             re_log::error!("No override path for: {}", component);
                         }
@@ -327,14 +327,14 @@ pub fn override_visualizer_ui(
         let query_result = ctx.lookup_query_result(space_view.query_id());
         let Some(data_result) = query_result
             .tree
-            .lookup_result_by_path_and_group(entity_path, false)
+            .lookup_result_by_path(entity_path)
             .cloned()
         else {
             ui.label(ctx.re_ui.error_text("Entity not found in view."));
             return;
         };
 
-        let Some(override_path) = data_result.override_path() else {
+        let Some(override_path) = data_result.individual_override_path() else {
             if cfg!(debug_assertions) {
                 re_log::error!("No override path for entity: {}", data_result.entity_path);
             }
@@ -402,7 +402,7 @@ pub fn add_new_visualizer(
 ) {
     // If we don't have an override_path we can't set up an initial override
     // this shouldn't happen if the `DataResult` is valid.
-    let Some(override_path) = data_result.override_path() else {
+    let Some(override_path) = data_result.individual_override_path() else {
         if cfg!(debug_assertions) {
             re_log::error!("No override path for entity: {}", data_result.entity_path);
         }

@@ -6,6 +6,9 @@ A double-precision scalar.
 
 Used for time series plots.
 
+## Fields
+
+* value: `f64`
 
 ## Links
  * 🌊 [C++ API docs for `Scalar`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Scalar.html)
