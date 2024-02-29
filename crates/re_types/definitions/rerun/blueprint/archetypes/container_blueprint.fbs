@@ -16,7 +16,7 @@ table ContainerBlueprint (
 
     /// The class of the view.
     container_kind: rerun.blueprint.components.ContainerKind (
-        enum_type: "rerun.blueprint.components.ContainerKind",
+        is_enum,
         "attr.rerun.component_required",
         order: 100
     );

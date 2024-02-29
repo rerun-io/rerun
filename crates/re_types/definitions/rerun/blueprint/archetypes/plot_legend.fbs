@@ -21,7 +21,7 @@ table PlotLegend (
     ///
     /// Defaults to the right bottom corner.
     corner: rerun.blueprint.components.Corner2D (
-        enum_type: "rerun.blueprint.components.Corner2D",
+        is_enum,
         "attr.rerun.component_optional",
         nullable,
         order: 2100

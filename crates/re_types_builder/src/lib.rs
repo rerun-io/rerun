@@ -160,7 +160,7 @@ pub use self::report::{Report, Reporter};
 // --- Attributes ---
 
 pub const ATTR_DEFAULT: &str = "default";
-pub const ATTR_ENUM_TYPE: &str = "enum_type";
+pub const ATTR_IS_ENUM: &str = "is_enum";
 pub const ATTR_NULLABLE: &str = "nullable";
 pub const ATTR_ORDER: &str = "order";
 pub const ATTR_TRANSPARENT: &str = "transparent";

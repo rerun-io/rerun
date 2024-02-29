@@ -29,7 +29,7 @@ table SeriesPoint {
 
     /// What shape to use to represent the point
     marker: rerun.components.MarkerShape (
-        enum_type: "rerun.components.MarkerShape",
+        is_enum,
         "attr.rerun.component_optional",
         nullable,
         order: 2000

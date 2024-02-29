@@ -5,7 +5,7 @@ attribute "default";
 
 /// This attribute is mandatory for all struct fields that have an `enum` type.
 /// This is because flatbuffers report enums as integers.
-attribute "enum_type";
+attribute "is_enum";
 
 /// Mandatory attribute that applies to all kinds of objects: structs, enums, unions and even the
 /// fields within.

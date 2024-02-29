@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType, Reporter, ATTR_ENUM_TYPE, ATTR_RERUN_OVERRIDE_TYPE,
+    FbsType, Reporter, ATTR_IS_ENUM, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
@@ -88,7 +88,7 @@ impl Objects {
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
                     assert!(obj.kind != ObjectKind::Archetype,
-                        "{virtpath}: Field {:?} is a primitive field of type {:?}. Only Components are allowed on Archetypes. If this field is an enum, you need to set the {ATTR_ENUM_TYPE:?} attribute on the field to the enum's name.",
+                        "{virtpath}: Field {:?} is a primitive field of type {:?}. Only Components are allowed on Archetypes. If this field is an enum, you need to set the {ATTR_IS_ENUM:?} attribute on the field.",
                         field.fqname, field.typ);
                 }
             }
@@ -795,12 +795,7 @@ impl ObjectField {
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
 
-        let typ = if let Some(enum_type) = attrs.try_get(&fqname, crate::ATTR_ENUM_TYPE) {
-            // Hack needed because flattbuffers report fields of enum types as integers.
-            Type::Object(enum_type)
-        } else {
-            Type::from_raw_type(enums, objs, field.type_(), &attrs)
-        };
+        let typ = Type::from_raw_type(enums, objs, field.type_(), &attrs);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE);
@@ -1017,6 +1012,12 @@ impl Type {
                 (FbsBaseType::Array | FbsBaseType::Vector, "float16") => {}
                 _ => unreachable!("UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"),
             }
+        }
+
+        if attrs.has(crate::ATTR_IS_ENUM) {
+            // Hack needed because enums get `typ == FbsBaseType::Byte`.
+            let enum_type = enums[field_type.index() as usize].name();
+            return Type::Object(enum_type.to_owned());
         }
 
         match typ {
