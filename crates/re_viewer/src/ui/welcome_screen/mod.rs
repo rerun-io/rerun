@@ -1,8 +1,9 @@
-mod example_page;
-mod welcome_page;
+mod example_section;
+mod welcome_section;
 
 use egui::Widget;
-use welcome_page::welcome_page_ui;
+use example_section::ExampleSection;
+use welcome_section::welcome_section_ui;
 
 use re_log_types::LogMsg;
 use re_smart_channel::ReceiveSet;
@@ -10,7 +11,7 @@ use re_ui::ReUi;
 
 #[derive(Default)]
 pub struct WelcomeScreen {
-    example_page: example_page::ExamplePage,
+    example_page: ExampleSection,
 }
 
 impl WelcomeScreen {
@@ -44,7 +45,7 @@ impl WelcomeScreen {
                     ..Default::default()
                 }
                 .show(ui, |ui| {
-                    welcome_page_ui(ui, rx, command_sender);
+                    welcome_section_ui(ui, rx, command_sender);
                     ui.add_space(80.0);
                     self.example_page.ui(ui, re_ui, command_sender);
                 });

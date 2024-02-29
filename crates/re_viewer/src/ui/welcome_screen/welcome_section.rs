@@ -6,6 +6,7 @@ use re_log_types::{
 };
 use re_smart_channel::ReceiveSet;
 use re_ui::UICommandSender;
+use re_viewer_context::CommandSender;
 use re_viewer_context::{SystemCommand, SystemCommandSender};
 use std::collections::HashMap;
 
@@ -36,10 +37,8 @@ const RUST_CONNECT_CODE_EXAMPLE: &str =
 const RUST_SPAWN_CODE_EXAMPLE: &str =
     include_str!("../../../data/quick_start_guides/quick_start_spawn.rs");
 
-/// Show the welcome page.
-///
-/// Return `true` if the user wants to switch to the example page.
-pub(super) fn welcome_page_ui(
+/// Show the welcome section.
+pub(super) fn welcome_section_ui(
     ui: &mut egui::Ui,
     rx: &ReceiveSet<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
@@ -50,27 +49,25 @@ pub(super) fn welcome_page_ui(
     });
 }
 
-struct WelcomePagePanel<'a> {
+struct Panel {
     title: &'static str,
     body: &'static str,
     image: &'static re_ui::Icon,
-    add_buttons: Box<dyn Fn(&mut egui::Ui) -> bool + 'a>, // returns true if example must be shown
+    add_buttons: PanelButtonsCallback,
 }
 
-fn onboarding_content_ui(
-    ui: &mut Ui,
-    command_sender: &re_viewer_context::CommandSender,
-    accepts_connections: bool,
-) {
+type PanelButtonsCallback = Box<dyn Fn(&mut egui::Ui, &CommandSender) + 'static>;
+
+fn onboarding_content_ui(ui: &mut Ui, command_sender: &CommandSender, accepts_connections: bool) {
     // The panel data is stored in this ad hoc structure such that it can easily be iterated over
     // in chunks, to make the layout grid code simpler.
     let panels = [
-        WelcomePagePanel {
+        Panel {
             title: "Connect to live data",
             body: "Use the Rerun SDK to stream data from your code to the Rerun Viewer. \
                 Visualize synchronized data from multiple processes, locally or over a network.",
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
-            add_buttons: Box::new(|ui: &mut egui::Ui| {
+            add_buttons: Box::new(move |ui, command_sender| {
                 if large_text_button(ui, "C++").clicked() {
                     let (markdown, code) = if accepts_connections {
                         (CPP_CONNECT_MARKDOWN, CPP_CONNECT_CODE_EXAMPLE)
@@ -128,33 +125,27 @@ fn onboarding_content_ui(
                         "rust_quick_start",
                     );
                 }
-
-                false
             }),
         },
-        WelcomePagePanel {
+        Panel {
             title: "Load recorded data",
             body:
                 "Open and visualize recorded data from previous Rerun sessions (.rrd) as well as \
                 data in other formats like .gltf and .jpg. Files can be local or remote.",
             image: &re_ui::icons::WELCOME_SCREEN_RECORDED_DATA,
-            add_buttons: Box::new(|ui: &mut egui::Ui| {
+            add_buttons: Box::new(|ui, command_sender| {
                 if large_text_button(ui, "Open file…").clicked() {
                     command_sender.send_ui(re_ui::UICommand::Open);
                 }
-
-                false
             }),
         },
-        WelcomePagePanel {
+        Panel {
             title: "Build your views",
             body: "Add and rearrange views. Configure what data is shown and how. Design \
                 interactively in the viewer or (coming soon) directly from code in the SDK.",
             image: &re_ui::icons::WELCOME_SCREEN_CONFIGURE,
-            add_buttons: Box::new(|ui: &mut egui::Ui| {
+            add_buttons: Box::new(|ui, _| {
                 url_large_text_button(ui, "Learn about Views", SPACE_VIEWS_HELP);
-
-                false
             }),
         },
     ];
@@ -202,14 +193,12 @@ fn onboarding_content_ui(
         ui.vertical(|ui| {
             ui.add_space(32.0);
 
-            let grid = egui::Grid::new("welcome_screen_grid")
+            let grid = egui::Grid::new("welcome_section_grid")
                 .spacing(grid_spacing)
                 .min_col_width(column_width)
                 .max_col_width(column_width);
 
             grid.show(ui, |ui| {
-                let mut show_example = false;
-
                 for panels in panels.chunks(column_count) {
                     if column_count == panel_count {
                         for panel in panels {
@@ -238,9 +227,7 @@ fn onboarding_content_ui(
                             ui.label(egui::RichText::new(panel.body).line_height(Some(19.0)));
                             ui.horizontal(|ui| {
                                 ui.spacing_mut().item_spacing.x = 4.0;
-                                if (panel.add_buttons)(ui) {
-                                    show_example = true;
-                                }
+                                (panel.add_buttons)(ui, command_sender);
                             });
                         });
                     }

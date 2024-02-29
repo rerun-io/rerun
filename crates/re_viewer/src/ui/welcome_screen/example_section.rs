@@ -23,7 +23,6 @@ struct ExampleDesc {
     /// human readable version of the example name
     title: String,
 
-    // description: String,
     tags: Vec<String>,
 
     rrd_url: String,
@@ -171,7 +170,7 @@ fn load_file_size(egui_ctx: &egui::Context, url: String) -> Promise<Option<u64>>
     promise
 }
 
-pub(super) struct ExamplePage {
+pub(super) struct ExampleSection {
     id: egui::Id,
     manifest_url: String,
     examples: Option<ManifestPromise>,
@@ -210,17 +209,17 @@ fn default_manifest_url() -> String {
     }
 }
 
-impl Default for ExamplePage {
+impl Default for ExampleSection {
     fn default() -> Self {
         Self {
-            id: egui::Id::new("example_page"),
+            id: egui::Id::new("example_section"),
             manifest_url: default_manifest_url(),
             examples: None,
         }
     }
 }
 
-impl ExamplePage {
+impl ExampleSection {
     pub fn set_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
         if self.manifest_url != url {
             self.manifest_url = url.clone();
@@ -267,8 +266,9 @@ impl ExamplePage {
             .floor()
             .at_most(MAX_COLUMN_WIDTH);
 
-        // draw "see examples" indicator
-        let examples_page_rect = ui.cursor();
+        // cursor is currently at the top of the section,
+        // so we use it to check for visibility of the whole section.
+        let example_section_rect = ui.cursor();
         let examples_visible = ui.is_rect_visible(ui.cursor().translate(vec2(0.0, 16.0)));
 
         let title_response = ui
@@ -298,7 +298,7 @@ impl ExamplePage {
             ui.vertical(|ui| {
                 ui.add_space(TITLE_TO_GRID_VSPACE);
 
-                egui::Grid::new("example_page_grid")
+                egui::Grid::new("example_section_grid")
                     .spacing(grid_spacing)
                     .min_col_width(column_width)
                     .max_col_width(column_width)
@@ -371,7 +371,7 @@ impl ExamplePage {
 
         if !examples_visible {
             let screen_rect = ui.ctx().screen_rect();
-            let indicator_rect = examples_page_rect
+            let indicator_rect = example_section_rect
                 .with_min_y(screen_rect.bottom() - 125.0)
                 .with_max_y(screen_rect.bottom());
 
