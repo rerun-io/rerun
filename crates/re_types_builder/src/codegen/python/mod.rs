@@ -817,7 +817,7 @@ fn code_for_enum(
         2,
     );
 
-    // Generate case-insentivie string-to-enum conversion:
+    // Generate case-insensitive string-to-enum conversion:
     let match_names = obj
         .fields
         .iter()
