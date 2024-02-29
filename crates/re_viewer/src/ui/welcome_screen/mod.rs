@@ -92,9 +92,7 @@ impl WelcomeScreen {
                 }
                 .show(ui, |ui| match self.current_page {
                     WelcomeScreenPage::Welcome => welcome_page_ui(ui, rx, command_sender),
-                    WelcomeScreenPage::Examples => {
-                        self.example_page.ui(ui, re_ui, rx, command_sender)
-                    }
+                    WelcomeScreenPage::Examples => self.example_page.ui(ui, re_ui, command_sender),
                 })
                 .inner
             })

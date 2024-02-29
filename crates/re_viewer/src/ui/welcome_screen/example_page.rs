@@ -1,10 +1,9 @@
 use egui::vec2;
+use egui::Color32;
 use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
 use poll_promise::Promise;
 
-use re_log_types::LogMsg;
-use re_smart_channel::ReceiveSet;
 use re_viewer_context::SystemCommandSender;
 
 use super::WelcomeScreenResponse;
@@ -24,7 +23,7 @@ struct ExampleDesc {
     /// human readable version of the example name
     title: String,
 
-    description: String,
+    // description: String,
     tags: Vec<String>,
 
     rrd_url: String,
@@ -37,8 +36,7 @@ const MAX_COLUMN_WIDTH: f32 = 340.0;
 const MAX_COLUMN_COUNT: usize = 3;
 const COLUMN_HSPACE: f32 = 24.0;
 const TITLE_TO_GRID_VSPACE: f32 = 32.0;
-const THUMBNAIL_TO_DESCRIPTION_VSPACE: f32 = 10.0;
-const DESCRIPTION_TO_TAGS_VSPACE: f32 = 10.0;
+const THUMBNAIL_TO_DESCRIPTION_VSPACE: f32 = 8.0;
 const ROW_VSPACE: f32 = 32.0;
 const THUMBNAIL_RADIUS: f32 = 4.0;
 
@@ -234,7 +232,6 @@ impl ExamplePage {
         &mut self,
         ui: &mut egui::Ui,
         re_ui: &re_ui::ReUi,
-        rx: &re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) -> WelcomeScreenResponse {
         let examples = self
@@ -317,7 +314,6 @@ impl ExamplePage {
 
                                     example_thumbnail(
                                         ui,
-                                        rx,
                                         &example.desc,
                                         size,
                                         example.hovered(ui, self.id),
@@ -329,9 +325,7 @@ impl ExamplePage {
 
                             for example in &mut *example_layouts {
                                 ui.vertical(|ui| {
-                                    example_description(ui, example, example.hovered(ui, self.id));
-
-                                    ui.add_space(DESCRIPTION_TO_TAGS_VSPACE);
+                                    example_title(ui, example);
                                 });
                             }
 
@@ -376,19 +370,8 @@ impl ExamplePage {
     }
 }
 
-fn is_loading(rx: &ReceiveSet<LogMsg>, example: &ExampleDesc) -> bool {
-    rx.sources().iter().any(|s| {
-        if let re_smart_channel::SmartChannelSource::RrdHttpStream { url } = s.as_ref() {
-            url == &example.rrd_url
-        } else {
-            false
-        }
-    })
-}
-
 fn example_thumbnail(
     ui: &mut Ui,
-    rx: &ReceiveSet<LogMsg>,
     example: &ExampleDesc,
     thumbnail_size: egui::Vec2,
     hovered: bool,
@@ -443,34 +426,17 @@ fn example_thumbnail(
         [clip_rect.left_bottom(), clip_rect.right_bottom()],
         (1.0, border_color),
     );
-
-    // Show spinner overlay while loading the example:
-    if is_loading(rx, example) {
-        ui.painter().rect_filled(
-            clip_rect,
-            rounding,
-            egui::Color32::BLACK.gamma_multiply(0.75),
-        );
-
-        let spinner_size = clip_rect.size().min_elem().at_most(72.0);
-        let spinner_rect =
-            egui::Rect::from_center_size(clip_rect.center(), egui::Vec2::splat(spinner_size));
-        ui.allocate_ui_at_rect(spinner_rect, |ui| {
-            ui.add(egui::Spinner::new().size(spinner_size));
-        });
-    }
 }
 
-fn example_description(ui: &mut Ui, example: &ExampleDescLayout, hovered: bool) {
-    let desc = &example.desc;
-
-    let title = egui::RichText::new(desc.title.clone())
+fn example_title(ui: &mut Ui, example: &ExampleDescLayout) {
+    let title = egui::RichText::new(example.desc.title.clone())
         .strong()
         .line_height(Some(22.0))
-        .text_style(re_ui::ReUi::welcome_screen_body());
+        .color(Color32::from_rgb(178, 178, 187))
+        .text_style(re_ui::ReUi::welcome_screen_example_title());
 
     ui.horizontal(|ui| {
-        ui.label(title);
+        ui.add(egui::Label::new(title).wrap(true));
 
         if let Some(Some(size)) = example.rrd_byte_size_promise.ready().cloned() {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -479,14 +445,7 @@ fn example_description(ui: &mut Ui, example: &ExampleDescLayout, hovered: bool) 
         }
     });
 
-    ui.add_space(4.0);
-
-    let mut desc_text = egui::RichText::new(desc.description.clone()).line_height(Some(19.0));
-    if hovered {
-        desc_text = desc_text.strong();
-    }
-
-    ui.add(egui::Label::new(desc_text).wrap(true));
+    ui.add_space(1.0);
 }
 
 fn example_tags(ui: &mut Ui, example: &ExampleDesc) {
