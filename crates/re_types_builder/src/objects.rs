@@ -11,7 +11,7 @@ use itertools::Itertools;
 
 use crate::{
     root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType, Reporter, ATTR_IS_ENUM, ATTR_RERUN_OVERRIDE_TYPE,
+    FbsType, Reporter, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
@@ -88,7 +88,7 @@ impl Objects {
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
                     assert!(obj.kind != ObjectKind::Archetype,
-                        "{virtpath}: Field {:?} is a primitive field of type {:?}. Only Components are allowed on Archetypes. If this field is an enum, you need to set the {ATTR_IS_ENUM:?} attribute on the field.",
+                        "{virtpath}: Field {:?} is a primitive field of type {:?}. Only Components are allowed on Archetypes.",
                         field.fqname, field.typ);
                 }
             }
@@ -1014,15 +1014,29 @@ impl Type {
             }
         }
 
-        if attrs.has(crate::ATTR_IS_ENUM) {
-            // Hack needed because enums get `typ == FbsBaseType::Byte`.
-            let enum_type = enums[field_type.index() as usize].name();
-            return Type::Object(enum_type.to_owned());
+        let is_int = matches!(
+            typ,
+            FbsBaseType::Byte
+                | FbsBaseType::UByte
+                | FbsBaseType::Short
+                | FbsBaseType::UShort
+                | FbsBaseType::Int
+                | FbsBaseType::UInt
+                | FbsBaseType::Long
+                | FbsBaseType::ULong
+        );
+        if is_int {
+            // Hack needed because enums get `typ == FbsBaseType::Byte`,
+            // or whatever integer type the enum was assigned to.
+            let enum_index = field_type.index() as usize;
+            if enum_index < enums.len() {
+                let enum_ = &enums[field_type.index() as usize];
+                return Self::Object(enum_.name().to_owned());
+            }
         }
 
         match typ {
-            // Enum variant
-            FbsBaseType::None => Self::Unit,
+            FbsBaseType::None => Self::Unit, // Enum variant
 
             FbsBaseType::Bool => Self::Bool,
             FbsBaseType::Byte => Self::Int8,
@@ -1066,6 +1080,7 @@ impl Type {
             FbsBaseType::UType | FbsBaseType::Vector64 => {
                 unimplemented!("FbsBaseType::{typ:#?}")
             }
+
             // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{typ:#?}"),
         }
