@@ -267,10 +267,6 @@ impl ViewportBlueprint {
                 .map(|space_view_id| self.space_view(&space_view_id).is_some())
                 .unwrap_or(true),
             Item::SpaceView(space_view_id) => self.space_view(space_view_id).is_some(),
-            Item::DataBlueprintGroup(space_view_id, query_id, _entity_path) => self
-                .space_views
-                .get(space_view_id)
-                .map_or(false, |sv| sv.queries.iter().any(|q| q.id == *query_id)),
             Item::Container(container_id) => self.container(container_id).is_some(),
         }
     }
@@ -622,11 +618,7 @@ impl ViewportBlueprint {
             .iter()
             .filter_map(|(space_view_id, space_view)| {
                 let query_result = ctx.lookup_query_result(space_view.query_id());
-                if query_result
-                    .tree
-                    .lookup_result_by_path_and_group(path, false)
-                    .is_some()
-                {
+                if query_result.tree.lookup_result_by_path(path).is_some() {
                     Some(*space_view_id)
                 } else {
                     None
