@@ -265,7 +265,7 @@ namespace rerun {
         rr_error status = {};
         rr_recording_stream_log_file_from_path(
             _id,
-            detail::to_rr_string(std::string_view(filepath.c_str())),
+            detail::to_rr_string(filepath.string()),
             &status
         );
 
