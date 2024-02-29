@@ -36,8 +36,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
-    let mut settings =
-        rerun::DataLoaderSettings::recommended(rec.store_info().unwrap().store_id);
+    let mut settings = rerun::DataLoaderSettings::recommended(rec.store_info().unwrap().store_id);
     settings.entity_path_prefix = Some("log_file_example".into());
 
     for filepath in &args.filepaths {
