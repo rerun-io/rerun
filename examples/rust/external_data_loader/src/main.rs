@@ -41,11 +41,11 @@ struct Args {
     #[argh(switch)]
     timeless: bool,
 
-    /// optional timestamps to log at (e.g. `--time sim_time=1709203426`) [repeatable]
+    /// optional timestamps to log at (e.g. `--time sim_time=1709203426`) (repeatable)
     #[argh(option)]
     time: Vec<String>,
 
-    /// optional sequences to log at (e.g. `--sequence sim_frame=42`) [repeatable]
+    /// optional sequences to log at (e.g. `--sequence sim_frame=42`) (repeatable)
     #[argh(option)]
     sequence: Vec<String>,
 }
