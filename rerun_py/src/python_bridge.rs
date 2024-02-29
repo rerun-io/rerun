@@ -978,8 +978,13 @@ fn log_file_from_path(
         return Ok(());
     };
 
+    let Some(recording_id) = recording.store_info().map(|info| info.store_id.clone()) else {
+        return Ok(());
+    };
+    let settings = rerun::DataLoaderSettings::recommended(recording_id);
+
     recording
-        .log_file_from_path(file_path)
+        .log_file_from_path(&settings, file_path)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     py.allow_threads(flush_garbage_queue);
@@ -1003,8 +1008,17 @@ fn log_file_from_contents(
         return Ok(());
     };
 
+    let Some(recording_id) = recording.store_info().map(|info| info.store_id.clone()) else {
+        return Ok(());
+    };
+    let settings = rerun::DataLoaderSettings::recommended(recording_id);
+
     recording
-        .log_file_from_contents(file_path, std::borrow::Cow::Borrowed(file_contents))
+        .log_file_from_contents(
+            &settings,
+            file_path,
+            std::borrow::Cow::Borrowed(file_contents),
+        )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     py.allow_threads(flush_garbage_queue);
