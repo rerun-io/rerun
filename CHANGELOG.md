@@ -2,6 +2,11 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.14.1](https://github.com/rerun-io/rerun/compare/0.14.0...0.14.1) - C++ build artifact fix
+
+This release is identical to 0.14.0 and merely fixes an issue in the build artifacts for C++:
+0.14.0 only contained binaries for Linux x64, this release has the full set for Linux x64, Windows x64, Mac x64 & Mac Arm64.
+
 ## [0.14.0](https://github.com/rerun-io/rerun/compare/0.13.0...0.14.0) - "Unlimited" point clouds & lines, quality of life improvements, bugfixes
 
 ### Overview & Highlights
