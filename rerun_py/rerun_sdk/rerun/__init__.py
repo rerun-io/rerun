@@ -77,8 +77,10 @@ __all__ = [
     "get_recording_id",
     "get_thread_local_data_recording",
     "is_enabled",
-    "log_components",
     "log",
+    "log_components",
+    "log_file_from_contents",
+    "log_file_from_path",
     "memory_recording",
     "new_entity_path",
     "reset_time",
@@ -105,6 +107,8 @@ from ._log import (
     escape_entity_path_part,
     log,
     log_components,
+    log_file_from_contents,
+    log_file_from_path,
     new_entity_path,
 )
 from .any_value import AnyValues

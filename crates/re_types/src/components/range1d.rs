@@ -67,12 +67,7 @@ impl ::re_types_core::Loggable for Range1D {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::FixedSizeList(
-            std::sync::Arc::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::Float64,
-                is_nullable: false,
-                metadata: [].into(),
-            }),
+            std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
             2usize,
         )
     }
@@ -235,12 +230,7 @@ impl ::re_types_core::Loggable for Range1D {
                     .downcast_ref::<arrow2::array::FixedSizeListArray>()
                     .ok_or_else(|| {
                         let expected = DataType::FixedSizeList(
-                            std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Float64,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }),
+                            std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
                             2usize,
                         );
                         let actual = arrow_data.data_type().clone();

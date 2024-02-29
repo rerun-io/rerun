@@ -62,18 +62,8 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "axis".to_owned(),
-                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "angle".to_owned(),
-                data_type: <crate::datatypes::Angle>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new("axis", <crate::datatypes::Vec3D>::arrow_datatype(), false),
+            Field::new("angle", <crate::datatypes::Angle>::arrow_datatype(), false),
         ]))
     }
 
@@ -142,12 +132,11 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                 });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
                                     3usize,
                                 ),
                                 PrimitiveArray::new(
@@ -235,12 +224,11 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
                                     3usize,
                                 );
                                 let actual = arrow_data.data_type().clone();

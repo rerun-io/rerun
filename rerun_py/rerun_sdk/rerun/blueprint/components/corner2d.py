@@ -5,73 +5,48 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Sequence, Union
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
-from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
 
 __all__ = ["Corner2D", "Corner2DArrayLike", "Corner2DBatch", "Corner2DLike", "Corner2DType"]
 
 
-@define(init=False)
-class Corner2D:
+from enum import Enum
+
+
+class Corner2D(Enum):
     """**Component**: One of four 2D corners, typically used to align objects."""
 
-    def __init__(self: Any, location: Corner2DLike):
-        """
-        Create a new instance of the Corner2D component.
-
-        Parameters
-        ----------
-        location:
-            Where should the legend be located.
-
-            Allowed values:
-             - LeftTop = 1,
-             - RightTop = 2,
-             - LeftBottom = 3,
-             - RightBottom = 4
-
-        """
-
-        # You can define your own __init__ function as a member of Corner2DExt in corner2d_ext.py
-        self.__attrs_init__(location=location)
-
-    location: int = field(converter=int)
-    # Where should the legend be located.
-    #
-    # Allowed values:
-    #  - LeftTop = 1,
-    #  - RightTop = 2,
-    #  - LeftBottom = 3,
-    #  - RightBottom = 4
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can define your own __array__ function as a member of Corner2DExt in corner2d_ext.py
-        return np.asarray(self.location, dtype=dtype)
-
-    def __int__(self) -> int:
-        return int(self.location)
+    LeftTop = 1
+    RightTop = 2
+    LeftBottom = 3
+    RightBottom = 4
 
 
-Corner2DLike = Corner2D
-Corner2DArrayLike = Union[
-    Corner2D,
-    Sequence[Corner2DLike],
-]
+Corner2DLike = Union[Corner2D, str]
+Corner2DArrayLike = Union[Corner2DLike, Sequence[Corner2DLike]]
 
 
 class Corner2DType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.blueprint.components.Corner2D"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
+        pa.ExtensionType.__init__(
+            self,
+            pa.sparse_union(
+                [
+                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                    pa.field("LeftTop", pa.null(), nullable=True, metadata={}),
+                    pa.field("RightTop", pa.null(), nullable=True, metadata={}),
+                    pa.field("LeftBottom", pa.null(), nullable=True, metadata={}),
+                    pa.field("RightBottom", pa.null(), nullable=True, metadata={}),
+                ]
+            ),
+            self._TYPE_NAME,
+        )
 
 
 class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):
@@ -79,4 +54,43 @@ class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: Corner2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in corner2d_ext.py
+        if isinstance(data, (Corner2D, int, str)):
+            data = [data]
+
+        types: list[int] = []
+
+        for value in data:
+            if value is None:
+                types.append(0)
+            elif isinstance(value, Corner2D):
+                types.append(value.value)  # Actual enum value
+            elif isinstance(value, int):
+                types.append(value)  # By number
+            elif isinstance(value, str):
+                if hasattr(Corner2D, value):
+                    types.append(Corner2D[value].value)  # fast path
+                elif value.lower() == "lefttop":
+                    types.append(Corner2D.LeftTop.value)
+                elif value.lower() == "righttop":
+                    types.append(Corner2D.RightTop.value)
+                elif value.lower() == "leftbottom":
+                    types.append(Corner2D.LeftBottom.value)
+                elif value.lower() == "rightbottom":
+                    types.append(Corner2D.RightBottom.value)
+                else:
+                    raise ValueError(f"Unknown Corner2D kind: {value}")
+            else:
+                raise ValueError(f"Unknown Corner2D kind: {value}")
+
+        buffers = [
+            None,
+            pa.array(types, type=pa.int8()).buffers()[1],
+        ]
+        children = (1 + 4) * [pa.nulls(len(data))]
+
+        return pa.UnionArray.from_buffers(
+            type=data_type,
+            length=len(data),
+            buffers=buffers,
+            children=children,
+        )

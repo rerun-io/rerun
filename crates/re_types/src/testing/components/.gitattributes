@@ -23,4 +23,5 @@ affix_fuzzer6.rs linguist-generated=true
 affix_fuzzer7.rs linguist-generated=true
 affix_fuzzer8.rs linguist-generated=true
 affix_fuzzer9.rs linguist-generated=true
+enum_test.rs linguist-generated=true
 mod.rs linguist-generated=true

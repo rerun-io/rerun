@@ -56,11 +56,18 @@ impl ArrowRegistry {
         let is_arrow_transparent = obj.is_arrow_transparent();
         let num_fields = obj.fields.len();
 
-        assert!(
-            !is_arrow_transparent || (is_struct && num_fields == 1),
-            "cannot have a transparent arrow object with any number of fields but 1: {:?} has {num_fields}",
-            obj.fqname,
-        );
+        if is_arrow_transparent {
+            assert!(
+                is_struct,
+                "{}: arrow-transparent objects must be structs; {:?} is {:?}",
+                obj.virtpath, obj.fqname, obj.class
+            );
+            assert!(
+                num_fields == 1,
+                "{}: arrow-transparent structs must have exactly one field, but {:?} has {num_fields}",
+                obj.virtpath, obj.fqname,
+            );
+        }
 
         let datatype = if is_arrow_transparent {
             LazyDatatype::Extension(

@@ -60,24 +60,9 @@ impl ::re_types_core::Loggable for Angle {
         use arrow2::datatypes::*;
         DataType::Union(
             std::sync::Arc::new(vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Radians".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Degrees".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new("Radians", DataType::Float32, false),
+                Field::new("Degrees", DataType::Float32, false),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
             UnionMode::Dense,

@@ -78,24 +78,17 @@ impl ::re_types_core::Loggable for Rotation3D {
         use arrow2::datatypes::*;
         DataType::Union(
             std::sync::Arc::new(vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Quaternion".to_owned(),
-                    data_type: <crate::datatypes::Quaternion>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "AxisAngle".to_owned(),
-                    data_type: <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new(
+                    "Quaternion",
+                    <crate::datatypes::Quaternion>::arrow_datatype(),
+                    false,
+                ),
+                Field::new(
+                    "AxisAngle",
+                    <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
+                    false,
+                ),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
             UnionMode::Dense,

@@ -4,6 +4,9 @@ title: "MeshProperties"
 
 Optional triangle indices for a mesh.
 
+## Fields
+
+* indices: list of `u32`
 
 ## Links
  * 🌊 [C++ API docs for `MeshProperties`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1MeshProperties.html)

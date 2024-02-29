@@ -1,4 +1,4 @@
-namespace rerun.testing.datatypes;
+namespace rerun.testing.components;
 
 /// A test of the enum type.
 enum EnumTest: byte {
@@ -9,7 +9,7 @@ enum EnumTest: byte {
     Down,
 
     /// Correct.
-    Right,
+    Right (default),
 
     /// It's what's remaining.
     Left,

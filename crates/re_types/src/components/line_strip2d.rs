@@ -68,12 +68,11 @@ impl ::re_types_core::Loggable for LineStrip2D {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::List(std::sync::Arc::new(Field {
-            name: "item".to_owned(),
-            data_type: <crate::datatypes::Vec2D>::arrow_datatype(),
-            is_nullable: false,
-            metadata: [].into(),
-        }))
+        DataType::List(std::sync::Arc::new(Field::new(
+            "item",
+            <crate::datatypes::Vec2D>::arrow_datatype(),
+            false,
+        )))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -147,12 +146,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                             });
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
-                                std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
+                                std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                                 2usize,
                             ),
                             PrimitiveArray::new(
@@ -205,12 +199,11 @@ impl ::re_types_core::Loggable for LineStrip2D {
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
                                     2usize,
                                 );
                                 let actual = arrow_data_inner.data_type().clone();

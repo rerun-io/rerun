@@ -22,7 +22,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The top-level description of the Viewport.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct ContainerBlueprint {
     /// The class of the view.
     pub container_kind: crate::blueprint::components::ContainerKind,

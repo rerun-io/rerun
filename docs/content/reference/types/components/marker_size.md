@@ -4,6 +4,9 @@ title: "MarkerSize"
 
 Size of a marker in UI points.
 
+## Fields
+
+* value: `f32`
 
 ## Links
  * 🌊 [C++ API docs for `MarkerSize`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1MarkerSize.html)

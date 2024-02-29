@@ -60,18 +60,16 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "class_id".to_owned(),
-                data_type: <crate::datatypes::ClassId>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "class_description".to_owned(),
-                data_type: <crate::datatypes::ClassDescription>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new(
+                "class_id",
+                <crate::datatypes::ClassId>::arrow_datatype(),
+                false,
+            ),
+            Field::new(
+                "class_description",
+                <crate::datatypes::ClassDescription>::arrow_datatype(),
+                false,
+            ),
         ]))
     }
 

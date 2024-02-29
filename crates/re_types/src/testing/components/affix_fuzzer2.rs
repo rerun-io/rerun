@@ -73,75 +73,43 @@ impl ::re_types_core::Loggable for AffixFuzzer2 {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "single_float_optional".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "single_string_required".to_owned(),
-                data_type: DataType::Utf8,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "single_string_optional".to_owned(),
-                data_type: DataType::Utf8,
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "many_floats_optional".to_owned(),
-                data_type: DataType::List(std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "many_strings_required".to_owned(),
-                data_type: DataType::List(std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Utf8,
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "many_strings_optional".to_owned(),
-                data_type: DataType::List(std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Utf8,
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "flattened_scalar".to_owned(),
-                data_type: DataType::Float32,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "almost_flattened_scalar".to_owned(),
-                data_type: <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "from_parent".to_owned(),
-                data_type: DataType::Boolean,
-                is_nullable: true,
-                metadata: [].into(),
-            },
+            Field::new("single_float_optional", DataType::Float32, true),
+            Field::new("single_string_required", DataType::Utf8, false),
+            Field::new("single_string_optional", DataType::Utf8, true),
+            Field::new(
+                "many_floats_optional",
+                DataType::List(std::sync::Arc::new(Field::new(
+                    "item",
+                    DataType::Float32,
+                    false,
+                ))),
+                true,
+            ),
+            Field::new(
+                "many_strings_required",
+                DataType::List(std::sync::Arc::new(Field::new(
+                    "item",
+                    DataType::Utf8,
+                    false,
+                ))),
+                false,
+            ),
+            Field::new(
+                "many_strings_optional",
+                DataType::List(std::sync::Arc::new(Field::new(
+                    "item",
+                    DataType::Utf8,
+                    false,
+                ))),
+                true,
+            ),
+            Field::new("flattened_scalar", DataType::Float32, false),
+            Field::new(
+                "almost_flattened_scalar",
+                <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
+                false,
+            ),
+            Field::new("from_parent", DataType::Boolean, true),
         ]))
     }
 

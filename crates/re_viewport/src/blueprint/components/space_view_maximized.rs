@@ -76,20 +76,14 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field {
-            name: "bytes".to_owned(),
-            data_type: DataType::FixedSizeList(
-                std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::UInt8,
-                    is_nullable: false,
-                    metadata: [].into(),
-                }),
+        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+            "bytes",
+            DataType::FixedSizeList(
+                std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                 16usize,
             ),
-            is_nullable: false,
-            metadata: [].into(),
-        }]))
+            false,
+        )]))
     }
 
     #[allow(clippy::wildcard_imports)]

@@ -73,12 +73,11 @@ impl ::re_types_core::Loggable for Material {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field {
-            name: "albedo_factor".to_owned(),
-            data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
-            is_nullable: true,
-            metadata: [].into(),
-        }]))
+        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+            "albedo_factor",
+            <crate::datatypes::Rgba32>::arrow_datatype(),
+            true,
+        )]))
     }
 
     #[allow(clippy::wildcard_imports)]

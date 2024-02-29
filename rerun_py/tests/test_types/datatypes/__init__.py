@@ -28,7 +28,6 @@ from .affix_fuzzer22 import (
     AffixFuzzer22Like,
     AffixFuzzer22Type,
 )
-from .enum_test import EnumTest, EnumTestArrayLike, EnumTestBatch, EnumTestLike, EnumTestType
 from .flattened_scalar import (
     FlattenedScalar,
     FlattenedScalarArrayLike,
@@ -92,11 +91,6 @@ __all__ = [
     "AffixFuzzer5Batch",
     "AffixFuzzer5Like",
     "AffixFuzzer5Type",
-    "EnumTest",
-    "EnumTestArrayLike",
-    "EnumTestBatch",
-    "EnumTestLike",
-    "EnumTestType",
     "FlattenedScalar",
     "FlattenedScalarArrayLike",
     "FlattenedScalarBatch",
