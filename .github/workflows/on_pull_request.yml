@@ -79,33 +79,6 @@ jobs:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
     secrets: inherit
 
-  build-rerun_c-and-upload:
-    name: "Build & Upload rerun_c (Linux x64)"
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && !contains(github.event.pull_request.labels.*.name, 'release')
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      PLATFORM: linux
-    secrets: inherit
-
-  build-rerun-cli-and-upload:
-    name: "Build & Upload rerun-cli (Linux x64)"
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && !contains(github.event.pull_request.labels.*.name, 'release')
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      PLATFORM: linux
-    secrets: inherit
-
-  bundle-and-upload-rerun_cpp:
-    name: "Bundle and upload rerun_cpp_sdk.zip"
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && !contains(github.event.pull_request.labels.*.name, 'release')
-    needs: [build-rerun_c-and-upload]
-    uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
-    with:
-      PLATFORM_FILTER: "linux"
-    secrets: inherit
-
   build-web:
     name: "Build Web"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
@@ -169,7 +142,7 @@ jobs:
   save-pr-summary:
     name: "Save PR Summary"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [upload-web, run-notebook, build-rerun_c-and-upload]
+    needs: [upload-web, run-notebook]
     uses: ./.github/workflows/reusable_pr_summary.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
