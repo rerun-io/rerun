@@ -16,7 +16,7 @@ use crate::{DataLoaderError, LoadedData};
 /// (i.e. they're logged).
 #[cfg(not(target_arch = "wasm32"))]
 pub fn load_from_path(
-    store_id: &re_log_types::StoreId,
+    settings: &crate::RecommendedLoadSettings,
     file_source: FileSource,
     path: &std::path::Path,
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
@@ -34,17 +34,19 @@ pub fn load_from_path(
 
     re_log::info!("Loading {path:?}…");
 
-    let data = load(store_id, path, None)?;
+    let data = load(settings, path, None)?;
 
+    // TODO: there's probably gonna be issues with this though... maybe?
     // If we reach this point, then at least one compatible `DataLoader` has been found.
-    let store_info = prepare_store_info(store_id, file_source, path);
+    let store_info = prepare_store_info(&settings.store_id, file_source, path);
     if let Some(store_info) = store_info {
         if tx.send(store_info).is_err() {
             return Ok(()); // other end has hung up.
         }
     }
 
-    send(store_id, data, tx);
+    // TODO: should we be using this one here?
+    send(&settings.store_id, data, tx);
 
     Ok(())
 }
@@ -58,7 +60,7 @@ pub fn load_from_path(
 ///
 /// `path` is only used for informational purposes, no data is ever read from the filesystem.
 pub fn load_from_file_contents(
-    store_id: &re_log_types::StoreId,
+    settings: &crate::RecommendedLoadSettings,
     file_source: FileSource,
     filepath: &std::path::Path,
     contents: std::borrow::Cow<'_, [u8]>,
@@ -69,17 +71,18 @@ pub fn load_from_file_contents(
 
     re_log::info!("Loading {filepath:?}…");
 
-    let data = load(store_id, filepath, Some(contents))?;
+    let data = load(settings, filepath, Some(contents))?;
 
     // If we reach this point, then at least one compatible `DataLoader` has been found.
-    let store_info = prepare_store_info(store_id, file_source, filepath);
+    let store_info = prepare_store_info(&settings.store_id, file_source, filepath);
     if let Some(store_info) = store_info {
         if tx.send(store_info).is_err() {
             return Ok(()); // other end has hung up.
         }
     }
 
-    send(store_id, data, tx);
+    // TODO: should we be using this one here?
+    send(&settings.store_id, data, tx);
 
     Ok(())
 }
@@ -137,7 +140,7 @@ pub(crate) fn prepare_store_info(
 /// [`DataLoaderError::Incompatible`] will be returned.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn load(
-    store_id: &re_log_types::StoreId,
+    settings: &crate::RecommendedLoadSettings,
     path: &std::path::Path,
     contents: Option<std::borrow::Cow<'_, [u8]>>,
 ) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
@@ -158,7 +161,7 @@ pub(crate) fn load(
             for loader in crate::iter_loaders() {
                 let loader = std::sync::Arc::clone(&loader);
 
-                let store_id = store_id.clone();
+                let settings = settings.clone();
                 let path = path.to_owned();
                 let contents = contents.clone(); // arc
 
@@ -172,7 +175,7 @@ pub(crate) fn load(
                         let contents = Cow::Borrowed(contents.as_ref());
 
                         if let Err(err) = loader.load_from_file_contents(
-                            store_id,
+                            &settings,
                             path.clone(),
                             contents,
                             tx_loader,
@@ -183,7 +186,7 @@ pub(crate) fn load(
                             re_log::error!(?path, loader = loader.name(), %err, "Failed to load data");
                         }
                     } else if let Err(err) =
-                        loader.load_from_path(store_id, path.clone(), tx_loader)
+                        loader.load_from_path(&settings, path.clone(), tx_loader)
                     {
                         if err.is_incompatible() {
                             return;
@@ -225,7 +228,7 @@ pub(crate) fn load(
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::needless_pass_by_value)]
 pub(crate) fn load(
-    store_id: &re_log_types::StoreId,
+    settings: &crate::RecommendedLoadSettings,
     path: &std::path::Path,
     contents: Option<std::borrow::Cow<'_, [u8]>>,
 ) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
@@ -236,12 +239,12 @@ pub(crate) fn load(
 
         let any_compatible_loader = crate::iter_loaders().map(|loader| {
             if let Some(contents) = contents.as_deref() {
-                let store_id = store_id.clone();
+                let settings = settings.clone();
                 let tx_loader = tx_loader.clone();
                 let path = path.to_owned();
                 let contents = Cow::Borrowed(contents);
 
-                if let Err(err) = loader.load_from_file_contents(store_id, path.clone(), contents, tx_loader) {
+                if let Err(err) = loader.load_from_file_contents(&settings, path.clone(), contents, tx_loader) {
                     if err.is_incompatible() {
                         return false;
                     }

@@ -1131,20 +1131,27 @@ impl RecordingStream {
             re_smart_channel::SmartChannelSource::File(filepath.into()),
         );
 
-        let Some(store_id) = &self.store_info().map(|info| info.store_id.clone()) else {
+        let Some(store_id) = self.store_info().map(|info| info.store_id.clone()) else {
             // There's no recording.
             return Ok(());
         };
+        // TODO
+        let settings = re_data_source::RecommendedLoadSettings::recommended(store_id);
         if let Some(contents) = contents {
             re_data_source::load_from_file_contents(
-                store_id,
+                &settings,
                 re_log_types::FileSource::Sdk,
                 filepath,
                 contents,
                 &tx,
             )?;
         } else {
-            re_data_source::load_from_path(store_id, re_log_types::FileSource::Sdk, filepath, &tx)?;
+            re_data_source::load_from_path(
+                &settings,
+                re_log_types::FileSource::Sdk,
+                filepath,
+                &tx,
+            )?;
         }
         drop(tx);
 

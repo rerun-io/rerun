@@ -36,7 +36,7 @@ impl re_data_source::DataLoader for HashLoader {
 
     fn load_from_path(
         &self,
-        _store_id: rerun::external::re_log_types::StoreId,
+        _settings: &rerun::external::re_data_source::RecommendedLoadSettings,
         path: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<re_data_source::LoadedData>,
     ) -> Result<(), re_data_source::DataLoaderError> {
@@ -49,7 +49,7 @@ impl re_data_source::DataLoader for HashLoader {
 
     fn load_from_file_contents(
         &self,
-        _store_id: rerun::external::re_log_types::StoreId,
+        _settings: &rerun::external::re_data_source::RecommendedLoadSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<re_data_source::LoadedData>,

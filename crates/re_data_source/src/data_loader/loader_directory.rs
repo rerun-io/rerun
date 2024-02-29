@@ -16,7 +16,7 @@ impl crate::DataLoader for DirectoryLoader {
     #[cfg(not(target_arch = "wasm32"))]
     fn load_from_path(
         &self,
-        store_id: re_log_types::StoreId,
+        settings: &crate::RecommendedLoadSettings,
         dirpath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
@@ -39,7 +39,7 @@ impl crate::DataLoader for DirectoryLoader {
 
             let filepath = entry.path();
             if filepath.is_file() {
-                let store_id = store_id.clone();
+                let settings = settings.clone();
                 let filepath = filepath.to_owned();
                 let tx = tx.clone();
 
@@ -51,7 +51,7 @@ impl crate::DataLoader for DirectoryLoader {
                 _ = std::thread::Builder::new()
                     .name(format!("load_dir_entry({filepath:?})"))
                     .spawn(move || {
-                        let data = match crate::load_file::load(&store_id, &filepath, None) {
+                        let data = match crate::load_file::load(&settings, &filepath, None) {
                             Ok(data) => data,
                             Err(err) => {
                                 re_log::error!(?filepath, %err, "Failed to load directory entry");
@@ -74,7 +74,7 @@ impl crate::DataLoader for DirectoryLoader {
     #[inline]
     fn load_from_file_contents(
         &self,
-        _store_id: re_log_types::StoreId,
+        _settings: &crate::RecommendedLoadSettings,
         path: std::path::PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
         _tx: std::sync::mpsc::Sender<crate::LoadedData>,

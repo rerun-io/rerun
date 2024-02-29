@@ -114,7 +114,7 @@ impl crate::DataLoader for ExternalLoader {
 
     fn load_from_path(
         &self,
-        store_id: re_log_types::StoreId,
+        settings: &crate::RecommendedLoadSettings,
         filepath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
@@ -126,8 +126,9 @@ impl crate::DataLoader for ExternalLoader {
         struct CompatibleLoaderFound;
         let (tx_feedback, rx_feedback) = std::sync::mpsc::channel::<CompatibleLoaderFound>();
 
+        let args = settings.to_cli_args();
         for exe in EXTERNAL_LOADER_PATHS.iter() {
-            let store_id = store_id.clone();
+            let args = args.clone();
             let filepath = filepath.clone();
             let tx = tx.clone();
             let tx_feedback = tx_feedback.clone();
@@ -139,7 +140,7 @@ impl crate::DataLoader for ExternalLoader {
 
                 let child = Command::new(exe)
                     .arg(filepath.clone())
-                    .args(["--recording-id".to_owned(), store_id.to_string()])
+                    .args(args)
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .spawn();
@@ -277,12 +278,12 @@ impl crate::DataLoader for ExternalLoader {
     #[inline]
     fn load_from_file_contents(
         &self,
-        _store_id: re_log_types::StoreId,
+        _settings: &crate::RecommendedLoadSettings,
         path: std::path::PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
         _tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
-        // TODO(cmc): You could imagine a world where plugins can be streamed rrd data via their
+        // TODO(#5324): You could imagine a world where plugins can be streamed rrd data via their
         // standard input… but today is not world.
         Err(crate::DataLoaderError::Incompatible(path))
     }

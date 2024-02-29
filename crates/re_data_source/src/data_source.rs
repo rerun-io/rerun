@@ -134,8 +134,10 @@ impl DataSource {
                 // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
-                let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                crate::load_from_path(&store_id, file_source, &path, &tx)
+                let shared_store_id =
+                    re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                let settings = crate::RecommendedLoadSettings::recommended(shared_store_id);
+                crate::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
                 if let Some(on_msg) = on_msg {
@@ -156,9 +158,11 @@ impl DataSource {
                 // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
                 // or not.
-                let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                let shared_store_id =
+                    re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
+                let settings = crate::RecommendedLoadSettings::recommended(shared_store_id);
                 crate::load_from_file_contents(
-                    &store_id,
+                    &settings,
                     file_source,
                     &std::path::PathBuf::from(file_contents.name),
                     std::borrow::Cow::Borrowed(&file_contents.bytes),

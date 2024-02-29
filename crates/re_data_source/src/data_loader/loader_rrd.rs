@@ -15,7 +15,7 @@ impl crate::DataLoader for RrdLoader {
     fn load_from_path(
         &self,
         // NOTE: The Store ID comes from the rrd file itself.
-        _store_id: re_log_types::StoreId,
+        _settings: &crate::RecommendedLoadSettings,
         filepath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
@@ -58,7 +58,7 @@ impl crate::DataLoader for RrdLoader {
     fn load_from_file_contents(
         &self,
         // NOTE: The Store ID comes from the rrd file itself.
-        _store_id: re_log_types::StoreId,
+        _settings: &crate::RecommendedLoadSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,

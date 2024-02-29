@@ -19,7 +19,7 @@ impl DataLoader for ArchetypeLoader {
     #[cfg(not(target_arch = "wasm32"))]
     fn load_from_path(
         &self,
-        store_id: re_log_types::StoreId,
+        settings: &crate::RecommendedLoadSettings,
         filepath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
@@ -35,12 +35,12 @@ impl DataLoader for ArchetypeLoader {
             .with_context(|| format!("Failed to read file {filepath:?}"))?;
         let contents = std::borrow::Cow::Owned(contents);
 
-        self.load_from_file_contents(store_id, filepath, contents, tx)
+        self.load_from_file_contents(settings, filepath, contents, tx)
     }
 
     fn load_from_file_contents(
         &self,
-        _store_id: re_log_types::StoreId,
+        _settings: &crate::RecommendedLoadSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<LoadedData>,
