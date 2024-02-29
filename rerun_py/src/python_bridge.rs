@@ -967,59 +967,96 @@ fn log_arrow_msg(
 #[pyfunction]
 #[pyo3(signature = (
     file_path,
+    recording_id = None,
+    entity_path_prefix = None,
+    timeless = None,
     recording=None,
 ))]
 fn log_file_from_path(
     py: Python<'_>,
     file_path: std::path::PathBuf,
+    recording_id: Option<String>,
+    entity_path_prefix: Option<String>,
+    timeless: Option<bool>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
-
-    let Some(recording_id) = recording.store_info().map(|info| info.store_id.clone()) else {
-        return Ok(());
-    };
-    let settings = rerun::DataLoaderSettings::recommended(recording_id);
-
-    recording
-        .log_file_from_path(&settings, file_path)
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-    py.allow_threads(flush_garbage_queue);
-
-    Ok(())
+    log_file(
+        py,
+        file_path,
+        None,
+        recording_id,
+        entity_path_prefix,
+        timeless,
+        recording,
+    )
 }
 
 #[pyfunction]
 #[pyo3(signature = (
     file_path,
     file_contents,
+    recording_id = None,
+    entity_path_prefix = None,
+    timeless = None,
     recording=None,
 ))]
 fn log_file_from_contents(
     py: Python<'_>,
     file_path: std::path::PathBuf,
     file_contents: &[u8],
+    recording_id: Option<String>,
+    entity_path_prefix: Option<String>,
+    timeless: Option<bool>,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    log_file(
+        py,
+        file_path,
+        Some(file_contents),
+        recording_id,
+        entity_path_prefix,
+        timeless,
+        recording,
+    )
+}
+
+fn log_file(
+    py: Python<'_>,
+    file_path: std::path::PathBuf,
+    file_contents: Option<&[u8]>,
+    recording_id: Option<String>,
+    entity_path_prefix: Option<String>,
+    timeless: Option<bool>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
 
-    let Some(recording_id) = recording.store_info().map(|info| info.store_id.clone()) else {
+    let Some(recording_id) = recording
+        .store_info()
+        .map(|info| info.store_id.clone())
+        .or(recording_id.map(|id| StoreId::from_string(StoreKind::Recording, id)))
+    else {
         return Ok(());
     };
-    let settings = rerun::DataLoaderSettings::recommended(recording_id);
 
-    recording
-        .log_file_from_contents(
-            &settings,
-            file_path,
-            std::borrow::Cow::Borrowed(file_contents),
-        )
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    let settings = rerun::DataLoaderSettings {
+        store_id: recording_id,
+        opened_store_id: None,
+        entity_path_prefix: entity_path_prefix.map(Into::into),
+        timepoint: timeless.unwrap_or(false).then(TimePoint::timeless),
+    };
+
+    if let Some(contents) = file_contents {
+        recording
+            .log_file_from_contents(&settings, file_path, std::borrow::Cow::Borrowed(contents))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    } else {
+        recording
+            .log_file_from_path(&settings, file_path)
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    }
 
     py.allow_threads(flush_garbage_queue);
 
