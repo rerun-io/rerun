@@ -38,7 +38,7 @@ typedef struct rr_bytes {
     /// Pointer to the bytes.
     ///
     /// Rerun is guaranteed to not read beyond bytes[length-1].
-    const char* bytes;
+    const uint8_t* bytes;
 
     /// The length of the data in bytes.
     uint32_t length;
