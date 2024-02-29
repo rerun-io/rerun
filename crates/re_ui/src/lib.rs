@@ -819,7 +819,7 @@ impl ReUi {
                     ui,
                     openness,
                     icon_rect.center(),
-                    &ui.style().interact(&icon_response),
+                    ui.style().interact(&icon_response),
                 );
 
                 let visuals = ui.style().interact(&header_response);
