@@ -4,6 +4,8 @@ use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
 use poll_promise::Promise;
 
+use re_ui::icons::ARROW_DOWN;
+use re_ui::ReUi;
 use re_viewer_context::SystemCommandSender;
 
 #[derive(Debug, serde::Deserialize)]
@@ -371,32 +373,34 @@ impl ExamplePage {
                 viewport_rect_in_monitor_space
                     .translate(-viewport_rect_in_monitor_space.left_top().to_vec2())
             });
-
-            // TODO: `See examples` indicator
-            // if inner_window_rect.bottom() < 125.0 {}
-
             let indicator_rect = examples_page_rect
                 .with_min_y(inner_window_rect.bottom() - 125.0)
                 .with_max_y(inner_window_rect.bottom());
-            ui.painter()
-                .debug_rect(indicator_rect, Color32::DARK_RED, "INDICATOR");
 
             let mut ui = ui.child_ui(
                 indicator_rect,
                 egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
             );
+
             ui.vertical_centered(|ui| {
-                ui.add(
-                    egui::Button::new("See examples")
-                        .sense(egui::Sense::hover())
-                        .rounding(6.0)
-                        .fill(egui::Color32::from_rgb(26, 29, 30))
-                        .stroke(egui::Stroke::new(
-                            1.0,
-                            egui::Color32::WHITE.gamma_multiply(0.086),
-                        ))
-                        .wrap(false),
-                );
+                ui.add_space(16.0);
+
+                ui.scope(|ui| {
+                    ui.spacing_mut().button_padding = vec2(16.0, 8.0);
+                    ui.visuals_mut().widgets.hovered.bg_stroke = egui::Stroke::NONE;
+                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
+                    ui.add(
+                        egui::Button::image_and_text(
+                            ARROW_DOWN
+                                .as_image()
+                                .tint(egui::Color32::BLACK)
+                                .fit_to_exact_size(ReUi::small_icon_size()),
+                            egui::RichText::new("See examples").color(egui::Color32::BLACK),
+                        )
+                        .rounding(16.0)
+                        .fill(egui::Color32::from_gray(0xfa)),
+                    );
+                })
             });
         }
     }
