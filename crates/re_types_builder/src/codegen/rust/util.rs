@@ -12,14 +12,16 @@ pub fn is_tuple_struct_from_obj(obj: &Object) -> bool {
     }
 
     let is_tuple_struct = obj.kind == ObjectKind::Component
-        || (obj.is_struct() && obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some());
+        || obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some();
 
-    assert!(
-        !is_tuple_struct || obj.fields.len() == 1,
-        "`{ATTR_RUST_TUPLE_STRUCT}` is only supported for objects with a single field, but {} has {}",
-        obj.fqname,
-        obj.fields.len(),
-    );
+    if is_tuple_struct {
+        assert!(
+            obj.fields.len() == 1,
+            "`{ATTR_RUST_TUPLE_STRUCT}` is only supported for objects with a single field, but {} has {}",
+            obj.fqname,
+            obj.fields.len(),
+        );
+    }
 
     is_tuple_struct
 }
