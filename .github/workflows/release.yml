@@ -184,6 +184,10 @@ jobs:
             - For any added commits, run the release workflow in 'rc' mode again
             - After testing, run the release workflow in 'release' mode
             - Once the final release workflow finishes it will create a GitHub release for you. Don't do anything until it automatically undrafts. Then:
+              - [ ] Sanity check the build artifacts:
+                - [ ] pip install: does it install and run?
+                - [ ] cargo install of cli tool: does it install and run?
+                - [ ] C++ SDK zip: does it contain rerun_c for all platforms?
               - [ ] Populate the release with the changelog and a nice header video/picture.
               - [ ] Make sure the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) gets
               merged. This will be created by the `regro-cf-autotick-bot` once the GitHub release is created.
