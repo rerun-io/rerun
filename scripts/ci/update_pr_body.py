@@ -35,9 +35,11 @@ CODE_BLOCK_PLACEHOLDER = "{CODE BLOCK PLACEHOLDER}"
 
 
 def index_code_block(lines: list[str]) -> tuple[bool, int, int]:
+    # Truncate the lines so we can find things like "```rust".
+    line_starts = [line[0:3] for line in lines]
     if "```" in lines:
-        opening_line = lines.index("```")
-        closing_line = lines.index("```", opening_line + 1)
+        opening_line = line_starts.index("```")
+        closing_line = line_starts.index("```", opening_line + 1)
         return True, opening_line, closing_line
     return False, 0, 0
 
@@ -48,7 +50,9 @@ def extract_code_blocks(lines: list[str]) -> list[list[str]]:
     code_blocks = []
     has_code_blocks = True
     while has_code_blocks:
-        if "```" in lines:
+        # Truncate the lines so we can find things like "```rust".
+        line_starts = [line[0:3] for line in lines]
+        if "```" in line_starts:
             block, op, cl = index_code_block(lines)
             if block:
                 code_blocks.append(lines[op : cl + 1])
