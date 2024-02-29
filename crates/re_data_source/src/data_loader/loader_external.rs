@@ -114,7 +114,7 @@ impl crate::DataLoader for ExternalLoader {
 
     fn load_from_path(
         &self,
-        settings: &crate::RecommendedLoadSettings,
+        settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
@@ -278,7 +278,7 @@ impl crate::DataLoader for ExternalLoader {
     #[inline]
     fn load_from_file_contents(
         &self,
-        _settings: &crate::RecommendedLoadSettings,
+        _settings: &crate::DataLoaderSettings,
         path: std::path::PathBuf,
         _contents: std::borrow::Cow<'_, [u8]>,
         _tx: std::sync::mpsc::Sender<crate::LoadedData>,

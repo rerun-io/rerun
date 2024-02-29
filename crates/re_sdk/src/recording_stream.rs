@@ -1095,7 +1095,7 @@ impl RecordingStream {
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_path(
         &self,
-        settings: &re_data_source::RecommendedLoadSettings,
+        settings: &re_data_source::DataLoaderSettings,
         filepath: impl AsRef<std::path::Path>,
     ) -> RecordingStreamResult<()> {
         self.log_file(settings, filepath, None)
@@ -1112,7 +1112,7 @@ impl RecordingStream {
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_contents(
         &self,
-        settings: &re_data_source::RecommendedLoadSettings,
+        settings: &re_data_source::DataLoaderSettings,
         filepath: impl AsRef<std::path::Path>,
         contents: std::borrow::Cow<'_, [u8]>,
     ) -> RecordingStreamResult<()> {
@@ -1122,7 +1122,7 @@ impl RecordingStream {
     #[cfg(feature = "data_loaders")]
     fn log_file(
         &self,
-        settings: &re_data_source::RecommendedLoadSettings,
+        settings: &re_data_source::DataLoaderSettings,
         filepath: impl AsRef<std::path::Path>,
         contents: Option<std::borrow::Cow<'_, [u8]>>,
     ) -> RecordingStreamResult<()> {

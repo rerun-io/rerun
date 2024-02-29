@@ -16,7 +16,7 @@ use crate::{DataLoaderError, LoadedData};
 /// (i.e. they're logged).
 #[cfg(not(target_arch = "wasm32"))]
 pub fn load_from_path(
-    settings: &crate::RecommendedLoadSettings,
+    settings: &crate::DataLoaderSettings,
     file_source: FileSource,
     path: &std::path::Path,
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
@@ -59,7 +59,7 @@ pub fn load_from_path(
 ///
 /// `path` is only used for informational purposes, no data is ever read from the filesystem.
 pub fn load_from_file_contents(
-    settings: &crate::RecommendedLoadSettings,
+    settings: &crate::DataLoaderSettings,
     file_source: FileSource,
     filepath: &std::path::Path,
     contents: std::borrow::Cow<'_, [u8]>,
@@ -139,7 +139,7 @@ pub(crate) fn prepare_store_info(
 /// [`DataLoaderError::Incompatible`] will be returned.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn load(
-    settings: &crate::RecommendedLoadSettings,
+    settings: &crate::DataLoaderSettings,
     path: &std::path::Path,
     contents: Option<std::borrow::Cow<'_, [u8]>>,
 ) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {
@@ -227,7 +227,7 @@ pub(crate) fn load(
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::needless_pass_by_value)]
 pub(crate) fn load(
-    settings: &crate::RecommendedLoadSettings,
+    settings: &crate::DataLoaderSettings,
     path: &std::path::Path,
     contents: Option<std::borrow::Cow<'_, [u8]>>,
 ) -> Result<std::sync::mpsc::Receiver<LoadedData>, DataLoaderError> {

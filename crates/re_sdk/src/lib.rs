@@ -86,7 +86,7 @@ pub use re_types_core::{
 };
 
 #[cfg(feature = "data_loaders")]
-pub use re_data_source::{DataLoader, DataLoaderError, LoadedData, RecommendedLoadSettings};
+pub use re_data_source::{DataLoader, DataLoaderError, LoadedData, DataLoaderSettings};
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]

@@ -136,7 +136,7 @@ impl DataSource {
                 // or not.
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                let settings = crate::RecommendedLoadSettings::recommended(shared_store_id);
+                let settings = crate::DataLoaderSettings::recommended(shared_store_id);
                 crate::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
@@ -160,7 +160,7 @@ impl DataSource {
                 // or not.
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                let settings = crate::RecommendedLoadSettings::recommended(shared_store_id);
+                let settings = crate::DataLoaderSettings::recommended(shared_store_id);
                 crate::load_from_file_contents(
                     &settings,
                     file_source,

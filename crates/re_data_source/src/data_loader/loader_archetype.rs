@@ -19,7 +19,7 @@ impl DataLoader for ArchetypeLoader {
     #[cfg(not(target_arch = "wasm32"))]
     fn load_from_path(
         &self,
-        settings: &crate::RecommendedLoadSettings,
+        settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
@@ -40,7 +40,7 @@ impl DataLoader for ArchetypeLoader {
 
     fn load_from_file_contents(
         &self,
-        _settings: &crate::RecommendedLoadSettings,
+        _settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<LoadedData>,

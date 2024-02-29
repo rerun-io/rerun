@@ -18,7 +18,7 @@ use re_log_types::{ArrowMsg, DataRow, EntityPath, LogMsg, TimePoint};
 /// * `--time <timeline1>=<time1> <timeline2>=<time2> ...` (if `timepoint` contains temporal data)
 /// * `--sequence <timeline1>=<seq1> <timeline2>=<seq2> ...` (if `timepoint` contains sequence data)
 #[derive(Debug, Clone)]
-pub struct RecommendedLoadSettings {
+pub struct DataLoaderSettings {
     /// The recommended [`re_log_types::StoreId`] to log the data to, based on the surrounding context.
     pub store_id: re_log_types::StoreId,
 
@@ -37,7 +37,7 @@ pub struct RecommendedLoadSettings {
     pub timepoint: Option<TimePoint>,
 }
 
-impl RecommendedLoadSettings {
+impl DataLoaderSettings {
     #[inline]
     pub fn recommended(store_id: impl Into<re_log_types::StoreId>) -> Self {
         Self {
@@ -186,7 +186,7 @@ pub trait DataLoader: Send + Sync {
     #[cfg(not(target_arch = "wasm32"))]
     fn load_from_path(
         &self,
-        settings: &RecommendedLoadSettings,
+        settings: &DataLoaderSettings,
         path: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<LoadedData>,
     ) -> Result<(), DataLoaderError>;
@@ -218,7 +218,7 @@ pub trait DataLoader: Send + Sync {
     /// with a [`DataLoaderError::Incompatible`] error.
     fn load_from_file_contents(
         &self,
-        settings: &RecommendedLoadSettings,
+        settings: &DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<LoadedData>,

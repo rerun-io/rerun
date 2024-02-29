@@ -10,7 +10,7 @@ use rerun::{MediaType, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE};
 // If you use it, the data will end up in the same recording as all other plugins interested in
 // that file, otherwise you can just create a dedicated recording for it. Or both.
 //
-// Check out `re_data_source::RecommendedLoadSettings` documentation for an exhaustive listing of
+// Check out `re_data_source::DataLoaderSettings` documentation for an exhaustive listing of
 // the available CLI parameters.
 
 /// This is an example executable data-loader plugin for the Rerun Viewer.
@@ -83,7 +83,8 @@ fn main() -> anyhow::Result<()> {
         rec.stdout()?
     };
 
-    // TODO(#3841): really need those send APIs
+    // TODO(#3841): In the future, we will introduce so-called stateless APIs that allow logging
+    // data at a specific timepoint without having to modify the global stateful clock.
     rec.set_timepoint(timepoint_from_args(&args)?);
 
     let entity_path_prefix = args
