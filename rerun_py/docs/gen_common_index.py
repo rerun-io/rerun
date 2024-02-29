@@ -94,6 +94,8 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Logging functions",
         func_list=[
             "log",
+            "log_file_from_path",
+            "log_file_from_contents",
         ],
     ),
     Section(
