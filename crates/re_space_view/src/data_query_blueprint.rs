@@ -337,13 +337,13 @@ impl<'a> QueryExpressionEvaluator<'a> {
         // Ignore empty nodes.
         // Since we recurse downwards, this prunes any branches that don't have anything to contribute to the scene
         // and aren't directly included.
-        let direct_included = self.entity_path_filter.is_exact_included(entity_path);
-        if direct_included || !children.is_empty() || !visualizers.is_empty() {
+        let exact_included = self.entity_path_filter.is_exact_included(entity_path);
+        if exact_included || !children.is_empty() || !visualizers.is_empty() {
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
                     visualizers,
-                    direct_included,
+                    direct_included: self.entity_path_filter.is_included(entity_path),
                     property_overrides: None,
                 },
                 children,

@@ -1095,9 +1095,10 @@ impl RecordingStream {
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_path(
         &self,
+        settings: &re_data_source::DataLoaderSettings,
         filepath: impl AsRef<std::path::Path>,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, None)
+        self.log_file(settings, filepath, None)
     }
 
     /// Logs the given `contents` using all [`re_data_source::DataLoader`]s available.
@@ -1111,15 +1112,17 @@ impl RecordingStream {
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_contents(
         &self,
+        settings: &re_data_source::DataLoaderSettings,
         filepath: impl AsRef<std::path::Path>,
         contents: std::borrow::Cow<'_, [u8]>,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, Some(contents))
+        self.log_file(settings, filepath, Some(contents))
     }
 
     #[cfg(feature = "data_loaders")]
     fn log_file(
         &self,
+        settings: &re_data_source::DataLoaderSettings,
         filepath: impl AsRef<std::path::Path>,
         contents: Option<std::borrow::Cow<'_, [u8]>>,
     ) -> RecordingStreamResult<()> {
@@ -1131,20 +1134,16 @@ impl RecordingStream {
             re_smart_channel::SmartChannelSource::File(filepath.into()),
         );
 
-        let Some(store_id) = &self.store_info().map(|info| info.store_id.clone()) else {
-            // There's no recording.
-            return Ok(());
-        };
         if let Some(contents) = contents {
             re_data_source::load_from_file_contents(
-                store_id,
+                settings,
                 re_log_types::FileSource::Sdk,
                 filepath,
                 contents,
                 &tx,
             )?;
         } else {
-            re_data_source::load_from_path(store_id, re_log_types::FileSource::Sdk, filepath, &tx)?;
+            re_data_source::load_from_path(settings, re_log_types::FileSource::Sdk, filepath, &tx)?;
         }
         drop(tx);
 

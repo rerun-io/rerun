@@ -386,15 +386,14 @@ impl SpaceViewBlueprint {
         {
             re_tracing::profile_scope!("per_system_data_results");
 
-            query_result.tree.visit(&mut |handle| {
-                if let Some(result) = query_result.tree.lookup_result(handle) {
-                    for system in &result.visualizers {
-                        per_system_entities
-                            .entry(*system)
-                            .or_default()
-                            .insert(result.entity_path.clone());
-                    }
+            query_result.tree.visit(&mut |node| {
+                for system in &node.data_result.visualizers {
+                    per_system_entities
+                        .entry(*system)
+                        .or_default()
+                        .insert(node.data_result.entity_path.clone());
                 }
+                true
             });
         }
 
