@@ -18,7 +18,7 @@ the shape has to be the shape of the decoded image.
 
 ## Fields
 
-* shape: [`TensorDimension`](../datatypes/tensor_dimension.md)
+* shape: list of [`TensorDimension`](../datatypes/tensor_dimension.md)
 * buffer: [`TensorBuffer`](../datatypes/tensor_buffer.md)
 
 ## Links

@@ -9,44 +9,34 @@
 #include <memory>
 
 namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
     class Array;
     class DataType;
-    class UInt8Type;
-    using UInt8Builder = NumericBuilder<UInt8Type>;
+    class SparseUnionBuilder;
 } // namespace arrow
 
 namespace rerun::components {
     /// **Component**: Shape of a marker.
-    struct MarkerShape {
-        uint8_t shape;
+    enum class MarkerShape : uint8_t {
 
-      public:
-        // Extensions to generated type defined in 'marker_shape_ext.cpp'
+        Circle = 1,
 
-        static const rerun::components::MarkerShape Circle;
-        static const rerun::components::MarkerShape Diamond;
-        static const rerun::components::MarkerShape Square;
-        static const rerun::components::MarkerShape Cross;
-        static const rerun::components::MarkerShape Plus;
-        static const rerun::components::MarkerShape Up;
-        static const rerun::components::MarkerShape Down;
-        static const rerun::components::MarkerShape Left;
-        static const rerun::components::MarkerShape Right;
-        static const rerun::components::MarkerShape Asterisk;
+        Diamond = 2,
 
-      public:
-        MarkerShape() = default;
+        Square = 3,
 
-        MarkerShape(uint8_t shape_) : shape(shape_) {}
+        Cross = 4,
 
-        MarkerShape& operator=(uint8_t shape_) {
-            shape = shape_;
-            return *this;
-        }
+        Plus = 5,
+
+        Up = 6,
+
+        Down = 7,
+
+        Left = 8,
+
+        Right = 9,
+
+        Asterisk = 10,
     };
 } // namespace rerun::components
 
@@ -64,7 +54,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt8Builder* builder, const components::MarkerShape* elements,
+            arrow::SparseUnionBuilder* builder, const components::MarkerShape* elements,
             size_t num_elements
         );
 

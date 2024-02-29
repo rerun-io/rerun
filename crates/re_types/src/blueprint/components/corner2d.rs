@@ -22,41 +22,45 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: One of four 2D corners, typically used to align objects.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Corner2D(
-    /// Where should the legend be located.
-    ///
-    /// Allowed values:
-    ///  - LeftTop = 1,
-    ///  - RightTop = 2,
-    ///  - LeftBottom = 3,
-    ///  - RightBottom = 4
-    pub u8,
-);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Corner2D {
+    LeftTop = 1,
+    RightTop = 2,
+    LeftBottom = 3,
+    #[default]
+    RightBottom = 4,
+}
+
+impl Corner2D {
+    /// All the different enum variants.
+    pub const ALL: [Self; 4] = [
+        Self::LeftTop,
+        Self::RightTop,
+        Self::LeftBottom,
+        Self::RightBottom,
+    ];
+}
 
 impl ::re_types_core::SizeBytes for Corner2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
+        0
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <u8>::is_pod()
+        true
     }
 }
 
-impl From<u8> for Corner2D {
-    #[inline]
-    fn from(location: u8) -> Self {
-        Self(location)
-    }
-}
-
-impl From<Corner2D> for u8 {
-    #[inline]
-    fn from(value: Corner2D) -> Self {
-        value.0
+impl std::fmt::Display for Corner2D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::LeftTop => write!(f, "LeftTop"),
+            Self::RightTop => write!(f, "RightTop"),
+            Self::LeftBottom => write!(f, "LeftBottom"),
+            Self::RightBottom => write!(f, "RightBottom"),
+        }
     }
 }
 
@@ -74,7 +78,17 @@ impl ::re_types_core::Loggable for Corner2D {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::UInt8
+        DataType::Union(
+            std::sync::Arc::new(vec![
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new("LeftTop", DataType::Null, false),
+                Field::new("RightTop", DataType::Null, false),
+                Field::new("LeftBottom", DataType::Null, false),
+                Field::new("RightBottom", DataType::Null, false),
+            ]),
+            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
+            UnionMode::Sparse,
+        )
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -87,25 +101,30 @@ impl ::re_types_core::Loggable for Corner2D {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            PrimitiveArray::new(
-                Self::arrow_datatype(),
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                data0_bitmap,
+                .collect();
+            let num_variants = 4usize;
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(value) => *value as i8,
+                })
+                .collect();
+            let fields: Vec<_> =
+                std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
+                    .take(1 + num_variants)
+                    .collect();
+            UnionArray::new(
+                <crate::blueprint::components::Corner2D>::arrow_datatype(),
+                types,
+                fields,
+                None,
             )
             .boxed()
         })
@@ -120,52 +139,33 @@ impl ::re_types_core::Loggable for Corner2D {
     {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt8Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
-            .with_context("rerun.blueprint.components.Corner2D#location")?
-            .into_iter()
-            .map(|opt| opt.copied())
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.blueprint.components.Corner2D#location")
-            .with_context("rerun.blueprint.components.Corner2D")?)
-    }
-
-    #[allow(clippy::wildcard_imports)]
-    #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
         Ok({
-            let slice = arrow_data
+            let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<UInt8Array>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    let expected = DataType::UInt8;
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.blueprint.components.Corner2D#location")?
-                .values()
-                .as_slice();
-            {
-                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
-            }
+                .with_context("rerun.blueprint.components.Corner2D")?;
+            let arrow_data_types = arrow_data.types();
+            arrow_data_types
+                .iter()
+                .map(|typ| match typ {
+                    0 => Ok(None),
+                    1 => Ok(Some(Corner2D::LeftTop)),
+                    2 => Ok(Some(Corner2D::RightTop)),
+                    3 => Ok(Some(Corner2D::LeftBottom)),
+                    4 => Ok(Some(Corner2D::RightBottom)),
+                    _ => Err(DeserializationError::missing_union_arm(
+                        Self::arrow_datatype(),
+                        "<invalid>",
+                        *typ as _,
+                    )),
+                })
+                .collect::<DeserializationResult<Vec<_>>>()
+                .with_context("rerun.blueprint.components.Corner2D")?
         })
     }
 }

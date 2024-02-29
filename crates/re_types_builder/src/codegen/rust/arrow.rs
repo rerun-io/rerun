@@ -94,15 +94,17 @@ impl quote::ToTokens for ArrowFieldTokenizer<'_> {
         } = &self.0;
 
         let datatype = ArrowDataTypeTokenizer(data_type, true);
-        let metadata = StrStrMapTokenizer(metadata);
+
+        let maybe_with_metadata = if metadata.is_empty() {
+            quote!()
+        } else {
+            let metadata = StrStrMapTokenizer(metadata);
+            quote!(.with_metadata(#metadata))
+        };
 
         quote! {
-            Field {
-                name: #name.to_owned(),
-                data_type: #datatype,
-                is_nullable: #is_nullable,
-                metadata: #metadata,
-            }
+            Field::new(#name, #datatype, #is_nullable)
+            #maybe_with_metadata
         }
         .to_tokens(tokens);
     }

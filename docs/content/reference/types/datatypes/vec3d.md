@@ -4,6 +4,9 @@ title: "Vec3D"
 
 A vector in 3D space.
 
+## Fields
+
+* xyz: 3x `f32`
 
 ## Links
  * 🌊 [C++ API docs for `Vec3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Vec3D.html)

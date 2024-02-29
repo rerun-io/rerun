@@ -66,24 +66,9 @@ impl ::re_types_core::Loggable for AnnotationInfo {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "id".to_owned(),
-                data_type: DataType::UInt16,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "label".to_owned(),
-                data_type: <crate::datatypes::Utf8>::arrow_datatype(),
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "color".to_owned(),
-                data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
-                is_nullable: true,
-                metadata: [].into(),
-            },
+            Field::new("id", DataType::UInt16, false),
+            Field::new("label", <crate::datatypes::Utf8>::arrow_datatype(), true),
+            Field::new("color", <crate::datatypes::Rgba32>::arrow_datatype(), true),
         ]))
     }
 

@@ -78,34 +78,29 @@ impl ::re_types_core::Loggable for ClassDescription {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "info".to_owned(),
-                data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "keypoint_annotations".to_owned(),
-                data_type: DataType::List(std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "keypoint_connections".to_owned(),
-                data_type: DataType::List(std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new(
+                "info",
+                <crate::datatypes::AnnotationInfo>::arrow_datatype(),
+                false,
+            ),
+            Field::new(
+                "keypoint_annotations",
+                DataType::List(std::sync::Arc::new(Field::new(
+                    "item",
+                    <crate::datatypes::AnnotationInfo>::arrow_datatype(),
+                    false,
+                ))),
+                false,
+            ),
+            Field::new(
+                "keypoint_connections",
+                DataType::List(std::sync::Arc::new(Field::new(
+                    "item",
+                    <crate::datatypes::KeypointPair>::arrow_datatype(),
+                    false,
+                ))),
+                false,
+            ),
         ]))
     }
 
@@ -190,12 +185,11 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
+                                DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    <crate::datatypes::AnnotationInfo>::arrow_datatype(),
+                                    false,
+                                ))),
                                 offsets,
                                 {
                                     _ = keypoint_annotations_inner_bitmap;
@@ -245,12 +239,11 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
+                                DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    <crate::datatypes::KeypointPair>::arrow_datatype(),
+                                    false,
+                                ))),
                                 offsets,
                                 {
                                     _ = keypoint_connections_inner_bitmap;
@@ -326,12 +319,11 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: <crate::datatypes::AnnotationInfo>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }));
+                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    <crate::datatypes::AnnotationInfo>::arrow_datatype(),
+                                    false,
+                                )));
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })
@@ -398,12 +390,11 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                let expected = DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: <crate::datatypes::KeypointPair>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }));
+                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    <crate::datatypes::KeypointPair>::arrow_datatype(),
+                                    false,
+                                )));
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })

@@ -7,6 +7,9 @@ A Quaternion represented by 4 real numbers.
 Note: although the x,y,z,w components of the quaternion will be passed through to the
 datastore as provided, when used in the viewer Quaternions will always be normalized.
 
+## Fields
+
+* xyzw: 4x `f32`
 
 ## Links
  * 🌊 [C++ API docs for `Quaternion`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Quaternion.html)

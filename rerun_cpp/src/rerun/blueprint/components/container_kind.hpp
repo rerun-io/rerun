@@ -9,37 +9,22 @@
 #include <memory>
 
 namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
     class Array;
     class DataType;
-    class UInt8Type;
-    using UInt8Builder = NumericBuilder<UInt8Type>;
+    class SparseUnionBuilder;
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: The kind of a blueprint container.
-    struct ContainerKind {
-        /// Which kind of container this is.
-        ///
-        /// Allowed values:
-        ///  - Tabs = 1
-        ///  - Horizontal = 2
-        ///  - Vertical = 3
-        ///  - Grid = 4
-        uint8_t kind;
+    /// **Component**: The kind of a blueprint container (tabs, grid, …).
+    enum class ContainerKind : uint8_t {
 
-      public:
-        ContainerKind() = default;
+        Tabs = 1,
 
-        ContainerKind(uint8_t kind_) : kind(kind_) {}
+        Horizontal = 2,
 
-        ContainerKind& operator=(uint8_t kind_) {
-            kind = kind_;
-            return *this;
-        }
+        Vertical = 3,
+
+        Grid = 4,
     };
 } // namespace rerun::blueprint::components
 
@@ -57,8 +42,8 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt8Builder* builder, const blueprint::components::ContainerKind* elements,
-            size_t num_elements
+            arrow::SparseUnionBuilder* builder,
+            const blueprint::components::ContainerKind* elements, size_t num_elements
         );
 
         /// Serializes an array of `rerun::blueprint:: components::ContainerKind` into an arrow array.

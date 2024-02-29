@@ -4,6 +4,9 @@ title: "InstanceKey"
 
 A unique numeric identifier for each individual instance within a batch.
 
+## Fields
+
+* value: `u64`
 
 ## Links
  * 🌊 [C++ API docs for `InstanceKey`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1InstanceKey.html)

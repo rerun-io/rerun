@@ -9,6 +9,7 @@ Representation of an affine transform via separate translation, rotation & scale
 * translation: [`Vec3D`](../datatypes/vec3d.md)
 * rotation: [`Rotation3D`](../datatypes/rotation3d.md)
 * scale: [`Scale3D`](../datatypes/scale3d.md)
+* from_parent: `bool`
 
 ## Links
  * 🌊 [C++ API docs for `TranslationRotationScale3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TranslationRotationScale3D.html)

@@ -70,24 +70,13 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "translation".to_owned(),
-                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "mat3x3".to_owned(),
-                data_type: <crate::datatypes::Mat3x3>::arrow_datatype(),
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "from_parent".to_owned(),
-                data_type: DataType::Boolean,
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new(
+                "translation",
+                <crate::datatypes::Vec3D>::arrow_datatype(),
+                true,
+            ),
+            Field::new("mat3x3", <crate::datatypes::Mat3x3>::arrow_datatype(), true),
+            Field::new("from_parent", DataType::Boolean, false),
         ]))
     }
 
@@ -159,12 +148,11 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
                                     3usize,
                                 ),
                                 PrimitiveArray::new(
@@ -225,12 +213,11 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
                                     9usize,
                                 ),
                                 PrimitiveArray::new(
@@ -323,12 +310,11 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
                                     3usize,
                                 );
                                 let actual = arrow_data.data_type().clone();
@@ -407,12 +393,11 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
                                     9usize,
                                 );
                                 let actual = arrow_data.data_type().clone();

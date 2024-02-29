@@ -63,24 +63,17 @@ impl ::re_types_core::Loggable for Rotation3D {
         use arrow2::datatypes::*;
         DataType::Union(
             std::sync::Arc::new(vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Quaternion".to_owned(),
-                    data_type: <crate::datatypes::Quaternion>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "AxisAngle".to_owned(),
-                    data_type: <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new(
+                    "Quaternion",
+                    <crate::datatypes::Quaternion>::arrow_datatype(),
+                    false,
+                ),
+                Field::new(
+                    "AxisAngle",
+                    <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
+                    false,
+                ),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
             UnionMode::Dense,
@@ -156,12 +149,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                             });
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
-                                std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
+                                std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                                 4usize,
                             ),
                             PrimitiveArray::new(
@@ -284,12 +272,11 @@ impl ::re_types_core::Loggable for Rotation3D {
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 let expected = DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
                                     4usize,
                                 );
                                 let actual = arrow_data.data_type().clone();
